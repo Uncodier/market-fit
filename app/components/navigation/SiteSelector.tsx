@@ -8,7 +8,7 @@ import {
 } from "../ui/dropdown-menu"
 import { MenuAvatar, MenuAvatarFallback } from "../ui/menu-avatar"
 import { cn } from "@/lib/utils"
-import { Check } from "lucide-react"
+import { Check } from "@/app/components/ui/icons"
 import { useSite, Site } from "@/app/context/SiteContext"
 
 interface SiteSelectorProps {
@@ -45,7 +45,7 @@ export function SiteSelector({
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="font-medium truncate">{currentSite.name}</span>
                 <span className="text-xs text-gray-400 truncate">
-                  {currentSite.domain}
+                  {currentSite.url || "Sin URL"}
                 </span>
               </div>
             )}
@@ -77,7 +77,7 @@ export function SiteSelector({
                 </MenuAvatar>
                 <div className="flex flex-col flex-1 min-w-0">
                   <span className="text-sm font-medium truncate">{site.name}</span>
-                  <span className="text-xs text-gray-500 truncate">{site.domain}</span>
+                  <span className="text-xs text-gray-500 truncate">{site.url || "Sin URL"}</span>
                 </div>
                 {isSelected && (
                   <Check className="h-4 w-4 text-blue-600 flex-shrink-0" />

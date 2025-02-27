@@ -9,14 +9,16 @@ import {
   User,
   MessageSquare,
   ChevronRight,
-  Home
-} from "lucide-react"
+  Home,
+  FolderOpen
+} from "@/app/components/ui/icons"
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { ConfigurationSection } from "./ConfigurationSection"
 import { MenuItem } from "./MenuItem"
 import { SiteSelector } from "./SiteSelector"
 import Link from "next/link"
+import Image from "next/image"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
@@ -43,6 +45,11 @@ const navigationItems = [
     title: "Requirements",
     href: "/requirements",
     icon: ClipboardList,
+  },
+  {
+    title: "Assets",
+    href: "/assets",
+    icon: FolderOpen,
   },
   {
     title: "Leads",
@@ -75,17 +82,22 @@ export function Sidebar({
     >
       {/* Logo Section - Fixed */}
       <Link href="/dashboard" className="flex items-center justify-center h-16 px-3 border-b flex-none">
+        <Image 
+          src="https://cloudfront.cdn.uncodie.com/zoDKXCi32aQHAee0dGmkjv/d8dcc649fecfe6d7d3c71901442818767d410b1d.png"
+          alt="Market Fit Logo"
+          width={32}
+          height={32}
+          className={cn(
+            "transition-all duration-200",
+            isCollapsed ? "mr-0" : "mr-2"
+          )}
+          style={{ height: 'auto' }}
+        />
         <span className={cn(
-          "text-xl font-bold transition-all duration-200",
+          "text-[1.1rem] font-bold transition-all duration-200",
           isCollapsed ? "scale-0 w-0" : "scale-100 w-auto"
         )}>
           MARKET FIT
-        </span>
-        <span className={cn(
-          "text-xl font-bold absolute transition-all duration-200",
-          isCollapsed ? "scale-100" : "scale-0 w-0"
-        )}>
-          MF
         </span>
       </Link>
 
@@ -119,7 +131,7 @@ export function Sidebar({
             icon={User}
             title="Alex Stanton"
             subtitle="alex@marketfit.com"
-            avatarUrl="/avatars/alex.jpg"
+            avatarUrl={undefined}
             isActive={pathname === '/profile'}
             isCollapsed={isCollapsed}
           >

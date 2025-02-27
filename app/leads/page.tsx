@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search } from "lucide-react"
-import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { ChevronLeft, ChevronRight, Search } from "@/app/components/ui/icons"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 
 interface Lead {
   id: string
@@ -24,236 +26,759 @@ const leads: Lead[] = [
   {
     id: "1",
     name: "John Smith",
-    email: "john@techcorp.com",
-    company: "TechCorp",
+    email: "john.smith@company.com",
+    company: "Tech Corp",
     position: "CTO",
-    segment: "Enterprise Decision Makers",
-    status: "qualified",
-    createdAt: "2024-01-05",
+    segment: "Enterprise",
+    status: "new",
+    createdAt: "2024-01-15"
   },
   {
     id: "2",
     name: "Sarah Johnson",
-    email: "sarah@innovate.io",
-    company: "Innovate.io",
-    position: "Product Manager",
-    segment: "Product Managers",
+    email: "sarah.j@startup.io",
+    company: "Startup.io",
+    position: "CEO",
+    segment: "SMB",
     status: "contacted",
-    createdAt: "2024-01-10",
+    createdAt: "2024-01-16"
   },
   {
     id: "3",
-    name: "Michael Chen",
-    email: "michael@startupx.com",
-    company: "StartupX",
-    position: "Founder",
-    segment: "Small Business Owners",
-    status: "new",
-    createdAt: "2024-01-15",
+    name: "Michael Brown",
+    email: "mbrown@enterprise.com",
+    company: "Enterprise Inc",
+    position: "Head of Product",
+    segment: "Enterprise",
+    status: "qualified",
+    createdAt: "2024-01-17"
   },
   {
     id: "4",
-    name: "Emily Rodriguez",
+    name: "Emily Davis",
     email: "emily@growthco.com",
-    company: "GrowthCo",
+    company: "Growth Co",
     position: "Marketing Director",
-    segment: "Marketing Professionals",
+    segment: "Mid-Market",
     status: "converted",
-    createdAt: "2024-01-08",
+    createdAt: "2024-01-18"
   },
   {
     id: "5",
-    name: "David Kim",
-    email: "david@techblog.com",
-    company: "TechBlog",
-    position: "Editor",
-    segment: "Tech Enthusiasts",
-    status: "contacted",
-    createdAt: "2024-01-12",
+    name: "David Wilson",
+    email: "david@smallbiz.com",
+    company: "Small Biz",
+    position: "Owner",
+    segment: "SMB",
+    status: "lost",
+    createdAt: "2024-01-19"
   },
   {
     id: "6",
-    name: "Lisa Wang",
-    email: "lisa@enterprise.com",
-    company: "Enterprise Inc",
-    position: "VP of Engineering",
-    segment: "Enterprise Decision Makers",
-    status: "qualified",
-    createdAt: "2024-01-07",
+    name: "Ana Martínez",
+    email: "ana.m@techstart.com",
+    company: "TechStart",
+    position: "CTO",
+    segment: "SMB",
+    status: "new",
+    createdAt: "2024-01-20"
   },
   {
     id: "7",
-    name: "James Wilson",
-    email: "james@digitalagency.com",
-    company: "Digital Agency",
-    position: "CEO",
-    segment: "Small Business Owners",
-    status: "lost",
-    createdAt: "2023-12-20",
+    name: "Robert Chen",
+    email: "robert@bigtech.com",
+    company: "BigTech Solutions",
+    position: "Engineering Manager",
+    segment: "Enterprise",
+    status: "contacted",
+    createdAt: "2024-01-21"
   },
   {
     id: "8",
-    name: "Olivia Martinez",
-    email: "olivia@techstartup.com",
-    company: "Tech Startup",
-    position: "Product Owner",
-    segment: "Early Adopters",
-    status: "new",
-    createdAt: "2024-01-18",
+    name: "Laura Thompson",
+    email: "laura@digitalco.com",
+    company: "Digital Co",
+    position: "Product Manager",
+    segment: "Mid-Market",
+    status: "qualified",
+    createdAt: "2024-01-22"
   },
+  {
+    id: "9",
+    name: "Carlos Rodriguez",
+    email: "carlos@innovate.io",
+    company: "Innovate.io",
+    position: "CEO",
+    segment: "SMB",
+    status: "converted",
+    createdAt: "2024-01-23"
+  },
+  {
+    id: "10",
+    name: "Sophie Wang",
+    email: "sophie@techglobal.com",
+    company: "TechGlobal",
+    position: "VP Sales",
+    segment: "Enterprise",
+    status: "lost",
+    createdAt: "2024-01-24"
+  },
+  {
+    id: "11",
+    name: "James Miller",
+    email: "james@cloudtech.com",
+    company: "CloudTech",
+    position: "Solutions Architect",
+    segment: "Enterprise",
+    status: "new",
+    createdAt: "2024-01-25"
+  },
+  {
+    id: "12",
+    name: "Elena Popov",
+    email: "elena@devshop.com",
+    company: "DevShop",
+    position: "Lead Developer",
+    segment: "SMB",
+    status: "contacted",
+    createdAt: "2024-01-26"
+  },
+  {
+    id: "13",
+    name: "Daniel Kim",
+    email: "daniel@aitech.com",
+    company: "AITech",
+    position: "AI Research Lead",
+    segment: "Mid-Market",
+    status: "qualified",
+    createdAt: "2024-01-27"
+  },
+  {
+    id: "14",
+    name: "Isabella Santos",
+    email: "isabella@datawise.com",
+    company: "DataWise",
+    position: "Data Science Director",
+    segment: "Enterprise",
+    status: "converted",
+    createdAt: "2024-01-28"
+  },
+  {
+    id: "15",
+    name: "Thomas Anderson",
+    email: "thomas@matrix.com",
+    company: "Matrix Systems",
+    position: "Security Officer",
+    segment: "Mid-Market",
+    status: "lost",
+    createdAt: "2024-01-29"
+  }
 ]
 
 export default function LeadsPage() {
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
-  const totalPages = Math.ceil(leads.length / itemsPerPage)
-  const [activeTab, setActiveTab] = useState("1")
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+  const [activeTab, setActiveTab] = useState("all")
+  
+  const getFilteredLeads = (status: string) => {
+    if (status === "all") return leads
+    return leads.filter(lead => lead.status === status)
+  }
+  
+  const filteredLeads = getFilteredLeads(activeTab)
+  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage)
   
   // Calcular los leads que se mostrarán en la página actual
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentLeads = leads.slice(indexOfFirstItem, indexOfLastItem)
+  const currentLeads = filteredLeads.slice(indexOfFirstItem, indexOfLastItem)
   
   // Funciones para cambiar de página
   function goToNextPage() {
     setCurrentPage(page => Math.min(page + 1, totalPages))
-    setActiveTab((Math.min(currentPage + 1, totalPages)).toString())
   }
   
   function goToPreviousPage() {
     setCurrentPage(page => Math.max(page - 1, 1))
-    setActiveTab((Math.max(currentPage - 1, 1)).toString())
   }
   
   function goToPage(pageNumber: number) {
     setCurrentPage(pageNumber)
-    setActiveTab(pageNumber.toString())
   }
 
-  // Actualizar activeTab cuando cambia currentPage
+  // Reset página cuando cambia el tab
   useEffect(() => {
-    setActiveTab(currentPage.toString())
-  }, [currentPage])
+    setCurrentPage(1)
+  }, [activeTab])
+
+  // Función para cambiar items por página
+  function handleItemsPerPageChange(value: string) {
+    setItemsPerPage(Number(value))
+    setCurrentPage(1) // Reset a primera página cuando cambia el número de items
+  }
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-end pr-0">
+    <div className="flex-1 p-0">
+      <Tabs defaultValue="all" onValueChange={setActiveTab}>
+        <StickyHeader>
+          <div className="px-16 pt-0">
+            <div className="flex items-center gap-8">
+              <div className="flex-1">
+                <TabsList className="w-full">
+                  <TabsTrigger value="all">All Leads</TabsTrigger>
+                  <TabsTrigger value="new">New</TabsTrigger>
+                  <TabsTrigger value="contacted">Contacted</TabsTrigger>
+                  <TabsTrigger value="qualified">Qualified</TabsTrigger>
+                  <TabsTrigger value="converted">Converted</TabsTrigger>
+                  <TabsTrigger value="lost">Lost</TabsTrigger>
+                </TabsList>
+              </div>
         <div className="relative w-64">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search leads..." className="pl-8" />
+                <Input placeholder="Search leads..." className="pl-8 w-full" />
           <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
             <span className="text-xs">⌘</span>K
           </kbd>
         </div>
       </div>
+          </div>
+        </StickyHeader>
+        
+        <div className="p-8 space-y-4">
+          <div className="px-8">
+            <TabsContent value="all" className="space-y-4">
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>All Leads</CardTitle>
-          <CardDescription>
-            Manage your leads and track their status
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Company</TableHead>
+                      <TableHead>Position</TableHead>
                 <TableHead>Segment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {currentLeads.map((lead) => (
                 <TableRow key={lead.id}>
-                  <TableCell className="font-medium">
-                    <div>
-                      {lead.name}
-                      <div className="text-sm text-muted-foreground">{lead.email}</div>
-                    </div>
-                  </TableCell>
                   <TableCell>
                     <div>
-                      {lead.company}
-                      <div className="text-sm text-muted-foreground">{lead.position}</div>
+                            <p className="font-medium">{lead.name}</p>
+                            <p className="text-sm text-muted-foreground">{lead.email}</p>
                     </div>
                   </TableCell>
+                        <TableCell>{lead.company}</TableCell>
+                        <TableCell>{lead.position}</TableCell>
                   <TableCell>{lead.segment}</TableCell>
                   <TableCell>
                     <Badge
                       className={
                         lead.status === "new"
-                          ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200"
                           : lead.status === "contacted"
-                          ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                ? "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200"
                           : lead.status === "qualified"
-                          ? "bg-purple-100 text-purple-800 hover:bg-purple-100"
+                                ? "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200"
                           : lead.status === "converted"
-                          ? "bg-green-100 text-green-800 hover:bg-green-100"
-                          : "bg-red-100 text-red-800 hover:bg-red-100"
+                                ? "bg-green-50 text-green-700 hover:bg-green-50 border-green-200"
+                                : "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
                       }
                     >
                       {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
                     </Badge>
                   </TableCell>
                   <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm">
-                      View
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="flex items-center justify-between px-6 py-4 border-t">
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
+                      <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
+                      <span className="font-medium">{filteredLeads.length}</span> registros
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Mostrar</span>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={handleItemsPerPageChange}
+                      >
+                        <SelectTrigger className="h-8 w-[70px]">
+                          <SelectValue placeholder="5" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="15">15</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground">por página</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-6">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Página anterior</span>
                     </Button>
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                            currentPage === page 
+                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                              : "text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                      <span className="sr-only">Página siguiente</span>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+            <TabsContent value="new" className="space-y-4">
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Segment</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentLeads.map((lead) => (
+                      <TableRow key={lead.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{lead.name}</p>
+                            <p className="text-sm text-muted-foreground">{lead.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{lead.company}</TableCell>
+                        <TableCell>{lead.position}</TableCell>
+                        <TableCell>{lead.segment}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200">
+                            New
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="flex items-center justify-between px-6 py-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
+                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
+                    <span className="font-medium">{filteredLeads.length}</span> registros
+                  </div>
+                  <div className="flex items-center space-x-6">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Página anterior</span>
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                            currentPage === page 
+                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                              : "text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                      <span className="sr-only">Página siguiente</span>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+            <TabsContent value="contacted" className="space-y-4">
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Segment</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentLeads.map((lead) => (
+                      <TableRow key={lead.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{lead.name}</p>
+                            <p className="text-sm text-muted-foreground">{lead.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{lead.company}</TableCell>
+                        <TableCell>{lead.position}</TableCell>
+                        <TableCell>{lead.segment}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200">
+                            Contacted
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="flex items-center justify-between px-6 py-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
+                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
+                    <span className="font-medium">{filteredLeads.length}</span> registros
+                  </div>
+                  <div className="flex items-center space-x-6">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Página anterior</span>
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                            currentPage === page 
+                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                              : "text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                      <span className="sr-only">Página siguiente</span>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+            <TabsContent value="qualified" className="space-y-4">
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Segment</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentLeads.map((lead) => (
+                      <TableRow key={lead.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{lead.name}</p>
+                            <p className="text-sm text-muted-foreground">{lead.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{lead.company}</TableCell>
+                        <TableCell>{lead.position}</TableCell>
+                        <TableCell>{lead.segment}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200">
+                            Qualified
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="flex items-center justify-between px-6 py-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
+                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
+                    <span className="font-medium">{filteredLeads.length}</span> registros
+                  </div>
+                  <div className="flex items-center space-x-6">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Página anterior</span>
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                            currentPage === page 
+                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                              : "text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                      <span className="sr-only">Página siguiente</span>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+            <TabsContent value="converted" className="space-y-4">
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Segment</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentLeads.map((lead) => (
+                      <TableRow key={lead.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{lead.name}</p>
+                            <p className="text-sm text-muted-foreground">{lead.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{lead.company}</TableCell>
+                        <TableCell>{lead.position}</TableCell>
+                        <TableCell>{lead.segment}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-green-50 text-green-700 hover:bg-green-50 border-green-200">
+                            Converted
+                          </Badge>
                   </TableCell>
+                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          
-          {/* Paginación */}
-          <div className="flex items-center justify-between space-x-2 py-4">
+                <div className="flex items-center justify-between px-6 py-4 border-t">
             <div className="text-sm text-muted-foreground">
               Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
-              <span className="font-medium">{Math.min(indexOfLastItem, leads.length)}</span> de{" "}
-              <span className="font-medium">{leads.length}</span> registros
+                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
+                    <span className="font-medium">{filteredLeads.length}</span> registros
             </div>
-            <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-6">
               <Button
-                variant="outline"
+                      variant="ghost"
                 size="sm"
                 onClick={goToPreviousPage}
                 disabled={currentPage === 1}
-                className="h-8 px-2"
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
               >
                 <ChevronLeft className="h-4 w-4" />
                 <span className="sr-only">Página anterior</span>
               </Button>
-              <Tabs value={activeTab} onValueChange={(value) => goToPage(parseInt(value))}>
-                <TabsList className="h-8">
+                    <div className="flex items-center gap-2">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <TabsTrigger
+                        <Button
                       key={page}
-                      value={page.toString()}
-                      className="px-3 py-0 h-full data-[state=active]:shadow-none"
+                          variant="ghost"
+                size="sm"
+                onClick={() => goToPage(page)}
+                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                            currentPage === page 
+                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                              : "text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          {page}
+                        </Button>
+                  ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                      <span className="sr-only">Página siguiente</span>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+            <TabsContent value="lost" className="space-y-4">
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Segment</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentLeads.map((lead) => (
+                      <TableRow key={lead.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{lead.name}</p>
+                            <p className="text-sm text-muted-foreground">{lead.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{lead.company}</TableCell>
+                        <TableCell>{lead.position}</TableCell>
+                        <TableCell>{lead.segment}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-red-50 text-red-700 hover:bg-red-50 border-red-200">
+                            Lost
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="flex items-center justify-between px-6 py-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
+                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
+                    <span className="font-medium">{filteredLeads.length}</span> registros
+                  </div>
+                  <div className="flex items-center space-x-6">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Página anterior</span>
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                            currentPage === page 
+                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                              : "text-muted-foreground hover:bg-muted/50"
+                          }`}
                     >
                       {page}
-                    </TabsTrigger>
+                        </Button>
                   ))}
-                </TabsList>
-              </Tabs>
+                    </div>
               <Button
-                variant="outline"
+                      variant="ghost"
                 size="sm"
                 onClick={goToNextPage}
                 disabled={currentPage === totalPages}
-                className="h-8 px-2"
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
               >
                 <ChevronRight className="h-4 w-4" />
                 <span className="sr-only">Página siguiente</span>
               </Button>
             </div>
           </div>
-        </CardContent>
       </Card>
+            </TabsContent>
+          </div>
+        </div>
+      </Tabs>
     </div>
   )
 } 

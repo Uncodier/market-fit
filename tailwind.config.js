@@ -17,6 +17,9 @@ module.exports = {
     },
     extend: {
       colors: {
+        'primary-button': '#90ff17',
+        'primary-button-hover': '#ffdc24',
+        'primary-button-border': '#57921799',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

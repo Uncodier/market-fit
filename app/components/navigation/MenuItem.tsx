@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { LucideIcon } from "lucide-react"
+import { type LucideIcon } from "@/app/components/ui/icons"
 import Link from "next/link"
 import { MenuAvatar, MenuAvatarImage, MenuAvatarFallback } from "../ui/menu-avatar"
 import {
@@ -44,7 +44,7 @@ export function MenuItem({
           </MenuAvatarFallback>
         </MenuAvatar>
       ) : Icon && (
-        <Icon className="h-5 w-5 shrink-0" />
+        <Icon className="h-4 w-4 shrink-0" />
       )}
       
       <div

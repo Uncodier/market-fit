@@ -1,7 +1,16 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { HelpCircle, ChevronLeft, ChevronRight, PlusCircle, Filter, Download, Search } from "lucide-react"
+import { 
+  HelpCircle, 
+  ChevronLeft, 
+  ChevronRight, 
+  PlusCircle, 
+  Filter, 
+  Download, 
+  Search, 
+  UploadCloud 
+} from "@/app/components/ui/icons"
 import {
   Tooltip,
   TooltipContent,
@@ -28,17 +37,18 @@ export function TopBar({
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
-  const isSegmentsPage = pathname === "/segments"
   const isDashboardPage = pathname === "/dashboard"
+  const isSegmentsPage = pathname === "/segments"
   const isExperimentsPage = pathname === "/experiments"
   const isRequirementsPage = pathname === "/requirements"
   const isLeadsPage = pathname === "/leads"
   const isAgentsPage = pathname === "/agents"
+  const isAssetsPage = pathname === "/assets"
 
   return (
     <div
       className={cn(
-        "flex h-16 items-center justify-between border-b bg-white px-16",
+        "flex h-16 items-center justify-between border-b bg-white pr-16",
         className
       )}
       {...props}
@@ -46,7 +56,7 @@ export function TopBar({
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
-          className="h-8 w-8 p-0 mr-2"
+          className="h-8 w-8 p-0 ml-3.5"
           onClick={onCollapse}
         >
           {isCollapsed ? (
@@ -64,11 +74,11 @@ export function TopBar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button className="inline-flex items-center justify-center rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
-                  <HelpCircle className="h-5 w-5" />
+                  <HelpCircle className="h-4 w-4" />
                   <span className="sr-only">Help</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="right" align="center">
                 <p className="max-w-xs text-sm">{helpText}</p>
               </TooltipContent>
             </Tooltip>
@@ -126,6 +136,12 @@ export function TopBar({
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
             Create Agent
+          </Button>
+        )}
+        {isAssetsPage && (
+          <Button>
+            <UploadCloud className="mr-2 h-4 w-4" />
+            Upload Asset
           </Button>
         )}
       </div>
