@@ -9,7 +9,7 @@ interface StickyHeaderProps {
 export function StickyHeader({ children, className }: StickyHeaderProps) {
   return (
     <div className={cn(
-      "sticky top-0 min-h-[71px] flex items-center p-0",
+      "sticky top-16 min-h-[71px] flex items-center p-0",
       "bg-[#fafafacf] backdrop-blur supports-[backdrop-filter]:bg-[#fafafacf]",
       "border-b border-[#bfbfbf2e] z-10",
       className

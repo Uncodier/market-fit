@@ -124,7 +124,8 @@ CREATE TABLE IF NOT EXISTS public.experiments (
   site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  hypothesis TEXT
 );
 
 -- Tabla de KPIs para el dashboard
@@ -145,7 +146,9 @@ CREATE TABLE IF NOT EXISTS public.kpis (
   site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  trend DECIMAL DEFAULT 0,
+  benchmark DECIMAL
 );
 
 -- Tabla de relación entre experimentos y segmentos
@@ -186,7 +189,9 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   site_id UUID REFERENCES public.sites(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  event_type TEXT CHECK (event_type IN ('lead_created', 'kpi_alert', 'experiment_result')),
+  severity INTEGER
 );
 
 -- Tabla de eventos de visitantes
@@ -211,7 +216,9 @@ CREATE TABLE IF NOT EXISTS public.visitor_events (
   site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  location JSONB DEFAULT '{}',
+  campaign_id UUID REFERENCES public.experiments(id)
 );
 
 -- Tabla de recursos externos

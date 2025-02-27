@@ -48,7 +48,7 @@ export function TopBar({
   return (
     <div
       className={cn(
-        "flex h-16 items-center justify-between border-b bg-white pr-16",
+        "flex h-16 items-center justify-between border-b bg-[#f3f3f3ed] backdrop-blur-sm pr-16 sticky top-0 z-10",
         className
       )}
       {...props}

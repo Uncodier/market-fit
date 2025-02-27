@@ -90,23 +90,23 @@ function AssetCard({ asset }: { asset: Asset }) {
     switch (type) {
       case "image":
         return (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-50 text-gray-400">
-            <Image className="h-12 w-12" />
-            <span className="text-sm">Image not available</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
+            <Image className="h-12 w-12 animate-pulse" />
+            <span className="text-sm font-medium">Image not available</span>
           </div>
         )
       case "video":
         return (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-50 text-gray-400">
-            <FileVideo className="h-12 w-12" />
-            <span className="text-sm">Video preview</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
+            <FileVideo className="h-12 w-12 animate-pulse" />
+            <span className="text-sm font-medium">Video preview</span>
           </div>
         )
       case "document":
         return (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-50 text-gray-400">
-            <FileText className="h-12 w-12" />
-            <span className="text-sm">Document preview</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
+            <FileText className="h-12 w-12 animate-pulse" />
+            <span className="text-sm font-medium">Document preview</span>
           </div>
         )
     }
@@ -114,69 +114,89 @@ function AssetCard({ asset }: { asset: Asset }) {
 
   const shouldShowImage = asset.type !== "document" && (asset.thumbnailUrl || getDefaultThumbnail(asset.type)) && !imageError
 
+  const getTypeColor = (type: Asset["type"]) => {
+    switch (type) {
+      case "image":
+        return "bg-blue-50 text-blue-700 border-blue-200"
+      case "video":
+        return "bg-purple-50 text-purple-700 border-purple-200"
+      case "document":
+        return "bg-amber-50 text-amber-700 border-amber-200"
+    }
+  }
+
   return (
-    <Card className="group relative overflow-hidden">
-      <div className="aspect-[4/3] relative overflow-hidden bg-gray-100">
+    <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+      <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
         {shouldShowImage ? (
           <img
             src={asset.thumbnailUrl || getDefaultThumbnail(asset.type)}
             alt={asset.name}
-            className="object-cover w-full h-full transition-transform group-hover:scale-105"
+            className="object-cover w-full h-full transition-all duration-300 group-hover:scale-105"
             onError={() => setImageError(true)}
           />
         ) : (
           getIcon(asset.type)
         )}
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-8 w-8"
-            onClick={(e) => {
-              e.stopPropagation()
-              window.open(asset.url, '_blank')
-            }}
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-8 w-8"
-            onClick={(e) => {
-              e.stopPropagation()
-              // Aquí iría la lógica para descargar el asset
-            }}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-8 w-8 hover:bg-red-500 hover:text-white"
-            onClick={(e) => {
-              e.stopPropagation()
-              // Aquí iría la lógica para eliminar el asset
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center gap-2 p-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="icon"
+              className="h-8 w-8 bg-white/90 hover:bg-white transition-colors duration-200"
+              onClick={(e) => {
+                e.stopPropagation()
+                window.open(asset.url, '_blank')
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="h-8 w-8 bg-white/90 hover:bg-white transition-colors duration-200"
+              onClick={(e) => {
+                e.stopPropagation()
+                // Aquí iría la lógica para descargar el asset
+              }}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="h-8 w-8 bg-white/90 hover:bg-red-500 hover:text-white transition-colors duration-200"
+              onClick={(e) => {
+                e.stopPropagation()
+                // Aquí iría la lógica para eliminar el asset
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="absolute top-2 right-2">
+          <Badge variant="secondary" className={`${getTypeColor(asset.type)} text-xs font-medium capitalize`}>
+            {asset.type}
+          </Badge>
         </div>
       </div>
-      <div className="p-3">
-        <div className="flex flex-col gap-2">
+      <div className="p-4">
+        <div className="flex flex-col gap-3">
           <div>
-            <div className="font-medium truncate">{asset.name}</div>
-            <div className="text-sm text-muted-foreground">
-              {asset.size} • {new Date(asset.uploadedAt).toLocaleDateString()}
+            <div className="font-medium truncate text-sm">{asset.name}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+              <span>{asset.size}</span>
+              <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+              <span>{new Date(asset.uploadedAt).toLocaleDateString()}</span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {asset.tags.map((tag) => (
               <Badge
                 key={tag}
                 variant="secondary"
-                className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200 text-xs"
+                className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 text-[10px] px-2 py-0 h-4"
               >
                 {tag}
               </Badge>

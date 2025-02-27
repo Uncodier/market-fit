@@ -1,12 +1,13 @@
 "use client"
 
 import { Button } from "@/app/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/app/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
+import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
 import React from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 
@@ -94,209 +95,207 @@ const requirements: Requirement[] = [
 function RequirementCard({ requirement }: { requirement: Requirement }) {
   const [isExpanded, setIsExpanded] = React.useState(false)
 
+  const priorityColors = {
+    high: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
+    medium: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
+    low: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200"
+  }
+
+  const statusColors = {
+    validated: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
+    "in-progress": "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
+    backlog: "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200"
+  }
+
+  const completionStatusColors = {
+    completed: "bg-green-50 text-green-700 border-green-300",
+    rejected: "bg-red-50 text-red-700 border-red-300",
+    pending: "bg-yellow-50 text-yellow-700 border-yellow-300"
+  }
+
   return (
-    <Card 
-      key={requirement.id} 
-      className={`cursor-pointer transition-all border border-border hover:border-foreground/20`}
-      onClick={() => setIsExpanded(!isExpanded)}
+    <Collapsible
+      open={isExpanded}
+      onOpenChange={setIsExpanded}
+      className="w-full"
     >
-      <CardHeader className="p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
-          <div className="flex-shrink-0">
-            {isExpanded ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-col gap-1">
-              <CardTitle className="text-base font-medium">{requirement.title}</CardTitle>
-              <CardDescription className="line-clamp-2">{requirement.description}</CardDescription>
+      <div 
+        className="cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+          <div className="flex items-center pl-6 hover:bg-muted/50 transition-colors">
+            <div className="flex items-center justify-center p-2">
+              {isExpanded ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant="secondary"
-                className={
-                  requirement.priority === "high"
-                    ? "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
-                    : requirement.priority === "medium"
-                    ? "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200"
-                    : "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200"
-                }
-              >
-                {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
-              </Badge>
-              <Badge
-                variant="secondary"
-                className={
-                  requirement.status === "validated"
-                    ? "bg-green-50 text-green-700 hover:bg-green-50 border-green-200"
-                    : requirement.status === "in-progress"
-                    ? "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200"
-                    : "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200"
-                }
-              >
-                {requirement.status === "in-progress" 
-                  ? "In Progress" 
-                  : requirement.status.charAt(0).toUpperCase() + requirement.status.slice(1)}
-              </Badge>
-            </div>
-            <div className="w-[110px]">
-              <div className={`px-4 py-2 text-sm font-medium rounded-md border-2 text-center ${
-                requirement.completionStatus === "completed"
-                  ? "bg-green-50 text-green-700 border-green-300"
-                  : requirement.completionStatus === "rejected"
-                  ? "bg-red-50 text-red-700 border-red-300"
-                  : "bg-yellow-50 text-yellow-700 border-yellow-300"
-              }`}>
-                {requirement.completionStatus.charAt(0).toUpperCase() + requirement.completionStatus.slice(1)}
+            <CardContent className="flex-1 p-6 flex flex-col lg:flex-row items-start lg:items-center gap-4">
+              <div className="w-full lg:w-1/4 min-w-[200px] max-w-full lg:max-w-[300px] mb-4 lg:mb-0">
+                <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
+                <p className="text-sm text-muted-foreground/80 truncate">{requirement.description}</p>
               </div>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-      {isExpanded && (
-        <CardContent className="px-4 sm:px-6 pb-6 pt-0">
-          <div className="space-y-6 border-t border-border pt-6">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                <div className="grid gap-2">
-                  <div className="font-medium text-sm">Source</div>
-                  <div className="text-sm text-muted-foreground">{requirement.source}</div>
+              <div className="flex flex-wrap gap-6 w-full lg:w-3/4 justify-start lg:justify-between">
+                <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Priority</p>
+                  <Badge variant="secondary" className={priorityColors[requirement.priority]}>
+                    {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                  </Badge>
                 </div>
-                <div className="grid gap-2">
-                  <div className="font-medium text-sm">Created Date</div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(requirement.createdAt).toLocaleDateString()}
+                <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Status</p>
+                  <Badge variant="secondary" className={statusColors[requirement.status]}>
+                    {requirement.status === "in-progress" 
+                      ? "In Progress" 
+                      : requirement.status.charAt(0).toUpperCase() + requirement.status.slice(1)}
+                  </Badge>
+                </div>
+                <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Source</p>
+                  <p className="text-sm font-medium truncate">{requirement.source}</p>
+                </div>
+                <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Created</p>
+                  <p className="text-sm font-medium">{new Date(requirement.createdAt).toLocaleDateString()}</p>
+                </div>
+                <div className="min-w-[140px] sm:min-w-[120px] p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Completion</p>
+                  <div className={`px-3 py-1 text-sm font-medium rounded-md border-2 text-center ${completionStatusColors[requirement.completionStatus]}`}>
+                    {requirement.completionStatus.charAt(0).toUpperCase() + requirement.completionStatus.slice(1)}
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <div className="font-medium text-sm">Segments</div>
-                  <div className="flex flex-wrap gap-1.5 min-w-0">
-                    {requirement.segments.map((segment) => (
-                      <Badge
-                        key={segment}
-                        variant="secondary"
-                        className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200 text-xs whitespace-nowrap"
+              </div>
+            </CardContent>
+          </div>
+          <CollapsibleContent>
+            <CardContent className="pt-6 pb-6 px-6 border-t" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-6">
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <div className="font-medium text-sm">Description</div>
+                    <div className="text-sm text-muted-foreground">{requirement.description}</div>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="font-medium text-sm">Segments</div>
+                    <div className="flex flex-wrap gap-2">
+                      {requirement.segments.map((segment) => (
+                        <Badge
+                          key={segment}
+                          variant="secondary"
+                          className="px-3 py-1 text-xs font-medium bg-gray-100/80 text-gray-700 hover:bg-gray-200/80 transition-colors border border-gray-200/50"
+                        >
+                          {segment}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row justify-end gap-2">
+                  {requirement.completionStatus === "pending" && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Aquí iría la lógica para enviar al backlog
+                        }}
                       >
-                        {segment}
-                      </Badge>
-                    ))}
-                  </div>
+                        <Archive className="h-4 w-4" />
+                        Move to Backlog
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Aquí iría la lógica para marcar como completado
+                        }}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Mark as Done
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="flex items-center gap-2 w-full sm:w-auto"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Aquí iría la lógica para rechazar el requerimiento
+                        }}
+                      >
+                        <Ban className="h-4 w-4" />
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                  {requirement.completionStatus === "completed" && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Aquí iría la lógica para enviar al backlog
+                        }}
+                      >
+                        <Archive className="h-4 w-4" />
+                        Move to Backlog
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Aquí iría la lógica para revertir a pendiente
+                        }}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Return to Pending
+                      </Button>
+                    </>
+                  )}
+                  {requirement.completionStatus === "rejected" && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Aquí iría la lógica para enviar al backlog
+                        }}
+                      >
+                        <Archive className="h-4 w-4" />
+                        Move to Backlog
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Aquí iría la lógica para revertir a pendiente
+                        }}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Return to Pending
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
-              <div className="grid gap-2">
-                <div className="font-medium text-sm">Instructions</div>
-                <div className="text-sm text-muted-foreground">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row justify-end gap-2">
-              {requirement.completionStatus === "pending" && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2 w-full sm:w-auto"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // Aquí iría la lógica para enviar al backlog
-                    }}
-                  >
-                    <Archive className="h-4 w-4" />
-                    Move to Backlog
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2 w-full sm:w-auto"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // Aquí iría la lógica para marcar como completado
-                    }}
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Mark as Done
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    className="flex items-center gap-2 w-full sm:w-auto"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // Aquí iría la lógica para rechazar el requerimiento
-                    }}
-                  >
-                    <Ban className="h-4 w-4" />
-                    Reject
-                  </Button>
-                </>
-              )}
-              {requirement.completionStatus === "completed" && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2 w-full sm:w-auto"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // Aquí iría la lógica para enviar al backlog
-                    }}
-                  >
-                    <Archive className="h-4 w-4" />
-                    Move to Backlog
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2 w-full sm:w-auto"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // Aquí iría la lógica para revertir a pendiente
-                    }}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Return to Pending
-                  </Button>
-                </>
-              )}
-              {requirement.completionStatus === "rejected" && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2 w-full sm:w-auto"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // Aquí iría la lógica para enviar al backlog
-                    }}
-                  >
-                    <Archive className="h-4 w-4" />
-                    Move to Backlog
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2 w-full sm:w-auto"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // Aquí iría la lógica para revertir a pendiente
-                    }}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Return to Pending
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      )}
-    </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </div>
+    </Collapsible>
   )
 }
 

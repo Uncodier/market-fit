@@ -21,6 +21,7 @@ interface MenuItemProps {
   isActive?: boolean
   isCollapsed?: boolean
   children?: React.ReactNode
+  className?: string
 }
 
 export function MenuItem({ 
@@ -32,20 +33,26 @@ export function MenuItem({
   avatarUrl,
   isActive, 
   isCollapsed,
-  children
+  children,
+  className
 }: MenuItemProps) {
   const content = (
     <>
-      {customIcon ? customIcon : avatarUrl ? (
-        <MenuAvatar className="h-8 w-8">
-          <MenuAvatarImage src={avatarUrl} alt={title} />
-          <MenuAvatarFallback>
-            {title.split(' ').map(word => word[0]).join('').toUpperCase()}
-          </MenuAvatarFallback>
-        </MenuAvatar>
-      ) : Icon && (
-        <Icon className="h-4 w-4 shrink-0" />
-      )}
+      <div className={cn(
+        "flex items-center justify-center",
+        isCollapsed ? "w-full" : "w-auto"
+      )}>
+        {customIcon ? customIcon : avatarUrl ? (
+          <MenuAvatar className="h-8 w-8">
+            <MenuAvatarImage src={avatarUrl} alt={title} />
+            <MenuAvatarFallback>
+              {title.split(' ').map(word => word[0]).join('').toUpperCase()}
+            </MenuAvatarFallback>
+          </MenuAvatar>
+        ) : Icon && (
+          <Icon className="h-[25px] w-[25px] shrink-0" />
+        )}
+      </div>
       
       <div
         className={cn(
@@ -74,11 +81,12 @@ export function MenuItem({
     <Link
       href={href}
       className={cn(
+        className,
         "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors relative group",
         isActive
           ? "bg-[#282828] text-white [&_svg]:text-white [&_span]:text-white"
           : "text-gray-500 hover:bg-gray-100 hover:text-gray-900",
-        isCollapsed && "justify-center"
+        isCollapsed ? "justify-center h-[39px]" : "justify-start h-[39px]"
       )}
     >
       {isCollapsed ? (

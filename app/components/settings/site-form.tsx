@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { useDropzone } from "react-dropzone"
-import { UploadCloud, Trash2, PlusCircle, AppWindow, Globe, FileText, Link, Tag } from "@/app/components/ui/icons"
+import { UploadCloud, Trash2, PlusCircle, AppWindow, Globe, FileText, Link, Tag, RotateCcw } from "@/app/components/ui/icons"
 import { Button } from "../ui/button"
 
 const siteFormSchema = z.object({
@@ -43,9 +43,13 @@ type SiteFormValues = z.infer<typeof siteFormSchema>
 interface SiteFormProps {
   initialData?: Partial<SiteFormValues>
   onSubmit: (data: SiteFormValues) => void
+  onDeleteSite?: () => void
+  onCacheAndRebuild?: () => void
+  isSaving?: boolean
+  activeSegment: string
 }
 
-export function SiteForm({ initialData, onSubmit }: SiteFormProps) {
+export function SiteForm({ initialData, onSubmit, onDeleteSite, onCacheAndRebuild, isSaving, activeSegment }: SiteFormProps) {
   const form = useForm<SiteFormValues>({
     resolver: zodResolver(siteFormSchema),
     defaultValues: {
@@ -197,351 +201,406 @@ export function SiteForm({ initialData, onSubmit }: SiteFormProps) {
     multiple: false
   })
 
+  const renderCard = (segment: string, card: JSX.Element) => {
+    if (activeSegment === "all" || activeSegment === segment) {
+      return card
+    }
+    return null
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Focus Mode</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormField
-              control={form.control}
-              name="focusMode"
-              render={({ field }) => (
-                <FormItem className="space-y-6">
-                  <FormControl>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="grid grid-cols-3 w-full gap-2">
-                          <div className="text-center">
-                            <div className="text-sm font-medium text-blue-600">Sales</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-sm font-medium text-purple-600">Balanced</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-sm font-medium text-green-600">Growth</div>
-                          </div>
-                        </div>
-                      </div>
-                      <Slider
-                        value={[field.value]}
-                        onValueChange={([value]) => field.onChange(value)}
-                        max={100}
-                        step={1}
-                        className={cn(
-                          "py-4 px-2",
-                          "[&_[role=slider]]:h-4",
-                          "[&_[role=slider]]:w-4",
-                          "[&_[role=slider]]:border-2",
-                          "[&_[role=slider]]:border-white",
-                          "[&_[role=slider]]:shadow-md",
-                          "[&_[role=slider]]:transition-colors",
-                          "[&_[role=slider]]:duration-200",
-                          "[&_[role=slider]]:rounded-full",
-                          "[&_.range]:transition-colors",
-                          "[&_.range]:duration-200",
-                          "[&]:h-4",
-                          "[&]:bg-gray-100",
-                          "[&]:rounded-full",
-                          {
-                            "[&_[role=slider]]:bg-blue-600 [&_.range]:bg-blue-500 [&]:bg-blue-50": field.value <= 20,
-                            "[&_[role=slider]]:bg-blue-600 [&_.range]:bg-blue-600 [&]:bg-blue-100": field.value > 20 && field.value <= 33,
-                            "[&_[role=slider]]:bg-purple-500 [&_.range]:bg-purple-500 [&]:bg-purple-50": field.value > 33 && field.value <= 45,
-                            "[&_[role=slider]]:bg-purple-600 [&_.range]:bg-purple-600 [&]:bg-purple-100": field.value > 45 && field.value <= 66,
-                            "[&_[role=slider]]:bg-green-500 [&_.range]:bg-green-500 [&]:bg-green-50": field.value > 66 && field.value <= 80,
-                            "[&_[role=slider]]:bg-green-600 [&_.range]:bg-green-600 [&]:bg-green-100": field.value > 80
-                          }
-                        )}
-                      />
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <div className={cn(
-                          "text-lg font-semibold mb-2",
-                          getFocusModeConfig(field.value).color
-                        )}>
-                          {getFocusModeConfig(field.value).label}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-4">
-                          {getFocusModeConfig(field.value).description}
-                        </p>
-                        <div className="space-y-2">
-                          {getFocusModeConfig(field.value).features.map((feature, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm">
-                              <div className={cn(
-                                "h-1.5 w-1.5 rounded-full",
-                                getFocusModeConfig(field.value).color
-                              )} />
-                              {feature}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    Adjust your site's focus to optimize between growth and conversions
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>General Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
-              <div className="min-w-[240px] flex-shrink-0">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
+        <div className="space-y-12">
+          {renderCard("focus", 
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Focus Mode</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
                 <FormField
                   control={form.control}
-                  name="logo_url"
+                  name="focusMode"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-2">Avatar</FormLabel>
+                    <FormItem className="space-y-6">
                       <FormControl>
-                        <div className="w-[240px] h-[240px] relative">
-                          {field.value ? (
-                            <div className="w-full h-full relative group">
-                              <Image
-                                src={field.value}
-                                alt="Avatar"
-                                fill
-                                className="object-cover rounded-lg"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => field.onChange("")}
-                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
-                              >
-                                <Trash2 className="h-4 w-4 text-white" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              {...getRootProps()}
-                              className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-300 hover:bg-gray-100 transition-colors"
-                            >
-                              <input {...getInputProps()} />
-                              <UploadCloud className="h-8 w-8 text-gray-400" />
-                              <div className="text-sm text-center">
-                                <p className="font-medium text-gray-600">Click to upload</p>
-                                <p className="text-gray-500">or drag and drop</p>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="grid grid-cols-3 w-full gap-2">
+                              <div className="text-center">
+                                <div className="text-sm font-medium text-blue-600">Sales</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-medium text-purple-600">Balanced</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-medium text-green-600">Growth</div>
                               </div>
                             </div>
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="flex-1 space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>App Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <AppWindow className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input className="pl-10" placeholder="My Application" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Site URL</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input className="pl-10" placeholder="https://myapp.com" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="blogUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Blog URL</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input className="pl-10" placeholder="https://blog.myapp.com" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Textarea 
-                        className="pl-10 resize-none min-h-[120px]"
-                        placeholder="Describe your application..."
-                        {...field}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Competitor Benchmark</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {form.watch("competitors").map((_, index) => (
-              <FormField
-                key={index}
-                control={form.control}
-                name={`competitors.${index}.url`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Competitor {index + 1}</FormLabel>
-                    <FormControl>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input className="pl-10" placeholder="https://competitor.com" {...field} />
-                        </div>
-                        {index > 0 && (
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              const current = form.getValues("competitors")
-                              form.setValue("competitors", current.filter((_, i) => i !== index))
-                            }}
-                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ))}
-            
-            {form.watch("competitors").length < 5 && (
-              <button
-                type="button"
-                onClick={() => {
-                  const current = form.getValues("competitors")
-                  form.setValue("competitors", [...current, { url: "" }])
-                }}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <PlusCircle className="h-4 w-4" />
-                <span>Add competitor</span>
-              </button>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Resource URLs</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {form.watch("resource_urls").map((_, index) => (
-              <div key={index} className="flex gap-4">
-                <FormField
-                  control={form.control}
-                  name={`resource_urls.${index}.key`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Resource Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input className="pl-10" placeholder="e.g., Documentation" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`resource_urls.${index}.url`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>URL</FormLabel>
-                      <FormControl>
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input className="pl-10" placeholder="https://myapp.com/docs" {...field} />
                           </div>
-                          {index > 0 && (
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                const current = form.getValues("resource_urls")
-                                form.setValue("resource_urls", current.filter((_, i) => i !== index))
-                              }}
-                              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Slider
+                            value={[field.value]}
+                            onValueChange={([value]) => field.onChange(value)}
+                            max={100}
+                            step={1}
+                            className={cn(
+                              "py-6 px-6",
+                              "[&_[role=slider]]:h-6",
+                              "[&_[role=slider]]:w-6",
+                              "[&_[role=slider]]:border-2",
+                              "[&_[role=slider]]:border-white",
+                              "[&_[role=slider]]:shadow-md",
+                              "[&_[role=slider]]:transition-colors",
+                              "[&_[role=slider]]:duration-200",
+                              "[&_[role=slider]]:rounded-full",
+                              "[&_.range]:transition-colors",
+                              "[&_.range]:duration-200",
+                              "[&]:h-4",
+                              "[&]:bg-gray-100",
+                              "[&]:rounded-full",
+                              {
+                                "[&_[role=slider]]:bg-blue-600 [&_.range]:bg-blue-500 [&]:bg-blue-50": field.value <= 20,
+                                "[&_[role=slider]]:bg-blue-600 [&_.range]:bg-blue-600 [&]:bg-blue-100": field.value > 20 && field.value <= 33,
+                              }
+                            )}
+                          />
+                          <div className="mt-4">
+                            <h3 className={cn("text-lg font-semibold", getFocusModeConfig(field.value).color)}>
+                              {getFocusModeConfig(field.value).label}
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {getFocusModeConfig(field.value).description}
+                            </p>
+                            <ul className="mt-4 space-y-2">
+                              {getFocusModeConfig(field.value).features.map((feature, index) => (
+                                <li key={index} className="text-sm text-gray-600 flex items-start">
+                                  <span className="mr-2">•</span>
+                                  {feature}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         </div>
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-            ))}
-            
-            <button
-              type="button"
-              onClick={() => {
-                const current = form.getValues("resource_urls")
-                form.setValue("resource_urls", [...current, { key: "", url: "" }])
-              }}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <PlusCircle className="h-4 w-4" />
-              <span>Add resource</span>
-            </button>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          )}
+
+          {renderCard("site",
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Site Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
+                  <div className="min-w-[240px] flex-shrink-0">
+                    <FormField
+                      control={form.control}
+                      name="logo_url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Logo</FormLabel>
+                          <FormControl>
+                            <div className="w-[240px] h-[240px] relative">
+                              {field.value ? (
+                                <div className="w-full h-full relative group">
+                                  <Image
+                                    src={field.value}
+                                    alt="Site logo"
+                                    fill
+                                    className="object-contain rounded-lg"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => field.onChange("")}
+                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-white" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div
+                                  {...getRootProps()}
+                                  className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-300 hover:bg-gray-100 transition-colors"
+                                >
+                                  <input {...getInputProps()} />
+                                  <UploadCloud className="h-8 w-8 text-gray-400" />
+                                  <div className="text-sm text-center">
+                                    <p className="font-medium text-gray-600">Click to upload</p>
+                                    <p className="text-gray-500">or drag and drop</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex-1 space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Site Name</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input 
+                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                placeholder="Enter your site name"
+                                {...field} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Site URL</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input 
+                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                placeholder="https://example.com"
+                                {...field} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="blogUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Blog URL</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input 
+                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                placeholder="https://blog.example.com"
+                                {...field} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700">Description</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Tag className="absolute left-4 top-3 h-4 w-4 text-gray-400" />
+                          <Textarea 
+                            className="pl-12 resize-none min-h-[120px] text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200"
+                            placeholder="Describe your site..."
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-xs mt-2" />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {renderCard("cache",
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ backgroundColor: '#f3f4f6' }}>
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Cache Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Clear the cache and rebuild experiments to ensure recent changes are reflected correctly.
+                  </p>
+                  <div className="flex justify-center">
+                    <Button
+                      type="button"
+                      variant="default"
+                      className="h-12 min-w-[200px] px-4"
+                      onClick={onCacheAndRebuild}
+                      disabled={isSaving}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      {isSaving ? "Processing..." : "Clear Cache and Rebuild"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {renderCard("competitors",
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                {form.watch("competitors").map((_, index) => (
+                  <FormField
+                    key={index}
+                    control={form.control}
+                    name={`competitors.${index}.url`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700">
+                          Competitor URL {index + 1}
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input 
+                              className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                              placeholder="https://competitor.com"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-xs mt-2" />
+                      </FormItem>
+                    )}
+                  />
+                ))}
+                {form.watch("competitors").length < 5 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12"
+                    onClick={() => {
+                      const current = form.getValues("competitors")
+                      form.setValue("competitors", [...current, { url: "" }])
+                    }}
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Competitor
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {renderCard("resources",
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Resource URLs</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                {form.watch("resource_urls").map((_, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`resource_urls.${index}.key`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Resource Name</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input 
+                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                placeholder="Documentation"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`resource_urls.${index}.url`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Resource URL</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input 
+                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                placeholder="https://docs.example.com"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12"
+                  onClick={() => {
+                    const current = form.getValues("resource_urls")
+                    form.setValue("resource_urls", [...current, { key: "", url: "" }])
+                  }}
+                >
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Add Resource
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {renderCard("danger",
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ backgroundColor: '#f3f4f6' }}>
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Delete Site</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    This action will permanently delete the entire site and all associated data. This action cannot be undone.
+                  </p>
+                  <div className="flex justify-center">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="h-12 min-w-[200px] px-4"
+                      onClick={onDeleteSite}
+                      disabled={isSaving}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {isSaving ? "Processing..." : "Delete Site"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </form>
     </Form>
   )

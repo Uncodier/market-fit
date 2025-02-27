@@ -33,13 +33,18 @@ export function SiteSelector({
           <div className={cn(
             "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
             !isCollapsed && "border border-gray-200 hover:border-gray-300 hover:bg-gray-50 w-full",
-            isCollapsed && "justify-center"
+            isCollapsed && "justify-center h-[45px]"
           )}>
-            <MenuAvatar className="h-8 w-8">
-              <MenuAvatarFallback>
-                {getInitials(currentSite.name)}
-              </MenuAvatarFallback>
-            </MenuAvatar>
+            <div className={cn(
+              "flex items-center justify-center",
+              isCollapsed && "w-full"
+            )}>
+              <MenuAvatar className="h-8 w-8">
+                <MenuAvatarFallback>
+                  {getInitials(currentSite.name)}
+                </MenuAvatarFallback>
+              </MenuAvatar>
+            </div>
             
             {!isCollapsed && (
               <div className="flex flex-col min-w-0 flex-1">

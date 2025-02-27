@@ -175,6 +175,152 @@ const leads: Lead[] = [
   }
 ]
 
+interface LeadsTableProps {
+  leads: Lead[]
+  currentPage: number
+  itemsPerPage: number
+  totalLeads: number
+  onPageChange: (page: number) => void
+  onItemsPerPageChange: (value: string) => void
+}
+
+function LeadsTable({ 
+  leads,
+  currentPage,
+  itemsPerPage,
+  totalLeads,
+  onPageChange,
+  onItemsPerPageChange
+}: LeadsTableProps) {
+  const indexOfFirstItem = (currentPage - 1) * itemsPerPage
+  const totalPages = Math.ceil(totalLeads / itemsPerPage)
+
+  const statusStyles = {
+    new: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
+    contacted: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200", 
+    qualified: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
+    converted: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
+    lost: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
+  }
+
+  return (
+    <Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[250px]">Name</TableHead>
+            <TableHead className="w-[200px]">Company</TableHead>
+            <TableHead className="w-[150px]">Position</TableHead>
+            <TableHead className="w-[120px]">Segment</TableHead>
+            <TableHead className="w-[120px]">Status</TableHead>
+            <TableHead className="w-[120px]">Created</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {leads.map((lead) => (
+            <TableRow 
+              key={lead.id}
+              className="group hover:bg-muted/50 transition-colors"
+            >
+              <TableCell>
+                <div className="space-y-0.5">
+                  <p className="font-medium text-sm">{lead.name}</p>
+                  <p className="text-xs text-muted-foreground">{lead.email}</p>
+                </div>
+              </TableCell>
+              <TableCell className="font-medium">
+                {lead.company}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-sm">
+                {lead.position}
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline" className="text-xs">
+                  {lead.segment}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Badge className={statusStyles[lead.status]}>
+                  {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-muted-foreground text-sm">
+                {new Date(lead.createdAt).toLocaleDateString()}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <div className="flex items-center justify-between px-6 py-4 border-t">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-muted-foreground">
+            Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
+            <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalLeads)}</span> de{" "}
+            <span className="font-medium">{totalLeads}</span> registros
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Mostrar</span>
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={onItemsPerPageChange}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder="5" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="15">15</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">por página</span>
+          </div>
+        </div>
+        <div className="flex items-center space-x-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Página anterior</span>
+          </Button>
+          <div className="flex items-center gap-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant="ghost"
+                size="sm"
+                onClick={() => onPageChange(page)}
+                className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                  currentPage === page 
+                    ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                    : "text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                {page}
+              </Button>
+            ))}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+          >
+            <ChevronRight className="h-4 w-4" />
+            <span className="sr-only">Página siguiente</span>
+          </Button>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 export default function LeadsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(5)
@@ -194,16 +340,8 @@ export default function LeadsPage() {
   const currentLeads = filteredLeads.slice(indexOfFirstItem, indexOfLastItem)
   
   // Funciones para cambiar de página
-  function goToNextPage() {
-    setCurrentPage(page => Math.min(page + 1, totalPages))
-  }
-  
-  function goToPreviousPage() {
-    setCurrentPage(page => Math.max(page - 1, 1))
-  }
-  
-  function goToPage(pageNumber: number) {
-    setCurrentPage(pageNumber)
+  function handlePageChange(page: number) {
+    setCurrentPage(page)
   }
 
   // Reset página cuando cambia el tab
@@ -214,7 +352,7 @@ export default function LeadsPage() {
   // Función para cambiar items por página
   function handleItemsPerPageChange(value: string) {
     setItemsPerPage(Number(value))
-    setCurrentPage(1) // Reset a primera página cuando cambia el número de items
+    setCurrentPage(1)
   }
 
   return (
@@ -233,548 +371,78 @@ export default function LeadsPage() {
                   <TabsTrigger value="lost">Lost</TabsTrigger>
                 </TabsList>
               </div>
-        <div className="relative w-64">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <div className="relative w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search leads..." className="pl-8 w-full" />
-          <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-            <span className="text-xs">⌘</span>K
-          </kbd>
-        </div>
-      </div>
+                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </div>
+            </div>
           </div>
         </StickyHeader>
         
         <div className="p-8 space-y-4">
           <div className="px-8">
             <TabsContent value="all" className="space-y-4">
-      <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Company</TableHead>
-                      <TableHead>Position</TableHead>
-                <TableHead>Segment</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentLeads.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell>
-                    <div>
-                            <p className="font-medium">{lead.name}</p>
-                            <p className="text-sm text-muted-foreground">{lead.email}</p>
-                    </div>
-                  </TableCell>
-                        <TableCell>{lead.company}</TableCell>
-                        <TableCell>{lead.position}</TableCell>
-                  <TableCell>{lead.segment}</TableCell>
-                  <TableCell>
-                    <Badge
-                      className={
-                        lead.status === "new"
-                                ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200"
-                          : lead.status === "contacted"
-                                ? "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200"
-                          : lead.status === "qualified"
-                                ? "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200"
-                          : lead.status === "converted"
-                                ? "bg-green-50 text-green-700 hover:bg-green-50 border-green-200"
-                                : "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
-                      }
-                    >
-                      {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-                  <div className="flex items-center gap-4">
-                    <div className="text-sm text-muted-foreground">
-                      Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
-                      <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
-                      <span className="font-medium">{filteredLeads.length}</span> registros
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Mostrar</span>
-                      <Select
-                        value={itemsPerPage.toString()}
-                        onValueChange={handleItemsPerPageChange}
-                      >
-                        <SelectTrigger className="h-8 w-[70px]">
-                          <SelectValue placeholder="5" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5</SelectItem>
-                          <SelectItem value="10">10</SelectItem>
-                          <SelectItem value="15">15</SelectItem>
-                          <SelectItem value="20">20</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">por página</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-6">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="sr-only">Página anterior</span>
-                    </Button>
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => goToPage(page)}
-                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                            currentPage === page 
-                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                              : "text-muted-foreground hover:bg-muted/50"
-                          }`}
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                      <span className="sr-only">Página siguiente</span>
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+              <LeadsTable
+                leads={currentLeads}
+                currentPage={currentPage}
+                itemsPerPage={itemsPerPage}
+                totalLeads={filteredLeads.length}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
             </TabsContent>
             <TabsContent value="new" className="space-y-4">
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Segment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentLeads.map((lead) => (
-                      <TableRow key={lead.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{lead.name}</p>
-                            <p className="text-sm text-muted-foreground">{lead.email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{lead.company}</TableCell>
-                        <TableCell>{lead.position}</TableCell>
-                        <TableCell>{lead.segment}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200">
-                            New
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
-                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
-                    <span className="font-medium">{filteredLeads.length}</span> registros
-                  </div>
-                  <div className="flex items-center space-x-6">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="sr-only">Página anterior</span>
-                    </Button>
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => goToPage(page)}
-                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                            currentPage === page 
-                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                              : "text-muted-foreground hover:bg-muted/50"
-                          }`}
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                      <span className="sr-only">Página siguiente</span>
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+              <LeadsTable
+                leads={currentLeads}
+                currentPage={currentPage}
+                itemsPerPage={itemsPerPage}
+                totalLeads={filteredLeads.length}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
             </TabsContent>
             <TabsContent value="contacted" className="space-y-4">
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Segment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentLeads.map((lead) => (
-                      <TableRow key={lead.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{lead.name}</p>
-                            <p className="text-sm text-muted-foreground">{lead.email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{lead.company}</TableCell>
-                        <TableCell>{lead.position}</TableCell>
-                        <TableCell>{lead.segment}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200">
-                            Contacted
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
-                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
-                    <span className="font-medium">{filteredLeads.length}</span> registros
-                  </div>
-                  <div className="flex items-center space-x-6">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="sr-only">Página anterior</span>
-                    </Button>
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => goToPage(page)}
-                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                            currentPage === page 
-                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                              : "text-muted-foreground hover:bg-muted/50"
-                          }`}
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                      <span className="sr-only">Página siguiente</span>
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+              <LeadsTable
+                leads={currentLeads}
+                currentPage={currentPage}
+                itemsPerPage={itemsPerPage}
+                totalLeads={filteredLeads.length}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
             </TabsContent>
             <TabsContent value="qualified" className="space-y-4">
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Segment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentLeads.map((lead) => (
-                      <TableRow key={lead.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{lead.name}</p>
-                            <p className="text-sm text-muted-foreground">{lead.email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{lead.company}</TableCell>
-                        <TableCell>{lead.position}</TableCell>
-                        <TableCell>{lead.segment}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200">
-                            Qualified
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
-                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
-                    <span className="font-medium">{filteredLeads.length}</span> registros
-                  </div>
-                  <div className="flex items-center space-x-6">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="sr-only">Página anterior</span>
-                    </Button>
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => goToPage(page)}
-                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                            currentPage === page 
-                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                              : "text-muted-foreground hover:bg-muted/50"
-                          }`}
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                      <span className="sr-only">Página siguiente</span>
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+              <LeadsTable
+                leads={currentLeads}
+                currentPage={currentPage}
+                itemsPerPage={itemsPerPage}
+                totalLeads={filteredLeads.length}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
             </TabsContent>
             <TabsContent value="converted" className="space-y-4">
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Segment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentLeads.map((lead) => (
-                      <TableRow key={lead.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{lead.name}</p>
-                            <p className="text-sm text-muted-foreground">{lead.email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{lead.company}</TableCell>
-                        <TableCell>{lead.position}</TableCell>
-                        <TableCell>{lead.segment}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-green-50 text-green-700 hover:bg-green-50 border-green-200">
-                            Converted
-                          </Badge>
-                  </TableCell>
-                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-            <div className="text-sm text-muted-foreground">
-              Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
-                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
-                    <span className="font-medium">{filteredLeads.length}</span> registros
-            </div>
-                  <div className="flex items-center space-x-6">
-              <Button
-                      variant="ghost"
-                size="sm"
-                onClick={goToPreviousPage}
-                disabled={currentPage === 1}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Página anterior</span>
-              </Button>
-                    <div className="flex items-center gap-2">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                      key={page}
-                          variant="ghost"
-                size="sm"
-                onClick={() => goToPage(page)}
-                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                            currentPage === page 
-                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                              : "text-muted-foreground hover:bg-muted/50"
-                          }`}
-                        >
-                          {page}
-                        </Button>
-                  ))}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                      <span className="sr-only">Página siguiente</span>
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+              <LeadsTable
+                leads={currentLeads}
+                currentPage={currentPage}
+                itemsPerPage={itemsPerPage}
+                totalLeads={filteredLeads.length}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
             </TabsContent>
             <TabsContent value="lost" className="space-y-4">
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Segment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentLeads.map((lead) => (
-                      <TableRow key={lead.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{lead.name}</p>
-                            <p className="text-sm text-muted-foreground">{lead.email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{lead.company}</TableCell>
-                        <TableCell>{lead.position}</TableCell>
-                        <TableCell>{lead.segment}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-red-50 text-red-700 hover:bg-red-50 border-red-200">
-                            Lost
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Mostrando <span className="font-medium">{indexOfFirstItem + 1}</span> a{" "}
-                    <span className="font-medium">{Math.min(indexOfLastItem, filteredLeads.length)}</span> de{" "}
-                    <span className="font-medium">{filteredLeads.length}</span> registros
-                  </div>
-                  <div className="flex items-center space-x-6">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="sr-only">Página anterior</span>
-                    </Button>
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => goToPage(page)}
-                          className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                            currentPage === page 
-                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                              : "text-muted-foreground hover:bg-muted/50"
-                          }`}
-                    >
-                      {page}
-                        </Button>
-                  ))}
-                    </div>
-              <Button
-                      variant="ghost"
-                size="sm"
-                onClick={goToNextPage}
-                disabled={currentPage === totalPages}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-              >
-                <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Página siguiente</span>
-              </Button>
-            </div>
-          </div>
-      </Card>
+              <LeadsTable
+                leads={currentLeads}
+                currentPage={currentPage}
+                itemsPerPage={itemsPerPage}
+                totalLeads={filteredLeads.length}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
             </TabsContent>
           </div>
         </div>

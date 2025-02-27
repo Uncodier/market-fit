@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -5,6 +7,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'cloudfront.cdn.uncodie.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
       },
     ],
   },
@@ -29,6 +35,13 @@ const nextConfig = {
   assetPrefix: '',
   // Desactivar compresión para evitar problemas
   compress: false,
+  // Configuración de webpack para resolver módulos problemáticos
+  webpack: (config, { isServer }) => {
+    config.resolve.alias['react-smooth'] = path.join(__dirname, 'app/lib/react-smooth-polyfill.js');
+    config.resolve.alias['aria-hidden'] = path.join(__dirname, 'app/lib/aria-hidden-polyfill.js');
+    
+    return config;
+  },
 }
 
 module.exports = nextConfig 

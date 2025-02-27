@@ -107,17 +107,17 @@ export default function ExperimentsPage() {
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex-1">
-                <TabsList className="w-full">
-                  <TabsTrigger value="all">All Experiments</TabsTrigger>
-                  <TabsTrigger value="active">Active</TabsTrigger>
-                  <TabsTrigger value="completed">Completed</TabsTrigger>
-                  <TabsTrigger value="draft">Draft</TabsTrigger>
+                <TabsList className="w-full bg-gray-100/80 p-1">
+                  <TabsTrigger value="all" className="text-sm font-medium">All Experiments</TabsTrigger>
+                  <TabsTrigger value="active" className="text-sm font-medium">Active</TabsTrigger>
+                  <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
+                  <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
                 </TabsList>
               </div>
               <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search experiments..." className="pl-8 w-full" />
-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                <Input placeholder="Search experiments..." className="pl-8 w-full text-sm bg-gray-50/80 border-gray-200 focus:border-gray-300 focus:ring-gray-200" />
+                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-gray-100/80 px-1.5 font-mono text-[10px] font-medium text-gray-600 opacity-100 sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </div>
@@ -125,95 +125,102 @@ export default function ExperimentsPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4">
+        <div className="p-8 space-y-4 bg-gray-50/30">
           <div className="px-8">
-            <TabsContent value="all" className="space-y-4">
-              <div className="space-y-4">
+            <TabsContent value="all" className="space-y-6">
+              <div className="space-y-6">
                 {experiments.map((experiment) => (
-                  <Card key={experiment.id} className="flex flex-col md:flex-row w-full h-[400px]">
-                    <div className="flex flex-col md:w-1/3">
+                  <Card 
+                    key={experiment.id} 
+                    className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-gray-300 bg-white/80 backdrop-blur-sm"
+                  >
+                    <div className="flex flex-col md:w-1/3 border-r border-gray-100">
                       <CardHeader className="pb-2 px-8">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-xl">{experiment.name}</CardTitle>
+                        <div className="flex justify-between items-start gap-4">
+                          <CardTitle className="text-xl font-medium text-gray-800 group-hover:text-gray-900 transition-colors leading-tight">
+                            {experiment.name}
+                          </CardTitle>
                           <Badge
                             className={
                               experiment.status === "active"
-                                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                ? "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 shadow-sm text-xs font-semibold px-3 py-1"
                                 : experiment.status === "completed"
-                                ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                                : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                                ? "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-sm text-xs font-semibold px-3 py-1"
+                                : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm text-xs font-semibold px-3 py-1"
                             }
                           >
                             {experiment.status.charAt(0).toUpperCase() + experiment.status.slice(1)}
                           </Badge>
                         </div>
-                        <CardDescription>{experiment.description}</CardDescription>
+                        <CardDescription className="text-gray-500 mt-2 text-sm leading-relaxed group-hover:text-gray-600">
+                          {experiment.description}
+                        </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-1 px-8">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Participants
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.segments.reduce((acc, segment) => acc + segment.participants, 0).toLocaleString()}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Start Date
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.startDate ? new Date(experiment.startDate).toLocaleDateString() : "Not started"}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Conversion
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.conversion !== null ? `${experiment.conversion}%` : "N/A"}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               ROI
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.roi !== null ? `${experiment.roi}x` : "N/A"}
                             </p>
                           </div>
                         </div>
                       </CardContent>
                       <div className="px-8 pb-4">
-                        <p className="text-sm font-medium mb-2">Running Segments:</p>
+                        <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Running Segments:</p>
                         <div className="flex flex-wrap gap-2">
                           {experiment.segments.map((segment) => (
                             <Badge 
                               key={segment.name}
                               variant="secondary" 
-                              className="px-2.5 py-0.5 text-xs font-medium"
+                              className="px-3 py-1 text-xs font-medium bg-gray-100/80 text-gray-700 hover:bg-gray-200/80 transition-colors border border-gray-200/50"
                             >
                               {segment.name} ({segment.participants.toLocaleString()})
                             </Badge>
                           ))}
                         </div>
                       </div>
-                      <CardFooter className="pt-2">
-                        <div className="flex w-full space-x-2">
-                          <Button variant="outline" className="flex-1">
+                      <CardFooter className="pt-3 px-8">
+                        <div className="flex w-full space-x-3">
+                          <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </Button>
-                          <Button variant="destructive" className="flex-1">
+                          <Button variant="destructive" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
                             <StopCircle className="mr-2 h-4 w-4" />
                             Stop
                           </Button>
                         </div>
                       </CardFooter>
                     </div>
-                    <div className="md:w-2/3 h-full p-4 bg-gray-50 rounded-r-lg">
-                      <div className="w-full h-full rounded-lg overflow-hidden border border-gray-200">
+                    <div className="md:w-2/3 h-full p-4 bg-gray-50/30 rounded-r-lg">
+                      <div className="w-full h-full rounded-lg overflow-hidden border border-gray-200/80 shadow-sm group-hover:shadow-md transition-all duration-200 bg-white">
                         <iframe 
                           src={experiment.previewUrl} 
                           className="w-full h-full"
@@ -227,85 +234,94 @@ export default function ExperimentsPage() {
                 ))}
               </div>
             </TabsContent>
-            <TabsContent value="active" className="space-y-4">
-              <div className="space-y-4">
+            <TabsContent value="active" className="space-y-6">
+              <div className="space-y-6">
                 {experiments.filter(e => e.status === "active").map((experiment) => (
-                  <Card key={experiment.id} className="flex flex-col md:flex-row w-full h-[400px]">
-                    <div className="flex flex-col md:w-1/3">
+                  <Card 
+                    key={experiment.id} 
+                    className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-gray-300 bg-white/80 backdrop-blur-sm"
+                  >
+                    <div className="flex flex-col md:w-1/3 border-r border-gray-100">
                       <CardHeader className="pb-2 px-8">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-xl">{experiment.name}</CardTitle>
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                        <div className="flex justify-between items-start gap-4">
+                          <CardTitle className="text-xl font-medium text-gray-800 group-hover:text-gray-900 transition-colors leading-tight">
+                            {experiment.name}
+                          </CardTitle>
+                          <Badge
+                            className="bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 shadow-sm text-xs font-semibold px-3 py-1"
+                          >
                             Active
                           </Badge>
                         </div>
-                        <CardDescription>{experiment.description}</CardDescription>
+                        <CardDescription className="text-gray-500 mt-2 text-sm leading-relaxed group-hover:text-gray-600">
+                          {experiment.description}
+                        </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-1 px-8">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Participants
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.segments.reduce((acc, segment) => acc + segment.participants, 0).toLocaleString()}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Start Date
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.startDate ? new Date(experiment.startDate).toLocaleDateString() : "Not started"}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Conversion
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.conversion !== null ? `${experiment.conversion}%` : "N/A"}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               ROI
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.roi !== null ? `${experiment.roi}x` : "N/A"}
                             </p>
                           </div>
                         </div>
                       </CardContent>
                       <div className="px-8 pb-4">
-                        <p className="text-sm font-medium mb-2">Running Segments:</p>
+                        <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Running Segments:</p>
                         <div className="flex flex-wrap gap-2">
                           {experiment.segments.map((segment) => (
                             <Badge 
                               key={segment.name}
                               variant="secondary" 
-                              className="px-2.5 py-0.5 text-xs font-medium"
+                              className="px-3 py-1 text-xs font-medium bg-gray-100/80 text-gray-700 hover:bg-gray-200/80 transition-colors border border-gray-200/50"
                             >
                               {segment.name} ({segment.participants.toLocaleString()})
                             </Badge>
                           ))}
                         </div>
                       </div>
-                      <CardFooter className="pt-2">
-                        <div className="flex w-full space-x-2">
-                          <Button variant="outline" className="flex-1">
+                      <CardFooter className="pt-3 px-8">
+                        <div className="flex w-full space-x-3">
+                          <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </Button>
-                          <Button variant="destructive" className="flex-1">
+                          <Button variant="destructive" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
                             <StopCircle className="mr-2 h-4 w-4" />
                             Stop
                           </Button>
                         </div>
                       </CardFooter>
                     </div>
-                    <div className="md:w-2/3 h-full p-4 bg-gray-50 rounded-r-lg">
-                      <div className="w-full h-full rounded-lg overflow-hidden border border-gray-200">
+                    <div className="md:w-2/3 h-full p-4 bg-gray-50/30 rounded-r-lg">
+                      <div className="w-full h-full rounded-lg overflow-hidden border border-gray-200/80 shadow-sm group-hover:shadow-md transition-all duration-200 bg-white">
                         <iframe 
                           src={experiment.previewUrl} 
                           className="w-full h-full"
@@ -319,87 +335,96 @@ export default function ExperimentsPage() {
                 ))}
               </div>
             </TabsContent>
-            <TabsContent value="completed" className="space-y-4">
-              <div className="space-y-4">
+            <TabsContent value="completed" className="space-y-6">
+              <div className="space-y-6">
                 {experiments.filter(e => e.status === "completed").map((experiment) => (
-                  <Card key={experiment.id} className="flex flex-col md:flex-row w-full h-[400px]">
-                    <div className="flex flex-col md:w-1/3">
+                  <Card 
+                    key={experiment.id} 
+                    className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-gray-300 bg-white/80 backdrop-blur-sm"
+                  >
+                    <div className="flex flex-col md:w-1/3 border-r border-gray-100">
                       <CardHeader className="pb-2 px-8">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-xl">{experiment.name}</CardTitle>
-                          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                        <div className="flex justify-between items-start gap-4">
+                          <CardTitle className="text-xl font-medium text-gray-800 group-hover:text-gray-900 transition-colors leading-tight">
+                            {experiment.name}
+                          </CardTitle>
+                          <Badge
+                            className="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-sm text-xs font-semibold px-3 py-1"
+                          >
                             Completed
                           </Badge>
                         </div>
-                        <CardDescription>{experiment.description}</CardDescription>
+                        <CardDescription className="text-gray-500 mt-2 text-sm leading-relaxed group-hover:text-gray-600">
+                          {experiment.description}
+                        </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-1 px-8">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Participants
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.segments.reduce((acc, segment) => acc + segment.participants, 0).toLocaleString()}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Duration
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.startDate && experiment.endDate 
                                 ? `${Math.ceil((new Date(experiment.endDate).getTime() - new Date(experiment.startDate).getTime()) / (1000 * 60 * 60 * 24))} days` 
                                 : "N/A"}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Conversion
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.conversion !== null ? `${experiment.conversion}%` : "N/A"}
                             </p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               ROI
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               {experiment.roi !== null ? `${experiment.roi}x` : "N/A"}
                             </p>
                           </div>
                         </div>
                       </CardContent>
                       <div className="px-8 pb-4">
-                        <p className="text-sm font-medium mb-2">Segments:</p>
+                        <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Segments:</p>
                         <div className="flex flex-wrap gap-2">
                           {experiment.segments.map((segment) => (
                             <Badge 
                               key={segment.name}
                               variant="secondary" 
-                              className="px-2.5 py-0.5 text-xs font-medium"
+                              className="px-3 py-1 text-xs font-medium bg-gray-100/80 text-gray-700 hover:bg-gray-200/80 transition-colors border border-gray-200/50"
                             >
                               {segment.name} ({segment.participants.toLocaleString()})
                             </Badge>
                           ))}
                         </div>
                       </div>
-                      <CardFooter className="pt-2">
-                        <div className="flex w-full space-x-2">
-                          <Button variant="outline" className="flex-1">
+                      <CardFooter className="pt-3 px-8">
+                        <div className="flex w-full space-x-3">
+                          <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
                             <Eye className="mr-2 h-4 w-4" />
                             View Results
                           </Button>
-                          <Button variant="ghost" className="flex-1 hover:bg-destructive hover:text-destructive-foreground">
+                          <Button variant="ghost" className="flex-1 hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm transition-all text-sm font-medium h-10">
                             <XCircle className="mr-2 h-4 w-4" />
                             Reject
                           </Button>
                         </div>
                       </CardFooter>
                     </div>
-                    <div className="md:w-2/3 h-full p-4 bg-gray-50 rounded-r-lg">
-                      <div className="w-full h-full rounded-lg overflow-hidden border border-gray-200">
+                    <div className="md:w-2/3 h-full p-4 bg-gray-50/30 rounded-r-lg">
+                      <div className="w-full h-full rounded-lg overflow-hidden border border-gray-200/80 shadow-sm group-hover:shadow-md transition-all duration-200 bg-white">
                         <iframe 
                           src={experiment.previewUrl} 
                           className="w-full h-full"
@@ -413,63 +438,74 @@ export default function ExperimentsPage() {
                 ))}
               </div>
             </TabsContent>
-            <TabsContent value="draft" className="space-y-4">
-              <div className="space-y-4">
+            <TabsContent value="draft" className="space-y-6">
+              <div className="space-y-6">
                 {experiments.filter(e => e.status === "draft").map((experiment) => (
-                  <Card key={experiment.id} className="flex flex-col md:flex-row w-full h-[400px]">
-                    <div className="flex flex-col md:w-1/3">
+                  <Card 
+                    key={experiment.id} 
+                    className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-gray-300 bg-white/80 backdrop-blur-sm"
+                  >
+                    <div className="flex flex-col md:w-1/3 border-r border-gray-100">
                       <CardHeader className="pb-2 px-8">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-xl">{experiment.name}</CardTitle>
-                          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+                        <div className="flex justify-between items-start gap-4">
+                          <CardTitle className="text-xl font-medium text-gray-800 group-hover:text-gray-900 transition-colors leading-tight">
+                            {experiment.name}
+                          </CardTitle>
+                          <Badge
+                            className="bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm text-xs font-semibold px-3 py-1"
+                          >
                             Draft
                           </Badge>
                         </div>
-                        <CardDescription>{experiment.description}</CardDescription>
+                        <CardDescription className="text-gray-500 mt-2 text-sm leading-relaxed group-hover:text-gray-600">
+                          {experiment.description}
+                        </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-1 px-8">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
                               Status
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-semibold text-gray-800">
                               Not started
                             </p>
                           </div>
                         </div>
                       </CardContent>
                       <div className="px-8 pb-4">
-                        <p className="text-sm font-medium mb-2">Target Segments:</p>
+                        <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Target Segments:</p>
                         <div className="flex flex-wrap gap-2">
                           {experiment.segments.map((segment) => (
                             <Badge 
                               key={segment.name}
                               variant="secondary" 
-                              className="px-2.5 py-0.5 text-xs font-medium"
+                              className="px-3 py-1 text-xs font-medium bg-gray-100/80 text-gray-700 hover:bg-gray-200/80 transition-colors border border-gray-200/50"
                             >
                               {segment.name} ({segment.participants.toLocaleString()})
                             </Badge>
                           ))}
                         </div>
                       </div>
-                      <CardFooter className="pt-2 flex space-x-2">
-                        <Button variant="outline" className="flex-1">
-                          <PenSquare className="mr-2 h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" className="flex-1">
-                          <PlayCircle className="mr-2 h-4 w-4" />
-                          Start
-                        </Button>
-                        <Button variant="ghost" className="flex-1 hover:bg-destructive hover:text-destructive-foreground">
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Reject
-                        </Button>
+                      <CardFooter className="pt-3 px-8">
+                        <div className="flex w-full space-x-3">
+                          <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
+                            <PenSquare className="mr-2 h-4 w-4" />
+                            Edit
+                          </Button>
+                          <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
+                            <PlayCircle className="mr-2 h-4 w-4" />
+                            Start
+                          </Button>
+                          <Button variant="ghost" className="flex-1 hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm transition-all text-sm font-medium h-10">
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Reject
+                          </Button>
+                        </div>
                       </CardFooter>
                     </div>
-                    <div className="md:w-2/3 h-full p-4 bg-gray-50 rounded-r-lg">
-                      <div className="w-full h-full rounded-lg overflow-hidden border border-gray-200">
+                    <div className="md:w-2/3 h-full p-4 bg-gray-50/30 rounded-r-lg">
+                      <div className="w-full h-full rounded-lg overflow-hidden border border-gray-200/80 shadow-sm group-hover:shadow-md transition-all duration-200 bg-white">
                         <iframe 
                           src={experiment.previewUrl} 
                           className="w-full h-full"

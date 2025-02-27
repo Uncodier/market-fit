@@ -19,6 +19,7 @@ import { MenuItem } from "./MenuItem"
 import { SiteSelector } from "./SiteSelector"
 import Link from "next/link"
 import Image from "next/image"
+import { useAuth } from "@/app/hooks/use-auth"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
@@ -69,6 +70,7 @@ export function Sidebar({
   onCollapse 
 }: SidebarProps) {
   const pathname = usePathname()
+  const { user, isLoading } = useAuth()
 
   return (
     <div
@@ -81,7 +83,10 @@ export function Sidebar({
       )}
     >
       {/* Logo Section - Fixed */}
-      <Link href="/dashboard" className="flex items-center justify-center h-16 px-3 border-b flex-none">
+      <Link href="/dashboard" className={cn(
+        "flex items-center h-16 border-b flex-none",
+        isCollapsed ? "justify-center px-3" : "justify-start px-6"
+      )}>
         <Image 
           src="https://cloudfront.cdn.uncodie.com/zoDKXCi32aQHAee0dGmkjv/d8dcc649fecfe6d7d3c71901442818767d410b1d.png"
           alt="Market Fit Logo"
@@ -91,7 +96,7 @@ export function Sidebar({
             "transition-all duration-200",
             isCollapsed ? "mr-0" : "mr-2"
           )}
-          style={{ height: 'auto' }}
+          style={{ height: 'auto', maxHeight: '25px' }}
         />
         <span className={cn(
           "text-[1.1rem] font-bold transition-all duration-200",
@@ -125,17 +130,21 @@ export function Sidebar({
       {/* Bottom Section - Fixed */}
       <div className="flex-none border-t bg-white">
         <ConfigurationSection className="px-3" isCollapsed={isCollapsed} />
-        <div className="border-t px-3 py-2">
+        <div className={cn(
+          "border-t px-3 py-4",
+          isCollapsed && "flex justify-center"
+        )}>
           <MenuItem
             href="/profile"
             icon={User}
-            title="Alex Stanton"
-            subtitle="alex@marketfit.com"
-            avatarUrl={undefined}
+            title={user?.name || user?.email?.split('@')[0] || 'Usuario'}
+            subtitle={user?.email || ''}
+            avatarUrl={user?.picture}
             isActive={pathname === '/profile'}
             isCollapsed={isCollapsed}
+            className="![padding-top:28px] ![padding-bottom:28px]"
           >
-            <ChevronRight className="h-4 w-4 text-gray-400" />
+            {!isCollapsed && <ChevronRight className="h-4 w-4 text-gray-400" />}
           </MenuItem>
         </div>
       </div>

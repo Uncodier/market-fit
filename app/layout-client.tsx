@@ -82,7 +82,7 @@ export default function LayoutClient({
             </div>
           ) : (
             // Para el resto de páginas, mostrar el layout completo
-            <div className="flex h-screen overflow-hidden">
+            <div className="flex h-fit overflow-visible relative min-h-screen">
               <Sidebar 
                 isCollapsed={isCollapsed} 
                 onCollapse={handleCollapse} 
@@ -99,13 +99,13 @@ export default function LayoutClient({
                   helpText={currentPage.helpText}
                   isCollapsed={isCollapsed}
                   onCollapse={handleCollapse}
-                  className="fixed top-0 right-0 z-10 bg-[rgb(0_0_0_/0.02)]"
+                  className="fixed top-0 right-0 z-10"
                   style={{ 
                     left: isCollapsed ? '4rem' : '16rem'
                   }}
                 />
                 <div className="h-16 flex-none"></div>
-                <main className="flex-1 overflow-auto p-0">
+                <main className="flex-1 overflow-visible">
                   {children}
                 </main>
               </div>
