@@ -1,12 +1,12 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
-  '/auth/login',
-  '/api/auth/login',
-  '/api/auth/callback',
-  '/api/auth/logout'
+  '/auth',
+  '/auth/callback',
+  '/auth/logout'
 ]
 
 // IMPORTANTE: Excluir completamente recursos estáticos
@@ -31,61 +31,69 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // Rutas específicas que deben ser protegidas
-  const protectedRoutes = [
-    '/',
-    '/dashboard',
-    '/segments',
-    '/experiments',
-    '/requirements',
-    '/assets',
-    '/leads',
-    '/agents',
-    '/profile',
-    '/settings'
-  ]
-  
-  // Verificar si la ruta actual debe ser protegida
-  const shouldProtect = protectedRoutes.some(route => 
-    pathname === route || pathname.startsWith(`${route}/`)
-  )
-  
-  // Si la ruta no necesita protección, continuar
-  if (!shouldProtect) {
-    return NextResponse.next()
+  // Redirigir /auth/login a /auth para mantener una única ruta de autenticación
+  if (pathname === '/auth/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth'
+    url.search = request.nextUrl.search // Mantener los query params
+    return NextResponse.redirect(url)
   }
   
   // Si es una ruta pública conocida, permitir
-  if (ALLOWED_PUBLIC_PATHS.includes(pathname)) {
+  if (ALLOWED_PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
     return NextResponse.next()
   }
   
-  // Verificar autenticación
-  const auth0Token = request.cookies.get('auth0_token')?.value
-  
-  // Si no hay token y la ruta debe estar protegida -> REDIRIGIR A LOGIN
-  if (!auth0Token) {
-    console.log(`Redirigiendo a login desde ${pathname}`)
+  try {
+    // Crear el cliente de Supabase
+    const res = NextResponse.next()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name) {
+            return request.cookies.get(name)?.value
+          },
+          set(name, value, options) {
+            res.cookies.set(name, value, options)
+          },
+          remove(name, options) {
+            res.cookies.set(name, '', { ...options, maxAge: 0 })
+          }
+        }
+      }
+    )
+
+    // Verificar la sesión
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      // Si no hay sesión, redirigir a login
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth'
+      url.search = `?returnTo=${encodeURIComponent(pathname)}`
+      return NextResponse.redirect(url)
+    }
+
+    // Usuario autenticado: permitir acceso
+    return res
+  } catch (error) {
+    console.error('[Middleware] Error:', error)
     
-    // Crear URL de redirección con returnTo
+    // En caso de error, redirigir a login
     const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
+    url.pathname = '/auth'
     url.search = `?returnTo=${encodeURIComponent(pathname)}`
     
     return NextResponse.redirect(url)
   }
-  
-  // Usuario autenticado: permitir acceso y añadir token a headers
-  const response = NextResponse.next()
-  response.headers.set('Authorization', `Bearer ${auth0Token}`)
-  
-  return response
 }
 
 // Configuración que excluye explícitamente recursos estáticos
 export const config = {
   matcher: [
     // Excluir explícitamente recursos estáticos y API routes específicas
-    '/((?!_next/|static/|favicon|api/auth/|manifest.json).*)'
+    '/((?!_next/|static/|favicon|manifest.json).*)'
   ]
 } 

@@ -2,14 +2,17 @@
 
 import { createContext, useContext, ReactNode } from 'react'
 import { useAuth } from '../../hooks/use-auth'
+import { User } from '@supabase/supabase-js'
 
 // Definir el tipo para el contexto de autenticación
 interface AuthContextType {
-  user: any | null
+  user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (returnTo?: string) => void
-  logout: () => void
+  signInWithEmail: (email: string, password: string) => Promise<void>
+  signInWithOAuth: (provider: 'google' | 'github') => Promise<void>
+  signUpWithEmail: (email: string, password: string) => Promise<void>
+  signOut: () => Promise<void>
 }
 
 // Crear el contexto de autenticación

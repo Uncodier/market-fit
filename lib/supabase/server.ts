@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export function createClient() {
-  const cookieStore = cookies()
+export async function createClient() {
+  const cookieStore = await cookies()
   
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,14 +16,16 @@ export function createClient() {
           try {
             cookieStore.set(name, value, options)
           } catch (error) {
-            // No se puede modificar las cookies después de que se han enviado los headers
+            console.error('Error setting cookie:', { name, error })
+            // Podemos agregar telemetría aquí si es necesario
           }
         },
         remove(name, options) {
           try {
             cookieStore.set(name, '', { ...options, maxAge: 0 })
           } catch (error) {
-            // No se puede modificar las cookies después de que se han enviado los headers
+            console.error('Error removing cookie:', { name, error })
+            // Podemos agregar telemetría aquí si es necesario
           }
         },
       },
@@ -32,8 +34,8 @@ export function createClient() {
 }
 
 // Cliente con permisos elevados (solo para operaciones del servidor)
-export function createServiceClient() {
-  const cookieStore = cookies()
+export async function createServiceClient() {
+  const cookieStore = await cookies()
   
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,14 +49,16 @@ export function createServiceClient() {
           try {
             cookieStore.set(name, value, options)
           } catch (error) {
-            // No se puede modificar las cookies después de que se han enviado los headers
+            console.error('Error setting cookie in service client:', { name, error })
+            // Podemos agregar telemetría aquí si es necesario
           }
         },
         remove(name, options) {
           try {
             cookieStore.set(name, '', { ...options, maxAge: 0 })
           } catch (error) {
-            // No se puede modificar las cookies después de que se han enviado los headers
+            console.error('Error removing cookie in service client:', { name, error })
+            // Podemos agregar telemetría aquí si es necesario
           }
         },
       },
