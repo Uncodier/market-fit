@@ -21,48 +21,65 @@ import { cn } from "@/lib/utils"
 import { useDropzone } from "react-dropzone"
 import { UploadCloud, Trash2, PlusCircle, AppWindow, Globe, FileText, Link, Tag, RotateCcw } from "@/app/components/ui/icons"
 import { Button } from "../ui/button"
+import type { TablesUpdate, ResourceUrl, CompetitorUrl } from "@/lib/types/database.types"
+import type { Site } from "@/app/context/SiteContext"
 
 const siteFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   url: z.string().url("Must be a valid URL"),
-  blogUrl: z.string().url("Must be a valid URL").optional(),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  description: z.string().optional(),
   logo_url: z.string().optional(),
-  competitors: z.array(z.object({
-    url: z.string().url("Must be a valid URL")
-  })).min(1).max(5),
-  focusMode: z.number().min(0).max(100),
   resource_urls: z.array(z.object({
     key: z.string().min(1, "Name is required"),
     url: z.string().url("Must be a valid URL")
-  }))
+  })).optional().default([]),
+  competitors: z.array(z.object({
+    url: z.string().url("Must be a valid URL"),
+    name: z.string().optional()
+  })).optional().default([]),
+  focusMode: z.number().min(0).max(100)
 })
 
 type SiteFormValues = z.infer<typeof siteFormSchema>
 
 interface SiteFormProps {
+  id?: string
   initialData?: Partial<SiteFormValues>
-  onSubmit: (data: SiteFormValues) => void
+  onSubmit: (data: Partial<Site>) => void
   onDeleteSite?: () => void
   onCacheAndRebuild?: () => void
   isSaving?: boolean
   activeSegment: string
 }
 
-export function SiteForm({ initialData, onSubmit, onDeleteSite, onCacheAndRebuild, isSaving, activeSegment }: SiteFormProps) {
+export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRebuild, isSaving, activeSegment }: SiteFormProps) {
   const form = useForm<SiteFormValues>({
     resolver: zodResolver(siteFormSchema),
     defaultValues: {
       name: initialData?.name || "",
       url: initialData?.url || "",
-      blogUrl: initialData?.blogUrl || "",
       description: initialData?.description || "",
       logo_url: initialData?.logo_url || "",
-      competitors: initialData?.competitors || [{ url: "" }],
-      focusMode: initialData?.focusMode || 50,
-      resource_urls: initialData?.resource_urls || []
+      resource_urls: initialData?.resource_urls || [],
+      competitors: initialData?.competitors || [],
+      focusMode: initialData?.focusMode || 50
     }
   })
+
+  const handleSubmit = async (data: SiteFormValues) => {
+    const siteData: Partial<Site> = {
+      ...initialData,
+      name: data.name,
+      url: data.url,
+      description: data.description || null,
+      logo_url: data.logo_url || null,
+      resource_urls: data.resource_urls as ResourceUrl[] || null,
+      competitors: data.competitors as CompetitorUrl[] || null,
+      focus_mode: data.focusMode,
+      focusMode: data.focusMode
+    }
+    onSubmit(siteData)
+  }
 
   const getFocusModeConfig = (value: number) => {
     // Strong sales focus (0-20)
@@ -210,7 +227,7 @@ export function SiteForm({ initialData, onSubmit, onDeleteSite, onCacheAndRebuil
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
+      <form id={id} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-12">
         <div className="space-y-12">
           {renderCard("focus", 
             <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -384,27 +401,6 @@ export function SiteForm({ initialData, onSubmit, onDeleteSite, onCacheAndRebuil
                         </FormItem>
                       )}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="blogUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Blog URL</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                              <Input 
-                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
-                                placeholder="https://blog.example.com"
-                                {...field} 
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
                   </div>
                 </div>
 
@@ -432,89 +428,13 @@ export function SiteForm({ initialData, onSubmit, onDeleteSite, onCacheAndRebuil
             </Card>
           )}
 
-          {renderCard("cache",
-            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ backgroundColor: '#f3f4f6' }}>
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Cache Management</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Clear the cache and rebuild experiments to ensure recent changes are reflected correctly.
-                  </p>
-                  <div className="flex justify-center">
-                    <Button
-                      type="button"
-                      variant="default"
-                      className="h-12 min-w-[200px] px-4"
-                      onClick={onCacheAndRebuild}
-                      disabled={isSaving}
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      {isSaving ? "Processing..." : "Clear Cache and Rebuild"}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {renderCard("competitors",
-            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
-                {form.watch("competitors").map((_, index) => (
-                  <FormField
-                    key={index}
-                    control={form.control}
-                    name={`competitors.${index}.url`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">
-                          Competitor URL {index + 1}
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input 
-                              className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
-                              placeholder="https://competitor.com"
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-xs mt-2" />
-                      </FormItem>
-                    )}
-                  />
-                ))}
-                {form.watch("competitors").length < 5 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-12"
-                    onClick={() => {
-                      const current = form.getValues("competitors")
-                      form.setValue("competitors", [...current, { url: "" }])
-                    }}
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Competitor
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           {renderCard("resources",
             <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Resource URLs</CardTitle>
+                <CardTitle className="text-xl font-semibold">Resources</CardTitle>
               </CardHeader>
               <CardContent className="space-y-8 px-8 pb-8">
-                {form.watch("resource_urls").map((_, index) => (
+                {form.watch("resource_urls")?.map((_, index) => (
                   <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -563,7 +483,7 @@ export function SiteForm({ initialData, onSubmit, onDeleteSite, onCacheAndRebuil
                   variant="outline"
                   className="w-full h-12"
                   onClick={() => {
-                    const current = form.getValues("resource_urls")
+                    const current = form.getValues("resource_urls") || []
                     form.setValue("resource_urls", [...current, { key: "", url: "" }])
                   }}
                 >
@@ -574,28 +494,117 @@ export function SiteForm({ initialData, onSubmit, onDeleteSite, onCacheAndRebuil
             </Card>
           )}
 
-          {renderCard("danger",
-            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ backgroundColor: '#f3f4f6' }}>
+          {renderCard("competitors",
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Delete Site</CardTitle>
+                <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                {form.watch("competitors")?.map((_, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`competitors.${index}.name`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Competitor Name</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input 
+                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                placeholder="Competitor Inc."
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`competitors.${index}.url`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Competitor URL</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input 
+                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                placeholder="https://competitor.com"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12"
+                  onClick={() => {
+                    const current = form.getValues("competitors") || []
+                    form.setValue("competitors", [...current, { url: "", name: "" }])
+                  }}
+                >
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Add Competitor
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {renderCard("cache",
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Cache Management</CardTitle>
               </CardHeader>
               <CardContent className="space-y-8 px-8 pb-8">
                 <div className="space-y-4">
                   <p className="text-sm text-gray-600">
-                    This action will permanently delete the entire site and all associated data. This action cannot be undone.
+                    Clear the cache and rebuild all experiments. This will take a few minutes.
                   </p>
-                  <div className="flex justify-center">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      className="h-12 min-w-[200px] px-4"
-                      onClick={onDeleteSite}
-                      disabled={isSaving}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {isSaving ? "Processing..." : "Delete Site"}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12"
+                    onClick={onCacheAndRebuild}
+                    disabled={isSaving}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Clear Cache and Rebuild
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {renderCard("danger",
+            <Card className="border border-red-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold text-red-600">Danger Zone</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Once you delete a site, there is no going back. Please be certain.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="w-full h-12"
+                    onClick={onDeleteSite}
+                    disabled={isSaving}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Site
+                  </Button>
                 </div>
               </CardContent>
             </Card>

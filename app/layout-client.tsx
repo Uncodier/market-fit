@@ -8,6 +8,7 @@ import { useState, useEffect } from "react"
 import { SiteProvider } from "./context/SiteContext"
 import { cn } from "@/lib/utils"
 import { AuthProvider } from './components/auth/auth-provider'
+import { Toaster } from "./components/ui/sonner"
 
 const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/segments": {
@@ -41,6 +42,10 @@ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/settings": {
     title: "Settings",
     helpText: "Configure your site settings and preferences"
+  },
+  "/site/create": {
+    title: "Create New Site",
+    helpText: "Set up a new site with your preferences and configuration"
   }
 }
 
@@ -111,6 +116,7 @@ export default function LayoutClient({
               </div>
             </div>
           )}
+          <Toaster />
         </TooltipProvider>
       </SiteProvider>
     </AuthProvider>

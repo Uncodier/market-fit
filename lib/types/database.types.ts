@@ -20,6 +20,8 @@ export interface Database {
           description: string | null
           logo_url: string | null
           resource_urls: ResourceUrl[] | null
+          competitors: CompetitorUrl[] | null
+          focus_mode: number | null
         }
         Insert: {
           id?: string
@@ -31,6 +33,8 @@ export interface Database {
           description?: string | null
           logo_url?: string | null
           resource_urls?: ResourceUrl[] | null
+          competitors?: CompetitorUrl[] | null
+          focus_mode?: number | null
         }
         Update: {
           id?: string
@@ -42,6 +46,8 @@ export interface Database {
           description?: string | null
           logo_url?: string | null
           resource_urls?: ResourceUrl[] | null
+          competitors?: CompetitorUrl[] | null
+          focus_mode?: number | null
         }
       }
       users: {
@@ -80,6 +86,11 @@ export interface Database {
 export interface ResourceUrl {
   key: string
   url: string
+}
+
+export interface CompetitorUrl {
+  url: string
+  name?: string
 }
 
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']

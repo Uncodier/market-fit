@@ -107,7 +107,10 @@ export function Sidebar({
       </Link>
 
       {/* Site Selector */}
-      <div className="px-3 py-2 border-b">
+      <div className={cn(
+        "min-h-[71px] flex items-center border-b",
+        isCollapsed && "px-[0.1875rem]"
+      )}>
         <SiteSelector isCollapsed={isCollapsed} />
       </div>
 

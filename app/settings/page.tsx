@@ -8,9 +8,88 @@ import { type Site } from "../context/SiteContext"
 import { Button } from "../components/ui/button"
 import { StickyHeader } from "../components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs"
+import { Skeleton } from "../components/ui/skeleton"
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+
+function SettingsFormSkeleton() {
+  return (
+    <div className="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-6 w-1/4" />
+          </CardTitle>
+          <Skeleton className="h-4 w-2/3 mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-6 w-1/3" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-10 w-24" />
+              </div>
+            ))}
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-6 w-1/3" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-10 w-24" />
+              </div>
+            ))}
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-6 w-1/4" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <div className="flex justify-end">
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
 export default function SettingsPage() {
-  const { currentSite, updateSite } = useSite()
+  const { currentSite, updateSite, deleteSite, isLoading } = useSite()
   const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("all")
 
@@ -22,25 +101,24 @@ export default function SettingsPage() {
       description: site.description || "",
       logo_url: site.logo_url || "",
       resource_urls: site.resource_urls || [],
-      // Valores por defecto para campos que no están en Site
-      blogUrl: "",
-      competitors: [{ url: "" }],
-      focusMode: 50
+      competitors: site.competitors || [],
+      focusMode: site.focusMode || 50
     }
   }
 
   const handleSave = async (data: Partial<Site>) => {
     try {
       setIsSaving(true)
-      // Aquí iría la lógica para guardar en Supabase
       await updateSite({
         ...currentSite,
         ...data,
-        resource_urls: data.resource_urls?.filter(url => url.key && url.url) || []
+        resource_urls: data.resource_urls?.filter(url => url.key && url.url) || [],
+        competitors: data.competitors?.filter(comp => comp.url) || [],
+        focus_mode: data.focusMode || data.focus_mode || 50,
       } as Site)
       toast.success("Settings saved successfully")
     } catch (error) {
-      console.error(error)
+      console.error("Error saving settings:", error)
       toast.error("Error saving settings")
     } finally {
       setIsSaving(false)
@@ -51,11 +129,11 @@ export default function SettingsPage() {
   const handleCacheAndRebuild = async () => {
     try {
       setIsSaving(true)
-      // Lógica para borrar caché y reconstruir experimentos
-      toast.success("Caché borrada y experimentos reconstruidos exitosamente")
+      // Aquí iría la lógica para borrar caché y reconstruir experimentos
+      toast.success("Cache cleared and experiments rebuilt successfully")
     } catch (error) {
       console.error(error)
-      toast.error("Error al borrar caché y reconstruir experimentos")
+      toast.error("Error clearing cache and rebuilding experiments")
     } finally {
       setIsSaving(false)
     }
@@ -63,9 +141,15 @@ export default function SettingsPage() {
 
   // Función para manejar la acción de borrar todo el sitio
   const handleDeleteSite = async () => {
+    if (!currentSite) return
+
+    if (!window.confirm("Are you sure you want to delete this site? This action cannot be undone.")) {
+      return
+    }
+
     try {
       setIsSaving(true)
-      // Lógica para borrar todo el sitio
+      await deleteSite(currentSite.id)
       toast.success("Site deleted successfully")
     } catch (error) {
       console.error(error)
@@ -73,6 +157,40 @@ export default function SettingsPage() {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex-1">
+        <StickyHeader>
+          <div className="flex items-center justify-between px-16 w-full">
+            <Tabs value="all" className="w-auto">
+              <TabsList>
+                <TabsTrigger value="all">All Settings</TabsTrigger>
+                <TabsTrigger value="focus">Focus Mode</TabsTrigger>
+                <TabsTrigger value="site">Site Info</TabsTrigger>
+                <TabsTrigger value="cache">Cache</TabsTrigger>
+                <TabsTrigger value="competitors">Competitors</TabsTrigger>
+                <TabsTrigger value="resources">Resources</TabsTrigger>
+                <TabsTrigger value="danger">Danger Zone</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button disabled>Save settings</Button>
+          </div>
+        </StickyHeader>
+        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
+          <SettingsFormSkeleton />
+        </div>
+      </div>
+    )
+  }
+
+  if (!currentSite) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-gray-500">No site selected</p>
+      </div>
+    )
   }
 
   return (
@@ -91,7 +209,8 @@ export default function SettingsPage() {
             </TabsList>
           </Tabs>
           <Button 
-            onClick={() => handleSave(currentSite)}
+            type="submit"
+            form="settings-form"
             disabled={isSaving}
           >
             {isSaving ? "Saving..." : "Save settings"}
@@ -100,6 +219,7 @@ export default function SettingsPage() {
       </StickyHeader>
       <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
         <SiteForm
+          id="settings-form"
           initialData={adaptSiteToForm(currentSite)}
           onSubmit={handleSave}
           onDeleteSite={handleDeleteSite}

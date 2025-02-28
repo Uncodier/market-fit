@@ -5,6 +5,78 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -------------------------------------------
+-- TIPOS ENUM
+-------------------------------------------
+
+-- Crear tipo enum para idiomas
+CREATE TYPE segment_language AS ENUM (
+  'en',  -- English
+  'zh',  -- Chinese (Mandarin)
+  'hi',  -- Hindi
+  'es',  -- Spanish
+  'ar',  -- Arabic
+  'bn',  -- Bengali
+  'pt',  -- Portuguese
+  'ru',  -- Russian
+  'ja',  -- Japanese
+  'de',  -- German
+  'fr',  -- French
+  'ur',  -- Urdu
+  'id',  -- Indonesian
+  'tr',  -- Turkish
+  'it',  -- Italian
+  'th',  -- Thai
+  'vi',  -- Vietnamese
+  'ko',  -- Korean
+  'fa',  -- Persian
+  'pl',  -- Polish
+  'uk',  -- Ukrainian
+  'ro',  -- Romanian
+  'nl',  -- Dutch
+  'el',  -- Greek
+  'cs',  -- Czech
+  'sv',  -- Swedish
+  'hu',  -- Hungarian
+  'da',  -- Danish
+  'fi',  -- Finnish
+  'no'   -- Norwegian
+);
+
+-- Crear tipo enum para audiencias de negocio
+CREATE TYPE segment_audience AS ENUM (
+  'enterprise',          -- Large enterprises and corporations
+  'smb',                -- Small and medium businesses
+  'startup',            -- Startups and early-stage companies
+  'b2b_saas',           -- B2B Software as a Service
+  'e_commerce',         -- E-commerce businesses
+  'tech',               -- Technology companies
+  'finance',            -- Financial services
+  'healthcare',         -- Healthcare and medical
+  'education',          -- Educational institutions
+  'manufacturing',      -- Manufacturing and industrial
+  'retail',            -- Retail businesses
+  'real_estate',       -- Real estate and property
+  'hospitality',       -- Hotels, restaurants, tourism
+  'automotive',        -- Automotive industry
+  'media',             -- Media and entertainment
+  'telecom',           -- Telecommunications
+  'energy',            -- Energy and utilities
+  'agriculture',       -- Agriculture and farming
+  'construction',      -- Construction and engineering
+  'logistics',         -- Logistics and transportation
+  'professional',      -- Professional services
+  'government',        -- Government and public sector
+  'nonprofit',         -- Non-profit organizations
+  'legal',             -- Legal services
+  'pharma',            -- Pharmaceutical
+  'insurance',         -- Insurance services
+  'consulting',        -- Consulting services
+  'research',          -- Research institutions
+  'aerospace',         -- Aerospace and defense
+  'gaming'             -- Gaming industry
+);
+
+-------------------------------------------
 -- TABLAS DE AUTENTICACIÓN Y USUARIO
 -------------------------------------------
 
@@ -41,7 +113,8 @@ CREATE TABLE IF NOT EXISTS public.segments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
-  audience TEXT,
+  audience segment_audience NOT NULL DEFAULT 'tech',
+  language segment_language NOT NULL DEFAULT 'en',
   size INTEGER,
   engagement INTEGER,
   is_active BOOLEAN DEFAULT true,
@@ -50,7 +123,20 @@ CREATE TABLE IF NOT EXISTS public.segments (
   site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT segments_language_check CHECK (language IN (
+    'en', 'zh', 'hi', 'es', 'ar', 'bn', 'pt', 'ru', 'ja', 'de',
+    'fr', 'ur', 'id', 'tr', 'it', 'th', 'vi', 'ko', 'fa', 'pl',
+    'uk', 'ro', 'nl', 'el', 'cs', 'sv', 'hu', 'da', 'fi', 'no'
+  )),
+  CONSTRAINT segments_audience_check CHECK (audience IN (
+    'enterprise', 'smb', 'startup', 'b2b_saas', 'e_commerce',
+    'tech', 'finance', 'healthcare', 'education', 'manufacturing',
+    'retail', 'real_estate', 'hospitality', 'automotive', 'media',
+    'telecom', 'energy', 'agriculture', 'construction', 'logistics',
+    'professional', 'government', 'nonprofit', 'legal', 'pharma',
+    'insurance', 'consulting', 'research', 'aerospace', 'gaming'
+  ))
 );
 
 -- Tabla de leads

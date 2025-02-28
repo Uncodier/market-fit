@@ -20,6 +20,9 @@ import {
 import { Button } from "../ui/button"
 import { usePathname } from "next/navigation"
 import { CalendarDateRangePicker } from "../ui/date-range-picker"
+import { CreateSegmentDialog } from "../create-segment-dialog"
+import { createSegment } from "@/app/segments/actions"
+import { useRouter } from "next/navigation"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -44,6 +47,40 @@ export function TopBar({
   const isLeadsPage = pathname === "/leads"
   const isAgentsPage = pathname === "/agents"
   const isAssetsPage = pathname === "/assets"
+
+  const handleCreateSegment = async ({ 
+    name, 
+    description, 
+    audience, 
+    language,
+    site_id 
+  }: { 
+    name: string
+    description: string
+    audience: string
+    language: string
+    site_id: string
+  }) => {
+    try {
+      const result = await createSegment({ 
+        name, 
+        description, 
+        audience, 
+        language,
+        site_id
+      })
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Recargar la página para mostrar el nuevo segmento
+      window.location.reload()
+    } catch (error) {
+      console.error("Error creating segment:", error)
+      throw error
+    }
+  }
 
   return (
     <div
@@ -93,10 +130,7 @@ export function TopBar({
           </>
         )}
         {isSegmentsPage && (
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New Segment
-          </Button>
+          <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
         )}
         {isExperimentsPage && (
           <Button>

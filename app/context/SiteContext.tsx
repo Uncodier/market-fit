@@ -15,11 +15,19 @@ export interface Site {
   created_at: string
   updated_at: string
   resource_urls: ResourceUrl[] | null
+  competitors: CompetitorUrl[] | null
+  focusMode: number
+  focus_mode: number
 }
 
 export interface ResourceUrl {
   key: string
   url: string
+}
+
+export interface CompetitorUrl {
+  url: string
+  name?: string
 }
 
 // Interfaz del contexto
@@ -30,7 +38,7 @@ interface SiteContextType {
   error: Error | null
   setCurrentSite: (site: Site) => void
   updateSite: (site: Site) => Promise<void>
-  createSite: (site: Omit<Site, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
+  createSite: (site: Omit<Site, 'id' | 'created_at' | 'updated_at'>) => Promise<Site>
   deleteSite: (id: string) => Promise<void>
   refreshSites: () => Promise<void>
 }
@@ -62,21 +70,25 @@ const defaultSite: Site = {
   user_id: "",
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
-  resource_urls: []
+  resource_urls: [],
+  competitors: [],
+  focusMode: 50,
+  focus_mode: 50
 }
 
 // Componente proveedor
 export function SiteProvider({ children }: SiteProviderProps) {
-  const [currentSite, setCurrentSite] = useState<Site>(defaultSite)
+  const [currentSite, setCurrentSite] = useState<Site | null>(null)
   const [sites, setSites] = useState<Site[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
   const supabase = createClient()
   
   // Cargar sitios desde Supabase
   const loadSites = async () => {
     try {
-      setIsLoading(true)
+      if (!isInitialized) setIsLoading(true)
       setError(null)
       
       const { data: { session } } = await supabase.auth.getSession()
@@ -94,13 +106,37 @@ export function SiteProvider({ children }: SiteProviderProps) {
       if (error) throw error
       
       const siteData = data as Site[]
-      setSites(siteData)
       
-      // Si hay sitios y no hay uno guardado, establecemos el primero como actual
-      if (siteData.length > 0) {
+      // Cargar focusMode desde localStorage o usar focus_mode de la base de datos
+      const sitesWithFocusMode = siteData.map(site => ({
+        ...site,
+        focusMode: Number(localStorage.getItem(`site_${site.id}_focusMode`)) || site.focus_mode || 50
+      }))
+      
+      setSites(sitesWithFocusMode)
+      
+      // Si hay sitios, intentamos restaurar el sitio guardado o usar el primero
+      if (sitesWithFocusMode.length > 0) {
         const savedSiteId = localStorage.getItem("currentSiteId")
-        const savedSite = savedSiteId ? siteData.find(site => site.id === savedSiteId) : null
-        handleSetCurrentSite(savedSite || siteData[0])
+        const savedSite = savedSiteId ? sitesWithFocusMode.find(site => site.id === savedSiteId) : null
+        
+        // Si el sitio guardado existe en los datos actuales, lo usamos
+        if (savedSite) {
+          handleSetCurrentSite(savedSite)
+        } 
+        // Si no hay sitio guardado o no se encuentra, usamos el primero
+        else {
+          handleSetCurrentSite(sitesWithFocusMode[0])
+          localStorage.setItem("currentSiteId", sitesWithFocusMode[0].id)
+        }
+      } else {
+        // Si no hay sitios, usamos el sitio por defecto
+        handleSetCurrentSite(defaultSite)
+        localStorage.removeItem("currentSiteId")
+      }
+
+      if (!isInitialized) {
+        setIsInitialized(true)
       }
     } catch (err) {
       console.error("Error al cargar sitios:", err)
@@ -113,7 +149,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Cargar sitios al iniciar el provider
   useEffect(() => {
     loadSites()
-    
+  }, [])
+
+  // Efecto separado para manejar las suscripciones
+  useEffect(() => {
+    if (!isInitialized) return
+
     // Suscribirse a cambios en la tabla sites
     const subscription = supabase
       .channel('table-db-changes')
@@ -121,15 +162,24 @@ export function SiteProvider({ children }: SiteProviderProps) {
         event: '*', 
         schema: 'public', 
         table: 'sites' 
-      }, () => {
-        loadSites()
+      }, (payload) => {
+        // Recargar sitios solo si hay cambios relevantes
+        if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+          loadSites()
+        } else if (payload.eventType === 'UPDATE') {
+          // Para actualizaciones, solo recargamos si es el sitio actual
+          const newRecord = payload.new as Site
+          if (currentSite?.id === newRecord.id) {
+            loadSites()
+          }
+        }
       })
       .subscribe()
     
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [isInitialized, currentSite?.id])
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = (site: Site) => {
@@ -142,29 +192,47 @@ export function SiteProvider({ children }: SiteProviderProps) {
     try {
       setError(null)
       
+      // Primero actualizamos el estado local
+      const updatedSiteWithTimestamp = {
+        ...updatedSite,
+        updated_at: new Date().toISOString()
+      }
+
+      // Preparamos los datos para Supabase (omitiendo campos que no están en la tabla)
+      const updateData = {
+        name: updatedSite.name,
+        url: updatedSite.url,
+        description: updatedSite.description,
+        logo_url: updatedSite.logo_url,
+        resource_urls: updatedSite.resource_urls,
+        competitors: updatedSite.competitors,
+        focus_mode: updatedSite.focusMode,
+        updated_at: updatedSiteWithTimestamp.updated_at
+      }
+      
+      // Actualizamos en Supabase
       const { error } = await supabase
         .from('sites')
-        .update({ 
-          name: updatedSite.name,
-          url: updatedSite.url,
-          description: updatedSite.description,
-          logo_url: updatedSite.logo_url,
-          resource_urls: updatedSite.resource_urls,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', updatedSite.id)
       
       if (error) throw error
+
+      // Si no hay error, guardamos el focusMode en localStorage
+      localStorage.setItem(`site_${updatedSite.id}_focusMode`, String(updatedSite.focusMode))
       
-      await loadSites() // Recargar los sitios
-      
-      // Si el sitio actualizado es el actual, actualizamos también el estado
-      if (currentSite.id === updatedSite.id) {
-        handleSetCurrentSite({
-          ...updatedSite,
-          updated_at: new Date().toISOString()
-        })
+      // Si el sitio actualizado es el actual, actualizamos el estado
+      if (currentSite?.id === updatedSite.id) {
+        handleSetCurrentSite(updatedSiteWithTimestamp)
       }
+
+      // Actualizamos la lista de sitios
+      setSites(prevSites => 
+        prevSites.map(site => 
+          site.id === updatedSite.id ? updatedSiteWithTimestamp : site
+        )
+      )
+
     } catch (err) {
       console.error("Error al actualizar el sitio:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
@@ -173,7 +241,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }
   
   // Crear un nuevo sitio
-  const handleCreateSite = async (newSite: Omit<Site, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleCreateSite = async (newSite: Omit<Site, 'id' | 'created_at' | 'updated_at'>): Promise<Site> => {
     try {
       setError(null)
       
@@ -187,7 +255,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
       const { data, error } = await supabase
         .from('sites')
         .insert({
-          ...newSite,
+          name: newSite.name,
+          url: newSite.url,
+          description: newSite.description,
+          logo_url: newSite.logo_url,
+          resource_urls: newSite.resource_urls,
+          competitors: newSite.competitors || null,
+          focus_mode: newSite.focusMode || 50,
           user_id: session.user.id,
           created_at: now,
           updated_at: now
@@ -195,13 +269,24 @@ export function SiteProvider({ children }: SiteProviderProps) {
         .select()
       
       if (error) throw error
+      if (!data || data.length === 0) throw new Error("No se pudo crear el sitio")
+      
+      const createdSite = {
+        ...data[0],
+        focusMode: newSite.focusMode || 50
+      } as Site
+      
+      // Guardar focusMode en localStorage
+      localStorage.setItem(`site_${createdSite.id}_focusMode`, String(createdSite.focusMode))
       
       await loadSites() // Recargar los sitios
       
       // Si es el primer sitio, lo establecemos como actual
-      if (sites.length === 0 && data && data.length > 0) {
-        handleSetCurrentSite(data[0] as Site)
+      if (sites.length === 0) {
+        handleSetCurrentSite(createdSite)
       }
+      
+      return createdSite
     } catch (err) {
       console.error("Error al crear el sitio:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
@@ -224,7 +309,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       await loadSites() // Recargar los sitios
       
       // Si el sitio eliminado es el actual, cambiamos a otro
-      if (currentSite.id === id && sites.length > 0) {
+      if (currentSite?.id === id && sites.length > 0) {
         const newCurrentSite = sites.find(site => site.id !== id)
         if (newCurrentSite) handleSetCurrentSite(newCurrentSite)
       }
@@ -238,7 +323,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Valor del contexto
   const value = {
     sites,
-    currentSite,
+    currentSite: currentSite || defaultSite,
     isLoading,
     error,
     setCurrentSite: handleSetCurrentSite,
