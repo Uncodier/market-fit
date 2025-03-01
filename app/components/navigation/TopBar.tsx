@@ -25,6 +25,8 @@ import { createSegment } from "@/app/segments/actions"
 import { useRouter } from "next/navigation"
 import { CreateExperimentDialog } from "@/app/components/create-experiment-dialog"
 import { createExperiment, type ExperimentFormValues } from "@/app/experiments/actions"
+import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
+import { createAsset } from "@/app/assets/actions"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -104,6 +106,46 @@ export function TopBar({
     } catch (error) {
       console.error("Error creating experiment:", error)
       return { error: error instanceof Error ? error.message : "Error inesperado" }
+    }
+  }
+
+  const handleCreateAsset = async ({ 
+    name, 
+    description, 
+    file_path, 
+    file_type,
+    file_size,
+    tags,
+    site_id 
+  }: { 
+    name: string
+    description?: string
+    file_path: string
+    file_type: string
+    file_size: number
+    tags: string[]
+    site_id: string
+  }) => {
+    try {
+      const result = await createAsset({ 
+        name, 
+        description, 
+        file_path, 
+        file_type,
+        file_size,
+        tags,
+        site_id
+      })
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Recargar la página para mostrar el nuevo asset
+      window.location.reload()
+    } catch (error) {
+      console.error("Error creating asset:", error)
+      throw error
     }
   }
 
@@ -198,10 +240,7 @@ export function TopBar({
           </Button>
         )}
         {isAssetsPage && (
-          <Button>
-            <UploadCloud className="mr-2 h-4 w-4" />
-            Upload Asset
-          </Button>
+          <UploadAssetDialog onUploadAsset={handleCreateAsset} />
         )}
       </div>
     </div>

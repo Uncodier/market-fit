@@ -616,22 +616,66 @@ CREATE POLICY "Permitir a los usuarios gestionar relaciones de experimentos-segm
   );
 
 -- Políticas para assets (recursos digitales)
-CREATE POLICY "Permitir a los usuarios leer sus propios assets"
-  ON public.assets FOR SELECT
-  USING (auth.uid() = user_id OR is_public = true);
+CREATE POLICY "Permitir a los usuarios leer assets de sus sitios" 
+ON public.assets 
+FOR SELECT 
+TO authenticated 
+USING (
+  auth.uid() = user_id OR 
+  is_public = true OR
+  EXISTS (
+    SELECT 1 FROM public.sites 
+    WHERE sites.id = site_id 
+    AND sites.user_id = auth.uid()
+  )
+);
 
-CREATE POLICY "Permitir a los usuarios crear sus propios assets"
-  ON public.assets FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Permitir a los usuarios crear assets en sus sitios" 
+ON public.assets 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (
+  auth.uid() = user_id AND
+  EXISTS (
+    SELECT 1 FROM public.sites 
+    WHERE sites.id = site_id 
+    AND sites.user_id = auth.uid()
+  )
+);
 
-CREATE POLICY "Permitir a los usuarios actualizar sus propios assets"
-  ON public.assets FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Permitir a los usuarios actualizar assets en sus sitios" 
+ON public.assets 
+FOR UPDATE 
+TO authenticated 
+USING (
+  auth.uid() = user_id AND
+  EXISTS (
+    SELECT 1 FROM public.sites 
+    WHERE sites.id = site_id 
+    AND sites.user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  auth.uid() = user_id AND
+  EXISTS (
+    SELECT 1 FROM public.sites 
+    WHERE sites.id = site_id 
+    AND sites.user_id = auth.uid()
+  )
+);
 
-CREATE POLICY "Permitir a los usuarios eliminar sus propios assets"
-  ON public.assets FOR DELETE
-  USING (auth.uid() = user_id);
+CREATE POLICY "Permitir a los usuarios eliminar assets en sus sitios" 
+ON public.assets 
+FOR DELETE 
+TO authenticated 
+USING (
+  auth.uid() = user_id AND
+  EXISTS (
+    SELECT 1 FROM public.sites 
+    WHERE sites.id = site_id 
+    AND sites.user_id = auth.uid()
+  )
+);
 
 -- Políticas para notificaciones
 CREATE POLICY "Permitir a los usuarios leer sus propias notificaciones"
