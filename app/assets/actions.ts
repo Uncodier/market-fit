@@ -61,7 +61,7 @@ export async function getAssets(site_id: string): Promise<{ assets?: Asset[], er
     return { assets: data || [] }
   } catch (error) {
     console.error("Error loading assets:", error)
-    return { error: "Error al cargar los assets", assets: [] }
+    return { error: "Error loading assets", assets: [] }
   }
 }
 
@@ -74,7 +74,7 @@ export async function createAsset(data: CreateAssetInput): Promise<{ error?: str
     
     // Verificar que el site_id sea un UUID válido
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(validatedData.site_id)) {
-      return { error: "ID de sitio inválido" }
+      return { error: "Invalid site ID" }
     }
 
     // Obtener el usuario autenticado
@@ -82,11 +82,11 @@ export async function createAsset(data: CreateAssetInput): Promise<{ error?: str
     
     if (authError) {
       console.error("Error getting authenticated user:", authError)
-      return { error: "Error de autenticación" }
+      return { error: "Authentication error" }
     }
 
     if (!user) {
-      return { error: "Usuario no autenticado" }
+      return { error: "User not authenticated" }
     }
 
     // Verificar que el usuario tenga acceso al sitio
@@ -97,16 +97,16 @@ export async function createAsset(data: CreateAssetInput): Promise<{ error?: str
       .single()
     
     if (siteError) {
-      console.error("Error verificando acceso al sitio:", siteError)
-      return { error: "Error al verificar acceso al sitio" }
+      console.error("Error verifying site access:", siteError)
+      return { error: "Error verifying site access" }
     }
     
     if (!siteData) {
-      return { error: "El sitio especificado no existe" }
+      return { error: "Specified site does not exist" }
     }
     
     if (siteData.user_id !== user.id) {
-      return { error: "No tienes acceso a este sitio" }
+      return { error: "You don't have access to this site" }
     }
 
     // Preparar los metadatos con las etiquetas
@@ -142,24 +142,24 @@ export async function createAsset(data: CreateAssetInput): Promise<{ error?: str
     if (error) {
       console.error("Error inserting asset:", error)
       if (error.code === "22P02") {
-        return { error: "ID de sitio inválido", debug: { ...debugInfo, error } }
+        return { error: "Invalid site ID", debug: { ...debugInfo, error } }
       }
       if (error.code === "23503") {
-        return { error: "El sitio seleccionado no existe", debug: { ...debugInfo, error } }
+        return { error: "Selected site does not exist", debug: { ...debugInfo, error } }
       }
       if (error.code === "42501") {
-        return { error: "No tienes permisos para crear assets en este sitio", debug: { ...debugInfo, error } }
+        return { error: "You don't have permission to create assets in this site", debug: { ...debugInfo, error } }
       }
-      return { error: `Error al crear el asset: ${error.message}`, debug: { ...debugInfo, error } }
+      return { error: `Error creating asset: ${error.message}`, debug: { ...debugInfo, error } }
     }
 
     return { asset, debug: debugInfo }
   } catch (error) {
     console.error("Error creating asset:", error)
     if (error instanceof z.ZodError) {
-      return { error: "Datos de entrada inválidos", debug: { error } }
+      return { error: "Invalid input data", debug: { error } }
     }
-    return { error: "Error al crear el asset", debug: { error } }
+    return { error: "Error creating asset", debug: { error } }
   }
 }
 
@@ -188,7 +188,7 @@ export async function uploadAssetFile(file: File): Promise<{ path?: string, erro
       console.error("Storage upload error:", error)
       // Verificar si el error es por bucket no encontrado
       if (error.message === "Bucket not found") {
-        return { error: `El bucket "${bucketName}" no existe. Por favor, créalo en el panel de Supabase Storage.` }
+        return { error: `Bucket "${bucketName}" does not exist. Please create it in the Supabase Storage panel.` }
       }
       throw error
     }
@@ -202,7 +202,7 @@ export async function uploadAssetFile(file: File): Promise<{ path?: string, erro
     return { path: publicUrl }
   } catch (error) {
     console.error("Error uploading file:", error)
-    return { error: error instanceof Error ? error.message : "Error al subir el archivo" }
+    return { error: error instanceof Error ? error.message : "Error uploading file" }
   }
 }
 
@@ -213,7 +213,7 @@ export async function deleteAsset(assetId: string): Promise<{ success?: boolean,
 
     // Validar que el assetId sea un UUID válido
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assetId)) {
-      return { error: "ID de asset inválido" }
+      return { error: "Invalid asset ID" }
     }
 
     // Primero obtenemos el asset para conocer la ruta del archivo
@@ -224,7 +224,7 @@ export async function deleteAsset(assetId: string): Promise<{ success?: boolean,
       .single()
 
     if (fetchError) {
-      return { error: "No se pudo encontrar el asset" }
+      return { error: "Asset not found" }
     }
 
     // Eliminar el archivo de Storage
@@ -252,7 +252,7 @@ export async function deleteAsset(assetId: string): Promise<{ success?: boolean,
 
     if (error) {
       if (error.code === "42501") {
-        return { error: "No tienes permisos para eliminar este asset" }
+        return { error: "You don't have permission to delete this asset" }
       }
       throw error
     }
@@ -260,6 +260,6 @@ export async function deleteAsset(assetId: string): Promise<{ success?: boolean,
     return { success: true }
   } catch (error) {
     console.error('Error deleting asset:', error)
-    return { error: error instanceof Error ? error.message : 'Error al eliminar el asset' }
+    return { error: error instanceof Error ? error.message : 'Error deleting asset' }
   }
 } 

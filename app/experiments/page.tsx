@@ -312,6 +312,10 @@ export default function ExperimentsPage() {
                   <Input 
                     placeholder="Search experiments..." 
                     className="pl-8 w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    data-command-k-input
+                    type="text"
                   />
                   <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                     <span className="text-xs">⌘</span>K

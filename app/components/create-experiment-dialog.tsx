@@ -30,7 +30,7 @@ import * as z from "zod"
 if (typeof window !== "undefined") {
   // @ts-ignore
   window.__REACT_DEVTOOLS_GLOBAL_HOOK__?.on?.("renderer", () => {
-    console.log("🔍 React DevTools detectado")
+    console.log("🔍 React DevTools detected")
   })
 }
 
@@ -115,12 +115,12 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
     try {
       // Validar que exista un usuario y sitio seleccionado
       if (!user?.id) {
-        toast.error("Debes iniciar sesión para crear un experimento")
+        toast.error("You must be logged in to create an experiment")
         return
       }
 
       if (!currentSite?.id) {
-        toast.error("Debes seleccionar un sitio para crear un experimento")
+        toast.error("You must select a site to create an experiment")
         return
       }
 
@@ -143,11 +143,11 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
       }
 
       setDialogState(prev => ({ ...prev, lastAction: 'success' }))
-      toast.success("Experimento creado exitosamente")
+      toast.success("Experiment created successfully")
       setIsOpen(false)
     } catch (error) {
       setDialogState(prev => ({ ...prev, lastAction: 'error' }))
-      toast.error(error instanceof Error ? error.message : "Error al crear el experimento")
+      toast.error(error instanceof Error ? error.message : "Error creating experiment")
     } finally {
       setIsLoading(false)
     }
@@ -309,7 +309,7 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
                 try {
                   // Verificar que hay al menos un segmento disponible
                   if (segments.length === 0) {
-                    toast.error("No hay segmentos disponibles para el debug")
+                    toast.error("No segments available for debugging")
                     return
                   }
 
@@ -339,11 +339,11 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
                     return
                   }
                   
-                  toast.success("Debug: Experimento creado exitosamente")
+                  toast.success("Debug: Experiment created successfully")
                   setIsOpen(false)
                 } catch (error) {
                   console.error("Debug error:", error)
-                  toast.error("Debug error: " + (error instanceof Error ? error.message : "Error inesperado"))
+                  toast.error("Debug error: " + (error instanceof Error ? error.message : "Unexpected error"))
                 }
               }}
               className="h-12"

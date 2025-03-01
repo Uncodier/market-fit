@@ -27,11 +27,11 @@ export default function CreateSitePage() {
         resource_urls: data.resource_urls || [],
         user_id: user?.sub as string
       })
-      toast.success("Sitio creado exitosamente")
+      toast.success("Site created successfully")
       router.push("/dashboard")
     } catch (error) {
       console.error(error)
-      toast.error("Error al crear el sitio")
+      toast.error("Error creating site")
     } finally {
       setIsSaving(false)
     }

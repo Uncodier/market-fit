@@ -24,7 +24,7 @@ export default function CreateSitePage() {
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.user) {
-        toast.error("Debes iniciar sesión para crear un sitio")
+        toast.error("You must be logged in to create a site")
         router.push("/auth/login")
         return
       }
@@ -47,11 +47,11 @@ export default function CreateSitePage() {
         localStorage.setItem("currentSiteId", newSite.id)
       }
 
-      toast.success("Sitio creado exitosamente")
+      toast.success("Site created successfully")
       router.push("/settings")
     } catch (error) {
-      console.error("Error al crear el sitio:", error)
-      toast.error(error instanceof Error ? error.message : "Error al crear el sitio")
+      console.error("Error creating site:", error)
+      toast.error(error instanceof Error ? error.message : "Error creating site")
     } finally {
       setIsSaving(false)
     }

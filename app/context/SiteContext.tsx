@@ -50,7 +50,7 @@ const SiteContext = createContext<SiteContextType | undefined>(undefined)
 export function useSite() {
   const context = useContext(SiteContext)
   if (context === undefined) {
-    throw new Error("useSite debe ser usado dentro de un SiteProvider")
+    throw new Error("useSite must be used within a SiteProvider")
   }
   return context
 }
@@ -63,7 +63,7 @@ interface SiteProviderProps {
 // Sitio por defecto para casos donde no hay sitios
 const defaultSite: Site = {
   id: "default",
-  name: "Mi primer sitio",
+  name: "My first site",
   url: "",
   description: "",
   logo_url: null,
@@ -128,6 +128,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         else {
           handleSetCurrentSite(sitesWithFocusMode[0])
           localStorage.setItem("currentSiteId", sitesWithFocusMode[0].id)
+          console.log("No saved site found or saved site not in current data. Using first site:", sitesWithFocusMode[0].name)
         }
       } else {
         // Si no hay sitios, usamos el sitio por defecto
@@ -139,7 +140,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         setIsInitialized(true)
       }
     } catch (err) {
-      console.error("Error al cargar sitios:", err)
+      console.error("Error loading sites:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
     } finally {
       setIsLoading(false)
@@ -149,6 +150,23 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Cargar sitios al iniciar el provider
   useEffect(() => {
     loadSites()
+    
+    // Suscribirse a eventos de autenticación para cargar sitios cuando el usuario inicie sesión
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        console.log('User signed in, loading sites...')
+        loadSites()
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out, clearing sites...')
+        setSites([])
+        setCurrentSite(null)
+        localStorage.removeItem("currentSiteId")
+      }
+    })
+    
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   // Efecto separado para manejar las suscripciones
@@ -184,7 +202,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = (site: Site) => {
     setCurrentSite(site)
-    localStorage.setItem("currentSiteId", site.id)
+    if (site.id !== 'default') {
+      localStorage.setItem("currentSiteId", site.id)
+    }
   }
 
   // Actualizar un sitio en Supabase
@@ -234,7 +254,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       )
 
     } catch (err) {
-      console.error("Error al actualizar el sitio:", err)
+      console.error("Error updating site:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
       throw err
     }
@@ -248,7 +268,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {
-        throw new Error("No hay sesión activa")
+        throw new Error("No active session")
       }
       
       const now = new Date().toISOString()
@@ -269,7 +289,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         .select()
       
       if (error) throw error
-      if (!data || data.length === 0) throw new Error("No se pudo crear el sitio")
+      if (!data || data.length === 0) throw new Error("Could not create site")
       
       const createdSite = {
         ...data[0],
@@ -288,7 +308,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       return createdSite
     } catch (err) {
-      console.error("Error al crear el sitio:", err)
+      console.error("Error creating site:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
       throw err
     }
@@ -314,7 +334,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         if (newCurrentSite) handleSetCurrentSite(newCurrentSite)
       }
     } catch (err) {
-      console.error("Error al eliminar el sitio:", err)
+      console.error("Error deleting site:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
       throw err
     }

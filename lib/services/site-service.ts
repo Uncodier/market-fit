@@ -135,11 +135,10 @@ export async function deleteSite(id: string): Promise<void> {
       .delete()
       .eq('id', id)
     
-    if (error) throw new SiteServiceError(`Error al eliminar el sitio: ${error.message}`)
+    if (error) throw new SiteServiceError(`Error deleting site: ${error.message}`)
   } catch (error) {
-    console.error('Error en deleteSite:', error)
-    throw error instanceof SiteServiceError
-      ? error
-      : new SiteServiceError(`Error al eliminar el sitio con ID: ${id}`)
+    return error instanceof SiteServiceError 
+      ? Promise.reject(error) 
+      : Promise.reject(new SiteServiceError(`Error deleting site with ID: ${id}`))
   }
 } 

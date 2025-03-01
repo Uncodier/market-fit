@@ -1,44 +1,114 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 // Indicar a Next.js que esta ruta es dinámica
 export const dynamic = 'force-dynamic'
 
+// Lista de cookies de Supabase que necesitamos eliminar
+const SUPABASE_COOKIES = [
+  'sb-access-token',
+  'sb-refresh-token',
+  'supabase-auth-token',
+  'sb-provider-token',
+  'sb-auth-token',
+  'sb:token',
+  'sb-token',
+  'sb-refresh',
+  'sb-auth',
+  'sb-provider',
+  // Añadir cualquier otra cookie que pueda estar relacionada con la autenticación
+  'next-auth.session-token',
+  'next-auth.callback-url',
+  'next-auth.csrf-token',
+  '__Secure-next-auth.session-token',
+  '__Host-next-auth.csrf-token'
+]
+
 export async function GET(request: Request) {
   try {
     // Determinar la URL base de la aplicación
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                 (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     
-    // Si no se configura Auth0, simplemente redirigir a la página de login
-    if (!process.env.AUTH0_ISSUER_BASE_URL || !process.env.AUTH0_CLIENT_ID) {
-      console.warn('AUTH0_ISSUER_BASE_URL o AUTH0_CLIENT_ID no están configurados. Fallback a redirección directa.')
-      const response = NextResponse.redirect(`${appUrl}/auth/login`)
-      response.cookies.delete('auth0_token')
-      return response
+    // Obtener parámetros de la URL
+    const url = new URL(request.url)
+    const isEmergency = url.searchParams.has('emergency')
+    const clearType = url.searchParams.get('clear') || 'standard'
+    
+    // Crear cliente de Supabase
+    const supabase = await createClient()
+    
+    // Cerrar sesión en Supabase
+    const { error } = await supabase.auth.signOut({
+      scope: 'global' // Asegurarse de cerrar sesión en todos los dispositivos
+    })
+    
+    if (error) {
+      console.error('Error in Supabase signOut:', error)
     }
     
-    // Configurar URL de logout de Auth0
-    const logoutUrl = new URL(`${process.env.AUTH0_ISSUER_BASE_URL}/v2/logout`)
-    logoutUrl.searchParams.append('client_id', process.env.AUTH0_CLIENT_ID)
-    logoutUrl.searchParams.append('returnTo', appUrl)
+    // Crear respuesta y redirigir a la página de login con parámetros para evitar caché
+    const timestamp = Date.now()
+    const response = NextResponse.redirect(
+      `${appUrl}/auth?logout=true&t=${timestamp}&clear=${clearType}${isEmergency ? '&emergency=true' : ''}`
+    )
     
-    // Crear respuesta y eliminar cookie de autenticación
-    const response = NextResponse.redirect(logoutUrl.toString())
-    response.cookies.delete('auth0_token')
+    // Limpiar todas las cookies relacionadas con la autenticación
+    SUPABASE_COOKIES.forEach(cookieName => {
+      // Eliminar la cookie de la respuesta
+      response.cookies.delete(cookieName)
+      
+      // También establecer la cookie con una fecha de expiración en el pasado
+      response.cookies.set(cookieName, '', { 
+        expires: new Date(0),
+        path: '/',
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 0
+      })
+    })
+    
+    // Establecer encabezados para evitar el almacenamiento en caché
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    response.headers.set('Surrogate-Control', 'no-store')
     
     return response
   } catch (error) {
-    console.error('Error en logout:', error)
+    console.error('Error in logout:', error)
     
     // En caso de error, intentar redirigir a la página de login
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      const response = NextResponse.redirect(`${appUrl}/auth/login`)
-      response.cookies.delete('auth0_token')
+      const timestamp = Date.now()
+      const response = NextResponse.redirect(`${appUrl}/auth?logout=true&error=true&t=${timestamp}`)
+      
+      // Intentar limpiar cookies incluso en caso de error
+      SUPABASE_COOKIES.forEach(cookieName => {
+        // Eliminar la cookie
+        response.cookies.delete(cookieName)
+        
+        // También establecer la cookie con una fecha de expiración en el pasado
+        response.cookies.set(cookieName, '', { 
+          expires: new Date(0),
+          path: '/',
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 0
+        })
+      })
+      
+      // Establecer encabezados para evitar el almacenamiento en caché
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+      response.headers.set('Pragma', 'no-cache')
+      response.headers.set('Expires', '0')
+      response.headers.set('Surrogate-Control', 'no-store')
+      
       return response
-    } catch {
+    } catch (finalError) {
+      console.error('Final error in logout:', finalError)
       // Si todo falla, devolver un error JSON
-      return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+      return NextResponse.json({ error: 'Server error' }, { status: 500 })
     }
   }
 } 

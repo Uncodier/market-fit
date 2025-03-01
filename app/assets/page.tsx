@@ -19,6 +19,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/app/components/ui/tooltip"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/app/components/ui/alert-dialog"
 import { useCommandK } from "@/app/hooks/use-command-k"
 
 interface AssetWithThumbnail extends Asset {
@@ -58,6 +68,7 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
   const [imageError, setImageError] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const getDefaultThumbnail = (type: string): string | undefined => {
     switch (type) {
@@ -119,21 +130,20 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
   }
 
   const handleDelete = async () => {
-    if (confirm("¿Estás seguro de que deseas eliminar este asset?")) {
-      setIsDeleting(true)
-      try {
-        const result = await deleteAsset(asset.id)
-        if (result.error) {
-          throw new Error(result.error)
-        }
-        onDelete()
-        toast.success("Asset eliminado correctamente")
-      } catch (error) {
-        console.error("Error deleting asset:", error)
-        toast.error("Error al eliminar el asset")
-      } finally {
-        setIsDeleting(false)
+    setIsDeleting(true)
+    try {
+      const result = await deleteAsset(asset.id)
+      if (result.error) {
+        throw new Error(result.error)
       }
+      onDelete()
+      toast.success("Asset deleted successfully")
+    } catch (error) {
+      console.error("Error deleting asset:", error)
+      toast.error("Error deleting asset")
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
     }
   }
 
@@ -160,10 +170,10 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
       link.click()
       document.body.removeChild(link)
       
-      toast.success("Descarga iniciada")
+      toast.success("Download started")
     } catch (error) {
       console.error("Error downloading asset:", error)
-      toast.error("Error al descargar el archivo")
+      toast.error("Error downloading file")
     } finally {
       setIsDownloading(false)
     }
@@ -178,112 +188,136 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
   }
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-      <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-        {shouldShowImage ? (
-          <div className="w-full h-full flex items-center justify-center bg-[#f8f9fa] p-2">
-            <img
-              src={asset.file_path}
-              alt={asset.name}
-              className="object-contain w-full h-full transition-all duration-300 hover:scale-[1.02] max-h-full"
-              onError={() => setImageError(true)}
-            />
-          </div>
-        ) : (
-          getIcon(asset.file_type)
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center gap-2 p-4">
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 bg-white/90 hover:bg-white transition-colors duration-200"
-                    onClick={handleOpen}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Abrir</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+    <>
+      <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+          {shouldShowImage ? (
+            <div className="w-full h-full flex items-center justify-center bg-[#f8f9fa] p-2">
+              <img
+                src={asset.file_path}
+                alt={asset.name}
+                className="object-contain w-full h-full transition-all duration-300 hover:scale-[1.02] max-h-full"
+                onError={() => setImageError(true)}
+              />
+            </div>
+          ) : (
+            getIcon(asset.file_type)
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center gap-2 p-4">
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-8 w-8 bg-white/90 hover:bg-white transition-colors duration-200"
+                      onClick={handleOpen}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Open</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 bg-white/90 hover:bg-white transition-colors duration-200"
-                    onClick={handleDownload}
-                    disabled={isDownloading}
-                  >
-                    <Download className={`h-4 w-4 ${isDownloading ? 'animate-pulse' : ''}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Descargar</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-8 w-8 bg-white/90 hover:bg-white transition-colors duration-200"
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                    >
+                      <Download className={`h-4 w-4 ${isDownloading ? 'animate-pulse' : ''}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Download</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 bg-white/90 hover:bg-red-500 hover:text-white transition-colors duration-200"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDelete()
-                    }}
-                    disabled={isDeleting}
-                  >
-                    <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Eliminar</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-        <div className="absolute top-2 right-2">
-          <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize`}>
-            {asset.file_type}
-          </Badge>
-        </div>
-      </div>
-      <div className="p-4">
-        <div className="flex flex-col gap-3">
-          <div>
-            <div className="font-medium truncate text-sm">{asset.name}</div>
-            <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-              <span>{formatFileSize(asset.file_size)}</span>
-              <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
-              <span>{new Date(asset.created_at).toLocaleDateString()}</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-8 w-8 bg-white/90 hover:bg-red-500 hover:text-white transition-colors duration-200"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowDeleteDialog(true)
+                      }}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Delete</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {asset.tags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 text-[10px] px-2 py-0 h-4"
-              >
-                {tag}
-              </Badge>
-            ))}
+          <div className="absolute top-2 right-2">
+            <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize`}>
+              {asset.file_type}
+            </Badge>
           </div>
         </div>
-      </div>
-    </Card>
+        <div className="p-4">
+          <div className="flex flex-col gap-3">
+            <div>
+              <div className="font-medium truncate text-sm">{asset.name}</div>
+              <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+                <span>{formatFileSize(asset.file_size)}</span>
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                <span>{new Date(asset.created_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {asset.tags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 text-[10px] px-2 py-0 h-4"
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Asset</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the asset 
+              "{asset.name}" from your media library and remove it from your projects.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-red-500 hover:bg-red-600 text-white"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Asset"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 

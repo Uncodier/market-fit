@@ -18,13 +18,19 @@ interface SiteSelectorProps {
 }
 
 export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
-  const { sites, currentSite, setCurrentSite, isLoading } = useSite()
+  const { sites, currentSite, setCurrentSite, isLoading, refreshSites } = useSite()
   const router = useRouter()
   const [isMounted, setIsMounted] = useState(false)
   
   useEffect(() => {
     setIsMounted(true)
-  }, [])
+    
+    // Si no hay sitio actual pero hay sitios disponibles, seleccionar el primero
+    if (sites.length > 0 && (!currentSite || currentSite.id === "default")) {
+      console.log("No current site but sites available. Setting first site:", sites[0].name)
+      setCurrentSite(sites[0])
+    }
+  }, [sites, currentSite, setCurrentSite])
 
   const getInitials = (name: string) => {
     if (!name) return "..."
@@ -75,6 +81,28 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
               {currentSite.url || "Sin URL"}
             </span>
           </div>
+        )}
+      </div>
+    )
+  }
+
+  // Si no hay sitios disponibles, mostrar botón para crear uno nuevo
+  if (isMounted && !isLoading && sites.length === 0) {
+    return (
+      <div 
+        className={cn(
+          "flex items-center gap-2 p-2 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer transition-colors",
+          isCollapsed ? "justify-center" : "px-3 py-2"
+        )}
+        onClick={() => router.push("/site/create")}
+      >
+        <div className="h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </div>
+        {!isCollapsed && (
+          <span className="text-sm font-medium flex-1">Create your first site</span>
         )}
       </div>
     )
@@ -137,7 +165,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                     </MenuAvatar>
                     <div className="flex flex-col flex-1 min-w-0">
                       <span className="text-sm font-medium truncate">{site.name}</span>
-                      <span className="text-xs text-gray-500 truncate">{site.url || "Sin URL"}</span>
+                      <span className="text-xs text-gray-500 truncate">{site.url || "No URL"}</span>
                     </div>
                     {isSelected && (
                       <Check className="h-4 w-4 text-blue-600 flex-shrink-0" />
@@ -157,7 +185,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                     <path d="M12 5v14M5 12h14" />
                   </svg>
                 </div>
-                <span className="text-sm font-medium flex-1">Añadir nuevo sitio</span>
+                <span className="text-sm font-medium flex-1">Add new site</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           )}

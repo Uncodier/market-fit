@@ -12,26 +12,26 @@ const action = createSafeActionClient()
 
 // Esquema para ResourceUrl
 const resourceUrlSchema = z.object({
-  key: z.string().min(1, 'La clave es requerida'),
-  url: z.string().url('URL inválida')
+  key: z.string().min(1, 'Key is required'),
+  url: z.string().url('Invalid URL')
 })
 
 // Esquema para crear un sitio
 const createSiteSchema = z.object({
-  name: z.string().min(1, 'El nombre es requerido'),
-  url: z.string().url('URL inválida').or(z.string().length(0).transform(() => null)),
+  name: z.string().min(1, 'Name is required'),
+  url: z.string().url('Invalid URL').or(z.string().length(0).transform(() => null)),
   description: z.string().optional().transform(val => val || null),
-  logo_url: z.string().url('URL de logo inválida').optional().transform(val => val || null),
+  logo_url: z.string().url('Invalid logo URL').optional().transform(val => val || null),
   resource_urls: z.array(resourceUrlSchema).optional().transform(val => val || [])
 })
 
 // Esquema para actualizar un sitio
 const updateSiteSchema = z.object({
-  id: z.string().min(1, 'El ID es requerido'),
-  name: z.string().min(1, 'El nombre es requerido'),
-  url: z.string().url('URL inválida').or(z.string().length(0).transform(() => null)),
+  id: z.string().min(1, 'ID is required'),
+  name: z.string().min(1, 'Name is required'),
+  url: z.string().url('Invalid URL').or(z.string().length(0).transform(() => null)),
   description: z.string().optional().transform(val => val || null),
-  logo_url: z.string().url('URL de logo inválida').optional().transform(val => val || null),
+  logo_url: z.string().url('Invalid logo URL').optional().transform(val => val || null),
   resource_urls: z.array(resourceUrlSchema).optional().transform(val => val || [])
 })
 
@@ -48,7 +48,7 @@ export const createSiteAction = action(createSiteSchema, async (data: CreateSite
     if (!user) {
       return {
         success: false,
-        error: 'No estás autenticado'
+        error: 'You are not authenticated'
       }
     }
     
@@ -69,10 +69,10 @@ export const createSiteAction = action(createSiteSchema, async (data: CreateSite
       data: site
     }
   } catch (error) {
-    console.error('Error al crear sitio:', error)
+    console.error('Error creating site:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al crear sitio'
+      error: error instanceof Error ? error.message : 'Error creating site'
     }
   }
 })
@@ -85,7 +85,7 @@ export const updateSiteAction = action(updateSiteSchema, async (data: UpdateSite
     if (!user) {
       return {
         success: false,
-        error: 'No estás autenticado'
+        error: 'You are not authenticated'
       }
     }
     
@@ -95,7 +95,7 @@ export const updateSiteAction = action(updateSiteSchema, async (data: UpdateSite
     if (currentSite.user_id !== user.id) {
       return {
         success: false,
-        error: 'No tienes permiso para actualizar este sitio'
+        error: 'You do not have permission to update this site'
       }
     }
     
@@ -115,10 +115,10 @@ export const updateSiteAction = action(updateSiteSchema, async (data: UpdateSite
       data: updatedSite
     }
   } catch (error) {
-    console.error('Error al actualizar sitio:', error)
+    console.error('Error updating site:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al actualizar sitio'
+      error: error instanceof Error ? error.message : 'Error updating site'
     }
   }
 })
@@ -126,7 +126,7 @@ export const updateSiteAction = action(updateSiteSchema, async (data: UpdateSite
 // Acción para eliminar un sitio
 export const deleteSiteAction = action(
   z.object({
-    id: z.string().min(1, 'El ID es requerido')
+    id: z.string().min(1, 'ID is required')
   }),
   async ({ id }: DeleteSiteInput) => {
     try {
@@ -135,7 +135,7 @@ export const deleteSiteAction = action(
       if (!user) {
         return {
           success: false,
-          error: 'No estás autenticado'
+          error: 'You are not authenticated'
         }
       }
       
@@ -145,7 +145,7 @@ export const deleteSiteAction = action(
       if (currentSite.user_id !== user.id) {
         return {
           success: false,
-          error: 'No tienes permiso para eliminar este sitio'
+          error: 'You do not have permission to delete this site'
         }
       }
       
@@ -158,10 +158,10 @@ export const deleteSiteAction = action(
         success: true
       }
     } catch (error) {
-      console.error('Error al eliminar sitio:', error)
+      console.error('Error deleting site:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error al eliminar sitio'
+        error: error instanceof Error ? error.message : 'Error deleting site'
       }
     }
   }

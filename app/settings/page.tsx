@@ -10,6 +10,16 @@ import { StickyHeader } from "../components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Skeleton } from "../components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog"
 
 function SettingsFormSkeleton() {
   return (
@@ -92,6 +102,7 @@ export default function SettingsPage() {
   const { currentSite, updateSite, deleteSite, isLoading } = useSite()
   const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("all")
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Adaptar Site a SiteFormValues para el formulario
   const adaptSiteToForm = (site: Site) => {
@@ -143,10 +154,6 @@ export default function SettingsPage() {
   const handleDeleteSite = async () => {
     if (!currentSite) return
 
-    if (!window.confirm("Are you sure you want to delete this site? This action cannot be undone.")) {
-      return
-    }
-
     try {
       setIsSaving(true)
       await deleteSite(currentSite.id)
@@ -156,6 +163,7 @@ export default function SettingsPage() {
       toast.error("Error deleting site")
     } finally {
       setIsSaving(false)
+      setShowDeleteDialog(false)
     }
   }
 
@@ -222,12 +230,33 @@ export default function SettingsPage() {
           id="settings-form"
           initialData={adaptSiteToForm(currentSite)}
           onSubmit={handleSave}
-          onDeleteSite={handleDeleteSite}
+          onDeleteSite={() => setShowDeleteDialog(true)}
           onCacheAndRebuild={handleCacheAndRebuild}
           isSaving={isSaving}
           activeSegment={activeSegment}
         />
       </div>
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Site</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the site
+              "{currentSite?.name}" and all of its data including pages, assets, and settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteSite}
+              className="bg-red-500 hover:bg-red-600 text-white"
+              disabled={isSaving}
+            >
+              {isSaving ? "Deleting..." : "Delete Site"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 } 

@@ -19,7 +19,7 @@ export function useAuth() {
         const { data: { session } } = await supabase.auth.getSession()
         setUser(session?.user ?? null)
       } catch (error) {
-        console.error('[Auth] Error verificando autenticación:', error)
+        console.error('[Auth] Error checking authentication:', error)
         setUser(null)
       } finally {
         setIsLoading(false)
@@ -83,10 +83,36 @@ export function useAuth() {
 
   // Función para cerrar sesión
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    router.push('/auth')
-  }, [supabase, router])
+    try {
+      // Primero intentamos cerrar sesión en Supabase
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      
+      // Limpiar cualquier estado local relacionado con la autenticación
+      setUser(null)
+      
+      // Limpiar cookies del navegador relacionadas con Supabase
+      const cookiesToClear = [
+        'sb-access-token',
+        'sb-refresh-token',
+        'supabase-auth-token',
+        'sb-provider-token',
+        'sb-auth-token'
+      ]
+      
+      cookiesToClear.forEach(name => {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/;`
+      })
+      
+      // Luego redirigimos a la ruta de logout para limpiar cookies del servidor
+      window.location.href = '/api/auth/logout'
+    } catch (error) {
+      console.error('Error during logout:', error)
+      // Si falla, intentamos redirigir directamente
+      window.location.href = '/api/auth/logout'
+      throw error
+    }
+  }, [supabase])
 
   return {
     user,

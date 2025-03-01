@@ -18,6 +18,11 @@ function isStaticOrResourceFile(pathname: string): boolean {
          /\.[a-z0-9]+$/i.test(pathname) // Cualquier archivo con extensión
 }
 
+// Rutas que deben ser excluidas del middleware completamente
+const EXCLUDED_PATHS = [
+  '/api/auth/logout'
+]
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
@@ -28,6 +33,12 @@ export async function middleware(request: NextRequest) {
   
   // NUNCA procesar recursos estáticos - siempre permitir acceso
   if (isStaticOrResourceFile(pathname)) {
+    return NextResponse.next()
+  }
+  
+  // Excluir rutas específicas del middleware completamente
+  if (EXCLUDED_PATHS.some(path => pathname === path || pathname.startsWith(path))) {
+    console.log(`[Middleware] Ruta excluida: ${pathname}`)
     return NextResponse.next()
   }
   
@@ -90,10 +101,10 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-// Configuración que excluye explícitamente recursos estáticos
+// Configuración que excluye explícitamente recursos estáticos y rutas de API
 export const config = {
   matcher: [
     // Excluir explícitamente recursos estáticos y API routes específicas
-    '/((?!_next/|static/|favicon|manifest.json).*)'
+    '/((?!_next/|static/|favicon|manifest.json|api/auth/logout).*)'
   ]
 } 
