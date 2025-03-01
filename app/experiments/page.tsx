@@ -5,6 +5,8 @@ import { Badge } from "@/app/components/ui/badge"
 import { Eye, PlayCircle, PenSquare, StopCircle, XCircle, Search } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server"
 
 interface Experiment {
   id: string
@@ -99,15 +101,30 @@ const experiments: Experiment[] = [
   },
 ]
 
-export default function ExperimentsPage() {
+async function getSegments() {
+  const supabase = createClient()
+
+  const { data: segments, error } = await supabase
+    .from("segments")
+    .select("id, name, description")
+
+  if (error) {
+    console.error("Error fetching segments:", error)
+    return []
+  }
+
+  return segments || []
+}
+
+export default async function ExperimentsPage() {
   return (
     <div className="flex-1 p-0">
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" className="h-full">
         <StickyHeader>
-          <div className="px-16 pt-0">
+          <div className="px-16 pt-0 w-full">
             <div className="flex items-center gap-8">
-              <div className="flex-1">
-                <TabsList className="w-full bg-gray-100/80 p-1">
+              <div>
+                <TabsList className="bg-gray-100/80 p-1">
                   <TabsTrigger value="all" className="text-sm font-medium">All Experiments</TabsTrigger>
                   <TabsTrigger value="active" className="text-sm font-medium">Active</TabsTrigger>
                   <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
@@ -115,9 +132,12 @@ export default function ExperimentsPage() {
                 </TabsList>
               </div>
               <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search experiments..." className="pl-8 w-full text-sm bg-gray-50/80 border-gray-200 focus:border-gray-300 focus:ring-gray-200" />
-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-gray-100/80 px-1.5 font-mono text-[10px] font-medium text-gray-600 opacity-100 sm:flex">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search experiments..." 
+                  className="pl-8 w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
+                />
+                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </div>
@@ -125,7 +145,7 @@ export default function ExperimentsPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4 bg-gray-50/30">
+        <div className="p-8 space-y-4">
           <div className="px-8">
             <TabsContent value="all" className="space-y-6">
               <div className="space-y-6">

@@ -9,6 +9,13 @@ import { SiteProvider } from "./context/SiteContext"
 import { cn } from "@/lib/utils"
 import { AuthProvider } from './components/auth/auth-provider'
 import { Toaster } from "./components/ui/sonner"
+import { createClient } from "@/lib/supabase/client"
+
+interface Segment {
+  id: string
+  name: string
+  description: string
+}
 
 const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/segments": {
@@ -56,6 +63,7 @@ export default function LayoutClient({
 }) {
   const pathname = usePathname()
   const currentPage = navigationTitles[pathname] || { title: "Dashboard" }
+  const [segments, setSegments] = useState<Segment[]>([])
   
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -68,6 +76,23 @@ export default function LayoutClient({
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed))
   }, [isCollapsed])
+
+  useEffect(() => {
+    async function fetchSegments() {
+      if (pathname === '/experiments') {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('segments')
+          .select('id, name, description')
+
+        if (!error && data) {
+          setSegments(data)
+        }
+      }
+    }
+
+    fetchSegments()
+  }, [pathname])
 
   const handleCollapse = () => {
     setIsCollapsed((prev: boolean) => !prev)
@@ -104,6 +129,7 @@ export default function LayoutClient({
                   helpText={currentPage.helpText}
                   isCollapsed={isCollapsed}
                   onCollapse={handleCollapse}
+                  segments={segments}
                   className="fixed top-0 right-0 z-10"
                   style={{ 
                     left: isCollapsed ? '4rem' : '16rem'

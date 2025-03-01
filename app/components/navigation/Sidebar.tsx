@@ -140,9 +140,9 @@ export function Sidebar({
           <MenuItem
             href="/profile"
             icon={User}
-            title={user?.name || user?.email?.split('@')[0] || 'Usuario'}
+            title={user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario'}
             subtitle={user?.email || ''}
-            avatarUrl={user?.picture}
+            avatarUrl={user?.user_metadata?.avatar_url}
             isActive={pathname === '/profile'}
             isCollapsed={isCollapsed}
             className="![padding-top:28px] ![padding-bottom:28px]"

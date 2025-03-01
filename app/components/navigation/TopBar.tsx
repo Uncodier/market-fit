@@ -23,12 +23,19 @@ import { CalendarDateRangePicker } from "../ui/date-range-picker"
 import { CreateSegmentDialog } from "../create-segment-dialog"
 import { createSegment } from "@/app/segments/actions"
 import { useRouter } from "next/navigation"
+import { CreateExperimentDialog } from "@/app/components/create-experiment-dialog"
+import { createExperiment } from "@/app/experiments/actions"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
   helpText?: string
   isCollapsed: boolean
   onCollapse: () => void
+  segments?: Array<{
+    id: string
+    name: string
+    description: string
+  }>
 }
 
 export function TopBar({ 
@@ -37,6 +44,7 @@ export function TopBar({
   isCollapsed,
   onCollapse,
   className,
+  segments,
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
@@ -78,6 +86,37 @@ export function TopBar({
       window.location.reload()
     } catch (error) {
       console.error("Error creating segment:", error)
+      throw error
+    }
+  }
+
+  const handleCreateExperiment = async ({ 
+    name, 
+    description, 
+    previewUrl,
+    segments 
+  }: { 
+    name: string
+    description: string
+    previewUrl: string
+    segments: string[]
+  }) => {
+    try {
+      const result = await createExperiment({ 
+        name, 
+        description, 
+        previewUrl,
+        segments
+      })
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Recargar la página para mostrar el nuevo experimento
+      window.location.reload()
+    } catch (error) {
+      console.error("Error creating experiment:", error)
       throw error
     }
   }
@@ -133,10 +172,10 @@ export function TopBar({
           <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
         )}
         {isExperimentsPage && (
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New Experiment
-          </Button>
+          <CreateExperimentDialog 
+            segments={segments || []}
+            onCreateExperiment={handleCreateExperiment}
+          />
         )}
         {isRequirementsPage && (
           <>
