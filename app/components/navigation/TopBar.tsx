@@ -24,7 +24,7 @@ import { CreateSegmentDialog } from "../create-segment-dialog"
 import { createSegment } from "@/app/segments/actions"
 import { useRouter } from "next/navigation"
 import { CreateExperimentDialog } from "@/app/components/create-experiment-dialog"
-import { createExperiment } from "@/app/experiments/actions"
+import { createExperiment, type ExperimentFormValues } from "@/app/experiments/actions"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -90,34 +90,20 @@ export function TopBar({
     }
   }
 
-  const handleCreateExperiment = async ({ 
-    name, 
-    description, 
-    previewUrl,
-    segments 
-  }: { 
-    name: string
-    description: string
-    previewUrl: string
-    segments: string[]
-  }) => {
+  const handleCreateExperiment = async (values: ExperimentFormValues): Promise<{ data?: any; error?: string }> => {
     try {
-      const result = await createExperiment({ 
-        name, 
-        description, 
-        previewUrl,
-        segments
-      })
+      const result = await createExperiment(values)
 
       if (result.error) {
-        throw new Error(result.error)
+        return { error: result.error }
       }
 
       // Recargar la página para mostrar el nuevo experimento
       window.location.reload()
+      return { data: result.data }
     } catch (error) {
       console.error("Error creating experiment:", error)
-      throw error
+      return { error: error instanceof Error ? error.message : "Error inesperado" }
     }
   }
 

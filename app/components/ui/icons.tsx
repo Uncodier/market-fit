@@ -558,4 +558,15 @@ export const Ban = ({ className = "", size = 20, ...props }: IconProps) => (
 )
 
 // LucideIcon (tipo de interfaz para mantener compatibilidad)
-export type LucideIcon = React.ComponentType<IconProps> 
+export type LucideIcon = React.ComponentType<IconProps>
+
+// Beaker
+export const Beaker = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3v4l-2 8v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4l-2-8V3" />
+      <path d="M6 13h12" />
+      <path d="M10 3h4" />
+    </svg>
+  </IconWrapper>
+) 
