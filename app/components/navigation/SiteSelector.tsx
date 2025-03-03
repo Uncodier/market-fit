@@ -89,21 +89,23 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   // Si no hay sitios disponibles, mostrar botón para crear uno nuevo
   if (isMounted && !isLoading && sites.length === 0) {
     return (
-      <div 
-        className={cn(
-          "flex items-center gap-2 p-2 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer transition-colors",
-          isCollapsed ? "justify-center" : "px-3 py-2"
-        )}
-        onClick={() => router.push("/site/create")}
-      >
-        <div className="h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
+      <div className="flex justify-center w-full">
+        <div 
+          className={cn(
+            "flex items-center gap-2 p-2 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer transition-colors",
+            isCollapsed ? "justify-center" : "px-3 py-2 w-[232px]"
+          )}
+          onClick={() => router.push("/site/create")}
+        >
+          <div className="h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </div>
+          {!isCollapsed && (
+            <span className="text-sm font-medium flex-1">Create your first site</span>
+          )}
         </div>
-        {!isCollapsed && (
-          <span className="text-sm font-medium flex-1">Create your first site</span>
-        )}
       </div>
     )
   }

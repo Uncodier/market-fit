@@ -1,0 +1,3070 @@
+diff --git a/app/agents/page.tsx b/app/agents/page.tsx
+index b7ae869..d8c774d 100644
+--- a/app/agents/page.tsx
++++ b/app/agents/page.tsx
+@@ -94,14 +94,14 @@ export default function AgentsPage() {
+                 </TabsList>
+               </div>
+               <div className="relative w-64">
+-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                 <Input 
+                   placeholder="Search agents..." 
+-                  className="pl-8 w-full"
++                  className="w-full"
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
++                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                 />
+-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
++                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                   <span className="text-xs">⌘</span>K
+                 </kbd>
+               </div>
+diff --git a/app/assets/page.tsx b/app/assets/page.tsx
+index 2d8327c..55b5996 100644
+--- a/app/assets/page.tsx
++++ b/app/assets/page.tsx
+@@ -437,15 +437,15 @@ export default function AssetsPage() {
+                   </TabsList>
+                 </div>
+                 <div className="relative w-64">
+-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                   <Input 
+                     data-command-k-input
+                     placeholder="Search assets..." 
+-                    className="pl-8 w-full" 
+-                    disabled
+-                    value=""
++                    className="w-full" 
++                    value={searchTerm}
++                    onChange={(e) => handleSearch(e.target.value)}
++                    icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
+                   />
+-                  <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
++                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                     <span className="text-xs">⌘</span>K
+                   </kbd>
+                 </div>
+@@ -523,15 +523,15 @@ export default function AssetsPage() {
+                 </TabsList>
+               </div>
+               <div className="relative w-64">
+-                <Search className={`absolute left-2 top-2.5 h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                 <Input 
+                   data-command-k-input
+                   placeholder="Search assets..." 
+-                  className="pl-8 w-full" 
++                  className="w-full" 
+                   value={searchTerm}
+                   onChange={(e) => handleSearch(e.target.value)}
++                  icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
+                 />
+-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
++                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                   <span className="text-xs">⌘</span>K
+                 </kbd>
+               </div>
+diff --git a/app/components/navigation/SiteSelector.tsx b/app/components/navigation/SiteSelector.tsx
+index 24f2f4d..178d931 100644
+--- a/app/components/navigation/SiteSelector.tsx
++++ b/app/components/navigation/SiteSelector.tsx
+@@ -89,21 +89,23 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
+   // Si no hay sitios disponibles, mostrar botón para crear uno nuevo
+   if (isMounted && !isLoading && sites.length === 0) {
+     return (
+-      <div 
+-        className={cn(
+-          "flex items-center gap-2 p-2 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer transition-colors",
+-          isCollapsed ? "justify-center" : "px-3 py-2"
+-        )}
+-        onClick={() => router.push("/site/create")}
+-      >
+-        <div className="h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+-            <path d="M12 5v14M5 12h14" />
+-          </svg>
++      <div className="flex justify-center w-full">
++        <div 
++          className={cn(
++            "flex items-center gap-2 p-2 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer transition-colors",
++            isCollapsed ? "justify-center" : "px-3 py-2 w-[232px]"
++          )}
++          onClick={() => router.push("/site/create")}
++        >
++          <div className="h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
++            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
++              <path d="M12 5v14M5 12h14" />
++            </svg>
++          </div>
++          {!isCollapsed && (
++            <span className="text-sm font-medium flex-1">Create your first site</span>
++          )}
+         </div>
+-        {!isCollapsed && (
+-          <span className="text-sm font-medium flex-1">Create your first site</span>
+-        )}
+       </div>
+     )
+   }
+diff --git a/app/components/navigation/TopBar.tsx b/app/components/navigation/TopBar.tsx
+index 9ce7932..f91aa5b 100644
+--- a/app/components/navigation/TopBar.tsx
++++ b/app/components/navigation/TopBar.tsx
+@@ -27,6 +27,10 @@ import { CreateExperimentDialog } from "@/app/components/create-experiment-dialo
+ import { createExperiment, type ExperimentFormValues } from "@/app/experiments/actions"
+ import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
+ import { createAsset } from "@/app/assets/actions"
++import { CreateRequirementDialog } from "@/app/components/create-requirement-dialog"
++import { createRequirement } from "@/app/requirements/actions"
++import { type Segment } from "@/app/requirements/types"
++import { useSite } from "@/app/context/SiteContext"
+ 
+ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
+   title: string
+@@ -57,6 +61,7 @@ export function TopBar({
+   const isLeadsPage = pathname === "/leads"
+   const isAgentsPage = pathname === "/agents"
+   const isAssetsPage = pathname === "/assets"
++  const { currentSite } = useSite()
+ 
+   const handleCreateSegment = async ({ 
+     name, 
+@@ -109,6 +114,23 @@ export function TopBar({
+     }
+   }
+ 
++  const handleCreateRequirement = async (values: any): Promise<{ data?: any; error?: string }> => {
++    try {
++      const result = await createRequirement(values)
++
++      if (result.error) {
++        return { error: result.error }
++      }
++
++      // Recargar la página para mostrar el nuevo requerimiento
++      window.location.reload()
++      return { data: result.data }
++    } catch (error) {
++      console.error("Error creating requirement:", error)
++      return { error: error instanceof Error ? error.message : "Error inesperado" }
++    }
++  }
++
+   const handleCreateAsset = async ({ 
+     name, 
+     description, 
+@@ -197,50 +219,90 @@ export function TopBar({
+           </>
+         )}
+         {isSegmentsPage && (
+-          <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
++          currentSite ? (
++            <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
++          ) : (
++            <Button variant="outline" disabled>
++              <PlusCircle className="mr-2 h-4 w-4" />
++              Seleccione un sitio
++            </Button>
++          )
+         )}
+         {isExperimentsPage && (
+-          <CreateExperimentDialog 
+-            segments={segments || []}
+-            onCreateExperiment={handleCreateExperiment}
+-          />
++          currentSite ? (
++            <CreateExperimentDialog 
++              segments={segments || []}
++              onCreateExperiment={handleCreateExperiment}
++            />
++          ) : (
++            <Button variant="outline" disabled>
++              <PlusCircle className="mr-2 h-4 w-4" />
++              Seleccione un sitio
++            </Button>
++          )
+         )}
+         {isRequirementsPage && (
+-          <>
+-            <Button variant="outline">
+-              <Filter className="mr-2 h-4 w-4" />
+-              Filter
+-            </Button>
+-            <Button>
++          currentSite ? (
++            <>
++              <CreateRequirementDialog 
++                segments={segments || []}
++                onCreateRequirement={handleCreateRequirement}
++                trigger={
++                  <Button>
++                    <PlusCircle className="mr-2 h-4 w-4" />
++                    New Requirement
++                  </Button>
++                }
++              />
++            </>
++          ) : (
++            <Button variant="outline" disabled>
+               <PlusCircle className="mr-2 h-4 w-4" />
+-              New Requirement
++              Seleccione un sitio
+             </Button>
+-          </>
++          )
+         )}
+         {isLeadsPage && (
+-          <>
+-            <Button variant="outline">
+-              <Filter className="mr-2 h-4 w-4" />
+-              Filter
+-            </Button>
+-            <Button variant="outline">
+-              <Download className="mr-2 h-4 w-4" />
+-              Export
+-            </Button>
+-            <Button>
++          currentSite ? (
++            <>
++              <Button variant="outline">
++                <Download className="mr-2 h-4 w-4" />
++                Export
++              </Button>
++              <Button>
++                <PlusCircle className="mr-2 h-4 w-4" />
++                Add Lead
++              </Button>
++            </>
++          ) : (
++            <Button variant="outline" disabled>
+               <PlusCircle className="mr-2 h-4 w-4" />
+-              Add Lead
++              Seleccione un sitio
+             </Button>
+-          </>
++          )
+         )}
+         {isAgentsPage && (
+-          <Button>
+-            <PlusCircle className="mr-2 h-4 w-4" />
+-            Create Agent
+-          </Button>
++          currentSite ? (
++            <Button>
++              <PlusCircle className="mr-2 h-4 w-4" />
++              Create Agent
++            </Button>
++          ) : (
++            <Button variant="outline" disabled>
++              <PlusCircle className="mr-2 h-4 w-4" />
++              Seleccione un sitio
++            </Button>
++          )
+         )}
+         {isAssetsPage && (
+-          <UploadAssetDialog onUploadAsset={handleCreateAsset} />
++          currentSite ? (
++            <UploadAssetDialog onUploadAsset={handleCreateAsset} />
++          ) : (
++            <Button variant="outline" disabled>
++              <PlusCircle className="mr-2 h-4 w-4" />
++              Seleccione un sitio
++            </Button>
++          )
+         )}
+       </div>
+     </div>
+diff --git a/app/components/ui/input.tsx b/app/components/ui/input.tsx
+index 8903ee6..c695c7b 100644
+--- a/app/components/ui/input.tsx
++++ b/app/components/ui/input.tsx
+@@ -2,14 +2,43 @@ import * as React from "react"
+ 
+ import { cn } from "@/lib/utils"
+ 
+-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
++export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
++  icon?: React.ReactNode
++  iconPosition?: "left" | "right"
++}
+ 
+ const Input = React.forwardRef<HTMLInputElement, InputProps>(
+-  ({ className, ...props }, ref) => {
++  ({ className, icon, iconPosition = "left", ...props }, ref) => {
++    if (icon) {
++      return (
++        <div className="relative w-full">
++          {iconPosition === "left" && (
++            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
++              {icon}
++            </div>
++          )}
++          <input
++            className={cn(
++              "flex h-12 w-full rounded-md border border-gray-200 bg-white text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
++              iconPosition === "left" ? "pl-10 pr-3" : "pl-3 pr-10",
++              className
++            )}
++            ref={ref}
++            {...props}
++          />
++          {iconPosition === "right" && (
++            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
++              {icon}
++            </div>
++          )}
++        </div>
++      )
++    }
++
+     return (
+       <input
+         className={cn(
+-          "flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
++          "flex h-12 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+           className
+         )}
+         ref={ref}
+diff --git a/app/context/SiteContext.tsx b/app/context/SiteContext.tsx
+index cf69a29..edad557 100644
+--- a/app/context/SiteContext.tsx
++++ b/app/context/SiteContext.tsx
+@@ -1,6 +1,6 @@
+ "use client"
+ 
+-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
++import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react"
+ import { createClient } from "@/lib/supabase/client"
+ import type { Tables } from "@/lib/types/database.types"
+ 
+@@ -33,7 +33,7 @@ export interface CompetitorUrl {
+ // Interfaz del contexto
+ interface SiteContextType {
+   sites: Site[]
+-  currentSite: Site
++  currentSite: Site | null
+   isLoading: boolean
+   error: Error | null
+   setCurrentSite: (site: Site) => void
+@@ -60,20 +60,117 @@ interface SiteProviderProps {
+   children: ReactNode
+ }
+ 
+-// Sitio por defecto para casos donde no hay sitios
+-const defaultSite: Site = {
+-  id: "default",
+-  name: "My first site",
+-  url: "",
+-  description: "",
+-  logo_url: null,
+-  user_id: "",
+-  created_at: new Date().toISOString(),
+-  updated_at: new Date().toISOString(),
+-  resource_urls: [],
+-  competitors: [],
+-  focusMode: 50,
+-  focus_mode: 50
++/**
++ * Limpia un UUID de comillas extras o caracteres no válidos
++ * @param id Posible UUID con formato incorrecto
++ * @returns UUID limpio o null si no es válido
++ */
++function cleanUUID(id: string | null): string | null {
++  if (!id) return null
++  
++  // Eliminar comillas extras si existen
++  let cleaned = id.replace(/["']/g, '')
++  
++  // Verificar el formato básico de UUID después de limpiar
++  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned)) {
++    return cleaned
++  }
++  
++  // Caso especial para "default" u otros valores especiales
++  if (cleaned === "default") return cleaned
++  
++  console.warn("UUID inválido después de limpieza:", id, "->", cleaned)
++  return null
++}
++
++// Función segura para acceder a localStorage
++function getLocalStorage(key: string, defaultValue: any = null) {
++  if (typeof window === 'undefined') return defaultValue
++  
++  try {
++    const rawValue = localStorage.getItem(key)
++    if (rawValue === null) return defaultValue
++    
++    // Manejar acceso directo para UUIDs y otros IDs para evitar errores de JSON.parse
++    if (key.toLowerCase().includes('id')) {
++      // Para IDs, devolver directamente el valor sin parsear
++      if (key === 'currentSiteId') {
++        console.log(`Acceso directo a ${key}:`, rawValue)
++        
++        // Si es un UUID, intentar limpiarlo
++        const cleanedValue = cleanUUID(rawValue)
++        
++        if (cleanedValue && cleanedValue !== rawValue) {
++          // Si el valor limpio es diferente, actualizar localStorage
++          try {
++            localStorage.setItem(key, cleanedValue)
++            console.log(`UUID corregido en localStorage: ${key} = ${cleanedValue}`)
++          } catch (e) {
++            console.error(`Error al corregir UUID en localStorage:`, e)
++          }
++          return cleanedValue
++        }
++        
++        return rawValue
++      }
++    }
++    
++    // Para otros valores, intentar parsear como JSON, pero con manejo de errores
++    try {
++      return JSON.parse(rawValue)
++    } catch (jsonError) {
++      console.warn(`Valor en localStorage para "${key}" no es JSON válido, usando como texto plano:`, rawValue)
++      return rawValue
++    }
++  } catch (e) {
++    console.error(`Error al leer localStorage key "${key}":`, e)
++    return defaultValue
++  }
++}
++
++// Función segura para guardar en localStorage
++function setLocalStorage(key: string, value: any) {
++  if (typeof window === 'undefined') return
++  
++  try {
++    // Caso especial para currentSiteId - siempre guardar como string plano
++    if (key === 'currentSiteId') {
++      let valueToStore = value
++      
++      // Si es un string, intentar limpiarlo de comillas si es un UUID
++      if (typeof value === 'string') {
++        const cleanedValue = cleanUUID(value)
++        if (cleanedValue) {
++          valueToStore = cleanedValue
++        }
++      }
++      
++      console.log(`Guardando ${key} directamente:`, valueToStore)
++      localStorage.setItem(key, valueToStore)
++      return
++    }
++    
++    // Para otros IDs, también guardar como string plano si es un UUID
++    if (key.toLowerCase().includes('id') && typeof value === 'string') {
++      const cleanedValue = cleanUUID(value)
++      if (cleanedValue) {
++        console.log(`Guardando ID limpio en ${key}:`, cleanedValue)
++        localStorage.setItem(key, cleanedValue)
++        return
++      }
++    }
++    
++    // Para objetos y arrays, usar JSON.stringify
++    if (typeof value === 'object' && value !== null) {
++      localStorage.setItem(key, JSON.stringify(value))
++      return
++    }
++    
++    // Para valores simples (string, number, boolean), guardar directamente
++    localStorage.setItem(key, String(value))
++  } catch (e) {
++    console.error(`Error al guardar en localStorage key "${key}":`, e)
++  }
+ }
+ 
+ // Componente proveedor
+@@ -83,22 +180,68 @@ export function SiteProvider({ children }: SiteProviderProps) {
+   const [isLoading, setIsLoading] = useState(true)
+   const [error, setError] = useState<Error | null>(null)
+   const [isInitialized, setIsInitialized] = useState(false)
+-  const supabase = createClient()
++  const [isMounted, setIsMounted] = useState(false)
++  
++  // Referencia segura a supabase (inicializada solo en useEffect)
++  const supabaseRef = useRef<any>(null)
++  
++  // Marcar que el componente está montado (solo después de hidratación)
++  useEffect(() => {
++    setIsMounted(true)
++    
++    // Diagnóstico: imprimir el contenido actual de localStorage para debuggear
++    if (typeof window !== 'undefined') {
++      try {
++        console.log("==== Diagnóstico de localStorage ====")
++        const currentSiteId = localStorage.getItem('currentSiteId')
++        console.log(`currentSiteId (raw): "${currentSiteId}"`)
++        
++        if (currentSiteId) {
++          const cleanedId = cleanUUID(currentSiteId)
++          console.log(`currentSiteId (limpio): "${cleanedId}"`)
++          
++          // Corregir si es necesario
++          if (cleanedId && cleanedId !== currentSiteId) {
++            localStorage.setItem('currentSiteId', cleanedId)
++            console.log("ID corregido automáticamente en localStorage")
++          }
++        }
++        console.log("===================================")
++      } catch (e) {
++        console.error("Error en diagnóstico de localStorage:", e)
++      }
++    }
++    
++    return () => setIsMounted(false)
++  }, [])
++  
++  // Inicializar el cliente Supabase solo después de la hidratación
++  useEffect(() => {
++    if (!isMounted) return
++    
++    try {
++      supabaseRef.current = createClient()
++    } catch (err) {
++      console.error("Error initializing Supabase client:", err)
++    }
++  }, [isMounted])
+   
+   // Cargar sitios desde Supabase
+   const loadSites = async () => {
++    if (!isMounted || !supabaseRef.current) return
++    
+     try {
+       if (!isInitialized) setIsLoading(true)
+       setError(null)
+       
+-      const { data: { session } } = await supabase.auth.getSession()
++      const { data: { session } } = await supabaseRef.current.auth.getSession()
+       
+       if (!session) {
+         setIsLoading(false)
+         return
+       }
+       
+-      const { data, error } = await supabase
++      const { data, error } = await supabaseRef.current
+         .from('sites')
+         .select('*')
+         .eq('user_id', session.user.id)
+@@ -110,14 +253,14 @@ export function SiteProvider({ children }: SiteProviderProps) {
+       // Cargar focusMode desde localStorage o usar focus_mode de la base de datos
+       const sitesWithFocusMode = siteData.map(site => ({
+         ...site,
+-        focusMode: Number(localStorage.getItem(`site_${site.id}_focusMode`)) || site.focus_mode || 50
++        focusMode: getLocalStorage(`site_${site.id}_focusMode`, site.focus_mode || 50)
+       }))
+       
+       setSites(sitesWithFocusMode)
+       
+       // Si hay sitios, intentamos restaurar el sitio guardado o usar el primero
+       if (sitesWithFocusMode.length > 0) {
+-        const savedSiteId = localStorage.getItem("currentSiteId")
++        const savedSiteId = getLocalStorage("currentSiteId")
+         const savedSite = savedSiteId ? sitesWithFocusMode.find(site => site.id === savedSiteId) : null
+         
+         // Si el sitio guardado existe en los datos actuales, lo usamos
+@@ -127,13 +270,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
+         // Si no hay sitio guardado o no se encuentra, usamos el primero
+         else {
+           handleSetCurrentSite(sitesWithFocusMode[0])
+-          localStorage.setItem("currentSiteId", sitesWithFocusMode[0].id)
++          setLocalStorage("currentSiteId", sitesWithFocusMode[0].id)
+           console.log("No saved site found or saved site not in current data. Using first site:", sitesWithFocusMode[0].name)
+         }
+       } else {
+-        // Si no hay sitios, usamos el sitio por defecto
+-        handleSetCurrentSite(defaultSite)
+-        localStorage.removeItem("currentSiteId")
++        // Si no hay sitios, mostramos estado vacío pero sin usar sitio por defecto
++        setCurrentSite(null)
++        console.log("No sites found for this user")
+       }
+ 
+       if (!isInitialized) {
+@@ -147,40 +290,48 @@ export function SiteProvider({ children }: SiteProviderProps) {
+     }
+   }
+   
+-  // Cargar sitios al iniciar el provider
++  // Cargar sitios al iniciar el provider, pero solo después de la hidratación
+   useEffect(() => {
++    if (!isMounted || !supabaseRef.current) return
++    
+     loadSites()
+     
+     // Suscribirse a eventos de autenticación para cargar sitios cuando el usuario inicie sesión
+-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+-      if (event === 'SIGNED_IN') {
+-        console.log('User signed in, loading sites...')
+-        loadSites()
+-      } else if (event === 'SIGNED_OUT') {
+-        console.log('User signed out, clearing sites...')
+-        setSites([])
+-        setCurrentSite(null)
+-        localStorage.removeItem("currentSiteId")
++    const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
++      (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED', session: any) => {
++        if (event === 'SIGNED_IN') {
++          console.log('User signed in, loading sites...')
++          loadSites()
++        } else if (event === 'SIGNED_OUT') {
++          console.log('User signed out, clearing sites...')
++          setSites([])
++          setCurrentSite(null)
++          try {
++            localStorage.removeItem("currentSiteId")
++          } catch (e) {
++            console.error("Error removing currentSiteId from localStorage:", e)
++          }
++        }
+       }
+-    })
++    )
+     
+     return () => {
+       subscription.unsubscribe()
+     }
+-  }, [])
++  }, [isMounted])
+ 
+-  // Efecto separado para manejar las suscripciones
++  // Efecto separado para manejar las suscripciones, solo después de la inicialización
+   useEffect(() => {
+-    if (!isInitialized) return
++    if (!isInitialized || !isMounted || !supabaseRef.current) return
+ 
+     // Suscribirse a cambios en la tabla sites
+-    const subscription = supabase
++    const subscription = supabaseRef.current
+       .channel('table-db-changes')
+       .on('postgres_changes', { 
+         event: '*', 
+         schema: 'public', 
+         table: 'sites' 
+-      }, (payload) => {
++      }, (payload: { eventType: string; new: any; old: any }) => {
+         // Recargar sitios solo si hay cambios relevantes
+         if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+           loadSites()
+@@ -195,20 +346,30 @@ export function SiteProvider({ children }: SiteProviderProps) {
+       .subscribe()
+     
+     return () => {
+-      subscription.unsubscribe()
++      try {
++        subscription.unsubscribe()
++      } catch (error) {
++        console.error("Error unsubscribing from channels:", error)
++      }
+     }
+-  }, [isInitialized, currentSite?.id])
++  }, [isInitialized, currentSite?.id, isMounted])
+   
+   // Guardar el sitio seleccionado en localStorage cuando cambie
+   const handleSetCurrentSite = (site: Site) => {
+     setCurrentSite(site)
+-    if (site.id !== 'default') {
+-      localStorage.setItem("currentSiteId", site.id)
++    
++    // Solo guardar si es un sitio válido y no es el 'default'
++    if (site && site.id) {
++      // Guardar el ID directamente - nuestra función setLocalStorage ya maneja la limpieza
++      console.log(`Estableciendo sitio actual: ${site.name} (${site.id})`)
++      setLocalStorage("currentSiteId", site.id)
+     }
+   }
+ 
+   // Actualizar un sitio en Supabase
+   const handleUpdateSite = async (updatedSite: Site) => {
++    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
++    
+     try {
+       setError(null)
+       
+@@ -231,7 +392,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
+       }
+       
+       // Actualizamos en Supabase
+-      const { error } = await supabase
++      const { error } = await supabaseRef.current
+         .from('sites')
+         .update(updateData)
+         .eq('id', updatedSite.id)
+@@ -239,7 +400,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
+       if (error) throw error
+ 
+       // Si no hay error, guardamos el focusMode en localStorage
+-      localStorage.setItem(`site_${updatedSite.id}_focusMode`, String(updatedSite.focusMode))
++      setLocalStorage(`site_${updatedSite.id}_focusMode`, updatedSite.focusMode)
+       
+       // Si el sitio actualizado es el actual, actualizamos el estado
+       if (currentSite?.id === updatedSite.id) {
+@@ -262,17 +423,19 @@ export function SiteProvider({ children }: SiteProviderProps) {
+   
+   // Crear un nuevo sitio
+   const handleCreateSite = async (newSite: Omit<Site, 'id' | 'created_at' | 'updated_at'>): Promise<Site> => {
++    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
++    
+     try {
+       setError(null)
+       
+-      const { data: { session } } = await supabase.auth.getSession()
++      const { data: { session } } = await supabaseRef.current.auth.getSession()
+       
+       if (!session) {
+         throw new Error("No active session")
+       }
+       
+       const now = new Date().toISOString()
+-      const { data, error } = await supabase
++      const { data, error } = await supabaseRef.current
+         .from('sites')
+         .insert({
+           name: newSite.name,
+@@ -297,7 +460,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
+       } as Site
+       
+       // Guardar focusMode en localStorage
+-      localStorage.setItem(`site_${createdSite.id}_focusMode`, String(createdSite.focusMode))
++      setLocalStorage(`site_${createdSite.id}_focusMode`, createdSite.focusMode)
+       
+       await loadSites() // Recargar los sitios
+       
+@@ -316,10 +479,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
+   
+   // Eliminar un sitio
+   const handleDeleteSite = async (id: string) => {
++    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
++    
+     try {
+       setError(null)
+       
+-      const { error } = await supabase
++      const { error } = await supabaseRef.current
+         .from('sites')
+         .delete()
+         .eq('id', id)
+@@ -343,7 +508,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
+   // Valor del contexto
+   const value = {
+     sites,
+-    currentSite: currentSite || defaultSite,
++    currentSite: currentSite || null,
+     isLoading,
+     error,
+     setCurrentSite: handleSetCurrentSite,
+diff --git a/app/experiments/page.tsx b/app/experiments/page.tsx
+index 8262eca..b683ba2 100644
+--- a/app/experiments/page.tsx
++++ b/app/experiments/page.tsx
+@@ -9,7 +9,7 @@ import { Input } from "@/app/components/ui/input"
+ import { StickyHeader } from "@/app/components/ui/sticky-header"
+ import { startExperiment, stopExperiment } from "./actions"
+ import { useToast } from "@/app/components/ui/use-toast"
+-import { useState, useEffect } from "react"
++import { useState, useEffect, useCallback } from "react"
+ import { createClient } from "@/lib/supabase/client"
+ import { Skeleton } from "@/app/components/ui/skeleton"
+ import { EmptyState } from "@/app/components/ui/empty-state"
+@@ -125,6 +125,7 @@ export default function ExperimentsPage() {
+   const [searchQuery, setSearchQuery] = useState("")
+   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({})
+   const [isLoadingData, setIsLoadingData] = useState(true)
++  const [initialFetchDone, setInitialFetchDone] = useState(false)
+   const { toast } = useToast()
+ 
+   // Inicializar el hook useCommandK
+@@ -149,68 +150,74 @@ export default function ExperimentsPage() {
+     setFilteredExperiments(filtered)
+   }, [searchQuery, experiments])
+ 
+-  useEffect(() => {
+-    async function fetchExperiments() {
+-      try {
+-        const supabase = createClient()
+-        const { data: experimentsData, error: experimentsError } = await supabase
+-          .from("experiments")
+-          .select(`
+-            id,
+-            name,
+-            description,
+-            status,
+-            start_date,
+-            end_date,
+-            conversion,
+-            roi,
+-            preview_url,
+-            hypothesis,
+-            experiment_segments (
+-              segment:segments (
+-                id,
+-                name
+-              ),
+-              participants
+-            )
+-          `)
+-          .order('created_at', { ascending: false })
+-
+-        if (experimentsError) {
+-          console.error("Error fetching experiments:", experimentsError)
+-          toast({
+-            title: "Error",
+-            description: "Failed to load experiments",
+-            variant: "destructive"
+-          })
+-          return
+-        }
+-
+-        // Transform the data to match our interface
+-        const transformedData = experimentsData.map((experiment: any) => ({
+-          ...experiment,
+-          segments: experiment.experiment_segments.map((es: any) => ({
+-            id: es.segment.id,
+-            name: es.segment.name,
+-            participants: es.participants || 0
+-          }))
+-        }))
++  // Memoizar fetchExperiments para evitar recreaciones en cada renderizado
++  const fetchExperiments = useCallback(async () => {
++    if (initialFetchDone) return;
++    
++    try {
++      setIsLoadingData(true);
++      const supabase = createClient()
++      const { data: experimentsData, error: experimentsError } = await supabase
++        .from("experiments")
++        .select(`
++          id,
++          name,
++          description,
++          status,
++          start_date,
++          end_date,
++          conversion,
++          roi,
++          preview_url,
++          hypothesis,
++          experiment_segments (
++            segment:segments (
++              id,
++              name
++            ),
++            participants
++          )
++        `)
++        .order('created_at', { ascending: false })
+ 
+-        setExperiments(transformedData)
+-      } catch (error) {
+-        console.error("Error:", error)
++      if (experimentsError) {
++        console.error("Error fetching experiments:", experimentsError)
+         toast({
+           title: "Error",
+-          description: "An unexpected error occurred",
++          description: "Failed to load experiments",
+           variant: "destructive"
+         })
+-      } finally {
+-        setIsLoadingData(false)
++        return
+       }
++
++      // Transform the data to match our interface
++      const transformedData = experimentsData.map((experiment: any) => ({
++        ...experiment,
++        segments: experiment.experiment_segments.map((es: any) => ({
++          id: es.segment.id,
++          name: es.segment.name,
++          participants: es.participants || 0
++        }))
++      }))
++
++      setExperiments(transformedData)
++      setInitialFetchDone(true);
++    } catch (error) {
++      console.error("Error:", error)
++      toast({
++        title: "Error",
++        description: "An unexpected error occurred",
++        variant: "destructive"
++      })
++    } finally {
++      setIsLoadingData(false)
+     }
++  }, [toast, initialFetchDone])
+ 
++  // Efecto para la carga inicial de datos
++  useEffect(() => {
+     fetchExperiments()
+-  }, [toast])
++  }, [fetchExperiments])
+ 
+   const handleStartExperiment = async (experimentId: string) => {
+     try {
+@@ -308,16 +315,17 @@ export default function ExperimentsPage() {
+                   </TabsList>
+                 </div>
+                 <div className="relative w-64">
+-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                   <Input 
+                     placeholder="Search experiments..." 
+-                    className="pl-8 w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
++                    className="w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                     data-command-k-input
+                     type="text"
++                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
++                    iconPosition="left"
+                   />
+-                  <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
++                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                     <span className="text-xs">⌘</span>K
+                   </kbd>
+                 </div>
+@@ -356,16 +364,17 @@ export default function ExperimentsPage() {
+                 </TabsList>
+               </div>
+               <div className="relative w-64">
+-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                 <Input 
+                   placeholder="Search experiments..." 
+-                  className="pl-8 w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
++                  className="w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                   data-command-k-input
+                   type="text"
++                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
++                  iconPosition="left"
+                 />
+-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
++                <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                   <span className="text-xs">⌘</span>K
+                 </kbd>
+               </div>
+@@ -459,25 +468,28 @@ export default function ExperimentsPage() {
+                         </div>
+                         <CardFooter className="pt-3 px-8">
+                           <div className="flex w-full space-x-3">
+-                            <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
+-                              <Eye className="mr-2 h-4 w-4" />
++                            <Button 
++                              variant="outline" 
++                              className="flex-1 hover:bg-gray-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-gray-700 border-gray-200"
++                            >
++                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
+                               View Details
+                             </Button>
+                             {experiment.status === "active" && (
+                               <Button 
+-                                variant="destructive" 
+-                                className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10"
++                                variant="outline" 
++                                className="flex-1 hover:bg-red-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-red-700 border-red-200"
+                                 onClick={() => handleStopExperiment(experiment.id)}
+                                 disabled={isLoading[experiment.id]}
+                               >
+                                 {isLoading[experiment.id] ? (
+                                   <>
+-                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
++                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-r-red-700" />
+                                     Stopping...
+                                   </>
+                                 ) : (
+                                   <>
+-                                    <StopCircle className="mr-2 h-4 w-4" />
++                                    <StopCircle className="mr-2 h-4 w-4 text-red-700" />
+                                     Stop
+                                   </>
+                                 )}
+@@ -487,24 +499,27 @@ export default function ExperimentsPage() {
+                               <>
+                                 <Button 
+                                   variant="outline" 
+-                                  className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10"
++                                  className="flex-1 hover:bg-green-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-green-700 border-green-200"
+                                   onClick={() => handleStartExperiment(experiment.id)}
+                                   disabled={isLoading[experiment.id]}
+                                 >
+                                   {isLoading[experiment.id] ? (
+                                     <>
+-                                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
++                                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-green-200 border-r-green-700" />
+                                       Starting...
+                                     </>
+                                   ) : (
+                                     <>
+-                                      <PlayCircle className="mr-2 h-4 w-4" />
++                                      <PlayCircle className="mr-2 h-4 w-4 text-green-700" />
+                                       Start
+                                     </>
+                                   )}
+                                 </Button>
+-                                <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
+-                                  <PenSquare className="mr-2 h-4 w-4" />
++                                <Button 
++                                  variant="outline" 
++                                  className="flex-1 hover:bg-blue-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-blue-700 border-blue-200"
++                                >
++                                  <PenSquare className="mr-2 h-4 w-4 text-blue-700" />
+                                   Edit
+                                 </Button>
+                               </>
+@@ -609,24 +624,27 @@ export default function ExperimentsPage() {
+                         </div>
+                         <CardFooter className="pt-3 px-8">
+                           <div className="flex w-full space-x-3">
+-                            <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
+-                              <Eye className="mr-2 h-4 w-4" />
++                            <Button 
++                              variant="outline" 
++                              className="flex-1 hover:bg-gray-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-gray-700 border-gray-200"
++                            >
++                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
+                               View Details
+                             </Button>
+                             <Button 
+-                              variant="destructive" 
+-                              className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10"
++                              variant="outline" 
++                              className="flex-1 hover:bg-red-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-red-700 border-red-200"
+                               onClick={() => handleStopExperiment(experiment.id)}
+                               disabled={isLoading[experiment.id]}
+                             >
+                               {isLoading[experiment.id] ? (
+                                 <>
+-                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
++                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-r-red-700" />
+                                   Stopping...
+                                 </>
+                               ) : (
+                                 <>
+-                                  <StopCircle className="mr-2 h-4 w-4" />
++                                  <StopCircle className="mr-2 h-4 w-4 text-red-700" />
+                                   Stop
+                                 </>
+                               )}
+@@ -733,12 +751,18 @@ export default function ExperimentsPage() {
+                         </div>
+                         <CardFooter className="pt-3 px-8">
+                           <div className="flex w-full space-x-3">
+-                            <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
+-                              <Eye className="mr-2 h-4 w-4" />
++                            <Button 
++                              variant="outline" 
++                              className="flex-1 hover:bg-gray-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-gray-700 border-gray-200"
++                            >
++                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
+                               View Results
+                             </Button>
+-                            <Button variant="ghost" className="flex-1 hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm transition-all text-sm font-medium h-10">
+-                              <XCircle className="mr-2 h-4 w-4" />
++                            <Button 
++                              variant="outline" 
++                              className="flex-1 hover:bg-red-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-red-700 border-red-200"
++                            >
++                              <XCircle className="mr-2 h-4 w-4 text-red-700" />
+                               Reject
+                             </Button>
+                           </div>
+@@ -827,31 +851,37 @@ export default function ExperimentsPage() {
+                         </div>
+                         <CardFooter className="pt-3 px-8">
+                           <div className="flex w-full space-x-3">
+-                            <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
+-                              <PenSquare className="mr-2 h-4 w-4" />
+-                              Edit
++                            <Button 
++                              variant="outline" 
++                              className="flex-1 hover:bg-gray-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-gray-700 border-gray-200"
++                            >
++                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
++                              View Details
+                             </Button>
+                             <Button 
+                               variant="outline" 
+-                              className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10"
++                              className="flex-1 hover:bg-green-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-green-700 border-green-200"
+                               onClick={() => handleStartExperiment(experiment.id)}
+                               disabled={isLoading[experiment.id]}
+                             >
+                               {isLoading[experiment.id] ? (
+                                 <>
+-                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
++                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-green-200 border-r-green-700" />
+                                   Starting...
+                                 </>
+                               ) : (
+                                 <>
+-                                  <PlayCircle className="mr-2 h-4 w-4" />
++                                  <PlayCircle className="mr-2 h-4 w-4 text-green-700" />
+                                   Start
+                                 </>
+                               )}
+                             </Button>
+-                            <Button variant="ghost" className="flex-1 hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm transition-all text-sm font-medium h-10">
+-                              <XCircle className="mr-2 h-4 w-4" />
+-                              Delete
++                            <Button 
++                              variant="outline" 
++                              className="flex-1 hover:bg-blue-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-blue-700 border-blue-200"
++                            >
++                              <PenSquare className="mr-2 h-4 w-4 text-blue-700" />
++                              Edit
+                             </Button>
+                           </div>
+                         </CardFooter>
+diff --git a/app/layout-client.tsx b/app/layout-client.tsx
+index 13e7a15..9cc45f3 100644
+--- a/app/layout-client.tsx
++++ b/app/layout-client.tsx
+@@ -10,12 +10,7 @@ import { cn } from "@/lib/utils"
+ import { AuthProvider } from './components/auth/auth-provider'
+ import { Toaster } from "./components/ui/sonner"
+ import { createClient } from "@/lib/supabase/client"
+-
+-interface Segment {
+-  id: string
+-  name: string
+-  description: string
+-}
++import { type Segment } from "./requirements/types"
+ 
+ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
+   "/segments": {
+@@ -56,6 +51,88 @@ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
+   }
+ }
+ 
++/**
++ * Limpia un UUID de comillas extras o caracteres no válidos
++ * @param id Posible UUID con formato incorrecto
++ * @returns UUID limpio o null si no es válido
++ */
++function cleanUUID(id: string | null): string | null {
++  if (!id) return null
++  
++  // Eliminar comillas extras si existen
++  let cleaned = id.replace(/["']/g, '')
++  
++  // Verificar el formato básico de UUID después de limpiar
++  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned)) {
++    return cleaned
++  }
++  
++  // Caso especial para "default" u otros valores especiales
++  if (cleaned === "default") return cleaned
++  
++  console.warn("UUID inválido después de limpieza:", id, "->", cleaned)
++  return null
++}
++
++/**
++ * Función segura para limpiar valores en localStorage
++ * Se ejecuta al inicio para corregir posibles formatos incorrectos
++ */
++function cleanLocalStorageOnStartup() {
++  if (typeof window === 'undefined') return
++  
++  try {
++    console.log("Verificando integridad de localStorage...")
++    
++    // Verificar currentSiteId
++    const rawSiteId = localStorage.getItem("currentSiteId")
++    console.log("ID del sitio encontrado (raw):", rawSiteId)
++    
++    if (rawSiteId) {
++      // Intentar diferentes métodos de limpieza
++      let cleanedId
++      
++      // 1. Intentar parsear como JSON
++      try {
++        const parsed = JSON.parse(rawSiteId)
++        if (typeof parsed === 'string') {
++          cleanedId = parsed.replace(/["']/g, '')
++          console.log("UUID limpiado mediante parsing JSON:", cleanedId)
++        }
++      } catch {
++        // 2. Intentar limpiar directamente
++        cleanedId = rawSiteId.replace(/["']/g, '')
++        console.log("UUID limpiado directamente:", cleanedId)
++      }
++      
++      // 3. Verificar formato básico de UUID
++      if (cleanedId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanedId)) {
++        // Si el valor limpio es diferente del original y es un UUID válido, actualizarlo
++        if (cleanedId !== rawSiteId) {
++          console.log("Corrigiendo UUID en localStorage:", cleanedId)
++          localStorage.setItem("currentSiteId", cleanedId)
++        }
++      } 
++      // 4. Caso especial para "default"
++      else if (cleanedId === "default") {
++        if (cleanedId !== rawSiteId) {
++          console.log("Corrigiendo valor 'default' en localStorage")
++          localStorage.setItem("currentSiteId", "default")
++        }
++      }
++      // 5. Si es un valor completamente inválido, eliminarlo
++      else {
++        console.warn("UUID inválido encontrado, limpiando localStorage...")
++        localStorage.removeItem("currentSiteId")
++      }
++    }
++    
++    console.log("Verificación de localStorage completada")
++  } catch (error) {
++    console.error("Error durante la limpieza de localStorage:", error)
++  }
++}
++
+ export default function LayoutClient({
+   children,
+ }: {
+@@ -64,35 +141,184 @@ export default function LayoutClient({
+   const pathname = usePathname()
+   const currentPage = navigationTitles[pathname] || { title: "Dashboard" }
+   const [segments, setSegments] = useState<Segment[]>([])
++  const [isMounted, setIsMounted] = useState(false)
++  const [fetchError, setFetchError] = useState<string | null>(null)
++  const [retryCount, setRetryCount] = useState(0)
+   
+-  const [isCollapsed, setIsCollapsed] = useState(() => {
+-    if (typeof window !== 'undefined') {
+-      const saved = localStorage.getItem('sidebarCollapsed')
+-      return saved ? JSON.parse(saved) : false
++  const [isCollapsed, setIsCollapsed] = useState(false) // Valor por defecto seguro
++
++  // Manejar la inicialización de localStorage después de la hidratación
++  useEffect(() => {
++    setIsMounted(true)
++    
++    // Limpiar localStorage al iniciar
++    cleanLocalStorageOnStartup()
++    
++    // Ahora es seguro acceder a localStorage
++    const saved = localStorage.getItem('sidebarCollapsed')
++    if (saved !== null) {
++      try {
++        setIsCollapsed(JSON.parse(saved))
++      } catch (error) {
++        console.error("Error parsing sidebar collapsed state:", error)
++      }
+     }
+-    return false
+-  })
++  }, [])
+ 
+   useEffect(() => {
++    if (!isMounted) return // No guardar en localStorage durante SSR o antes de la hidratación
++    
+     localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed))
+-  }, [isCollapsed])
++  }, [isCollapsed, isMounted])
+ 
+   useEffect(() => {
++    if (!isMounted) return // No ejecutar antes de la hidratación
++    
++    // Resetear el contador de reintentos al cambiar de ruta
++    setRetryCount(0)
++    setFetchError(null)
++    
+     async function fetchSegments() {
+-      if (pathname === '/experiments') {
++      // Solo intentar obtener segmentos para páginas específicas
++      if (!['/experiments', '/requirements'].includes(pathname)) {
++        setSegments([])
++        return
++      }
++      
++      // Limitar los reintentos a 3 veces
++      if (retryCount > 2) {
++        console.log("Máximo de reintentos alcanzado, no se intentará cargar segmentos nuevamente")
++        // Como último recurso, intentar limpiar el localStorage si seguimos teniendo problemas
++        if (retryCount === 3) {
++          try {
++            console.log("Intentando limpiar localStorage para currentSiteId como último recurso...")
++            const rawSiteId = localStorage.getItem("currentSiteId")
++            if (rawSiteId && rawSiteId.includes('"')) {
++              const cleanedId = rawSiteId.replace(/["']/g, '')
++              localStorage.setItem("currentSiteId", cleanedId)
++              console.log("ID del sitio limpiado como último recurso:", cleanedId)
++              // Forzar una recarga de la página para reiniciar todo limpiamente
++              window.location.reload()
++            }
++          } catch (e) {
++            console.error("Error final al intentar limpiar localStorage:", e)
++          }
++        }
++        return
++      }
++      
++      try {
++        // Inicializar el cliente de Supabase
++        console.log("Iniciando cliente de Supabase...")
+         const supabase = createClient()
++        
++        // Verificar si hay una sesión activa
++        console.log("Obteniendo sesión de usuario...")
++        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
++        
++        if (sessionError) {
++          console.error("Error al obtener la sesión:", sessionError)
++          setFetchError(`Error de sesión: ${sessionError.message || "Error desconocido"}`)
++          setSegments([])
++          return
++        }
++        
++        if (!session) {
++          console.log("No hay sesión activa de usuario")
++          setSegments([])
++          return
++        }
++        
++        // Obtener el sitio actual desde localStorage y limpiarlo de comillas extras
++        console.log("Obteniendo ID del sitio actual...")
++        const rawSiteId = localStorage.getItem("currentSiteId")
++        console.log("ID del sitio obtenido (raw):", rawSiteId)
++        
++        // Limpiar el ID del sitio
++        let savedSiteId: string | null = null
++        
++        // Intentar parsear como JSON primero (por si está guardado como string JSON)
++        if (rawSiteId) {
++          try {
++            const parsed = JSON.parse(rawSiteId)
++            if (typeof parsed === 'string') {
++              savedSiteId = parsed.replace(/["']/g, '')
++            }
++          } catch {
++            // Si no es JSON, intentar limpiar directamente
++            savedSiteId = rawSiteId.replace(/["']/g, '')
++          }
++        }
++        
++        console.log("ID del sitio limpio:", savedSiteId)
++        
++        // Verificar y corregir localStorage si hay inconsistencias
++        if (rawSiteId && savedSiteId && rawSiteId !== savedSiteId) {
++          console.log("Corrigiendo ID del sitio en localStorage...")
++          localStorage.setItem("currentSiteId", savedSiteId)
++        }
++        
++        if (!savedSiteId || savedSiteId === "default") {
++          console.log("No hay sitio válido seleccionado")
++          setSegments([])
++          return
++        }
++        
++        // Consultar los segmentos para el sitio
++        console.log(`Consultando segmentos para el sitio: ${savedSiteId}...`)
+         const { data, error } = await supabase
+           .from('segments')
+           .select('id, name, description')
++          .eq('site_id', savedSiteId)
+ 
+-        if (!error && data) {
++        // Manejar la respuesta
++        if (error) {
++          const errorMessage = error.message || JSON.stringify(error)
++          console.error(`Error al cargar segmentos: ${errorMessage}`, error)
++          setFetchError(`Error al cargar segmentos: ${errorMessage}`)
++          setSegments([])
++          
++          // Si el error es de formato UUID, intentar corregir localStorage
++          if (error.code === '22P02' && rawSiteId) {
++            console.log("Intentando corregir UUID en localStorage...")
++            try {
++              // Último intento desesperado: eliminar cualquier caracter no alfanumérico o guión
++              const lastAttempt = rawSiteId.replace(/[^a-zA-Z0-9-]/g, '')
++              localStorage.setItem("currentSiteId", lastAttempt)
++              console.log("UUID corregido en localStorage con método radical:", lastAttempt)
++            } catch (e) {
++              console.error("No se pudo corregir UUID en localStorage:", e)
++            }
++          }
++          
++          // Incrementar contador de reintentos
++          setRetryCount(prev => prev + 1)
++        } else if (!data) {
++          console.log("No se recibieron datos de segmentos (null)")
++          setSegments([])
++        } else {
++          console.log(`Segmentos cargados correctamente: ${data.length}`)
+           setSegments(data)
++          setFetchError(null)
+         }
++      } catch (error: any) {
++        const errorMessage = error?.message || "Error desconocido"
++        console.error(`Error general al cargar segmentos: ${errorMessage}`, error)
++        setFetchError(`Error general: ${errorMessage}`)
++        setSegments([])
++        
++        // Incrementar contador de reintentos
++        setRetryCount(prev => prev + 1)
+       }
+     }
+ 
+-    fetchSegments()
+-  }, [pathname])
++    // Ejecutar con un pequeño retraso para permitir que otras operaciones se estabilicen
++    const timer = setTimeout(() => {
++      fetchSegments()
++    }, 100)
++    
++    return () => clearTimeout(timer)
++  }, [pathname, isMounted, retryCount])
+ 
+   const handleCollapse = () => {
+     setIsCollapsed((prev: boolean) => !prev)
+@@ -101,10 +327,25 @@ export default function LayoutClient({
+   // Determinar si estamos en la página de login
+   const isLoginPage = pathname === '/auth/login'
+ 
++  // Renderizar un estado de carga simple hasta que la aplicación esté hidratada
++  if (!isMounted) {
++    return (
++      <div className="min-h-screen w-full flex items-center justify-center bg-background">
++        {/* Placeholder mientras se carga el cliente */}
++      </div>
++    )
++  }
++
++  // Mostrar la página con posible indicador de error
+   return (
+     <AuthProvider>
+       <SiteProvider>
+         <TooltipProvider>
++          {fetchError && (
++            <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm z-50 shadow-md">
++              Error: {fetchError}
++            </div>
++          )}
+           {isLoginPage ? (
+             // Para la página de login, solo mostrar el contenido sin layout
+             <div className="min-h-screen w-full">
+diff --git a/app/layout.tsx b/app/layout.tsx
+index da3edf3..6aaa07e 100644
+--- a/app/layout.tsx
++++ b/app/layout.tsx
+@@ -1,8 +1,8 @@
+ import type { Metadata } from 'next'
+-import LayoutClient from './layout-client'
+ import { Inter } from "next/font/google"
+ import "./globals.css"
+ import { Toaster } from "sonner"
++import ClientLayout from './client-layout'
+ 
+ const inter = Inter({ subsets: ["latin"] })
+ 
+@@ -19,7 +19,9 @@ export default function RootLayout({
+   return (
+     <html lang="es">
+       <body className={inter.className}>
+-        <LayoutClient>{children}</LayoutClient>
++        <ClientLayout>
++          {children}
++        </ClientLayout>
+         <Toaster />
+       </body>
+     </html>
+diff --git a/app/leads/page.tsx b/app/leads/page.tsx
+index 18a0938..74ba6b1 100644
+--- a/app/leads/page.tsx
++++ b/app/leads/page.tsx
+@@ -372,9 +372,12 @@ export default function LeadsPage() {
+                 </TabsList>
+               </div>
+               <div className="relative w-64">
+-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+-                <Input placeholder="Search leads..." className="pl-8 w-full" />
+-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
++                <Input 
++                  placeholder="Search leads..." 
++                  className="w-full" 
++                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
++                />
++                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                   <span className="text-xs">⌘</span>K
+                 </kbd>
+               </div>
+diff --git a/app/requirements/page.tsx b/app/requirements/page.tsx
+index ea1a4ac..6ab5461 100644
+--- a/app/requirements/page.tsx
++++ b/app/requirements/page.tsx
+@@ -8,92 +8,77 @@ import { Checkbox } from "@/app/components/ui/checkbox"
+ import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban } from "@/app/components/ui/icons"
+ import { Input } from "@/app/components/ui/input"
+ import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
+-import React from "react"
++import React, { useState, useEffect } from "react"
+ import { StickyHeader } from "@/app/components/ui/sticky-header"
++import { Skeleton } from "@/app/components/ui/skeleton"
++import { EmptyState } from "@/app/components/ui/empty-state"
++import { useToast } from "@/app/components/ui/use-toast"
++import { CreateRequirementDialog } from "@/app/components/create-requirement-dialog"
++import { createRequirement, updateRequirementStatus, updateCompletionStatus } from "./actions"
++import { createClient } from "@/lib/supabase/client"
++import { useSite } from "@/app/context/SiteContext"
++import { type Segment } from "./types"
++import { SearchInput } from "@/app/components/ui/search-input"
++import { FilterModal, type RequirementFilters } from "@/app/components/ui/filter-modal"
++
++// Constantes para estados
++const REQUIREMENT_STATUS = {
++  VALIDATED: "validated",
++  IN_PROGRESS: "in-progress",
++  BACKLOG: "backlog"
++} as const;
++
++const COMPLETION_STATUS = {
++  PENDING: "pending",
++  COMPLETED: "completed",
++  REJECTED: "rejected"
++} as const;
++
++type RequirementStatusType = typeof REQUIREMENT_STATUS[keyof typeof REQUIREMENT_STATUS];
++type CompletionStatusType = typeof COMPLETION_STATUS[keyof typeof COMPLETION_STATUS];
+ 
+ interface Requirement {
+   id: string
+   title: string
+   description: string
+   priority: "high" | "medium" | "low"
+-  status: "validated" | "in-progress" | "backlog"
+-  completionStatus: "pending" | "completed" | "rejected"
++  status: RequirementStatusType
++  completionStatus: CompletionStatusType
+   source: string
+   createdAt: string
+   segments: string[]
++  segmentNames?: string[]
++}
++
++// Define el tipo para los datos de requisitos en Supabase
++interface RequirementData {
++  id: string
++  title: string
++  description: string
++  priority: "high" | "medium" | "low"
++  status: RequirementStatusType
++  completion_status: CompletionStatusType
++  source: string
++  created_at: string
++  requirement_segments: Array<{ segment_id: string }> | null
+ }
+ 
+-const requirements: Requirement[] = [
+-  {
+-    id: "1",
+-    title: "Multi-user collaboration",
+-    description: "Allow multiple users to work on the same document simultaneously",
+-    priority: "high",
+-    status: "validated",
+-    completionStatus: "completed",
+-    source: "Customer Interview",
+-    createdAt: "2023-12-10",
+-    segments: ["Enterprise", "Teams", "Collaboration"]
+-  },
+-  {
+-    id: "2",
+-    title: "Mobile app notifications",
+-    description: "Push notifications for important events and updates",
+-    priority: "medium",
+-    status: "validated",
+-    completionStatus: "pending",
+-    source: "Feature Request",
+-    createdAt: "2023-12-15",
+-    segments: ["Mobile", "Notifications"]
+-  },
+-  {
+-    id: "3",
+-    title: "Advanced analytics dashboard",
+-    description: "Provide deeper insights with customizable reports",
+-    priority: "high",
+-    status: "in-progress",
+-    completionStatus: "pending",
+-    source: "Customer Interview",
+-    createdAt: "2024-01-05",
+-    segments: ["Analytics", "Enterprise", "Reporting"]
+-  },
+-  {
+-    id: "4",
+-    title: "API integration with Zapier",
+-    description: "Allow users to connect with thousands of apps via Zapier",
+-    priority: "medium",
+-    status: "in-progress",
+-    completionStatus: "rejected",
+-    source: "Support Ticket",
+-    createdAt: "2024-01-12",
+-    segments: ["Integrations", "API", "Automation"]
+-  },
+-  {
+-    id: "5",
+-    title: "Dark mode support",
+-    description: "Add dark mode theme option for better night-time usage",
+-    priority: "low",
+-    status: "backlog",
+-    completionStatus: "pending",
+-    source: "Feature Request",
+-    createdAt: "2024-01-20",
+-    segments: ["UI/UX", "Accessibility"]
+-  },
+-  {
+-    id: "6",
+-    title: "Offline mode",
+-    description: "Allow users to work offline and sync when back online",
+-    priority: "medium",
+-    status: "backlog",
+-    completionStatus: "pending",
+-    source: "Customer Interview",
+-    createdAt: "2024-01-25",
+-    segments: ["Mobile", "Sync", "Offline"]
+-  },
+-]
+-
+-function RequirementCard({ requirement }: { requirement: Requirement }) {
++// Define la interfaz para el segmento en Supabase
++interface SegmentData {
++  id: string
++  name: string
++  description: string
++}
++
++function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus }: { 
++  requirement: Requirement, 
++  onUpdateStatus: (id: string, status: RequirementStatusType) => Promise<void>,
++  onUpdateCompletionStatus: (id: string, status: CompletionStatusType) => Promise<void>
++}) {
+   const [isExpanded, setIsExpanded] = React.useState(false)
++  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
++  const [isUpdatingCompletion, setIsUpdatingCompletion] = useState(false)
++  const { toast } = useToast()
+ 
+   const priorityColors = {
+     high: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
+@@ -102,15 +87,61 @@ function RequirementCard({ requirement }: { requirement: Requirement }) {
+   }
+ 
+   const statusColors = {
+-    validated: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
+-    "in-progress": "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
+-    backlog: "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200"
++    [REQUIREMENT_STATUS.VALIDATED]: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
++    [REQUIREMENT_STATUS.IN_PROGRESS]: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
++    [REQUIREMENT_STATUS.BACKLOG]: "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200"
+   }
+ 
+   const completionStatusColors = {
+-    completed: "bg-green-50 text-green-700 border-green-300",
+-    rejected: "bg-red-50 text-red-700 border-red-300",
+-    pending: "bg-yellow-50 text-yellow-700 border-yellow-300"
++    [COMPLETION_STATUS.COMPLETED]: "bg-green-50 text-green-700 border-green-300",
++    [COMPLETION_STATUS.REJECTED]: "bg-red-50 text-red-700 border-red-300",
++    [COMPLETION_STATUS.PENDING]: "bg-yellow-50 text-yellow-700 border-yellow-300"
++  }
++
++  const handleUpdateStatus = async (status: RequirementStatusType) => {
++    try {
++      setIsUpdatingStatus(true)
++      await onUpdateStatus(requirement.id, status)
++      toast({
++        title: "Status updated",
++        description: `The requirement has been moved to ${
++          status === REQUIREMENT_STATUS.VALIDATED ? "Validated" : 
++          status === REQUIREMENT_STATUS.IN_PROGRESS ? "In Progress" : 
++          "Backlog"
++        }`,
++      })
++    } catch (error) {
++      toast({
++        title: "Error",
++        variant: "destructive",
++        description: "Error al actualizar el estado del requisito",
++      })
++    } finally {
++      setIsUpdatingStatus(false)
++    }
++  }
++
++  const handleUpdateCompletionStatus = async (status: CompletionStatusType) => {
++    try {
++      setIsUpdatingCompletion(true)
++      await onUpdateCompletionStatus(requirement.id, status)
++      toast({
++        title: "Estado actualizado",
++        description: `El estado de finalización ha sido actualizado a ${
++          status === COMPLETION_STATUS.PENDING ? "Pendiente" : 
++          status === COMPLETION_STATUS.COMPLETED ? "Completado" : 
++          "Rechazado"
++        }`,
++      })
++    } catch (error) {
++      toast({
++        title: "Error",
++        variant: "destructive",
++        description: "Error al actualizar el estado de finalización",
++      })
++    } finally {
++      setIsUpdatingCompletion(false)
++    }
+   }
+ 
+   return (
+@@ -147,7 +178,7 @@ function RequirementCard({ requirement }: { requirement: Requirement }) {
+                 <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
+                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Status</p>
+                   <Badge variant="secondary" className={statusColors[requirement.status]}>
+-                    {requirement.status === "in-progress" 
++                    {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
+                       ? "In Progress" 
+                       : requirement.status.charAt(0).toUpperCase() + requirement.status.slice(1)}
+                   </Badge>
+@@ -180,7 +211,7 @@ function RequirementCard({ requirement }: { requirement: Requirement }) {
+                   <div className="grid gap-2">
+                     <div className="font-medium text-sm">Segments</div>
+                     <div className="flex flex-wrap gap-2">
+-                      {requirement.segments.map((segment) => (
++                      {requirement.segmentNames?.map((segment) => (
+                         <Badge
+                           key={segment}
+                           variant="secondary"
+@@ -192,100 +223,107 @@ function RequirementCard({ requirement }: { requirement: Requirement }) {
+                     </div>
+                   </div>
+                 </div>
+-                <div className="flex flex-col sm:flex-row justify-end gap-2">
+-                  {requirement.completionStatus === "pending" && (
++                <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
++                  {requirement.completionStatus === COMPLETION_STATUS.PENDING && (
+                     <>
+                       <Button 
+                         variant="outline" 
+                         size="sm" 
+-                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
++                        className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 hover:bg-gray-100 border-gray-200 transition-all duration-200 shadow-sm"
+                         onClick={(e) => {
+                           e.stopPropagation()
+-                          // Aquí iría la lógica para enviar al backlog
++                          handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
+                         }}
++                        disabled={isUpdatingStatus || isUpdatingCompletion}
+                       >
+-                        <Archive className="h-4 w-4" />
+-                        Move to Backlog
++                        <Archive className="h-4 w-4 text-gray-600" />
++                        <span className="font-medium">Move to Backlog</span>
+                       </Button>
+                       <Button 
+                         variant="outline" 
+                         size="sm" 
+-                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
++                        className="flex items-center gap-2 w-full sm:w-auto bg-green-50 hover:bg-green-100 text-green-700 border-green-200 transition-all duration-200 shadow-sm"
+                         onClick={(e) => {
+                           e.stopPropagation()
+-                          // Aquí iría la lógica para marcar como completado
++                          handleUpdateCompletionStatus(COMPLETION_STATUS.COMPLETED)
+                         }}
++                        disabled={isUpdatingStatus || isUpdatingCompletion}
+                       >
+                         <CheckCircle2 className="h-4 w-4" />
+-                        Mark as Done
++                        <span className="font-medium">Mark as Done</span>
+                       </Button>
+                       <Button 
+-                        variant="destructive" 
++                        variant="outline" 
+                         size="sm" 
+-                        className="flex items-center gap-2 w-full sm:w-auto"
++                        className="flex items-center gap-2 w-full sm:w-auto bg-red-50 hover:bg-red-100 text-red-700 border-red-200 transition-all duration-200 shadow-sm"
+                         onClick={(e) => {
+                           e.stopPropagation()
+-                          // Aquí iría la lógica para rechazar el requerimiento
++                          handleUpdateCompletionStatus(COMPLETION_STATUS.REJECTED)
+                         }}
++                        disabled={isUpdatingStatus || isUpdatingCompletion}
+                       >
+                         <Ban className="h-4 w-4" />
+-                        Reject
++                        <span className="font-medium">Reject</span>
+                       </Button>
+                     </>
+                   )}
+-                  {requirement.completionStatus === "completed" && (
++                  {requirement.completionStatus === COMPLETION_STATUS.COMPLETED && (
+                     <>
+                       <Button 
+                         variant="outline" 
+                         size="sm" 
+-                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
++                        className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 hover:bg-gray-100 border-gray-200 transition-all duration-200 shadow-sm"
+                         onClick={(e) => {
+                           e.stopPropagation()
+-                          // Aquí iría la lógica para enviar al backlog
++                          handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
+                         }}
++                        disabled={isUpdatingStatus || isUpdatingCompletion}
+                       >
+-                        <Archive className="h-4 w-4" />
+-                        Move to Backlog
++                        <Archive className="h-4 w-4 text-gray-600" />
++                        <span className="font-medium">Move to Backlog</span>
+                       </Button>
+                       <Button 
+                         variant="outline" 
+                         size="sm" 
+-                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
++                        className="flex items-center gap-2 w-full sm:w-auto bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200 transition-all duration-200 shadow-sm"
+                         onClick={(e) => {
+                           e.stopPropagation()
+-                          // Aquí iría la lógica para revertir a pendiente
++                          handleUpdateCompletionStatus(COMPLETION_STATUS.PENDING)
+                         }}
++                        disabled={isUpdatingStatus || isUpdatingCompletion}
+                       >
+                         <RotateCcw className="h-4 w-4" />
+-                        Return to Pending
++                        <span className="font-medium">Return to Pending</span>
+                       </Button>
+                     </>
+                   )}
+-                  {requirement.completionStatus === "rejected" && (
++                  {requirement.completionStatus === COMPLETION_STATUS.REJECTED && (
+                     <>
+                       <Button 
+                         variant="outline" 
+                         size="sm" 
+-                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
++                        className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 hover:bg-gray-100 border-gray-200 transition-all duration-200 shadow-sm"
+                         onClick={(e) => {
+                           e.stopPropagation()
+-                          // Aquí iría la lógica para enviar al backlog
++                          handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
+                         }}
++                        disabled={isUpdatingStatus || isUpdatingCompletion}
+                       >
+-                        <Archive className="h-4 w-4" />
+-                        Move to Backlog
++                        <Archive className="h-4 w-4 text-gray-600" />
++                        <span className="font-medium">Move to Backlog</span>
+                       </Button>
+                       <Button 
+                         variant="outline" 
+                         size="sm" 
+-                        className="flex items-center gap-2 w-full sm:w-auto hover:bg-secondary/80 transition-colors"
++                        className="flex items-center gap-2 w-full sm:w-auto bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200 transition-all duration-200 shadow-sm"
+                         onClick={(e) => {
+                           e.stopPropagation()
+-                          // Aquí iría la lógica para revertir a pendiente
++                          handleUpdateCompletionStatus(COMPLETION_STATUS.PENDING)
+                         }}
++                        disabled={isUpdatingStatus || isUpdatingCompletion}
+                       >
+                         <RotateCcw className="h-4 w-4" />
+-                        Return to Pending
++                        <span className="font-medium">Return to Pending</span>
+                       </Button>
+                     </>
+                   )}
+@@ -299,10 +337,471 @@ function RequirementCard({ requirement }: { requirement: Requirement }) {
+   )
+ }
+ 
++/**
++ * Limpia un UUID de comillas extras o caracteres no válidos
++ * @param id Posible UUID con formato incorrecto
++ * @returns UUID limpio o string vacía si no es válido
++ */
++function cleanUUID(id: string | null): string {
++  if (!id) return "";
++  
++  // Eliminar comillas extras si existen
++  let cleaned = id.replace(/["']/g, '')
++  
++  // Verificar el formato básico de UUID después de limpiar
++  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned)) {
++    return cleaned
++  }
++  
++  // Caso especial para "default" u otros valores especiales
++  if (cleaned === "default") return cleaned
++  
++  console.warn("UUID inválido después de limpieza:", id, "->", cleaned)
++  return ""
++}
++
++// Define tipos para la caché (fuera del componente)
++type CacheData = {
++  segments: Segment[],
++  requirements: Requirement[],
++  timestamp: number,
++  lastUpdated: number
++};
++
++type CacheStore = {
++  [key: string]: CacheData;
++};
++
+ export default function RequirementsPage() {
++  const [requirements, setRequirements] = useState<Requirement[]>([])
++  const [segments, setSegments] = useState<Segment[]>([])
++  const [filteredRequirements, setFilteredRequirements] = useState<Requirement[]>([])
++  const [isLoading, setIsLoading] = useState(true)
++  const [activeTab, setActiveTab] = useState("all")
++  const [searchQuery, setSearchQuery] = useState("")
++  
++  // Estado de filtros avanzados
++  const [filters, setFilters] = useState<RequirementFilters>({
++    priority: [],
++    completionStatus: [],
++    segments: []
++  })
++  
++  // Estado para controlar la visualización del modal de filtros
++  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
++  
++  // Estado de error visible al usuario
++  const [visibleError, setVisibleError] = useState<string | null>(null)
++  
++  // Usar refs para los estados que no necesitan re-renderizar el componente
++  const loadAttemptsRef = React.useRef(0)
++  const isMountedRef = React.useRef(true)
++  const isLoadingDataRef = React.useRef(false)
++  const siteLoadedRef = React.useRef<string | null>(null)
++  
++  // Referencia para guardar el caché por sitio con sistema de invalidación basado en tiempo
++  const dataCacheBySiteRef = React.useRef<CacheStore>({});
++  
++  // Para la referencia al input de búsqueda
++  const searchInputRef = React.useRef<HTMLInputElement>(null)
++  
++  const { toast } = useToast()
++  const { currentSite } = useSite()
++  
++  // Funciones de utilidad para manejar la caché de forma segura
++  const getCacheForSite = (siteId: string): CacheData | null => {
++    if (!siteId || typeof siteId !== 'string') return null;
++    return dataCacheBySiteRef.current[siteId] || null;
++  };
++  
++  const setCacheForSite = (siteId: string, data: CacheData): void => {
++    if (!siteId || typeof siteId !== 'string') return;
++    dataCacheBySiteRef.current[siteId] = data;
++  };
++  
++  // Forzar una recarga de datos (útil después de operaciones de actualización)
++  const invalidateCache = React.useCallback((siteId: string): void => {
++    if (!siteId || typeof siteId !== 'string') return;
++    
++    const cache = getCacheForSite(siteId);
++    if (cache) {
++      setCacheForSite(siteId, {
++        ...cache,
++        lastUpdated: 0
++      });
++    }
++  }, []);
++
++  // Configurar cleanup al desmontar
++  useEffect(() => {
++    return () => {
++      isMountedRef.current = false
++    }
++  }, [])
++
++  // Efecto de carga de datos (simplificado)
++  useEffect(() => {
++    // Si no hay sitio seleccionado, no cargamos nada
++    if (!currentSite) {
++      setIsLoading(false);
++      return;
++    }
++    
++    // Si el ID del sitio no es válido, mostramos error
++    const siteId = currentSite?.id;
++    if (!siteId) {
++      setVisibleError("Invalid site ID");
++      setIsLoading(false);
++      return;
++    }
++    
++    // Función de carga simplificada
++    const loadDataSimple = async () => {
++      try {
++        const supabase = createClient();
++        
++        // Verify that the site exists
++        const { data: siteData, error: siteError } = await supabase
++          .from("sites")
++          .select("id, name")
++          .eq("id", siteId)
++          .single();
++          
++        if (siteError || !siteData) {
++          throw new Error("The selected site does not exist or you don't have access to it");
++        }
++        
++        // Load segments
++        const { data: segmentData, error: segmentError } = await supabase
++          .from("segments")
++          .select("*")
++          .eq("site_id", siteId);
++        
++        if (segmentError) {
++          throw new Error(`Error loading segments: ${segmentError.message}`);
++        }
++        
++        // Load requirements - FIXING THE QUERY
++        const { data: requirementData, error: requirementError } = await supabase
++          .from("requirements")
++          .select("*, requirement_segments(segment_id)")
++          .eq("site_id", siteId);
++        
++        if (requirementError) {
++          throw new Error(`Error loading requirements: ${requirementError.message}`);
++        }
++        
++        // Map segments to expected format
++        const segments = (segmentData || []).map((segment: SegmentData) => ({
++          id: segment.id,
++          name: segment.name,
++          description: segment.description || "",
++        }));
++        
++        // Map requirements to expected format
++        const requirements = (requirementData || []).map((req: any) => {
++          // Extract related segment IDs
++          const segmentIds = (req.requirement_segments || []).map((sr: any) => sr.segment_id);
++          
++          // Get segment names
++          const segmentNames = segments
++            .filter((segment: SegmentData) => segmentIds.includes(segment.id))
++            .map((segment: SegmentData) => segment.name);
++          
++          return {
++            id: req.id,
++            title: req.title,
++            description: req.description || "",
++            priority: req.priority || "medium",
++            status: req.status || "backlog",
++            completionStatus: req.completion_status || "pending",
++            source: req.source || "",
++            createdAt: req.created_at || new Date().toISOString(),
++            segments: segmentIds,
++            segmentNames: segmentNames
++          };
++        });
++        
++        // Update state
++        setSegments(segments);
++        setRequirements(requirements);
++        
++        // Reset loading state
++        setIsLoading(false);
++        
++      } catch (error: any) {
++        setVisibleError(error.message || "Error loading data");
++        setIsLoading(false);
++      }
++    };
++    
++    setIsLoading(true);
++    loadDataSimple();
++    
++    return () => {
++      // Limpieza
++    };
++  }, [currentSite]);
++
++  // Manejar actualización de estados con invalidación de caché
++  const handleUpdateStatus = async (id: string, status: RequirementStatusType) => {
++    try {
++      const { error } = await updateRequirementStatus(id, status)
++      
++      if (error) {
++        throw new Error(error)
++      }
++      
++      // Actualizar el estado local
++      setRequirements(prevReqs => 
++        prevReqs.map(req => 
++          req.id === id ? { ...req, status } : req
++        )
++      )
++      
++      // Invalidar caché si hay un sitio seleccionado
++      if (currentSite?.id) {
++        const siteId = cleanUUID(currentSite.id);
++        if (siteId) {
++          invalidateCache(siteId);
++        }
++      }
++      
++    } catch (error) {
++      console.error("Error al actualizar el estado:", error)
++      toast({
++        title: "Error",
++        variant: "destructive",
++        description: error instanceof Error ? error.message : "Error al actualizar el estado",
++      })
++      throw error
++    }
++  }
++
++  // Manejar actualización de estados de finalización con invalidación de caché
++  const handleUpdateCompletionStatus = async (id: string, completionStatus: CompletionStatusType) => {
++    try {
++      const { error } = await updateCompletionStatus(id, completionStatus)
++      
++      if (error) {
++        throw new Error(error)
++      }
++      
++      // Actualizar el estado local
++      setRequirements(prevReqs => 
++        prevReqs.map(req => 
++          req.id === id ? { ...req, completionStatus } : req
++        )
++      )
++      
++      // Invalidar caché si hay un sitio seleccionado
++      if (currentSite?.id) {
++        const siteId = cleanUUID(currentSite.id);
++        if (siteId) {
++          invalidateCache(siteId);
++        }
++      }
++      
++    } catch (error) {
++      console.error("Error al actualizar el estado de finalización:", error)
++      toast({
++        title: "Error",
++        variant: "destructive",
++        description: error instanceof Error ? error.message : "Error al actualizar el estado de finalización",
++      })
++      throw error
++    }
++  }
++
++  // Filtramos los requisitos por búsqueda, tab y filtros avanzados
++  useEffect(() => {
++    let filtered = [...requirements];
++    
++    // Apply search filter
++    if (searchQuery) {
++      const query = searchQuery.toLowerCase();
++      filtered = filtered.filter(req => 
++        (req.title || "").toLowerCase().includes(query) ||
++        (req.description || "").toLowerCase().includes(query) ||
++        (req.source || "").toLowerCase().includes(query) ||
++        (req.segmentNames || []).some(segment => 
++          (segment || "").toLowerCase().includes(query)
++        )
++      );
++    }
++    
++    // Apply tab filter
++    if (activeTab !== "all") {
++      const normalizedTab = activeTab.toLowerCase();
++      filtered = filtered.filter(req => {
++        if (normalizedTab === "validated") return req.status === REQUIREMENT_STATUS.VALIDATED;
++        if (normalizedTab === "in-progress") return req.status === REQUIREMENT_STATUS.IN_PROGRESS;
++        if (normalizedTab === "backlog") return req.status === REQUIREMENT_STATUS.BACKLOG;
++        return true;
++      });
++    }
++    
++    // Apply advanced filters
++    if (filters.priority.length > 0) {
++      filtered = filtered.filter(req => filters.priority.includes(req.priority));
++    }
++    
++    if (filters.completionStatus.length > 0) {
++      filtered = filtered.filter(req => filters.completionStatus.includes(req.completionStatus));
++    }
++    
++    if (filters.segments.length > 0) {
++      filtered = filtered.filter(req => 
++        req.segments.some(segmentId => filters.segments.includes(segmentId))
++      );
++    }
++    
++    setFilteredRequirements(filtered);
++  }, [requirements, searchQuery, activeTab, filters]);
++  
++  // Security mechanism to prevent indefinite loading
++  useEffect(() => {
++    if (isLoading) {
++      const timeoutId = setTimeout(() => {
++        // If still loading after 10 seconds, force reset
++        if (isLoading) {
++          setIsLoading(false);
++          
++          // If no data, show an error
++          if (requirements.length === 0) {
++            setVisibleError("Loading time exceeded. Please try again.");
++          }
++        }
++      }, 10000);
++      
++      return () => clearTimeout(timeoutId);
++    }
++  }, [isLoading, requirements.length]);
++
++  // Componentes de estado
++  const NoSiteSelected = () => (
++    <div className="flex flex-col items-center justify-center p-8 text-center h-[300px]">
++      <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
++      <h3 className="text-xl font-medium mb-2">No site selected</h3>
++      <p className="text-muted-foreground max-w-md">
++        Please create or select a site to manage its requirements.
++      </p>
++    </div>
++  );
++
++  // Restaurando el componente LoadingState original
++  const LoadingState = () => (
++    <div className="space-y-3">
++      {[1, 2, 3].map(i => (
++        <Card key={i} className="overflow-hidden">
++          <div className="p-6">
++            <div className="flex flex-col lg:flex-row items-start gap-4">
++              <div className="w-full lg:w-1/4">
++                <Skeleton className="h-6 w-3/4 mb-2" />
++                <Skeleton className="h-4 w-full" />
++              </div>
++              <div className="flex flex-wrap gap-6 w-full lg:w-3/4">
++                <div className="min-w-[120px]">
++                  <Skeleton className="h-4 w-16 mb-2" />
++                  <Skeleton className="h-6 w-24" />
++                </div>
++                <div className="min-w-[120px]">
++                  <Skeleton className="h-4 w-16 mb-2" />
++                  <Skeleton className="h-6 w-24" />
++                </div>
++                <div className="min-w-[120px]">
++                  <Skeleton className="h-4 w-16 mb-2" />
++                  <Skeleton className="h-6 w-24" />
++                </div>
++                <div className="min-w-[120px]">
++                  <Skeleton className="h-4 w-16 mb-2" />
++                  <Skeleton className="h-6 w-24" />
++                </div>
++                <div className="min-w-[120px]">
++                  <Skeleton className="h-4 w-16 mb-2" />
++                  <Skeleton className="h-6 w-24" />
++                </div>
++              </div>
++            </div>
++          </div>
++        </Card>
++      ))}
++    </div>
++  );
++
++  const EmptyResults = () => (
++    <div className="flex flex-col items-center justify-center p-8 text-center h-[300px]">
++      <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
++      <h3 className="text-xl font-medium mb-2">No requirements found</h3>
++      <p className="text-muted-foreground max-w-md mb-4">
++        {searchQuery
++          ? "No results for your search. Try with other terms."
++          : requirements.length > 0 
++            ? `There are ${requirements.length} requirements in the database, but none match the current filter (${activeTab}).`
++            : "No requirements created yet. Create a new one to start."
++        }
++      </p>
++      <Button 
++        onClick={() => window.location.reload()} 
++        variant="outline"
++      >
++        <RotateCcw className="mr-2 h-4 w-4" />
++        Reload data
++      </Button>
++    </div>
++  );
++
++  // Función de búsqueda
++  const handleSearch = (value: string) => {
++    setSearchQuery(value);
++  };
++
++  // Función para aplicar filtros avanzados
++  const handleApplyFilters = (newFilters: RequirementFilters) => {
++    setFilters(newFilters);
++  };
++
++  // Función para limpiar todos los filtros
++  const handleClearFilters = () => {
++    setFilters({
++      priority: [],
++      completionStatus: [],
++      segments: []
++    });
++    setSearchQuery("");
++    setActiveTab("all");
++    
++    // Resetear el campo de búsqueda
++    if (searchInputRef.current) {
++      searchInputRef.current.value = "";
++    }
++  };
++
++  // Función para abrir el modal de filtros
++  const handleOpenFilterModal = () => {
++    setIsFilterModalOpen(true);
++  };
++
+   return (
+     <div className="flex-1 p-0">
+-      <Tabs defaultValue="all">
++      {/* Loading indicator */}
++      {isLoading && (
++        <div className="fixed bottom-4 right-4 bg-blue-100 text-blue-800 p-4 rounded-md shadow-md z-50 animate-pulse">
++          Loading requirements...
++        </div>
++      )}
++      
++      {/* Modal de filtros */}
++      <FilterModal
++        isOpen={isFilterModalOpen}
++        onClose={() => setIsFilterModalOpen(false)}
++        filters={filters}
++        onApplyFilters={handleApplyFilters}
++        segments={segments}
++        completionStatusOptions={[COMPLETION_STATUS.PENDING, COMPLETION_STATUS.COMPLETED, COMPLETION_STATUS.REJECTED]}
++      />
++      
++      <Tabs defaultValue="all" onValueChange={setActiveTab}>
+         <StickyHeader>
+           <div className="px-16 pt-0">
+             <div className="flex items-center gap-8">
+@@ -314,56 +813,87 @@ export default function RequirementsPage() {
+                   <TabsTrigger value="backlog">Backlog</TabsTrigger>
+                 </TabsList>
+               </div>
+-              <div className="relative w-64">
+-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+-                <Input placeholder="Search requirements..." className="pl-8 w-full" />
+-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+-                  <span className="text-xs">⌘</span>K
+-                </kbd>
+-              </div>
++              <SearchInput
++                placeholder="Search requirements..."
++                value={searchQuery}
++                onSearch={handleSearch}
++                ref={searchInputRef}
++                className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
++              />
++              <Button variant="outline" onClick={handleOpenFilterModal}>
++                <Filter className="mr-2 h-4 w-4" />
++                Filter
++              </Button>
++              {/* Indicador de filtros activos */}
++              {(filters.priority.length > 0 || filters.completionStatus.length > 0 || filters.segments.length > 0) && (
++                <Button variant="ghost" size="sm" onClick={handleClearFilters}>
++                  <Badge variant="outline" className="rounded-full px-2 py-0">
++                    {filters.priority.length + filters.completionStatus.length + filters.segments.length}
++                  </Badge>
++                  <span className="ml-2">Clear filters</span>
++                </Button>
++              )}
+             </div>
+           </div>
+         </StickyHeader>
+         
+         <div className="p-8 space-y-4">
+           <div className="px-8">
+-            <TabsContent value="all" className="space-y-4">
+-              <div className="space-y-2">
+-                {requirements.map((requirement) => (
+-                  <RequirementCard key={requirement.id} requirement={requirement} />
+-                ))}
+-              </div>
+-            </TabsContent>
+-            <TabsContent value="validated" className="space-y-4">
+-              <div className="space-y-2">
+-                {requirements
+-                  .filter(r => r.status === "validated")
+-                  .map((requirement) => (
+-                    <RequirementCard key={requirement.id} requirement={requirement} />
+-                  ))}
+-              </div>
+-            </TabsContent>
+-            <TabsContent value="in-progress" className="space-y-4">
+-              <div className="space-y-2">
+-                {requirements
+-                  .filter(r => r.status === "in-progress")
+-                  .map((requirement) => (
+-                    <RequirementCard key={requirement.id} requirement={requirement} />
+-                  ))}
+-              </div>
+-            </TabsContent>
+-            <TabsContent value="backlog" className="space-y-4">
+-              <div className="space-y-2">
+-                {requirements
+-                  .filter(r => r.status === "backlog")
+-                  .map((requirement) => (
+-                    <RequirementCard key={requirement.id} requirement={requirement} />
+-                  ))}
+-              </div>
+-            </TabsContent>
++            {/* Rendering for all tabs */}
++            {["all", "validated", "in-progress", "backlog"].map((tab) => (
++              <TabsContent key={tab} value={tab} className="space-y-4 min-h-[300px]">
++                {/* Case 1: No site selected */}
++                {!currentSite ? (
++                  <NoSiteSelected />
++                ) : 
++                /* Case 2: Visible error */
++                visibleError ? (
++                  <div className="p-4 border border-red-300 bg-red-50 rounded-md text-red-800 mb-4">
++                    <h3 className="font-semibold mb-2">Error loading requirements</h3>
++                    <p>{visibleError}</p>
++                    <button 
++                      onClick={() => window.location.reload()} 
++                      className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-md"
++                    >
++                      Retry
++                    </button>
++                  </div>
++                ) : 
++                /* Case 3: Loading */
++                isLoading ? (
++                  <LoadingState />
++                ) : 
++                /* Case 4: No filtered requirements to show */
++                filteredRequirements.length === 0 ? (
++                  <EmptyResults />
++                ) : 
++                /* Case 5: Show requirements */
++                (
++                  <div className="space-y-2">
++                    {filteredRequirements.map((requirement) => (
++                      <RequirementCard 
++                        key={requirement.id} 
++                        requirement={requirement} 
++                        onUpdateStatus={handleUpdateStatus}
++                        onUpdateCompletionStatus={handleUpdateCompletionStatus}
++                      />
++                    ))}
++                  </div>
++                )}
++              </TabsContent>
++            ))}
+           </div>
+         </div>
+       </Tabs>
+     </div>
+   )
+-} 
+\ No newline at end of file
++}
++
++// Exportamos esto para usarlo en el topbar
++export { createRequirement } from "./actions"
++
++// Exportamos también el tipo Segment
++export type { Segment } from "./types"
++
++// Ya no exportamos el componente para usarlo en el topbar, lo importan directamente
++// export { CreateRequirementDialog } 
+\ No newline at end of file
+diff --git a/app/segments/page.tsx b/app/segments/page.tsx
+index bb72d1d..d475781 100644
+--- a/app/segments/page.tsx
++++ b/app/segments/page.tsx
+@@ -34,6 +34,7 @@ import {
+ import { getSegments, createSegment, type SegmentResponse, updateSegmentUrl, updateSegmentStatus } from "./actions"
+ import { EmptyState } from "@/app/components/ui/empty-state"
+ import { useSite } from "@/app/context/SiteContext"
++import { createClient } from "@/lib/supabase/client"
+ 
+ type AdPlatform = "facebook" | "google" | "linkedin" | "twitter"
+ 
+@@ -303,8 +304,10 @@ export default function SegmentsPage() {
+   const [isSaving, setIsSaving] = useState(false)
+   const [saveError, setSaveError] = useState<string | null>(null)
+   const [copiedStates, setCopiedStates] = useState<Record<string, { keywords: boolean, url: boolean }>>({})
+-  const { currentSite, isLoading: isSiteLoading } = useSite()
++  const { currentSite } = useSite()
+   const searchInputRef = useRef<HTMLInputElement>(null)
++  const [initialFetchDone, setInitialFetchDone] = useState(false)
++  const [loadAttemptsCount, setLoadAttemptsCount] = useState(0)
+ 
+   // Manejador de cambio del input
+   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+@@ -330,6 +333,12 @@ export default function SegmentsPage() {
+     setFilteredSegments(filtered)
+   }, [segments, selectedAdPlatforms])
+ 
++  // Función para recargar los segmentos
++  const retryLoadSegments = () => {
++    setError(null)
++    setLoadAttemptsCount(prev => prev + 1)
++  }
++
+   // Efecto para manejar el atajo de teclado Command+K
+   useEffect(() => {
+     const handleKeyDown = (e: KeyboardEvent) => {
+@@ -353,60 +362,76 @@ export default function SegmentsPage() {
+     setFilteredSegments(segments)
+   }, [segments])
+ 
++  // Efecto para cargar los segmentos - Usando Supabase directamente como en la función getSegments original
+   useEffect(() => {
+-    const loadSegments = async () => {
++    const fetchSegments = async () => {
+       try {
+-        // Si el sitio está cargando, mantenemos el estado de carga
+-        if (isSiteLoading) return
+-
+-        // Si no hay sitio seleccionado después de la carga
+-        if (!currentSite?.id) {
+-          setError("Por favor, selecciona un sitio primero")
+-          setIsLoading(false)
+-          return
+-        }
+-
+-        const result = await getSegments(currentSite.id)
++        if (initialFetchDone && loadAttemptsCount === 0) return;
+         
+-        if (result.error) {
+-          setError(result.error)
+-          return
+-        }
+-
+-        const loadedSegments = result.segments || []
+-        setSegments(loadedSegments)
++        setIsLoading(true);
++        setError(null);
+         
+-        // Inicializar estados para los nuevos segmentos
+-        const newExpandedRows: Record<string, boolean> = {}
+-        const newSelectedAdPlatforms: Record<string, AdPlatform> = {}
+-        const newActiveSegments: Record<string, boolean> = {}
+-        const newIframeLoading: Record<string, boolean> = {}
++        // Verificar si tenemos un sitio seleccionado
++        if (!currentSite?.id) {
++          setError("Por favor, selecciona un sitio primero");
++          setIsLoading(false);
++          return;
++        }
+         
+-        loadedSegments.forEach(segment => {
+-          newExpandedRows[segment.id] = false
+-          newSelectedAdPlatforms[segment.id] = "facebook"
+-          newActiveSegments[segment.id] = segment.is_active
+-          newIframeLoading[segment.id] = false
+-        })
++        console.log("Cargando segmentos para el sitio:", currentSite.id);
+         
+-        setExpandedRows(newExpandedRows)
+-        setSelectedAdPlatforms(newSelectedAdPlatforms)
+-        setActiveSegments(newActiveSegments)
+-        setIframeLoading(newIframeLoading)
+-
+-        // Agregamos un pequeño delay antes de quitar el loading
+-        setTimeout(() => {
+-          setIsLoading(false)
+-        }, 100)
++        // Volver a usar getSegments que sabemos que funciona
++        try {
++          const result = await getSegments(currentSite.id);
++          
++          console.log("Resultado de getSegments:", result);
++          
++          if (result.error) {
++            setError(result.error);
++            setIsLoading(false);
++            return;
++          }
++          
++          const loadedSegments = result.segments || [];
++          console.log(`Se cargaron ${loadedSegments.length} segmentos`);
++          
++          setSegments(loadedSegments);
++          
++          // Inicializar estados para los nuevos segmentos
++          const newExpandedRows: Record<string, boolean> = {}
++          const newSelectedAdPlatforms: Record<string, AdPlatform> = {}
++          const newActiveSegments: Record<string, boolean> = {}
++          const newIframeLoading: Record<string, boolean> = {}
++          
++          loadedSegments.forEach((segment: Segment) => {
++            newExpandedRows[segment.id] = false
++            newSelectedAdPlatforms[segment.id] = "facebook"
++            newActiveSegments[segment.id] = segment.is_active
++            newIframeLoading[segment.id] = false
++          })
++          
++          setExpandedRows(newExpandedRows)
++          setSelectedAdPlatforms(newSelectedAdPlatforms)
++          setActiveSegments(newActiveSegments)
++          setIframeLoading(newIframeLoading)
++          
++          // Si llegamos aquí, todo fue exitoso, así que limpiamos cualquier error
++          setError(null);
++          setInitialFetchDone(true);
++        } catch (innerError) {
++          console.error("Error llamando a getSegments:", innerError);
++          setError("Error al cargar los segmentos. Por favor, intenta nuevamente.");
++        }
+       } catch (err) {
+-        console.error("Error loading segments:", err)
+-        setError("Error al cargar los segmentos. Por favor, intenta nuevamente.")
+-        setIsLoading(false)
++        console.error("Error loading segments:", err);
++        setError("Error al cargar los segmentos. Por favor, intenta nuevamente.");
++      } finally {
++        setIsLoading(false);
+       }
+-    }
+-
+-    loadSegments()
+-  }, [currentSite?.id, isSiteLoading])
++    };
++    
++    fetchSegments();
++  }, [currentSite?.id, initialFetchDone, loadAttemptsCount]);
+ 
+   const toggleRow = (id: string) => {
+     setExpandedRows(prev => ({
+@@ -591,14 +616,16 @@ export default function SegmentsPage() {
+                   </TabsList>
+                 </div>
+                 <div className="relative w-64">
+-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+-                  <Input 
+-                    placeholder="Search segments..." 
+-                    className="pl-8 w-full"
+-                    value=""
+-                    onChange={() => {}}
++                  <Input
++                    ref={searchInputRef}
++                    type="text"
++                    placeholder="Search segments..."
++                    className="w-full"
++                    value={searchTerm}
++                    onChange={handleSearchChange}
++                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                   />
+-                  <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
++                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                     <span className="text-xs">⌘</span>K
+                   </kbd>
+                 </div>
+@@ -608,7 +635,15 @@ export default function SegmentsPage() {
+           <div className="p-8 space-y-4">
+             <div className="px-8">
+               <TabsContent value="all" className="space-y-4">
+-                {Array.from({ length: 5 }).map((_, index) => (
++                <div className="flex flex-col items-center justify-center py-12">
++                  <p className="text-muted-foreground mb-2">Cargando segmentos...</p>
++                  <p className="text-xs text-muted-foreground">
++                    {currentSite?.id 
++                      ? `Obteniendo datos para el sitio: ${currentSite.name}`
++                      : "Esperando selección de sitio..."}
++                  </p>
++                </div>
++                {Array.from({ length: 3 }).map((_, index) => (
+                   <SegmentRowSkeleton key={index} />
+                 ))}
+               </TabsContent>
+@@ -624,12 +659,34 @@ export default function SegmentsPage() {
+       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+         <div className="text-center space-y-4">
+           <p className="text-red-500 mb-4">{error}</p>
+-          <Button 
+-            variant="outline" 
+-            onClick={() => window.location.reload()}
+-          >
+-            Intentar nuevamente
+-          </Button>
++          {error.includes("selecciona un sitio") ? (
++            <div className="space-y-4">
++              <p className="text-sm text-muted-foreground">
++                Por favor, selecciona un sitio en el selector de la barra de navegación para ver los segmentos disponibles.
++              </p>
++              <p className="text-xs text-muted-foreground">
++                Sitio actual: {currentSite ? `${currentSite.name} (${currentSite.id})` : 'Ninguno seleccionado'}
++              </p>
++              <p className="text-xs text-muted-foreground">
++                Si no tienes sitios, primero debes crear uno en la sección de sitios.
++              </p>
++            </div>
++          ) : (
++            <div className="space-y-4">
++              <p className="text-sm text-muted-foreground">
++                Ocurrió un error al cargar los segmentos. Esto puede deberse a problemas de conexión.
++              </p>
++              <p className="text-xs text-muted-foreground">
++                Sitio actual: {currentSite ? `${currentSite.name} (${currentSite.id})` : 'Ninguno seleccionado'}
++              </p>
++              <Button 
++                variant="outline" 
++                onClick={retryLoadSegments}
++              >
++                Intentar nuevamente
++              </Button>
++            </div>
++          )}
+         </div>
+       </div>
+     )
+@@ -649,16 +706,16 @@ export default function SegmentsPage() {
+                 </TabsList>
+               </div>
+               <div className="relative w-64">
+-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                 <Input
+                   ref={searchInputRef}
+                   type="text"
+                   placeholder="Search segments..."
+-                  className="pl-8 w-full"
++                  className="w-full"
+                   value={searchTerm}
+                   onChange={handleSearchChange}
++                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                 />
+-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
++                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                   <span className="text-xs">⌘</span>K
+                 </kbd>
+               </div>
+diff --git a/lib/supabase/client.ts b/lib/supabase/client.ts
+index d4f5212..6dc2743 100644
+--- a/lib/supabase/client.ts
++++ b/lib/supabase/client.ts
+@@ -1,35 +1,233 @@
+ import { createBrowserClient } from '@supabase/ssr'
+ 
++// Cliente único para toda la aplicación
++let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
++let clientCreationTimestamp: number | null = null
++let clientCreationError: Error | null = null
++let isClientCreating = false
++
++/**
++ * Limpia un UUID de comillas extras o caracteres no válidos
++ * @param id Posible UUID con formato incorrecto
++ * @returns UUID limpio o null si no es válido
++ */
++function cleanUUID(id: string | null): string | null {
++  if (!id) return null
++  
++  try {
++    // Eliminar comillas extras si existen
++    let cleaned = id.replace(/["']/g, '')
++    
++    // Verificar el formato básico de UUID después de limpiar
++    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned)) {
++      return cleaned
++    }
++    
++    // Caso especial para "default" u otros valores especiales
++    if (cleaned === "default") return cleaned
++    
++    console.warn("UUID inválido después de limpieza:", id, "->", cleaned)
++    return id // En caso de duda, devolvemos el original para evitar loops
++  } catch (error) {
++    console.error("Error al limpiar UUID:", error)
++    return id
++  }
++}
++
++/**
++ * Crea o devuelve una instancia del cliente de Supabase
++ * Con mejor manejo de errores y diagnóstico
++ */
+ export function createClient() {
+-  return createBrowserClient(
+-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+-    {
+-      cookies: {
+-        get(name: string) {
+-          if (typeof document === 'undefined') return undefined
+-          return document.cookie
+-            .split('; ')
+-            .find((row) => row.startsWith(`${name}=`))
+-            ?.split('=')[1]
+-        },
+-        set(name: string, value: string, options: { maxAge?: number; path?: string; domain?: string; secure?: boolean }) {
+-          if (typeof document === 'undefined') return
+-          let cookie = `${name}=${value}`
+-          if (options?.path) cookie += `; path=${options.path}`
+-          if (options?.maxAge) cookie += `; max-age=${options.maxAge}`
+-          if (options?.domain) cookie += `; domain=${options.domain}`
+-          if (options?.secure) cookie += `; secure`
+-          document.cookie = cookie
+-        },
+-        remove(name: string, options: { path?: string; domain?: string }) {
+-          if (typeof document === 'undefined') return
+-          let cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:01 GMT`
+-          if (options?.path) cookie += `; path=${options.path}`
+-          if (options?.domain) cookie += `; domain=${options.domain}`
+-          document.cookie = cookie
++  // Verificar variables de entorno
++  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
++    console.error('NEXT_PUBLIC_SUPABASE_URL no está definida')
++    return createMockClient('missing-env')
++  }
++  
++  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
++    console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY no está definida')
++    return createMockClient('missing-env')
++  }
++
++  // No crear el cliente si estamos en el servidor
++  if (typeof window === 'undefined') {
++    console.warn('Intento de crear cliente Supabase en el lado del servidor')
++    return createMockClient('server-side')
++  }
++  
++  // Verificar si hay un error previo
++  if (clientCreationError) {
++    console.warn('Usando cliente mock debido a error previo:', clientCreationError.message)
++    return createMockClient('previous-error')
++  }
++  
++  // Prevenir creaciones concurrentes
++  if (isClientCreating) {
++    console.warn('La creación del cliente ya está en progreso, devolviendo cliente mock temporal')
++    return createMockClient('creating-in-progress')
++  }
++
++  // Si ya existe un cliente y fue creado hace menos de 5 minutos, devolver esa instancia
++  if (supabaseClient && clientCreationTimestamp) {
++    const now = Date.now()
++    const fiveMinutes = 5 * 60 * 1000
++    if (now - clientCreationTimestamp < fiveMinutes) {
++      return supabaseClient
++    }
++  }
++
++  try {
++    // Establecer flag para evitar creaciones concurrentes
++    isClientCreating = true
++    
++    // Solo crear un nuevo cliente si no existe o si ha expirado
++    console.log('Creando nuevo cliente Supabase...')
++    
++    clientCreationTimestamp = Date.now()
++    
++    supabaseClient = createBrowserClient(
++      process.env.NEXT_PUBLIC_SUPABASE_URL!,
++      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
++      {
++        cookies: {
++          get(name: string) {
++            if (typeof document === 'undefined') return undefined
++            
++            try {
++              return document.cookie
++                .split('; ')
++                .find((row) => row.startsWith(`${name}=`))
++                ?.split('=')[1]
++            } catch (error) {
++              console.error('Error obteniendo cookie:', error)
++              return undefined
++            }
++          },
++          set(name: string, value: string, options: { maxAge?: number; path?: string; domain?: string; secure?: boolean }) {
++            if (typeof document === 'undefined') return
++            
++            try {
++              let cookie = `${name}=${value}`
++              if (options?.path) cookie += `; path=${options.path}`
++              if (options?.maxAge) cookie += `; max-age=${options.maxAge}`
++              if (options?.domain) cookie += `; domain=${options.domain}`
++              if (options?.secure) cookie += `; secure`
++              document.cookie = cookie
++            } catch (error) {
++              console.error('Error estableciendo cookie:', error)
++            }
++          },
++          remove(name: string, options: { path?: string; domain?: string }) {
++            if (typeof document === 'undefined') return
++            
++            try {
++              let cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:01 GMT`
++              if (options?.path) cookie += `; path=${options.path}`
++              if (options?.domain) cookie += `; domain=${options.domain}`
++              document.cookie = cookie
++            } catch (error) {
++              console.error('Error eliminando cookie:', error)
++            }
++          }
+         }
+       }
+-    }
+-  )
++    )
++    
++    // Limpiar errores previos si todo salió bien
++    clientCreationError = null
++    isClientCreating = false
++    
++    console.log('Cliente Supabase creado correctamente')
++    return supabaseClient
++  } catch (error) {
++    // Guardar el error para verificaciones futuras
++    clientCreationError = error instanceof Error ? error : new Error(String(error))
++    console.error('Error creando cliente Supabase:', clientCreationError)
++    
++    // Limpiar flag
++    isClientCreating = false
++    
++    // Devolver un cliente dummy en caso de error para evitar un fallo completo
++    return createMockClient('error')
++  }
++}
++
++/**
++ * Crea un cliente mock para situaciones donde no se puede crear el cliente real
++ */
++function createMockClient(reason: string) {
++  console.log(`Usando cliente Supabase MOCK (${reason})`)
++  
++  return {
++    auth: {
++      getSession: async () => {
++        console.log('Mock: getSession() llamado')
++        return { 
++          data: { session: null }, 
++          error: { message: `Cliente mock (${reason}): No hay sesión disponible` } 
++        }
++      },
++      onAuthStateChange: () => {
++        console.log('Mock: onAuthStateChange() llamado')
++        return { 
++          data: { 
++            subscription: { 
++              unsubscribe: () => console.log('Mock: unsubscribe() llamado') 
++            } 
++          } 
++        }
++      }
++    },
++    from: () => ({
++      select: () => {
++        console.log('Mock: select() llamado')
++        return { 
++          eq: () => ({ 
++            data: null, 
++            error: { message: `Cliente mock (${reason}): No se pueden obtener datos` } 
++          }), 
++          order: () => ({ 
++            data: null, 
++            error: { message: `Cliente mock (${reason}): No se pueden obtener datos` } 
++          }) 
++        }
++      },
++      insert: () => {
++        console.log('Mock: insert() llamado')
++        return { 
++          data: null, 
++          error: { message: `Cliente mock (${reason}): No se pueden insertar datos` } 
++        }
++      },
++      update: () => {
++        console.log('Mock: update() llamado')
++        return { 
++          eq: () => ({ 
++            data: null, 
++            error: { message: `Cliente mock (${reason}): No se pueden actualizar datos` } 
++          }) 
++        }
++      },
++      delete: () => {
++        console.log('Mock: delete() llamado')
++        return { 
++          eq: () => ({ 
++            data: null, 
++            error: { message: `Cliente mock (${reason}): No se pueden eliminar datos` } 
++          }) 
++        }
++      }
++    }),
++    channel: () => ({
++      on: () => {
++        console.log('Mock: on() llamado')
++        return { 
++          subscribe: () => ({ 
++            unsubscribe: () => console.log('Mock: channel.unsubscribe() llamado') 
++          }) 
++        }
++      }
++    })
++  }
+ } 
+\ No newline at end of file
+diff --git a/package-lock.json b/package-lock.json
+index 7545350..392882f 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -36,6 +36,7 @@
+         "aria-hidden": "^1.2.4",
+         "class-variance-authority": "^0.7.1",
+         "clsx": "^2.1.1",
++        "cmdk": "^1.0.4",
+         "cookies-next": "^5.1.0",
+         "eslint": "8.35.0",
+         "eslint-config-next": "13.2.3",
+@@ -3307,6 +3308,21 @@
+         "node": ">=6"
+       }
+     },
++    "node_modules/cmdk": {
++      "version": "1.0.4",
++      "resolved": "https://registry.npmjs.org/cmdk/-/cmdk-1.0.4.tgz",
++      "integrity": "sha512-AnsjfHyHpQ/EFeAnG216WY7A5LiYCoZzCSygiLvfXC3H3LFGCprErteUcszaVluGOhuOTbJS3jWHrSDYPBBygg==",
++      "dependencies": {
++        "@radix-ui/react-dialog": "^1.1.2",
++        "@radix-ui/react-id": "^1.1.0",
++        "@radix-ui/react-primitive": "^2.0.0",
++        "use-sync-external-store": "^1.2.2"
++      },
++      "peerDependencies": {
++        "react": "^18 || ^19 || ^19.0.0-rc",
++        "react-dom": "^18 || ^19 || ^19.0.0-rc"
++      }
++    },
+     "node_modules/code-block-writer": {
+       "version": "12.0.0",
+       "resolved": "https://registry.npmjs.org/code-block-writer/-/code-block-writer-12.0.0.tgz",
+@@ -8340,6 +8356,14 @@
+         }
+       }
+     },
++    "node_modules/use-sync-external-store": {
++      "version": "1.4.0",
++      "resolved": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.4.0.tgz",
++      "integrity": "sha512-9WXSPC5fMv61vaupRkCKCxsPxBocVnwakBEkMIHHpkTTg6icbJtg6jzgtLDm4bl3cSHAca52rYWih0k4K3PfHw==",
++      "peerDependencies": {
++        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
++      }
++    },
+     "node_modules/util-deprecate": {
+       "version": "1.0.2",
+       "resolved": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
+diff --git a/package.json b/package.json
+index 06264dd..72cbc3d 100644
+--- a/package.json
++++ b/package.json
+@@ -38,6 +38,7 @@
+     "aria-hidden": "^1.2.4",
+     "class-variance-authority": "^0.7.1",
+     "clsx": "^2.1.1",
++    "cmdk": "^1.0.4",
+     "cookies-next": "^5.1.0",
+     "eslint": "8.35.0",
+     "eslint-config-next": "13.2.3",

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Tables } from "@/lib/types/database.types"
 
@@ -33,7 +33,7 @@ export interface CompetitorUrl {
 // Interfaz del contexto
 interface SiteContextType {
   sites: Site[]
-  currentSite: Site
+  currentSite: Site | null
   isLoading: boolean
   error: Error | null
   setCurrentSite: (site: Site) => void
@@ -60,20 +60,117 @@ interface SiteProviderProps {
   children: ReactNode
 }
 
-// Sitio por defecto para casos donde no hay sitios
-const defaultSite: Site = {
-  id: "default",
-  name: "My first site",
-  url: "",
-  description: "",
-  logo_url: null,
-  user_id: "",
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-  resource_urls: [],
-  competitors: [],
-  focusMode: 50,
-  focus_mode: 50
+/**
+ * Limpia un UUID de comillas extras o caracteres no válidos
+ * @param id Posible UUID con formato incorrecto
+ * @returns UUID limpio o null si no es válido
+ */
+function cleanUUID(id: string | null): string | null {
+  if (!id) return null
+  
+  // Eliminar comillas extras si existen
+  let cleaned = id.replace(/["']/g, '')
+  
+  // Verificar el formato básico de UUID después de limpiar
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned)) {
+    return cleaned
+  }
+  
+  // Caso especial para "default" u otros valores especiales
+  if (cleaned === "default") return cleaned
+  
+  console.warn("UUID inválido después de limpieza:", id, "->", cleaned)
+  return null
+}
+
+// Función segura para acceder a localStorage
+function getLocalStorage(key: string, defaultValue: any = null) {
+  if (typeof window === 'undefined') return defaultValue
+  
+  try {
+    const rawValue = localStorage.getItem(key)
+    if (rawValue === null) return defaultValue
+    
+    // Manejar acceso directo para UUIDs y otros IDs para evitar errores de JSON.parse
+    if (key.toLowerCase().includes('id')) {
+      // Para IDs, devolver directamente el valor sin parsear
+      if (key === 'currentSiteId') {
+        console.log(`Acceso directo a ${key}:`, rawValue)
+        
+        // Si es un UUID, intentar limpiarlo
+        const cleanedValue = cleanUUID(rawValue)
+        
+        if (cleanedValue && cleanedValue !== rawValue) {
+          // Si el valor limpio es diferente, actualizar localStorage
+          try {
+            localStorage.setItem(key, cleanedValue)
+            console.log(`UUID corregido en localStorage: ${key} = ${cleanedValue}`)
+          } catch (e) {
+            console.error(`Error al corregir UUID en localStorage:`, e)
+          }
+          return cleanedValue
+        }
+        
+        return rawValue
+      }
+    }
+    
+    // Para otros valores, intentar parsear como JSON, pero con manejo de errores
+    try {
+      return JSON.parse(rawValue)
+    } catch (jsonError) {
+      console.warn(`Valor en localStorage para "${key}" no es JSON válido, usando como texto plano:`, rawValue)
+      return rawValue
+    }
+  } catch (e) {
+    console.error(`Error al leer localStorage key "${key}":`, e)
+    return defaultValue
+  }
+}
+
+// Función segura para guardar en localStorage
+function setLocalStorage(key: string, value: any) {
+  if (typeof window === 'undefined') return
+  
+  try {
+    // Caso especial para currentSiteId - siempre guardar como string plano
+    if (key === 'currentSiteId') {
+      let valueToStore = value
+      
+      // Si es un string, intentar limpiarlo de comillas si es un UUID
+      if (typeof value === 'string') {
+        const cleanedValue = cleanUUID(value)
+        if (cleanedValue) {
+          valueToStore = cleanedValue
+        }
+      }
+      
+      console.log(`Guardando ${key} directamente:`, valueToStore)
+      localStorage.setItem(key, valueToStore)
+      return
+    }
+    
+    // Para otros IDs, también guardar como string plano si es un UUID
+    if (key.toLowerCase().includes('id') && typeof value === 'string') {
+      const cleanedValue = cleanUUID(value)
+      if (cleanedValue) {
+        console.log(`Guardando ID limpio en ${key}:`, cleanedValue)
+        localStorage.setItem(key, cleanedValue)
+        return
+      }
+    }
+    
+    // Para objetos y arrays, usar JSON.stringify
+    if (typeof value === 'object' && value !== null) {
+      localStorage.setItem(key, JSON.stringify(value))
+      return
+    }
+    
+    // Para valores simples (string, number, boolean), guardar directamente
+    localStorage.setItem(key, String(value))
+  } catch (e) {
+    console.error(`Error al guardar en localStorage key "${key}":`, e)
+  }
 }
 
 // Componente proveedor
@@ -83,22 +180,68 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
-  const supabase = createClient()
+  const [isMounted, setIsMounted] = useState(false)
+  
+  // Referencia segura a supabase (inicializada solo en useEffect)
+  const supabaseRef = useRef<any>(null)
+  
+  // Marcar que el componente está montado (solo después de hidratación)
+  useEffect(() => {
+    setIsMounted(true)
+    
+    // Diagnóstico: imprimir el contenido actual de localStorage para debuggear
+    if (typeof window !== 'undefined') {
+      try {
+        console.log("==== Diagnóstico de localStorage ====")
+        const currentSiteId = localStorage.getItem('currentSiteId')
+        console.log(`currentSiteId (raw): "${currentSiteId}"`)
+        
+        if (currentSiteId) {
+          const cleanedId = cleanUUID(currentSiteId)
+          console.log(`currentSiteId (limpio): "${cleanedId}"`)
+          
+          // Corregir si es necesario
+          if (cleanedId && cleanedId !== currentSiteId) {
+            localStorage.setItem('currentSiteId', cleanedId)
+            console.log("ID corregido automáticamente en localStorage")
+          }
+        }
+        console.log("===================================")
+      } catch (e) {
+        console.error("Error en diagnóstico de localStorage:", e)
+      }
+    }
+    
+    return () => setIsMounted(false)
+  }, [])
+  
+  // Inicializar el cliente Supabase solo después de la hidratación
+  useEffect(() => {
+    if (!isMounted) return
+    
+    try {
+      supabaseRef.current = createClient()
+    } catch (err) {
+      console.error("Error initializing Supabase client:", err)
+    }
+  }, [isMounted])
   
   // Cargar sitios desde Supabase
   const loadSites = async () => {
+    if (!isMounted || !supabaseRef.current) return
+    
     try {
       if (!isInitialized) setIsLoading(true)
       setError(null)
       
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await supabaseRef.current.auth.getSession()
       
       if (!session) {
         setIsLoading(false)
         return
       }
       
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRef.current
         .from('sites')
         .select('*')
         .eq('user_id', session.user.id)
@@ -110,14 +253,14 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Cargar focusMode desde localStorage o usar focus_mode de la base de datos
       const sitesWithFocusMode = siteData.map(site => ({
         ...site,
-        focusMode: Number(localStorage.getItem(`site_${site.id}_focusMode`)) || site.focus_mode || 50
+        focusMode: getLocalStorage(`site_${site.id}_focusMode`, site.focus_mode || 50)
       }))
       
       setSites(sitesWithFocusMode)
       
       // Si hay sitios, intentamos restaurar el sitio guardado o usar el primero
       if (sitesWithFocusMode.length > 0) {
-        const savedSiteId = localStorage.getItem("currentSiteId")
+        const savedSiteId = getLocalStorage("currentSiteId")
         const savedSite = savedSiteId ? sitesWithFocusMode.find(site => site.id === savedSiteId) : null
         
         // Si el sitio guardado existe en los datos actuales, lo usamos
@@ -127,13 +270,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
         // Si no hay sitio guardado o no se encuentra, usamos el primero
         else {
           handleSetCurrentSite(sitesWithFocusMode[0])
-          localStorage.setItem("currentSiteId", sitesWithFocusMode[0].id)
+          setLocalStorage("currentSiteId", sitesWithFocusMode[0].id)
           console.log("No saved site found or saved site not in current data. Using first site:", sitesWithFocusMode[0].name)
         }
       } else {
-        // Si no hay sitios, usamos el sitio por defecto
-        handleSetCurrentSite(defaultSite)
-        localStorage.removeItem("currentSiteId")
+        // Si no hay sitios, mostramos estado vacío pero sin usar sitio por defecto
+        setCurrentSite(null)
+        console.log("No sites found for this user")
       }
 
       if (!isInitialized) {
@@ -147,40 +290,48 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
   }
   
-  // Cargar sitios al iniciar el provider
+  // Cargar sitios al iniciar el provider, pero solo después de la hidratación
   useEffect(() => {
+    if (!isMounted || !supabaseRef.current) return
+    
     loadSites()
     
     // Suscribirse a eventos de autenticación para cargar sitios cuando el usuario inicie sesión
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        console.log('User signed in, loading sites...')
-        loadSites()
-      } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out, clearing sites...')
-        setSites([])
-        setCurrentSite(null)
-        localStorage.removeItem("currentSiteId")
+    const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
+      (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED', session: any) => {
+        if (event === 'SIGNED_IN') {
+          console.log('User signed in, loading sites...')
+          loadSites()
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out, clearing sites...')
+          setSites([])
+          setCurrentSite(null)
+          try {
+            localStorage.removeItem("currentSiteId")
+          } catch (e) {
+            console.error("Error removing currentSiteId from localStorage:", e)
+          }
+        }
       }
-    })
+    )
     
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [isMounted])
 
-  // Efecto separado para manejar las suscripciones
+  // Efecto separado para manejar las suscripciones, solo después de la inicialización
   useEffect(() => {
-    if (!isInitialized) return
+    if (!isInitialized || !isMounted || !supabaseRef.current) return
 
     // Suscribirse a cambios en la tabla sites
-    const subscription = supabase
+    const subscription = supabaseRef.current
       .channel('table-db-changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'sites' 
-      }, (payload) => {
+      }, (payload: { eventType: string; new: any; old: any }) => {
         // Recargar sitios solo si hay cambios relevantes
         if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
           loadSites()
@@ -195,20 +346,30 @@ export function SiteProvider({ children }: SiteProviderProps) {
       .subscribe()
     
     return () => {
-      subscription.unsubscribe()
+      try {
+        subscription.unsubscribe()
+      } catch (error) {
+        console.error("Error unsubscribing from channels:", error)
+      }
     }
-  }, [isInitialized, currentSite?.id])
+  }, [isInitialized, currentSite?.id, isMounted])
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = (site: Site) => {
     setCurrentSite(site)
-    if (site.id !== 'default') {
-      localStorage.setItem("currentSiteId", site.id)
+    
+    // Solo guardar si es un sitio válido y no es el 'default'
+    if (site && site.id) {
+      // Guardar el ID directamente - nuestra función setLocalStorage ya maneja la limpieza
+      console.log(`Estableciendo sitio actual: ${site.name} (${site.id})`)
+      setLocalStorage("currentSiteId", site.id)
     }
   }
 
   // Actualizar un sitio en Supabase
   const handleUpdateSite = async (updatedSite: Site) => {
+    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
+    
     try {
       setError(null)
       
@@ -231,7 +392,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       // Actualizamos en Supabase
-      const { error } = await supabase
+      const { error } = await supabaseRef.current
         .from('sites')
         .update(updateData)
         .eq('id', updatedSite.id)
@@ -239,7 +400,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       if (error) throw error
 
       // Si no hay error, guardamos el focusMode en localStorage
-      localStorage.setItem(`site_${updatedSite.id}_focusMode`, String(updatedSite.focusMode))
+      setLocalStorage(`site_${updatedSite.id}_focusMode`, updatedSite.focusMode)
       
       // Si el sitio actualizado es el actual, actualizamos el estado
       if (currentSite?.id === updatedSite.id) {
@@ -262,17 +423,19 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Crear un nuevo sitio
   const handleCreateSite = async (newSite: Omit<Site, 'id' | 'created_at' | 'updated_at'>): Promise<Site> => {
+    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
+    
     try {
       setError(null)
       
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await supabaseRef.current.auth.getSession()
       
       if (!session) {
         throw new Error("No active session")
       }
       
       const now = new Date().toISOString()
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRef.current
         .from('sites')
         .insert({
           name: newSite.name,
@@ -297,7 +460,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       } as Site
       
       // Guardar focusMode en localStorage
-      localStorage.setItem(`site_${createdSite.id}_focusMode`, String(createdSite.focusMode))
+      setLocalStorage(`site_${createdSite.id}_focusMode`, createdSite.focusMode)
       
       await loadSites() // Recargar los sitios
       
@@ -316,10 +479,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Eliminar un sitio
   const handleDeleteSite = async (id: string) => {
+    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
+    
     try {
       setError(null)
       
-      const { error } = await supabase
+      const { error } = await supabaseRef.current
         .from('sites')
         .delete()
         .eq('id', id)
@@ -343,7 +508,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Valor del contexto
   const value = {
     sites,
-    currentSite: currentSite || defaultSite,
+    currentSite: currentSite || null,
     isLoading,
     error,
     setCurrentSite: handleSetCurrentSite,

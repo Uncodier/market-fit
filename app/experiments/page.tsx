@@ -9,7 +9,7 @@ import { Input } from "@/app/components/ui/input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { startExperiment, stopExperiment } from "./actions"
 import { useToast } from "@/app/components/ui/use-toast"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
@@ -125,6 +125,7 @@ export default function ExperimentsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({})
   const [isLoadingData, setIsLoadingData] = useState(true)
+  const [initialFetchDone, setInitialFetchDone] = useState(false)
   const { toast } = useToast()
 
   // Inicializar el hook useCommandK
@@ -149,68 +150,74 @@ export default function ExperimentsPage() {
     setFilteredExperiments(filtered)
   }, [searchQuery, experiments])
 
-  useEffect(() => {
-    async function fetchExperiments() {
-      try {
-        const supabase = createClient()
-        const { data: experimentsData, error: experimentsError } = await supabase
-          .from("experiments")
-          .select(`
-            id,
-            name,
-            description,
-            status,
-            start_date,
-            end_date,
-            conversion,
-            roi,
-            preview_url,
-            hypothesis,
-            experiment_segments (
-              segment:segments (
-                id,
-                name
-              ),
-              participants
-            )
-          `)
-          .order('created_at', { ascending: false })
+  // Memoizar fetchExperiments para evitar recreaciones en cada renderizado
+  const fetchExperiments = useCallback(async () => {
+    if (initialFetchDone) return;
+    
+    try {
+      setIsLoadingData(true);
+      const supabase = createClient()
+      const { data: experimentsData, error: experimentsError } = await supabase
+        .from("experiments")
+        .select(`
+          id,
+          name,
+          description,
+          status,
+          start_date,
+          end_date,
+          conversion,
+          roi,
+          preview_url,
+          hypothesis,
+          experiment_segments (
+            segment:segments (
+              id,
+              name
+            ),
+            participants
+          )
+        `)
+        .order('created_at', { ascending: false })
 
-        if (experimentsError) {
-          console.error("Error fetching experiments:", experimentsError)
-          toast({
-            title: "Error",
-            description: "Failed to load experiments",
-            variant: "destructive"
-          })
-          return
-        }
-
-        // Transform the data to match our interface
-        const transformedData = experimentsData.map((experiment: any) => ({
-          ...experiment,
-          segments: experiment.experiment_segments.map((es: any) => ({
-            id: es.segment.id,
-            name: es.segment.name,
-            participants: es.participants || 0
-          }))
-        }))
-
-        setExperiments(transformedData)
-      } catch (error) {
-        console.error("Error:", error)
+      if (experimentsError) {
+        console.error("Error fetching experiments:", experimentsError)
         toast({
           title: "Error",
-          description: "An unexpected error occurred",
+          description: "Failed to load experiments",
           variant: "destructive"
         })
-      } finally {
-        setIsLoadingData(false)
+        return
       }
-    }
 
+      // Transform the data to match our interface
+      const transformedData = experimentsData.map((experiment: any) => ({
+        ...experiment,
+        segments: experiment.experiment_segments.map((es: any) => ({
+          id: es.segment.id,
+          name: es.segment.name,
+          participants: es.participants || 0
+        }))
+      }))
+
+      setExperiments(transformedData)
+      setInitialFetchDone(true);
+    } catch (error) {
+      console.error("Error:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoadingData(false)
+    }
+  }, [toast, initialFetchDone])
+
+  // Efecto para la carga inicial de datos
+  useEffect(() => {
     fetchExperiments()
-  }, [toast])
+  }, [fetchExperiments])
 
   const handleStartExperiment = async (experimentId: string) => {
     try {
@@ -308,16 +315,17 @@ export default function ExperimentsPage() {
                   </TabsList>
                 </div>
                 <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
                     placeholder="Search experiments..." 
-                    className="pl-8 w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
+                    className="w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     data-command-k-input
                     type="text"
+                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                    iconPosition="left"
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>
@@ -356,16 +364,17 @@ export default function ExperimentsPage() {
                 </TabsList>
               </div>
               <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   placeholder="Search experiments..." 
-                  className="pl-8 w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
+                  className="w-full text-sm bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   data-command-k-input
                   type="text"
+                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                  iconPosition="left"
                 />
-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </div>
@@ -459,25 +468,28 @@ export default function ExperimentsPage() {
                         </div>
                         <CardFooter className="pt-3 px-8">
                           <div className="flex w-full space-x-3">
-                            <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
-                              <Eye className="mr-2 h-4 w-4" />
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 hover:bg-gray-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-gray-700 border-gray-200"
+                            >
+                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
                               View Details
                             </Button>
                             {experiment.status === "active" && (
                               <Button 
-                                variant="destructive" 
-                                className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10"
+                                variant="outline" 
+                                className="flex-1 hover:bg-red-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-red-700 border-red-200"
                                 onClick={() => handleStopExperiment(experiment.id)}
                                 disabled={isLoading[experiment.id]}
                               >
                                 {isLoading[experiment.id] ? (
                                   <>
-                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
+                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-r-red-700" />
                                     Stopping...
                                   </>
                                 ) : (
                                   <>
-                                    <StopCircle className="mr-2 h-4 w-4" />
+                                    <StopCircle className="mr-2 h-4 w-4 text-red-700" />
                                     Stop
                                   </>
                                 )}
@@ -487,24 +499,27 @@ export default function ExperimentsPage() {
                               <>
                                 <Button 
                                   variant="outline" 
-                                  className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10"
+                                  className="flex-1 hover:bg-green-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-green-700 border-green-200"
                                   onClick={() => handleStartExperiment(experiment.id)}
                                   disabled={isLoading[experiment.id]}
                                 >
                                   {isLoading[experiment.id] ? (
                                     <>
-                                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
+                                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-green-200 border-r-green-700" />
                                       Starting...
                                     </>
                                   ) : (
                                     <>
-                                      <PlayCircle className="mr-2 h-4 w-4" />
+                                      <PlayCircle className="mr-2 h-4 w-4 text-green-700" />
                                       Start
                                     </>
                                   )}
                                 </Button>
-                                <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
-                                  <PenSquare className="mr-2 h-4 w-4" />
+                                <Button 
+                                  variant="outline" 
+                                  className="flex-1 hover:bg-blue-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-blue-700 border-blue-200"
+                                >
+                                  <PenSquare className="mr-2 h-4 w-4 text-blue-700" />
                                   Edit
                                 </Button>
                               </>
@@ -609,24 +624,27 @@ export default function ExperimentsPage() {
                         </div>
                         <CardFooter className="pt-3 px-8">
                           <div className="flex w-full space-x-3">
-                            <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
-                              <Eye className="mr-2 h-4 w-4" />
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 hover:bg-gray-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-gray-700 border-gray-200"
+                            >
+                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
                               View Details
                             </Button>
                             <Button 
-                              variant="destructive" 
-                              className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10"
+                              variant="outline" 
+                              className="flex-1 hover:bg-red-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-red-700 border-red-200"
                               onClick={() => handleStopExperiment(experiment.id)}
                               disabled={isLoading[experiment.id]}
                             >
                               {isLoading[experiment.id] ? (
                                 <>
-                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
+                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-r-red-700" />
                                   Stopping...
                                 </>
                               ) : (
                                 <>
-                                  <StopCircle className="mr-2 h-4 w-4" />
+                                  <StopCircle className="mr-2 h-4 w-4 text-red-700" />
                                   Stop
                                 </>
                               )}
@@ -733,12 +751,18 @@ export default function ExperimentsPage() {
                         </div>
                         <CardFooter className="pt-3 px-8">
                           <div className="flex w-full space-x-3">
-                            <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
-                              <Eye className="mr-2 h-4 w-4" />
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 hover:bg-gray-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-gray-700 border-gray-200"
+                            >
+                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
                               View Results
                             </Button>
-                            <Button variant="ghost" className="flex-1 hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm transition-all text-sm font-medium h-10">
-                              <XCircle className="mr-2 h-4 w-4" />
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 hover:bg-red-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-red-700 border-red-200"
+                            >
+                              <XCircle className="mr-2 h-4 w-4 text-red-700" />
                               Reject
                             </Button>
                           </div>
@@ -827,31 +851,37 @@ export default function ExperimentsPage() {
                         </div>
                         <CardFooter className="pt-3 px-8">
                           <div className="flex w-full space-x-3">
-                            <Button variant="outline" className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10">
-                              <PenSquare className="mr-2 h-4 w-4" />
-                              Edit
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 hover:bg-gray-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-gray-700 border-gray-200"
+                            >
+                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
+                              View Details
                             </Button>
                             <Button 
                               variant="outline" 
-                              className="flex-1 hover:shadow-sm transition-all text-sm font-medium h-10"
+                              className="flex-1 hover:bg-green-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-green-700 border-green-200"
                               onClick={() => handleStartExperiment(experiment.id)}
                               disabled={isLoading[experiment.id]}
                             >
                               {isLoading[experiment.id] ? (
                                 <>
-                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
+                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-green-200 border-r-green-700" />
                                   Starting...
                                 </>
                               ) : (
                                 <>
-                                  <PlayCircle className="mr-2 h-4 w-4" />
+                                  <PlayCircle className="mr-2 h-4 w-4 text-green-700" />
                                   Start
                                 </>
                               )}
                             </Button>
-                            <Button variant="ghost" className="flex-1 hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm transition-all text-sm font-medium h-10">
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Delete
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 hover:bg-blue-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-blue-700 border-blue-200"
+                            >
+                              <PenSquare className="mr-2 h-4 w-4 text-blue-700" />
+                              Edit
                             </Button>
                           </div>
                         </CardFooter>

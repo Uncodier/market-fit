@@ -34,6 +34,7 @@ import {
 import { getSegments, createSegment, type SegmentResponse, updateSegmentUrl, updateSegmentStatus } from "./actions"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { useSite } from "@/app/context/SiteContext"
+import { createClient } from "@/lib/supabase/client"
 
 type AdPlatform = "facebook" | "google" | "linkedin" | "twitter"
 
@@ -303,8 +304,10 @@ export default function SegmentsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [copiedStates, setCopiedStates] = useState<Record<string, { keywords: boolean, url: boolean }>>({})
-  const { currentSite, isLoading: isSiteLoading } = useSite()
+  const { currentSite } = useSite()
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [initialFetchDone, setInitialFetchDone] = useState(false)
+  const [loadAttemptsCount, setLoadAttemptsCount] = useState(0)
 
   // Manejador de cambio del input
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -330,6 +333,12 @@ export default function SegmentsPage() {
     setFilteredSegments(filtered)
   }, [segments, selectedAdPlatforms])
 
+  // Función para recargar los segmentos
+  const retryLoadSegments = () => {
+    setError(null)
+    setLoadAttemptsCount(prev => prev + 1)
+  }
+
   // Efecto para manejar el atajo de teclado Command+K
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -353,60 +362,76 @@ export default function SegmentsPage() {
     setFilteredSegments(segments)
   }, [segments])
 
+  // Efecto para cargar los segmentos - Usando Supabase directamente como en la función getSegments original
   useEffect(() => {
-    const loadSegments = async () => {
+    const fetchSegments = async () => {
       try {
-        // Si el sitio está cargando, mantenemos el estado de carga
-        if (isSiteLoading) return
-
-        // Si no hay sitio seleccionado después de la carga
+        if (initialFetchDone && loadAttemptsCount === 0) return;
+        
+        setIsLoading(true);
+        setError(null);
+        
+        // Verificar si tenemos un sitio seleccionado
         if (!currentSite?.id) {
-          setError("Por favor, selecciona un sitio primero")
-          setIsLoading(false)
-          return
+          setError("Por favor, selecciona un sitio primero");
+          setIsLoading(false);
+          return;
         }
-
-        const result = await getSegments(currentSite.id)
         
-        if (result.error) {
-          setError(result.error)
-          return
+        console.log("Cargando segmentos para el sitio:", currentSite.id);
+        
+        // Volver a usar getSegments que sabemos que funciona
+        try {
+          const result = await getSegments(currentSite.id);
+          
+          console.log("Resultado de getSegments:", result);
+          
+          if (result.error) {
+            setError(result.error);
+            setIsLoading(false);
+            return;
+          }
+          
+          const loadedSegments = result.segments || [];
+          console.log(`Se cargaron ${loadedSegments.length} segmentos`);
+          
+          setSegments(loadedSegments);
+          
+          // Inicializar estados para los nuevos segmentos
+          const newExpandedRows: Record<string, boolean> = {}
+          const newSelectedAdPlatforms: Record<string, AdPlatform> = {}
+          const newActiveSegments: Record<string, boolean> = {}
+          const newIframeLoading: Record<string, boolean> = {}
+          
+          loadedSegments.forEach((segment: Segment) => {
+            newExpandedRows[segment.id] = false
+            newSelectedAdPlatforms[segment.id] = "facebook"
+            newActiveSegments[segment.id] = segment.is_active
+            newIframeLoading[segment.id] = false
+          })
+          
+          setExpandedRows(newExpandedRows)
+          setSelectedAdPlatforms(newSelectedAdPlatforms)
+          setActiveSegments(newActiveSegments)
+          setIframeLoading(newIframeLoading)
+          
+          // Si llegamos aquí, todo fue exitoso, así que limpiamos cualquier error
+          setError(null);
+          setInitialFetchDone(true);
+        } catch (innerError) {
+          console.error("Error llamando a getSegments:", innerError);
+          setError("Error al cargar los segmentos. Por favor, intenta nuevamente.");
         }
-
-        const loadedSegments = result.segments || []
-        setSegments(loadedSegments)
-        
-        // Inicializar estados para los nuevos segmentos
-        const newExpandedRows: Record<string, boolean> = {}
-        const newSelectedAdPlatforms: Record<string, AdPlatform> = {}
-        const newActiveSegments: Record<string, boolean> = {}
-        const newIframeLoading: Record<string, boolean> = {}
-        
-        loadedSegments.forEach(segment => {
-          newExpandedRows[segment.id] = false
-          newSelectedAdPlatforms[segment.id] = "facebook"
-          newActiveSegments[segment.id] = segment.is_active
-          newIframeLoading[segment.id] = false
-        })
-        
-        setExpandedRows(newExpandedRows)
-        setSelectedAdPlatforms(newSelectedAdPlatforms)
-        setActiveSegments(newActiveSegments)
-        setIframeLoading(newIframeLoading)
-
-        // Agregamos un pequeño delay antes de quitar el loading
-        setTimeout(() => {
-          setIsLoading(false)
-        }, 100)
       } catch (err) {
-        console.error("Error loading segments:", err)
-        setError("Error al cargar los segmentos. Por favor, intenta nuevamente.")
-        setIsLoading(false)
+        console.error("Error loading segments:", err);
+        setError("Error al cargar los segmentos. Por favor, intenta nuevamente.");
+      } finally {
+        setIsLoading(false);
       }
-    }
-
-    loadSegments()
-  }, [currentSite?.id, isSiteLoading])
+    };
+    
+    fetchSegments();
+  }, [currentSite?.id, initialFetchDone, loadAttemptsCount]);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => ({
@@ -591,14 +616,16 @@ export default function SegmentsPage() {
                   </TabsList>
                 </div>
                 <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search segments..." 
-                    className="pl-8 w-full"
-                    value=""
-                    onChange={() => {}}
+                  <Input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search segments..."
+                    className="w-full"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>
@@ -608,7 +635,15 @@ export default function SegmentsPage() {
           <div className="p-8 space-y-4">
             <div className="px-8">
               <TabsContent value="all" className="space-y-4">
-                {Array.from({ length: 5 }).map((_, index) => (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <p className="text-muted-foreground mb-2">Cargando segmentos...</p>
+                  <p className="text-xs text-muted-foreground">
+                    {currentSite?.id 
+                      ? `Obteniendo datos para el sitio: ${currentSite.name}`
+                      : "Esperando selección de sitio..."}
+                  </p>
+                </div>
+                {Array.from({ length: 3 }).map((_, index) => (
                   <SegmentRowSkeleton key={index} />
                 ))}
               </TabsContent>
@@ -624,12 +659,34 @@ export default function SegmentsPage() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center space-y-4">
           <p className="text-red-500 mb-4">{error}</p>
-          <Button 
-            variant="outline" 
-            onClick={() => window.location.reload()}
-          >
-            Intentar nuevamente
-          </Button>
+          {error.includes("selecciona un sitio") ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Por favor, selecciona un sitio en el selector de la barra de navegación para ver los segmentos disponibles.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Sitio actual: {currentSite ? `${currentSite.name} (${currentSite.id})` : 'Ninguno seleccionado'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Si no tienes sitios, primero debes crear uno en la sección de sitios.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Ocurrió un error al cargar los segmentos. Esto puede deberse a problemas de conexión.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Sitio actual: {currentSite ? `${currentSite.name} (${currentSite.id})` : 'Ninguno seleccionado'}
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={retryLoadSegments}
+              >
+                Intentar nuevamente
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -649,16 +706,16 @@ export default function SegmentsPage() {
                 </TabsList>
               </div>
               <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
                   type="text"
                   placeholder="Search segments..."
-                  className="pl-8 w-full"
+                  className="w-full"
                   value={searchTerm}
                   onChange={handleSearchChange}
+                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
                 />
-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </div>

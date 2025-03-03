@@ -437,15 +437,15 @@ export default function AssetsPage() {
                   </TabsList>
                 </div>
                 <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
                     data-command-k-input
                     placeholder="Search assets..." 
-                    className="pl-8 w-full" 
-                    disabled
-                    value=""
+                    className="w-full" 
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>
@@ -523,15 +523,15 @@ export default function AssetsPage() {
                 </TabsList>
               </div>
               <div className="relative w-64">
-                <Search className={`absolute left-2 top-2.5 h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
                 <Input 
                   data-command-k-input
                   placeholder="Search assets..." 
-                  className="pl-8 w-full" 
+                  className="w-full" 
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
+                  icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
                 />
-                <kbd className="pointer-events-none absolute right-2 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </div>

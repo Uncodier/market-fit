@@ -63,113 +63,7 @@ export function TopBar({
   const isAssetsPage = pathname === "/assets"
   const { currentSite } = useSite()
 
-  const handleCreateSegment = async ({ 
-    name, 
-    description, 
-    audience, 
-    language,
-    site_id 
-  }: { 
-    name: string
-    description: string
-    audience: string
-    language: string
-    site_id: string
-  }) => {
-    try {
-      const result = await createSegment({ 
-        name, 
-        description, 
-        audience, 
-        language,
-        site_id
-      })
-
-      if (result.error) {
-        throw new Error(result.error)
-      }
-
-      // Recargar la página para mostrar el nuevo segmento
-      window.location.reload()
-    } catch (error) {
-      console.error("Error creating segment:", error)
-      throw error
-    }
-  }
-
-  const handleCreateExperiment = async (values: ExperimentFormValues): Promise<{ data?: any; error?: string }> => {
-    try {
-      const result = await createExperiment(values)
-
-      if (result.error) {
-        return { error: result.error }
-      }
-
-      // Recargar la página para mostrar el nuevo experimento
-      window.location.reload()
-      return { data: result.data }
-    } catch (error) {
-      console.error("Error creating experiment:", error)
-      return { error: error instanceof Error ? error.message : "Error inesperado" }
-    }
-  }
-
-  const handleCreateRequirement = async (values: any): Promise<{ data?: any; error?: string }> => {
-    try {
-      const result = await createRequirement(values)
-
-      if (result.error) {
-        return { error: result.error }
-      }
-
-      // Recargar la página para mostrar el nuevo requerimiento
-      window.location.reload()
-      return { data: result.data }
-    } catch (error) {
-      console.error("Error creating requirement:", error)
-      return { error: error instanceof Error ? error.message : "Error inesperado" }
-    }
-  }
-
-  const handleCreateAsset = async ({ 
-    name, 
-    description, 
-    file_path, 
-    file_type,
-    file_size,
-    tags,
-    site_id 
-  }: { 
-    name: string
-    description?: string
-    file_path: string
-    file_type: string
-    file_size: number
-    tags: string[]
-    site_id: string
-  }) => {
-    try {
-      const result = await createAsset({ 
-        name, 
-        description, 
-        file_path, 
-        file_type,
-        file_size,
-        tags,
-        site_id
-      })
-
-      if (result.error) {
-        throw new Error(result.error)
-      }
-
-      // Recargar la página para mostrar el nuevo asset
-      window.location.reload()
-    } catch (error) {
-      console.error("Error creating asset:", error)
-      throw error
-    }
-  }
+  const canCreateContent = !!currentSite
 
   return (
     <div
@@ -219,7 +113,7 @@ export function TopBar({
           </>
         )}
         {isSegmentsPage && (
-          currentSite ? (
+          canCreateContent ? (
             <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
           ) : (
             <Button variant="outline" disabled>
@@ -229,7 +123,7 @@ export function TopBar({
           )
         )}
         {isExperimentsPage && (
-          currentSite ? (
+          canCreateContent ? (
             <CreateExperimentDialog 
               segments={segments || []}
               onCreateExperiment={handleCreateExperiment}
@@ -242,8 +136,12 @@ export function TopBar({
           )
         )}
         {isRequirementsPage && (
-          currentSite ? (
+          canCreateContent ? (
             <>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
               <CreateRequirementDialog 
                 segments={segments || []}
                 onCreateRequirement={handleCreateRequirement}
@@ -263,8 +161,12 @@ export function TopBar({
           )
         )}
         {isLeadsPage && (
-          currentSite ? (
+          canCreateContent ? (
             <>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
               <Button variant="outline">
                 <Download className="mr-2 h-4 w-4" />
                 Export
@@ -282,7 +184,7 @@ export function TopBar({
           )
         )}
         {isAgentsPage && (
-          currentSite ? (
+          canCreateContent ? (
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Agent
@@ -295,7 +197,7 @@ export function TopBar({
           )
         )}
         {isAssetsPage && (
-          currentSite ? (
+          canCreateContent ? (
             <UploadAssetDialog onUploadAsset={handleCreateAsset} />
           ) : (
             <Button variant="outline" disabled>
