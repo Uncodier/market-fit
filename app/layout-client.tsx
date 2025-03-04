@@ -29,6 +29,10 @@ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
     title: "Assets",
     helpText: "Manage and organize your media files and documents"
   },
+  "/notifications": {
+    title: "Notifications",
+    helpText: "Stay updated with all the activity in your account"
+  },
   "/leads": {
     title: "Leads",
     helpText: "Manage and track potential customers"

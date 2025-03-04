@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
 import { Checkbox } from "@/app/components/ui/checkbox"
-import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban } from "@/app/components/ui/icons"
+import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
 import React, { useState, useEffect } from "react"
@@ -14,18 +14,28 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { useToast } from "@/app/components/ui/use-toast"
 import { CreateRequirementDialog } from "@/app/components/create-requirement-dialog"
-import { createRequirement, updateRequirementStatus, updateCompletionStatus } from "./actions"
+import { createRequirement, updateRequirementStatus, updateCompletionStatus, updateRequirementPriority } from "./actions"
 import { createClient } from "@/lib/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { type Segment } from "./types"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { FilterModal, type RequirementFilters } from "@/app/components/ui/filter-modal"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/app/components/ui/dropdown-menu"
 
 // Constantes para estados
 const REQUIREMENT_STATUS = {
   VALIDATED: "validated",
   IN_PROGRESS: "in-progress",
-  BACKLOG: "backlog"
+  ON_REVIEW: "on-review",
+  DONE: "done",
+  BACKLOG: "backlog",
+  CANCELED: "canceled"
 } as const;
 
 const COMPLETION_STATUS = {
@@ -70,14 +80,16 @@ interface SegmentData {
   description: string
 }
 
-function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus }: { 
+function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus, onUpdatePriority }: { 
   requirement: Requirement, 
   onUpdateStatus: (id: string, status: RequirementStatusType) => Promise<void>,
-  onUpdateCompletionStatus: (id: string, status: CompletionStatusType) => Promise<void>
+  onUpdateCompletionStatus: (id: string, status: CompletionStatusType) => Promise<void>,
+  onUpdatePriority: (id: string, priority: "high" | "medium" | "low") => Promise<void>
 }) {
   const [isExpanded, setIsExpanded] = React.useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isUpdatingCompletion, setIsUpdatingCompletion] = useState(false)
+  const [isUpdatingPriority, setIsUpdatingPriority] = useState(false)
   const { toast } = useToast()
 
   const priorityColors = {
@@ -89,7 +101,10 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
   const statusColors = {
     [REQUIREMENT_STATUS.VALIDATED]: "bg-green-100/20 text-green-600 dark:text-green-400 hover:bg-green-100/30 border-green-300/30",
     [REQUIREMENT_STATUS.IN_PROGRESS]: "bg-purple-100/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100/30 border-purple-300/30",
-    [REQUIREMENT_STATUS.BACKLOG]: "bg-gray-100/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100/30 border-gray-300/30"
+    [REQUIREMENT_STATUS.ON_REVIEW]: "bg-blue-100/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100/30 border-blue-300/30",
+    [REQUIREMENT_STATUS.DONE]: "bg-green-100/20 text-green-600 dark:text-green-400 hover:bg-green-100/30 border-green-300/30",
+    [REQUIREMENT_STATUS.BACKLOG]: "bg-gray-100/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100/30 border-gray-300/30",
+    [REQUIREMENT_STATUS.CANCELED]: "bg-red-100/20 text-red-600 dark:text-red-400 hover:bg-red-100/30 border-red-300/30"
   }
 
   const completionStatusColors = {
@@ -106,7 +121,10 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
         title: "Status updated",
         description: `The requirement has been moved to ${
           status === REQUIREMENT_STATUS.VALIDATED ? "Validated" : 
-          status === REQUIREMENT_STATUS.IN_PROGRESS ? "In Progress" : 
+          status === REQUIREMENT_STATUS.IN_PROGRESS ? "In Progress" :
+          status === REQUIREMENT_STATUS.ON_REVIEW ? "On Review" :
+          status === REQUIREMENT_STATUS.DONE ? "Done" :
+          status === REQUIREMENT_STATUS.CANCELED ? "Canceled" :
           "Backlog"
         }`,
       })
@@ -144,6 +162,28 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
     }
   }
 
+  const handleUpdatePriority = async (priority: "high" | "medium" | "low") => {
+    try {
+      setIsUpdatingPriority(true)
+      await onUpdatePriority(requirement.id, priority)
+      toast({
+        title: "Priority updated",
+        description: `The requirement priority has been updated to ${
+          priority === "high" ? "High" : 
+          priority === "medium" ? "Medium" : "Low"
+        }`,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        variant: "destructive",
+        description: "Error al actualizar la prioridad del requisito",
+      })
+    } finally {
+      setIsUpdatingPriority(false)
+    }
+  }
+
   return (
     <Collapsible
       open={isExpanded}
@@ -171,17 +211,174 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
               <div className="flex flex-wrap gap-6 w-full lg:w-3/4 justify-start lg:justify-between">
                 <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Priority</p>
-                  <Badge variant="secondary" className={priorityColors[requirement.priority]}>
-                    {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
-                  </Badge>
+                  {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
+                    <Badge 
+                      variant="secondary" 
+                      className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
+                    >
+                      {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                    </Badge>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                          <Badge variant="secondary" className={priorityColors[requirement.priority]}>
+                            {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                          </Badge>
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingPriority}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdatePriority("high");
+                          }}
+                        >
+                          <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
+                          High Priority
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingPriority}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdatePriority("medium");
+                          }}
+                        >
+                          <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
+                          Medium Priority
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingPriority}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdatePriority("low");
+                          }}
+                        >
+                          <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
+                          Low Priority
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  {isUpdatingPriority && (
+                    <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
+                  )}
                 </div>
                 <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Status</p>
-                  <Badge variant="secondary" className={statusColors[requirement.status]}>
-                    {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                      ? "In Progress" 
-                      : requirement.status.charAt(0).toUpperCase() + requirement.status.slice(1)}
-                  </Badge>
+                  {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
+                    <Badge 
+                      variant="secondary" 
+                      className={`${statusColors[requirement.status]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
+                    >
+                      {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
+                        ? "In Progress" 
+                        : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
+                          ? "On Review"
+                          : requirement.status === REQUIREMENT_STATUS.DONE
+                            ? "Done"
+                            : requirement.status === REQUIREMENT_STATUS.CANCELED
+                              ? "Canceled"
+                              : requirement.status === REQUIREMENT_STATUS.VALIDATED
+                                ? "Validated"
+                                : "Backlog"}
+                    </Badge>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                          <Badge variant="secondary" className={statusColors[requirement.status]}>
+                            {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
+                              ? "In Progress" 
+                              : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
+                                ? "On Review"
+                                : requirement.status === REQUIREMENT_STATUS.DONE
+                                  ? "Done"
+                                  : requirement.status === REQUIREMENT_STATUS.CANCELED
+                                    ? "Canceled"
+                                    : requirement.status === REQUIREMENT_STATUS.VALIDATED
+                                      ? "Validated"
+                                      : "Backlog"}
+                          </Badge>
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingStatus}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG);
+                          }}
+                        >
+                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
+                          Backlog
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingStatus}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(REQUIREMENT_STATUS.IN_PROGRESS);
+                          }}
+                        >
+                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
+                          In Progress
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingStatus}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(REQUIREMENT_STATUS.ON_REVIEW);
+                          }}
+                        >
+                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
+                          On Review
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingStatus}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(REQUIREMENT_STATUS.DONE);
+                          }}
+                        >
+                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
+                          Done
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingStatus}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(REQUIREMENT_STATUS.VALIDATED);
+                          }}
+                        >
+                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
+                          Validated
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          disabled={isUpdatingStatus}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(REQUIREMENT_STATUS.CANCELED);
+                          }}
+                        >
+                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
+                          Canceled
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  {isUpdatingStatus && (
+                    <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
+                  )}
                 </div>
                 <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Source</p>
@@ -226,26 +423,183 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                 <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
                   {requirement.completionStatus === COMPLETION_STATUS.PENDING && (
                     <>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-background hover:bg-muted/80 border-border transition-all duration-200 shadow-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
-                        }}
-                        disabled={isUpdatingStatus || isUpdatingCompletion}
-                      >
-                        <Archive className="h-4 w-4" />
-                        <span className="font-medium">Move to Backlog</span>
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className={`flex items-center gap-2 w-auto ${statusColors[requirement.status]} px-4 py-2 border-border transition-all duration-200 shadow-sm`}
+                          >
+                            <span className="font-medium">
+                              {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
+                                ? "In Progress" 
+                                : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
+                                  ? "On Review"
+                                  : requirement.status === REQUIREMENT_STATUS.DONE
+                                    ? "Done"
+                                    : requirement.status === REQUIREMENT_STATUS.CANCELED
+                                      ? "Canceled"
+                                      : requirement.status === REQUIREMENT_STATUS.VALIDATED
+                                        ? "Validated"
+                                        : "Backlog"}
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-70" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingStatus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG);
+                            }}
+                          >
+                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
+                            Backlog
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingStatus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(REQUIREMENT_STATUS.IN_PROGRESS);
+                            }}
+                          >
+                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
+                            In Progress
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingStatus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(REQUIREMENT_STATUS.ON_REVIEW);
+                            }}
+                          >
+                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
+                            On Review
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingStatus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(REQUIREMENT_STATUS.DONE);
+                            }}
+                          >
+                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
+                            Done
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingStatus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(REQUIREMENT_STATUS.VALIDATED);
+                            }}
+                          >
+                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
+                            Validated
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingStatus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(REQUIREMENT_STATUS.CANCELED);
+                            }}
+                          >
+                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
+                            Canceled
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {isUpdatingStatus && (
+                        <span className="text-sm text-muted-foreground animate-pulse self-center">Updating...</span>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className={`flex items-center gap-2 w-auto 
+                              ${requirement.priority === "high" 
+                                ? "bg-red-100/20 text-red-600 dark:text-red-400 hover:bg-red-100/30 border-red-300/30" 
+                                : requirement.priority === "medium"
+                                  ? "bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-100/30 border-yellow-300/30"
+                                  : "bg-blue-100/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100/30 border-blue-300/30"
+                              } px-4 py-2 border-border transition-all duration-200 shadow-sm`}
+                          >
+                            <span className="font-medium">
+                              {requirement.priority === "high" 
+                                ? "High Priority" 
+                                : requirement.priority === "medium"
+                                  ? "Medium Priority"
+                                  : "Low Priority"}
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-70" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingPriority}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdatePriority("high");
+                            }}
+                          >
+                            <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
+                            High Priority
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingPriority}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdatePriority("medium");
+                            }}
+                          >
+                            <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
+                            Medium Priority
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="cursor-pointer"
+                            disabled={isUpdatingPriority}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdatePriority("low");
+                            }}
+                          >
+                            <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
+                            Low Priority
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {isUpdatingPriority && (
+                        <span className="text-sm text-muted-foreground animate-pulse self-center">Updating...</span>
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm" 
                         className="flex items-center gap-2 w-full sm:w-auto bg-green-100/20 hover:bg-green-100/30 text-green-600 dark:text-green-400 border-green-300/30 transition-all duration-200 shadow-sm"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation()
-                          handleUpdateCompletionStatus(COMPLETION_STATUS.COMPLETED)
+                          // Update both status and completion status
+                          setIsUpdatingCompletion(true)
+                          setIsUpdatingStatus(true)
+                          try {
+                            await handleUpdateStatus(REQUIREMENT_STATUS.DONE)
+                            await handleUpdateCompletionStatus(COMPLETION_STATUS.COMPLETED)
+                          } finally {
+                            setIsUpdatingCompletion(false)
+                            setIsUpdatingStatus(false)
+                          }
+                          toast({
+                            title: "Requirement completed",
+                            description: "The requirement has been marked as done and completed",
+                          })
                         }}
                         disabled={isUpdatingStatus || isUpdatingCompletion}
                       >
@@ -256,9 +610,22 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         variant="outline" 
                         size="sm" 
                         className="flex items-center gap-2 w-full sm:w-auto bg-red-100/20 hover:bg-red-100/30 text-red-600 dark:text-red-400 border-red-300/30 transition-all duration-200 shadow-sm"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation()
-                          handleUpdateCompletionStatus(COMPLETION_STATUS.REJECTED)
+                          // Update both status and completion status
+                          setIsUpdatingCompletion(true)
+                          setIsUpdatingStatus(true)
+                          try {
+                            await handleUpdateStatus(REQUIREMENT_STATUS.CANCELED)
+                            await handleUpdateCompletionStatus(COMPLETION_STATUS.REJECTED)
+                          } finally {
+                            setIsUpdatingCompletion(false)
+                            setIsUpdatingStatus(false)
+                          }
+                          toast({
+                            title: "Requirement rejected",
+                            description: "The requirement has been rejected",
+                          })
                         }}
                         disabled={isUpdatingStatus || isUpdatingCompletion}
                       >
@@ -269,19 +636,6 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                   )}
                   {requirement.completionStatus === COMPLETION_STATUS.COMPLETED && (
                     <>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-background hover:bg-muted/80 border-border transition-all duration-200 shadow-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
-                        }}
-                        disabled={isUpdatingStatus || isUpdatingCompletion}
-                      >
-                        <Archive className="h-4 w-4" />
-                        <span className="font-medium">Move to Backlog</span>
-                      </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -299,19 +653,9 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                   )}
                   {requirement.completionStatus === COMPLETION_STATUS.REJECTED && (
                     <>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-background hover:bg-muted/80 border-border transition-all duration-200 shadow-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
-                        }}
-                        disabled={isUpdatingStatus || isUpdatingCompletion}
-                      >
-                        <Archive className="h-4 w-4" />
-                        <span className="font-medium">Move to Backlog</span>
-                      </Button>
+                      {isUpdatingStatus && (
+                        <span className="text-sm text-muted-foreground animate-pulse self-center">Updating...</span>
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -384,6 +728,7 @@ export default function RequirementsPage() {
   const [filters, setFilters] = useState<RequirementFilters>({
     priority: [],
     completionStatus: [],
+    status: [],
     segments: []
   })
   
@@ -613,52 +958,102 @@ export default function RequirementsPage() {
     }
   }
 
-  // Filtramos los requisitos por búsqueda, tab y filtros avanzados
+  // Manejar actualización de prioridad con invalidación de caché
+  const handleUpdatePriority = async (id: string, priority: "high" | "medium" | "low") => {
+    try {
+      const { error } = await updateRequirementPriority(id, priority)
+      
+      if (error) {
+        throw new Error(error)
+      }
+      
+      // Actualizar el estado local
+      setRequirements(prevReqs => 
+        prevReqs.map(req => 
+          req.id === id ? { ...req, priority } : req
+        )
+      )
+      
+      // Invalidar caché si hay un sitio seleccionado
+      if (currentSite?.id) {
+        const siteId = cleanUUID(currentSite.id);
+        if (siteId) {
+          invalidateCache(siteId);
+        }
+      }
+      
+    } catch (error) {
+      console.error("Error al actualizar la prioridad:", error)
+      toast({
+        title: "Error",
+        variant: "destructive",
+        description: error instanceof Error ? error.message : "Error al actualizar la prioridad",
+      })
+      throw error
+    }
+  }
+
+  // Efecto para filtrar los requisitos según la pestaña activa y otros filtros
   useEffect(() => {
+    if (!requirements || requirements.length === 0) {
+      setFilteredRequirements([]);
+      return;
+    }
+
+    // Obtener requisitos que coinciden con los criterios de búsqueda
     let filtered = [...requirements];
-    
-    // Apply search filter
+
+    // Filtrar por texto de búsqueda
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(req => 
-        (req.title || "").toLowerCase().includes(query) ||
-        (req.description || "").toLowerCase().includes(query) ||
-        (req.source || "").toLowerCase().includes(query) ||
-        (req.segmentNames || []).some(segment => 
-          (segment || "").toLowerCase().includes(query)
-        )
+        req.title.toLowerCase().includes(query) || 
+        req.description.toLowerCase().includes(query) ||
+        req.source.toLowerCase().includes(query)
       );
     }
-    
-    // Apply tab filter
-    if (activeTab !== "all") {
-      const normalizedTab = activeTab.toLowerCase();
-      filtered = filtered.filter(req => {
-        if (normalizedTab === "validated") return req.status === REQUIREMENT_STATUS.VALIDATED;
-        if (normalizedTab === "in-progress") return req.status === REQUIREMENT_STATUS.IN_PROGRESS;
-        if (normalizedTab === "backlog") return req.status === REQUIREMENT_STATUS.BACKLOG;
-        return true;
-      });
-    }
-    
-    // Apply advanced filters
+
+    // Aplicar filtros avanzados si están definidos
     if (filters.priority.length > 0) {
       filtered = filtered.filter(req => filters.priority.includes(req.priority));
     }
-    
-    if (filters.completionStatus.length > 0) {
-      filtered = filtered.filter(req => filters.completionStatus.includes(req.completionStatus));
-    }
-    
+
     if (filters.segments.length > 0) {
       filtered = filtered.filter(req => 
-        req.segments.some(segmentId => filters.segments.includes(segmentId))
+        req.segments.some(segId => filters.segments.includes(segId))
+      );
+    }
+
+    if (filters.completionStatus.length > 0) {
+      filtered = filtered.filter(req => 
+        filters.completionStatus.includes(req.completionStatus)
       );
     }
     
+    if (filters.status.length > 0) {
+      filtered = filtered.filter(req => 
+        filters.status.includes(req.status)
+      );
+    }
+
+    // Filtrar según la pestaña activa
+    if (activeTab !== "all") {
+      switch (activeTab) {
+        case "pending":
+          filtered = filtered.filter(req => req.completionStatus === COMPLETION_STATUS.PENDING);
+          break;
+        case "completed":
+          filtered = filtered.filter(req => req.completionStatus === COMPLETION_STATUS.COMPLETED);
+          break;
+        case "rejected":
+          filtered = filtered.filter(req => req.completionStatus === COMPLETION_STATUS.REJECTED);
+          break;
+      }
+    }
+
     setFilteredRequirements(filtered);
-  }, [requirements, searchQuery, activeTab, filters]);
-  
+  }, [requirements, activeTab, searchQuery, filters]);
+
   // Security mechanism to prevent indefinite loading
   useEffect(() => {
     if (isLoading) {
@@ -687,9 +1082,8 @@ export default function RequirementsPage() {
         Please create or select a site to manage its requirements.
       </p>
     </div>
-  );
+  )
 
-  // Restaurando el componente LoadingState original
   const LoadingState = () => (
     <div className="space-y-3">
       {[1, 2, 3].map(i => (
@@ -727,29 +1121,34 @@ export default function RequirementsPage() {
         </Card>
       ))}
     </div>
-  );
+  )
 
-  const EmptyResults = () => (
-    <div className="flex flex-col items-center justify-center p-8 text-center h-[300px]">
-      <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-xl font-medium mb-2">No requirements found</h3>
-      <p className="text-muted-foreground max-w-md mb-4">
-        {searchQuery
-          ? "No results for your search. Try with other terms."
-          : requirements.length > 0 
-            ? `There are ${requirements.length} requirements in the database, but none match the current filter (${activeTab}).`
-            : "No requirements created yet. Create a new one to start."
+  const EmptyResults = () => {
+    // Determinar el mensaje adecuado según el contexto
+    const getTabName = (tab: string): string => {
+      switch (tab) {
+        case "validated": return "validated requirements";
+        case "in-progress": return "in-progress requirements";
+        case "backlog": return "backlog requirements";
+        default: return "all requirements";
+      }
+    };
+    const tabName = getTabName(activeTab);
+    
+    return (
+      <EmptyState
+        icon={<ClipboardList className="w-24 h-24 text-primary/40" />}
+        title={searchQuery ? "No matching requirements found" : "No requirements found"}
+        description={
+          searchQuery 
+            ? "No results for your search. Try with other terms."
+            : requirements.length > 0 
+              ? `There are ${requirements.length} requirements in the database, but none match the current filter (${tabName}).`
+              : "No requirements created yet. Create a new one to start."
         }
-      </p>
-      <Button 
-        onClick={() => window.location.reload()} 
-        variant="outline"
-      >
-        <RotateCcw className="mr-2 h-4 w-4" />
-        Reload data
-      </Button>
-    </div>
-  );
+      />
+    );
+  };
 
   // Función de búsqueda
   const handleSearch = (value: string) => {
@@ -766,6 +1165,7 @@ export default function RequirementsPage() {
     setFilters({
       priority: [],
       completionStatus: [],
+      status: [],
       segments: []
     });
     setSearchQuery("");
@@ -799,6 +1199,7 @@ export default function RequirementsPage() {
         onApplyFilters={handleApplyFilters}
         segments={segments}
         completionStatusOptions={[COMPLETION_STATUS.PENDING, COMPLETION_STATUS.COMPLETED, COMPLETION_STATUS.REJECTED]}
+        statusOptions={[REQUIREMENT_STATUS.IN_PROGRESS, REQUIREMENT_STATUS.ON_REVIEW, REQUIREMENT_STATUS.DONE, REQUIREMENT_STATUS.BACKLOG, REQUIREMENT_STATUS.CANCELED]}
       />
       
       <Tabs defaultValue="all" onValueChange={setActiveTab}>
@@ -808,9 +1209,9 @@ export default function RequirementsPage() {
               <div className="flex-1">
                 <TabsList className="w-full">
                   <TabsTrigger value="all">All Requirements</TabsTrigger>
-                  <TabsTrigger value="validated">Validated</TabsTrigger>
-                  <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-                  <TabsTrigger value="backlog">Backlog</TabsTrigger>
+                  <TabsTrigger value="pending">Pending</TabsTrigger>
+                  <TabsTrigger value="completed">Completed</TabsTrigger>
+                  <TabsTrigger value="rejected">Rejected</TabsTrigger>
                 </TabsList>
               </div>
               <SearchInput
@@ -840,7 +1241,7 @@ export default function RequirementsPage() {
         <div className="p-8 space-y-4">
           <div className="px-8">
             {/* Rendering for all tabs */}
-            {["all", "validated", "in-progress", "backlog"].map((tab) => (
+            {["all", "pending", "completed", "rejected"].map((tab) => (
               <TabsContent key={tab} value={tab} className="space-y-4 min-h-[300px]">
                 {/* Case 1: No site selected */}
                 {!currentSite ? (
@@ -876,6 +1277,7 @@ export default function RequirementsPage() {
                         requirement={requirement} 
                         onUpdateStatus={handleUpdateStatus}
                         onUpdateCompletionStatus={handleUpdateCompletionStatus}
+                        onUpdatePriority={handleUpdatePriority}
                       />
                     ))}
                   </div>

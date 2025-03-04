@@ -274,15 +274,16 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                               "[&_.range]:duration-200",
                               "[&]:h-4",
                               "[&]:bg-gray-100",
+                              "[&]:dark:bg-gray-800",
                               "[&]:rounded-full",
                               {
-                                "slider-sales-strong [&_[role=slider]]:bg-blue-700 [&_.range]:bg-blue-700 [&]:bg-blue-100": field.value <= 20,
-                                "slider-sales-moderate [&_[role=slider]]:bg-blue-600 [&_.range]:bg-blue-600 [&]:bg-blue-50": field.value > 20 && field.value <= 40,
-                                "slider-balanced-sales [&_[role=slider]]:bg-purple-600 [&_.range]:bg-purple-500 [&]:bg-purple-50": field.value > 40 && field.value <= 49,
-                                "slider-balanced-perfect [&_[role=slider]]:bg-purple-600 [&_.range]:bg-purple-600 [&]:bg-purple-100": field.value === 50,
-                                "slider-balanced-growth [&_[role=slider]]:bg-purple-600 [&_.range]:bg-purple-500 [&]:bg-purple-50": field.value > 50 && field.value <= 60,
-                                "slider-growth-moderate [&_[role=slider]]:bg-green-600 [&_.range]:bg-green-500 [&]:bg-green-50": field.value > 60 && field.value <= 80,
-                                "slider-growth-strong [&_[role=slider]]:bg-green-600 [&_.range]:bg-green-600 [&]:bg-green-100": field.value > 80
+                                "slider-sales-strong [&_[role=slider]]:bg-blue-700 [&_.range]:bg-blue-700 [&]:bg-blue-100 dark:[&]:bg-blue-950/50": field.value <= 20,
+                                "slider-sales-moderate [&_[role=slider]]:bg-blue-600 [&_.range]:bg-blue-600 [&]:bg-blue-50 dark:[&]:bg-blue-900/40": field.value > 20 && field.value <= 40,
+                                "slider-balanced-sales [&_[role=slider]]:bg-purple-600 [&_.range]:bg-purple-500 [&]:bg-purple-50 dark:[&]:bg-purple-900/40": field.value > 40 && field.value <= 49,
+                                "slider-balanced-perfect [&_[role=slider]]:bg-purple-600 [&_.range]:bg-purple-600 [&]:bg-purple-100 dark:[&]:bg-purple-950/50": field.value === 50,
+                                "slider-balanced-growth [&_[role=slider]]:bg-purple-600 [&_.range]:bg-purple-500 [&]:bg-purple-50 dark:[&]:bg-purple-900/40": field.value > 50 && field.value <= 60,
+                                "slider-growth-moderate [&_[role=slider]]:bg-green-600 [&_.range]:bg-green-500 [&]:bg-green-50 dark:[&]:bg-green-900/40": field.value > 60 && field.value <= 80,
+                                "slider-growth-strong [&_[role=slider]]:bg-green-600 [&_.range]:bg-green-600 [&]:bg-green-100 dark:[&]:bg-green-950/50": field.value > 80
                               }
                             )}
                           />

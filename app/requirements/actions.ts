@@ -11,7 +11,10 @@ export type { RequirementFormValues }
 const REQUIREMENT_STATUS = {
   VALIDATED: "validated",
   IN_PROGRESS: "in-progress",
-  BACKLOG: "backlog"
+  ON_REVIEW: "on-review",
+  DONE: "done",
+  BACKLOG: "backlog",
+  CANCELED: "canceled"
 } as const;
 
 const COMPLETION_STATUS = {
@@ -95,7 +98,7 @@ export async function updateRequirementStatus(id: string, status: RequirementSta
   const supabase = await createClient()
 
   // Validar el status recibido
-  if (![REQUIREMENT_STATUS.VALIDATED, REQUIREMENT_STATUS.IN_PROGRESS, REQUIREMENT_STATUS.BACKLOG].includes(status)) {
+  if (![REQUIREMENT_STATUS.VALIDATED, REQUIREMENT_STATUS.IN_PROGRESS, REQUIREMENT_STATUS.ON_REVIEW, REQUIREMENT_STATUS.DONE, REQUIREMENT_STATUS.BACKLOG, REQUIREMENT_STATUS.CANCELED].includes(status)) {
     return {
       error: `Estado no válido: ${status}`
     }
@@ -132,6 +135,34 @@ export async function updateCompletionStatus(id: string, completionStatus: Compl
   const { data: requirement, error } = await supabase
     .from("requirements")
     .update({ completion_status: completionStatus })
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) {
+    return {
+      error: error.message
+    }
+  }
+
+  revalidatePath("/requirements")
+  return { data: requirement }
+}
+
+export async function updateRequirementPriority(id: string, priority: "high" | "medium" | "low") {
+  const cookieStore = cookies()
+  const supabase = await createClient()
+
+  // Validar la prioridad recibida
+  if (!["high", "medium", "low"].includes(priority)) {
+    return {
+      error: `Prioridad no válida: ${priority}`
+    }
+  }
+
+  const { data: requirement, error } = await supabase
+    .from("requirements")
+    .update({ priority })
     .eq("id", id)
     .select()
     .single()
