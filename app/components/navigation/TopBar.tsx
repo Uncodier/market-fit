@@ -31,6 +31,10 @@ import { CreateRequirementDialog } from "@/app/components/create-requirement-dia
 import { createRequirement } from "@/app/requirements/actions"
 import { type Segment } from "@/app/requirements/types"
 import { useSite } from "@/app/context/SiteContext"
+import { CreateLeadDialog } from "@/app/components/create-lead-dialog"
+import { createLead } from "@/app/leads/actions"
+import { useState, useEffect } from "react"
+import { getSegments } from "@/app/segments/actions"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -50,7 +54,7 @@ export function TopBar({
   isCollapsed,
   onCollapse,
   className,
-  segments,
+  segments: propSegments,
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
@@ -62,6 +66,34 @@ export function TopBar({
   const isAgentsPage = pathname === "/agents"
   const isAssetsPage = pathname === "/assets"
   const { currentSite } = useSite()
+  const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([])
+
+  // Cargar segmentos cuando se está en la página de leads
+  useEffect(() => {
+    async function loadSegments() {
+      if (!currentSite?.id || !isLeadsPage) return
+      
+      try {
+        const response = await getSegments(currentSite.id)
+        if (response.error) {
+          console.error(response.error)
+          return
+        }
+        
+        if (response.segments) {
+          setSegments(response.segments.map(s => ({
+            id: s.id,
+            name: s.name,
+            description: s.description || ""
+          })))
+        }
+      } catch (error) {
+        console.error("Error loading segments:", error)
+      }
+    }
+
+    loadSegments()
+  }, [currentSite, isLeadsPage])
 
   const handleCreateSegment = async ({ 
     name, 
@@ -171,6 +203,23 @@ export function TopBar({
     }
   }
 
+  const handleCreateLead = async (data: any): Promise<{ error?: string; lead?: any }> => {
+    try {
+      const result = await createLead(data)
+
+      if (result.error) {
+        return { error: result.error }
+      }
+
+      // Recargar la página para mostrar el nuevo lead
+      window.location.reload()
+      return { lead: result.lead }
+    } catch (error) {
+      console.error("Error creating lead:", error)
+      return { error: error instanceof Error ? error.message : "Error inesperado" }
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -269,10 +318,16 @@ export function TopBar({
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Lead
-              </Button>
+              <CreateLeadDialog 
+                segments={segments.length > 0 ? segments : propSegments || []}
+                onCreateLead={handleCreateLead}
+                trigger={
+                  <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Lead
+                  </Button>
+                }
+              />
             </>
           ) : (
             <Button variant="outline" disabled>
