@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import { ThemeProvider } from './context/ThemeContext'
 
 // Importación dinámica del LayoutClient
 const LayoutClient = dynamic(() => import('./layout-client'), {
@@ -32,8 +33,10 @@ export default function ClientLayout({
 
   // Una vez que estamos en el cliente, cargar el layout completo
   return (
-    <Suspense fallback={<div className="min-h-screen w-full flex items-center justify-center bg-background" />}>
-      <LayoutClient>{children}</LayoutClient>
-    </Suspense>
+    <ThemeProvider defaultTheme="system" storageKey="theme">
+      <Suspense fallback={<div className="min-h-screen w-full flex items-center justify-center bg-background" />}>
+        <LayoutClient>{children}</LayoutClient>
+      </Suspense>
+    </ThemeProvider>
   )
 } 

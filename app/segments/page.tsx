@@ -635,14 +635,6 @@ export default function SegmentsPage() {
           <div className="p-8 space-y-4">
             <div className="px-8">
               <TabsContent value="all" className="space-y-4">
-                <div className="flex flex-col items-center justify-center py-12">
-                  <p className="text-muted-foreground mb-2">Cargando segmentos...</p>
-                  <p className="text-xs text-muted-foreground">
-                    {currentSite?.id 
-                      ? `Obteniendo datos para el sitio: ${currentSite.name}`
-                      : "Esperando selección de sitio..."}
-                  </p>
-                </div>
                 {Array.from({ length: 3 }).map((_, index) => (
                   <SegmentRowSkeleton key={index} />
                 ))}

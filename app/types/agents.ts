@@ -3,7 +3,7 @@ export interface Agent {
   name: string
   description: string
   type: "sales" | "support" | "marketing"
-  status: "active" | "inactive" | "training"
+  status: "active" | "inactive" | "learning" | "error"
   conversations: number
   successRate: number
   lastActive: string

@@ -217,7 +217,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
     <Form {...form}>
       <form id="create-site-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-12">
         <div className="space-y-12">
-          <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Focus Mode</CardTitle>
             </CardHeader>
@@ -277,12 +277,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                           <h3 className={cn("text-lg font-semibold", getFocusModeConfig(field.value).color)}>
                             {getFocusModeConfig(field.value).label}
                           </h3>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-foreground mt-1">
                             {getFocusModeConfig(field.value).description}
                           </p>
                           <ul className="mt-4 space-y-2">
                             {getFocusModeConfig(field.value).features.map((feature, index) => (
-                              <li key={index} className="text-sm text-gray-600 flex items-start">
+                              <li key={index} className="text-sm text-foreground flex items-start">
                                 <span className="mr-2">•</span>
                                 {feature}
                               </li>
@@ -297,7 +297,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Site Information</CardTitle>
             </CardHeader>
@@ -309,7 +309,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                     name="logo_url"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Logo</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">Logo</FormLabel>
                         <FormControl>
                           <div className="w-[240px] h-[240px] relative">
                             {field.value ? (
@@ -331,13 +331,17 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                             ) : (
                               <div
                                 {...getRootProps()}
-                                className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-300 hover:bg-gray-100 transition-colors"
+                                className={cn(
+                                  "w-full h-full rounded-lg border-2 border-dashed border-input",
+                                  "bg-muted flex flex-col items-center justify-center gap-2 cursor-pointer",
+                                  "hover:border-input/80 hover:bg-muted/80 transition-colors"
+                                )}
                               >
                                 <input {...getInputProps()} />
                                 <UploadCloud className="h-8 w-8 text-gray-400" />
                                 <div className="text-sm text-center">
-                                  <p className="font-medium text-gray-600">Click to upload</p>
-                                  <p className="text-gray-500">or drag and drop</p>
+                                  <p className="font-medium text-foreground">Click to upload</p>
+                                  <p className="text-muted-foreground">or drag and drop</p>
                                 </div>
                               </div>
                             )}
@@ -355,12 +359,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Site Name</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">Site Name</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                              className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                              className="pl-12 h-12 text-base" 
                               placeholder="Enter your site name"
                               {...field} 
                             />
@@ -376,12 +380,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                     name="url"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Site URL</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">Site URL</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                              className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                              className="pl-12 h-12 text-base" 
                               placeholder="https://example.com"
                               {...field} 
                             />
@@ -399,12 +403,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">Description</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">Description</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Tag className="absolute left-4 top-3 h-4 w-4 text-gray-400" />
+                        <Tag className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
                         <Textarea 
-                          className="pl-12 resize-none min-h-[120px] text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200"
+                          className="pl-12 resize-none min-h-[120px] text-base"
                           placeholder="Describe your site..."
                           {...field}
                         />
@@ -417,7 +421,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
             </CardHeader>
@@ -429,12 +433,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                     name={`competitors.${index}.name`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Competitor Name</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">Competitor Name</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                              className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                              className="pl-12 h-12 text-base" 
                               placeholder="Competitor Inc."
                               {...field}
                             />
@@ -449,12 +453,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                     name={`competitors.${index}.url`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Competitor URL</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">Competitor URL</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                              className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                              className="pl-12 h-12 text-base" 
                               placeholder="https://competitor.com"
                               {...field}
                             />
@@ -481,7 +485,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Resource URLs</CardTitle>
             </CardHeader>
@@ -493,12 +497,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                     name={`resource_urls.${index}.key`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Resource Name</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">Resource Name</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                              className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                              className="pl-12 h-12 text-base" 
                               placeholder="Documentation"
                               {...field}
                             />
@@ -513,12 +517,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                     name={`resource_urls.${index}.url`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Resource URL</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">Resource URL</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                              className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                              className="pl-12 h-12 text-base" 
                               placeholder="https://docs.example.com"
                               {...field}
                             />

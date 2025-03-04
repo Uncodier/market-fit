@@ -78,13 +78,13 @@ export function Sidebar({
       className={cn(
         "flex flex-col h-screen",
         isCollapsed ? "w-16" : "w-64",
-        "bg-white text-gray-900 transition-all duration-200 border-r z-40",
+        "bg-background text-foreground transition-all duration-200 border-r border-border z-40",
         className
       )}
     >
       {/* Logo Section - Fixed */}
       <Link href="/dashboard" className={cn(
-        "flex items-center h-16 border-b flex-none",
+        "flex items-center h-16 border-b border-border flex-none",
         isCollapsed ? "justify-center px-3" : "justify-start px-6"
       )}>
         <Image 
@@ -108,7 +108,7 @@ export function Sidebar({
 
       {/* Site Selector */}
       <div className={cn(
-        "min-h-[71px] flex items-center border-b",
+        "min-h-[71px] flex items-center border-b border-border",
         isCollapsed && "px-[0.1875rem]"
       )}>
         <SiteSelector isCollapsed={isCollapsed} />
@@ -131,23 +131,23 @@ export function Sidebar({
       </div>
 
       {/* Bottom Section - Fixed */}
-      <div className="flex-none border-t bg-white">
+      <div className="flex-none border-t border-border bg-background">
         <ConfigurationSection className="px-3" isCollapsed={isCollapsed} />
         <div className={cn(
-          "border-t px-3 py-4",
+          "border-t border-border px-3 py-4",
           isCollapsed && "flex justify-center"
         )}>
           <MenuItem
             href="/profile"
             icon={User}
-            title={user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario'}
+            title={user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario'}
             subtitle={user?.email || ''}
-            avatarUrl={user?.user_metadata?.avatar_url}
+            avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
             isActive={pathname === '/profile'}
             isCollapsed={isCollapsed}
             className="![padding-top:28px] ![padding-bottom:28px]"
           >
-            {!isCollapsed && <ChevronRight className="h-4 w-4 text-gray-400" />}
+            {!isCollapsed && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           </MenuItem>
         </div>
       </div>

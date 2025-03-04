@@ -24,10 +24,10 @@ const agents: Agent[] = [
     name: "Support Agent",
     description: "Handles customer support inquiries and troubleshooting",
     type: "support",
-    status: "active",
-    conversations: 567,
-    successRate: 92,
-    lastActive: "2024-01-25",
+    status: "learning",
+    conversations: 1342,
+    successRate: 94,
+    lastActive: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "3",
@@ -44,7 +44,7 @@ const agents: Agent[] = [
     name: "Product Expert",
     description: "Detailed product information and feature explanations",
     type: "sales",
-    status: "training",
+    status: "learning",
     conversations: 45,
     successRate: 67,
     lastActive: "2024-01-20",

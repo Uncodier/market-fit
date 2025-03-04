@@ -1,6 +1,7 @@
 'use client'
 
 import { Toaster as Sonner } from 'sonner'
+import { useTheme } from '@/app/context/ThemeContext'
 
 export interface ToasterProps {
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center'
@@ -12,9 +13,10 @@ export interface ToasterProps {
 }
 
 export function Toaster({ 
-  theme = 'system',
   ...props 
 }: ToasterProps) {
+  const { theme } = useTheme()
+  
   return (
     <Sonner
       theme={theme}

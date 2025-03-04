@@ -174,7 +174,7 @@ export function TopBar({
   return (
     <div
       className={cn(
-        "flex h-16 items-center justify-between border-b bg-[#f3f3f3ed] backdrop-blur-sm pr-16 sticky top-0 z-10",
+        "flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur-sm pr-16 sticky top-0 z-10",
         className
       )}
       {...props}
@@ -194,12 +194,12 @@ export function TopBar({
             {isCollapsed ? "Expandir menú" : "Colapsar menú"}
           </span>
         </Button>
-        <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
         {helpText && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="inline-flex items-center justify-center rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
+                <button className="inline-flex items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
                   <HelpCircle className="h-4 w-4" />
                   <span className="sr-only">Help</span>
                 </button>

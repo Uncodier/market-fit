@@ -39,7 +39,7 @@ interface AssetWithThumbnail extends Asset {
 function AssetCardSkeleton() {
   return (
     <Card className="group relative overflow-hidden transition-all duration-300">
-      <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-muted/50 to-muted/70">
         <div className="w-full h-full animate-pulse">
           <Skeleton className="w-full h-full" />
         </div>
@@ -190,9 +190,9 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
   return (
     <>
       <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-muted/40 to-muted/60">
           {shouldShowImage ? (
-            <div className="w-full h-full flex items-center justify-center bg-[#f8f9fa] p-2">
+            <div className="w-full h-full flex items-center justify-center bg-background/80 p-2">
               <img
                 src={asset.file_path}
                 alt={asset.name}
@@ -211,7 +211,7 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="h-8 w-8 bg-white/90 hover:bg-white transition-colors duration-200"
+                      className="h-8 w-8 bg-white/90 hover:bg-white dark:bg-gray-800/90 dark:hover:bg-gray-800 transition-colors duration-200"
                       onClick={handleOpen}
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -229,7 +229,7 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="h-8 w-8 bg-white/90 hover:bg-white transition-colors duration-200"
+                      className="h-8 w-8 bg-white/90 hover:bg-white dark:bg-gray-800/90 dark:hover:bg-gray-800 transition-colors duration-200"
                       onClick={handleDownload}
                       disabled={isDownloading}
                     >
@@ -248,7 +248,7 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="h-8 w-8 bg-white/90 hover:bg-red-500 hover:text-white transition-colors duration-200"
+                      className="h-8 w-8 bg-white/90 hover:bg-red-500 hover:text-white dark:bg-gray-800/90 dark:hover:bg-red-500 transition-colors duration-200"
                       onClick={(e) => {
                         e.stopPropagation()
                         setShowDeleteDialog(true)

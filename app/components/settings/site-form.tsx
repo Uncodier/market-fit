@@ -230,7 +230,7 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
       <form id={id} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-12">
         <div className="space-y-12">
           {renderCard("focus", 
-            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
                 <CardTitle className="text-xl font-semibold">Focus Mode</CardTitle>
               </CardHeader>
@@ -312,7 +312,7 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
           )}
 
           {renderCard("site",
-            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
                 <CardTitle className="text-xl font-semibold">Site Information</CardTitle>
               </CardHeader>
@@ -324,7 +324,7 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                       name="logo_url"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Logo</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground">Logo</FormLabel>
                           <FormControl>
                             <div className="w-[240px] h-[240px] relative">
                               {field.value ? (
@@ -346,13 +346,13 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                               ) : (
                                 <div
                                   {...getRootProps()}
-                                  className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-300 hover:bg-gray-100 transition-colors"
+                                  className="w-full h-full rounded-lg border-2 border-dashed border-input bg-muted flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-input/80 hover:bg-muted/80 transition-colors"
                                 >
                                   <input {...getInputProps()} />
-                                  <UploadCloud className="h-8 w-8 text-gray-400" />
+                                  <UploadCloud className="h-8 w-8 text-muted-foreground" />
                                   <div className="text-sm text-center">
-                                    <p className="font-medium text-gray-600">Click to upload</p>
-                                    <p className="text-gray-500">or drag and drop</p>
+                                    <p className="font-medium text-foreground">Click to upload</p>
+                                    <p className="text-muted-foreground">or drag and drop</p>
                                   </div>
                                 </div>
                               )}
@@ -370,12 +370,12 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Site Name</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground">Site Name</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input 
-                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                className="pl-12 h-12 text-base" 
                                 placeholder="Enter your site name"
                                 {...field} 
                               />
@@ -391,12 +391,12 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                       name="url"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Site URL</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground">Site URL</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input 
-                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                className="pl-12 h-12 text-base" 
                                 placeholder="https://example.com"
                                 {...field} 
                               />
@@ -414,12 +414,12 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Description</FormLabel>
+                      <FormLabel className="text-sm font-medium text-foreground">Description</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Tag className="absolute left-4 top-3 h-4 w-4 text-gray-400" />
+                          <Tag className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
                           <Textarea 
-                            className="pl-12 resize-none min-h-[120px] text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200"
+                            className="pl-12 resize-none min-h-[120px] text-base"
                             placeholder="Describe your site..."
                             {...field}
                           />
@@ -434,7 +434,7 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
           )}
 
           {renderCard("resources",
-            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
                 <CardTitle className="text-xl font-semibold">Resources</CardTitle>
               </CardHeader>
@@ -446,12 +446,12 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                       name={`resource_urls.${index}.key`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Resource Name</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground">Resource Name</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input 
-                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                className="pl-12 h-12 text-base" 
                                 placeholder="Documentation"
                                 {...field}
                               />
@@ -500,7 +500,7 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
           )}
 
           {renderCard("competitors",
-            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
                 <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
               </CardHeader>
@@ -512,12 +512,12 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                       name={`competitors.${index}.name`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Competitor Name</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground">Competitor Name</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input 
-                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                className="pl-12 h-12 text-base" 
                                 placeholder="Competitor Inc."
                                 {...field}
                               />
@@ -532,12 +532,12 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                       name={`competitors.${index}.url`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Competitor URL</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground">Competitor URL</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input 
-                                className="pl-12 h-12 text-base border-gray-200 hover:border-gray-300 focus:border-blue-500 transition-colors duration-200" 
+                                className="pl-12 h-12 text-base" 
                                 placeholder="https://competitor.com"
                                 {...field}
                               />
@@ -566,13 +566,13 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
           )}
 
           {renderCard("cache",
-            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
                 <CardTitle className="text-xl font-semibold">Cache Management</CardTitle>
               </CardHeader>
               <CardContent className="space-y-8 px-8 pb-8">
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Clear the cache and rebuild all experiments. This will take a few minutes.
                   </p>
                   <Button
@@ -591,13 +591,13 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
           )}
 
           {renderCard("danger",
-            <Card className="border border-red-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="border border-destructive/30 shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold text-red-600">Danger Zone</CardTitle>
+                <CardTitle className="text-xl font-semibold text-destructive">Danger Zone</CardTitle>
               </CardHeader>
               <CardContent className="space-y-8 px-8 pb-8">
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Once you delete a site, there is no going back. Please be certain.
                   </p>
                   <Button

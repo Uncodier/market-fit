@@ -65,7 +65,7 @@ export function AgentCard({
                 {agent.name}
               </CardTitle>
               <CardDescription 
-                className="truncate text-sm text-muted-foreground"
+                className="truncate text-sm"
                 title={agent.description}
               >
                 {agent.description}

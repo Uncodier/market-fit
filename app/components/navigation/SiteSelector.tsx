@@ -77,7 +77,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
         {!isCollapsed && (
           <div className="flex flex-col min-w-0 flex-1">
             <span className="font-medium truncate">{currentSite.name}</span>
-            <span className="text-xs text-gray-400 truncate">
+            <span className="text-xs text-muted-foreground truncate">
               {currentSite.url || "Sin URL"}
             </span>
           </div>
@@ -123,7 +123,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
           <DropdownMenuTrigger asChild>
             <div className={cn(
               "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
-              !isCollapsed && "border border-gray-200 hover:border-gray-300 hover:bg-gray-50 w-full",
+              !isCollapsed && "border border-border hover:border-border/80 hover:bg-accent w-full",
               isCollapsed && "justify-center h-[45px]",
               isLoading && "opacity-50 cursor-wait"
             )}>
@@ -146,7 +146,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                     key={site.id}
                     className={cn(
                       "flex items-center gap-2 p-2 w-full",
-                      isSelected && "bg-gray-50"
+                      isSelected && "bg-accent"
                     )}
                     onClick={() => {
                       setCurrentSite(site)
@@ -167,16 +167,16 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                     </MenuAvatar>
                     <div className="flex flex-col flex-1 min-w-0">
                       <span className="text-sm font-medium truncate">{site.name}</span>
-                      <span className="text-xs text-gray-500 truncate">{site.url || "No URL"}</span>
+                      <span className="text-xs text-muted-foreground truncate">{site.url || "No URL"}</span>
                     </div>
                     {isSelected && (
-                      <Check className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
                     )}
                   </DropdownMenuItem>
                 )
               })}
               
-              <div className="h-px bg-gray-100 my-1" />
+              <div className="h-px bg-border my-1" />
               
               <DropdownMenuItem
                 className="flex items-center gap-2 p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 w-full"

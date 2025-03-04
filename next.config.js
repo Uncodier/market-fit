@@ -3,6 +3,7 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    domains: ['rnjgeloamtszdjplmqxy.supabase.co'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -11,6 +12,14 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'rnjgeloamtszdjplmqxy.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
       },
     ],
   },

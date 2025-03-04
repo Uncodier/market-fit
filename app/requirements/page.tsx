@@ -81,21 +81,21 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
   const { toast } = useToast()
 
   const priorityColors = {
-    high: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
-    medium: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
-    low: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200"
+    high: "bg-red-100/20 text-red-600 dark:text-red-400 hover:bg-red-100/30 border-red-300/30",
+    medium: "bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-100/30 border-yellow-300/30",
+    low: "bg-blue-100/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100/30 border-blue-300/30"
   }
 
   const statusColors = {
-    [REQUIREMENT_STATUS.VALIDATED]: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
-    [REQUIREMENT_STATUS.IN_PROGRESS]: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
-    [REQUIREMENT_STATUS.BACKLOG]: "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200"
+    [REQUIREMENT_STATUS.VALIDATED]: "bg-green-100/20 text-green-600 dark:text-green-400 hover:bg-green-100/30 border-green-300/30",
+    [REQUIREMENT_STATUS.IN_PROGRESS]: "bg-purple-100/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100/30 border-purple-300/30",
+    [REQUIREMENT_STATUS.BACKLOG]: "bg-gray-100/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100/30 border-gray-300/30"
   }
 
   const completionStatusColors = {
-    [COMPLETION_STATUS.COMPLETED]: "bg-green-50 text-green-700 border-green-300",
-    [COMPLETION_STATUS.REJECTED]: "bg-red-50 text-red-700 border-red-300",
-    [COMPLETION_STATUS.PENDING]: "bg-yellow-50 text-yellow-700 border-yellow-300"
+    [COMPLETION_STATUS.COMPLETED]: "bg-green-100/20 text-green-600 dark:text-green-400 border-green-300/30",
+    [COMPLETION_STATUS.REJECTED]: "bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30",
+    [COMPLETION_STATUS.PENDING]: "bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 border-yellow-300/30"
   }
 
   const handleUpdateStatus = async (status: RequirementStatusType) => {
@@ -193,7 +193,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                 </div>
                 <div className="min-w-[140px] sm:min-w-[120px] p-2 rounded-lg">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Completion</p>
-                  <div className={`px-3 py-1 text-sm font-medium rounded-md border-2 text-center ${completionStatusColors[requirement.completionStatus]}`}>
+                  <div className={`px-3 py-1 text-sm font-medium rounded-md border text-center ${completionStatusColors[requirement.completionStatus]}`}>
                     {requirement.completionStatus.charAt(0).toUpperCase() + requirement.completionStatus.slice(1)}
                   </div>
                 </div>
@@ -215,7 +215,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         <Badge
                           key={segment}
                           variant="secondary"
-                          className="px-3 py-1 text-xs font-medium bg-gray-100/80 text-gray-700 hover:bg-gray-200/80 transition-colors border border-gray-200/50"
+                          className="px-3 py-1 text-xs font-medium bg-gray-100/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200/20 transition-colors border border-gray-300/30"
                         >
                           {segment}
                         </Badge>
@@ -229,20 +229,20 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 hover:bg-gray-100 border-gray-200 transition-all duration-200 shadow-sm"
+                        className="flex items-center gap-2 w-full sm:w-auto bg-background hover:bg-muted/80 border-border transition-all duration-200 shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
                         }}
                         disabled={isUpdatingStatus || isUpdatingCompletion}
                       >
-                        <Archive className="h-4 w-4 text-gray-600" />
+                        <Archive className="h-4 w-4" />
                         <span className="font-medium">Move to Backlog</span>
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-green-50 hover:bg-green-100 text-green-700 border-green-200 transition-all duration-200 shadow-sm"
+                        className="flex items-center gap-2 w-full sm:w-auto bg-green-100/20 hover:bg-green-100/30 text-green-600 dark:text-green-400 border-green-300/30 transition-all duration-200 shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleUpdateCompletionStatus(COMPLETION_STATUS.COMPLETED)
@@ -255,7 +255,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-red-50 hover:bg-red-100 text-red-700 border-red-200 transition-all duration-200 shadow-sm"
+                        className="flex items-center gap-2 w-full sm:w-auto bg-red-100/20 hover:bg-red-100/30 text-red-600 dark:text-red-400 border-red-300/30 transition-all duration-200 shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleUpdateCompletionStatus(COMPLETION_STATUS.REJECTED)
@@ -272,20 +272,20 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 hover:bg-gray-100 border-gray-200 transition-all duration-200 shadow-sm"
+                        className="flex items-center gap-2 w-full sm:w-auto bg-background hover:bg-muted/80 border-border transition-all duration-200 shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
                         }}
                         disabled={isUpdatingStatus || isUpdatingCompletion}
                       >
-                        <Archive className="h-4 w-4 text-gray-600" />
+                        <Archive className="h-4 w-4" />
                         <span className="font-medium">Move to Backlog</span>
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200 transition-all duration-200 shadow-sm"
+                        className="flex items-center gap-2 w-full sm:w-auto bg-amber-100/20 hover:bg-amber-100/30 text-amber-600 dark:text-amber-400 border-amber-300/30 transition-all duration-200 shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleUpdateCompletionStatus(COMPLETION_STATUS.PENDING)
@@ -302,20 +302,20 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 hover:bg-gray-100 border-gray-200 transition-all duration-200 shadow-sm"
+                        className="flex items-center gap-2 w-full sm:w-auto bg-background hover:bg-muted/80 border-border transition-all duration-200 shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG)
                         }}
                         disabled={isUpdatingStatus || isUpdatingCompletion}
                       >
-                        <Archive className="h-4 w-4 text-gray-600" />
+                        <Archive className="h-4 w-4" />
                         <span className="font-medium">Move to Backlog</span>
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200 transition-all duration-200 shadow-sm"
+                        className="flex items-center gap-2 w-full sm:w-auto bg-amber-100/20 hover:bg-amber-100/30 text-amber-600 dark:text-amber-400 border-amber-300/30 transition-all duration-200 shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleUpdateCompletionStatus(COMPLETION_STATUS.PENDING)

@@ -2,6 +2,7 @@
 
 import React from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useTheme } from "@/app/context/ThemeContext"
 
 // Datos para mostrar en el gráfico
 const data = [
@@ -21,6 +22,20 @@ const data = [
 
 // Componente cliente puro para Recharts
 export function OverviewClient() {
+  // Obtener el estado del tema
+  const { isDarkMode } = useTheme()
+  
+  // Colores adaptables según el tema
+  const colors = {
+    text: isDarkMode ? "#CBD5E1" : "#9CA3AF",
+    grid: isDarkMode ? "rgba(203, 213, 225, 0.1)" : "#f0f0f0",
+    tooltipBackground: isDarkMode ? "#1E293B" : "white",
+    tooltipBorder: isDarkMode ? "#475569" : "#e5e7eb",
+    tooltipText: isDarkMode ? "#F8FAFC" : "#111827",
+    barFill: isDarkMode ? "#818CF8" : "#6366F1", // Un tono más claro de indigo para modo oscuro
+    barHover: isDarkMode ? "#A5B4FC" : "rgba(99, 102, 241, 0.1)",
+  }
+
   return (
     <div className="w-full h-[350px]">
       <ResponsiveContainer width="100%" height="100%">
@@ -28,33 +43,41 @@ export function OverviewClient() {
           data={data}
           margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+          <CartesianGrid 
+            strokeDasharray="3 3" 
+            vertical={false} 
+            stroke={colors.grid} 
+            opacity={isDarkMode ? 0.3 : 1}
+          />
           <XAxis 
             dataKey="name" 
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 12, fill: "#9CA3AF" }}
+            tick={{ fontSize: 12, fill: colors.text }}
           />
           <YAxis 
             axisLine={false}
             tickLine={false} 
-            tick={{ fontSize: 12, fill: "#9CA3AF" }}
+            tick={{ fontSize: 12, fill: colors.text }}
             tickFormatter={(value) => `${value}`}
           />
           <Tooltip 
             formatter={(value: number) => [value.toLocaleString(), 'Total']}
-            labelStyle={{ fontWeight: 'bold', color: '#111827' }}
+            labelStyle={{ fontWeight: 'bold', color: colors.tooltipText }}
             contentStyle={{ 
-              backgroundColor: 'white', 
-              border: '1px solid #e5e7eb',
+              backgroundColor: colors.tooltipBackground, 
+              border: `1px solid ${colors.tooltipBorder}`,
               borderRadius: '0.375rem', 
-              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+              boxShadow: isDarkMode 
+                ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3)' 
+                : '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
             }}
-            cursor={{ fill: 'rgba(99, 102, 241, 0.1)' }}
+            cursor={{ fill: colors.barHover }}
+            itemStyle={{ color: colors.tooltipText }}
           />
           <Bar 
             dataKey="total" 
-            fill="#6366F1" 
+            fill={colors.barFill} 
             radius={[4, 4, 0, 0]} 
             barSize={40}
             animationDuration={1500}
