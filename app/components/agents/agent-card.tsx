@@ -2,7 +2,20 @@ import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
-import { MessageSquare, Pencil } from "@/app/components/ui/icons"
+import { 
+  MessageSquare, 
+  Pencil, 
+  User as UserIcon,
+  ShoppingCart,
+  HelpCircle,
+  BarChart,
+  Tag,
+  Settings,
+  Users,
+  Check,
+  PieChart
+} from "@/app/components/ui/icons"
+import * as Icons from "@/app/components/ui/icons"
 import { Agent } from "@/app/types/agents"
 import { agentStatusVariants, agentCardVariants, metricItemVariants } from "./agent-card.styles"
 import { cn } from "@/lib/utils"
@@ -20,6 +33,41 @@ export function AgentCard({
   onChat,
   className 
 }: AgentCardProps) {
+  // Añadir console.log para depuración
+  console.log("Rendering AgentCard for agent:", agent.name, "icon:", agent.icon)
+  
+  // Función para obtener el componente de icono basado en el nombre
+  const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case 'ShoppingCart':
+        return ShoppingCart;
+      case 'HelpCircle':
+        return HelpCircle;
+      case 'BarChart':
+        return BarChart;
+      case 'Tag':
+        return Tag;
+      case 'Settings':
+        return Settings;
+      case 'Users':
+        return Users;
+      case 'Check':
+        return Check;
+      case 'User':
+        return UserIcon;
+      case 'PieChart':
+        return PieChart;
+      default:
+        return UserIcon; // Icono por defecto
+    }
+  };
+  
+  // Obtener el componente de icono
+  const IconComponent = getIconComponent(agent.icon);
+  
+  // Verificar si el icono existe
+  console.log("Using icon component for:", agent.icon)
+
   const renderMetricItem = (label: string, value: string | number) => (
     <div className={cn(
       "p-3 h-[72px] flex flex-col justify-between",
@@ -57,7 +105,11 @@ export function AgentCard({
                 alt={`${agent.name}'s avatar`} 
               />
               <AvatarFallback className="bg-primary/10">
-                {agent.name.split(" ").map(name => name[0]).join("")}
+                {IconComponent ? (
+                  <IconComponent className="h-5 w-5" aria-hidden={true} />
+                ) : (
+                  agent.name.split(" ").map(name => name[0]).join("")
+                )}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">

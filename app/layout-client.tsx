@@ -11,6 +11,7 @@ import { AuthProvider } from './components/auth/auth-provider'
 import { Toaster } from "./components/ui/sonner"
 import { createClient } from "@/lib/supabase/client"
 import { type Segment } from "./requirements/types"
+import { ThemeProvider } from "./context/ThemeContext"
 
 const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/segments": {
@@ -143,7 +144,51 @@ export default function LayoutClient({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const currentPage = navigationTitles[pathname] || { title: "Dashboard" }
+  
+  // Estado para guardar el breadcrumb
+  const [breadcrumbFromEvent, setBreadcrumbFromEvent] = useState<React.ReactNode>(null);
+  
+  // Escuchar eventos de breadcrumb
+  useEffect(() => {
+    const handleBreadcrumbUpdate = (event: any) => {
+      if (event.detail && event.detail.breadcrumb) {
+        setBreadcrumbFromEvent(event.detail.breadcrumb);
+      }
+    };
+    
+    window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+    };
+  }, []);
+  
+  // Si la ruta actual comienza con /chat, extraer el breadcrumb de los props de los hijos
+  let customTitle: string | null = null;
+  let customHelpText: string | null = null;
+  let customBreadcrumb: React.ReactNode = null;
+  const isChatPage = pathname && pathname.startsWith('/chat');
+  
+  if (isChatPage) {
+    customTitle = "Chat";
+    customHelpText = "Chatting with your agent";
+    
+    // Usar el breadcrumb del evento si está disponible
+    if (breadcrumbFromEvent) {
+      customBreadcrumb = breadcrumbFromEvent;
+    } else {
+      // Mantener la lógica anterior como fallback
+      const childrenAsAny = children as any;
+      if (childrenAsAny && childrenAsAny.type && childrenAsAny.type.breadcrumb) {
+        customBreadcrumb = childrenAsAny.type.breadcrumb;
+      }
+    }
+  }
+  
+  const currentPage = customTitle 
+    ? { title: customTitle, helpText: customHelpText }
+    : (navigationTitles[pathname] || { title: "Dashboard" });
+    
   const [segments, setSegments] = useState<Segment[]>([])
   const [isMounted, setIsMounted] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -344,51 +389,64 @@ export default function LayoutClient({
   return (
     <AuthProvider>
       <SiteProvider>
-        <TooltipProvider>
-          {fetchError && (
-            <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm z-50 shadow-md">
-              Error: {fetchError}
-            </div>
-          )}
-          {isLoginPage ? (
-            // Para la página de login, solo mostrar el contenido sin layout
-            <div className="min-h-screen w-full">
-              {children}
-            </div>
-          ) : (
-            // Para el resto de páginas, mostrar el layout completo
-            <div className="flex h-fit overflow-visible relative min-h-screen">
-              <Sidebar 
-                isCollapsed={isCollapsed} 
-                onCollapse={handleCollapse} 
-                className="flex-none fixed left-0 top-0 h-screen z-20"
-              />
-              <div 
-                className={cn(
-                  "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
-                  isCollapsed ? "ml-16" : "ml-64"
-                )}
-              >
-                <TopBar 
-                  title={currentPage.title}
-                  helpText={currentPage.helpText}
-                  isCollapsed={isCollapsed}
-                  onCollapse={handleCollapse}
-                  segments={segments}
-                  className="fixed top-0 right-0 z-10"
-                  style={{ 
-                    left: isCollapsed ? '4rem' : '16rem'
-                  }}
-                />
-                <div className="h-16 flex-none"></div>
-                <main className="flex-1 overflow-visible">
-                  {children}
-                </main>
+        <ThemeProvider defaultTheme="system" storageKey="theme">
+          <TooltipProvider>
+            {fetchError && (
+              <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
+                Error: {fetchError}
               </div>
-            </div>
-          )}
-          <Toaster />
-        </TooltipProvider>
+            )}
+            {isLoginPage ? (
+              // Para la página de login, solo mostrar el contenido sin layout
+              <div className="min-h-screen w-full">
+                {children}
+              </div>
+            ) : (
+              // Para el resto de páginas, mostrar el layout completo
+              <div className="flex h-fit overflow-visible relative min-h-screen">
+                <Sidebar 
+                  isCollapsed={isCollapsed} 
+                  onCollapse={handleCollapse} 
+                  className="flex-none fixed left-0 top-0 h-screen z-20"
+                />
+                <div 
+                  className={cn(
+                    "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
+                    isCollapsed ? "ml-16" : "ml-64"
+                  )}
+                >
+                  <TopBar 
+                    title={currentPage.title || ""}
+                    helpText={currentPage.helpText || undefined}
+                    isCollapsed={isCollapsed}
+                    onCollapse={handleCollapse}
+                    segments={segments}
+                    className="fixed top-0 right-0 z-10"
+                    style={{ 
+                      left: isCollapsed ? '4rem' : '16rem',
+                    }}
+                    breadcrumb={customBreadcrumb}
+                  />
+                  <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+                  <main 
+                    className={cn(
+                      "flex-1",
+                      isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
+                    )} 
+                    style={
+                      isChatPage ? 
+                      { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
+                      : {}
+                    }
+                  >
+                    {children}
+                  </main>
+                </div>
+              </div>
+            )}
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
       </SiteProvider>
     </AuthProvider>
   )

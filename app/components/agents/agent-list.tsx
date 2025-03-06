@@ -17,6 +17,8 @@ export function AgentList({
   onChatWithAgent,
   className
 }: AgentListProps) {
+  console.log("Rendering AgentList, agents:", agents, "type:", type)
+  
   const filteredAgents = type 
     ? agents.filter(agent => agent.type === type)
     : agents

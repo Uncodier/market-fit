@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
-import { Eye, PlayCircle, PenSquare, StopCircle, XCircle, Search, Beaker } from "@/app/components/ui/icons"
+import { Eye, PlayCircle, PenSquare, StopCircle, XCircle, Search, Beaker, ExternalLink, X, CalendarIcon, FileText, Tag, Users, User, HelpCircle, Link } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { startExperiment, stopExperiment } from "./actions"
@@ -15,6 +15,8 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { cn } from "@/lib/utils"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/app/components/ui/sheet"
+import { Separator } from "@/app/components/ui/separator"
 
 interface Segment {
   id: string
@@ -127,6 +129,8 @@ export default function ExperimentsPage() {
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({})
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [initialFetchDone, setInitialFetchDone] = useState(false)
+  const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
   const { toast } = useToast()
 
   // Inicializar el hook useCommandK
@@ -298,6 +302,11 @@ export default function ExperimentsPage() {
     } finally {
       setIsLoading(prev => ({ ...prev, [experimentId]: false }))
     }
+  }
+
+  const handleViewDetails = (experiment: Experiment) => {
+    setSelectedExperiment(experiment);
+    setIsDetailOpen(true);
   }
 
   if (isLoadingData) {
@@ -472,6 +481,7 @@ export default function ExperimentsPage() {
                             <Button 
                               variant="outline" 
                               className="flex-1 hover:bg-accent hover:shadow-sm transition-all text-sm font-medium h-10 bg-background text-foreground border-border"
+                              onClick={() => handleViewDetails(experiment)}
                             >
                               <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
                               View Details
@@ -634,6 +644,7 @@ export default function ExperimentsPage() {
                             <Button 
                               variant="outline" 
                               className="flex-1 hover:bg-accent hover:shadow-sm transition-all text-sm font-medium h-10 bg-background text-foreground border-border"
+                              onClick={() => handleViewDetails(experiment)}
                             >
                               <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
                               View Details
@@ -766,16 +777,17 @@ export default function ExperimentsPage() {
                           <div className="flex w-full space-x-3">
                             <Button 
                               variant="outline" 
-                              className="flex-1 transition-all text-sm font-medium h-10 text-muted-foreground border-input hover:bg-muted/50"
+                              className="flex-1 hover:bg-accent hover:shadow-sm transition-all text-sm font-medium h-10 bg-background text-foreground border-border"
+                              onClick={() => handleViewDetails(experiment)}
                             >
                               <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
-                              View Results
+                              View Details
                             </Button>
                             <Button 
                               variant="outline" 
                               className="flex-1 transition-all text-sm font-medium h-10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30 hover:bg-red-50 dark:hover:bg-red-900/20"
                             >
-                              <XCircle className="mr-2 h-4 w-4 text-red-700 dark:text-red-400" />
+                              <X className="mr-2 h-4 w-4" />
                               Reject
                             </Button>
                           </div>
@@ -873,6 +885,7 @@ export default function ExperimentsPage() {
                             <Button 
                               variant="outline" 
                               className="flex-1 hover:bg-accent hover:shadow-sm transition-all text-sm font-medium h-10 bg-background text-foreground border-border"
+                              onClick={() => handleViewDetails(experiment)}
                             >
                               <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
                               View Details
@@ -927,6 +940,272 @@ export default function ExperimentsPage() {
           </div>
         </div>
       </Tabs>
+
+      {/* Modal de detalles del experimento */}
+      <Sheet open={isDetailOpen} onOpenChange={(open) => {
+        setIsDetailOpen(open);
+        if (!open) {
+          setSelectedExperiment(null);
+        }
+      }}>
+        <SheetContent className="sm:max-w-md border-l border-border/40 bg-background overflow-y-auto">
+          {selectedExperiment && (
+            <>
+              <SheetHeader className="pb-4">
+                <div className="flex gap-3 items-center">
+                  <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                    <Beaker className="h-5 w-5 text-primary" />
+                  </div>
+                  <SheetTitle className="text-2xl">{selectedExperiment.name}</SheetTitle>
+                </div>
+                <SheetDescription className="mt-2">
+                  {selectedExperiment.description || "No description available"}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-6 mt-2">
+                {/* Información básica */}
+                <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                    Basic Information
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    {selectedExperiment.hypothesis && (
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                          <HelpCircle className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground mb-1">Hypothesis</p>
+                          <p className="text-sm font-medium">{selectedExperiment.hypothesis}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Status</p>
+                        <Badge
+                          className={cn(
+                            "text-xs font-semibold px-3 py-1 border shadow-sm transition-colors duration-200",
+                            selectedExperiment.status === "draft" && "bg-secondary/20 text-secondary-foreground border-secondary/20",
+                            selectedExperiment.status === "active" && "bg-success/20 text-success border-success/20",
+                            selectedExperiment.status === "completed" && "bg-info/20 text-info border-info/20"
+                          )}
+                        >
+                          {selectedExperiment.status === "draft" ? "Draft" : 
+                            selectedExperiment.status === "active" ? "Active" : "Completed"}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                        <Tag className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">ID</p>
+                        <p className="text-sm font-medium">{selectedExperiment.id}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fechas y rendimiento */}
+                <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                    Dates and Performance
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                        <CalendarIcon className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Start Date</p>
+                        <p className="text-sm font-medium">
+                          {selectedExperiment.start_date ? new Date(selectedExperiment.start_date).toLocaleDateString() : "Not started"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">End Date</p>
+                        <p className="text-sm font-medium">
+                          {selectedExperiment.end_date ? new Date(selectedExperiment.end_date).toLocaleDateString() : "In progress"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                        <Tag className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Conversion</p>
+                        <p className="text-sm font-medium">
+                          {selectedExperiment.conversion !== null ? `${selectedExperiment.conversion}%` : "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                        <Tag className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">ROI</p>
+                        <p className="text-sm font-medium">
+                          {selectedExperiment.roi !== null ? `${selectedExperiment.roi}x` : "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Segmentos */}
+                <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                    Segments
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Total Participants</p>
+                        <p className="text-sm font-medium">
+                          {selectedExperiment.segments.reduce((acc, segment) => acc + segment.participants, 0).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px', marginTop: '4px' }}>
+                        <Tag className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Active Segments</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {selectedExperiment.segments.map((segment) => (
+                            <Badge 
+                              key={segment.id}
+                              variant="secondary" 
+                              className="px-3 py-1 text-xs font-medium"
+                            >
+                              {segment.name} ({segment.participants.toLocaleString()})
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Previsualización */}
+                {selectedExperiment.preview_url && (
+                  <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                      Preview
+                    </h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                          <Link className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground mb-1">Preview URL</p>
+                          <a 
+                            href={selectedExperiment.preview_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-sm font-medium text-primary hover:underline flex items-center"
+                          >
+                            {selectedExperiment.preview_url}
+                            <ExternalLink className="ml-1 h-3 w-3" />
+                          </a>
+                        </div>
+                      </div>
+                      
+                      <div className="rounded-md border overflow-hidden mt-2 h-40">
+                        <iframe 
+                          src={selectedExperiment.preview_url} 
+                          className="w-full h-full"
+                          title={`Preview of ${selectedExperiment.name}`}
+                          sandbox="allow-same-origin allow-scripts"
+                          loading="lazy"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-8 flex justify-center">
+                {selectedExperiment.status === "draft" && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full transition-all text-sm font-medium h-10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30 hover:bg-green-50 dark:hover:bg-green-900/20"
+                    onClick={() => {
+                      handleStartExperiment(selectedExperiment.id);
+                      setIsDetailOpen(false);
+                    }}
+                    disabled={isLoading[selectedExperiment.id]}
+                  >
+                    {isLoading[selectedExperiment.id] ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-green-200 dark:border-green-500/30 border-r-green-700 dark:border-r-green-400" />
+                        Starting...
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className="mr-2 h-4 w-4 text-green-700 dark:text-green-400" />
+                        Start Experiment
+                      </>
+                    )}
+                  </Button>
+                )}
+                
+                {selectedExperiment.status === "active" && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full transition-all text-sm font-medium h-10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    onClick={() => {
+                      handleStopExperiment(selectedExperiment.id);
+                      setIsDetailOpen(false);
+                    }}
+                    disabled={isLoading[selectedExperiment.id]}
+                  >
+                    {isLoading[selectedExperiment.id] ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-red-200 dark:border-red-500/30 border-r-red-700 dark:border-r-red-400" />
+                        Stopping...
+                      </>
+                    ) : (
+                      <>
+                        <StopCircle className="mr-2 h-4 w-4 text-red-700 dark:text-red-400" />
+                        Stop Experiment
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 } 

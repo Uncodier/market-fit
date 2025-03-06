@@ -73,4 +73,205 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Estilos para el contenedor principal de la lista de chats */
+.flex.flex-col.h-full.border-r.transition-all.duration-300.ease-in-out.bg-background {
+  background-color: white !important;
+}
+
+/* Estilos para el contenedor principal de la lista de chats en tema oscuro */
+.dark .flex.flex-col.h-full.border-r.transition-all.duration-300.ease-in-out.bg-background {
+  background-color: #1e1e2d !important;
+}
+
+/* Estilos para el contenedor del buscador */
+.border-b.h-\[71px\].flex.items-center.px-3.bg-background {
+  background-color: white !important;
+}
+
+/* Estilos para el contenedor del buscador en tema oscuro */
+.dark .border-b.h-\[71px\].flex.items-center.px-3.bg-background {
+  background-color: #1e1e2d !important;
+}
+
+/* Animaciones personalizadas */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Estilos del TopBar */
+.flex.flex-col.border-b.bg-background\/95.backdrop-blur-sm.sticky.top-0.z-10 {
+  height: 64px !important;
+}
+
+.flex.flex-col.border-b.bg-background\/95.backdrop-blur-sm.sticky.top-0.z-10 > .flex.h-\[71px\].items-center.justify-between.pr-16 {
+  height: 64px !important;
+}
+
+.flex.flex-col.border-b.bg-background\/95.backdrop-blur-sm.sticky.top-0.z-10.h-\[calc\(71px\+41px\)\] {
+  height: calc(64px + 41px) !important;
+}
+
+/* Altura de la barra superior del chat */
+.flex.flex-col.h-full > .border-b.bg-card.flex-none.h-\[71px\].flex.items-center {
+  height: 71px !important;
+}
+
+/* Estilos del chat en tema claro */
+.flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 {
+  background-color: var(--background) !important;
+}
+
+.chat-input-container {
+  background-color: var(--background) !important;
+}
+
+/* Mejora del textarea con estilo más estándar - borde más sutil */
+.chat-input-container textarea {
+  background-color: var(--background) !important;
+  border-color: #e2e8f0 !important;
+  border-width: 1px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+/* Estilo cuando el textarea tiene focus en modo claro */
+.chat-input-container textarea:focus {
+  border-color: #3e63dd !important;
+  box-shadow: 0 0 0 2px rgba(62, 99, 221, 0.2) !important;
+}
+
+/* Burbujas de chat para el usuario en tema claro - más visibles */
+.flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-primary {
+  background-color: #3e63dd !important;
+  color: white !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Burbujas de chat para el bot en tema claro - más visibles */
+.flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-card {
+  background-color: #e9ecef !important;
+  color: #1a202c !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Estilos del chat en tema oscuro */
+.dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 {
+  background-color: var(--background) !important;
+}
+
+.dark .chat-input-container {
+  background-color: var(--background) !important;
+}
+
+/* Mejora del textarea en modo oscuro con estilo más estándar */
+.dark .chat-input-container textarea {
+  background-color: #1e1e2d !important;
+  border-color: #2d2d3d !important;
+  color: var(--foreground) !important;
+  border-width: 1px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+/* Estilo cuando el textarea tiene focus en modo oscuro - borde más visible */
+.dark .chat-input-container textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+  outline: none !important;
+}
+
+.dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 * {
+  color: var(--foreground) !important;
+}
+
+.dark .chat-input-container button {
+  color: var(--foreground) !important;
+}
+
+.dark .chat-input-container button:hover {
+  background-color: var(--accent) !important;
+}
+
+/* Burbujas de chat para el usuario en tema oscuro - más visibles */
+.dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-primary {
+  background-color: #3b82f6 !important;
+  color: white !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Burbujas de chat para el bot en tema oscuro - más visibles */
+.dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-card {
+  background-color: #2d3748 !important;
+  color: #f7fafc !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Estilos para el input de búsqueda */
+.flex.flex-col.h-full.border-r input[type="search"] {
+  background-color: white !important;
+  border-color: #e2e8f0 !important;
+}
+
+.flex.flex-col.h-full.border-r input[type="search"]:focus {
+  border-color: #3e63dd !important;
+  box-shadow: 0 0 0 2px rgba(62, 99, 221, 0.2) !important;
+}
+
+/* Estilos para el input de búsqueda en tema oscuro */
+.dark .flex.flex-col.h-full.border-r input[type="search"] {
+  background-color: #1e1e2d !important;
+  border-color: #2d2d3d !important;
+}
+
+.dark .flex.flex-col.h-full.border-r input[type="search"]:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Mejoras para los botones */
+button.rounded-full, button.rounded-xl {
+  transition: all 0.2s ease;
+  box-shadow: none;
+  border: none;
+}
+
+button.rounded-full:hover, button.rounded-xl:hover {
+  box-shadow: none;
+  transform: none;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+button.rounded-full:active, button.rounded-xl:active {
+  box-shadow: none;
+  transform: none;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para el tema oscuro */
+.dark button.rounded-full, .dark button.rounded-xl {
+  box-shadow: none;
+  border: none;
+}
+
+.dark button.rounded-full:hover, .dark button.rounded-xl:hover {
+  box-shadow: none;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark button.rounded-full:active, .dark button.rounded-xl:active {
+  box-shadow: none;
+  background-color: rgba(255, 255, 255, 0.15);
 } 

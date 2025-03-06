@@ -252,7 +252,7 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
                 style={{ outline: 'none' }}
               >
                 <div className={cn(
-                  "transition-all duration-300",
+                  "transition-all duration-300 flex items-center justify-center",
                   isChanging ? "scale-75 opacity-0" : "scale-100 opacity-100"
                 )}>
                   {isDarkMode ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}

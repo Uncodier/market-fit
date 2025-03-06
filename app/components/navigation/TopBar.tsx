@@ -9,7 +9,12 @@ import {
   Filter, 
   Download, 
   Search, 
-  UploadCloud 
+  UploadCloud,
+  Settings,
+  Bell,
+  Plus,
+  PanelLeftClose,
+  PanelLeftOpen
 } from "@/app/components/ui/icons"
 import {
   Tooltip,
@@ -46,6 +51,7 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
     name: string
     description: string
   }>
+  breadcrumb?: React.ReactNode
 }
 
 export function TopBar({ 
@@ -55,6 +61,7 @@ export function TopBar({
   onCollapse,
   className,
   segments: propSegments,
+  breadcrumb,
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
@@ -223,143 +230,155 @@ export function TopBar({
   return (
     <div
       className={cn(
-        "flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur-sm pr-16 sticky top-0 z-10",
+        "flex flex-col border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10",
+        breadcrumb ? "h-[calc(64px+41px)]" : "h-[64px]",
         className
       )}
       {...props}
     >
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          className="h-8 w-8 p-0 ml-3.5"
-          onClick={onCollapse}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
+      <div className="flex h-[64px] items-center justify-between pr-16">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            className="h-8 w-8 p-0 ml-3.5"
+            onClick={onCollapse}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+            <span className="sr-only">
+              {isCollapsed ? "Expandir menú" : "Colapsar menú"}
+            </span>
+          </Button>
+          <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+          {helpText && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="inline-flex items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                    <HelpCircle className="h-5 w-5" />
+                    <span className="sr-only">Help</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center">
+                  <p className="max-w-xs text-sm">{helpText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
-          <span className="sr-only">
-            {isCollapsed ? "Expandir menú" : "Colapsar menú"}
-          </span>
-        </Button>
-        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-        {helpText && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="inline-flex items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-                  <HelpCircle className="h-4 w-4" />
-                  <span className="sr-only">Help</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" align="center">
-                <p className="max-w-xs text-sm">{helpText}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </div>
-      <div className="flex items-center gap-4">
-        {isDashboardPage && (
-          <>
-            <CalendarDateRangePicker />
-            <Button>Download</Button>
-          </>
-        )}
-        {isSegmentsPage && (
-          currentSite ? (
-            <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
-          ) : (
-            <Button variant="outline" disabled>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Seleccione un sitio
-            </Button>
-          )
-        )}
-        {isExperimentsPage && (
-          currentSite ? (
-            <CreateExperimentDialog 
-              segments={segments || []}
-              onCreateExperiment={handleCreateExperiment}
-            />
-          ) : (
-            <Button variant="outline" disabled>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Seleccione un sitio
-            </Button>
-          )
-        )}
-        {isRequirementsPage && (
-          currentSite ? (
+        </div>
+        
+        {/* Actions section */}
+        <div className="flex items-center gap-4">
+          {isDashboardPage && (
             <>
-              <CreateRequirementDialog 
-                segments={segments || []}
-                onCreateRequirement={handleCreateRequirement}
-                trigger={
-                  <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    New Requirement
-                  </Button>
-                }
-              />
+              <CalendarDateRangePicker />
+              <Button>Download</Button>
             </>
-          ) : (
-            <Button variant="outline" disabled>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Seleccione un sitio
-            </Button>
-          )
-        )}
-        {isLeadsPage && (
-          currentSite ? (
-            <>
-              <Button variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Export
+          )}
+          {isSegmentsPage && (
+            currentSite ? (
+              <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
+            ) : (
+              <Button variant="outline" disabled>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Seleccione un sitio
               </Button>
-              <CreateLeadDialog 
-                segments={segments.length > 0 ? segments : propSegments || []}
-                onCreateLead={handleCreateLead}
-                trigger={
-                  <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Lead
-                  </Button>
-                }
+            )
+          )}
+          {isExperimentsPage && (
+            currentSite ? (
+              <CreateExperimentDialog 
+                segments={segments || []}
+                onCreateExperiment={handleCreateExperiment}
               />
-            </>
-          ) : (
-            <Button variant="outline" disabled>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Seleccione un sitio
-            </Button>
-          )
-        )}
-        {isAgentsPage && (
-          currentSite ? (
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Agent
-            </Button>
-          ) : (
-            <Button variant="outline" disabled>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Seleccione un sitio
-            </Button>
-          )
-        )}
-        {isAssetsPage && (
-          currentSite ? (
-            <UploadAssetDialog onUploadAsset={handleCreateAsset} />
-          ) : (
-            <Button variant="outline" disabled>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Seleccione un sitio
-            </Button>
-          )
-        )}
+            ) : (
+              <Button variant="outline" disabled>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Seleccione un sitio
+              </Button>
+            )
+          )}
+          {isRequirementsPage && (
+            currentSite ? (
+              <>
+                <CreateRequirementDialog 
+                  segments={segments || []}
+                  onCreateRequirement={handleCreateRequirement}
+                  trigger={
+                    <Button>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      New Requirement
+                    </Button>
+                  }
+                />
+              </>
+            ) : (
+              <Button variant="outline" disabled>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Seleccione un sitio
+              </Button>
+            )
+          )}
+          {isLeadsPage && (
+            currentSite ? (
+              <>
+                <Button variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+                <CreateLeadDialog 
+                  segments={segments.length > 0 ? segments : propSegments || []}
+                  onCreateLead={handleCreateLead}
+                  trigger={
+                    <Button>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Lead
+                    </Button>
+                  }
+                />
+              </>
+            ) : (
+              <Button variant="outline" disabled>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Seleccione un sitio
+              </Button>
+            )
+          )}
+          {isAgentsPage && (
+            currentSite ? (
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Agent
+              </Button>
+            ) : (
+              <Button variant="outline" disabled>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Seleccione un sitio
+              </Button>
+            )
+          )}
+          {isAssetsPage && (
+            currentSite ? (
+              <UploadAssetDialog onUploadAsset={handleCreateAsset} />
+            ) : (
+              <Button variant="outline" disabled>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Seleccione un sitio
+              </Button>
+            )
+          )}
+        </div>
       </div>
+      
+      {/* Breadcrumb section - asegurar visibilidad */}
+      {breadcrumb && (
+        <div className="pl-16 py-2 border-t border-border/50 bg-white/50">
+          {breadcrumb}
+        </div>
+      )}
     </div>
   )
 } 

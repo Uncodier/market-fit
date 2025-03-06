@@ -7,6 +7,7 @@ export interface Agent {
   conversations: number
   successRate: number
   lastActive: string
+  icon: string
 }
 
 export type AgentType = Agent["type"]
