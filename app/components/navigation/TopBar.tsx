@@ -14,7 +14,12 @@ import {
   Bell,
   Plus,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  X,
+  ChevronDown,
+  LogOut,
+  User as UserIcon,
+  FlaskConical
 } from "@/app/components/ui/icons"
 import {
   Tooltip,
@@ -23,11 +28,10 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip"
 import { Button } from "../ui/button"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { CalendarDateRangePicker } from "../ui/date-range-picker"
 import { CreateSegmentDialog } from "../create-segment-dialog"
 import { createSegment } from "@/app/segments/actions"
-import { useRouter } from "next/navigation"
 import { CreateExperimentDialog } from "@/app/components/create-experiment-dialog"
 import { createExperiment, type ExperimentFormValues } from "@/app/experiments/actions"
 import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
@@ -38,8 +42,11 @@ import { type Segment } from "@/app/requirements/types"
 import { useSite } from "@/app/context/SiteContext"
 import { CreateLeadDialog } from "@/app/components/create-lead-dialog"
 import { createLead } from "@/app/leads/actions"
-import { useState, useEffect } from "react"
+import { CreateContentDialog } from "@/app/content/components"
+import { useState, useEffect, useCallback } from "react"
 import { getSegments } from "@/app/segments/actions"
+import Link from "next/link"
+import { Breadcrumb } from "./Breadcrumb"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -65,6 +72,7 @@ export function TopBar({
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const isDashboardPage = pathname === "/dashboard"
   const isSegmentsPage = pathname === "/segments"
   const isExperimentsPage = pathname === "/experiments"
@@ -72,13 +80,218 @@ export function TopBar({
   const isLeadsPage = pathname === "/leads"
   const isAgentsPage = pathname === "/agents"
   const isAssetsPage = pathname === "/assets"
+  const isContentPage = pathname === "/content"
   const { currentSite } = useSite()
   const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([])
+  const [searchParams, setSearchParams] = useState<string>("")
+  const [customTitle, setCustomTitle] = useState<string | null>(null)
+  const [customAgentId, setCustomAgentId] = useState<string | null>(null)
+  const [customAgentName, setCustomAgentName] = useState<string | null>(null)
 
-  // Cargar segmentos cuando se está en la página de leads
+  // Escuchar eventos de actualización del breadcrumb
+  useEffect(() => {
+    const handleBreadcrumbUpdate = (event: any) => {
+      if (event.detail) {
+        // Si se proporciona un título personalizado
+        if (event.detail.title !== undefined) {
+          setCustomTitle(event.detail.title);
+        }
+        
+        // Si se proporcionan datos de agente para la página de chat
+        if (event.detail.agentId && event.detail.agentName) {
+          setCustomAgentId(event.detail.agentId);
+          setCustomAgentName(event.detail.agentName);
+        }
+      }
+    };
+    
+    window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+    };
+  }, []);
+
+  // Generar breadcrumb basado en la ruta actual
+  const generateBreadcrumbItems = useCallback(() => {
+    const pathSegments = pathname.split('/').filter(Boolean);
+    
+    if (pathSegments.length <= 1) {
+      return null; // No hay necesidad de breadcrumb para rutas de primer nivel
+    }
+    
+    const breadcrumbItems = [];
+    let currentPath = '';
+    
+    // Mapeo de rutas a títulos
+    const routeTitles: Record<string, string> = {
+      'agents': 'Agents',
+      'segments': 'Segments',
+      'experiments': 'Experiments',
+      'requirements': 'Requirements',
+      'leads': 'Leads',
+      'assets': 'Assets',
+      'chat': 'Chat',
+      'dashboard': 'Dashboard',
+    };
+    
+    // Manejar casos especiales como chat con parámetros de consulta
+    if (pathSegments[0] === 'chat') {
+      // Usar los datos personalizados del agente si están disponibles
+      if (customAgentId && customAgentName) {
+        breadcrumbItems.push({
+          href: '/agents',
+          label: 'Agents',
+          isCurrent: false
+        });
+        
+        breadcrumbItems.push({
+          href: `/agents/${customAgentId}`,
+          label: decodeURIComponent(customAgentName),
+          isCurrent: false
+        });
+        
+        breadcrumbItems.push({
+          href: pathname + window.location.search,
+          label: 'Chat',
+          isCurrent: true
+        });
+        
+        return breadcrumbItems;
+      }
+      
+      // Fallback al comportamiento anterior
+      const urlSearchParams = new URLSearchParams(searchParams);
+      const agentId = urlSearchParams.get('agentId');
+      const agentName = urlSearchParams.get('agentName');
+      
+      breadcrumbItems.push({
+        href: '/agents',
+        label: 'Agents',
+        isCurrent: false
+      });
+      
+      if (agentId && agentName) {
+        breadcrumbItems.push({
+          href: `/agents/${agentId}`,
+          label: decodeURIComponent(agentName),
+          isCurrent: false
+        });
+      }
+      
+      breadcrumbItems.push({
+        href: pathname + searchParams,
+        label: 'Chat',
+        isCurrent: true
+      });
+      
+      return breadcrumbItems;
+    }
+    
+    // Manejar caso especial para la página de detalle del agente
+    if (pathSegments[0] === 'agents' && pathSegments.length === 2) {
+      breadcrumbItems.push({
+        href: '/agents',
+        label: 'Agents',
+        isCurrent: false
+      });
+      
+      // Usar el título personalizado si está disponible
+      breadcrumbItems.push({
+        href: `/${pathSegments[0]}/${pathSegments[1]}`,
+        label: customTitle || 'Agent Details',
+        isCurrent: true
+      });
+      
+      return breadcrumbItems;
+    }
+    
+    // Manejar caso especial para la página de detalle del segmento
+    if (pathSegments[0] === 'segments' && pathSegments.length === 2) {
+      breadcrumbItems.push({
+        href: '/segments',
+        label: 'Segments',
+        isCurrent: false
+      });
+      
+      // Usar el título personalizado si está disponible
+      breadcrumbItems.push({
+        href: `/${pathSegments[0]}/${pathSegments[1]}`,
+        label: customTitle || 'Segment Details',
+        isCurrent: true
+      });
+      
+      return breadcrumbItems;
+    }
+    
+    // Construir los items del breadcrumb para rutas normales
+    for (let i = 0; i < pathSegments.length; i++) {
+      const segment = pathSegments[i];
+      currentPath += `/${segment}`;
+      
+      // Si es un ID (generalmente el último segmento en rutas como /agents/123)
+      const isIdSegment = i > 0 && !isNaN(Number(segment));
+      
+      // Último segmento (página actual)
+      if (i === pathSegments.length - 1) {
+        // Si es un ID, usamos el título proporcionado o un valor por defecto
+        if (isIdSegment) {
+          breadcrumbItems.push({
+            href: currentPath,
+            label: title || 'Details',
+            isCurrent: true
+          });
+        } else {
+          breadcrumbItems.push({
+            href: currentPath,
+            label: title || routeTitles[segment] || segment.charAt(0).toUpperCase() + segment.slice(1),
+            isCurrent: true
+          });
+        }
+      } else {
+        breadcrumbItems.push({
+          href: currentPath,
+          label: routeTitles[segment] || segment.charAt(0).toUpperCase() + segment.slice(1),
+          isCurrent: false
+        });
+      }
+    }
+    
+    return breadcrumbItems;
+  }, [pathname, searchParams, title, customTitle, customAgentId, customAgentName]);
+  
+  const [breadcrumbItems, setBreadcrumbItems] = useState<Array<{
+    href: string;
+    label: string;
+    isCurrent: boolean;
+  }> | null>(null);
+  
+  // Actualizar los parámetros de búsqueda cuando cambie la URL
+  useEffect(() => {
+    const updateSearchParams = () => {
+      setSearchParams(window.location.search);
+    };
+    
+    // Actualizar inicialmente
+    updateSearchParams();
+    
+    // Escuchar cambios en la URL
+    window.addEventListener('popstate', updateSearchParams);
+    
+    return () => {
+      window.removeEventListener('popstate', updateSearchParams);
+    };
+  }, []);
+  
+  // Actualizar breadcrumb cuando cambie la ruta
+  useEffect(() => {
+    setBreadcrumbItems(generateBreadcrumbItems());
+  }, [pathname, title, searchParams, customTitle, generateBreadcrumbItems]);
+  
+  // Cargar segmentos cuando se está en la página de leads o contenido
   useEffect(() => {
     async function loadSegments() {
-      if (!currentSite?.id || !isLeadsPage) return
+      if (!currentSite?.id || !(isLeadsPage || isContentPage)) return
       
       try {
         const response = await getSegments(currentSite.id)
@@ -100,7 +313,7 @@ export function TopBar({
     }
 
     loadSegments()
-  }, [currentSite, isLeadsPage])
+  }, [currentSite, isLeadsPage, isContentPage])
 
   const handleCreateSegment = async ({ 
     name, 
@@ -168,6 +381,13 @@ export function TopBar({
       console.error("Error creating requirement:", error)
       return { error: error instanceof Error ? error.message : "Error inesperado" }
     }
+  }
+
+  const handleBuildWithAI = () => {
+    // Navigate to the AI segment builder page or open a dialog
+    console.log("Build segments with AI clicked")
+    // TODO: Implement AI segment building functionality
+    alert("AI segment building functionality coming soon!")
   }
 
   const handleCreateAsset = async ({ 
@@ -252,7 +472,33 @@ export function TopBar({
               {isCollapsed ? "Expandir menú" : "Colapsar menú"}
             </span>
           </Button>
-          <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+          
+          {breadcrumbItems ? (
+            <nav className="flex items-center" aria-label="Breadcrumb">
+              <ol className="flex items-center">
+                {breadcrumbItems.map((item, index) => (
+                  <li key={`${item.href}-${index}`} className="flex items-center">
+                    {index > 0 && (
+                      <ChevronRight className="mx-1.5 h-4 w-4 text-muted-foreground/70" aria-hidden={true} />
+                    )}
+                    {item.isCurrent ? (
+                      <span className="text-2xl font-semibold text-foreground">{item.label}</span>
+                    ) : (
+                      <Link 
+                        href={item.href}
+                        className="text-2xl font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {item.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          ) : (
+            <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+          )}
+          
           {helpText && (
             <TooltipProvider>
               <Tooltip>
@@ -280,7 +526,18 @@ export function TopBar({
           )}
           {isSegmentsPage && (
             currentSite ? (
-              <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="secondary" 
+                  size="default"
+                  className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+                  onClick={handleBuildWithAI}
+                >
+                  <FlaskConical className="h-4 w-4" />
+                  Build with AI
+                </Button>
+                <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
+              </div>
             ) : (
               <Button variant="outline" disabled>
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -363,6 +620,28 @@ export function TopBar({
           {isAssetsPage && (
             currentSite ? (
               <UploadAssetDialog onUploadAsset={handleCreateAsset} />
+            ) : (
+              <Button variant="outline" disabled>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Seleccione un sitio
+              </Button>
+            )
+          )}
+          {isContentPage && (
+            currentSite ? (
+              <CreateContentDialog 
+                segments={segments.length > 0 ? segments : propSegments || []}
+                onSuccess={() => {
+                  // Recargar la página para mostrar el nuevo contenido
+                  window.location.reload()
+                }}
+                trigger={
+                  <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    New Content
+                  </Button>
+                }
+              />
             ) : (
               <Button variant="outline" disabled>
                 <PlusCircle className="mr-2 h-4 w-4" />

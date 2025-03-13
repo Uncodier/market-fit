@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search, User, MessageSquare, Globe, FileText, RotateCcw, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, Search, User, MessageSquare, Globe, FileText, RotateCcw, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -19,6 +19,9 @@ import React from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/app/components/ui/sheet"
 import { Separator } from "@/app/components/ui/separator"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { KanbanView, LeadFilters } from "@/app/components/kanban-view"
+import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
 
 interface Lead {
   id: string
@@ -40,6 +43,7 @@ interface LeadsTableProps {
   totalLeads: number
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
+  onLeadClick: (lead: Lead) => void
 }
 
 function LeadsTable({ 
@@ -48,27 +52,15 @@ function LeadsTable({
   itemsPerPage,
   totalLeads,
   onPageChange,
-  onItemsPerPageChange
+  onItemsPerPageChange,
+  onLeadClick
 }: LeadsTableProps) {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalLeads / itemsPerPage)
   const { segments } = useLeadsContext()
   const { currentSite } = useSite()
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [editForm, setEditForm] = useState<Omit<Lead, "id" | "created_at">>({
-    name: "",
-    email: "",
-    phone: null,
-    company: null,
-    position: null,
-    segment_id: null,
-    status: "new",
-    origin: null
-  })
-
+  
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return "No Segment"
@@ -89,111 +81,18 @@ function LeadsTable({
     converted: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
     lost: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
   }
-
-  const handleRowClick = (lead: Lead) => {
-    setSelectedLead(lead)
-    setIsEditing(false)
-    setEditForm({
-      name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      company: lead.company,
-      position: lead.position,
-      segment_id: lead.segment_id,
-      status: lead.status,
-      origin: lead.origin
-    })
-    setIsDetailOpen(true)
-  }
-
-  const handleStartEditing = () => {
-    setIsEditing(true)
-  }
-
-  const handleCancelEditing = () => {
-    setIsEditing(false)
-    if (selectedLead) {
-      setEditForm({
-        name: selectedLead.name,
-        email: selectedLead.email,
-        phone: selectedLead.phone,
-        company: selectedLead.company,
-        position: selectedLead.position,
-        segment_id: selectedLead.segment_id,
-        status: selectedLead.status,
-        origin: selectedLead.origin
-      })
-    }
-  }
-
-  const sendEmail = (email: string) => {
-    window.open(`mailto:${email}`, '_blank');
-  }
-
-  const callPhone = (phone: string) => {
-    window.open(`tel:${phone}`, '_blank');
-  }
-
-  const sendMessage = (phone: string) => {
-    window.open(`sms:${phone}`, '_blank');
-  }
-
-  const handleSaveChanges = async () => {
-    if (!selectedLead || !currentSite?.id) return
-
-    try {
-      setIsSaving(true)
-      const result = await updateLead({
-        id: selectedLead.id,
-        name: editForm.name,
-        email: editForm.email,
-        phone: editForm.phone,
-        company: editForm.company,
-        position: editForm.position,
-        segment_id: editForm.segment_id,
-        status: editForm.status,
-        origin: editForm.origin,
-        notes: null, // No tenemos interfaz para notas aún
-        site_id: currentSite.id
-      })
-
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-
-      if (result.lead) {
-        toast.success("Lead updated successfully")
-        setSelectedLead({
-          ...result.lead,
-          origin: result.lead.origin || null // Asegurarnos que origin esté definido 
-        })
-        setIsEditing(false)
-
-        // Recargar los leads para actualizar la tabla
-        window.location.reload()
-      }
-    } catch (error) {
-      console.error("Error updating lead:", error)
-      toast.error("Error updating lead")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
+  
   return (
-    <>
     <Card>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="whitespace-nowrap">Name/Email</TableHead>
-            <TableHead className="whitespace-nowrap">Phone</TableHead>
-            <TableHead className="whitespace-nowrap">Company</TableHead>
-            <TableHead className="w-[150px]">Position</TableHead>
-            <TableHead className="w-[120px]">Segment</TableHead>
-            <TableHead className="w-[120px]">Status</TableHead>
-            <TableHead className="w-[120px]">Created</TableHead>
+            <TableHead className="w-[250px]">Name</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Company</TableHead>
+            <TableHead>Segment</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -202,7 +101,7 @@ function LeadsTable({
             <TableRow 
               key={lead.id}
                   className={`group hover:bg-muted/50 transition-colors cursor-pointer ${selectedLead?.id === lead.id ? 'bg-primary/10 hover:bg-primary/15' : ''}`}
-                  onClick={() => handleRowClick(lead)}
+                  onClick={() => onLeadClick(lead)}
             >
               <TableCell>
                 <div className="space-y-0.5">
@@ -216,60 +115,75 @@ function LeadsTable({
               <TableCell className="font-medium">
                 {lead.company || "-"}
               </TableCell>
-              <TableCell className="text-muted-foreground text-sm">
-                    {lead.position || "-"}
+              <TableCell className="font-medium">
+                {lead.segment_id ? truncateText(getSegmentName(lead.segment_id)) : "No Segment"}
               </TableCell>
               <TableCell>
-                    <Badge variant="outline" className="text-xs whitespace-nowrap">
-                      {lead.segment_id ? truncateText(getSegmentName(lead.segment_id)) : "No Segment"}
+                <Badge className={`${statusStyles[lead.status]}`}>
+                  {lead.status}
                 </Badge>
               </TableCell>
-              <TableCell>
-                <Badge className={statusStyles[lead.status]}>
-                  {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                </Badge>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      window.open(`mailto:${lead.email}`)
+                    }}
+                  >
+                    <Mail className="h-4 w-4" />
+                    <span className="sr-only">Email</span>
+                  </Button>
+                  {lead.phone && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        window.open(`tel:${lead.phone}`)
+                      }}
+                    >
+                      <Phone className="h-4 w-4" />
+                      <span className="sr-only">Call</span>
+                    </Button>
+                  )}
+                </div>
               </TableCell>
-              <TableCell className="text-muted-foreground text-sm">
-                    {new Date(lead.created_at).toLocaleDateString()}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  No leads found.
-                </TableCell>
-              </TableRow>
-            )}
+            </TableRow>
+          ))
+        ) : (
+          <TableRow>
+            <TableCell colSpan={6} className="h-24 text-center">
+              No leads found.
+            </TableCell>
+          </TableRow>
+        )}
         </TableBody>
       </Table>
       <div className="flex items-center justify-between px-6 py-4 border-t">
         <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">
-              Showing <span className="font-medium">{leads.length > 0 ? indexOfFirstItem + 1 : 0}</span> to{" "}
-            <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalLeads)}</span> of{" "}
-            <span className="font-medium">{totalLeads}</span> records
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Show</span>
-            <Select
-              value={itemsPerPage.toString()}
-              onValueChange={onItemsPerPageChange}
-            >
-              <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder="5" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="15">15</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-muted-foreground">per page</span>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Showing <span className="font-medium">{Math.min(indexOfFirstItem + 1, totalLeads)}</span> to <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalLeads)}</span> of <span className="font-medium">{totalLeads}</span> leads
+          </p>
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={onItemsPerPageChange}
+          >
+            <SelectTrigger className="h-8 w-[70px]">
+              <SelectValue placeholder={itemsPerPage.toString()} />
+            </SelectTrigger>
+            <SelectContent side="top">
+              {[5, 10, 20, 50].map((value) => (
+                <SelectItem key={value} value={value.toString()}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -280,7 +194,7 @@ function LeadsTable({
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Previous page</span>
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
@@ -310,11 +224,624 @@ function LeadsTable({
         </div>
       </div>
     </Card>
+  )
+}
 
+// Contexto para manejar los segmentos
+interface LeadsContextType {
+  segments: Array<{ id: string; name: string }>
+}
+
+const LeadsContext = React.createContext<LeadsContextType>({
+  segments: []
+})
+
+const useLeadsContext = () => React.useContext(LeadsContext)
+
+// Componente Skeleton para carga de la tabla de leads
+function LeadsTableSkeleton() {
+  return (
+    <Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="whitespace-nowrap">
+              <Skeleton className="h-4 w-24" />
+            </TableHead>
+            <TableHead className="whitespace-nowrap">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="whitespace-nowrap">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="w-[150px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="w-[120px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="w-[120px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="w-[120px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array(5).fill(0).map((_, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-24 rounded-full" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <div className="flex items-center justify-between px-6 py-4 border-t">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-8 rounded" />
+          <Skeleton className="h-8 w-24 rounded" />
+          <Skeleton className="h-8 w-8 rounded" />
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+export default function LeadsPage() {
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+  const [activeTab, setActiveTab] = useState("all")
+  const [dbLeads, setDbLeads] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true)
+  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [viewType, setViewType] = useState<ViewType>("table")
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [filters, setFilters] = useState<LeadFilters>({
+    status: [],
+    segments: [],
+    origin: []
+  })
+  const [editForm, setEditForm] = useState<Omit<Lead, "id" | "created_at">>({
+    name: "",
+    email: "",
+    phone: null,
+    company: null,
+    position: null,
+    segment_id: null,
+    status: "new",
+    origin: null
+  })
+  const { currentSite } = useSite()
+  
+  // Función para obtener el nombre del segmento
+  const getSegmentName = (segmentId: string | null) => {
+    if (!segmentId) return "No Segment"
+    const segment = segments.find(s => s.id === segmentId)
+    return segment?.name || "Unknown Segment"
+  }
+  
+  // Estilos para los diferentes estados
+  const statusStyles = {
+    new: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
+    contacted: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200", 
+    qualified: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
+    converted: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
+    lost: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
+  }
+  
+  // Función para guardar los cambios
+  const handleSaveChanges = async () => {
+    if (!selectedLead || !currentSite?.id) return
+    
+    setIsSaving(true)
+    try {
+      const result = await updateLead({
+        id: selectedLead.id,
+        ...editForm,
+        site_id: currentSite.id
+      })
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      // Actualizar el lead en el estado local
+      setDbLeads(prevLeads => 
+        prevLeads.map(l => 
+          l.id === selectedLead.id ? { ...l, ...editForm, id: selectedLead.id, created_at: selectedLead.created_at } : l
+        )
+      )
+      
+      setIsEditing(false)
+      toast.success("Lead updated successfully")
+    } catch (error) {
+      console.error("Error updating lead:", error)
+      toast.error("Error updating lead")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+  
+  // Función para cargar leads desde la base de datos
+  const loadLeads = async () => {
+    if (!currentSite?.id) return
+
+    setLoading(true)
+    try {
+      const result = await getLeads(currentSite.id)
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      // Asegurarse de que todos los leads tienen todos los campos de la interfaz Lead
+      const normalizedLeads = result.leads?.map(lead => ({
+        ...lead,
+        origin: lead.origin || null // Asegurarnos que origin esté definido
+      })) || []
+      
+      setDbLeads(normalizedLeads)
+    } catch (error) {
+      console.error("Error loading leads:", error)
+      toast.error("Error loading leads")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Cargar leads desde la base de datos
+  useEffect(() => {
+    async function loadSegments() {
+      if (!currentSite?.id) return
+      
+      try {
+        const response = await getSegments(currentSite.id)
+        if (response.error) {
+          console.error(response.error)
+          return
+        }
+        
+        if (response.segments) {
+          setSegments(response.segments.map(s => ({ id: s.id, name: s.name })))
+        }
+      } catch (error) {
+        console.error("Error loading segments:", error)
+      }
+    }
+
+    loadLeads()
+    loadSegments()
+  }, [currentSite])
+  
+  const getFilteredLeads = (status: string) => {
+    if (!dbLeads) return []
+    
+    // First filter by status
+    let filtered = dbLeads
+    if (status !== "all") {
+      filtered = filtered.filter(lead => lead.status === status)
+    }
+    
+    // Then filter by search query if it exists
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(lead => 
+        lead.name.toLowerCase().includes(query) || 
+        lead.email.toLowerCase().includes(query) || 
+        (lead.company && lead.company.toLowerCase().includes(query)) ||
+        (lead.position && lead.position.toLowerCase().includes(query)) ||
+        (lead.phone && lead.phone.toLowerCase().includes(query)) ||
+        (lead.origin && lead.origin.toLowerCase().includes(query))
+      )
+    }
+    
+    // Apply advanced filters
+    if (filters.status.length > 0) {
+      filtered = filtered.filter(lead => filters.status.includes(lead.status))
+    }
+    
+    if (filters.segments.length > 0) {
+      filtered = filtered.filter(lead => 
+        lead.segment_id && filters.segments.includes(lead.segment_id)
+      )
+    }
+    
+    if (filters.origin.length > 0) {
+      filtered = filtered.filter(lead => 
+        lead.origin && filters.origin.includes(lead.origin)
+      )
+    }
+    
+    return filtered
+  }
+  
+  const filteredLeads = getFilteredLeads(activeTab)
+  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage)
+  
+  // Calcular los leads que se mostrarán en la página actual
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentLeads = filteredLeads.slice(indexOfFirstItem, indexOfLastItem)
+  
+  // Funciones para cambiar de página
+  function handlePageChange(page: number) {
+    setCurrentPage(page)
+  }
+
+  // Reset página cuando cambia el tab
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab])
+
+  // Función para cambiar items por página
+  function handleItemsPerPageChange(value: string) {
+    setItemsPerPage(Number(value))
+    setCurrentPage(1)
+  }
+
+  // Función para crear un nuevo lead
+  const handleCreateLead = async (data: any) => {
+    try {
+      const result = await createLead({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        company: data.company,
+        position: data.position,
+        segment_id: data.segment_id,
+        status: data.status,
+        notes: data.notes,
+        origin: data.origin,
+        site_id: currentSite?.id || ""
+      })
+
+      if (result.error) {
+        toast.error(result.error)
+        return { error: result.error }
+      }
+
+      toast.success("Lead created successfully")
+      
+      // Recargar los leads
+      window.location.reload()
+      
+      return { lead: result.lead }
+    } catch (error) {
+      console.error("Error creating lead:", error)
+      toast.error("Error creating lead")
+      return { error: "Error creating lead" }
+    }
+  }
+
+  // Función para manejar cambios en el buscador
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1) // Reset a la primera página cuando se busca
+  }
+
+  // Función para actualizar el estado de un lead (para la vista Kanban)
+  const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
+    const lead = dbLeads.find(l => l.id === leadId)
+    if (!lead) return
+
+    try {
+      const result = await updateLead({
+        id: leadId,
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        company: lead.company,
+        position: lead.position,
+        segment_id: lead.segment_id,
+        status: newStatus as any,
+        origin: lead.origin,
+        site_id: currentSite?.id || ""
+      })
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      // Actualizamos el lead en el estado local
+      setDbLeads(prevLeads => 
+        prevLeads.map(l => 
+          l.id === leadId ? { ...l, status: newStatus as any } : l
+        )
+      );
+      
+      toast.success("Lead status updated successfully")
+    } catch (error) {
+      console.error("Error updating lead status:", error)
+      toast.error("Error updating lead status")
+    }
+  }
+
+  // Función para manejar el clic en una fila o tarjeta
+  const handleLeadClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsEditing(false);
+    setEditForm({
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      company: lead.company,
+      position: lead.position,
+      segment_id: lead.segment_id,
+      status: lead.status,
+      origin: lead.origin
+    });
+    setIsDetailOpen(true);
+  };
+
+  // Función para aplicar filtros
+  const handleApplyFilters = (newFilters: LeadFilters) => {
+    setFilters(newFilters)
+    setCurrentPage(1) // Reset a la primera página cuando se aplican filtros
+  }
+  
+  // Función para limpiar todos los filtros
+  const handleClearFilters = () => {
+    setFilters({
+      status: [],
+      segments: [],
+      origin: []
+    })
+    setSearchQuery("")
+    setCurrentPage(1)
+  }
+  
+  // Función para abrir el modal de filtros
+  const handleOpenFilterModal = () => {
+    setIsFilterModalOpen(true)
+  }
+
+  return (
+    <LeadsContext.Provider value={{ segments }}>
+    <div className="flex-1 p-0">
+      {/* Modal de filtros */}
+      <LeadFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        filters={filters}
+        onApplyFilters={handleApplyFilters}
+        segments={segments}
+      />
+      
+      <Tabs defaultValue="all" onValueChange={setActiveTab}>
+        <StickyHeader>
+          <div className="px-16 pt-0">
+            <div className="flex items-center gap-8">
+              <div className="flex-1">
+                <TabsList className="w-full">
+                  <TabsTrigger value="all">All Leads</TabsTrigger>
+                  <TabsTrigger value="new">New</TabsTrigger>
+                  <TabsTrigger value="contacted">Contacted</TabsTrigger>
+                  <TabsTrigger value="qualified">Qualified</TabsTrigger>
+                  <TabsTrigger value="converted">Converted</TabsTrigger>
+                  <TabsTrigger value="lost">Lost</TabsTrigger>
+                </TabsList>
+              </div>
+              <div className="relative w-64">
+                <Input 
+                  placeholder="Search leads..." 
+                  className="w-full" 
+                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                />
+                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </div>
+              <Button variant="outline" onClick={handleOpenFilterModal}>
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+              {/* Indicador de filtros activos */}
+              {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
+                <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                  <Badge variant="outline" className="rounded-full px-2 py-0">
+                    {filters.status.length + filters.segments.length + filters.origin.length}
+                  </Badge>
+                  <span className="ml-2">Clear filters</span>
+                </Button>
+              )}
+              <div className="ml-auto">
+                <ViewSelector currentView={viewType} onViewChange={setViewType} />
+              </div>
+            </div>
+          </div>
+        </StickyHeader>
+        
+        <div className="p-8 space-y-4">
+          <div className="px-8">
+              {loading ? (
+                <LeadsTableSkeleton />
+              ) : (
+                <>
+            <TabsContent value="all" className="space-y-4">
+              {viewType === "table" ? (
+                <LeadsTable
+                  leads={currentLeads}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalLeads={filteredLeads.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onLeadClick={handleLeadClick}
+                />
+              ) : (
+                <KanbanView 
+                  leads={filteredLeads}
+                  onUpdateLeadStatus={handleUpdateLeadStatus}
+                  segments={segments}
+                  onLeadClick={handleLeadClick}
+                  filters={filters}
+                  onOpenFilters={handleOpenFilterModal}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="new" className="space-y-4">
+              {viewType === "table" ? (
+                <LeadsTable
+                  leads={currentLeads}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalLeads={filteredLeads.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onLeadClick={handleLeadClick}
+                />
+              ) : (
+                <KanbanView 
+                  leads={filteredLeads}
+                  onUpdateLeadStatus={handleUpdateLeadStatus}
+                  segments={segments}
+                  onLeadClick={handleLeadClick}
+                  filters={filters}
+                  onOpenFilters={handleOpenFilterModal}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="contacted" className="space-y-4">
+              {viewType === "table" ? (
+                <LeadsTable
+                  leads={currentLeads}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalLeads={filteredLeads.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onLeadClick={handleLeadClick}
+                />
+              ) : (
+                <KanbanView 
+                  leads={filteredLeads}
+                  onUpdateLeadStatus={handleUpdateLeadStatus}
+                  segments={segments}
+                  onLeadClick={handleLeadClick}
+                  filters={filters}
+                  onOpenFilters={handleOpenFilterModal}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="qualified" className="space-y-4">
+              {viewType === "table" ? (
+                <LeadsTable
+                  leads={currentLeads}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalLeads={filteredLeads.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onLeadClick={handleLeadClick}
+                />
+              ) : (
+                <KanbanView 
+                  leads={filteredLeads}
+                  onUpdateLeadStatus={handleUpdateLeadStatus}
+                  segments={segments}
+                  onLeadClick={handleLeadClick}
+                  filters={filters}
+                  onOpenFilters={handleOpenFilterModal}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="converted" className="space-y-4">
+              {viewType === "table" ? (
+                <LeadsTable
+                  leads={currentLeads}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalLeads={filteredLeads.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onLeadClick={handleLeadClick}
+                />
+              ) : (
+                <KanbanView 
+                  leads={filteredLeads}
+                  onUpdateLeadStatus={handleUpdateLeadStatus}
+                  segments={segments}
+                  onLeadClick={handleLeadClick}
+                  filters={filters}
+                  onOpenFilters={handleOpenFilterModal}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="lost" className="space-y-4">
+              {viewType === "table" ? (
+                <LeadsTable
+                  leads={currentLeads}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalLeads={filteredLeads.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onLeadClick={handleLeadClick}
+                />
+              ) : (
+                <KanbanView 
+                  leads={filteredLeads}
+                  onUpdateLeadStatus={handleUpdateLeadStatus}
+                  segments={segments}
+                  onLeadClick={handleLeadClick}
+                  filters={filters}
+                  onOpenFilters={handleOpenFilterModal}
+                />
+              )}
+            </TabsContent>
+                </>
+              )}
+          </div>
+        </div>
+      </Tabs>
+      
+      {/* Sheet para mostrar los detalles del lead */}
       <Sheet open={isDetailOpen} onOpenChange={(open) => {
         setIsDetailOpen(open);
         if (!open) {
           setSelectedLead(null);
+          setIsEditing(false);
         }
       }}>
         <SheetContent className="sm:max-w-md border-l border-border/40 bg-background">
@@ -373,7 +900,7 @@ function LeadsTable({
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => sendEmail(selectedLead.email)}
+                                onClick={() => window.open(`mailto:${selectedLead.email}`, '_blank')}
                                 className="h-8 ml-2"
                               >
                                 <ExternalLink className="h-4 w-4" />
@@ -404,7 +931,10 @@ function LeadsTable({
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => callPhone(selectedLead.phone!)}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      window.open(`tel:${selectedLead.phone}`)
+                                    }}
                                     className="h-8"
                                   >
                                     <Phone className="h-4 w-4" />
@@ -412,7 +942,10 @@ function LeadsTable({
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => sendMessage(selectedLead.phone!)}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      window.open(`sms:${selectedLead.phone}`)
+                                    }}
                                     className="h-8"
                                   >
                                     <MessageSquare className="h-4 w-4" />
@@ -583,7 +1116,19 @@ function LeadsTable({
               <div className="mt-8 grid grid-cols-2 gap-3">
                 {isEditing ? (
                   <>
-                    <Button onClick={handleCancelEditing} variant="outline" className="w-full">
+                    <Button onClick={() => {
+                      setIsEditing(false)
+                      setEditForm({
+                        name: selectedLead.name,
+                        email: selectedLead.email,
+                        phone: selectedLead.phone,
+                        company: selectedLead.company,
+                        position: selectedLead.position,
+                        segment_id: selectedLead.segment_id,
+                        status: selectedLead.status,
+                        origin: selectedLead.origin
+                      })
+                    }} variant="outline" className="w-full">
                       <X className="mr-2 h-4 w-4" />
                       Cancel
                     </Button>
@@ -594,7 +1139,19 @@ function LeadsTable({
                   </>
                 ) : (
                   <>
-                    <Button onClick={handleStartEditing} variant="outline" className="w-full">
+                    <Button onClick={() => {
+                      setIsEditing(true)
+                      setEditForm({
+                        name: selectedLead.name,
+                        email: selectedLead.email,
+                        phone: selectedLead.phone,
+                        company: selectedLead.company,
+                        position: selectedLead.position,
+                        segment_id: selectedLead.segment_id,
+                        status: selectedLead.status,
+                        origin: selectedLead.origin
+                      })
+                    }} variant="outline" className="w-full">
                       <Pencil className="mr-2 h-4 w-4" />
                       Edit
                     </Button>
@@ -609,351 +1166,6 @@ function LeadsTable({
           )}
         </SheetContent>
       </Sheet>
-    </>
-  )
-}
-
-// Contexto para manejar los segmentos
-interface LeadsContextType {
-  segments: Array<{ id: string; name: string }>
-}
-
-const LeadsContext = React.createContext<LeadsContextType>({
-  segments: []
-})
-
-const useLeadsContext = () => React.useContext(LeadsContext)
-
-// Componente Skeleton para carga de la tabla de leads
-function LeadsTableSkeleton() {
-  return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-24" />
-            </TableHead>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[150px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array(5).fill(0).map((_, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                <div className="space-y-1.5">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-24 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-20 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <div className="flex items-center justify-between px-6 py-4 border-t">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-24 rounded" />
-          <Skeleton className="h-8 w-8 rounded" />
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-export default function LeadsPage() {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(5)
-  const [activeTab, setActiveTab] = useState("all")
-  const [dbLeads, setDbLeads] = useState<Lead[]>([])
-  const [loading, setLoading] = useState(true)
-  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const { currentSite } = useSite()
-  
-  // Función para cargar leads desde la base de datos
-  const loadLeads = async () => {
-    if (!currentSite?.id) return
-
-    setLoading(true)
-    try {
-      const result = await getLeads(currentSite.id)
-      
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      
-      // Asegurarse de que todos los leads tienen todos los campos de la interfaz Lead
-      const normalizedLeads = result.leads?.map(lead => ({
-        ...lead,
-        origin: lead.origin || null // Asegurarnos que origin esté definido
-      })) || []
-      
-      setDbLeads(normalizedLeads)
-    } catch (error) {
-      console.error("Error loading leads:", error)
-      toast.error("Error loading leads")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Cargar leads desde la base de datos
-  useEffect(() => {
-    async function loadSegments() {
-      if (!currentSite?.id) return
-      
-      try {
-        const response = await getSegments(currentSite.id)
-        if (response.error) {
-          console.error(response.error)
-          return
-        }
-        
-        if (response.segments) {
-          setSegments(response.segments.map(s => ({ id: s.id, name: s.name })))
-        }
-      } catch (error) {
-        console.error("Error loading segments:", error)
-      }
-    }
-
-    loadLeads()
-    loadSegments()
-  }, [currentSite])
-  
-  const getFilteredLeads = (status: string) => {
-    if (!dbLeads) return []
-    
-    // First filter by status
-    let filtered = dbLeads
-    if (status !== "all") {
-      filtered = filtered.filter(lead => lead.status === status)
-    }
-    
-    // Then filter by search query if it exists
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(lead => 
-        lead.name.toLowerCase().includes(query) || 
-        lead.email.toLowerCase().includes(query) || 
-        (lead.company && lead.company.toLowerCase().includes(query)) ||
-        (lead.position && lead.position.toLowerCase().includes(query)) ||
-        (lead.phone && lead.phone.toLowerCase().includes(query)) ||
-        (lead.origin && lead.origin.toLowerCase().includes(query))
-      )
-    }
-    
-    return filtered
-  }
-  
-  const filteredLeads = getFilteredLeads(activeTab)
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage)
-  
-  // Calcular los leads que se mostrarán en la página actual
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentLeads = filteredLeads.slice(indexOfFirstItem, indexOfLastItem)
-  
-  // Funciones para cambiar de página
-  function handlePageChange(page: number) {
-    setCurrentPage(page)
-  }
-
-  // Reset página cuando cambia el tab
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab])
-
-  // Función para cambiar items por página
-  function handleItemsPerPageChange(value: string) {
-    setItemsPerPage(Number(value))
-    setCurrentPage(1)
-  }
-
-  // Función para crear un nuevo lead
-  const handleCreateLead = async (data: any) => {
-    try {
-      const result = await createLead({
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        company: data.company,
-        position: data.position,
-        segment_id: data.segment_id,
-        status: data.status,
-        notes: data.notes,
-        origin: data.origin,
-        site_id: currentSite?.id || ""
-      })
-
-      if (result.error) {
-        toast.error(result.error)
-        return { error: result.error }
-      }
-
-      toast.success("Lead created successfully")
-      
-      // Recargar los leads
-      window.location.reload()
-      
-      return { lead: result.lead }
-    } catch (error) {
-      console.error("Error creating lead:", error)
-      toast.error("Error creating lead")
-      return { error: "Error creating lead" }
-    }
-  }
-
-  // Función para manejar cambios en el buscador
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1) // Reset a la primera página cuando se busca
-  }
-
-  return (
-    <LeadsContext.Provider value={{ segments }}>
-    <div className="flex-1 p-0">
-      <Tabs defaultValue="all" onValueChange={setActiveTab}>
-        <StickyHeader>
-          <div className="px-16 pt-0">
-            <div className="flex items-center gap-8">
-              <div className="flex-1">
-                <TabsList className="w-full">
-                  <TabsTrigger value="all">All Leads</TabsTrigger>
-                  <TabsTrigger value="new">New</TabsTrigger>
-                  <TabsTrigger value="contacted">Contacted</TabsTrigger>
-                  <TabsTrigger value="qualified">Qualified</TabsTrigger>
-                  <TabsTrigger value="converted">Converted</TabsTrigger>
-                  <TabsTrigger value="lost">Lost</TabsTrigger>
-                </TabsList>
-              </div>
-              <div className="relative w-64">
-                <Input 
-                  placeholder="Search leads..." 
-                  className="w-full" 
-                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                />
-                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </div>
-            </div>
-          </div>
-        </StickyHeader>
-        
-        <div className="p-8 space-y-4">
-          <div className="px-8">
-              {loading ? (
-                <LeadsTableSkeleton />
-              ) : (
-                <>
-            <TabsContent value="all" className="space-y-4">
-              <LeadsTable
-                leads={currentLeads}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalLeads={filteredLeads.length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-              />
-            </TabsContent>
-            <TabsContent value="new" className="space-y-4">
-              <LeadsTable
-                leads={currentLeads}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalLeads={filteredLeads.length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-              />
-            </TabsContent>
-            <TabsContent value="contacted" className="space-y-4">
-              <LeadsTable
-                leads={currentLeads}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalLeads={filteredLeads.length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-              />
-            </TabsContent>
-            <TabsContent value="qualified" className="space-y-4">
-              <LeadsTable
-                leads={currentLeads}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalLeads={filteredLeads.length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-              />
-            </TabsContent>
-            <TabsContent value="converted" className="space-y-4">
-              <LeadsTable
-                leads={currentLeads}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalLeads={filteredLeads.length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-              />
-            </TabsContent>
-            <TabsContent value="lost" className="space-y-4">
-              <LeadsTable
-                leads={currentLeads}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalLeads={filteredLeads.length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-              />
-            </TabsContent>
-                </>
-              )}
-            </div>
-        </div>
-      </Tabs>
     </div>
     </LeadsContext.Provider>
   )

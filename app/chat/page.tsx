@@ -47,6 +47,27 @@ export default function ChatPage() {
   // Estado para controlar la visibilidad de la lista de chats
   const [isChatListCollapsed, setIsChatListCollapsed] = useState(false)
   
+  // Actualizar el breadcrumb cuando se cargue la página
+  useEffect(() => {
+    // Actualizar el título de la página
+    document.title = `Chat with ${agentName} | Market Fit`;
+    
+    // Emitir un evento para actualizar el breadcrumb
+    const event = new CustomEvent('breadcrumb:update', {
+      detail: {
+        agentId,
+        agentName
+      }
+    });
+    
+    window.dispatchEvent(event);
+    
+    // Limpiar al desmontar
+    return () => {
+      document.title = 'Market Fit';
+    };
+  }, [agentId, agentName]);
+  
   // Usar el tema completo para depuración
   const { theme, isDarkMode } = useTheme()
   

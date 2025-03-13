@@ -160,6 +160,7 @@ function createMockClient(reason: string) {
   console.log(`Usando cliente Supabase MOCK (${reason})`)
   
   return {
+    _isMock: true,
     auth: {
       getSession: async () => {
         console.log('Mock: getSession() llamado')
@@ -204,6 +205,12 @@ function createMockClient(reason: string) {
         console.log('Mock: update() llamado')
         return { 
           eq: () => ({ 
+            select: () => ({
+              single: () => ({
+                data: null, 
+                error: { message: `Cliente mock (${reason}): No se pueden actualizar datos` }
+              })
+            }),
             data: null, 
             error: { message: `Cliente mock (${reason}): No se pueden actualizar datos` } 
           }) 

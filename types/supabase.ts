@@ -21,6 +21,9 @@ export interface Database {
           created_at: string
           keywords: Json | null
           hot_topics: Json | null
+          analysis: Json | null
+          topics: Json | null
+          icp: Json | null
           user_id: string
         }
         Insert: {
@@ -34,6 +37,9 @@ export interface Database {
           created_at?: string
           keywords?: Json | null
           hot_topics?: Json | null
+          analysis?: Json | null
+          topics?: Json | null
+          icp?: Json | null
           user_id: string
         }
         Update: {
@@ -47,6 +53,9 @@ export interface Database {
           created_at?: string
           keywords?: Json | null
           hot_topics?: Json | null
+          analysis?: Json | null
+          topics?: Json | null
+          icp?: Json | null
           user_id?: string
         }
       }

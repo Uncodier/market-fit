@@ -11,7 +11,8 @@ import {
   ChevronRight,
   Home,
   FolderOpen,
-  Bell
+  Bell,
+  FileText
 } from "@/app/components/ui/icons"
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
@@ -66,6 +67,11 @@ const navigationItems = [
     icon: LayoutGrid,
   },
   {
+    title: "Content",
+    href: "/content",
+    icon: FileText,
+  },
+  {
     title: "Experiments",
     href: "/experiments", 
     icon: FlaskConical,
@@ -81,7 +87,7 @@ const navigationItems = [
     icon: FolderOpen,
   },
   {
-    title: "Leads",
+    title: "Customer Journey",
     href: "/leads",
     icon: Users,
   },

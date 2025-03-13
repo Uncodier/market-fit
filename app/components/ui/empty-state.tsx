@@ -20,7 +20,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="w-full h-full min-h-[400px] flex items-center justify-center">
-      <div className="text-center max-w-[420px] mx-auto space-y-8">
+      <div className="text-center max-w-[420px] mx-auto space-y-8 mt-[calc(50%-540px)]">
         <div className="w-48 h-48 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center ring-1 ring-primary/20">
           {icon}
         </div>

@@ -13,10 +13,22 @@ const SegmentSchema = z.object({
     engagement: z.number().nullable(),
     created_at: z.string(),
     url: z.string().nullable(),
-    keywords: z.record(z.string(), z.array(z.string())).nullable(),
-    hot_topics: z.object({
+    analysis: z.record(z.string(), z.array(z.string())).nullable(),
+    topics: z.object({
       blog: z.array(z.string()),
       newsletter: z.array(z.string())
+    }).nullable(),
+    icp: z.object({
+      role: z.string().optional(),
+      company_size: z.string().optional(),
+      industry: z.string().optional(),
+      age_range: z.string().optional(),
+      pain_points: z.array(z.string()).optional(),
+      goals: z.array(z.string()).optional(),
+      budget: z.string().optional(),
+      decision_maker: z.boolean().optional(),
+      location: z.string().optional(),
+      experience: z.string().optional()
     }).nullable(),
     is_active: z.boolean()
   })).nullable(),
@@ -32,6 +44,18 @@ const CreateSegmentSchema = z.object({
   audience: z.string(),
   language: z.string().default("en"),
   site_id: z.string().min(1, "Site ID is required"),
+  icp: z.object({
+    role: z.string().optional(),
+    company_size: z.string().optional(),
+    industry: z.string().optional(),
+    age_range: z.string().optional(),
+    pain_points: z.array(z.string()).optional(),
+    goals: z.array(z.string()).optional(),
+    budget: z.string().optional(),
+    decision_maker: z.boolean().optional(),
+    location: z.string().optional(),
+    experience: z.string().optional()
+  }).optional(),
 })
 
 export type CreateSegmentInput = z.infer<typeof CreateSegmentSchema>
@@ -52,8 +76,9 @@ export async function getSegments(site_id: string): Promise<SegmentResponse> {
         engagement,
         created_at,
         url,
-        keywords,
-        hot_topics,
+        analysis,
+        topics,
+        icp,
         is_active
       `)
       .eq('site_id', site_id)
@@ -102,15 +127,27 @@ export async function createSegment(data: CreateSegmentInput): Promise<{ error?:
           url: null, // Inicialmente null, se actualizará después
           engagement: 0, // Comienza en modo draft
           size: 0,
-          keywords: {
+          analysis: {
             facebook: [],
             google: [],
             linkedin: [],
             twitter: []
           },
-          hot_topics: {
+          topics: {
             blog: [],
             newsletter: []
+          },
+          icp: validatedData.icp || {
+            role: "",
+            company_size: "",
+            industry: "",
+            age_range: "",
+            pain_points: [],
+            goals: [],
+            budget: "",
+            decision_maker: false,
+            location: "",
+            experience: ""
           }
         }
       ])
@@ -189,6 +226,20 @@ export async function updateSegmentStatus({ segmentId, isActive }: UpdateSegment
     // Validar que el segmentId sea un UUID válido
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segmentId)) {
       return { error: "ID de segmento inválido" }
+    }
+
+    // Verificar si estamos usando un cliente mock (para desarrollo/pruebas)
+    if ((supabase as any)._isMock) {
+      console.log('Usando cliente mock para updateSegmentStatus')
+      return { 
+        success: true, 
+        segment: { 
+          id: segmentId, 
+          is_active: isActive,
+          name: "Segment Mock",
+          description: "Este es un segmento simulado para desarrollo"
+        } 
+      }
     }
 
     const { data: segment, error } = await supabase

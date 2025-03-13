@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Input } from "@/app/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { ChevronDown, ChevronRight, ChevronUp, Copy, Globe, PlusCircle, Search } from "@/app/components/ui/icons"
+import { ChevronDown, ChevronRight, ChevronUp, Copy, Globe, PlusCircle, Search, HelpCircle } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import {
   Select,
@@ -35,194 +35,10 @@ import { getSegments, createSegment, type SegmentResponse, updateSegmentUrl, upd
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
+import { Segment } from "@/app/types/segments"
+import { useRouter } from "next/navigation"
 
 type AdPlatform = "facebook" | "google" | "linkedin" | "twitter"
-
-interface Segment {
-  id: string
-  name: string
-  description: string | null
-  audience: string | null
-  language: string | null
-  size: number | null
-  engagement: number | null
-  created_at: string
-  url: string | null
-  keywords: Record<string, string[]> | null
-  hot_topics: {
-    blog: string[]
-    newsletter: string[]
-  } | null
-  is_active: boolean
-}
-
-const segments: Segment[] = [
-  {
-    id: "1",
-    name: "Early Adopters",
-    description: "Tech-savvy users who are first to try new products",
-    audience: "Tech Enthusiasts",
-    language: "en",
-    size: 2500,
-    engagement: 78,
-    created_at: "2023-10-15",
-    url: null,
-    keywords: {
-      facebook: ["innovation", "tech trends", "early access", "beta testing", "product launch"],
-      google: ["new technology", "tech innovation", "early adopter", "beta program", "tech preview"],
-      linkedin: ["technology pioneers", "innovation leaders", "early tech adopters", "product beta", "tech trends"],
-      twitter: ["#TechTrends", "#Innovation", "#EarlyAdopter", "#ProductLaunch", "#BetaTesting"]
-    },
-    hot_topics: {
-      blog: [
-        "The Future of Tech: What Early Adopters Are Loving",
-        "5 Emerging Technologies Worth Your Attention",
-        "Why Beta Testing is Critical for Product Success",
-        "Innovation Trends: A Deep Dive into Early Adoption",
-        "From Early Adopter to Product Champion"
-      ],
-      newsletter: [
-        "Weekly Tech Radar: What's Hot in Innovation",
-        "Beta Testing Opportunities Roundup",
-        "Early Access Exclusive Updates",
-        "Innovation Insider Weekly Brief"
-      ]
-    },
-    is_active: true
-  },
-  {
-    id: "2",
-    name: "Enterprise Decision Makers",
-    description: "C-level executives in large corporations",
-    audience: "Enterprise",
-    language: "en",
-    size: 1200,
-    engagement: 45,
-    created_at: "2023-11-02",
-    url: null,
-    keywords: {
-      facebook: ["enterprise solutions", "executive leadership", "corporate strategy", "business transformation", "C-suite"],
-      google: ["enterprise software", "executive decision makers", "C-level", "corporate leadership", "business strategy"],
-      linkedin: ["enterprise leadership", "executive decision making", "C-suite professionals", "corporate strategy", "business transformation"],
-      twitter: ["#EnterpriseTech", "#ExecutiveLeadership", "#CorporateStrategy", "#BusinessTransformation", "#CSuite"]
-    },
-    hot_topics: {
-      blog: [
-        "Digital Transformation: A C-Suite Perspective",
-        "Enterprise Strategy in the AI Era",
-        "Leadership Insights: Navigating Corporate Change",
-        "The Future of Enterprise Technology",
-        "Strategic Decision Making in Uncertain Times"
-      ],
-      newsletter: [
-        "Executive Brief: Weekly Market Insights",
-        "Enterprise Technology Trends",
-        "C-Suite Strategy Digest",
-        "Corporate Innovation Weekly"
-      ]
-    },
-    is_active: true
-  },
-  {
-    id: "3",
-    name: "Small Business Owners",
-    description: "Entrepreneurs and small business operators",
-    audience: "SMB",
-    language: "en",
-    size: 3800,
-    engagement: 62,
-    created_at: "2023-11-18",
-    url: null,
-    keywords: {
-      facebook: ["small business", "entrepreneur", "business growth", "local business", "startup"],
-      google: ["small business solutions", "entrepreneur tools", "business growth strategies", "local business marketing", "startup resources"],
-      linkedin: ["small business network", "entrepreneur community", "business growth", "local business owners", "startup founders"],
-      twitter: ["#SmallBusiness", "#Entrepreneur", "#BusinessGrowth", "#LocalBusiness", "#Startup"]
-    },
-    hot_topics: {
-      blog: [
-        "Small Business Growth Strategies for 2024",
-        "How to Scale Your Local Business",
-        "Essential Tools for Modern Entrepreneurs",
-        "From Startup to Success: Real Stories",
-        "Marketing on a Budget: SMB Guide"
-      ],
-      newsletter: [
-        "Weekly SMB Success Stories",
-        "Local Business Opportunities",
-        "Entrepreneur's Resource Roundup",
-        "Small Business Tech Updates"
-      ]
-    },
-    is_active: true
-  },
-  {
-    id: "4",
-    name: "Marketing Professionals",
-    description: "Marketing managers and specialists",
-    audience: "B2B",
-    language: "en",
-    size: 2100,
-    engagement: 56,
-    created_at: "2023-12-05",
-    url: null,
-    keywords: {
-      facebook: ["marketing strategy", "digital marketing", "marketing tools", "campaign management", "marketing ROI"],
-      google: ["marketing professionals", "digital marketing tools", "marketing strategy", "campaign optimization", "marketing analytics"],
-      linkedin: ["marketing leadership", "digital marketing experts", "marketing strategy", "campaign management", "marketing analytics"],
-      twitter: ["#MarketingStrategy", "#DigitalMarketing", "#MarketingTools", "#CampaignManagement", "#MarketingROI"]
-    },
-    hot_topics: {
-      blog: [
-        "Digital Marketing Trends to Watch",
-        "AI in Marketing: A Practical Guide",
-        "Data-Driven Marketing Strategies",
-        "Content Marketing Excellence",
-        "Marketing Analytics Deep Dive"
-      ],
-      newsletter: [
-        "Marketing Tech Weekly",
-        "Campaign Performance Insights",
-        "Digital Marketing Innovation Digest",
-        "Marketing Analytics Report"
-      ]
-    },
-    is_active: true
-  },
-  {
-    id: "5",
-    name: "Product Managers",
-    description: "Product leaders in tech companies",
-    audience: "Tech",
-    language: "en",
-    size: 1800,
-    engagement: 71,
-    created_at: "2024-01-10",
-    url: null,
-    keywords: {
-      facebook: ["product management", "product strategy", "product development", "user experience", "product roadmap"],
-      google: ["product management tools", "product strategy framework", "product development process", "UX design", "product roadmap planning"],
-      linkedin: ["product leadership", "product strategy", "product development", "user experience design", "product roadmap"],
-      twitter: ["#ProductManagement", "#ProductStrategy", "#ProductDevelopment", "#UXDesign", "#ProductRoadmap"]
-    },
-    hot_topics: {
-      blog: [
-        "Product-Led Growth Strategies",
-        "Building User-Centric Products",
-        "Product Metrics That Matter",
-        "From MVP to Enterprise Product",
-        "Product Strategy in the AI Era"
-      ],
-      newsletter: [
-        "Product Innovation Weekly",
-        "UX Research Insights",
-        "Product Management Trends",
-        "Tech Product Leaders Digest"
-      ]
-    },
-    is_active: true
-  },
-]
 
 // Función auxiliar para manejar valores no disponibles
 function getDisplayValue(value: string | number | null | undefined, type: 'text' | 'number' = 'text'): string {
@@ -233,12 +49,295 @@ function getDisplayValue(value: string | number | null | undefined, type: 'text'
 
 // Función auxiliar para manejar keywords vacíos
 function getKeywords(segment: Segment, platform: AdPlatform): string[] {
-  return segment.keywords?.[platform] || []
+  return segment.analysis?.[platform] || []
 }
 
 // Función auxiliar para manejar hot topics vacíos
 function getHotTopics(segment: Segment, type: 'blog' | 'newsletter'): string[] {
-  return segment.hot_topics?.[type] || []
+  return segment.topics?.[type] || []
+}
+
+// Componente reutilizable para la tarjeta de segmento
+function SegmentCard({
+  segment,
+  isExpanded,
+  onToggle,
+  activeSegments,
+  toggleSegmentStatus,
+  selectedAdPlatforms,
+  handlePlatformChange,
+  copiedStates,
+  copyToClipboard,
+  copySegmentUrl,
+  iframeLoading,
+  handleIframeLoad,
+  handleConfigureUrl,
+  navigateToSegmentDetail
+}: {
+  segment: Segment;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  activeSegments: Record<string, boolean>;
+  toggleSegmentStatus: (id: string) => void;
+  selectedAdPlatforms: Record<string, AdPlatform>;
+  handlePlatformChange: (id: string, platform: AdPlatform) => void;
+  copiedStates: Record<string, { keywords: boolean, url: boolean }>;
+  copyToClipboard: (segmentId: string, keywords: string[]) => void;
+  copySegmentUrl: (segmentId: string) => void;
+  iframeLoading: Record<string, boolean>;
+  handleIframeLoad: (id: string) => void;
+  handleConfigureUrl: (segmentId: string) => void;
+  navigateToSegmentDetail: (id: string) => void;
+}) {
+  return (
+    <Collapsible
+      key={segment.id}
+      open={isExpanded}
+      onOpenChange={() => {}} // Disable automatic toggle
+      className="w-full"
+    >
+      <div 
+        className="cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          onToggle(segment.id);
+        }}
+      >
+        <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+          <div className="flex items-center pl-6 hover:bg-muted/50 transition-colors">
+            <div className="flex items-center justify-center p-2">
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <CardContent className="flex-1 p-6 pr-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+              <div className="w-full lg:w-[320px] min-w-[280px] max-w-[320px] mb-4 lg:mb-0 shrink-0">
+                <h3 className="font-semibold text-lg truncate">{segment.name}</h3>
+                <p className="text-sm text-muted-foreground/80 truncate">
+                  {segment.description || 'No description available'}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-[160px_90px_110px_110px_170px_200px] gap-2 sm:gap-4 w-full lg:max-w-[900px]">
+                <div className="p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Audience</p>
+                  <p className="text-sm font-medium truncate text-right">{getDisplayValue(segment.audience)}</p>
+                </div>
+                <div className="p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Language</p>
+                  <p className="text-sm font-medium text-right">{segment.language ? segment.language.toUpperCase() : 'N/A'}</p>
+                </div>
+                <div className="hidden lg:block p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Size</p>
+                  <p className="text-sm font-medium text-right">{getDisplayValue(segment.size, 'number')}</p>
+                </div>
+                <div className="p-2 rounded-lg">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Engagement</p>
+                  <p className="text-sm font-medium text-right">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
+                </div>
+                <div className="hidden lg:block p-2 rounded-lg">
+                  <div className="flex items-center justify-end h-full">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigateToSegmentDetail(segment.id);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-3 h-9"
+                    >
+                      <svg 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        className="h-3.5 w-3.5 flex-shrink-0"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                      <span>View Details</span>
+                    </Button>
+                  </div>
+                </div>
+                <div onClick={(e) => e.stopPropagation()} className="bg-transparent p-2 rounded-lg col-span-2 sm:col-span-2 lg:col-span-1">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Status</p>
+                  <div className="flex items-center justify-end gap-0.5">
+                    <span className={`text-xs font-medium w-10 text-right truncate ${activeSegments[segment.id] ? 'text-green-500' : 'text-yellow-500'}`}>
+                      {activeSegments[segment.id] ? "Active" : "Draft"}
+                    </span>
+                    <Switch 
+                      checked={activeSegments[segment.id]} 
+                      onCheckedChange={() => toggleSegmentStatus(segment.id)}
+                      className="data-[state=checked]:bg-[#90ff17] data-[state=checked]:hover:bg-[#90ff17] bg-muted hover:bg-muted flex-shrink-0 ml-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </div>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-6 px-6 border-t" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <p className="text-sm font-medium">Ad Platform</p>
+                    <Select
+                      value={selectedAdPlatforms[segment.id]}
+                      onValueChange={(value: AdPlatform) => handlePlatformChange(segment.id, value)}
+                    >
+                      <SelectTrigger className="w-full sm:w-[180px] h-8">
+                        <SelectValue placeholder="Select platform" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="facebook">Facebook Ads</SelectItem>
+                        <SelectItem value="google">Google Ads</SelectItem>
+                        <SelectItem value="linkedin">LinkedIn Ads</SelectItem>
+                        <SelectItem value="twitter">Twitter Ads</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => copyToClipboard(segment.id, getKeywords(segment, selectedAdPlatforms[segment.id]))}
+                      className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
+                      disabled={copiedStates[segment.id]?.keywords}
+                    >
+                      <div className="flex items-center justify-center min-w-0">
+                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                        <span className="transition-all duration-200">
+                          {copiedStates[segment.id]?.keywords ? "Copied!" : "Copy to Clipboard"}
+                        </span>
+                      </div>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => copySegmentUrl(segment.id)}
+                      className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
+                      disabled={!segment.url || copiedStates[segment.id]?.url}
+                    >
+                      <div className="flex items-center justify-center min-w-0">
+                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                        <span className="transition-all duration-200">
+                          {copiedStates[segment.id]?.url ? "Copied!" : "Copy Segment URL"}
+                        </span>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="my-2">
+                    <h4 className="font-medium text-base">Keywords for {selectedAdPlatforms[segment.id].charAt(0).toUpperCase() + selectedAdPlatforms[segment.id].slice(1)} Ads</h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
+                    {getKeywords(segment, selectedAdPlatforms[segment.id]).length > 0 ? (
+                      getKeywords(segment, selectedAdPlatforms[segment.id]).map((keyword, idx) => (
+                        <Badge key={idx} variant="outline" className="px-2.5 py-1 hover:bg-secondary/80 transition-colors">
+                          {keyword}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No keywords available</p>
+                    )}
+                  </div>
+                </div>
+                <div className="relative mt-6 border-t pt-4">
+                  <div className="w-full h-[500px] bg-background rounded-md border">
+                    {iframeLoading[segment.id] && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground/20"></div>
+                      </div>
+                    )}
+                    {segment.url ? (
+                      <div className="relative w-full h-[500px] overflow-hidden flex items-center justify-center">
+                        <iframe
+                          src={segment.url}
+                          className="absolute w-[200%] h-[200%] origin-center rounded-md"
+                          style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
+                          onLoad={() => handleIframeLoad(segment.id)}
+                          sandbox="allow-same-origin allow-scripts"
+                          loading="lazy"
+                          allow="fullscreen"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full space-y-4 p-6">
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                          <Globe className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <div className="text-center space-y-2">
+                          <h3 className="font-semibold text-lg">No URL Available</h3>
+                          <p className="text-sm text-muted-foreground max-w-md">
+                            This segment doesn't have a URL configured yet. Once configured, you'll be able to preview the segment content here.
+                          </p>
+                        </div>
+                        <Button 
+                          variant="outline"
+                          onClick={() => handleConfigureUrl(segment.id)}
+                          className="mt-4"
+                        >
+                          Configure URL
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-4 mt-6 border-t pt-4">
+                  <h4 className="font-medium text-base">Hot Topics</h4>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <h5 className="text-sm font-medium text-muted-foreground">Blog Ideas</h5>
+                      <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
+                        {getHotTopics(segment, 'blog').length > 0 ? (
+                          getHotTopics(segment, 'blog').map((topic, idx) => (
+                            <Badge 
+                              key={idx} 
+                              variant="secondary"
+                              className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
+                            >
+                              {topic}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No blog topics available</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <h5 className="text-sm font-medium text-muted-foreground">Newsletter Content</h5>
+                      <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
+                        {getHotTopics(segment, 'newsletter').length > 0 ? (
+                          getHotTopics(segment, 'newsletter').map((topic, idx) => (
+                            <Badge 
+                              key={idx}
+                              variant="secondary"
+                              className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
+                            >
+                              {topic}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No newsletter topics available</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </div>
+    </Collapsible>
+  )
 }
 
 function SegmentRowSkeleton() {
@@ -248,12 +347,12 @@ function SegmentRowSkeleton() {
         <div className="flex items-center justify-center p-2">
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </div>
-        <CardContent className="flex-1 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <CardContent className="flex-1 p-6 pr-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="w-full lg:w-[320px] min-w-[280px] max-w-[320px] mb-4 lg:mb-0 shrink-0 space-y-2">
             <Skeleton className="h-6 w-3/4" />
             <Skeleton className="h-4 w-full" />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-[180px_100px_120px_120px_120px_160px] gap-2 sm:gap-4 w-full lg:max-w-[900px]">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-[160px_90px_110px_110px_170px_200px] gap-2 sm:gap-4 w-full lg:max-w-[900px]">
             <div className="p-2 rounded-lg">
               <Skeleton className="h-4 w-full mb-2" />
               <Skeleton className="h-4 w-3/4" />
@@ -276,9 +375,9 @@ function SegmentRowSkeleton() {
             </div>
             <div className="bg-background/50 p-2 rounded-lg col-span-2 sm:col-span-2 lg:col-span-1">
               <Skeleton className="h-4 w-full mb-2" />
-              <div className="flex items-center justify-end gap-2">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-5 w-10 rounded-full" />
+              <div className="flex items-center justify-end gap-0.5">
+                <Skeleton className="h-4 w-10" />
+                <Skeleton className="h-5 w-10 rounded-full flex-shrink-0 ml-1" />
               </div>
             </div>
           </div>
@@ -308,6 +407,7 @@ export default function SegmentsPage() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [initialFetchDone, setInitialFetchDone] = useState(false)
   const [loadAttemptsCount, setLoadAttemptsCount] = useState(0)
+  const router = useRouter()
 
   // Manejador de cambio del input
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -326,7 +426,17 @@ export default function SegmentsPage() {
       segment.name.toLowerCase().includes(searchLower) ||
       segment.description?.toLowerCase().includes(searchLower) ||
       segment.audience?.toLowerCase().includes(searchLower) ||
-      segment.keywords?.[selectedAdPlatforms[segment.id] || "facebook"]?.some(keyword => 
+      segment.icp?.role?.toLowerCase().includes(searchLower) ||
+      segment.icp?.company_size?.toLowerCase().includes(searchLower) ||
+      segment.icp?.industry?.toLowerCase().includes(searchLower) ||
+      segment.icp?.age_range?.toLowerCase().includes(searchLower) ||
+      segment.icp?.pain_points?.some(painPoint => painPoint.toLowerCase().includes(searchLower)) ||
+      segment.icp?.goals?.some(goal => goal.toLowerCase().includes(searchLower)) ||
+      segment.icp?.budget?.toLowerCase().includes(searchLower) ||
+      segment.icp?.decision_maker === true ||
+      segment.icp?.location?.toLowerCase().includes(searchLower) ||
+      segment.icp?.experience?.toLowerCase().includes(searchLower) ||
+      segment.analysis?.[selectedAdPlatforms[segment.id] || "facebook"]?.some(keyword => 
         keyword.toLowerCase().includes(searchLower)
       )
     )
@@ -362,7 +472,7 @@ export default function SegmentsPage() {
     setFilteredSegments(segments)
   }, [segments])
 
-  // Efecto para cargar los segmentos - Usando Supabase directamente como en la función getSegments original
+  // Efecto para cargar los segmentos
   useEffect(() => {
     const fetchSegments = async () => {
       try {
@@ -373,18 +483,14 @@ export default function SegmentsPage() {
         
         // Verificar si tenemos un sitio seleccionado
         if (!currentSite?.id) {
-          setError("Por favor, selecciona un sitio primero");
           setIsLoading(false);
           return;
         }
         
         console.log("Cargando segmentos para el sitio:", currentSite.id);
         
-        // Volver a usar getSegments que sabemos que funciona
         try {
           const result = await getSegments(currentSite.id);
-          
-          console.log("Resultado de getSegments:", result);
           
           if (result.error) {
             setError(result.error);
@@ -395,27 +501,61 @@ export default function SegmentsPage() {
           const loadedSegments = result.segments || [];
           console.log(`Se cargaron ${loadedSegments.length} segmentos`);
           
-          setSegments(loadedSegments);
+          // Procesar los segmentos cargados
+          const processedSegments = loadedSegments.map((segment: any) => {
+            // Procesar el ICP
+            let icpObject = segment.icp;
+            if (!icpObject || typeof icpObject === 'string') {
+              icpObject = {
+                role: typeof icpObject === 'string' ? icpObject : '',
+                company_size: '',
+                industry: '',
+                age_range: '',
+                pain_points: [],
+                goals: [],
+                budget: '',
+                decision_maker: false,
+                location: '',
+                experience: ''
+              };
+            }
+            
+            // Crear el segmento procesado
+            return {
+              ...segment,
+              // Usar analysis directamente ya que keywords ya no existe
+              analysis: segment.analysis || null,
+              // Usar topics directamente ya que hot_topics ya no existe
+              topics: segment.topics || null,
+              // Usar el ICP estructurado
+              icp: icpObject
+            };
+          });
           
-          // Inicializar estados para los nuevos segmentos
-          const newExpandedRows: Record<string, boolean> = {}
-          const newSelectedAdPlatforms: Record<string, AdPlatform> = {}
-          const newActiveSegments: Record<string, boolean> = {}
-          const newIframeLoading: Record<string, boolean> = {}
+          // Actualizar el estado de segmentos
+          setSegments(processedSegments as Segment[]);
           
-          loadedSegments.forEach((segment: Segment) => {
-            newExpandedRows[segment.id] = false
-            newSelectedAdPlatforms[segment.id] = "facebook"
-            newActiveSegments[segment.id] = segment.is_active
-            newIframeLoading[segment.id] = false
-          })
+          // Crear objetos para los estados
+          const expandedRowsObj: Record<string, boolean> = {};
+          const adPlatformsObj: Record<string, AdPlatform> = {};
+          const activeSegmentsObj: Record<string, boolean> = {};
+          const iframeLoadingObj: Record<string, boolean> = {};
           
-          setExpandedRows(newExpandedRows)
-          setSelectedAdPlatforms(newSelectedAdPlatforms)
-          setActiveSegments(newActiveSegments)
-          setIframeLoading(newIframeLoading)
+          // Inicializar los estados para cada segmento
+          processedSegments.forEach((segment: any) => {
+            expandedRowsObj[segment.id] = false;
+            adPlatformsObj[segment.id] = "facebook";
+            activeSegmentsObj[segment.id] = segment.is_active;
+            iframeLoadingObj[segment.id] = false;
+          });
           
-          // Si llegamos aquí, todo fue exitoso, así que limpiamos cualquier error
+          // Actualizar los estados
+          setExpandedRows(expandedRowsObj);
+          setSelectedAdPlatforms(adPlatformsObj);
+          setActiveSegments(activeSegmentsObj);
+          setIframeLoading(iframeLoadingObj);
+          
+          // Marcar como completado
           setError(null);
           setInitialFetchDone(true);
         } catch (innerError) {
@@ -438,6 +578,10 @@ export default function SegmentsPage() {
       ...prev,
       [id]: !prev[id]
     }))
+  }
+
+  const navigateToSegmentDetail = (id: string) => {
+    router.push(`/segments/${id}`)
   }
 
   const handlePlatformChange = (id: string, platform: AdPlatform) => {
@@ -651,34 +795,20 @@ export default function SegmentsPage() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center space-y-4">
           <p className="text-red-500 mb-4">{error}</p>
-          {error.includes("selecciona un sitio") ? (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Por favor, selecciona un sitio en el selector de la barra de navegación para ver los segmentos disponibles.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Sitio actual: {currentSite ? `${currentSite.name} (${currentSite.id})` : 'Ninguno seleccionado'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Si no tienes sitios, primero debes crear uno en la sección de sitios.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Ocurrió un error al cargar los segmentos. Esto puede deberse a problemas de conexión.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Sitio actual: {currentSite ? `${currentSite.name} (${currentSite.id})` : 'Ninguno seleccionado'}
-              </p>
-              <Button 
-                variant="outline" 
-                onClick={retryLoadSegments}
-              >
-                Intentar nuevamente
-              </Button>
-            </div>
-          )}
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Ocurrió un error al cargar los segmentos. Esto puede deberse a problemas de conexión.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Sitio actual: {currentSite ? `${currentSite.name} (${currentSite.id})` : 'Ninguno seleccionado'}
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={retryLoadSegments}
+            >
+              Intentar nuevamente
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -727,702 +857,81 @@ export default function SegmentsPage() {
               ) : (
                 <div className="space-y-4">
                   {filteredSegments.map((segment) => (
-                    <Collapsible
+                    <SegmentCard
                       key={segment.id}
-                      open={expandedRows[segment.id]}
-                      onOpenChange={() => toggleRow(segment.id)}
-                      className="w-full"
-                    >
-                      <div 
-                        className="cursor-pointer"
-                        onClick={() => toggleRow(segment.id)}
-                      >
-                        <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
-                          <div className="flex items-center pl-6 hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center justify-center p-2">
-                              {expandedRows[segment.id] ? (
-                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </div>
-                            <CardContent className="flex-1 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                              <div className="w-full lg:w-[320px] min-w-[280px] max-w-[320px] mb-4 lg:mb-0 shrink-0">
-                                <h3 className="font-semibold text-lg truncate">{segment.name}</h3>
-                                <p className="text-sm text-muted-foreground/80 truncate">
-                                  {segment.description || 'No description available'}
-                                </p>
-                              </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-[180px_100px_120px_120px_120px_160px] gap-2 sm:gap-4 w-full lg:max-w-[900px]">
-                                <div className="p-2 rounded-lg">
-                                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Audience</p>
-                                  <p className="text-sm font-medium truncate text-right">{getDisplayValue(segment.audience)}</p>
-                                </div>
-                                <div className="p-2 rounded-lg">
-                                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Language</p>
-                                  <p className="text-sm font-medium text-right">{segment.language ? segment.language.toUpperCase() : 'N/A'}</p>
-                                </div>
-                                <div className="hidden lg:block p-2 rounded-lg">
-                                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Size</p>
-                                  <p className="text-sm font-medium text-right">{getDisplayValue(segment.size, 'number')}</p>
-                                </div>
-                                <div className="p-2 rounded-lg">
-                                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Engagement</p>
-                                  <p className="text-sm font-medium text-right">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
-                                </div>
-                                <div className="hidden lg:block p-2 rounded-lg">
-                                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Created</p>
-                                  <p className="text-sm font-medium text-right">
-                                    {segment.created_at ? new Date(segment.created_at).toLocaleDateString() : 'N/A'}
-                                  </p>
-                                </div>
-                                <div onClick={(e) => e.stopPropagation()} className="bg-transparent p-2 rounded-lg col-span-2 sm:col-span-2 lg:col-span-1">
-                                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Status</p>
-                                  <div className="flex items-center justify-end gap-2">
-                                    <span className={`text-sm font-medium ${activeSegments[segment.id] ? 'text-green-500' : 'text-yellow-500'}`}>
-                                      {activeSegments[segment.id] ? "Active" : "Draft"}
-                                    </span>
-                                    <Switch 
-                                      checked={activeSegments[segment.id]} 
-                                      onCheckedChange={() => toggleSegmentStatus(segment.id)}
-                                      className="data-[state=checked]:bg-[#90ff17] data-[state=checked]:hover:bg-[#90ff17] bg-muted hover:bg-muted"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </div>
-                          <CollapsibleContent>
-                            <CardContent className="pt-0 pb-6 px-6 border-t" onClick={(e) => e.stopPropagation()}>
-                              <div className="space-y-6">
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
-                                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                                    <p className="text-sm font-medium">Ad Platform</p>
-                                    <Select
-                                      value={selectedAdPlatforms[segment.id]}
-                                      onValueChange={(value: AdPlatform) => handlePlatformChange(segment.id, value)}
-                                    >
-                                      <SelectTrigger className="w-full sm:w-[180px] h-8">
-                                        <SelectValue placeholder="Select platform" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="facebook">Facebook Ads</SelectItem>
-                                        <SelectItem value="google">Google Ads</SelectItem>
-                                        <SelectItem value="linkedin">LinkedIn Ads</SelectItem>
-                                        <SelectItem value="twitter">Twitter Ads</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => copyToClipboard(segment.id, getKeywords(segment, selectedAdPlatforms[segment.id]))}
-                                      className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
-                                      disabled={copiedStates[segment.id]?.keywords}
-                                    >
-                                      <div className="flex items-center justify-center min-w-0">
-                                        <Copy className="h-3.5 w-3.5 mr-1.5" />
-                                        <span className="transition-all duration-200">
-                                          {copiedStates[segment.id]?.keywords ? "Copied!" : "Copy to Clipboard"}
-                                        </span>
-                                      </div>
-                                    </Button>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => copySegmentUrl(segment.id)}
-                                      className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
-                                      disabled={!segment.url || copiedStates[segment.id]?.url}
-                                    >
-                                      <div className="flex items-center justify-center min-w-0">
-                                        <Copy className="h-3.5 w-3.5 mr-1.5" />
-                                        <span className={`transition-all duration-200 ${copiedStates[segment.id]?.url ? "text-green-500" : ""}`}>
-                                          {copiedStates[segment.id]?.url ? "Copied!" : "Copy Segment URL"}
-                                        </span>
-                                      </div>
-                                    </Button>
-                                  </div>
-                                </div>
-                                <div className="space-y-3">
-                                  <div className="my-2">
-                                    <h4 className="font-medium text-base">Keywords for {selectedAdPlatforms[segment.id].charAt(0).toUpperCase() + selectedAdPlatforms[segment.id].slice(1)} Ads</h4>
-                                  </div>
-                                  <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                    {getKeywords(segment, selectedAdPlatforms[segment.id]).length > 0 ? (
-                                      getKeywords(segment, selectedAdPlatforms[segment.id]).map((keyword, idx) => (
-                                        <Badge key={idx} variant="outline" className="px-2.5 py-1 hover:bg-secondary/80 transition-colors">
-                                          {keyword}
-                                        </Badge>
-                                      ))
-                                    ) : (
-                                      <p className="text-sm text-muted-foreground">No keywords available</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="relative mt-6 border-t pt-4">
-                                  <div className="w-full h-[500px] bg-background rounded-md border">
-                                    {iframeLoading[segment.id] && (
-                                      <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground/20"></div>
-                                      </div>
-                                    )}
-                                    {segment.url ? (
-                                      <div className="relative w-full h-[500px] overflow-hidden flex items-center justify-center">
-                                        <iframe
-                                          src={segment.url}
-                                          className="absolute w-[200%] h-[200%] origin-center rounded-md"
-                                          style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
-                                          onLoad={() => handleIframeLoad(segment.id)}
-                                          sandbox="allow-same-origin allow-scripts"
-                                          loading="lazy"
-                                          allow="fullscreen"
-                                          referrerPolicy="no-referrer"
-                                        />
-                                      </div>
-                                    ) : (
-                                      <div className="flex flex-col items-center justify-center h-full space-y-4 p-6">
-                                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                                          <Globe className="h-8 w-8 text-muted-foreground" />
-                                        </div>
-                                        <div className="text-center space-y-2">
-                                          <h3 className="font-semibold text-lg">No URL Available</h3>
-                                          <p className="text-sm text-muted-foreground max-w-md">
-                                            This segment doesn't have a URL configured yet. Once configured, you'll be able to preview the segment content here.
-                                          </p>
-                                        </div>
-                                        <Button 
-                                          variant="outline"
-                                          onClick={() => handleConfigureUrl(segment.id)}
-                                          className="mt-4"
-                                        >
-                                          Configure URL
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="space-y-4 mt-6 border-t pt-4">
-                                  <h4 className="font-medium text-base">Hot Topics</h4>
-                                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                      <h5 className="text-sm font-medium text-muted-foreground">Blog Ideas</h5>
-                                      <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                        {getHotTopics(segment, 'blog').length > 0 ? (
-                                          getHotTopics(segment, 'blog').map((topic, idx) => (
-                                            <Badge 
-                                              key={idx} 
-                                              variant="secondary"
-                                              className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
-                                              onClick={() => console.log('Clicked blog topic:', topic)}
-                                            >
-                                              {topic}
-                                            </Badge>
-                                          ))
-                                        ) : (
-                                          <p className="text-sm text-muted-foreground">No blog topics available</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="space-y-3">
-                                      <h5 className="text-sm font-medium text-muted-foreground">Newsletter Content</h5>
-                                      <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                        {getHotTopics(segment, 'newsletter').length > 0 ? (
-                                          getHotTopics(segment, 'newsletter').map((topic, idx) => (
-                                            <Badge 
-                                              key={idx}
-                                              variant="secondary"
-                                              className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
-                                              onClick={() => console.log('Clicked newsletter topic:', topic)}
-                                            >
-                                              {topic}
-                                            </Badge>
-                                          ))
-                                        ) : (
-                                          <p className="text-sm text-muted-foreground">No newsletter topics available</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </CollapsibleContent>
-                        </Card>
-                      </div>
-                    </Collapsible>
+                      segment={segment}
+                      isExpanded={expandedRows[segment.id]}
+                      onToggle={toggleRow}
+                      activeSegments={activeSegments}
+                      toggleSegmentStatus={toggleSegmentStatus}
+                      selectedAdPlatforms={selectedAdPlatforms}
+                      handlePlatformChange={handlePlatformChange}
+                      copiedStates={copiedStates}
+                      copyToClipboard={copyToClipboard}
+                      copySegmentUrl={copySegmentUrl}
+                      iframeLoading={iframeLoading}
+                      handleIframeLoad={handleIframeLoad}
+                      handleConfigureUrl={handleConfigureUrl}
+                      navigateToSegmentDetail={navigateToSegmentDetail}
+                    />
                   ))}
                 </div>
               )}
             </TabsContent>
             <TabsContent value="active" className="space-y-4">
-              {segments.filter(segment => (segment.engagement ?? 0) > 60).length === 0 ? (
+              {segments.filter(segment => activeSegments[segment.id]).length === 0 ? (
                 segmentsEmptyState
               ) : (
                 <div className="space-y-4">
                   {segments
-                    .filter((segment: Segment) => (segment.engagement ?? 0) > 60)
+                    .filter((segment: Segment) => activeSegments[segment.id])
                     .map((segment: Segment) => (
-                      <Collapsible
+                      <SegmentCard
                         key={segment.id}
-                        open={expandedRows[segment.id]}
-                        onOpenChange={() => toggleRow(segment.id)}
-                        className="w-full"
-                      >
-                        <div 
-                          className="cursor-pointer"
-                          onClick={() => toggleRow(segment.id)}
-                        >
-                          <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
-                            <div className="flex items-center pl-6 hover:bg-muted/50 transition-colors">
-                              <div className="flex items-center justify-center p-2">
-                                {expandedRows[segment.id] ? (
-                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </div>
-                              <CardContent className="flex-1 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                                <div className="w-full lg:w-[320px] min-w-[280px] max-w-[320px] mb-4 lg:mb-0 shrink-0">
-                                  <h3 className="font-semibold text-lg truncate">{segment.name}</h3>
-                                  <p className="text-sm text-muted-foreground/80 truncate">
-                                    {segment.description || 'No description available'}
-                                  </p>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-[180px_100px_120px_120px_120px_160px] gap-2 sm:gap-4 w-full lg:max-w-[900px]">
-                                  <div className="p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Audience</p>
-                                    <p className="text-sm font-medium truncate text-right">{getDisplayValue(segment.audience)}</p>
-                                  </div>
-                                  <div className="p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Language</p>
-                                    <p className="text-sm font-medium text-right">{segment.language ? segment.language.toUpperCase() : 'N/A'}</p>
-                                  </div>
-                                  <div className="hidden lg:block p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Size</p>
-                                    <p className="text-sm font-medium text-right">{getDisplayValue(segment.size, 'number')}</p>
-                                  </div>
-                                  <div className="p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Engagement</p>
-                                    <p className="text-sm font-medium text-right">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
-                                  </div>
-                                  <div className="hidden lg:block p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Created</p>
-                                    <p className="text-sm font-medium text-right">
-                                      {segment.created_at ? new Date(segment.created_at).toLocaleDateString() : 'N/A'}
-                                    </p>
-                                  </div>
-                                  <div onClick={(e) => e.stopPropagation()} className="bg-transparent p-2 rounded-lg col-span-2 sm:col-span-2 lg:col-span-1">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Status</p>
-                                    <div className="flex items-center justify-end gap-2">
-                                      <span className={`text-sm font-medium ${activeSegments[segment.id] ? 'text-green-500' : 'text-yellow-500'}`}>
-                                        {activeSegments[segment.id] ? "Active" : "Draft"}
-                                      </span>
-                                      <Switch 
-                                        checked={activeSegments[segment.id]} 
-                                        onCheckedChange={() => toggleSegmentStatus(segment.id)}
-                                        className="data-[state=checked]:bg-[#90ff17] data-[state=checked]:hover:bg-[#90ff17] bg-muted hover:bg-muted"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </div>
-                            <CollapsibleContent>
-                              <CardContent className="pt-0 pb-6 px-6 border-t" onClick={(e) => e.stopPropagation()}>
-                                <div className="space-y-6">
-                                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
-                                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                                      <p className="text-sm font-medium">Ad Platform</p>
-                                      <Select
-                                        value={selectedAdPlatforms[segment.id]}
-                                        onValueChange={(value: AdPlatform) => handlePlatformChange(segment.id, value)}
-                                      >
-                                        <SelectTrigger className="w-full sm:w-[180px] h-8">
-                                          <SelectValue placeholder="Select platform" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="facebook">Facebook Ads</SelectItem>
-                                          <SelectItem value="google">Google Ads</SelectItem>
-                                          <SelectItem value="linkedin">LinkedIn Ads</SelectItem>
-                                          <SelectItem value="twitter">Twitter Ads</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => copyToClipboard(segment.id, getKeywords(segment, selectedAdPlatforms[segment.id]))}
-                                        className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
-                                        disabled={copiedStates[segment.id]?.keywords}
-                                      >
-                                        <div className="flex items-center justify-center min-w-0">
-                                          <Copy className="h-3.5 w-3.5 mr-1.5" />
-                                          <span className="transition-all duration-200">
-                                            {copiedStates[segment.id]?.keywords ? "Copied!" : "Copy to Clipboard"}
-                                          </span>
-                                        </div>
-                                      </Button>
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => copySegmentUrl(segment.id)}
-                                        className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
-                                        disabled={!segment.url || copiedStates[segment.id]?.url}
-                                      >
-                                        <div className="flex items-center justify-center min-w-0">
-                                          <Copy className="h-3.5 w-3.5 mr-1.5" />
-                                          <span className={`transition-all duration-200 ${copiedStates[segment.id]?.url ? "text-green-500" : ""}`}>
-                                            {copiedStates[segment.id]?.url ? "Copied!" : "Copy Segment URL"}
-                                          </span>
-                                        </div>
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-3">
-                                    <div className="my-2">
-                                      <h4 className="font-medium text-base">Keywords for {selectedAdPlatforms[segment.id].charAt(0).toUpperCase() + selectedAdPlatforms[segment.id].slice(1)} Ads</h4>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                      {getKeywords(segment, selectedAdPlatforms[segment.id]).length > 0 ? (
-                                        getKeywords(segment, selectedAdPlatforms[segment.id]).map((keyword, idx) => (
-                                          <Badge key={idx} variant="outline" className="px-2.5 py-1 hover:bg-secondary/80 transition-colors">
-                                            {keyword}
-                                          </Badge>
-                                        ))
-                                      ) : (
-                                        <p className="text-sm text-muted-foreground">No keywords available</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="relative mt-6 border-t pt-4">
-                                    <div className="w-full h-[500px] bg-background rounded-md border">
-                                      {iframeLoading[segment.id] && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground/20"></div>
-                                        </div>
-                                      )}
-                                      {segment.url ? (
-                                        <div className="relative w-full h-[500px] overflow-hidden flex items-center justify-center">
-                                          <iframe
-                                            src={segment.url}
-                                            className="absolute w-[200%] h-[200%] origin-center rounded-md"
-                                            style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
-                                            onLoad={() => handleIframeLoad(segment.id)}
-                                            sandbox="allow-same-origin allow-scripts"
-                                            loading="lazy"
-                                            allow="fullscreen"
-                                            referrerPolicy="no-referrer"
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div className="flex flex-col items-center justify-center h-full space-y-4 p-6">
-                                          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                                            <Globe className="h-8 w-8 text-muted-foreground" />
-                                          </div>
-                                          <div className="text-center space-y-2">
-                                            <h3 className="font-semibold text-lg">No URL Available</h3>
-                                            <p className="text-sm text-muted-foreground max-w-md">
-                                              This segment doesn't have a URL configured yet. Once configured, you'll be able to preview the segment content here.
-                                            </p>
-                                          </div>
-                                          <Button 
-                                            variant="outline"
-                                            onClick={() => handleConfigureUrl(segment.id)}
-                                            className="mt-4"
-                                          >
-                                            Configure URL
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="space-y-4 mt-6 border-t pt-4">
-                                    <h4 className="font-medium text-base">Hot Topics</h4>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                      <div className="space-y-3">
-                                        <h5 className="text-sm font-medium text-muted-foreground">Blog Ideas</h5>
-                                        <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                          {getHotTopics(segment, 'blog').length > 0 ? (
-                                            getHotTopics(segment, 'blog').map((topic, idx) => (
-                                              <Badge 
-                                                key={idx} 
-                                                variant="secondary"
-                                                className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
-                                                onClick={() => console.log('Clicked blog topic:', topic)}
-                                              >
-                                                {topic}
-                                              </Badge>
-                                            ))
-                                          ) : (
-                                            <p className="text-sm text-muted-foreground">No blog topics available</p>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="space-y-3">
-                                        <h5 className="text-sm font-medium text-muted-foreground">Newsletter Content</h5>
-                                        <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                          {getHotTopics(segment, 'newsletter').length > 0 ? (
-                                            getHotTopics(segment, 'newsletter').map((topic, idx) => (
-                                              <Badge 
-                                                key={idx}
-                                                variant="secondary"
-                                                className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
-                                                onClick={() => console.log('Clicked newsletter topic:', topic)}
-                                              >
-                                                {topic}
-                                              </Badge>
-                                            ))
-                                          ) : (
-                                            <p className="text-sm text-muted-foreground">No newsletter topics available</p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </CollapsibleContent>
-                          </Card>
-                        </div>
-                      </Collapsible>
+                        segment={segment}
+                        isExpanded={expandedRows[segment.id]}
+                        onToggle={toggleRow}
+                        activeSegments={activeSegments}
+                        toggleSegmentStatus={toggleSegmentStatus}
+                        selectedAdPlatforms={selectedAdPlatforms}
+                        handlePlatformChange={handlePlatformChange}
+                        copiedStates={copiedStates}
+                        copyToClipboard={copyToClipboard}
+                        copySegmentUrl={copySegmentUrl}
+                        iframeLoading={iframeLoading}
+                        handleIframeLoad={handleIframeLoad}
+                        handleConfigureUrl={handleConfigureUrl}
+                        navigateToSegmentDetail={navigateToSegmentDetail}
+                      />
                     ))}
                 </div>
               )}
             </TabsContent>
             <TabsContent value="draft" className="space-y-4">
-              {segments.filter(segment => (segment.engagement ?? 0) <= 60).length === 0 ? (
+              {segments.filter(segment => !activeSegments[segment.id]).length === 0 ? (
                 segmentsEmptyState
               ) : (
                 <div className="space-y-4">
                   {segments
-                    .filter((segment: Segment) => (segment.engagement ?? 0) <= 60)
+                    .filter((segment: Segment) => !activeSegments[segment.id])
                     .map((segment: Segment) => (
-                      <Collapsible
+                      <SegmentCard
                         key={segment.id}
-                        open={expandedRows[segment.id]}
-                        onOpenChange={() => toggleRow(segment.id)}
-                        className="w-full"
-                      >
-                        <div 
-                          className="cursor-pointer"
-                          onClick={() => toggleRow(segment.id)}
-                        >
-                          <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
-                            <div className="flex items-center pl-6 hover:bg-muted/50 transition-colors">
-                              <div className="flex items-center justify-center p-2">
-                                {expandedRows[segment.id] ? (
-                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </div>
-                              <CardContent className="flex-1 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                                <div className="w-full lg:w-[320px] min-w-[280px] max-w-[320px] mb-4 lg:mb-0 shrink-0">
-                                  <h3 className="font-semibold text-lg truncate">{segment.name}</h3>
-                                  <p className="text-sm text-muted-foreground/80 truncate">
-                                    {segment.description || 'No description available'}
-                                  </p>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-[180px_100px_120px_120px_120px_160px] gap-2 sm:gap-4 w-full lg:max-w-[900px]">
-                                  <div className="p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Audience</p>
-                                    <p className="text-sm font-medium truncate text-right">{getDisplayValue(segment.audience)}</p>
-                                  </div>
-                                  <div className="p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Language</p>
-                                    <p className="text-sm font-medium text-right">{segment.language ? segment.language.toUpperCase() : 'N/A'}</p>
-                                  </div>
-                                  <div className="hidden lg:block p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Size</p>
-                                    <p className="text-sm font-medium text-right">{getDisplayValue(segment.size, 'number')}</p>
-                                  </div>
-                                  <div className="p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Engagement</p>
-                                    <p className="text-sm font-medium text-right">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
-                                  </div>
-                                  <div className="hidden lg:block p-2 rounded-lg">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Created</p>
-                                    <p className="text-sm font-medium text-right">
-                                      {segment.created_at ? new Date(segment.created_at).toLocaleDateString() : 'N/A'}
-                                    </p>
-                                  </div>
-                                  <div onClick={(e) => e.stopPropagation()} className="bg-transparent p-2 rounded-lg col-span-2 sm:col-span-2 lg:col-span-1">
-                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Status</p>
-                                    <div className="flex items-center justify-end gap-2">
-                                      <span className={`text-sm font-medium ${activeSegments[segment.id] ? 'text-green-500' : 'text-yellow-500'}`}>
-                                        {activeSegments[segment.id] ? "Active" : "Draft"}
-                                      </span>
-                                      <Switch 
-                                        checked={activeSegments[segment.id]} 
-                                        onCheckedChange={() => toggleSegmentStatus(segment.id)}
-                                        className="data-[state=checked]:bg-[#90ff17] data-[state=checked]:hover:bg-[#90ff17] bg-muted hover:bg-muted"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </div>
-                            <CollapsibleContent>
-                              <CardContent className="pt-0 pb-6 px-6 border-t" onClick={(e) => e.stopPropagation()}>
-                                <div className="space-y-6">
-                                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
-                                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                                      <p className="text-sm font-medium">Ad Platform</p>
-                                      <Select
-                                        value={selectedAdPlatforms[segment.id]}
-                                        onValueChange={(value: AdPlatform) => handlePlatformChange(segment.id, value)}
-                                      >
-                                        <SelectTrigger className="w-full sm:w-[180px] h-8">
-                                          <SelectValue placeholder="Select platform" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="facebook">Facebook Ads</SelectItem>
-                                          <SelectItem value="google">Google Ads</SelectItem>
-                                          <SelectItem value="linkedin">LinkedIn Ads</SelectItem>
-                                          <SelectItem value="twitter">Twitter Ads</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => copyToClipboard(segment.id, getKeywords(segment, selectedAdPlatforms[segment.id]))}
-                                        className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
-                                        disabled={copiedStates[segment.id]?.keywords}
-                                      >
-                                        <div className="flex items-center justify-center min-w-0">
-                                          <Copy className="h-3.5 w-3.5 mr-1.5" />
-                                          <span className="transition-all duration-200">
-                                            {copiedStates[segment.id]?.keywords ? "Copied!" : "Copy to Clipboard"}
-                                          </span>
-                                        </div>
-                                      </Button>
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => copySegmentUrl(segment.id)}
-                                        className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
-                                        disabled={!segment.url || copiedStates[segment.id]?.url}
-                                      >
-                                        <div className="flex items-center justify-center min-w-0">
-                                          <Copy className="h-3.5 w-3.5 mr-1.5" />
-                                          <span className={`transition-all duration-200 ${copiedStates[segment.id]?.url ? "text-green-500" : ""}`}>
-                                            {copiedStates[segment.id]?.url ? "Copied!" : "Copy Segment URL"}
-                                          </span>
-                                        </div>
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-3">
-                                    <div className="my-2">
-                                      <h4 className="font-medium text-base">Keywords for {selectedAdPlatforms[segment.id].charAt(0).toUpperCase() + selectedAdPlatforms[segment.id].slice(1)} Ads</h4>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                      {getKeywords(segment, selectedAdPlatforms[segment.id]).length > 0 ? (
-                                        getKeywords(segment, selectedAdPlatforms[segment.id]).map((keyword, idx) => (
-                                          <Badge key={idx} variant="outline" className="px-2.5 py-1 hover:bg-secondary/80 transition-colors">
-                                            {keyword}
-                                          </Badge>
-                                        ))
-                                      ) : (
-                                        <p className="text-sm text-muted-foreground">No keywords available</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="relative mt-6 border-t pt-4">
-                                    <div className="w-full h-[500px] bg-background rounded-md border">
-                                      {iframeLoading[segment.id] && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground/20"></div>
-                                        </div>
-                                      )}
-                                      {segment.url ? (
-                                        <div className="relative w-full h-[500px] overflow-hidden flex items-center justify-center">
-                                          <iframe
-                                            src={segment.url}
-                                            className="absolute w-[200%] h-[200%] origin-center rounded-md"
-                                            style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
-                                            onLoad={() => handleIframeLoad(segment.id)}
-                                            sandbox="allow-same-origin allow-scripts"
-                                            loading="lazy"
-                                            allow="fullscreen"
-                                            referrerPolicy="no-referrer"
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div className="flex flex-col items-center justify-center h-full space-y-4 p-6">
-                                          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                                            <Globe className="h-8 w-8 text-muted-foreground" />
-                                          </div>
-                                          <div className="text-center space-y-2">
-                                            <h3 className="font-semibold text-lg">No URL Available</h3>
-                                            <p className="text-sm text-muted-foreground max-w-md">
-                                              This segment doesn't have a URL configured yet. Once configured, you'll be able to preview the segment content here.
-                                            </p>
-                                          </div>
-                                          <Button 
-                                            variant="outline"
-                                            onClick={() => handleConfigureUrl(segment.id)}
-                                            className="mt-4"
-                                          >
-                                            Configure URL
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="space-y-4 mt-6 border-t pt-4">
-                                    <h4 className="font-medium text-base">Hot Topics</h4>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                      <div className="space-y-3">
-                                        <h5 className="text-sm font-medium text-muted-foreground">Blog Ideas</h5>
-                                        <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                          {getHotTopics(segment, 'blog').length > 0 ? (
-                                            getHotTopics(segment, 'blog').map((topic, idx) => (
-                                              <Badge 
-                                                key={idx} 
-                                                variant="secondary"
-                                                className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
-                                                onClick={() => console.log('Clicked blog topic:', topic)}
-                                              >
-                                                {topic}
-                                              </Badge>
-                                            ))
-                                          ) : (
-                                            <p className="text-sm text-muted-foreground">No blog topics available</p>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="space-y-3">
-                                        <h5 className="text-sm font-medium text-muted-foreground">Newsletter Content</h5>
-                                        <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                                          {getHotTopics(segment, 'newsletter').length > 0 ? (
-                                            getHotTopics(segment, 'newsletter').map((topic, idx) => (
-                                              <Badge 
-                                                key={idx}
-                                                variant="secondary"
-                                                className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
-                                                onClick={() => console.log('Clicked newsletter topic:', topic)}
-                                              >
-                                                {topic}
-                                              </Badge>
-                                            ))
-                                          ) : (
-                                            <p className="text-sm text-muted-foreground">No newsletter topics available</p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </CollapsibleContent>
-                          </Card>
-                        </div>
-                      </Collapsible>
+                        segment={segment}
+                        isExpanded={expandedRows[segment.id]}
+                        onToggle={toggleRow}
+                        activeSegments={activeSegments}
+                        toggleSegmentStatus={toggleSegmentStatus}
+                        selectedAdPlatforms={selectedAdPlatforms}
+                        handlePlatformChange={handlePlatformChange}
+                        copiedStates={copiedStates}
+                        copyToClipboard={copyToClipboard}
+                        copySegmentUrl={copySegmentUrl}
+                        iframeLoading={iframeLoading}
+                        handleIframeLoad={handleIframeLoad}
+                        handleConfigureUrl={handleConfigureUrl}
+                        navigateToSegmentDetail={navigateToSegmentDetail}
+                      />
                     ))}
                 </div>
               )}
@@ -1482,4 +991,4 @@ export default function SegmentsPage() {
       </Dialog>
     </div>
   )
-} 
+}

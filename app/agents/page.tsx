@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Input } from "@/app/components/ui/input"
@@ -172,6 +172,21 @@ export default function AgentsPage() {
   
   console.log("Rendering AgentsPage, agents:", agents)
 
+  // Restablecer el breadcrumb cuando se cargue la página principal de agentes
+  useEffect(() => {
+    // Actualizar el título de la página
+    document.title = 'Agents | Market Fit';
+    
+    // Emitir un evento para restablecer el breadcrumb
+    const event = new CustomEvent('breadcrumb:update', {
+      detail: {
+        title: null
+      }
+    });
+    
+    window.dispatchEvent(event);
+  }, []);
+
   const filteredAgents = agents.filter(agent => 
     agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     agent.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -179,7 +194,7 @@ export default function AgentsPage() {
 
   const handleManageAgent = (agent: Agent) => {
     console.log("Managing agent:", agent.id)
-    // Implementar lógica de gestión
+    router.push(`/agents/${agent.id}`)
   }
 
   const handleChatWithAgent = (agent: Agent) => {

@@ -17,6 +17,7 @@ import { useCommandK } from "@/app/hooks/use-command-k"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/app/components/ui/sheet"
 import { Separator } from "@/app/components/ui/separator"
+import { useSite } from "@/app/context/SiteContext"
 
 interface Segment {
   id: string
@@ -132,6 +133,7 @@ export default function ExperimentsPage() {
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const { toast } = useToast()
+  const { currentSite } = useSite()
 
   // Inicializar el hook useCommandK
   useCommandK()
@@ -159,6 +161,14 @@ export default function ExperimentsPage() {
   const fetchExperiments = useCallback(async () => {
     if (initialFetchDone) return;
     
+    // If no site is selected, don't fetch experiments
+    if (!currentSite) {
+      setIsLoadingData(false);
+      setExperiments([]);
+      setFilteredExperiments([]);
+      return;
+    }
+    
     try {
       setIsLoadingData(true);
       const supabase = createClient()
@@ -183,6 +193,7 @@ export default function ExperimentsPage() {
             participants
           )
         `)
+        .eq('site_id', currentSite.id) // Filter experiments by the current site
         .order('created_at', { ascending: false })
 
       if (experimentsError) {
@@ -206,6 +217,7 @@ export default function ExperimentsPage() {
       }))
 
       setExperiments(transformedData)
+      setFilteredExperiments(transformedData)
       setInitialFetchDone(true);
     } catch (error) {
       console.error("Error:", error)
@@ -217,12 +229,17 @@ export default function ExperimentsPage() {
     } finally {
       setIsLoadingData(false)
     }
-  }, [toast, initialFetchDone])
+  }, [toast, initialFetchDone, currentSite])
 
   // Efecto para la carga inicial de datos
   useEffect(() => {
     fetchExperiments()
   }, [fetchExperiments])
+
+  // Reset initialFetchDone when site changes to trigger a new fetch
+  useEffect(() => {
+    setInitialFetchDone(false);
+  }, [currentSite])
 
   const handleStartExperiment = async (experimentId: string) => {
     try {
@@ -352,6 +369,52 @@ export default function ExperimentsPage() {
                   ))}
                 </div>
               </TabsContent>
+            </div>
+          </div>
+        </Tabs>
+      </div>
+    )
+  }
+
+  // If no site is selected, show a message
+  if (!currentSite) {
+    return (
+      <div className="flex-1 p-0">
+        <Tabs defaultValue="all" className="h-full">
+          <StickyHeader>
+            <div className="px-16 pt-0 w-full">
+              <div className="flex items-center gap-8">
+                <div>
+                  <TabsList>
+                    <TabsTrigger value="all" className="text-sm font-medium">All Experiments</TabsTrigger>
+                    <TabsTrigger value="active" className="text-sm font-medium">Active</TabsTrigger>
+                    <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
+                    <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
+                  </TabsList>
+                </div>
+                <div className="relative w-64">
+                  <Input 
+                    placeholder="Search experiments..." 
+                    className="w-full"
+                    disabled
+                    type="text"
+                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                  />
+                </div>
+                <div className="flex-1"></div>
+              </div>
+            </div>
+          </StickyHeader>
+          
+          <div className="p-8 space-y-4">
+            <div className="px-8">
+              <div className="flex flex-col items-center justify-center p-12 text-center">
+                <Beaker className="w-24 h-24 text-primary/40 mb-4" />
+                <h2 className="text-2xl font-semibold mb-2">No site selected</h2>
+                <p className="text-muted-foreground max-w-md">
+                  Please select a site from the dropdown in the header to view experiments for that site.
+                </p>
+              </div>
             </div>
           </div>
         </Tabs>

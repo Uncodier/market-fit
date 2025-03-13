@@ -18,6 +18,10 @@ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
     title: "Segments",
     helpText: "Create and manage user segments based on behavior and attributes"
   },
+  "/content": {
+    title: "Content",
+    helpText: "Create and manage content for different segments and channels"
+  },
   "/experiments": {
     title: "Experiments",
     helpText: "Design and run A/B tests and experiments"

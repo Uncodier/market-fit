@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "sonner"
 import ClientWrapper from './client-wrapper'
+import Script from 'next/script'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -18,6 +19,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        <Script 
+          src="/js/tracking.min.js" 
+          data-site-id="www.uncodie.com" 
+          data-debug="true"
+          data-experiments="true"
+        />
+      </head>
       <body className={inter.className}>
         <ClientWrapper>
           {children}
