@@ -162,7 +162,7 @@ export function Sidebar({
               href={item.href}
               icon={item.icon}
               title={item.title}
-              isActive={pathname === item.href}
+              isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
               isCollapsed={isCollapsed}
             />
           ))}
@@ -182,7 +182,7 @@ export function Sidebar({
             title={user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario'}
             subtitle={user?.email || ''}
             avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
-            isActive={pathname === '/profile'}
+            isActive={pathname.startsWith('/profile')}
             isCollapsed={isCollapsed}
             className="![padding-top:28px] ![padding-bottom:28px]"
           >

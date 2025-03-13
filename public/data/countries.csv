@@ -1,0 +1,30 @@
+ISO3,name,value,region
+USA,United States,0.8,North America
+CAN,Canada,0.7,North America
+MEX,Mexico,0.6,North America
+BRA,Brazil,0.75,South America
+ARG,Argentina,0.65,South America
+CHL,Chile,0.55,South America
+GBR,United Kingdom,0.85,Europe
+FRA,France,0.8,Europe
+DEU,Germany,0.9,Europe
+ESP,Spain,0.7,Europe
+ITA,Italy,0.75,Europe
+RUS,Russia,0.6,Europe
+CHN,China,0.9,Asia
+JPN,Japan,0.85,Asia
+IND,India,0.7,Asia
+AUS,Australia,0.8,Oceania
+NZL,New Zealand,0.75,Oceania
+ZAF,South Africa,0.5,Africa
+EGY,Egypt,0.45,Africa
+NGA,Nigeria,0.4,Africa
+KEN,Kenya,0.35,Africa
+SAU,Saudi Arabia,0.65,Middle East
+ARE,United Arab Emirates,0.7,Middle East
+SGP,Singapore,0.9,Asia
+KOR,South Korea,0.85,Asia
+THA,Thailand,0.6,Asia
+VNM,Vietnam,0.55,Asia
+IDN,Indonesia,0.5,Asia
+MYS,Malaysia,0.65,Asia 

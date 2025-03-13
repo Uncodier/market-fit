@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { Segment, AdPlatform, getKeywords } from "../page"
-import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps"
 import { useTheme } from '@/app/context/ThemeContext'
+import WorldMapComponent, { LocationData } from "@/app/components/WorldMapComponent";
 
 // Updated dummy data for audience analysis based on the provided JSON
 const dummyAudienceData = {
@@ -367,6 +367,67 @@ export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
     regional: false
   })
   const { isDarkMode } = useTheme()
+
+  // Obtener los países del platform seleccionado
+  const getCountriesFromPlatform = (): LocationData[] => {
+    // Usar los datos de la plataforma seleccionada o datos predeterminados
+    const platformData = dummyAudienceData.audienceProfile.adPlatforms[selectedAdPlatform];
+    
+    if (!platformData) {
+      console.log("No hay datos para la plataforma seleccionada");
+      return regionData; // Usar datos predeterminados si no hay datos de plataforma
+    }
+    
+    // Extraer países según la estructura de cada plataforma
+    let countries: string[] = [];
+    
+    if (selectedAdPlatform === 'googleAds') {
+      // GoogleAds tiene una estructura diferente
+      if (Array.isArray(platformData.locations)) {
+        countries = platformData.locations;
+      }
+    } else {
+      // Facebook, LinkedIn y TikTok tienen estructura similar
+      try {
+        const locationsObj = platformData.locations as { countries?: string[] };
+        if (locationsObj && locationsObj.countries) {
+          countries = locationsObj.countries;
+        }
+      } catch (error) {
+        console.error("Error al acceder a las ubicaciones:", error);
+      }
+    }
+    
+    console.log("Países encontrados para", selectedAdPlatform, ":", countries);
+    
+    // Si no hay países, usar datos predeterminados
+    if (!countries || countries.length === 0) {
+      console.log("No se encontraron países, usando datos predeterminados");
+      return regionData;
+    }
+    
+    // Mapear países a LocationData
+    const result = countries.map((country, index) => {
+      // Generar un color vibrante basado en el índice
+      const hue = (220 + (index * 40)) % 360;
+      const color = `hsl(${hue}, 70%, 60%)`;
+      
+      // Buscar si el país ya existe en regionData para obtener coordenadas
+      const existingRegion = regionData.find(r => r.name === country);
+      
+      return {
+        name: country,
+        // Usar coordenadas existentes o predeterminadas como tupla [number, number]
+        coordinates: existingRegion ? existingRegion.coordinates : [-0.1278, 51.5074] as [number, number],
+        value: 100 - (index * 10), // Valores decrecientes para efecto visual
+        color: color,
+        relevance: index < 2 ? "High" : index < 4 ? "Medium" : "Low" // Asignar relevancia basada en el índice
+      };
+    });
+    
+    console.log("Datos de ubicación generados:", result);
+    return result;
+  };
 
   const handlePlatformChange = (platform: NewAdPlatformType) => {
     setSelectedAdPlatform(platform)
@@ -960,7 +1021,7 @@ export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
                 size="sm" 
                 onClick={() => {
                   const regionalData = {
-                    regions: regionData.map(region => ({
+                    regions: getCountriesFromPlatform().map(region => ({
                       name: region.name,
                       value: region.value
                     }))
@@ -978,65 +1039,13 @@ export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
           </CardHeader>
           <CardContent className="px-6 pb-6">
             <div className="h-[450px] w-full">
-              <ComposableMap
-                projectionConfig={{
-                  scale: 140,
+              <WorldMapComponent 
+                locations={getCountriesFromPlatform()}
+                height="450px"
+                onSelectLocation={(location) => {
+                  console.log("Selected region:", location);
                 }}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                }}
-              >
-                <Geographies geography="/world-110m.json">
-                  {({ geographies }) =>
-                    geographies.map((geo) => (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        fill={isDarkMode ? "#334155" : "#f1f5f9"}
-                        stroke={isDarkMode ? "#1e293b" : "#e2e8f0"}
-                        style={{
-                          default: { outline: "none" },
-                          hover: { outline: "none", fill: isDarkMode ? "#475569" : "#e2e8f0" },
-                          pressed: { outline: "none" },
-                        }}
-                      />
-                    ))
-                  }
-                </Geographies>
-                {regionData.map(({ name, coordinates, value, color }) => (
-                  <Marker key={name} coordinates={coordinates}>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <circle
-                            r={Math.max(value / 10, 3)}
-                            fill={color}
-                            stroke="#fff"
-                            strokeWidth={1}
-                            opacity={0.8}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <div className="text-sm font-medium">{name}</div>
-                          <div className="text-xs">{value}% of audience</div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </Marker>
-                ))}
-              </ComposableMap>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3 justify-center">
-              {regionData.map((region) => (
-                <div key={region.name} className="flex items-center gap-1.5">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: region.color }}
-                  />
-                  <span className="text-xs">{region.name} ({region.value}%)</span>
-                </div>
-              ))}
+              />
             </div>
           </CardContent>
         </Card>

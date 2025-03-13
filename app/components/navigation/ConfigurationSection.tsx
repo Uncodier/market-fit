@@ -204,7 +204,7 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
           href={item.href}
           icon={item.icon}
           title={item.title}
-          isActive={pathname === item.href}
+          isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
           isCollapsed={isCollapsed}
         />
       ))}
