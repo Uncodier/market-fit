@@ -16,7 +16,7 @@ export interface Database {
           description: string | null
           audience: string | null
           language: string | null
-          size: number | null
+          size: string | null
           engagement: number | null
           created_at: string
           keywords: Json | null
@@ -32,7 +32,7 @@ export interface Database {
           description?: string | null
           audience?: string | null
           language?: string | null
-          size?: number | null
+          size?: string | null
           engagement?: number | null
           created_at?: string
           keywords?: Json | null
@@ -48,7 +48,7 @@ export interface Database {
           description?: string | null
           audience?: string | null
           language?: string | null
-          size?: number | null
+          size?: string | null
           engagement?: number | null
           created_at?: string
           keywords?: Json | null

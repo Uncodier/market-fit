@@ -209,7 +209,7 @@ export default function AgentsPage() {
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex-1">
-                <TabsList className="w-full">
+                <TabsList>
                   <TabsTrigger value="all">All Agents</TabsTrigger>
                   <TabsTrigger value="sales">Sales</TabsTrigger>
                   <TabsTrigger value="support">Support</TabsTrigger>

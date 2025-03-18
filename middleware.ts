@@ -15,8 +15,27 @@ const PROTECTED_ROUTES = [
 const AUTH_ROUTES = ['/auth']
 
 export async function middleware(req: NextRequest) {
+  // Handle OPTIONS request for preflight checks (CORS)
+  if (req.method === 'OPTIONS') {
+    const response = new NextResponse(null, { status: 204 });
+    
+    // Add the CORS headers to the response
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    
+    return response;
+  }
+
   try {
     const res = NextResponse.next()
+    
+    // Add CORS headers to all responses
+    res.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
+    res.headers.set('Access-Control-Allow-Credentials', 'true');
     
     // Crear el cliente de Supabase con configuración explícita de cookies
     const supabase = createServerClient(
@@ -71,7 +90,15 @@ export async function middleware(req: NextRequest) {
     return res
   } catch (error) {
     console.error('Middleware error:', error)
-    return NextResponse.next()
+    const res = NextResponse.next()
+    
+    // Ensure CORS headers are set even in case of error
+    res.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
+    res.headers.set('Access-Control-Allow-Credentials', 'true');
+    
+    return res
   }
 }
 

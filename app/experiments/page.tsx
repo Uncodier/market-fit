@@ -333,29 +333,31 @@ export default function ExperimentsPage() {
           <StickyHeader>
             <div className="px-16 pt-0 w-full">
               <div className="flex items-center gap-8">
-                <div>
+                <div className="flex items-center gap-8">
                   <TabsList>
                     <TabsTrigger value="all" className="text-sm font-medium">All Experiments</TabsTrigger>
                     <TabsTrigger value="active" className="text-sm font-medium">Active</TabsTrigger>
                     <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
                     <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
                   </TabsList>
+                  <div className="relative w-64">
+                    <Input 
+                      placeholder="Search experiments..." 
+                      className="w-full"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      data-command-k-input
+                      type="text"
+                      icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                    />
+                    <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                      <span className="text-xs">⌘</span>K
+                    </kbd>
+                  </div>
                 </div>
-                <div className="relative w-64">
-                  <Input 
-                    placeholder="Search experiments..." 
-                    className="w-full"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    data-command-k-input
-                    type="text"
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                  />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
+                <div className="ml-auto">
+                  {/* Any other buttons would go here */}
                 </div>
-                <div className="flex-1"></div>
               </div>
             </div>
           </StickyHeader>

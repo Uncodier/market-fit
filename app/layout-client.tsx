@@ -12,6 +12,7 @@ import { Toaster } from "./components/ui/sonner"
 import { createClient } from "@/lib/supabase/client"
 import { type Segment } from "./requirements/types"
 import { ThemeProvider } from "./context/ThemeContext"
+import { LayoutProvider } from "./context/LayoutContext"
 
 const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/segments": {
@@ -407,46 +408,48 @@ export default function LayoutClient({
               </div>
             ) : (
               // Para el resto de páginas, mostrar el layout completo
-              <div className="flex h-fit overflow-visible relative min-h-screen">
-                <Sidebar 
-                  isCollapsed={isCollapsed} 
-                  onCollapse={handleCollapse} 
-                  className="flex-none fixed left-0 top-0 h-screen z-20"
-                />
-                <div 
-                  className={cn(
-                    "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
-                    isCollapsed ? "ml-16" : "ml-64"
-                  )}
-                >
-                  <TopBar 
-                    title={currentPage.title || ""}
-                    helpText={currentPage.helpText || undefined}
-                    isCollapsed={isCollapsed}
-                    onCollapse={handleCollapse}
-                    segments={segments}
-                    className="fixed top-0 right-0 z-10"
-                    style={{ 
-                      left: isCollapsed ? '4rem' : '16rem',
-                    }}
-                    breadcrumb={customBreadcrumb}
+              <LayoutProvider isLayoutCollapsed={isCollapsed}>
+                <div className="flex h-fit overflow-visible relative min-h-screen">
+                  <Sidebar 
+                    isCollapsed={isCollapsed} 
+                    onCollapse={handleCollapse} 
+                    className="flex-none fixed left-0 top-0 h-screen z-20"
                   />
-                  <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
-                  <main 
+                  <div 
                     className={cn(
-                      "flex-1",
-                      isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
-                    )} 
-                    style={
-                      isChatPage ? 
-                      { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
-                      : {}
-                    }
+                      "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
+                      isCollapsed ? "ml-16" : "ml-64"
+                    )}
                   >
-                    {children}
-                  </main>
+                    <TopBar 
+                      title={currentPage.title || ""}
+                      helpText={currentPage.helpText || undefined}
+                      isCollapsed={isCollapsed}
+                      onCollapse={handleCollapse}
+                      segments={segments}
+                      className="fixed top-0 right-0 z-10"
+                      style={{ 
+                        left: isCollapsed ? '4rem' : '16rem',
+                      }}
+                      breadcrumb={customBreadcrumb}
+                    />
+                    <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+                    <main 
+                      className={cn(
+                        "flex-1",
+                        isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
+                      )} 
+                      style={
+                        isChatPage ? 
+                        { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
+                        : {}
+                      }
+                    >
+                      {children}
+                    </main>
+                  </div>
                 </div>
-              </div>
+              </LayoutProvider>
             )}
             <Toaster />
           </TooltipProvider>

@@ -184,38 +184,7 @@ function SegmentCard({
             <CardContent className="pt-0 pb-6 px-6 border-t" onClick={(e) => e.stopPropagation()}>
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <p className="text-sm font-medium">Ad Platform</p>
-                    <Select
-                      value={selectedAdPlatforms[segment.id]}
-                      onValueChange={(value: AdPlatform) => handlePlatformChange(segment.id, value)}
-                    >
-                      <SelectTrigger className="w-full sm:w-[180px] h-8">
-                        <SelectValue placeholder="Select platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="facebook">Facebook Ads</SelectItem>
-                        <SelectItem value="google">Google Ads</SelectItem>
-                        <SelectItem value="linkedin">LinkedIn Ads</SelectItem>
-                        <SelectItem value="twitter">Twitter Ads</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => copyToClipboard(segment.id, getKeywords(segment, selectedAdPlatforms[segment.id]))}
-                      className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
-                      disabled={copiedStates[segment.id]?.keywords}
-                    >
-                      <div className="flex items-center justify-center min-w-0">
-                        <Copy className="h-3.5 w-3.5 mr-1.5" />
-                        <span className="transition-all duration-200">
-                          {copiedStates[segment.id]?.keywords ? "Copied!" : "Copy to Clipboard"}
-                        </span>
-                      </div>
-                    </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -230,22 +199,44 @@ function SegmentCard({
                         </span>
                       </div>
                     </Button>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="my-2">
-                    <h4 className="font-medium text-base">Keywords for {selectedAdPlatforms[segment.id].charAt(0).toUpperCase() + selectedAdPlatforms[segment.id].slice(1)} Ads</h4>
-                  </div>
-                  <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
-                    {getKeywords(segment, selectedAdPlatforms[segment.id]).length > 0 ? (
-                      getKeywords(segment, selectedAdPlatforms[segment.id]).map((keyword, idx) => (
-                        <Badge key={idx} variant="outline" className="px-2.5 py-1 hover:bg-secondary/80 transition-colors">
-                          {keyword}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No keywords available</p>
-                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleConfigureUrl(segment.id)}
+                      className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
+                    >
+                      <div className="flex items-center justify-center min-w-0">
+                        <Globe className="h-3.5 w-3.5 mr-1.5" />
+                        <span className="transition-all duration-200">
+                          Set Segment URL
+                        </span>
+                      </div>
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="flex items-center justify-center hover:bg-primary/10 transition-all duration-200 relative min-w-[160px]"
+                    >
+                      <div className="flex items-center justify-center min-w-0">
+                        <svg 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          className="h-3.5 w-3.5 mr-1.5"
+                        >
+                          <path d="M12 2a10 10 0 1 0 10 10H12V2z" />
+                          <path d="M12 2a10 10 0 0 1 10 10h-10V2z" />
+                          <path d="M12 22v-10h10" />
+                          <path d="M7 7l5 5" />
+                        </svg>
+                        <span className="transition-all duration-200">
+                          Personalize with AI
+                        </span>
+                      </div>
+                    </Button>
                   </div>
                 </div>
                 <div className="relative mt-6 border-t pt-4">
@@ -291,7 +282,34 @@ function SegmentCard({
                   </div>
                 </div>
                 <div className="space-y-4 mt-6 border-t pt-4">
-                  <h4 className="font-medium text-base">Hot Topics</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium text-base">Hot Topics</h4>
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="flex items-center justify-center hover:bg-primary/10 transition-all duration-200 relative"
+                    >
+                      <div className="flex items-center justify-center min-w-0">
+                        <svg 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          className="h-3.5 w-3.5 mr-1.5"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          <line x1="11" y1="8" x2="11" y2="14" />
+                          <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg>
+                        <span className="transition-all duration-200">
+                          Discover with AI
+                        </span>
+                      </div>
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <h5 className="text-sm font-medium text-muted-foreground">Blog Ideas</h5>
@@ -752,26 +770,29 @@ export default function SegmentsPage() {
           <StickyHeader>
             <div className="px-16 pt-0">
               <div className="flex items-center gap-8">
-                <div className="flex-1">
-                  <TabsList className="w-full">
+                <div className="flex items-center gap-8">
+                  <TabsList>
                     <TabsTrigger value="all">All Segments</TabsTrigger>
                     <TabsTrigger value="active">Active</TabsTrigger>
                     <TabsTrigger value="draft">Draft</TabsTrigger>
                   </TabsList>
+                  <div className="relative w-64">
+                    <Input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search segments..."
+                      className="w-full"
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                    />
+                    <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                      <span className="text-xs">⌘</span>K
+                    </kbd>
+                  </div>
                 </div>
-                <div className="relative w-64">
-                  <Input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search segments..."
-                    className="w-full"
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                  />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
+                <div className="ml-auto">
+                  {/* Any other buttons would go here */}
                 </div>
               </div>
             </div>
@@ -820,26 +841,29 @@ export default function SegmentsPage() {
         <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
-              <div className="flex-1">
-                <TabsList className="w-full">
+              <div className="flex items-center gap-8">
+                <TabsList>
                   <TabsTrigger value="all">All Segments</TabsTrigger>
                   <TabsTrigger value="active">Active</TabsTrigger>
                   <TabsTrigger value="draft">Draft</TabsTrigger>
                 </TabsList>
+                <div className="relative w-64">
+                  <Input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search segments..."
+                    className="w-full"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                  />
+                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </div>
               </div>
-              <div className="relative w-64">
-                <Input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search segments..."
-                  className="w-full"
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                />
-                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
+              <div className="ml-auto">
+                {/* Any other buttons would go here */}
               </div>
             </div>
           </div>

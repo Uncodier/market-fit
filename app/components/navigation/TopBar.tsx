@@ -47,6 +47,10 @@ import { useState, useEffect, useCallback } from "react"
 import { getSegments } from "@/app/segments/actions"
 import Link from "next/link"
 import { Breadcrumb } from "./Breadcrumb"
+import { AIActionModal } from "@/app/components/ui/ai-action-modal"
+import { buildSegmentsWithAI } from "@/app/services/ai-service"
+import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -87,6 +91,18 @@ export function TopBar({
   const [customTitle, setCustomTitle] = useState<string | null>(null)
   const [customAgentId, setCustomAgentId] = useState<string | null>(null)
   const [customAgentName, setCustomAgentName] = useState<string | null>(null)
+  
+  // AI Action Modal state
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+  const [AIModalConfig, setAIModalConfig] = useState({
+    title: "",
+    description: "",
+    actionLabel: "",
+    estimatedTime: 0,
+    action: async (): Promise<any> => {}
+  })
+
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Escuchar eventos de actualización del breadcrumb
   useEffect(() => {
@@ -384,11 +400,114 @@ export function TopBar({
   }
 
   const handleBuildWithAI = () => {
-    // Navigate to the AI segment builder page or open a dialog
-    console.log("Build segments with AI clicked")
-    // TODO: Implement AI segment building functionality
-    alert("AI segment building functionality coming soon!")
-  }
+    // Evitar múltiples clics mientras se procesa
+    if (isProcessing) return;
+    
+    // Configurar el modal de AI antes de abrirlo
+    setAIModalConfig({
+      title: "Building Segments with AI",
+      description: "Our AI will analyze your site data and automatically create optimized audience segments based on your business goals and target market. This helps you identify and target the most valuable customer groups.",
+      actionLabel: "Build Segments",
+      estimatedTime: 120, // 2 minutes
+      action: handleBuildSegmentsWithAI
+    });
+    
+    // Abrir el modal después de configurarlo
+    setTimeout(() => {
+      setIsAIModalOpen(true);
+    }, 0);
+  };
+  
+  // Function to handle the AI segment building process
+  const handleBuildSegmentsWithAI = async (): Promise<any> => {
+    try {
+      // Marcar como en proceso
+      setIsProcessing(true);
+      
+      // Verificar que hay un sitio seleccionado
+      if (!currentSite) {
+        setIsProcessing(false);
+        toast.error("Please select a site first");
+        return {
+          success: false,
+          error: "No site selected"
+        };
+      }
+
+      // Verificar que el sitio tiene una URL
+      if (!currentSite.url) {
+        setIsProcessing(false);
+        toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+        return {
+          success: false,
+          error: "Site URL is missing"
+        };
+      }
+
+      // Obtener el ID del usuario actual
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setIsProcessing(false);
+        toast.error("You must be logged in to use this feature");
+        return {
+          success: false,
+          error: "Authentication required"
+        };
+      }
+
+      console.log("Starting AI segment building with params:", {
+        user_id: user.id,
+        site_id: currentSite.id,
+        url: currentSite.url,
+        segmentCount: 3
+      });
+
+      // Llamar al servicio de AI para construir segmentos
+      const result = await buildSegmentsWithAI({
+        user_id: user.id,
+        site_id: currentSite.id,
+        url: currentSite.url,
+        segmentCount: 3
+      });
+
+      console.log("AI segment building result:", result);
+
+      if (result.success) {
+        toast.success("Segments created successfully!");
+        // Redirigir a la página de segmentos
+        router.push(`/segments/${result.data?.segmentId || ''}`);
+        return result;
+      } else {
+        // En lugar de lanzar un error, devolvemos el resultado completo
+        // para que el modal pueda mostrar el error y la respuesta HTML si existe
+        console.error("Error building segments with AI:", result.error);
+        if (result.rawResponse) {
+          console.error("Raw response from server:", result.rawResponse.substring(0, 200) + "...");
+        }
+        if (result.details) {
+          console.error("Error details:", result.details);
+        }
+        return result;
+      }
+    } catch (error) {
+      console.error("Unexpected error in handleBuildSegmentsWithAI:", error);
+      
+      // Devolver un objeto con el formato esperado por el modal
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "An unexpected error occurred",
+        details: {
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : "Unknown Error"
+        }
+      };
+    } finally {
+      // Siempre marcar como no en proceso al finalizar
+      setIsProcessing(false);
+    }
+  };
 
   const handleCreateAsset = async ({ 
     name, 
@@ -532,9 +651,19 @@ export function TopBar({
                   size="default"
                   className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
                   onClick={handleBuildWithAI}
+                  disabled={isProcessing}
                 >
-                  <FlaskConical className="h-4 w-4" />
-                  Build with AI
+                  {isProcessing ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <FlaskConical className="h-4 w-4" />
+                      Build with AI
+                    </>
+                  )}
                 </Button>
                 <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
               </div>
@@ -658,6 +787,21 @@ export function TopBar({
           {breadcrumb}
         </div>
       )}
+
+      {/* Add the AI Action Modal at the end of the component */}
+      <AIActionModal
+        isOpen={isAIModalOpen}
+        setIsOpen={setIsAIModalOpen}
+        title={AIModalConfig.title}
+        description={AIModalConfig.description}
+        actionLabel={AIModalConfig.actionLabel}
+        onAction={AIModalConfig.action}
+        creditsAvailable={10} // This would come from user's account data
+        creditsRequired={3} // Building segments might cost more credits
+        icon={<FlaskConical className="h-5 w-5 text-primary" />}
+        estimatedTime={AIModalConfig.estimatedTime}
+        refreshOnComplete={true} // Refresh the page when the action completes
+      />
     </div>
   )
 } 

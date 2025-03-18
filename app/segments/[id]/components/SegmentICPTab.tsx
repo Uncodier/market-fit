@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 // Importar desde dummyData.ts que sabemos que existe
 import { sampleICPProfile } from "./dummyData";
 import { cn } from "@/app/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
+import { useTheme } from '@/app/context/ThemeContext';
 
 interface SegmentICPTabProps {
   segment: Segment;
@@ -42,26 +44,29 @@ const ICPSummaryCard = ({
     { id: "professional", label: "Professional", icon: User },
     { id: "custom", label: "Custom", icon: Settings },
   ];
+  
+  // Access theme context to check if dark mode is enabled
+  const { isDarkMode } = useTheme?.() || { isDarkMode: false };
+
+  // Ensure we have a complete profile with all required sections
+  const completeProfile = {
+    ...icpProfile,
+    demographics: icpProfile.demographics || fallbackICPProfile.demographics,
+    psychographics: icpProfile.psychographics || fallbackICPProfile.psychographics,
+    behavioralTraits: icpProfile.behavioralTraits || fallbackICPProfile.behavioralTraits,
+    professionalContext: icpProfile.professionalContext || fallbackICPProfile.professionalContext,
+    customAttributes: icpProfile.customAttributes || fallbackICPProfile.customAttributes
+  };
 
   return (
     <div>
-      {/* Encabezado principal - estructura igual a SegmentAnalysisTab */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 className="text-2xl font-semibold">
-          Ideal Customer Profile: <span className="text-primary">{icpProfile.name}</span>
-        </h2>
-      </div>
-      
-      {/* Descripción del ICP */}
-      <p className="text-muted-foreground mt-1 mb-6">{icpProfile.description}</p>
-      
       {/* 5 tarjetas en una sola fila que ahora funcionan como tabs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4">
         {/* Demographics Card */}
         <Card 
           className={cn(
             "border-none shadow-sm cursor-pointer transition-all hover:shadow-md relative overflow-hidden transform hover:-translate-y-1 duration-200",
-            activeTab === "demographics" ? "bg-primary" : "hover:bg-accent"
+            activeTab === "demographics" ? "bg-[#6466f1]" : "hover:bg-accent"
           )}
           onClick={() => onTabChange("demographics")}
         >
@@ -69,45 +74,51 @@ const ICPSummaryCard = ({
             "p-5",
             activeTab === "demographics" ? "" : ""
           )}>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Users className={cn(
-                "h-5 w-5", 
-                activeTab === "demographics" ? "text-primary-foreground" : "text-muted-foreground"
-              )} />
+            <div className="flex items-center justify-between mb-3">
               <h3 className={cn(
                 "text-sm font-medium",
-                activeTab === "demographics" ? "text-primary-foreground" : "text-muted-foreground"
+                activeTab === "demographics" ? "text-white" : "text-muted-foreground"
               )}>Demographics</h3>
+              <div className={`p-2 rounded-full flex items-center justify-center ${
+                activeTab === "demographics" 
+                  ? "bg-white" 
+                  : isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+              }`}>
+                <Users className={cn(
+                  "h-4 w-4", 
+                  activeTab === "demographics" ? "text-[#6466f1]" : "text-muted-foreground"
+                )} />
+              </div>
             </div>
             <ul className={cn(
               "text-sm space-y-2",
-              activeTab === "demographics" ? "text-primary-foreground" : "text-muted-foreground"
+              activeTab === "demographics" ? "text-white" : "text-muted-foreground"
             )}>
-              {icpProfile.demographics.ageRange?.primary && (
+              {completeProfile.demographics.ageRange?.primary && (
                 <li className="flex items-center gap-2">
                   <CalendarIcon className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "demographics" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "demographics" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Age: {icpProfile.demographics.ageRange.primary}</span>
+                  <span>Age: {completeProfile.demographics.ageRange.primary}</span>
                 </li>
               )}
-              {icpProfile.demographics.education?.primary && (
+              {completeProfile.demographics.education?.primary && (
                 <li className="flex items-center gap-2">
                   <GraduationCap className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "demographics" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "demographics" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Education: {icpProfile.demographics.education.primary}</span>
+                  <span>Education: {completeProfile.demographics.education.primary}</span>
                 </li>
               )}
-              {icpProfile.demographics.locations && icpProfile.demographics.locations.length > 0 && (
+              {completeProfile.demographics.locations && completeProfile.demographics.locations.length > 0 && (
                 <li className="flex items-center gap-2">
                   <Globe className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "demographics" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "demographics" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Location: {icpProfile.demographics.locations[0].name}</span>
+                  <span>Location: {completeProfile.demographics.locations[0].name}</span>
                 </li>
               )}
             </ul>
@@ -118,7 +129,7 @@ const ICPSummaryCard = ({
         <Card 
           className={cn(
             "border-none shadow-sm cursor-pointer transition-all hover:shadow-md relative overflow-hidden transform hover:-translate-y-1 duration-200",
-            activeTab === "psychographics" ? "bg-primary" : "hover:bg-accent"
+            activeTab === "psychographics" ? "bg-[#6466f1]" : "hover:bg-accent"
           )}
           onClick={() => onTabChange("psychographics")}
         >
@@ -126,45 +137,51 @@ const ICPSummaryCard = ({
             "p-5",
             activeTab === "psychographics" ? "" : ""
           )}>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <PieChart className={cn(
-                "h-5 w-5", 
-                activeTab === "psychographics" ? "text-primary-foreground" : "text-muted-foreground"
-              )} />
+            <div className="flex items-center justify-between mb-3">
               <h3 className={cn(
                 "text-sm font-medium",
-                activeTab === "psychographics" ? "text-primary-foreground" : "text-muted-foreground"
+                activeTab === "psychographics" ? "text-white" : "text-muted-foreground"
               )}>Psychographics</h3>
+              <div className={`p-2 rounded-full flex items-center justify-center ${
+                activeTab === "psychographics" 
+                  ? "bg-white" 
+                  : isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+              }`}>
+                <PieChart className={cn(
+                  "h-4 w-4", 
+                  activeTab === "psychographics" ? "text-[#6466f1]" : "text-muted-foreground"
+                )} />
+              </div>
             </div>
             <ul className={cn(
               "text-sm space-y-2",
-              activeTab === "psychographics" ? "text-primary-foreground" : "text-muted-foreground"
+              activeTab === "psychographics" ? "text-white" : "text-muted-foreground"
             )}>
-              {icpProfile.psychographics?.values && icpProfile.psychographics.values.length > 0 && (
+              {completeProfile.psychographics?.values && completeProfile.psychographics.values.length > 0 && (
                 <li className="flex items-center gap-2">
                   <DollarSign className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "psychographics" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "psychographics" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Value: {icpProfile.psychographics.values[0].name}</span>
+                  <span>Value: {completeProfile.psychographics.values[0].name}</span>
                 </li>
               )}
-              {icpProfile.psychographics?.goals && icpProfile.psychographics.goals.length > 0 && (
+              {completeProfile.psychographics?.goals && completeProfile.psychographics.goals.length > 0 && (
                 <li className="flex items-center gap-2">
                   <Target className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "psychographics" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "psychographics" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Goal: {icpProfile.psychographics.goals[0].name}</span>
+                  <span>Goal: {completeProfile.psychographics.goals[0].name}</span>
                 </li>
               )}
-              {icpProfile.psychographics?.challenges && icpProfile.psychographics.challenges.length > 0 && (
+              {completeProfile.psychographics?.challenges && completeProfile.psychographics.challenges.length > 0 && (
                 <li className="flex items-center gap-2">
                   <HelpCircle className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "psychographics" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "psychographics" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Challenge: {icpProfile.psychographics.challenges[0].name}</span>
+                  <span>Challenge: {completeProfile.psychographics.challenges[0].name}</span>
                 </li>
               )}
             </ul>
@@ -175,7 +192,7 @@ const ICPSummaryCard = ({
         <Card 
           className={cn(
             "border-none shadow-sm cursor-pointer transition-all hover:shadow-md relative overflow-hidden transform hover:-translate-y-1 duration-200",
-            activeTab === "behavioral" ? "bg-primary" : "hover:bg-accent"
+            activeTab === "behavioral" ? "bg-[#6466f1]" : "hover:bg-accent"
           )}
           onClick={() => onTabChange("behavioral")}
         >
@@ -183,47 +200,53 @@ const ICPSummaryCard = ({
             "p-5",
             activeTab === "behavioral" ? "" : ""
           )}>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <BarChart className={cn(
-                "h-5 w-5", 
-                activeTab === "behavioral" ? "text-primary-foreground" : "text-muted-foreground"
-              )} />
+            <div className="flex items-center justify-between mb-3">
               <h3 className={cn(
                 "text-sm font-medium",
-                activeTab === "behavioral" ? "text-primary-foreground" : "text-muted-foreground"
+                activeTab === "behavioral" ? "text-white" : "text-muted-foreground"
               )}>Behavioral</h3>
+              <div className={`p-2 rounded-full flex items-center justify-center ${
+                activeTab === "behavioral" 
+                  ? "bg-white" 
+                  : isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+              }`}>
+                <BarChart className={cn(
+                  "h-4 w-4", 
+                  activeTab === "behavioral" ? "text-[#6466f1]" : "text-muted-foreground"
+                )} />
+              </div>
             </div>
             <ul className={cn(
               "text-sm space-y-2",
-              activeTab === "behavioral" ? "text-primary-foreground" : "text-muted-foreground"
+              activeTab === "behavioral" ? "text-white" : "text-muted-foreground"
             )}>
-              {icpProfile.behavioralTraits?.onlineBehavior?.deviceUsage?.primary && (
+              {completeProfile.behavioralTraits?.onlineBehavior?.deviceUsage?.primary && (
                 <li className="flex items-center gap-2">
                   <Settings className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "behavioral" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "behavioral" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Device: {icpProfile.behavioralTraits.onlineBehavior.deviceUsage.primary}</span>
+                  <span>Device: {completeProfile.behavioralTraits.onlineBehavior.deviceUsage.primary}</span>
                 </li>
               )}
-              {icpProfile.behavioralTraits?.purchasingBehavior?.decisionFactors && 
-               icpProfile.behavioralTraits.purchasingBehavior.decisionFactors.length > 0 && (
+              {completeProfile.behavioralTraits?.purchasingBehavior?.decisionFactors && 
+               completeProfile.behavioralTraits.purchasingBehavior.decisionFactors.length > 0 && (
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "behavioral" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "behavioral" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Factor: {icpProfile.behavioralTraits.purchasingBehavior.decisionFactors[0].name}</span>
+                  <span>Factor: {completeProfile.behavioralTraits.purchasingBehavior.decisionFactors[0].name}</span>
                 </li>
               )}
-              {icpProfile.behavioralTraits?.contentConsumption?.preferredFormats && 
-               icpProfile.behavioralTraits.contentConsumption.preferredFormats.length > 0 && (
+              {completeProfile.behavioralTraits?.contentConsumption?.preferredFormats && 
+               completeProfile.behavioralTraits.contentConsumption.preferredFormats.length > 0 && (
                 <li className="flex items-center gap-2">
                   <MessageSquare className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "behavioral" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "behavioral" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Format: {icpProfile.behavioralTraits.contentConsumption.preferredFormats[0].type}</span>
+                  <span>Format: {completeProfile.behavioralTraits.contentConsumption.preferredFormats[0].type}</span>
                 </li>
               )}
             </ul>
@@ -234,7 +257,7 @@ const ICPSummaryCard = ({
         <Card 
           className={cn(
             "border-none shadow-sm cursor-pointer transition-all hover:shadow-md relative overflow-hidden transform hover:-translate-y-1 duration-200",
-            activeTab === "professional" ? "bg-primary" : "hover:bg-accent"
+            activeTab === "professional" ? "bg-[#6466f1]" : "hover:bg-accent"
           )}
           onClick={() => onTabChange("professional")}
         >
@@ -242,45 +265,51 @@ const ICPSummaryCard = ({
             "p-5",
             activeTab === "professional" ? "" : ""
           )}>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <User className={cn(
-                "h-5 w-5", 
-                activeTab === "professional" ? "text-primary-foreground" : "text-muted-foreground"
-              )} />
+            <div className="flex items-center justify-between mb-3">
               <h3 className={cn(
                 "text-sm font-medium",
-                activeTab === "professional" ? "text-primary-foreground" : "text-muted-foreground"
+                activeTab === "professional" ? "text-white" : "text-muted-foreground"
               )}>Professional</h3>
+              <div className={`p-2 rounded-full flex items-center justify-center ${
+                activeTab === "professional" 
+                  ? "bg-white" 
+                  : isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+              }`}>
+                <User className={cn(
+                  "h-4 w-4", 
+                  activeTab === "professional" ? "text-[#6466f1]" : "text-muted-foreground"
+                )} />
+              </div>
             </div>
             <ul className={cn(
               "text-sm space-y-2",
-              activeTab === "professional" ? "text-primary-foreground" : "text-muted-foreground"
+              activeTab === "professional" ? "text-white" : "text-muted-foreground"
             )}>
-              {icpProfile.professionalContext?.industries && icpProfile.professionalContext.industries.length > 0 && (
-                <li className="flex items-center gap-2">
-                  <Globe className={cn(
-                    "h-4 w-4 shrink-0",
-                    activeTab === "professional" ? "text-primary-foreground/90" : "text-primary"
-                  )} />
-                  <span>Industry: {icpProfile.professionalContext.industries[0]}</span>
-                </li>
-              )}
-              {icpProfile.professionalContext?.roles && icpProfile.professionalContext.roles.length > 0 && (
+              {completeProfile.professionalContext?.roles && completeProfile.professionalContext.roles.length > 0 && (
                 <li className="flex items-center gap-2">
                   <User className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "professional" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "professional" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Role: {icpProfile.professionalContext.roles[0].title}</span>
+                  <span>Role: {completeProfile.professionalContext.roles[0].title}</span>
                 </li>
               )}
-              {icpProfile.professionalContext?.companySize?.primary && (
+              {completeProfile.professionalContext?.companySize?.primary && (
                 <li className="flex items-center gap-2">
-                  <BarChart className={cn(
+                  <Users className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "professional" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "professional" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>Company: {icpProfile.professionalContext.companySize.primary}</span>
+                  <span>Company: {completeProfile.professionalContext.companySize.primary}</span>
+                </li>
+              )}
+              {completeProfile.professionalContext?.industries && completeProfile.professionalContext.industries.length > 0 && (
+                <li className="flex items-center gap-2">
+                  <Globe className={cn(
+                    "h-4 w-4 shrink-0",
+                    activeTab === "professional" ? "text-white/90" : "text-primary"
+                  )} />
+                  <span>Industry: {completeProfile.professionalContext.industries[0]}</span>
                 </li>
               )}
             </ul>
@@ -291,7 +320,7 @@ const ICPSummaryCard = ({
         <Card 
           className={cn(
             "border-none shadow-sm cursor-pointer transition-all hover:shadow-md relative overflow-hidden transform hover:-translate-y-1 duration-200",
-            activeTab === "custom" ? "bg-primary" : "hover:bg-accent"
+            activeTab === "custom" ? "bg-[#6466f1]" : "hover:bg-accent"
           )}
           onClick={() => onTabChange("custom")}
         >
@@ -299,36 +328,42 @@ const ICPSummaryCard = ({
             "p-5",
             activeTab === "custom" ? "" : ""
           )}>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Settings className={cn(
-                "h-5 w-5", 
-                activeTab === "custom" ? "text-primary-foreground" : "text-muted-foreground"
-              )} />
+            <div className="flex items-center justify-between mb-3">
               <h3 className={cn(
                 "text-sm font-medium",
-                activeTab === "custom" ? "text-primary-foreground" : "text-muted-foreground"
+                activeTab === "custom" ? "text-white" : "text-muted-foreground"
               )}>Custom</h3>
+              <div className={`p-2 rounded-full flex items-center justify-center ${
+                activeTab === "custom" 
+                  ? "bg-white" 
+                  : isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+              }`}>
+                <Settings className={cn(
+                  "h-4 w-4", 
+                  activeTab === "custom" ? "text-[#6466f1]" : "text-muted-foreground"
+                )} />
+              </div>
             </div>
             <ul className={cn(
               "text-sm space-y-2",
-              activeTab === "custom" ? "text-primary-foreground" : "text-muted-foreground"
+              activeTab === "custom" ? "text-white" : "text-muted-foreground"
             )}>
-              {icpProfile.customAttributes && icpProfile.customAttributes.length > 0 && (
+              {completeProfile.customAttributes && completeProfile.customAttributes.length > 0 && (
                 <li className="flex items-center gap-2">
                   <Tag className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "custom" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "custom" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>{icpProfile.customAttributes[0].name}: {icpProfile.customAttributes[0].value}</span>
+                  <span>{completeProfile.customAttributes[0].name}: {completeProfile.customAttributes[0].value}</span>
                 </li>
               )}
-              {icpProfile.customAttributes && icpProfile.customAttributes.length > 1 && (
+              {completeProfile.customAttributes && completeProfile.customAttributes.length > 1 && (
                 <li className="flex items-center gap-2">
                   <Tag className={cn(
                     "h-4 w-4 shrink-0",
-                    activeTab === "custom" ? "text-primary-foreground/90" : "text-primary"
+                    activeTab === "custom" ? "text-white/90" : "text-primary"
                   )} />
-                  <span>{icpProfile.customAttributes[1].name}: {icpProfile.customAttributes[1].value}</span>
+                  <span>{completeProfile.customAttributes[1].name}: {completeProfile.customAttributes[1].value}</span>
                 </li>
               )}
             </ul>
@@ -342,10 +377,29 @@ const ICPSummaryCard = ({
 export function SegmentICPTab({ segment }: SegmentICPTabProps) {
   const [activeTab, setActiveTab] = useState("demographics");
 
+  // Define tab options for the dropdown
+  const tabOptions = [
+    { id: "demographics", label: "Demographics", icon: Users },
+    { id: "psychographics", label: "Psychographics", icon: PieChart },
+    { id: "behavioral", label: "Behavioral", icon: BarChart },
+    { id: "professional", label: "Professional", icon: User },
+    { id: "custom", label: "Custom", icon: Settings },
+  ];
+
   // Extract the ICP profile data from the segment, or use sample data if none exists
   // Usamos any como intermediario para evitar errores de tipo
   const profileData = segment?.icp?.profile || fallbackICPProfile;
   const icpProfile = profileData as ICPProfileData;
+
+  // Ensure we have a complete profile with all required sections
+  const completeProfile = {
+    ...icpProfile,
+    demographics: icpProfile.demographics || fallbackICPProfile.demographics,
+    psychographics: icpProfile.psychographics || fallbackICPProfile.psychographics,
+    behavioralTraits: icpProfile.behavioralTraits || fallbackICPProfile.behavioralTraits,
+    professionalContext: icpProfile.professionalContext || fallbackICPProfile.professionalContext,
+    customAttributes: icpProfile.customAttributes || fallbackICPProfile.customAttributes
+  };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -353,27 +407,70 @@ export function SegmentICPTab({ segment }: SegmentICPTabProps) {
 
   // Render the appropriate tab content based on activeTab
   const renderTabContent = () => {
+    // Ensure we have a complete profile with all required sections
+    const completeProfile = {
+      ...icpProfile,
+      demographics: icpProfile.demographics || fallbackICPProfile.demographics,
+      psychographics: icpProfile.psychographics || fallbackICPProfile.psychographics,
+      behavioralTraits: icpProfile.behavioralTraits || fallbackICPProfile.behavioralTraits,
+      professionalContext: icpProfile.professionalContext || fallbackICPProfile.professionalContext,
+      customAttributes: icpProfile.customAttributes || fallbackICPProfile.customAttributes
+    };
+
     switch (activeTab) {
       case "demographics":
-        return <DemographicsTab icpProfile={icpProfile} />;
+        return <DemographicsTab icpProfile={completeProfile} />;
       case "psychographics":
-        return <PsychographicsTab icpProfile={icpProfile} />;
+        return <PsychographicsTab icpProfile={completeProfile} />;
       case "behavioral":
-        return <BehavioralTraitsTab icpProfile={icpProfile} />;
+        return <BehavioralTraitsTab icpProfile={completeProfile} />;
       case "professional":
-        return <ProfessionalContextTab icpProfile={icpProfile} />;
+        return <ProfessionalContextTab icpProfile={completeProfile} />;
       case "custom":
-        return <CustomAttributesTab icpProfile={icpProfile} />;
+        return <CustomAttributesTab icpProfile={completeProfile} />;
       default:
-        return <DemographicsTab icpProfile={icpProfile} />;
+        return <DemographicsTab icpProfile={completeProfile} />;
     }
   };
 
   return (
     <div>
+      {/* Header with title and dropdown */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-semibold">
+            <span className="text-primary">{completeProfile.name}</span>
+          </h2>
+          <p className="text-muted-foreground mt-1">{completeProfile.description}</p>
+        </div>
+        <div className="flex items-center gap-4 mt-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Ideal Customer Profile</span>
+            <Select
+              value={activeTab}
+              onValueChange={handleTabChange}
+            >
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Select section" />
+              </SelectTrigger>
+              <SelectContent>
+                {tabOptions.map((tab) => (
+                  <SelectItem key={tab.id} value={tab.id} className="flex items-center">
+                    <div className="flex items-center gap-2">
+                      {React.createElement(tab.icon, { className: "h-4 w-4 mr-2" })}
+                      <span>{tab.label}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+      
       {/* Summary Card with tabs */}
       <ICPSummaryCard 
-        icpProfile={icpProfile} 
+        icpProfile={completeProfile} 
         activeTab={activeTab} 
         onTabChange={handleTabChange} 
       />

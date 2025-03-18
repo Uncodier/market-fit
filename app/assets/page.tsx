@@ -428,26 +428,29 @@ export default function AssetsPage() {
           <StickyHeader>
             <div className="px-16 pt-0">
               <div className="flex items-center gap-8">
-                <div className="flex-1">
-                  <TabsList className="w-full">
+                <div className="flex items-center gap-8">
+                  <TabsList>
                     <TabsTrigger value="all">All Assets</TabsTrigger>
                     <TabsTrigger value="images">Images</TabsTrigger>
                     <TabsTrigger value="videos">Videos</TabsTrigger>
                     <TabsTrigger value="documents">Documents</TabsTrigger>
                   </TabsList>
+                  <div className="relative w-64">
+                    <Input 
+                      data-command-k-input
+                      placeholder="Search assets..." 
+                      className="w-full" 
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
+                    />
+                    <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                      <span className="text-xs">⌘</span>K
+                    </kbd>
+                  </div>
                 </div>
-                <div className="relative w-64">
-                  <Input 
-                    data-command-k-input
-                    placeholder="Search assets..." 
-                    className="w-full" 
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
-                  />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
+                <div className="ml-auto">
+                  {/* Any other buttons would go here */}
                 </div>
               </div>
             </div>
@@ -514,26 +517,29 @@ export default function AssetsPage() {
         <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
-              <div className="flex-1">
-                <TabsList className="w-full">
+              <div className="flex items-center gap-8">
+                <TabsList>
                   <TabsTrigger value="all">All Assets</TabsTrigger>
                   <TabsTrigger value="images">Images</TabsTrigger>
                   <TabsTrigger value="videos">Videos</TabsTrigger>
                   <TabsTrigger value="documents">Documents</TabsTrigger>
                 </TabsList>
+                <div className="relative w-64">
+                  <Input 
+                    data-command-k-input
+                    placeholder="Search assets..." 
+                    className="w-full" 
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
+                  />
+                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </div>
               </div>
-              <div className="relative w-64">
-                <Input 
-                  data-command-k-input
-                  placeholder="Search assets..." 
-                  className="w-full" 
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
-                />
-                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
+              <div className="ml-auto">
+                {/* Any other buttons would go here */}
               </div>
             </div>
           </div>

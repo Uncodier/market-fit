@@ -1206,34 +1206,36 @@ export default function RequirementsPage() {
         <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
-              <div className="flex-1">
-                <TabsList className="w-full">
+              <div className="flex items-center gap-8">
+                <TabsList>
                   <TabsTrigger value="all">All Requirements</TabsTrigger>
                   <TabsTrigger value="pending">Pending</TabsTrigger>
                   <TabsTrigger value="completed">Completed</TabsTrigger>
                   <TabsTrigger value="rejected">Rejected</TabsTrigger>
                 </TabsList>
-              </div>
-              <SearchInput
-                placeholder="Search requirements..."
-                value={searchQuery}
-                onSearch={handleSearch}
-                ref={searchInputRef}
-                className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-              />
-              <Button variant="outline" onClick={handleOpenFilterModal}>
-                <Filter className="mr-2 h-4 w-4" />
-                Filter
-              </Button>
-              {/* Indicador de filtros activos */}
-              {(filters.priority.length > 0 || filters.completionStatus.length > 0 || filters.segments.length > 0) && (
-                <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                  <Badge variant="outline" className="rounded-full px-2 py-0">
-                    {filters.priority.length + filters.completionStatus.length + filters.segments.length}
-                  </Badge>
-                  <span className="ml-2">Clear filters</span>
+                <SearchInput
+                  placeholder="Search requirements..."
+                  value={searchQuery}
+                  onSearch={handleSearch}
+                  ref={searchInputRef}
+                  className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                />
+                <Button variant="outline" onClick={handleOpenFilterModal}>
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
                 </Button>
-              )}
+              </div>
+              <div className="ml-auto">
+                {/* Indicador de filtros activos */}
+                {(filters.priority.length > 0 || filters.completionStatus.length > 0 || filters.segments.length > 0) && (
+                  <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                    <Badge variant="outline" className="rounded-full px-2 py-0">
+                      {filters.priority.length + filters.completionStatus.length + filters.segments.length}
+                    </Badge>
+                    <span className="ml-2">Clear filters</span>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </StickyHeader>

@@ -8,12 +8,17 @@ export function LoadingState() {
       <Tabs defaultValue="analysis" className="h-full flex flex-col">
         <StickyHeader>
           <div className="px-8 md:px-16 pt-0">
-            <div className="flex-1">
-              <TabsList className="w-full">
-                <TabsTrigger value="analysis">Analysis</TabsTrigger>
-                <TabsTrigger value="themes">Themes</TabsTrigger>
-                <TabsTrigger value="icp">ICP</TabsTrigger>
-              </TabsList>
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-8">
+                <TabsList>
+                  <TabsTrigger value="analysis">Analysis</TabsTrigger>
+                  <TabsTrigger value="themes">Themes</TabsTrigger>
+                  <TabsTrigger value="icp">ICP</TabsTrigger>
+                </TabsList>
+              </div>
+              <div className="ml-auto">
+                {/* Any other buttons would go here */}
+              </div>
             </div>
           </div>
         </StickyHeader>

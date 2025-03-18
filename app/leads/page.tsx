@@ -645,8 +645,8 @@ export default function LeadsPage() {
         <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
-              <div className="flex-1">
-                <TabsList className="w-full">
+              <div className="flex items-center gap-8">
+                <TabsList>
                   <TabsTrigger value="all">All Leads</TabsTrigger>
                   <TabsTrigger value="new">New</TabsTrigger>
                   <TabsTrigger value="contacted">Contacted</TabsTrigger>
@@ -654,33 +654,33 @@ export default function LeadsPage() {
                   <TabsTrigger value="converted">Converted</TabsTrigger>
                   <TabsTrigger value="lost">Lost</TabsTrigger>
                 </TabsList>
-              </div>
-              <div className="relative w-64">
-                <Input 
-                  placeholder="Search leads..." 
-                  className="w-full" 
-                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                />
-                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </div>
-              <Button variant="outline" onClick={handleOpenFilterModal}>
-                <Filter className="mr-2 h-4 w-4" />
-                Filter
-              </Button>
-              {/* Indicador de filtros activos */}
-              {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
-                <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                  <Badge variant="outline" className="rounded-full px-2 py-0">
-                    {filters.status.length + filters.segments.length + filters.origin.length}
-                  </Badge>
-                  <span className="ml-2">Clear filters</span>
+                <div className="relative w-64">
+                  <Input 
+                    placeholder="Search leads..." 
+                    className="w-full" 
+                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                  />
+                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </div>
+                <Button variant="outline" onClick={handleOpenFilterModal}>
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
                 </Button>
-              )}
-              <div className="ml-auto">
+              </div>
+              <div className="ml-auto flex items-center gap-4">
+                {/* Indicador de filtros activos */}
+                {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
+                  <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                    <Badge variant="outline" className="rounded-full px-2 py-0">
+                      {filters.status.length + filters.segments.length + filters.origin.length}
+                    </Badge>
+                    <span className="ml-2">Clear filters</span>
+                  </Button>
+                )}
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>

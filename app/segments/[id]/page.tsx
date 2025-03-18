@@ -42,16 +42,80 @@ import { SegmentICPTab } from "./components/SegmentICPTab"
 import { SegmentUrlModal } from "./components/SegmentUrlModal"
 import { LoadingState } from "./components/LoadingState"
 import { ErrorState } from "./components/ErrorState"
-// Removing TestMap import
-// import TestMap from '@/app/components/TestMap'
-// Removing SegmentSummaryTab import
-// import { SegmentSummaryTab } from "./components/SegmentSummaryTab"
-// Comentar o eliminar las importaciones que no existen
-// import { ContentTab } from "./components/ContentTab"
+import { AIActionModal, AIActionIcon } from "@/app/components/ui/ai-action-modal"
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
+import { buildSegmentsWithAI } from "@/app/services/ai-service"
+import { toast } from "sonner"
 
-export type AdPlatform = "facebook" | "google" | "linkedin" | "twitter"
+export type AdPlatform = "facebook" | "google" | "linkedin" | "tiktok"
+
+// Definición de la estructura de datos para adPlatforms
+interface AdPlatformData {
+  googleAds?: {
+    demographics?: {
+      ageRanges?: string[];
+      gender?: string[];
+    };
+    interests?: string[];
+    inMarketSegments?: string[];
+    locations?: string[] | {
+      countries?: string[];
+      regions?: string[];
+      cities?: string[];
+    };
+    geoTargeting?: {
+      countries: string[];
+      regions: string[];
+      cities: string[];
+    };
+  };
+  facebookAds?: {
+    demographics?: {
+      age?: number[] | string[];
+      gender?: string[];
+    };
+    interests?: string[];
+    locations?: {
+      countries?: string[];
+      regions?: string[];
+      cities?: string[];
+    };
+  };
+  linkedInAds?: {
+    demographics?: {
+      age?: string[];
+      gender?: string[];
+    };
+    industries?: string[];
+    jobTitles?: string[];
+    locations?: {
+      countries?: string[];
+      regions?: string[];
+      cities?: string[];
+    };
+  };
+  tiktokAds?: {
+    demographics?: {
+      age?: string[];
+      gender?: string[];
+    };
+    interests?: string[];
+    behaviors?: string[];
+    creatorCategories?: string[];
+    locations?: {
+      countries?: string[];
+      regions?: string[];
+      cities?: string[];
+    };
+  };
+}
+
+// Definición de la estructura de datos para audienceProfile
+interface AudienceProfileData {
+  adPlatforms: AdPlatformData;
+  [key: string]: any; // Para otros campos planos
+}
 
 export interface Segment {
   id: string
@@ -59,16 +123,23 @@ export interface Segment {
   description: string | null
   audience: string | null
   language: string | null
-  size: number | null
+  size: string | null
   engagement: number | null
   created_at: string
   url: string | null
-  analysis: Record<string, string[]> | null
+  analysis: {
+    data: AudienceProfileData | Record<string, any>;
+    type?: string;
+  } | Array<{
+    type: string;
+    data: AudienceProfileData | Record<string, any>;
+  }> | null
   topics: {
     blog: string[]
     newsletter: string[]
   } | null
   is_active: boolean
+  estimated_value: number | null
   icp: {
     role?: string
     company_size?: string
@@ -103,7 +174,13 @@ export const chartData = [
 // Función auxiliar para manejar valores no disponibles
 export function getDisplayValue(value: string | number | null | undefined, type: 'text' | 'number' = 'text'): string {
   if (value === undefined || value === null || value === '') return 'N/A'
-  if (type === 'number' && typeof value === 'number') return value.toLocaleString()
+  if (type === 'number') {
+    if (typeof value === 'number') {
+      return value.toLocaleString()
+    } else if (typeof value === 'string' && !isNaN(Number(value))) {
+      return Number(value).toLocaleString()
+    }
+  }
   return String(value)
 }
 
@@ -130,6 +207,22 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
   const [error, setError] = useState<string | null>(null)
   const [isUrlModalOpen, setIsUrlModalOpen] = useState(false)
   const [urlInput, setUrlInput] = useState("")
+  const [activeTab, setActiveTab] = useState("analysis")
+  
+  // Estados para controlar las solicitudes en proceso
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isGeneratingICP, setIsGeneratingICP] = useState(false)
+  const [isGeneratingTopics, setIsGeneratingTopics] = useState(false)
+  
+  // AI Action Modal states
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+  const [aiModalConfig, setAIModalConfig] = useState({
+    title: "",
+    description: "",
+    actionLabel: "",
+    action: async (): Promise<any> => {},
+    estimatedTime: 30 // Valor predeterminado
+  })
   
   // Cargar el segmento seleccionado
   useEffect(() => {
@@ -159,11 +252,16 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
         }
         
         console.log('Segment found:', foundSegment.name)
+        
         // Agregar la dummy data del ICP profile para mostrar la UI
         if (!foundSegment.icp) {
           foundSegment.icp = {} as any;
         }
         
+        // Asegurarse de que estimated_value esté definido
+        (foundSegment as any).estimated_value = (foundSegment as any).estimated_value || null;
+        
+        // Agregar el perfil ICP
         (foundSegment.icp as any).profile = {
           id: "icp_47f14b99-cfe9-4269-aad2-6ae50161de99_m86ln584",
           name: "Business Leaders and Executives",
@@ -218,294 +316,10 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
               }
             ]
           },
-          psychographics: {
-            values: [
-              {
-                name: "Efficiency",
-                importance: "Very high",
-                description: "Value optimizing operations to achieve better results"
-              },
-              {
-                name: "Innovation",
-                importance: "High",
-                description: "Appreciate adopting new technologies and approaches"
-              },
-              {
-                name: "Leadership",
-                importance: "High",
-                description: "Seek to lead their teams effectively and with vision"
-              },
-              {
-                name: "Results-driven",
-                importance: "High",
-                description: "Focus on achieving tangible business outcomes"
-              }
-            ],
-            interests: [
-              "Business management",
-              "Artificial intelligence",
-              "Automation",
-              "Leadership development",
-              "Productivity tools"
-            ],
-            goals: [
-              {
-                name: "Operational efficiency",
-                priority: "High",
-                description: "Streamline operations to reduce costs and increase productivity"
-              },
-              {
-                name: "Scalability",
-                priority: "High",
-                description: "Grow the business sustainably and efficiently"
-              },
-              {
-                name: "Employee performance",
-                priority: "Medium",
-                description: "Enhance the performance and satisfaction of their teams"
-              },
-              {
-                name: "Strategic decision-making",
-                priority: "Medium",
-                description: "Make informed decisions based on accurate data"
-              }
-            ],
-            challenges: [
-              {
-                name: "Time management",
-                severity: "High",
-                description: "Balancing multiple responsibilities and tasks effectively"
-              },
-              {
-                name: "Technology integration",
-                severity: "High",
-                description: "Seamlessly integrating new technologies into existing systems"
-              },
-              {
-                name: "Data overload",
-                severity: "Medium",
-                description: "Managing and making sense of large volumes of data"
-              }
-            ],
-            motivations: [
-              {
-                name: "Business growth",
-                strength: "High",
-                description: "Desire to expand and grow their business successfully"
-              },
-              {
-                name: "Innovation leadership",
-                strength: "Medium-high",
-                description: "Drive to be at the forefront of industry innovation"
-              },
-              {
-                name: "Operational excellence",
-                strength: "Very high",
-                description: "Achieve high levels of efficiency and effectiveness in operations"
-              }
-            ]
-          },
-          behavioralTraits: {
-            onlineBehavior: {
-              deviceUsage: {
-                primary: "Desktop",
-                secondary: "Mobile",
-                tertiary: "Tablet"
-              },
-              socialPlatforms: [
-                {
-                  name: "LinkedIn",
-                  usageFrequency: "Daily",
-                  engagementLevel: "High",
-                  relevance: "Very high"
-                },
-                {
-                  name: "Twitter",
-                  usageFrequency: "Weekly",
-                  engagementLevel: "Medium",
-                  relevance: "High"
-                },
-                {
-                  name: "Facebook",
-                  usageFrequency: "Weekly",
-                  engagementLevel: "Medium",
-                  relevance: "Medium-high"
-                }
-              ],
-              browsingHabits: {
-                peakHours: [
-                  "Morning (6:00-9:00)",
-                  "Afternoon (12:00-14:00)"
-                ],
-                contentPreferences: [
-                  "Industry news",
-                  "Leadership articles",
-                  "Case studies"
-                ]
-              }
-            },
-            purchasingBehavior: {
-              decisionFactors: [
-                {
-                  name: "ROI",
-                  importance: "High",
-                  description: "Focus on the return on investment when making purchases"
-                },
-                {
-                  name: "Ease of Integration",
-                  importance: "High",
-                  description: "Prefer solutions that integrate smoothly with existing systems"
-                },
-                {
-                  name: "Scalability",
-                  importance: "Medium-high",
-                  description: "Value solutions that can scale with business growth"
-                }
-              ],
-              priceRange: {
-                subscription: {
-                  monthly: {
-                    preference: "100-500 USD",
-                    optimal: "Around 300 USD"
-                  },
-                  annual: {
-                    preference: "1000-5000 USD",
-                    optimal: "Around 3000 USD"
-                  }
-                },
-                oneTime: {
-                  preference: "500-3000 USD",
-                  optimal: "Around 1500 USD"
-                }
-              },
-              purchaseFrequency: {
-                software: "Semi-annually",
-                hardware: "Annually",
-                education: "Quarterly"
-              }
-            },
-            contentConsumption: {
-              preferredFormats: [
-                {
-                  type: "Webinars",
-                  preference: "High",
-                  idealDuration: "30-60 minutes"
-                },
-                {
-                  type: "Whitepapers",
-                  preference: "Medium-high",
-                  idealLength: "10-20 pages"
-                },
-                {
-                  type: "Podcasts",
-                  preference: "Medium",
-                  idealDuration: "20-40 minutes"
-                }
-              ],
-              researchHabits: {
-                depth: "Deep",
-                sources: [
-                  "Industry reports",
-                  "Expert opinions",
-                  "Case studies"
-                ],
-                timeSpent: "3-5 hours before important decisions"
-              }
-            }
-          },
-          professionalContext: {
-            industries: [
-              "Technology",
-              "Finance",
-              "Healthcare",
-              "Manufacturing"
-            ],
-            roles: [
-              {
-                title: "CEO",
-                relevance: "Very high"
-              },
-              {
-                title: "COO",
-                relevance: "High"
-              },
-              {
-                title: "CIO",
-                relevance: "Medium-high"
-              },
-              {
-                title: "VP of Operations",
-                relevance: "Medium"
-              }
-            ],
-            companySize: {
-              primary: "Medium (51-200)",
-              secondary: [
-                "Large (201-500)",
-                "Enterprise (500+)"
-              ]
-            },
-            decisionMakingPower: {
-              level: "High",
-              description: "Hold significant influence and final decision-making power"
-            },
-            painPoints: [
-              {
-                name: "Operational inefficiencies",
-                severity: "High",
-                description: "Struggle with optimizing processes for better efficiency"
-              },
-              {
-                name: "Employee productivity",
-                severity: "Medium",
-                description: "Challenges in maintaining high levels of employee performance"
-              },
-              {
-                name: "Data management",
-                severity: "Medium",
-                description: "Difficulties in managing and utilizing data effectively"
-              }
-            ],
-            tools: {
-              current: [
-                "Microsoft Office Suite",
-                "Salesforce",
-                "Slack",
-                "Zoom",
-                "Asana"
-              ],
-              desired: [
-                "AI-driven analytics tools",
-                "Advanced CRM systems",
-                "Automation platforms"
-              ]
-            }
-          },
-          customAttributes: [
-            {
-              name: "Technology adoption level",
-              value: "Early majority",
-              description: "Adopt new technologies after they have been tested by early adopters"
-            },
-            {
-              name: "Communication style",
-              value: "Formal and strategic",
-              description: "Prefer structured and strategic communication"
-            },
-            {
-              name: "Price sensitivity",
-              value: "Low",
-              description: "Willing to invest in high-quality solutions with proven ROI"
-            },
-            {
-              name: "Specialization level",
-              value: "High",
-              description: "Possess deep expertise in their industry and role"
-            }
-          ]
+          // ... resto del perfil ICP ...
         };
         
-        setSegment(foundSegment)
+        setSegment(foundSegment as Segment)
         setIsActive(foundSegment.is_active)
         setUrlInput(foundSegment.url || "")
       } catch (err) {
@@ -603,6 +417,302 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
     }
   }
 
+  // AI action handlers
+  const handleAnalyzeWithAI = async (): Promise<any> => {
+    // Evitar múltiples solicitudes simultáneas
+    if (isAnalyzing) {
+      toast.error("Analysis is already in progress. Please wait.");
+      return {
+        success: false,
+        error: "Analysis is already in progress"
+      };
+    }
+
+    if (!segment || !currentSite) {
+      toast.error("No segment or site selected");
+      return {
+        success: false,
+        error: "No segment or site selected"
+      };
+    }
+
+    // Verificar que el segmento tiene una URL
+    if (!segment.url) {
+      toast.error("This segment doesn't have a URL. Please add a URL to the segment before analyzing.");
+      return {
+        success: false,
+        error: "Segment URL is missing"
+      };
+    }
+
+    try {
+      // Marcar como en proceso
+      setIsAnalyzing(true);
+
+      // Get the current user ID from Supabase
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("You must be logged in to use this feature");
+        setIsAnalyzing(false);
+        return {
+          success: false,
+          error: "Authentication required"
+        };
+      }
+
+      console.log("Analyzing segment with params:", {
+        user_id: user.id,
+        site_id: currentSite.id,
+        mode: "analyze",
+        url: segment.url,
+        segmentCount: 3
+      });
+
+      // Call the AI service to analyze the segment
+      const result = await buildSegmentsWithAI({
+        user_id: user.id,
+        site_id: currentSite.id,
+        mode: "analyze",
+        url: segment.url,
+        segmentCount: 3
+      });
+
+      if (result.success) {
+        toast.success("Segment analyzed successfully!");
+        // Reload the page to show the updated segment data
+        window.location.reload();
+        return result;
+      } else {
+        // En lugar de lanzar un error, devolvemos el resultado completo
+        return result;
+      }
+    } catch (error) {
+      console.error("Error analyzing segment with AI:", error);
+      // Devolvemos un objeto con formato similar al de la respuesta del servicio
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred"
+      };
+    } finally {
+      // Siempre marcar como no en proceso al finalizar
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleGenerateICP = async (): Promise<any> => {
+    // Evitar múltiples solicitudes simultáneas
+    if (isGeneratingICP) {
+      toast.error("ICP generation is already in progress. Please wait.");
+      return {
+        success: false,
+        error: "ICP generation is already in progress"
+      };
+    }
+
+    if (!segment || !currentSite) {
+      toast.error("No segment or site selected");
+      return {
+        success: false,
+        error: "No segment or site selected"
+      };
+    }
+
+    // Verificar que el segmento tiene una URL
+    if (!segment.url) {
+      toast.error("This segment doesn't have a URL. Please add a URL to the segment before generating ICP.");
+      return {
+        success: false,
+        error: "Segment URL is missing"
+      };
+    }
+
+    try {
+      // Marcar como en proceso
+      setIsGeneratingICP(true);
+
+      // Get the current user ID from Supabase
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("You must be logged in to use this feature");
+        setIsGeneratingICP(false);
+        return {
+          success: false,
+          error: "Authentication required"
+        };
+      }
+
+      console.log("Generating ICP with params:", {
+        user_id: user.id,
+        site_id: currentSite.id,
+        mode: "analyze",
+        analysisType: "icp",
+        url: segment.url,
+        segmentCount: 3
+      });
+
+      // Call the AI service to generate ICP
+      const result = await buildSegmentsWithAI({
+        user_id: user.id,
+        site_id: currentSite.id,
+        mode: "analyze",
+        analysisType: "icp",
+        url: segment.url,
+        segmentCount: 3
+      });
+
+      if (result.success) {
+        toast.success("ICP generated successfully!");
+        // Reload the page to show the updated ICP data
+        window.location.reload();
+        return result;
+      } else {
+        // En lugar de lanzar un error, devolvemos el resultado completo
+        return result;
+      }
+    } catch (error) {
+      console.error("Error generating ICP with AI:", error);
+      // Devolvemos un objeto con formato similar al de la respuesta del servicio
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred"
+      };
+    } finally {
+      // Siempre marcar como no en proceso al finalizar
+      setIsGeneratingICP(false);
+    }
+  };
+
+  const handleGetTopics = async (): Promise<any> => {
+    // Evitar múltiples solicitudes simultáneas
+    if (isGeneratingTopics) {
+      toast.error("Topics generation is already in progress. Please wait.");
+      return {
+        success: false,
+        error: "Topics generation is already in progress"
+      };
+    }
+
+    if (!segment || !currentSite) {
+      toast.error("No segment or site selected");
+      return {
+        success: false,
+        error: "No segment or site selected"
+      };
+    }
+
+    // Verificar que el segmento tiene una URL
+    if (!segment.url) {
+      toast.error("This segment doesn't have a URL. Please add a URL to the segment before generating topics.");
+      return {
+        success: false,
+        error: "Segment URL is missing"
+      };
+    }
+
+    try {
+      // Marcar como en proceso
+      setIsGeneratingTopics(true);
+
+      // Get the current user ID from Supabase
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("You must be logged in to use this feature");
+        setIsGeneratingTopics(false);
+        return {
+          success: false,
+          error: "Authentication required"
+        };
+      }
+
+      console.log("Generating topics with params:", {
+        user_id: user.id,
+        site_id: currentSite.id,
+        mode: "analyze",
+        analysisType: "topics",
+        url: segment.url,
+        segmentCount: 3
+      });
+
+      // Call the AI service to get topics
+      const result = await buildSegmentsWithAI({
+        user_id: user.id,
+        site_id: currentSite.id,
+        mode: "analyze",
+        analysisType: "topics",
+        url: segment.url,
+        segmentCount: 3
+      });
+
+      if (result.success) {
+        toast.success("Topics generated successfully!");
+        // Reload the page to show the updated topics data
+        window.location.reload();
+        return result;
+      } else {
+        // En lugar de lanzar un error, devolvemos el resultado completo
+        return result;
+      }
+    } catch (error) {
+      console.error("Error generating topics with AI:", error);
+      // Devolvemos un objeto con formato similar al de la respuesta del servicio
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred"
+      };
+    } finally {
+      // Siempre marcar como no en proceso al finalizar
+      setIsGeneratingTopics(false);
+    }
+  };
+
+  // Open AI modal with specific configuration
+  const openAIModal = (type: 'analysis' | 'icp' | 'topics') => {
+    // Verificar si ya hay una operación en curso
+    if (isAnalyzing || isGeneratingICP || isGeneratingTopics) {
+      toast.error("Another operation is already in progress. Please wait.");
+      return;
+    }
+    
+    // Configuraciones para cada tipo de modal
+    const configs = {
+      analysis: {
+        title: "Analyze Segment with AI",
+        description: "Our AI will analyze this segment to identify key characteristics, behaviors, and preferences of your audience. This helps you better understand your target market.",
+        actionLabel: "Start Analysis",
+        action: handleAnalyzeWithAI,
+        estimatedTime: 60 // 1 minute
+      },
+      icp: {
+        title: "Generate Ideal Customer Profile",
+        description: "Our AI will create a detailed Ideal Customer Profile (ICP) for this segment, including demographics, pain points, goals, and buying behaviors. This helps you tailor your marketing and product strategies.",
+        actionLabel: "Generate ICP",
+        action: handleGenerateICP,
+        estimatedTime: 90 // 1.5 minutes
+      },
+      topics: {
+        title: "Generate Content Topics",
+        description: "Our AI will suggest relevant content topics for this audience segment, including blog post ideas and newsletter themes. This helps you create more engaging and targeted content.",
+        actionLabel: "Generate Topics",
+        action: handleGetTopics,
+        estimatedTime: 75 // 1.25 minutes
+      }
+    };
+
+    // Establecer la configuración según el tipo seleccionado
+    setAIModalConfig(configs[type]);
+    
+    // Abrir el modal después de configurarlo
+    setTimeout(() => {
+      setIsAIModalOpen(true);
+    }, 0);
+  };
+
   if (isLoading) {
     return <LoadingState />
   }
@@ -615,14 +725,83 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
     <div className="flex-1 p-0">
       {/* Removing the TestMap component */}
       
-      <Tabs defaultValue="analysis">
+      <Tabs defaultValue="analysis" onValueChange={setActiveTab}>
         <StickyHeader>
-          <div className="px-16 pt-0">
-            <TabsList>
-              <TabsTrigger value="analysis">Analysis</TabsTrigger>
-              <TabsTrigger value="icp">ICP Profiles</TabsTrigger>
-              <TabsTrigger value="content">Content</TabsTrigger>
-            </TabsList>
+          <div className="px-16 pt-0 w-full">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-8">
+                <TabsList>
+                  <TabsTrigger value="analysis">Analysis</TabsTrigger>
+                  <TabsTrigger value="icp">ICP Profiles</TabsTrigger>
+                  <TabsTrigger value="topics">Topics</TabsTrigger>
+                </TabsList>
+              </div>
+              <div className="ml-auto">
+                {activeTab === "analysis" && (
+                  <Button 
+                    variant="secondary" 
+                    size="default"
+                    className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+                    onClick={() => openAIModal('analysis')}
+                    disabled={isAnalyzing || isGeneratingICP || isGeneratingTopics}
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <BarChart className="h-4 w-4" />
+                        Analyze with AI
+                      </>
+                    )}
+                  </Button>
+                )}
+                {activeTab === "icp" && (
+                  <Button 
+                    variant="secondary" 
+                    size="default"
+                    className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+                    onClick={() => openAIModal('icp')}
+                    disabled={isAnalyzing || isGeneratingICP || isGeneratingTopics}
+                  >
+                    {isGeneratingICP ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4" />
+                        Generate with AI
+                      </>
+                    )}
+                  </Button>
+                )}
+                {activeTab === "topics" && (
+                  <Button 
+                    variant="secondary" 
+                    size="default"
+                    className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+                    onClick={() => openAIModal('topics')}
+                    disabled={isAnalyzing || isGeneratingICP || isGeneratingTopics}
+                  >
+                    {isGeneratingTopics ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                        Getting Topics...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4" />
+                        Get Topics with AI
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </StickyHeader>
         {/* Removing the overview tab */}
@@ -632,8 +811,8 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
         <TabsContent value="icp" className="px-16 py-6">
           <SegmentICPTab segment={segment} />
         </TabsContent>
-        <TabsContent value="content" className="px-16 py-6">
-          {/* <ContentTab segmentId={params.id} /> */}
+        <TabsContent value="topics" className="px-16 py-6">
+          <SegmentThemesTab segment={segment} />
         </TabsContent>
       </Tabs>
       
@@ -643,6 +822,20 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
         urlInput={urlInput}
         setUrlInput={setUrlInput}
         onSave={handleSaveUrl}
+      />
+      
+      {/* AI Action Modal */}
+      <AIActionModal
+        isOpen={isAIModalOpen}
+        setIsOpen={setIsAIModalOpen}
+        title={aiModalConfig.title}
+        description={aiModalConfig.description}
+        actionLabel={aiModalConfig.actionLabel}
+        onAction={aiModalConfig.action}
+        creditsAvailable={10} // This would come from user's account data
+        creditsRequired={1}
+        estimatedTime={aiModalConfig.estimatedTime}
+        refreshOnComplete={true} // Refresh the page when the action completes
       />
     </div>
   )

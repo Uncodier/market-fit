@@ -19,12 +19,19 @@ export default function DashboardPage() {
       <Tabs defaultValue="overview" className="space-y-4">
         <StickyHeader>
           <div className="px-16 pt-0">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-              <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-8">
+                <TabsList>
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                  <TabsTrigger value="reports">Reports</TabsTrigger>
+                  <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                </TabsList>
+              </div>
+              <div className="ml-auto">
+                {/* Any other buttons would go here */}
+              </div>
+            </div>
           </div>
         </StickyHeader>
 

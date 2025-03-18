@@ -229,48 +229,48 @@ export default function NotificationsPage() {
       <StickyHeader>
         <div className="px-16 pt-0 w-full">
           <div className="flex items-center gap-8">
-            <div>
+            <div className="flex items-center gap-8">
               <Tabs defaultValue="all" className="w-auto" onValueChange={(value) => setFilter(value as "all" | "unread")}>
                 <TabsList>
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="unread">Unread</TabsTrigger>
                 </TabsList>
               </Tabs>
+              
+              <div className="relative w-64">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search notifications..."
+                  className="w-full pl-9"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </div>
             </div>
             
-            <div className="relative w-64">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search notifications..."
-                className="w-full pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </div>
-            
-            <div className="flex-1"></div>
-            
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleMarkAllAsRead}
-                disabled={!notifications.some(n => !n.read)}
-              >
-                Mark all as read
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleClearAll}
-                disabled={notifications.length === 0}
-              >
-                Delete all
-              </Button>
+            <div className="ml-auto">
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleMarkAllAsRead}
+                  disabled={!notifications.some(n => !n.read)}
+                >
+                  Mark all as read
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleClearAll}
+                  disabled={notifications.length === 0}
+                >
+                  Delete all
+                </Button>
+              </div>
             </div>
           </div>
         </div>

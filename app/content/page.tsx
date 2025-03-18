@@ -215,7 +215,7 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
                 {isEditing ? (
                   <Select 
                     value={editForm.content_type} 
-                    onValueChange={(value) => setEditForm({...editForm, content_type: value})}
+                    onValueChange={(value: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page") => setEditForm({...editForm, content_type: value})}
                   >
                     <SelectTrigger className="h-12 text-sm">
                       <SelectValue placeholder="Select type" />
@@ -649,7 +649,7 @@ function ContentKanban({
   }
 
   return (
-    <div className="h-[calc(100vh-12rem)] overflow-hidden">
+    <div className="h-[calc(100vh-16rem)] overflow-hidden">
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 h-full overflow-x-auto pb-4">
           {CONTENT_STATUSES.map(status => (
@@ -1535,8 +1535,8 @@ export default function ContentPage() {
         <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
-              <div className="flex-1">
-                <TabsList className="w-full">
+              <div className="flex items-center gap-8">
+                <TabsList>
                   <TabsTrigger value="all">
                     All Content
                     <Badge variant="secondary" className="ml-2 bg-muted">
@@ -1568,17 +1568,22 @@ export default function ContentPage() {
                     </Badge>
                   </TabsTrigger>
                 </TabsList>
-              </div>
-              <div className="flex items-center gap-2">
                 <div className="relative w-64">
                   <Input
                     type="text"
                     placeholder="Search content..."
-                    className="w-full"
+                    className="w-full pl-8 pr-12"
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
                   />
+                  <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                    <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                      <span className="text-xs">⌘</span>K
+                    </kbd>
+                  </div>
                 </div>
                 <Button 
                   variant="outline" 
@@ -1593,6 +1598,8 @@ export default function ContentPage() {
                     </Badge>
                   )}
                 </Button>
+              </div>
+              <div className="ml-auto">
                 <ViewSelector 
                   currentView={viewType} 
                   onViewChange={(view) => setViewType(view)}
@@ -1602,136 +1609,138 @@ export default function ContentPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8">
-          <TabsContent value="all" className="m-0">
-            {isLoading ? (
-              viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-            ) : filteredContent.length === 0 ? (
-              emptyState
-            ) : viewType === 'kanban' ? (
-              <ContentKanban 
-                contentItems={filteredContent}
-                onUpdateContentStatus={handleUpdateContentStatus}
-                segments={segments}
-                onContentClick={handleContentClick}
-              />
-            ) : (
-              <ContentTable 
-                contentItems={filteredContent}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalContent={filteredContent.length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                onContentClick={handleContentClick}
-                segments={segments}
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="blog_post" className="m-0">
-            {isLoading ? (
-              viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-            ) : filteredContent.filter(item => item.content_type === 'blog_post').length === 0 ? (
-              emptyState
-            ) : viewType === 'kanban' ? (
-              <ContentKanban 
-                contentItems={filteredContent.filter(item => item.content_type === 'blog_post')}
-                onUpdateContentStatus={handleUpdateContentStatus}
-                segments={segments}
-                onContentClick={handleContentClick}
-              />
-            ) : (
-              <ContentTable 
-                contentItems={filteredContent.filter(item => item.content_type === 'blog_post')}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalContent={filteredContent.filter(item => item.content_type === 'blog_post').length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                onContentClick={handleContentClick}
-                segments={segments}
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="video" className="m-0">
-            {isLoading ? (
-              viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-            ) : filteredContent.filter(item => item.content_type === 'video').length === 0 ? (
-              emptyState
-            ) : viewType === 'kanban' ? (
-              <ContentKanban 
-                contentItems={filteredContent.filter(item => item.content_type === 'video')}
-                onUpdateContentStatus={handleUpdateContentStatus}
-                segments={segments}
-                onContentClick={handleContentClick}
-              />
-            ) : (
-              <ContentTable 
-                contentItems={filteredContent.filter(item => item.content_type === 'video')}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalContent={filteredContent.filter(item => item.content_type === 'video').length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                onContentClick={handleContentClick}
-                segments={segments}
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="social_post" className="m-0">
-            {isLoading ? (
-              viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-            ) : filteredContent.filter(item => item.content_type === 'social_post').length === 0 ? (
-              emptyState
-            ) : viewType === 'kanban' ? (
-              <ContentKanban 
-                contentItems={filteredContent.filter(item => item.content_type === 'social_post')}
-                onUpdateContentStatus={handleUpdateContentStatus}
-                segments={segments}
-                onContentClick={handleContentClick}
-              />
-            ) : (
-              <ContentTable 
-                contentItems={filteredContent.filter(item => item.content_type === 'social_post')}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalContent={filteredContent.filter(item => item.content_type === 'social_post').length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                onContentClick={handleContentClick}
-                segments={segments}
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="ad" className="m-0">
-            {isLoading ? (
-              viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-            ) : filteredContent.filter(item => item.content_type === 'ad').length === 0 ? (
-              emptyState
-            ) : viewType === 'kanban' ? (
-              <ContentKanban 
-                contentItems={filteredContent.filter(item => item.content_type === 'ad')}
-                onUpdateContentStatus={handleUpdateContentStatus}
-                segments={segments}
-                onContentClick={handleContentClick}
-              />
-            ) : (
-              <ContentTable 
-                contentItems={filteredContent.filter(item => item.content_type === 'ad')}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalContent={filteredContent.filter(item => item.content_type === 'ad').length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                onContentClick={handleContentClick}
-                segments={segments}
-              />
-            )}
-          </TabsContent>
+        <div className="p-8 space-y-4">
+          <div className="px-8">
+            <TabsContent value="all" className="space-y-4">
+              {isLoading ? (
+                viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
+              ) : filteredContent.length === 0 ? (
+                emptyState
+              ) : viewType === 'kanban' ? (
+                <ContentKanban 
+                  contentItems={filteredContent}
+                  onUpdateContentStatus={handleUpdateContentStatus}
+                  segments={segments}
+                  onContentClick={handleContentClick}
+                />
+              ) : (
+                <ContentTable 
+                  contentItems={filteredContent}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalContent={filteredContent.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onContentClick={handleContentClick}
+                  segments={segments}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="blog_post" className="space-y-4">
+              {isLoading ? (
+                viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
+              ) : filteredContent.filter(item => item.content_type === 'blog_post').length === 0 ? (
+                emptyState
+              ) : viewType === 'kanban' ? (
+                <ContentKanban 
+                  contentItems={filteredContent.filter(item => item.content_type === 'blog_post')}
+                  onUpdateContentStatus={handleUpdateContentStatus}
+                  segments={segments}
+                  onContentClick={handleContentClick}
+                />
+              ) : (
+                <ContentTable 
+                  contentItems={filteredContent.filter(item => item.content_type === 'blog_post')}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalContent={filteredContent.filter(item => item.content_type === 'blog_post').length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onContentClick={handleContentClick}
+                  segments={segments}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="video" className="space-y-4">
+              {isLoading ? (
+                viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
+              ) : filteredContent.filter(item => item.content_type === 'video').length === 0 ? (
+                emptyState
+              ) : viewType === 'kanban' ? (
+                <ContentKanban 
+                  contentItems={filteredContent.filter(item => item.content_type === 'video')}
+                  onUpdateContentStatus={handleUpdateContentStatus}
+                  segments={segments}
+                  onContentClick={handleContentClick}
+                />
+              ) : (
+                <ContentTable 
+                  contentItems={filteredContent.filter(item => item.content_type === 'video')}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalContent={filteredContent.filter(item => item.content_type === 'video').length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onContentClick={handleContentClick}
+                  segments={segments}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="social_post" className="space-y-4">
+              {isLoading ? (
+                viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
+              ) : filteredContent.filter(item => item.content_type === 'social_post').length === 0 ? (
+                emptyState
+              ) : viewType === 'kanban' ? (
+                <ContentKanban 
+                  contentItems={filteredContent.filter(item => item.content_type === 'social_post')}
+                  onUpdateContentStatus={handleUpdateContentStatus}
+                  segments={segments}
+                  onContentClick={handleContentClick}
+                />
+              ) : (
+                <ContentTable 
+                  contentItems={filteredContent.filter(item => item.content_type === 'social_post')}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalContent={filteredContent.filter(item => item.content_type === 'social_post').length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onContentClick={handleContentClick}
+                  segments={segments}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="ad" className="space-y-4">
+              {isLoading ? (
+                viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
+              ) : filteredContent.filter(item => item.content_type === 'ad').length === 0 ? (
+                emptyState
+              ) : viewType === 'kanban' ? (
+                <ContentKanban 
+                  contentItems={filteredContent.filter(item => item.content_type === 'ad')}
+                  onUpdateContentStatus={handleUpdateContentStatus}
+                  segments={segments}
+                  onContentClick={handleContentClick}
+                />
+              ) : (
+                <ContentTable 
+                  contentItems={filteredContent.filter(item => item.content_type === 'ad')}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalContent={filteredContent.filter(item => item.content_type === 'ad').length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onContentClick={handleContentClick}
+                  segments={segments}
+                />
+              )}
+            </TabsContent>
+          </div>
         </div>
       </Tabs>
       

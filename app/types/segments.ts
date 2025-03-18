@@ -4,7 +4,7 @@ export interface Segment {
   description: string | null
   audience: string | null
   language: string | null
-  size: number | null
+  size: string | null
   engagement: number | null
   created_at: string
   url: string | null
@@ -14,6 +14,7 @@ export interface Segment {
     newsletter: string[]
   } | null
   is_active: boolean
+  estimated_value: number | null
   icp: {
     role?: string
     company_size?: string

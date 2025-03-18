@@ -72,11 +72,21 @@ module.exports = {
           from: { opacity: 0, transform: "translateY(10px)" },
           to: { opacity: 1, transform: "translateY(0)" },
         },
+        "ping-slow": {
+          "0%": { transform: "scale(1)", opacity: 1 },
+          "50%": { transform: "scale(1.1)", opacity: 0.5 },
+          "100%": { transform: "scale(1)", opacity: 1 },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-out forwards",
+        "ping-slow": "ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite",
+      },
+      transitionDelay: {
+        '300': '300ms',
+        '600': '600ms',
       },
     },
   },

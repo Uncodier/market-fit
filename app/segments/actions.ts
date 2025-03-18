@@ -9,7 +9,7 @@ const SegmentSchema = z.object({
     description: z.string().nullable(),
     audience: z.string().nullable(),
     language: z.string().nullable(),
-    size: z.number().nullable(),
+    size: z.string().nullable(),
     engagement: z.number().nullable(),
     created_at: z.string(),
     url: z.string().nullable(),
@@ -30,7 +30,8 @@ const SegmentSchema = z.object({
       location: z.string().optional(),
       experience: z.string().optional()
     }).nullable(),
-    is_active: z.boolean()
+    is_active: z.boolean(),
+    estimated_value: z.number().nullable()
   })).nullable(),
   error: z.string().optional()
 })
@@ -79,7 +80,8 @@ export async function getSegments(site_id: string): Promise<SegmentResponse> {
         analysis,
         topics,
         icp,
-        is_active
+        is_active,
+        estimated_value
       `)
       .eq('site_id', site_id)
       .order("created_at", { ascending: false })
