@@ -149,33 +149,107 @@ export default function LayoutClient({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  
-  // Estado para guardar el breadcrumb
-  const [breadcrumbFromEvent, setBreadcrumbFromEvent] = useState<React.ReactNode>(null);
-  
-  // Escuchar eventos de breadcrumb
+  const [isMounted, setIsMounted] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [segments, setSegments] = useState<Segment[]>([])
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const [breadcrumbFromEvent, setBreadcrumbFromEvent] = useState<React.ReactNode>(null)
+  const [customTitle, setCustomTitle] = useState<string | null>(null)
+
+  // Inicialización crítica (ejecutar inmediatamente)
   useEffect(() => {
-    const handleBreadcrumbUpdate = (event: any) => {
-      if (event.detail && event.detail.breadcrumb) {
-        setBreadcrumbFromEvent(event.detail.breadcrumb);
-      }
-    };
+    setIsMounted(true)
     
-    window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+    // Cargar estado del sidebar de forma inmediata
+    const saved = localStorage.getItem('sidebarCollapsed')
+    if (saved !== null) {
+      try {
+        setIsCollapsed(JSON.parse(saved))
+      } catch (error) {
+        console.error("Error parsing sidebar collapsed state:", error)
+      }
+    }
+  }, [])
+
+  // Operaciones no críticas (deferir)
+  useEffect(() => {
+    if (!isMounted) return
+
+    // Limpiar localStorage después de la carga inicial
+    const cleanupTimer = setTimeout(() => {
+      cleanLocalStorageOnStartup()
+    }, 1000)
+
+    // Manejar eventos de breadcrumb
+    const handleBreadcrumbUpdate = (event: any) => {
+      if (event.detail) {
+        // If title is provided, update the customTitle state
+        if (event.detail.title !== undefined) {
+          setCustomTitle(event.detail.title);
+        }
+        
+        // Original behavior for backward compatibility
+        if (event.detail?.breadcrumb) {
+          setBreadcrumbFromEvent(event.detail.breadcrumb)
+        }
+      }
+    }
+    
+    window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener)
     
     return () => {
-      window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
-    };
-  }, []);
-  
+      clearTimeout(cleanupTimer)
+      window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener)
+    }
+  }, [isMounted])
+
+  // Cargar segmentos solo cuando sea necesario
+  useEffect(() => {
+    if (!isMounted || !['/experiments', '/requirements'].includes(pathname)) {
+      setSegments([])
+      return
+    }
+
+    const fetchTimer = setTimeout(async () => {
+      try {
+        const supabase = createClient()
+        const { data: segmentsData, error } = await supabase
+          .from('segments')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+        setSegments(segmentsData || [])
+      } catch (error) {
+        console.error('Error fetching segments:', error)
+        setFetchError('Error loading segments')
+        setRetryCount(prev => prev + 1)
+      }
+    }, 500)
+
+    return () => clearTimeout(fetchTimer)
+  }, [isMounted, pathname])
+
+  // Guardar estado del sidebar (deferir)
+  useEffect(() => {
+    if (!isMounted) return
+
+    const saveTimer = setTimeout(() => {
+      localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed))
+    }, 1000)
+
+    return () => clearTimeout(saveTimer)
+  }, [isCollapsed, isMounted])
+
   // Si la ruta actual comienza con /chat, extraer el breadcrumb de los props de los hijos
-  let customTitle: string | null = null;
+  let pageCustomTitle: string | null = null;
   let customHelpText: string | null = null;
   let customBreadcrumb: React.ReactNode = null;
   const isChatPage = pathname && pathname.startsWith('/chat');
   
   if (isChatPage) {
-    customTitle = "Chat";
+    pageCustomTitle = "Chat";
     customHelpText = "Chatting with your agent";
     
     // Usar el breadcrumb del evento si está disponible
@@ -190,189 +264,9 @@ export default function LayoutClient({
     }
   }
   
-  const currentPage = customTitle 
-    ? { title: customTitle, helpText: customHelpText }
+  const currentPage = pageCustomTitle || customTitle
+    ? { title: pageCustomTitle || customTitle, helpText: customHelpText }
     : (navigationTitles[pathname] || { title: "Dashboard" });
-    
-  const [segments, setSegments] = useState<Segment[]>([])
-  const [isMounted, setIsMounted] = useState(false)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
-  
-  const [isCollapsed, setIsCollapsed] = useState(false) // Valor por defecto seguro
-
-  // Manejar la inicialización de localStorage después de la hidratación
-  useEffect(() => {
-    setIsMounted(true)
-    
-    // Limpiar localStorage al iniciar
-    cleanLocalStorageOnStartup()
-    
-    // Ahora es seguro acceder a localStorage
-    const saved = localStorage.getItem('sidebarCollapsed')
-    if (saved !== null) {
-      try {
-        setIsCollapsed(JSON.parse(saved))
-      } catch (error) {
-        console.error("Error parsing sidebar collapsed state:", error)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!isMounted) return // No guardar en localStorage durante SSR o antes de la hidratación
-    
-    localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed))
-  }, [isCollapsed, isMounted])
-
-  useEffect(() => {
-    if (!isMounted) return // No ejecutar antes de la hidratación
-    
-    // Resetear el contador de reintentos al cambiar de ruta
-    setRetryCount(0)
-    setFetchError(null)
-    
-    async function fetchSegments() {
-      // Solo intentar obtener segmentos para páginas específicas
-      if (!['/experiments', '/requirements'].includes(pathname)) {
-        setSegments([])
-        return
-      }
-      
-      // Limitar los reintentos a 3 veces
-      if (retryCount > 2) {
-        console.log("Máximo de reintentos alcanzado, no se intentará cargar segmentos nuevamente")
-        // Como último recurso, intentar limpiar el localStorage si seguimos teniendo problemas
-        if (retryCount === 3) {
-          try {
-            console.log("Intentando limpiar localStorage para currentSiteId como último recurso...")
-            const rawSiteId = localStorage.getItem("currentSiteId")
-            if (rawSiteId && rawSiteId.includes('"')) {
-              const cleanedId = rawSiteId.replace(/["']/g, '')
-              localStorage.setItem("currentSiteId", cleanedId)
-              console.log("ID del sitio limpiado como último recurso:", cleanedId)
-              // Forzar una recarga de la página para reiniciar todo limpiamente
-              window.location.reload()
-            }
-          } catch (e) {
-            console.error("Error final al intentar limpiar localStorage:", e)
-          }
-        }
-        return
-      }
-      
-      try {
-        // Inicializar el cliente de Supabase
-        console.log("Iniciando cliente de Supabase...")
-        const supabase = createClient()
-        
-        // Verificar si hay una sesión activa
-        console.log("Obteniendo sesión de usuario...")
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError) {
-          console.error("Error al obtener la sesión:", sessionError)
-          setFetchError(`Error de sesión: ${sessionError.message || "Error desconocido"}`)
-          setSegments([])
-          return
-        }
-        
-        if (!session) {
-          console.log("No hay sesión activa de usuario")
-          setSegments([])
-          return
-        }
-        
-        // Obtener el sitio actual desde localStorage y limpiarlo de comillas extras
-        console.log("Obteniendo ID del sitio actual...")
-        const rawSiteId = localStorage.getItem("currentSiteId")
-        console.log("ID del sitio obtenido (raw):", rawSiteId)
-        
-        // Limpiar el ID del sitio
-        let savedSiteId: string | null = null
-        
-        // Intentar parsear como JSON primero (por si está guardado como string JSON)
-        if (rawSiteId) {
-          try {
-            const parsed = JSON.parse(rawSiteId)
-            if (typeof parsed === 'string') {
-              savedSiteId = parsed.replace(/["']/g, '')
-            }
-          } catch {
-            // Si no es JSON, intentar limpiar directamente
-            savedSiteId = rawSiteId.replace(/["']/g, '')
-          }
-        }
-        
-        console.log("ID del sitio limpio:", savedSiteId)
-        
-        // Verificar y corregir localStorage si hay inconsistencias
-        if (rawSiteId && savedSiteId && rawSiteId !== savedSiteId) {
-          console.log("Corrigiendo ID del sitio en localStorage...")
-          localStorage.setItem("currentSiteId", savedSiteId)
-        }
-        
-        if (!savedSiteId || savedSiteId === "default") {
-          console.log("No hay sitio válido seleccionado")
-          setSegments([])
-          return
-        }
-        
-        // Consultar los segmentos para el sitio
-        console.log(`Consultando segmentos para el sitio: ${savedSiteId}...`)
-        const { data, error } = await supabase
-          .from('segments')
-          .select('id, name, description')
-          .eq('site_id', savedSiteId)
-
-        // Manejar la respuesta
-        if (error) {
-          const errorMessage = error.message || JSON.stringify(error)
-          console.error(`Error al cargar segmentos: ${errorMessage}`, error)
-          setFetchError(`Error al cargar segmentos: ${errorMessage}`)
-          setSegments([])
-          
-          // Si el error es de formato UUID, intentar corregir localStorage
-          if (error.code === '22P02' && rawSiteId) {
-            console.log("Intentando corregir UUID en localStorage...")
-            try {
-              // Último intento desesperado: eliminar cualquier caracter no alfanumérico o guión
-              const lastAttempt = rawSiteId.replace(/[^a-zA-Z0-9-]/g, '')
-              localStorage.setItem("currentSiteId", lastAttempt)
-              console.log("UUID corregido en localStorage con método radical:", lastAttempt)
-            } catch (e) {
-              console.error("No se pudo corregir UUID en localStorage:", e)
-            }
-          }
-          
-          // Incrementar contador de reintentos
-          setRetryCount(prev => prev + 1)
-        } else if (!data) {
-          console.log("No se recibieron datos de segmentos (null)")
-          setSegments([])
-        } else {
-          console.log(`Segmentos cargados correctamente: ${data.length}`)
-          setSegments(data)
-          setFetchError(null)
-        }
-      } catch (error: any) {
-        const errorMessage = error?.message || "Error desconocido"
-        console.error(`Error general al cargar segmentos: ${errorMessage}`, error)
-        setFetchError(`Error general: ${errorMessage}`)
-        setSegments([])
-        
-        // Incrementar contador de reintentos
-        setRetryCount(prev => prev + 1)
-      }
-    }
-
-    // Ejecutar con un pequeño retraso para permitir que otras operaciones se estabilicen
-    const timer = setTimeout(() => {
-      fetchSegments()
-    }, 100)
-    
-    return () => clearTimeout(timer)
-  }, [pathname, isMounted, retryCount])
 
   const handleCollapse = () => {
     setIsCollapsed((prev: boolean) => !prev)

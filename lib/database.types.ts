@@ -9,6 +9,62 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      content: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+          status: "draft" | "review" | "approved" | "published" | "archived"
+          segment_id: string | null
+          site_id: string
+          author_id: string | null
+          user_id: string | null
+          created_at: string
+          updated_at: string
+          published_at: string | null
+          tags: string[] | null
+          estimated_reading_time: number | null
+          word_count: number | null
+          seo_score: number | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+          status: "draft" | "review" | "approved" | "published" | "archived"
+          segment_id?: string | null
+          site_id: string
+          author_id?: string | null
+          user_id?: string | null
+          created_at?: string
+          updated_at?: string
+          published_at?: string | null
+          tags?: string[] | null
+          estimated_reading_time?: number | null
+          word_count?: number | null
+          seo_score?: number | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          content_type?: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+          status?: "draft" | "review" | "approved" | "published" | "archived"
+          segment_id?: string | null
+          site_id?: string
+          author_id?: string | null
+          user_id?: string | null
+          created_at?: string
+          updated_at?: string
+          published_at?: string | null
+          tags?: string[] | null
+          estimated_reading_time?: number | null
+          word_count?: number | null
+          seo_score?: number | null
+        }
+      }
       experiments: {
         Row: {
           id: string

@@ -263,4 +263,48 @@ export async function updateSegmentStatus({ segmentId, isActive }: UpdateSegment
     console.error('Error updating segment status:', error)
     return { error: 'Error al actualizar el estado del segmento' }
   }
+}
+
+export async function getSegmentById(segmentId: string): Promise<{ error?: string, segment?: any }> {
+  try {
+    const supabase = createClient()
+
+    // Validar que el segmentId sea un UUID válido
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segmentId)) {
+      return { error: "ID de segmento inválido" }
+    }
+
+    const { data: segment, error } = await supabase
+      .from("segments")
+      .select(`
+        id,
+        name,
+        description,
+        audience,
+        language,
+        size,
+        engagement,
+        created_at,
+        url,
+        analysis,
+        topics,
+        icp,
+        is_active,
+        estimated_value
+      `)
+      .eq('id', segmentId)
+      .single()
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return { error: "Segmento no encontrado" }
+      }
+      throw error
+    }
+
+    return { segment }
+  } catch (error) {
+    console.error("Error getting segment by ID:", error)
+    return { error: "Error al obtener el segmento" }
+  }
 } 

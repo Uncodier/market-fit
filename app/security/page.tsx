@@ -314,10 +314,11 @@ export default function SecurityPage() {
                             />
                             <button
                               type="button"
-                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
                               onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                              aria-label="Toggle password visibility"
                             >
-                              {showCurrentPassword ? <Eye className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <Eye className="h-4 w-4" />
                             </button>
                           </div>
                         </FormControl>
@@ -343,10 +344,11 @@ export default function SecurityPage() {
                             />
                             <button
                               type="button"
-                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
                               onClick={() => setShowNewPassword(!showNewPassword)}
+                              aria-label="Toggle password visibility"
                             >
-                              {showNewPassword ? <Eye className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <Eye className="h-4 w-4" />
                             </button>
                           </div>
                         </FormControl>
@@ -419,10 +421,11 @@ export default function SecurityPage() {
                             />
                             <button
                               type="button"
-                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              aria-label="Toggle password visibility"
                             >
-                              {showConfirmPassword ? <Eye className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <Eye className="h-4 w-4" />
                             </button>
                           </div>
                         </FormControl>
@@ -453,6 +456,7 @@ export default function SecurityPage() {
                           checked={mfaForm.watch("enabled")}
                           onCheckedChange={handleMfaToggle}
                           disabled={isLoading || setupStep !== 'initial'}
+                          className="safari-switch"
                         />
                       </div>
                     </div>

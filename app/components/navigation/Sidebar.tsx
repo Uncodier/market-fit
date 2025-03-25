@@ -26,16 +26,20 @@ import { useAuth } from "@/app/hooks/use-auth"
 // Add Cpu icon for AI representation
 const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
   <div 
-    className={`inline-flex items-center justify-center ${className}`}
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
     style={{ 
       width: size, 
       height: size, 
+      display: 'inline-flex',  // Explicit display style for Safari
+      alignItems: 'center',    // Explicit alignment for Safari
+      justifyContent: 'center', // Explicit justification for Safari
+      position: 'relative',    // Explicit position for Safari
       ...props.style 
     }}
     onClick={props.onClick}
     aria-hidden={props["aria-hidden"] ?? true}
   >
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
       <rect x="9" y="9" width="6" height="6" />
       <line x1="9" y1="1" x2="9" y2="4" />
@@ -127,15 +131,19 @@ export function Sidebar({
         isCollapsed ? "justify-center px-3" : "justify-start px-6"
       )}>
         <Image 
-          src="https://cloudfront.cdn.uncodie.com/zoDKXCi32aQHAee0dGmkjv/d8dcc649fecfe6d7d3c71901442818767d410b1d.png"
+          src="/images/logo.png"
           alt="Market Fit Logo"
-          width={32}
-          height={32}
+          width={28}
+          height={28}
           className={cn(
             "transition-all duration-200",
             isCollapsed ? "mr-0" : "mr-2"
           )}
-          style={{ height: 'auto', maxHeight: '25px' }}
+          style={{ 
+            height: '28px', 
+            width: '28px', 
+            objectFit: 'contain'
+          }}
         />
         <span className={cn(
           "text-[1.1rem] font-bold transition-all duration-200",

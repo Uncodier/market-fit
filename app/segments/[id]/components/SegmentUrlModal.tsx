@@ -87,4 +87,6 @@ export function SegmentUrlModal({
       </DialogContent>
     </Dialog>
   )
-} 
+}
+
+export default SegmentUrlModal; 

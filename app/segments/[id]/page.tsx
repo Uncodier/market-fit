@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils"
 import { useSite } from "@/app/context/SiteContext"
 import { Switch } from "@/app/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { getSegments, updateSegmentStatus, updateSegmentUrl } from "../actions"
+import { getSegments, updateSegmentStatus, updateSegmentUrl, getSegmentById } from "../actions"
 import { createClient } from "@/lib/supabase/client"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Input } from "@/app/components/ui/input"
@@ -36,10 +36,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/app/
 import { ResponsiveContainer } from "recharts"
 import { CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Bar } from "recharts"
 import { useTheme } from '@/app/context/ThemeContext'
-import { SegmentAnalysisTab } from "./components/SegmentAnalysisTab"
-import { SegmentThemesTab } from "./components/SegmentThemesTab"
-import { SegmentICPTab } from "./components/SegmentICPTab"
-import { SegmentUrlModal } from "./components/SegmentUrlModal"
+import dynamic from 'next/dynamic'
 import { LoadingState } from "./components/LoadingState"
 import { ErrorState } from "./components/ErrorState"
 import { AIActionModal, AIActionIcon } from "@/app/components/ui/ai-action-modal"
@@ -186,13 +183,236 @@ export function getDisplayValue(value: string | number | null | undefined, type:
 
 // Función auxiliar para manejar keywords vacíos
 export function getKeywords(segment: Segment, platform: AdPlatform): string[] {
-  return segment.analysis?.[platform] || []
+  if (!segment.analysis) return [];
+  
+  // Check if analysis is in the old format (direct object with platform keys)
+  if (typeof segment.analysis === 'object' && !Array.isArray(segment.analysis) && 
+      !('data' in segment.analysis) && !('type' in segment.analysis)) {
+    // Cast to unknown first, then to the expected record type
+    const analysisObj = segment.analysis as unknown as Record<string, string[]>;
+    return platform in analysisObj ? analysisObj[platform] : [];
+  }
+  
+  // Check for new format with data property
+  if ('data' in segment.analysis && segment.analysis.data && 
+      typeof segment.analysis.data === 'object' && 'adPlatforms' in segment.analysis.data) {
+    const adPlatforms = segment.analysis.data.adPlatforms;
+    
+    switch (platform) {
+      case 'facebook':
+        return adPlatforms.facebookAds?.interests || [];
+      case 'google':
+        return adPlatforms.googleAds?.interests || [];
+      case 'linkedin':
+        return adPlatforms.linkedInAds?.jobTitles || [];
+      case 'tiktok':
+        return adPlatforms.tiktokAds?.interests || [];
+      default:
+        return [];
+    }
+  }
+  
+  return [];
 }
 
 // Función auxiliar para manejar hot topics vacíos
 export function getHotTopics(segment: Segment, type: 'blog' | 'newsletter'): string[] {
   return segment.topics?.[type] || []
 }
+
+// Skeleton components for lazy loading
+const ICPProfileSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+      <div className="w-full">
+        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-1/3 mb-2"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-2/3 mt-1"></div>
+      </div>
+      <div className="flex items-center gap-4 mt-1">
+        <div className="w-[180px] h-9 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+      </div>
+    </div>
+    
+    {/* Summary Card skeleton */}
+    <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
+      {[...Array(5)].map((_, index) => (
+        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-24"></div>
+            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+          </div>
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-28"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    {/* Tab content skeleton */}
+    <div className="mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, index) => (
+          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
+            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-1/3 mb-4"></div>
+            <div className="space-y-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-full"></div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const TopicsSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="flex justify-between items-center mb-6">
+      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-48"></div>
+      <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
+    </div>
+    
+    {/* Kanban Board Skeleton */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Blog Topics Column */}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
+          <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+        </div>
+        {/* Cards */}
+        {[...Array(4)].map((_, index) => (
+          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-3">
+            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-2"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4"></div>
+            <div className="flex justify-between items-center mt-3">
+              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-20"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Newsletter Topics Column */}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
+          <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+        </div>
+        {/* Cards */}
+        {[...Array(3)].map((_, index) => (
+          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-3">
+            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-2"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4"></div>
+            <div className="flex justify-between items-center mt-3">
+              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-20"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Other Topics Column */}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
+          <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+        </div>
+        {/* Cards */}
+        {[...Array(2)].map((_, index) => (
+          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-3">
+            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-2"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4"></div>
+            <div className="flex justify-between items-center mt-3">
+              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-20"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// Skeleton components for lazy loading
+const AnalysisSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-48"></div>
+      <div className="flex items-center gap-4">
+        <div className="w-[180px] h-9 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+      </div>
+    </div>
+    
+    {/* Performance Metrics Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      {[...Array(4)].map((_, index) => (
+        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-1/2 mb-2"></div>
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-1/3 mb-1"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4"></div>
+        </div>
+      ))}
+    </div>
+    
+    {/* Market Penetration and Behavior Cards */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {[...Array(2)].map((_, index) => (
+        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
+            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+          </div>
+          <div className="h-[200px] bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-4"></div>
+          <div className="space-y-2">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-full"></div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    {/* Demographics and Regional Distribution Cards */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {[...Array(2)].map((_, index) => (
+        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-36"></div>
+            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+          </div>
+          <div className="h-[200px] bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-4"></div>
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-full"></div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Lazy load components
+const SegmentAnalysisTab = dynamic(() => import('./components/SegmentAnalysisTab'), { 
+  loading: () => <AnalysisSkeleton /> 
+})
+
+const SegmentThemesTab = dynamic(() => import('./components/SegmentThemesTab'), { 
+  loading: () => <TopicsSkeleton /> 
+})
+
+const SegmentICPTab = dynamic(() => import('./components/SegmentICPTab'), { 
+  loading: () => <ICPProfileSkeleton /> 
+})
+
+const SegmentUrlModal = dynamic(() => import('./components/SegmentUrlModal'))
 
 export default function SegmentDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -234,35 +454,32 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
         setError(null)
         
         console.log('Loading segment data for ID:', segmentId)
-        const result = await getSegments(currentSite.id)
+        const result = await getSegmentById(segmentId)
         
         if (result.error) {
-          console.error('Error fetching segments:', result.error)
+          console.error('Error fetching segment:', result.error)
           setError(result.error)
           return
         }
         
-        console.log('Segments loaded:', result.segments?.length || 0)
-        const foundSegment = result.segments?.find(s => s.id === segmentId) || null
-        
-        if (!foundSegment) {
+        if (!result.segment) {
           console.error('Segment not found with ID:', segmentId)
           setError("Segment not found")
           return
         }
         
-        console.log('Segment found:', foundSegment.name)
+        console.log('Segment found:', result.segment.name)
         
         // Agregar la dummy data del ICP profile para mostrar la UI
-        if (!foundSegment.icp) {
-          foundSegment.icp = {} as any;
+        if (!result.segment.icp) {
+          result.segment.icp = {} as any;
         }
         
         // Asegurarse de que estimated_value esté definido
-        (foundSegment as any).estimated_value = (foundSegment as any).estimated_value || null;
+        (result.segment as any).estimated_value = (result.segment as any).estimated_value || null;
         
         // Agregar el perfil ICP
-        (foundSegment.icp as any).profile = {
+        (result.segment.icp as any).profile = {
           id: "icp_47f14b99-cfe9-4269-aad2-6ae50161de99_m86ln584",
           name: "Business Leaders and Executives",
           description: "Executives and business leaders seeking AI-powered solutions to optimize business management and operations",
@@ -319,9 +536,9 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
           // ... resto del perfil ICP ...
         };
         
-        setSegment(foundSegment as Segment)
-        setIsActive(foundSegment.is_active)
-        setUrlInput(foundSegment.url || "")
+        setSegment(result.segment as Segment)
+        setIsActive(result.segment.is_active)
+        setUrlInput(result.segment.url || "")
       } catch (err) {
         console.error("Error loading segment:", err)
         setError("Error loading segment details")

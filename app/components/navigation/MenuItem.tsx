@@ -10,6 +10,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip"
+import { useEffect, useRef, useState } from "react"
+import { SafariSettingsLink } from "../common/SafariSettingsLink"
 
 interface MenuItemProps {
   href: string
@@ -36,11 +38,49 @@ export function MenuItem({
   children,
   className
 }: MenuItemProps) {
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  const [isSafari, setIsSafari] = useState(false);
+  const isSettingsLink = href.includes('settings');
+
+  // Detectamos si estamos en Safari
+  useEffect(() => {
+    const isBrowser = typeof window !== 'undefined';
+    if (isBrowser) {
+      const isSafariCheck = 
+        navigator.userAgent.match(/AppleWebKit\/[\d.]+/g) &&
+        navigator.userAgent.match(/Version\/[\d.]+.*Safari/) &&
+        !navigator.userAgent.match(/Chrome\/[\d.]+/g);
+      
+      setIsSafari(Boolean(isSafariCheck));
+    }
+  }, []);
+
+  // Si es un enlace a settings y estamos en Safari, usamos el componente especializado
+  if (isSafari && isSettingsLink) {
+    return (
+      <SafariSettingsLink
+        href={href}
+        label={title}
+        className={cn(
+          className,
+          "rounded-md px-3 py-2 text-sm transition-colors relative group",
+          isActive
+            ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          isCollapsed ? "justify-center" : "justify-start"
+        )}
+        iconSize={25}
+      />
+    );
+  }
+
   const content = (
     <>
       <div className={cn(
-        "flex items-center justify-center",
-        isCollapsed ? "w-full" : "w-auto"
+        "flex items-center justify-center safari-icon-fix",
+        isCollapsed ? "w-full" : "w-[25px]",
+        "h-[25px]",
+        isSettingsLink ? "safari-settings-icon" : ""
       )}>
         {customIcon ? customIcon : avatarUrl ? (
           <MenuAvatar className="h-8 w-8">
@@ -79,6 +119,7 @@ export function MenuItem({
 
   const linkContent = (
     <Link
+      ref={linkRef}
       href={href}
       className={cn(
         className,
@@ -86,7 +127,8 @@ export function MenuItem({
         isActive
           ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-        isCollapsed ? "justify-center h-[39px]" : "justify-start h-[39px]"
+        isCollapsed ? "justify-center h-[39px]" : "justify-start h-[39px]",
+        isSettingsLink ? "safari-settings-link" : ""
       )}
     >
       {isCollapsed ? (

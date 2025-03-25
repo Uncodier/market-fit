@@ -250,8 +250,8 @@ function SegmentCard({
                       <div className="relative w-full h-[500px] overflow-hidden flex items-center justify-center">
                         <iframe
                           src={segment.url}
-                          className="absolute w-[200%] h-[200%] origin-center rounded-md"
-                          style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
+                          className="absolute w-[150%] h-[150%] origin-center rounded-md"
+                          style={{ transform: 'scale(0.65)', transformOrigin: 'center' }}
                           onLoad={() => handleIframeLoad(segment.id)}
                           sandbox="allow-same-origin allow-scripts"
                           loading="lazy"

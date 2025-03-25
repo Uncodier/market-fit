@@ -482,3 +482,5 @@ export function SegmentICPTab({ segment }: SegmentICPTabProps) {
     </div>
   );
 }
+
+export default SegmentICPTab;

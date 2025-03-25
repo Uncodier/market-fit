@@ -47,6 +47,7 @@
     "cookies-next": "^5.1.0",
     "d3-fetch": "^3.0.1",
     "d3-scale": "^4.0.2",
+    "date-fns": "^4.1.0",
     "eslint": "8.35.0",
     "eslint-config-next": "13.2.3",
     "js-cookie": "^3.0.5",

@@ -22,6 +22,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { KanbanView, LeadFilters } from "@/app/components/kanban-view"
 import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
+import { useRouter } from "next/navigation"
 
 interface Lead {
   id: string
@@ -314,6 +315,7 @@ function LeadsTableSkeleton() {
 }
 
 export default function LeadsPage() {
+  const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(5)
   const [activeTab, setActiveTab] = useState("all")
@@ -322,25 +324,11 @@ export default function LeadsPage() {
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [viewType, setViewType] = useState<ViewType>("table")
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [filters, setFilters] = useState<LeadFilters>({
     status: [],
     segments: [],
     origin: []
-  })
-  const [editForm, setEditForm] = useState<Omit<Lead, "id" | "created_at">>({
-    name: "",
-    email: "",
-    phone: null,
-    company: null,
-    position: null,
-    segment_id: null,
-    status: "new",
-    origin: null
   })
   const { currentSite } = useSite()
   
@@ -358,40 +346,6 @@ export default function LeadsPage() {
     qualified: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
     converted: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
     lost: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
-  }
-  
-  // Función para guardar los cambios
-  const handleSaveChanges = async () => {
-    if (!selectedLead || !currentSite?.id) return
-    
-    setIsSaving(true)
-    try {
-      const result = await updateLead({
-        id: selectedLead.id,
-        ...editForm,
-        site_id: currentSite.id
-      })
-      
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      
-      // Actualizar el lead en el estado local
-      setDbLeads(prevLeads => 
-        prevLeads.map(l => 
-          l.id === selectedLead.id ? { ...l, ...editForm, id: selectedLead.id, created_at: selectedLead.created_at } : l
-        )
-      )
-      
-      setIsEditing(false)
-      toast.success("Lead updated successfully")
-    } catch (error) {
-      console.error("Error updating lead:", error)
-      toast.error("Error updating lead")
-    } finally {
-      setIsSaving(false)
-    }
   }
   
   // Función para cargar leads desde la base de datos
@@ -511,7 +465,7 @@ export default function LeadsPage() {
     setItemsPerPage(Number(value))
     setCurrentPage(1)
   }
-
+  
   // Función para crear un nuevo lead
   const handleCreateLead = async (data: any) => {
     try {
@@ -556,7 +510,7 @@ export default function LeadsPage() {
   const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
     const lead = dbLeads.find(l => l.id === leadId)
     if (!lead) return
-
+    
     try {
       const result = await updateLead({
         id: leadId,
@@ -592,19 +546,7 @@ export default function LeadsPage() {
 
   // Función para manejar el clic en una fila o tarjeta
   const handleLeadClick = (lead: Lead) => {
-    setSelectedLead(lead);
-    setIsEditing(false);
-    setEditForm({
-      name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      company: lead.company,
-      position: lead.position,
-      segment_id: lead.segment_id,
-      status: lead.status,
-      origin: lead.origin
-    });
-    setIsDetailOpen(true);
+    router.push(`/leads/${lead.id}`);
   };
 
   // Función para aplicar filtros
@@ -628,7 +570,7 @@ export default function LeadsPage() {
   const handleOpenFilterModal = () => {
     setIsFilterModalOpen(true)
   }
-
+  
   return (
     <LeadsContext.Provider value={{ segments }}>
     <div className="flex-1 p-0">
@@ -672,7 +614,6 @@ export default function LeadsPage() {
                 </Button>
               </div>
               <div className="ml-auto flex items-center gap-4">
-                {/* Indicador de filtros activos */}
                 {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
                   <Button variant="ghost" size="sm" onClick={handleClearFilters}>
                     <Badge variant="outline" className="rounded-full px-2 py-0">
@@ -689,483 +630,152 @@ export default function LeadsPage() {
         
         <div className="p-8 space-y-4">
           <div className="px-8">
-              {loading ? (
-                <LeadsTableSkeleton />
-              ) : (
-                <>
-            <TabsContent value="all" className="space-y-4">
-              {viewType === "table" ? (
-                <LeadsTable
-                  leads={currentLeads}
-                  currentPage={currentPage}
-                  itemsPerPage={itemsPerPage}
-                  totalLeads={filteredLeads.length}
-                  onPageChange={handlePageChange}
-                  onItemsPerPageChange={handleItemsPerPageChange}
-                  onLeadClick={handleLeadClick}
-                />
-              ) : (
-                <KanbanView 
-                  leads={filteredLeads}
-                  onUpdateLeadStatus={handleUpdateLeadStatus}
-                  segments={segments}
-                  onLeadClick={handleLeadClick}
-                  filters={filters}
-                  onOpenFilters={handleOpenFilterModal}
-                />
-              )}
-            </TabsContent>
-            
-            <TabsContent value="new" className="space-y-4">
-              {viewType === "table" ? (
-                <LeadsTable
-                  leads={currentLeads}
-                  currentPage={currentPage}
-                  itemsPerPage={itemsPerPage}
-                  totalLeads={filteredLeads.length}
-                  onPageChange={handlePageChange}
-                  onItemsPerPageChange={handleItemsPerPageChange}
-                  onLeadClick={handleLeadClick}
-                />
-              ) : (
-                <KanbanView 
-                  leads={filteredLeads}
-                  onUpdateLeadStatus={handleUpdateLeadStatus}
-                  segments={segments}
-                  onLeadClick={handleLeadClick}
-                  filters={filters}
-                  onOpenFilters={handleOpenFilterModal}
-                />
-              )}
-            </TabsContent>
-            
-            <TabsContent value="contacted" className="space-y-4">
-              {viewType === "table" ? (
-                <LeadsTable
-                  leads={currentLeads}
-                  currentPage={currentPage}
-                  itemsPerPage={itemsPerPage}
-                  totalLeads={filteredLeads.length}
-                  onPageChange={handlePageChange}
-                  onItemsPerPageChange={handleItemsPerPageChange}
-                  onLeadClick={handleLeadClick}
-                />
-              ) : (
-                <KanbanView 
-                  leads={filteredLeads}
-                  onUpdateLeadStatus={handleUpdateLeadStatus}
-                  segments={segments}
-                  onLeadClick={handleLeadClick}
-                  filters={filters}
-                  onOpenFilters={handleOpenFilterModal}
-                />
-              )}
-            </TabsContent>
-            
-            <TabsContent value="qualified" className="space-y-4">
-              {viewType === "table" ? (
-                <LeadsTable
-                  leads={currentLeads}
-                  currentPage={currentPage}
-                  itemsPerPage={itemsPerPage}
-                  totalLeads={filteredLeads.length}
-                  onPageChange={handlePageChange}
-                  onItemsPerPageChange={handleItemsPerPageChange}
-                  onLeadClick={handleLeadClick}
-                />
-              ) : (
-                <KanbanView 
-                  leads={filteredLeads}
-                  onUpdateLeadStatus={handleUpdateLeadStatus}
-                  segments={segments}
-                  onLeadClick={handleLeadClick}
-                  filters={filters}
-                  onOpenFilters={handleOpenFilterModal}
-                />
-              )}
-            </TabsContent>
-            
-            <TabsContent value="converted" className="space-y-4">
-              {viewType === "table" ? (
-                <LeadsTable
-                  leads={currentLeads}
-                  currentPage={currentPage}
-                  itemsPerPage={itemsPerPage}
-                  totalLeads={filteredLeads.length}
-                  onPageChange={handlePageChange}
-                  onItemsPerPageChange={handleItemsPerPageChange}
-                  onLeadClick={handleLeadClick}
-                />
-              ) : (
-                <KanbanView 
-                  leads={filteredLeads}
-                  onUpdateLeadStatus={handleUpdateLeadStatus}
-                  segments={segments}
-                  onLeadClick={handleLeadClick}
-                  filters={filters}
-                  onOpenFilters={handleOpenFilterModal}
-                />
-              )}
-            </TabsContent>
-            
-            <TabsContent value="lost" className="space-y-4">
-              {viewType === "table" ? (
-                <LeadsTable
-                  leads={currentLeads}
-                  currentPage={currentPage}
-                  itemsPerPage={itemsPerPage}
-                  totalLeads={filteredLeads.length}
-                  onPageChange={handlePageChange}
-                  onItemsPerPageChange={handleItemsPerPageChange}
-                  onLeadClick={handleLeadClick}
-                />
-              ) : (
-                <KanbanView 
-                  leads={filteredLeads}
-                  onUpdateLeadStatus={handleUpdateLeadStatus}
-                  segments={segments}
-                  onLeadClick={handleLeadClick}
-                  filters={filters}
-                  onOpenFilters={handleOpenFilterModal}
-                />
-              )}
-            </TabsContent>
-                </>
-              )}
+            {loading ? (
+              <LeadsTableSkeleton />
+            ) : (
+              <>
+                <TabsContent value="all" className="space-y-4">
+                  {viewType === "table" ? (
+                    <LeadsTable
+                      leads={currentLeads}
+                      currentPage={currentPage}
+                      itemsPerPage={itemsPerPage}
+                      totalLeads={filteredLeads.length}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
+                      onLeadClick={handleLeadClick}
+                    />
+                  ) : (
+                    <KanbanView 
+                      leads={filteredLeads}
+                      onUpdateLeadStatus={handleUpdateLeadStatus}
+                      segments={segments}
+                      onLeadClick={handleLeadClick}
+                      filters={filters}
+                      onOpenFilters={handleOpenFilterModal}
+                    />
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="new" className="space-y-4">
+                  {viewType === "table" ? (
+                    <LeadsTable
+                      leads={currentLeads}
+                      currentPage={currentPage}
+                      itemsPerPage={itemsPerPage}
+                      totalLeads={filteredLeads.length}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
+                      onLeadClick={handleLeadClick}
+                    />
+                  ) : (
+                    <KanbanView 
+                      leads={filteredLeads}
+                      onUpdateLeadStatus={handleUpdateLeadStatus}
+                      segments={segments}
+                      onLeadClick={handleLeadClick}
+                      filters={filters}
+                      onOpenFilters={handleOpenFilterModal}
+                    />
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="contacted" className="space-y-4">
+                  {viewType === "table" ? (
+                    <LeadsTable
+                      leads={currentLeads}
+                      currentPage={currentPage}
+                      itemsPerPage={itemsPerPage}
+                      totalLeads={filteredLeads.length}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
+                      onLeadClick={handleLeadClick}
+                    />
+                  ) : (
+                    <KanbanView 
+                      leads={filteredLeads}
+                      onUpdateLeadStatus={handleUpdateLeadStatus}
+                      segments={segments}
+                      onLeadClick={handleLeadClick}
+                      filters={filters}
+                      onOpenFilters={handleOpenFilterModal}
+                    />
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="qualified" className="space-y-4">
+                  {viewType === "table" ? (
+                    <LeadsTable
+                      leads={currentLeads}
+                      currentPage={currentPage}
+                      itemsPerPage={itemsPerPage}
+                      totalLeads={filteredLeads.length}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
+                      onLeadClick={handleLeadClick}
+                    />
+                  ) : (
+                    <KanbanView 
+                      leads={filteredLeads}
+                      onUpdateLeadStatus={handleUpdateLeadStatus}
+                      segments={segments}
+                      onLeadClick={handleLeadClick}
+                      filters={filters}
+                      onOpenFilters={handleOpenFilterModal}
+                    />
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="converted" className="space-y-4">
+                  {viewType === "table" ? (
+                    <LeadsTable
+                      leads={currentLeads}
+                      currentPage={currentPage}
+                      itemsPerPage={itemsPerPage}
+                      totalLeads={filteredLeads.length}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
+                      onLeadClick={handleLeadClick}
+                    />
+                  ) : (
+                    <KanbanView 
+                      leads={filteredLeads}
+                      onUpdateLeadStatus={handleUpdateLeadStatus}
+                      segments={segments}
+                      onLeadClick={handleLeadClick}
+                      filters={filters}
+                      onOpenFilters={handleOpenFilterModal}
+                    />
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="lost" className="space-y-4">
+                  {viewType === "table" ? (
+                    <LeadsTable
+                      leads={currentLeads}
+                      currentPage={currentPage}
+                      itemsPerPage={itemsPerPage}
+                      totalLeads={filteredLeads.length}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
+                      onLeadClick={handleLeadClick}
+                    />
+                  ) : (
+                    <KanbanView 
+                      leads={filteredLeads}
+                      onUpdateLeadStatus={handleUpdateLeadStatus}
+                      segments={segments}
+                      onLeadClick={handleLeadClick}
+                      filters={filters}
+                      onOpenFilters={handleOpenFilterModal}
+                    />
+                  )}
+                </TabsContent>
+              </>
+            )}
           </div>
         </div>
       </Tabs>
-      
-      {/* Sheet para mostrar los detalles del lead */}
-      <Sheet open={isDetailOpen} onOpenChange={(open) => {
-        setIsDetailOpen(open);
-        if (!open) {
-          setSelectedLead(null);
-          setIsEditing(false);
-        }
-      }}>
-        <SheetContent className="sm:max-w-md border-l border-border/40 bg-background">
-          {selectedLead && (
-            <>
-              <SheetHeader className="pb-6">
-                {isEditing ? (
-                  <div className="mt-4">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 rounded-md flex items-center justify-center mt-4" style={{ width: '48px', height: '48px' }}>
-                        <User className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-muted-foreground">Name</p>
-                        <Input
-                          value={editForm.name}
-                          onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                          className="h-12 text-sm font-semibold"
-                          placeholder="Lead name"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <SheetTitle className="text-2xl mt-4">{selectedLead.name}</SheetTitle>
-                  </>
-                )}
-              </SheetHeader>
-              
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-5">
-                  {/* Información de contacto */}
-                  <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                    <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                      Contact Information
-                    </h3>
-                    
-                    <div className="grid gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                          <MessageSquare className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground mb-[5px]">Email</p>
-                          {isEditing ? (
-                            <Input
-                              value={editForm.email}
-                              onChange={(e) => setEditForm({...editForm, email: e.target.value})}
-                              className="h-12 text-sm"
-                              placeholder="email@example.com"
-                            />
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">{selectedLead.email}</p>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => window.open(`mailto:${selectedLead.email}`, '_blank')}
-                                className="h-8 ml-2"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                          <Phone className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground mb-[5px]">Phone</p>
-                          {isEditing ? (
-                            <Input
-                              value={editForm.phone || ""}
-                              onChange={(e) => setEditForm({...editForm, phone: e.target.value || null})}
-                              className="h-12 text-sm"
-                              placeholder="Phone number"
-                            />
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">{selectedLead.phone || "Not specified"}</p>
-                              {selectedLead.phone && (
-                                <div className="flex space-x-1">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      window.open(`tel:${selectedLead.phone}`)
-                                    }}
-                                    className="h-8"
-                                  >
-                                    <Phone className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      window.open(`sms:${selectedLead.phone}`)
-                                    }}
-                                    className="h-8"
-                                  >
-                                    <MessageSquare className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                          <Globe className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
-                          {isEditing ? (
-                            <Input
-                              value={editForm.company || ""}
-                              onChange={(e) => setEditForm({...editForm, company: e.target.value || null})}
-                              className="h-12 text-sm"
-                              placeholder="Company name"
-                            />
-                          ) : (
-                            <p className="text-sm font-medium">{selectedLead.company || "Not specified"}</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                          <User className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground mb-[5px]">Position</p>
-                          {isEditing ? (
-                            <Input
-                              value={editForm.position || ""}
-                              onChange={(e) => setEditForm({...editForm, position: e.target.value || null})}
-                              className="h-12 text-sm"
-                              placeholder="Position or role"
-                            />
-                          ) : (
-                            <p className="text-sm font-medium">{selectedLead.position || "Not specified"}</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                          <Tag className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground mb-[5px]">Segment</p>
-                          {isEditing ? (
-                            <Select 
-                              value={editForm.segment_id || "none"}
-                              onValueChange={(value) => setEditForm({...editForm, segment_id: value === "none" ? null : value})}
-                            >
-                              <SelectTrigger className="h-12 text-sm">
-                                <SelectValue placeholder="Select segment" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Not specified</SelectItem>
-                                {segments.map((segment) => (
-                                  <SelectItem key={segment.id} value={segment.id}>
-                                    {segment.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <p className="text-sm font-medium">{getSegmentName(selectedLead.segment_id)}</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                          <FileText className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground mb-[5px]">Status</p>
-                          {isEditing ? (
-                            <Select 
-                              value={editForm.status}
-                              onValueChange={(value: "new" | "contacted" | "qualified" | "converted" | "lost") => 
-                                setEditForm({...editForm, status: value})
-                              }
-                            >
-                              <SelectTrigger className="h-12 text-sm">
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="new">New</SelectItem>
-                                <SelectItem value="contacted">Contacted</SelectItem>
-                                <SelectItem value="qualified">Qualified</SelectItem>
-                                <SelectItem value="converted">Converted</SelectItem>
-                                <SelectItem value="lost">Lost</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div>
-                              <Badge className={`text-xs ${statusStyles[selectedLead.status]}`}>
-                                {selectedLead.status.charAt(0).toUpperCase() + selectedLead.status.slice(1)}
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                          <FileText className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground mb-[5px]">Origin</p>
-                          {isEditing ? (
-                            <Input
-                              value={editForm.origin || ""}
-                              onChange={(e) => setEditForm({...editForm, origin: e.target.value || null})}
-                              className="h-12 text-sm"
-                              placeholder="Lead origin"
-                            />
-                          ) : (
-                            <p className="text-sm font-medium">{selectedLead.origin || "Not specified"}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                    Creation Date
-                  </h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                        <FileText className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-[5px]">Date</p>
-                        <p className="text-sm font-medium">
-                          {new Date(selectedLead.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                        <RotateCcw className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-[5px]">Time</p>
-                        <p className="text-sm font-medium">
-                          {new Date(selectedLead.created_at).toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-8 grid grid-cols-2 gap-3">
-                {isEditing ? (
-                  <>
-                    <Button onClick={() => {
-                      setIsEditing(false)
-                      setEditForm({
-                        name: selectedLead.name,
-                        email: selectedLead.email,
-                        phone: selectedLead.phone,
-                        company: selectedLead.company,
-                        position: selectedLead.position,
-                        segment_id: selectedLead.segment_id,
-                        status: selectedLead.status,
-                        origin: selectedLead.origin
-                      })
-                    }} variant="outline" className="w-full">
-                      <X className="mr-2 h-4 w-4" />
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSaveChanges} className="w-full">
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Save
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button onClick={() => {
-                      setIsEditing(true)
-                      setEditForm({
-                        name: selectedLead.name,
-                        email: selectedLead.email,
-                        phone: selectedLead.phone,
-                        company: selectedLead.company,
-                        position: selectedLead.position,
-                        segment_id: selectedLead.segment_id,
-                        status: selectedLead.status,
-                        origin: selectedLead.origin
-                      })
-                    }} variant="outline" className="w-full">
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </Button>
-                    <Button variant="destructive" className="w-full">
-                      <X className="mr-2 h-4 w-4" />
-                      Delete
-                    </Button>
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
     </LeadsContext.Provider>
   )

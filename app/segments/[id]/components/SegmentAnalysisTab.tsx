@@ -368,4 +368,6 @@ export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
       </div>
     </div>
   )
-} 
+}
+
+export default SegmentAnalysisTab; 

@@ -13,7 +13,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
  
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 232 60% 65%;
     --primary-foreground: 210 40% 98%;
  
     --secondary: 210 40% 96.1%;
@@ -45,8 +45,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
  
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 232 60% 65%;
+    --primary-foreground: 210 40% 98%;
  
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -63,6 +63,109 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+  }
+
+  /* Estilos para asegurar que los iconos se muestren correctamente en todos los navegadores, especialmente Safari */
+  .safari-icon-fix {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .safari-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Safari-specific fixes for SVG icons in the menu */
+  @media not all and (min-resolution:.001dpcm) { 
+    @supports (-webkit-appearance:none) {
+      /* Regla general para SVGs en Safari */
+      svg {
+        /* Force hardware acceleration in Safari */
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-transform: translateZ(0) scale(1.0, 1.0);
+      }
+      
+      /* Contenedor SVG visible para Safari */
+      svg * {
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-transform: translateZ(0) scale(1.0, 1.0);
+      }
+      
+      /* Fix específico para menús de navegación */
+      nav svg, 
+      [role="menuitem"] svg,
+      button svg,
+      .inline-flex svg,
+      a svg,
+      [class*="input"] svg,
+      [class*="select"] svg,
+      [class*="button"] svg,
+      [class*="menu"] svg,
+      [class*="sidebar"] svg,
+      [class*="icon"] svg {
+        display: block;
+      }
+      
+      /* Arreglo específico para la barra lateral */
+      .h-\[25px\].w-\[25px\].shrink-0,
+      .h-\[25px\].w-\[25px\] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      
+      /* Asegurarse que los contenedores de iconos sean visibles */
+      div[aria-hidden="true"],
+      span[aria-hidden="true"] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      
+      /* Arreglo para iconos en inputs y selectores */
+      input + div, 
+      select + div,
+      button div,
+      .relative svg {
+        position: relative;
+      }
+      
+      /* Estilos para los inputs específicamente */
+      .flex.h-10.w-full.rounded-md.border.border-input.bg-background.px-3.py-2.text-sm.ring-offset-background svg,
+      [class*="select-trigger"] svg {
+        position: relative;
+        display: block;
+      }
+      
+      /* Classes específicas para el arreglo de Safari */
+      .safari-icon-fix {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      
+      .safari-icon {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .safari-icon svg {
+        position: relative;
+        display: block;
+      }
+    }
   }
 }
  
@@ -274,4 +377,197 @@ button.rounded-full:active, button.rounded-xl:active {
 .dark button.rounded-full:active, .dark button.rounded-xl:active {
   box-shadow: none;
   background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Estilos específicos para Safari basados en la clase detectada por JS */
+html.safari * {
+  /* Mejoramos el modo de renderizado en Safari */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Reglas específicas para iconos en Safari */
+html.safari svg {
+  /* Preparamos los SVG para que se comporten bien en Safari */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Inputs con iconos en Safari */
+html.safari input + div > svg,
+html.safari [class*="input"] svg,
+html.safari [class*="select-trigger"] svg {
+  display: block !important;
+  position: static !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin: auto !important;
+}
+
+/* Contenedores de iconos en inputs en Safari */
+html.safari input + div,
+html.safari [class*="input"] > div {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Fix para iconos en botones y enlaces */
+html.safari button > svg,
+html.safari a > svg {
+  display: block !important;
+  position: static !important;
+}
+
+/* Iconos específicos del menú en Safari */
+html.safari .h-\[25px\].w-\[25px\] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 25px !important;
+  height: 25px !important;
+}
+
+html.safari .h-\[25px\].w-\[25px\] svg {
+  width: 25px !important;
+  height: 25px !important;
+}
+
+/* Fix para iconos de elementos input y select */
+html.safari [class*="select-trigger"] {
+  position: relative !important;
+}
+
+html.safari [class*="select-trigger"] svg {
+  position: absolute !important;
+  right: 10px !important;
+  transform: translateY(-50%) !important;
+  top: 50% !important;
+}
+
+/* Fix específico para el botón de búsqueda en inputs */
+html.safari .h-10 [class*="input"] + div,
+html.safari .h-10 [class*="input"] > div[aria-hidden="true"] {
+  position: absolute !important;
+  right: 2px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+}
+
+/* Forzamos que solo los SVG problemáticos se arreglen */
+html.safari nav svg,
+html.safari [role="menuitem"] svg,
+html.safari button svg,
+html.safari a svg {
+  display: block;
+  top: auto;
+  left: auto;
+  position: static;
+}
+
+/* Estilos para el contenedor de iconos en Safari */
+html.safari .h-\[25px\].w-\[25px\] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Arreglos específicos para el menú lateral en Safari */
+html.safari .safari-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Arreglos para los iconos en inputs y selects en Safari */
+html.safari [class*="select-trigger"] svg,
+html.safari [class*="input"] + div svg {
+  position: static;
+  display: block;
+}
+
+/* Reglas ultras específicas para Safari y sus iconos */
+html.safari button {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+html.safari button svg,
+html.safari .button svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  margin: auto !important;
+}
+
+/* Reglas específicas para inputs con iconos */
+html.safari .input svg,
+html.safari input + div svg,
+html.safari [class*="input"] svg {
+  position: static !important;
+  width: 16px !important;
+  height: 16px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+  margin: auto !important;
+}
+
+/* Contenedores de iconos en inputs */
+html.safari input + div,
+html.safari [class*="input"] > div[aria-hidden="true"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 10 !important;
+}
+
+/* Clases de utilidad específicas para Safari */
+html.safari .safari-icon-fix {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+html.safari .safari-button-fix {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+
+html.safari .safari-input-fix {
+  position: relative !important;
+}
+
+/* Solución específica para selects */
+html.safari [class*="select-trigger"] svg {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 } 

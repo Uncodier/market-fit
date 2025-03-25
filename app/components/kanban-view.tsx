@@ -198,8 +198,11 @@ export function KanbanView({
                                 onClick={(e) => handleCardClick(e, lead)}
                               >
                                 <CardHeader className="p-3 pb-0">
-                                  <CardTitle className="text-sm font-medium">
+                                  <CardTitle className="text-sm font-medium flex items-center justify-between">
                                     {lead.name}
+                                    <Badge className={`text-xs ${STATUS_COLORS[lead.status]}`}>
+                                      {lead.status}
+                                    </Badge>
                                   </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-3 pt-2">
@@ -217,9 +220,6 @@ export function KanbanView({
                                         {getSegmentName(lead.segment_id)}
                                       </Badge>
                                     )}
-                                    <Badge className={`text-xs ${STATUS_COLORS[lead.status]}`}>
-                                      {lead.status}
-                                    </Badge>
                                   </div>
                                 </CardContent>
                               </Card>

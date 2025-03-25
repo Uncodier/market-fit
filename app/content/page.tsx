@@ -1388,6 +1388,27 @@ export default function ContentPage() {
     }
   }, [currentSite?.id])
 
+  // Attach the refresh function to window for global access
+  useEffect(() => {
+    // Define our refresh function
+    const refreshContentList = () => {
+      loadContent();
+    };
+    
+    // Attach it to the window object
+    // Create a type-safe way to do this
+    if (typeof window !== 'undefined') {
+      (window as any).refreshContentList = refreshContentList;
+    }
+    
+    // Clean up when component unmounts
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).refreshContentList;
+      }
+    };
+  }, [loadContent]);
+
   // Load content and segments
   useEffect(() => {
     loadContent()
@@ -1404,6 +1425,9 @@ export default function ContentPage() {
 
   const updateFilteredContent = (search: string, currentFilters: ContentFilters) => {
     const searchLower = search.toLowerCase()
+    
+    // Debug to check if we have content items
+    console.log("Content items to filter:", contentItems.length);
     
     const filtered = contentItems.filter(item => {
       // Filtrar por término de búsqueda
@@ -1425,6 +1449,9 @@ export default function ContentPage() {
       
       return matchesSearch && matchesStatus && matchesType && matchesSegment
     })
+    
+    // Debug to check filtered results
+    console.log("Filtered content items:", filtered.length);
     
     setFilteredContent(filtered)
   }

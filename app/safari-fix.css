@@ -1,0 +1,1055 @@
+/* Safari-specific fixes for icons */
+@media not all and (min-resolution:.001dpcm) {
+  @supports (-webkit-appearance:none) {
+    /* Reglas básicas para todos los SVG */
+    svg {
+      width: auto;
+      height: auto;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    
+    /* Eliminamos los estilos que pueden estar causando problemas */
+    button svg, a svg, div svg, span svg {
+      position: relative;
+      top: auto;
+      left: auto;
+    }
+    
+    /* Reglas específicas para ciertos casos */
+    .h-4, .w-4 {
+      width: 16px;
+      height: 16px;
+    }
+    
+    .h-5, .w-5 {
+      width: 20px;
+      height: 20px;
+    }
+    
+    /* Fix para iconos en inputs y selects */
+    input + div svg,
+    select + div svg,
+    [class*="input"] svg,
+    [class*="select"] svg {
+      width: 16px !important;
+      height: 16px !important;
+      position: static !important;
+      display: block !important;
+      margin: auto !important;
+    }
+    
+    /* Fix para los contenedores de inputs */
+    .h-10 [class*="input"] + div,
+    .h-10 div:has(> svg) {
+      width: 36px !important;
+      height: 36px !important;
+      position: absolute !important;
+      right: 2px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    
+    /* Fix para iconos en buttons */
+    button:has(> svg) svg {
+      width: 16px !important;
+      height: 16px !important;
+      margin: auto !important;
+    }
+    
+    /* Fix para selectores específicos y menú */
+    [class*="menu-item"] svg,
+    [class*="select-trigger"] svg {
+      position: static !important;
+      width: 16px !important;
+      height: 16px !important;
+    }
+    
+    /* Fix para iconos en links/anchors */
+    a:has(> svg) {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    
+    a:has(> svg) svg {
+      width: auto !important;
+      height: auto !important;
+      flex-shrink: 0 !important; 
+    }
+    
+    /* Fix específico para los iconos del sidebar */
+    .h-\[25px\].w-\[25px\] {
+      width: 25px !important;
+      height: 25px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    
+    .h-\[25px\].w-\[25px\] svg {
+      width: 25px !important;
+      height: 25px !important;
+    }
+    
+    /* Safari IconWrapper fix */
+    .safari-icon,
+    .safari-icon-fix {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      position: relative !important;
+    }
+    
+    /* Garantizar dimensiones para todos los contenedores con iconos */
+    div:has(> svg),
+    span:has(> svg) {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    
+    /* Fix específico para iconos de cierre en modales */
+    [role="dialog"] button:has(> svg),
+    [class*="dialog"] button:has(> svg),
+    [class*="modal"] button:has(> svg) {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      line-height: 1 !important;
+    }
+    
+    [role="dialog"] button:has(> svg) svg,
+    [class*="dialog"] button:has(> svg) svg,
+    [class*="modal"] button:has(> svg) svg {
+      width: 16px !important;
+      height: 16px !important;
+      min-width: 16px !important;
+      min-height: 16px !important;
+      display: block !important;
+      position: static !important;
+    }
+    
+    /* Fix específico para anclajes en settings */
+    a[href="/settings"] svg,
+    a[href*="settings"] svg {
+      width: 16px !important;
+      height: 16px !important;
+      min-width: 16px !important;
+      min-height: 16px !important;
+      display: block !important;
+      position: static !important;
+      margin: 0 !important;
+    }
+    
+    a[href="/settings"],
+    a[href*="settings"] {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+    }
+    
+    /* Fix para componentes Switch en Safari */
+    [data-radix-collection-item] [data-state="checked"] span,
+    [data-radix-collection-item] [data-state="unchecked"] span,
+    [role="switch"] span,
+    [class*="switch"] span,
+    [class*="radix-switch"] span {
+      margin-left: -20px !important;
+    }
+  }
+}
+
+/* Fix específico para Safari */
+html.safari svg {
+  /* Forzamos visibilidad */
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+/* Corrección para todos los iconos SVG en Safari */
+html.safari button svg,
+html.safari a svg,
+html.safari [class*="input"] svg,
+html.safari [class*="select"] svg,
+html.safari nav svg,
+html.safari [role="menuitem"] svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  position: static !important;
+}
+
+/* Fixes específicos para botones */
+html.safari button {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+html.safari button svg {
+  margin: auto !important;
+}
+
+/* Fixes para iconos en inputs */
+html.safari .input svg,
+html.safari input + div > svg,
+html.safari .input-container svg,
+html.safari [class*="input-icon"] svg {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* Tamaños específicos basados en clases comunes */
+html.safari .h-4 svg, html.safari .w-4 svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+html.safari .h-5 svg, html.safari .w-5 svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+html.safari .h-6 svg, html.safari .w-6 svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+html.safari .h-\[25px\] svg, html.safari .w-\[25px\] svg {
+  width: 25px !important;
+  height: 25px !important;
+}
+
+/* Fix para elementos que contienen iconos en el menú */
+html.safari [role="menuitem"] {
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Fix específico para iconos en select */
+html.safari [class*="select-trigger"] svg {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* Asegura que los contenedores de botones de acciones tengan sus iconos visibles */
+html.safari .action-button svg,
+html.safari .icon-button svg {
+  margin: auto !important;
+  position: static !important;
+}
+
+/* Fix para iconos en búsquedas */
+html.safari [class*="search"] svg {
+  position: absolute !important;
+  left: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* Ajuste para cualquier ícono dentro de nuestras propias clases forzadas para Safari */
+html.safari .safari-icon-fix svg {
+  display: block !important;
+  width: 16px !important; 
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  position: static !important;
+  margin: auto !important;
+}
+
+/* Fix específico para iconos de cierre en modales */
+html.safari [role="dialog"] button svg,
+html.safari [class*="dialog"] button svg,
+html.safari [class*="modal"] button svg,
+html.safari [aria-label="Close"] svg,
+html.safari button[aria-label="Close"] svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: auto !important;
+}
+
+html.safari [role="dialog"] button,
+html.safari [class*="dialog"] button,
+html.safari [class*="modal"] button,
+html.safari [aria-label="Close"],
+html.safari button[aria-label="Close"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  line-height: 1 !important;
+}
+
+/* Fix específico para anclajes en settings */
+html.safari a[href="/settings"] svg,
+html.safari a[href*="settings"] svg,
+html.safari a[href$="settings"] svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 !important;
+}
+
+html.safari a[href="/settings"],
+html.safari a[href*="settings"],
+html.safari a[href$="settings"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+}
+
+/* Solución extrema para botones de cierre en modales */
+html.safari .dialog-overlay button[aria-label="Close"],
+html.safari .dialog-content button[aria-label="Close"],
+html.safari .dialog-header button[aria-label="Close"],
+html.safari [class*="dialog"] button[aria-label="Close"],
+html.safari [class*="modal"] button[aria-label="Close"],
+html.safari [role="dialog"] button[aria-label="Close"] {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transform: none !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  line-height: 1 !important;
+}
+
+html.safari .dialog-overlay button[aria-label="Close"] svg,
+html.safari .dialog-content button[aria-label="Close"] svg,
+html.safari .dialog-header button[aria-label="Close"] svg,
+html.safari [class*="dialog"] button[aria-label="Close"] svg,
+html.safari [class*="modal"] button[aria-label="Close"] svg,
+html.safari [role="dialog"] button[aria-label="Close"] svg {
+  position: static !important;
+  display: block !important;
+  visibility: visible !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+
+/* Solución extrema para anclas de settings en menú */
+html.safari [class*="menu-item"] a[href*="settings"],
+html.safari [role="menuitem"] a[href*="settings"],
+html.safari [class*="navigation"] a[href*="settings"],
+html.safari [class*="sidebar"] a[href*="settings"],
+html.safari nav a[href*="settings"] {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  width: 100% !important;
+  position: relative !important;
+  height: auto !important;
+}
+
+html.safari [class*="menu-item"] a[href*="settings"] svg,
+html.safari [role="menuitem"] a[href*="settings"] svg,
+html.safari [class*="navigation"] a[href*="settings"] svg,
+html.safari [class*="sidebar"] a[href*="settings"] svg,
+html.safari nav a[href*="settings"] svg {
+  display: block !important;
+  visibility: visible !important;
+  position: static !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin-right: 8px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Extra específico para la X del diálogo */
+html.safari .safari-close-button {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  line-height: 1 !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+}
+
+html.safari .safari-close-button svg {
+  position: static !important;
+  display: block !important;
+  visibility: visible !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 auto !important;
+}
+
+/* Fix específico para los botones de cierre en diálogos */
+html.safari [role="dialog"] button[aria-label="Close"],
+html.safari [class*="dialog"] button[aria-label="Close"],
+html.safari [class*="modal"] button[aria-label="Close"],
+html.safari .safari-close-button-abs {
+  position: absolute !important;
+  right: 16px !important;
+  top: 16px !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999 !important;
+  border-radius: 4px !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.2s !important;
+  background-color: transparent !important;
+}
+
+html.safari [role="dialog"] button[aria-label="Close"]:hover,
+html.safari [class*="dialog"] button[aria-label="Close"]:hover,
+html.safari [class*="modal"] button[aria-label="Close"]:hover,
+html.safari .safari-close-button-abs:hover {
+  opacity: 1 !important;
+}
+
+html.safari [role="dialog"] button[aria-label="Close"] svg,
+html.safari [class*="dialog"] button[aria-label="Close"] svg,
+html.safari [class*="modal"] button[aria-label="Close"] svg,
+html.safari .safari-close-button-abs svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Arreglo específico para enlaces de Settings en Safari */
+html.safari .safari-settings-link,
+html.safari a[href*="settings"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100% !important;
+  height: 39px !important;
+  padding: 8px 12px !important;
+  position: relative !important;
+  border-radius: 4px !important;
+}
+
+html.safari .safari-settings-link > div,
+html.safari a[href*="settings"] > div:first-child {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 25px !important;
+  height: 25px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  margin: 0 !important;
+}
+
+html.safari .safari-settings-link svg,
+html.safari a[href*="settings"] svg {
+  display: block !important;
+  visibility: visible !important;
+  width: 25px !important;
+  height: 25px !important;
+  min-width: 25px !important;
+  min-height: 25px !important;
+  position: static !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+}
+
+html.safari .safari-settings-link span,
+html.safari a[href*="settings"] > span {
+  display: block !important;
+  flex-grow: 1 !important;
+  text-align: left !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Fix específico para el MenuItem con settings */
+html.safari [role="menuitem"] a[href*="settings"],
+html.safari [class*="menu-item"] a[href*="settings"] {
+  height: 39px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: nowrap !important;
+  padding: 8px 12px !important;
+  width: 100% !important;
+}
+
+/* Fix específico para componentes Switch en Safari */
+html.safari [data-radix-collection-item] [data-state="checked"] span,
+html.safari [data-radix-collection-item] [data-state="unchecked"] span,
+html.safari [role="switch"] span,
+html.safari [class*="switch"] span,
+html.safari [class*="radix-switch"] span {
+  margin-left: -20px !important;
+}
+
+/* Arreglo específico para el thumb del Switch */
+html.safari [role="switch"] [data-state="checked"] span,
+html.safari [role="switch"] [data-state="unchecked"] span,
+html.safari [role="switch"] span {
+  margin-left: -20px !important;
+  left: 20px !important;
+}
+
+/* Arreglo más específico para el componente Switch de Radix */
+html.safari [data-radix-collection-item] [data-state="checked"] span,
+html.safari [data-radix-collection-item] [data-state="unchecked"] span,
+html.safari [class*="radix-switch"] span,
+html.safari [class*="switch-thumb"] {
+  margin-left: -20px !important;
+  transform: translateX(20px) !important;
+}
+
+/* Fix específico para iconos en inputs de la sección security */
+html.safari [href*="security"] .input-container svg,
+html.safari [href*="security"] [class*="input"] svg,
+html.safari [href*="security"] input + div > svg {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+}
+
+html.safari [href*="security"] .input-container,
+html.safari [href*="security"] [class*="input-wrapper"],
+html.safari [href*="security"] .input-icon-wrapper {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Fix para contenedores de input en la sección security */
+html.safari [href*="security"] .input-container div:has(> svg),
+html.safari [href*="security"] [class*="input"] div:has(> svg),
+html.safari [href*="security"] input + div:has(> svg) {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
+
+/* Fix específico para iconos eye en inputs de password */
+html.safari [class*="password"] div:has(> svg),
+html.safari input[type="password"] + div,
+html.safari [type="password"] + div {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
+}
+
+html.safari [class*="password"] svg,
+html.safari input[type="password"] + div svg,
+html.safari [type="password"] + div svg {
+  width: 16px !important;
+  height: 16px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: static !important;
+}
+
+/* Aseguramos que los contenedores de inputs tengan posición relativa */
+html.safari .input-wrapper,
+html.safari .input-container,
+html.safari [class*="input-wrapper"],
+html.safari [class*="input-container"],
+html.safari div:has(> input) {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* Solución extrema para el icono de ojo en campos de contraseña */
+html.safari input[type="password"] ~ div,
+html.safari [type="password"] ~ div,
+html.safari input[type="password"] + div,
+html.safari [type="password"] + div,
+html.safari .input-password-toggle,
+html.safari .input-password-button,
+html.safari button[type="button"][aria-label="Toggle password visibility"],
+html.safari [aria-label="Toggle password visibility"],
+html.safari [class*="password-toggle"],
+html.safari [class*="eye"] {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html.safari input[type="password"] ~ div svg,
+html.safari [type="password"] ~ div svg,
+html.safari input[type="password"] + div svg,
+html.safari [type="password"] + div svg,
+html.safari .input-password-toggle svg,
+html.safari .input-password-button svg,
+html.safari button[type="button"][aria-label="Toggle password visibility"] svg,
+html.safari [aria-label="Toggle password visibility"] svg,
+html.safari [class*="password-toggle"] svg,
+html.safari [class*="eye"] svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: static !important;
+  margin: 0 auto !important;
+}
+
+/* Solución para fix absoluto de posicionamiento de iconos dentro de inputs */
+html.safari input ~ div:has(> svg),
+html.safari input + div:has(> svg),
+html.safari .input-icon-wrapper,
+html.safari .input-icon-container,
+html.safari [class*="input-icon"],
+html.safari [class*="inputIcon"],
+html.safari [class*="security"] .input div:has(> svg),
+html.safari [class*="security"] [class*="input"] div:has(> svg),
+html.safari [href*="security"] .input div:has(> svg),
+html.safari [href*="security"] [class*="input"] div:has(> svg) {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  z-index: 10 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+html.safari input ~ div:has(> svg) svg,
+html.safari input + div:has(> svg) svg,
+html.safari .input-icon-wrapper svg,
+html.safari .input-icon-container svg,
+html.safari [class*="input-icon"] svg,
+html.safari [class*="inputIcon"] svg,
+html.safari [class*="security"] .input div:has(> svg) svg,
+html.safari [class*="security"] [class*="input"] div:has(> svg) svg,
+html.safari [href*="security"] .input div:has(> svg) svg,
+html.safari [href*="security"] [class*="input"] div:has(> svg) svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: static !important;
+  margin: 0 auto !important;
+}
+
+/* Fix extremo para inputs específicamente en /security */
+html.safari [href="/security"] input ~ div:has(> svg),
+html.safari [href="/security"] input + div:has(> svg),
+html.safari [href="/security"] .input-password-toggle,
+html.safari [href="/security"] .input-icon-wrapper,
+html.safari [href$="/security"] input ~ div:has(> svg),
+html.safari [href$="/security"] input + div:has(> svg),
+html.safari [href$="/security"] .input-password-toggle,
+html.safari [href$="/security"] .input-icon-wrapper,
+html.safari [href*="security"] input ~ div:has(> svg),
+html.safari [href*="security"] input + div:has(> svg),
+html.safari [href*="security"] .input-password-toggle,
+html.safari [href*="security"] .input-icon-wrapper {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 20px !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: transparent !important;
+}
+
+html.safari [href="/security"] input ~ div:has(> svg) svg,
+html.safari [href="/security"] input + div:has(> svg) svg,
+html.safari [href="/security"] .input-password-toggle svg,
+html.safari [href="/security"] .input-icon-wrapper svg,
+html.safari [href$="/security"] input ~ div:has(> svg) svg,
+html.safari [href$="/security"] input + div:has(> svg) svg,
+html.safari [href$="/security"] .input-password-toggle svg,
+html.safari [href$="/security"] .input-icon-wrapper svg,
+html.safari [href*="security"] input ~ div:has(> svg) svg,
+html.safari [href*="security"] input + div:has(> svg) svg,
+html.safari [href*="security"] .input-password-toggle svg,
+html.safari [href*="security"] .input-icon-wrapper svg {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  position: static !important;
+  margin: 0 !important;
+}
+
+/* Forzamos inputs a tener padding-right para que el texto no se solape con el icono */
+html.safari input[type="password"],
+html.safari [type="password"],
+html.safari [href*="security"] input,
+html.safari [href$="/security"] input,
+html.safari [href="/security"] input {
+  padding-right: 40px !important;
+}
+
+/* Forzar solución específica para security basada en lo que funciona */
+html.safari [href*="security"] .input-container,
+html.safari [href*="security"] [class*="input-wrapper"],
+html.safari [href*="security"] [class*="input-container"],
+html.safari [href*="security"] div:has(> input),
+html.safari [class*="security"] .input-container,
+html.safari [class*="security"] [class*="input-wrapper"],
+html.safari [class*="security"] [class*="input-container"],
+html.safari [class*="security"] div:has(> input) {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* Solución extrema de posicionamiento para iconos en input de seguridad */
+html.safari [href*="security"] .input div:has(> svg),
+html.safari [href*="security"] [class*="input"] div:has(> svg),
+html.safari [href*="security"] input ~ div:has(> svg),
+html.safari [href*="security"] input + div:has(> svg),
+html.safari [href*="security"] .input button:has(> svg),
+html.safari [href*="security"] [class*="input"] button:has(> svg),
+html.safari [href*="security"] [class*="input-icon"],
+html.safari [href*="security"] [class*="inputIcon"],
+html.safari [href*="security"] [class*="eye"],
+html.safari [href*="security"] [class*="password"] div,
+html.safari [class*="security"] .input div:has(> svg),
+html.safari [class*="security"] [class*="input"] div:has(> svg),
+html.safari [class*="security"] input ~ div:has(> svg),
+html.safari [class*="security"] input + div:has(> svg),
+html.safari [class*="security"] .input button:has(> svg),
+html.safari [class*="security"] [class*="input"] button:has(> svg),
+html.safari [class*="security"] [class*="input-icon"],
+html.safari [class*="security"] [class*="inputIcon"],
+html.safari [class*="security"] [class*="eye"],
+html.safari [class*="security"] [class*="password"] div {
+  display: flex !important;
+  position: absolute !important;
+  top: 50% !important;
+  right: 8px !important;
+  transform: translateY(-50%) !important;
+  z-index: 1000 !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html.safari [href*="security"] .input div:has(> svg) svg,
+html.safari [href*="security"] [class*="input"] div:has(> svg) svg,
+html.safari [href*="security"] input ~ div:has(> svg) svg,
+html.safari [href*="security"] input + div:has(> svg) svg,
+html.safari [href*="security"] .input button:has(> svg) svg,
+html.safari [href*="security"] [class*="input"] button:has(> svg) svg,
+html.safari [href*="security"] [class*="input-icon"] svg,
+html.safari [href*="security"] [class*="inputIcon"] svg,
+html.safari [href*="security"] [class*="eye"] svg,
+html.safari [href*="security"] [class*="password"] div svg,
+html.safari [class*="security"] .input div:has(> svg) svg,
+html.safari [class*="security"] [class*="input"] div:has(> svg) svg,
+html.safari [class*="security"] input ~ div:has(> svg) svg,
+html.safari [class*="security"] input + div:has(> svg) svg,
+html.safari [class*="security"] .input button:has(> svg) svg,
+html.safari [class*="security"] [class*="input"] button:has(> svg) svg,
+html.safari [class*="security"] [class*="input-icon"] svg,
+html.safari [class*="security"] [class*="inputIcon"] svg,
+html.safari [class*="security"] [class*="eye"] svg,
+html.safari [class*="security"] [class*="password"] div svg {
+  display: block !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  position: static !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
+
+/* Forzar solución extrema como la que funciona para modal close button y settings links */
+html.safari [href*="security"] [class*="password-wrapper"],
+html.safari [href*="security"] [class*="password-container"],
+html.safari [href*="security"] div:has(> input[type="password"]),
+html.safari [href*="security"] [class*="eye-container"],
+html.safari [href*="security"] [class*="eye-wrapper"],
+html.safari [class*="security"] [class*="password-wrapper"],
+html.safari [class*="security"] [class*="password-container"],
+html.safari [class*="security"] div:has(> input[type="password"]),
+html.safari [class*="security"] [class*="eye-container"],
+html.safari [class*="security"] [class*="eye-wrapper"] {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* Forzar posición del icono de ojo en los campos de seguridad igual que el botón de cierre que sí funciona */
+html.safari [href*="security"] input[type="password"] ~ button,
+html.safari [href*="security"] [type="password"] ~ button,
+html.safari [href*="security"] input[type="password"] + button,
+html.safari [href*="security"] [type="password"] + button,
+html.safari [href*="security"] input[type="password"] ~ div:has(> svg),
+html.safari [href*="security"] [type="password"] ~ div:has(> svg),
+html.safari [href*="security"] input[type="password"] + div:has(> svg),
+html.safari [href*="security"] [type="password"] + div:has(> svg),
+html.safari [href*="security"] .input-password-toggle,
+html.safari [href*="security"] .input-password-button,
+html.safari [href*="security"] button[aria-label="Toggle password visibility"],
+html.safari [href*="security"] [aria-label="Toggle password visibility"],
+html.safari [href*="security"] [class*="password-toggle"],
+html.safari [href*="security"] [class*="eye"],
+html.safari [class*="security"] input[type="password"] ~ button,
+html.safari [class*="security"] [type="password"] ~ button,
+html.safari [class*="security"] input[type="password"] + button,
+html.safari [class*="security"] [type="password"] + button,
+html.safari [class*="security"] input[type="password"] ~ div:has(> svg),
+html.safari [class*="security"] [type="password"] ~ div:has(> svg),
+html.safari [class*="security"] input[type="password"] + div:has(> svg),
+html.safari [class*="security"] [type="password"] + div:has(> svg),
+html.safari [class*="security"] .input-password-toggle,
+html.safari [class*="security"] .input-password-button,
+html.safari [class*="security"] button[aria-label="Toggle password visibility"],
+html.safari [class*="security"] [aria-label="Toggle password visibility"],
+html.safari [class*="security"] [class*="password-toggle"],
+html.safari [class*="security"] [class*="eye"],
+html.safari .safari-eye-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: absolute !important;
+  top: 50% !important;
+  right: 8px !important;
+  transform: translateY(-50%) !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 2000 !important;
+  pointer-events: auto !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+html.safari [href*="security"] input[type="password"] ~ button svg,
+html.safari [href*="security"] [type="password"] ~ button svg,
+html.safari [href*="security"] input[type="password"] + button svg,
+html.safari [href*="security"] [type="password"] + button svg,
+html.safari [href*="security"] input[type="password"] ~ div:has(> svg) svg,
+html.safari [href*="security"] [type="password"] ~ div:has(> svg) svg,
+html.safari [href*="security"] input[type="password"] + div:has(> svg) svg,
+html.safari [href*="security"] [type="password"] + div:has(> svg) svg,
+html.safari [href*="security"] .input-password-toggle svg,
+html.safari [href*="security"] .input-password-button svg,
+html.safari [href*="security"] button[aria-label="Toggle password visibility"] svg,
+html.safari [href*="security"] [aria-label="Toggle password visibility"] svg,
+html.safari [href*="security"] [class*="password-toggle"] svg,
+html.safari [href*="security"] [class*="eye"] svg,
+html.safari [class*="security"] input[type="password"] ~ button svg,
+html.safari [class*="security"] [type="password"] ~ button svg,
+html.safari [class*="security"] input[type="password"] + button svg,
+html.safari [class*="security"] [type="password"] + button svg,
+html.safari [class*="security"] input[type="password"] ~ div:has(> svg) svg,
+html.safari [class*="security"] [type="password"] ~ div:has(> svg) svg,
+html.safari [class*="security"] input[type="password"] + div:has(> svg) svg,
+html.safari [class*="security"] [type="password"] + div:has(> svg) svg,
+html.safari [class*="security"] .input-password-toggle svg,
+html.safari [class*="security"] .input-password-button svg,
+html.safari [class*="security"] button[aria-label="Toggle password visibility"] svg,
+html.safari [class*="security"] [aria-label="Toggle password visibility"] svg,
+html.safari [class*="security"] [class*="password-toggle"] svg,
+html.safari [class*="security"] [class*="eye"] svg,
+html.safari .safari-eye-button svg {
+  display: block !important;
+  position: static !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
+
+/* Regla específica para los botones de ojo en la página de seguridad */
+html.safari .safari-eye-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: absolute !important;
+  top: 50% !important;
+  right: 12px !important;
+  transform: translateY(-50%) !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  z-index: 9999 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+html.safari .safari-eye-button svg {
+  display: block !important;
+  position: static !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Fix específico para el Switch en la página de seguridad */
+html.safari .safari-switch {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: 44px !important;
+  height: 24px !important;
+  cursor: pointer !important;
+  border-radius: 9999px !important;
+  overflow: visible !important;
+}
+
+html.safari .safari-switch[data-state="checked"] span,
+html.safari .safari-switch[data-state="unchecked"] span {
+  position: absolute !important;
+  left: 2px !important;
+  top: 2px !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 9999px !important;
+  margin-left: 0 !important;
+  transform: none !important;
+  transition: transform 0.2s ease !important;
+}
+
+html.safari .safari-switch[data-state="checked"] span {
+  transform: translateX(20px) !important;
+} 

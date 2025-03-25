@@ -25,6 +25,9 @@ const IconWrapper = ({
       style={{ 
         width: size, 
         height: size, 
+        display: 'inline-flex',  // Explicit display style for Safari
+        alignItems: 'center',    // Explicit alignment for Safari
+        justifyContent: 'center', // Explicit justification for Safari
         ...style 
       }}
       onClick={onClick}
@@ -38,7 +41,7 @@ const IconWrapper = ({
 // Loader (reemplazo para Loader2)
 export const Loader = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={`animate-spin ${className}`} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" opacity="0.25" />
       <path d="M12 2a10 10 0 0 1 10 10" />
     </svg>
@@ -59,7 +62,7 @@ export const SaveIcon = ({ className = "", size = 20, ...props }: IconProps) => 
 // Settings
 export const Settings = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
@@ -219,7 +222,7 @@ export const UploadCloud = ({ className = "", size = 20, ...props }: IconProps) 
 // LayoutGrid
 export const LayoutGrid = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="7" />
       <rect x="14" y="3" width="7" height="7" />
       <rect x="14" y="14" width="7" height="7" />
@@ -244,7 +247,7 @@ export const FlaskConical = ({ className = "", size = 20, ...props }: IconProps)
 // ClipboardList
 export const ClipboardList = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
       <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
       <line x1="9" y1="12" x2="15" y2="12" />
@@ -256,7 +259,7 @@ export const ClipboardList = ({ className = "", size = 20, ...props }: IconProps
 // Users
 export const Users = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -287,7 +290,7 @@ export const MessageSquare = ({ className = "", size = 20, ...props }: IconProps
 // Home
 export const Home = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
@@ -750,10 +753,31 @@ export const TableRows = ({ className = "", size = 20, ...props }: IconProps) =>
 // AlertTriangle
 export const AlertTriangle = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <line x1="12" y1="9" x2="12" y2="13" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
+    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10.29 3.86L1.82 18C1.64538 18.3024 1.55296 18.6453 1.55296 18.9945C1.55296 19.3437 1.64538 19.6866 1.82 19.99C1.99332 20.2659 2.2418 20.4927 2.53638 20.6471C2.83097 20.8015 3.16103 20.8783 3.5 20.87H20.5C20.84 20.88 21.17 20.8 21.46 20.65C21.7626 20.4791 22.0053 20.2249 22.1591 19.919C22.3128 19.6131 22.3718 19.2695 22.3288 18.9287C22.2857 18.5879 22.1425 18.2652 21.92 18L13.4 3.86C13.2096 3.56611 12.9493 3.32312 12.6396 3.15448C12.33 2.98585 11.9826 2.89725 11.63 2.89725C11.2774 2.89725 10.93 2.98585 10.6204 3.15448C10.3107 3.32312 10.0504 3.56611 9.86 3.86L10.29 3.86Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 9V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 17H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </IconWrapper>
+)
+
+// Clock
+export const Clock = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </IconWrapper>
+)
+
+// AlertCircle
+export const AlertCircle = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 8V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 16H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   </IconWrapper>
 ) 

@@ -400,6 +400,7 @@ export default function ExperimentsPage() {
                     className="w-full"
                     disabled
                     type="text"
+                    value=""
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}
                   />
                 </div>

@@ -240,6 +240,24 @@ export function TopBar({
       return breadcrumbItems;
     }
     
+    // Manejar caso especial para la página de detalle del lead
+    if (pathSegments[0] === 'leads' && pathSegments.length === 2) {
+      breadcrumbItems.push({
+        href: '/leads',
+        label: 'Leads',
+        isCurrent: false
+      });
+      
+      // Usar el título personalizado si está disponible
+      breadcrumbItems.push({
+        href: `/${pathSegments[0]}/${pathSegments[1]}`,
+        label: customTitle || 'Lead Details',
+        isCurrent: true
+      });
+      
+      return breadcrumbItems;
+    }
+    
     // Construir los items del breadcrumb para rutas normales
     for (let i = 0; i < pathSegments.length; i++) {
       const segment = pathSegments[i];
@@ -761,8 +779,13 @@ export function TopBar({
               <CreateContentDialog 
                 segments={segments.length > 0 ? segments : propSegments || []}
                 onSuccess={() => {
-                  // Recargar la página para mostrar el nuevo contenido
-                  window.location.reload()
+                  // Use the content list's refresh function instead of reloading the page
+                  if (typeof window !== 'undefined' && (window as any).refreshContentList) {
+                    (window as any).refreshContentList();
+                  } else {
+                    // Fallback to page reload if the function isn't available
+                    window.location.reload();
+                  }
                 }}
                 trigger={
                   <Button>

@@ -12,4 +12,6 @@ export function SegmentThemesTab({ segment }: SegmentThemesTabProps) {
       <ContentIdeasKanban segment={segment} />
     </div>
   )
-} 
+}
+
+export default SegmentThemesTab; 
