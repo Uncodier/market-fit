@@ -583,18 +583,18 @@ export default function LeadsPage() {
         segments={segments}
       />
       
-      <Tabs defaultValue="all" onValueChange={setActiveTab}>
-        <StickyHeader>
+      <Tabs defaultValue={activeTab} className="h-full space-y-6">
+        <StickyHeader showAIButton={false}>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList>
-                  <TabsTrigger value="all">All Leads</TabsTrigger>
-                  <TabsTrigger value="new">New</TabsTrigger>
-                  <TabsTrigger value="contacted">Contacted</TabsTrigger>
-                  <TabsTrigger value="qualified">Qualified</TabsTrigger>
-                  <TabsTrigger value="converted">Converted</TabsTrigger>
-                  <TabsTrigger value="lost">Lost</TabsTrigger>
+                  <TabsTrigger value="all" className="text-sm font-medium">All Leads</TabsTrigger>
+                  <TabsTrigger value="new" className="text-sm font-medium">New</TabsTrigger>
+                  <TabsTrigger value="contacted" className="text-sm font-medium">Contacted</TabsTrigger>
+                  <TabsTrigger value="qualified" className="text-sm font-medium">Qualified</TabsTrigger>
+                  <TabsTrigger value="converted" className="text-sm font-medium">Converted</TabsTrigger>
+                  <TabsTrigger value="lost" className="text-sm font-medium">Lost</TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input 

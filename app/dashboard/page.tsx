@@ -17,7 +17,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 p-0">
       <Tabs defaultValue="overview" className="space-y-4">
-        <StickyHeader>
+        <StickyHeader showAIButton={false}>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">

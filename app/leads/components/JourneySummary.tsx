@@ -142,8 +142,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
   return (
     <div className="space-y-6">
       {/* Overall Progress */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+        <CardContent className="p-4 hover:bg-muted/50 transition-colors">
           <h4 className="text-sm font-medium mb-3">Journey Progress</h4>
           <Progress value={stageProgress} className="h-2 mb-2" />
           <div className="flex justify-between items-center text-xs text-muted-foreground">
@@ -157,8 +157,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
       
       {/* Task Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-4">
+        <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+          <CardContent className="p-4 hover:bg-muted/50 transition-colors">
             <h4 className="text-sm font-medium mb-2">Task Completion</h4>
             <div className="flex justify-between items-center">
               <div className="flex items-center">
@@ -178,8 +178,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
+        <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+          <CardContent className="p-4 hover:bg-muted/50 transition-colors">
             <h4 className="text-sm font-medium mb-2">Task Status</h4>
             <div className="grid grid-cols-3 gap-2">
               <div className="flex flex-col items-center">
@@ -209,8 +209,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
       </div>
       
       {/* Task Types */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+        <CardContent className="p-4 hover:bg-muted/50 transition-colors">
           <h4 className="text-sm font-medium mb-3">Task Types</h4>
           <div className="space-y-2">
             {Object.entries(tasksByType).length > 0 ? (
@@ -248,8 +248,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
                   )
                 })
             ) : (
-              <div className="text-center py-3 text-muted-foreground text-sm">
-                No tasks have been created yet
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                No tasks have been added yet
               </div>
             )}
           </div>
@@ -257,8 +257,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
       </Card>
       
       {/* Upcoming Tasks */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+        <CardContent className="p-4 hover:bg-muted/50 transition-colors">
           <h4 className="text-sm font-medium mb-3">Upcoming Tasks</h4>
           <div className="space-y-3">
             {upcomingTasks.length > 0 ? (
@@ -319,8 +319,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
       
       {/* Total Value */}
       {totalValue > 0 && (
-        <Card>
-          <CardContent className="p-4">
+        <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+          <CardContent className="p-4 hover:bg-muted/50 transition-colors">
             <h4 className="text-sm font-medium mb-2">Total Opportunity Value</h4>
             <p className="text-2xl font-bold">
               ${totalValue.toLocaleString()}
@@ -333,8 +333,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
       )}
       
       {/* NPS Score */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+        <CardContent className="p-4 hover:bg-muted/50 transition-colors">
           <h4 className="text-sm font-medium mb-3">Customer Satisfaction</h4>
           
           <div className="mb-4">

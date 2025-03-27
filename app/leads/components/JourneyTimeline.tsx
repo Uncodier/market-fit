@@ -217,8 +217,8 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
       {/* Stage Groups */}
       {stageGroups.map((group) => (
         <div key={group.stage} className="mb-8 last:mb-0">
-          <Card className="mb-4 cursor-pointer" onClick={() => toggleStageExpanded(group.stage)}>
-            <CardContent className="p-3">
+          <Card className="mb-4 cursor-pointer border border-border hover:border-foreground/20 transition-colors overflow-hidden" onClick={() => toggleStageExpanded(group.stage)}>
+            <CardContent className="p-3 hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className={`${areAllTasksCompleted(group.stage) ? 'bg-green-100' : 'bg-primary/10'} rounded-md w-10 h-10 flex items-center justify-center mr-3`}>

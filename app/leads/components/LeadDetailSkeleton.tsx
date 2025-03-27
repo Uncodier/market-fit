@@ -8,7 +8,7 @@ export function LeadDetailSkeleton() {
   return (
     <div className="flex-1 p-0">
       <Tabs defaultValue="journey">
-        <StickyHeader>
+        <StickyHeader showAIButton={true}>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">

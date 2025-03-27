@@ -330,7 +330,7 @@ export default function ExperimentsPage() {
     return (
       <div className="flex-1 p-0">
         <Tabs defaultValue="all" className="h-full">
-          <StickyHeader>
+          <StickyHeader showAIButton={false}>
             <div className="px-16 pt-0 w-full">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
@@ -428,7 +428,7 @@ export default function ExperimentsPage() {
   return (
     <div className="flex-1 p-0">
       <Tabs defaultValue="all" className="h-full">
-        <StickyHeader>
+        <StickyHeader showAIButton={false}>
           <div className="px-16 pt-0 w-full">
             <div className="flex items-center gap-8">
               <div>
