@@ -38,7 +38,7 @@ interface Lead {
   name: string
   email: string
   phone: string | null
-  company: string | null
+  company: { name?: string; website?: string; industry?: string; size?: string } | string | null
   position: string | null
   segment_id: string | null
   status: "new" | "contacted" | "qualified" | "converted" | "lost"
@@ -89,6 +89,13 @@ export function KanbanView({
     if (!segmentId) return "No Segment"
     const segment = segments.find(s => s.id === segmentId)
     return segment?.name || "Unknown Segment"
+  }
+  
+  // Función para obtener el nombre de la compañía
+  const getCompanyName = (company: { name?: string; website?: string; industry?: string; size?: string } | string | null) => {
+    if (!company) return null
+    if (typeof company === 'string') return company
+    return company.name || null
   }
   
   // Actualizamos los leads cuando cambia la prop leads
@@ -211,7 +218,7 @@ export function KanbanView({
                                   </div>
                                   {lead.company && (
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                      {lead.company}
+                                      {getCompanyName(lead.company)}
                                     </div>
                                   )}
                                   <div className="flex items-center justify-between mt-2">

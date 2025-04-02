@@ -228,26 +228,43 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Cargar sitios desde Supabase
   const loadSites = async () => {
-    if (!isMounted || !supabaseRef.current) return
+    if (!isMounted || !supabaseRef.current) {
+      console.log("Cannot load sites:", { isMounted, hasSupabaseClient: !!supabaseRef.current })
+      return
+    }
     
     try {
       if (!isInitialized) setIsLoading(true)
       setError(null)
       
+      console.log("Getting user session...")
       const { data: { session } } = await supabaseRef.current.auth.getSession()
       
       if (!session) {
+        console.log("No active session found")
         setIsLoading(false)
         return
       }
       
+      console.log("Fetching sites for user:", session.user.id)
       const { data, error } = await supabaseRef.current
         .from('sites')
         .select('*')
         .eq('user_id', session.user.id)
       
-      if (error) throw error
+      if (error) {
+        console.error("Error fetching sites:", error)
+        console.error("Error details:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
+        throw error
+      }
       
+      console.log("Raw sites data:", data)
+      console.log("Sites fetched successfully:", data?.length || 0, "sites found")
       const siteData = data as Site[]
       
       // Cargar focusMode desde localStorage o usar focus_mode de la base de datos
@@ -261,22 +278,25 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Si hay sitios, intentamos restaurar el sitio guardado o usar el primero
       if (sitesWithFocusMode.length > 0) {
         const savedSiteId = getLocalStorage("currentSiteId")
+        console.log("Saved site ID from localStorage:", savedSiteId)
+        
         const savedSite = savedSiteId ? sitesWithFocusMode.find(site => site.id === savedSiteId) : null
+        console.log("Found saved site:", savedSite ? "yes" : "no")
         
         // Si el sitio guardado existe en los datos actuales, lo usamos
         if (savedSite) {
+          console.log("Setting saved site as current:", savedSite.name)
           handleSetCurrentSite(savedSite)
         } 
         // Si no hay sitio guardado o no se encuentra, usamos el primero
         else {
+          console.log("No saved site found, using first site:", sitesWithFocusMode[0].name)
           handleSetCurrentSite(sitesWithFocusMode[0])
           setLocalStorage("currentSiteId", sitesWithFocusMode[0].id)
-          console.log("No saved site found or saved site not in current data. Using first site:", sitesWithFocusMode[0].name)
         }
       } else {
-        // Si no hay sitios, mostramos estado vacío pero sin usar sitio por defecto
-        setCurrentSite(null)
         console.log("No sites found for this user")
+        setCurrentSite(null)
       }
 
       if (!isInitialized) {

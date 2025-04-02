@@ -49,8 +49,56 @@ const nextConfig = {
     config.resolve.alias['react-smooth'] = path.join(__dirname, 'app/lib/react-smooth-polyfill.js');
     config.resolve.alias['aria-hidden'] = path.join(__dirname, 'app/lib/aria-hidden-polyfill.js');
     
+    // Add support for react-simple-maps
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      "topojson-client": require.resolve("topojson-client"),
+      "d3-geo": require.resolve("d3-geo"),
+      "d3-array": require.resolve("d3-array"),
+      "d3-scale": require.resolve("d3-scale"),
+      "d3-fetch": require.resolve("d3-fetch"),
+    };
+    
     return config;
   },
+  // Configuración para manejar errores de prerender
+  output: 'standalone',
+  // Ignorar errores de construcción para páginas específicas
+  onDemandEntries: {
+    // period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 25 * 1000,
+    // number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 2,
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin'
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; connect-src 'self' https://*.supabase.co https://*.supabase.in; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
+          }
+        ]
+      }
+    ]
+  }
 }
 
 module.exports = nextConfig 

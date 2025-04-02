@@ -48,6 +48,8 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
+import { ContentEditor } from "./components/content-editor"
+import { useRouter } from "next/navigation"
 
 // Definimos los tipos de estado del contenido
 const CONTENT_STATUSES = [
@@ -1338,6 +1340,7 @@ function ContentSkeleton() {
 
 export default function ContentPage() {
   const { currentSite } = useSite()
+  const router = useRouter()
   const [contentItems, setContentItems] = useState<ContentItem[]>([])
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1500,8 +1503,7 @@ export default function ContentPage() {
   }
 
   const handleContentClick = (content: ContentItem) => {
-    setSelectedContent(content)
-    setIsDetailOpen(true)
+    router.push(`/content/${content.id}`)
   }
 
   const handlePageChange = (page: number) => {
@@ -1773,15 +1775,19 @@ export default function ContentPage() {
       
       {/* Content Detail Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <SheetContent className="sm:max-w-md">
+        <SheetContent className="sm:max-w-full">
           <SheetHeader>
             <SheetTitle>Content Details</SheetTitle>
           </SheetHeader>
           {selectedContent && (
-            <ContentDetail 
+            <ContentEditor 
               content={selectedContent} 
               onClose={() => setIsDetailOpen(false)}
               segments={segments}
+              onSave={() => {
+                setIsDetailOpen(false)
+                loadContent()
+              }}
             />
           )}
         </SheetContent>

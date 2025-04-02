@@ -53,7 +53,7 @@ export function LeadDetail({ lead, segments, onUpdateLead, onClose, onDeleteLead
     name: lead.name,
     email: lead.email,
     phone: lead.phone,
-    company: lead.company,
+    company: lead.company || { name: "", website: "", industry: "", size: "" },
     position: lead.position,
     segment_id: lead.segment_id,
     status: lead.status,
@@ -300,13 +300,16 @@ export function LeadDetail({ lead, segments, onUpdateLead, onClose, onDeleteLead
                   <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
                   {isEditing ? (
                     <Input
-                      value={editForm.company || ""}
-                      onChange={(e) => setEditForm({...editForm, company: e.target.value || null})}
+                      value={editForm.company?.name || ""}
+                      onChange={(e) => setEditForm({
+                        ...editForm, 
+                        company: { ...editForm.company, name: e.target.value }
+                      })}
                       className="h-12 text-sm"
                       placeholder="Company name"
                     />
                   ) : (
-                    <p className="text-sm font-medium">{lead.company || "Not specified"}</p>
+                    <p className="text-sm font-medium">{lead.company?.name || "Not specified"}</p>
                   )}
                 </div>
               </div>

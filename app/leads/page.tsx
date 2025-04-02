@@ -62,17 +62,28 @@ function LeadsTable({
   const { currentSite } = useSite()
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   
+  // Debug logs
+  console.log('Leads:', leads)
+  console.log('Segments:', segments)
+  
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return "No Segment"
+    if (!segments || !Array.isArray(segments)) return "Unknown Segment"
     const segment = segments.find(s => s.id === segmentId)
     return segment?.name || "Unknown Segment"
   }
 
   // Función para truncar texto largo
-  const truncateText = (text: string, maxLength: number = 15) => {
-    if (!text || text.length <= maxLength) return text
-    return `${text.substring(0, maxLength)}...`
+  const truncateText = (text: any, maxLength: number = 15) => {
+    if (!text) return "-"
+    if (typeof text === 'object') {
+      if (text.name) return String(text.name)
+      return "-"
+    }
+    const stringValue = String(text)
+    if (stringValue.length <= maxLength) return stringValue
+    return `${stringValue.substring(0, maxLength)}...`
   }
 
   const statusStyles = {
@@ -98,69 +109,73 @@ function LeadsTable({
         </TableHeader>
         <TableBody>
             {leads.length > 0 ? (
-              leads.map((lead) => (
-            <TableRow 
-              key={lead.id}
-                  className={`group hover:bg-muted/50 transition-colors cursor-pointer ${selectedLead?.id === lead.id ? 'bg-primary/10 hover:bg-primary/15' : ''}`}
-                  onClick={() => onLeadClick(lead)}
-            >
-              <TableCell>
-                <div className="space-y-0.5">
-                  <p className="font-medium text-sm">{lead.name}</p>
-                  <p className="text-xs text-muted-foreground">{lead.email}</p>
-                </div>
-              </TableCell>
-              <TableCell className="font-medium">
-                {lead.phone || "-"}
-              </TableCell>
-              <TableCell className="font-medium">
-                {lead.company || "-"}
-              </TableCell>
-              <TableCell className="font-medium">
-                {lead.segment_id ? truncateText(getSegmentName(lead.segment_id)) : "No Segment"}
-              </TableCell>
-              <TableCell>
-                <Badge className={`${statusStyles[lead.status]}`}>
-                  {lead.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      window.open(`mailto:${lead.email}`)
-                    }}
+              leads.map((lead) => {
+                // Debug log for each lead
+                console.log('Rendering lead:', lead)
+                return (
+                  <TableRow 
+                    key={lead.id}
+                    className={`group hover:bg-muted/50 transition-colors cursor-pointer ${selectedLead?.id === lead.id ? 'bg-primary/10 hover:bg-primary/15' : ''}`}
+                    onClick={() => onLeadClick(lead)}
                   >
-                    <Mail className="h-4 w-4" />
-                    <span className="sr-only">Email</span>
-                  </Button>
-                  {lead.phone && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        window.open(`tel:${lead.phone}`)
-                      }}
-                    >
-                      <Phone className="h-4 w-4" />
-                      <span className="sr-only">Call</span>
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={6} className="h-24 text-center">
-              No leads found.
-            </TableCell>
-          </TableRow>
-        )}
+                    <TableCell>
+                      <div className="space-y-0.5">
+                        <p className="font-medium text-sm">{String(lead.name || '')}</p>
+                        <p className="text-xs text-muted-foreground">{String(lead.email || '')}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {truncateText(lead.phone)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {truncateText(lead.company)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {truncateText(getSegmentName(lead.segment_id))}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${statusStyles[lead.status]}`}>
+                        {String(lead.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            window.open(`mailto:${lead.email}`)
+                          }}
+                        >
+                          <Mail className="h-4 w-4" />
+                          <span className="sr-only">Email</span>
+                        </Button>
+                        {lead.phone && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.open(`tel:${lead.phone}`)
+                            }}
+                          >
+                            <Phone className="h-4 w-4" />
+                            <span className="sr-only">Call</span>
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  No leads found.
+                </TableCell>
+              </TableRow>
+            )}
         </TableBody>
       </Table>
       <div className="flex items-center justify-between px-6 py-4 border-t">
@@ -335,6 +350,7 @@ export default function LeadsPage() {
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return "No Segment"
+    if (!segments || !Array.isArray(segments)) return "Unknown Segment"
     const segment = segments.find(s => s.id === segmentId)
     return segment?.name || "Unknown Segment"
   }

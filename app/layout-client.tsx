@@ -7,12 +7,11 @@ import { TooltipProvider } from "./components/ui/tooltip"
 import { useState, useEffect } from "react"
 import { SiteProvider } from "./context/SiteContext"
 import { cn } from "@/lib/utils"
-import { AuthProvider } from './components/auth/auth-provider'
 import { Toaster } from "./components/ui/sonner"
 import { createClient } from "@/lib/supabase/client"
 import { type Segment } from "./requirements/types"
 import { ThemeProvider } from "./context/ThemeContext"
-import { LayoutProvider } from "./context/LayoutContext"
+import { LayoutProvider, useLayout } from "./context/LayoutContext"
 
 const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/segments": {
@@ -150,26 +149,16 @@ export default function LayoutClient({
 }) {
   const pathname = usePathname()
   const [isMounted, setIsMounted] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [segments, setSegments] = useState<Segment[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [breadcrumbFromEvent, setBreadcrumbFromEvent] = useState<React.ReactNode>(null)
   const [customTitle, setCustomTitle] = useState<string | null>(null)
+  const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
 
   // Inicialización crítica (ejecutar inmediatamente)
   useEffect(() => {
     setIsMounted(true)
-    
-    // Cargar estado del sidebar de forma inmediata
-    const saved = localStorage.getItem('sidebarCollapsed')
-    if (saved !== null) {
-      try {
-        setIsCollapsed(JSON.parse(saved))
-      } catch (error) {
-        console.error("Error parsing sidebar collapsed state:", error)
-      }
-    }
   }, [])
 
   // Operaciones no críticas (deferir)
@@ -231,17 +220,6 @@ export default function LayoutClient({
     return () => clearTimeout(fetchTimer)
   }, [isMounted, pathname])
 
-  // Guardar estado del sidebar (deferir)
-  useEffect(() => {
-    if (!isMounted) return
-
-    const saveTimer = setTimeout(() => {
-      localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed))
-    }, 1000)
-
-    return () => clearTimeout(saveTimer)
-  }, [isCollapsed, isMounted])
-
   // Si la ruta actual comienza con /chat, extraer el breadcrumb de los props de los hijos
   let pageCustomTitle: string | null = null;
   let customHelpText: string | null = null;
@@ -269,7 +247,7 @@ export default function LayoutClient({
     : (navigationTitles[pathname] || { title: "Dashboard" });
 
   const handleCollapse = () => {
-    setIsCollapsed((prev: boolean) => !prev)
+    setIsLayoutCollapsed(!isLayoutCollapsed)
   }
 
   // Determinar si estamos en la página de login
@@ -286,69 +264,61 @@ export default function LayoutClient({
 
   // Mostrar la página con posible indicador de error
   return (
-    <AuthProvider>
-      <SiteProvider>
-        <ThemeProvider defaultTheme="system" storageKey="theme">
-          <TooltipProvider>
-            {fetchError && (
-              <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
-                Error: {fetchError}
-              </div>
+    <>
+      {fetchError && (
+        <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
+          Error: {fetchError}
+        </div>
+      )}
+      {isLoginPage ? (
+        // Para la página de login, solo mostrar el contenido sin layout
+        <div className="min-h-screen w-full">
+          {children}
+        </div>
+      ) : (
+        // Para el resto de páginas, mostrar el layout completo
+        <div className="flex h-fit overflow-visible relative min-h-screen">
+          <Sidebar 
+            isCollapsed={isLayoutCollapsed} 
+            onCollapse={handleCollapse} 
+            className="flex-none fixed left-0 top-0 h-screen z-20"
+          />
+          <div 
+            className={cn(
+              "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
+              isLayoutCollapsed ? "ml-16" : "ml-64"
             )}
-            {isLoginPage ? (
-              // Para la página de login, solo mostrar el contenido sin layout
-              <div className="min-h-screen w-full">
-                {children}
-              </div>
-            ) : (
-              // Para el resto de páginas, mostrar el layout completo
-              <LayoutProvider isLayoutCollapsed={isCollapsed}>
-                <div className="flex h-fit overflow-visible relative min-h-screen">
-                  <Sidebar 
-                    isCollapsed={isCollapsed} 
-                    onCollapse={handleCollapse} 
-                    className="flex-none fixed left-0 top-0 h-screen z-20"
-                  />
-                  <div 
-                    className={cn(
-                      "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
-                      isCollapsed ? "ml-16" : "ml-64"
-                    )}
-                  >
-                    <TopBar 
-                      title={currentPage.title || ""}
-                      helpText={currentPage.helpText || undefined}
-                      isCollapsed={isCollapsed}
-                      onCollapse={handleCollapse}
-                      segments={segments}
-                      className="fixed top-0 right-0 z-10"
-                      style={{ 
-                        left: isCollapsed ? '4rem' : '16rem',
-                      }}
-                      breadcrumb={customBreadcrumb}
-                    />
-                    <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
-                    <main 
-                      className={cn(
-                        "flex-1",
-                        isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
-                      )} 
-                      style={
-                        isChatPage ? 
-                        { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
-                        : {}
-                      }
-                    >
-                      {children}
-                    </main>
-                  </div>
-                </div>
-              </LayoutProvider>
-            )}
-            <Toaster />
-          </TooltipProvider>
-        </ThemeProvider>
-      </SiteProvider>
-    </AuthProvider>
+          >
+            <TopBar 
+              title={currentPage.title || ""}
+              helpText={currentPage.helpText || undefined}
+              isCollapsed={isLayoutCollapsed}
+              onCollapse={handleCollapse}
+              segments={segments}
+              className="fixed top-0 right-0 z-10"
+              style={{ 
+                left: isLayoutCollapsed ? '4rem' : '16rem',
+              }}
+              breadcrumb={customBreadcrumb}
+            />
+            <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+            <main 
+              className={cn(
+                "flex-1",
+                isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
+              )} 
+              style={
+                isChatPage ? 
+                { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
+                : {}
+              }
+            >
+              {children}
+            </main>
+          </div>
+        </div>
+      )}
+      <Toaster />
+    </>
   )
 } 

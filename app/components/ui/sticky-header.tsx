@@ -19,22 +19,14 @@ export function StickyHeader({
   isLayoutCollapsed: propIsLayoutCollapsed,
   showAIButton = true 
 }: StickyHeaderProps) {
-  // Usar el contexto si está disponible, de lo contrario usar la prop
-  let isCollapsed = propIsLayoutCollapsed;
   const pathname = usePathname();
+  const layoutContext = useLayout();
+  
+  // Siempre usar el contexto si está disponible, de lo contrario usar la prop
+  const isCollapsed = layoutContext?.isLayoutCollapsed ?? propIsLayoutCollapsed;
   
   // Check if we're in the leads detail page
   const isLeadsDetailPage = pathname?.startsWith('/leads/') && pathname !== '/leads';
-  
-  try {
-    const layoutContext = useLayout();
-    // Si el contexto está disponible, usarlo en lugar de la prop
-    isCollapsed = layoutContext.isLayoutCollapsed;
-  } catch (error) {
-    // Si hay un error al usar el contexto (por ejemplo, si no está disponible),
-    // seguimos usando el valor de la prop
-    console.warn("LayoutContext no disponible, usando prop isLayoutCollapsed");
-  }
   
   return (
     <div className={cn(
@@ -44,7 +36,7 @@ export function StickyHeader({
       className
     )}>
       <div className={cn(
-        "sticky w-[calc(100vw-256px)]", 
+        "sticky transition-all duration-200 ease-in-out",
         isCollapsed ? "left-[64px] w-[calc(100vw-64px)]" : "left-[256px] w-[calc(100vw-256px)]"
       )}>
         {children}

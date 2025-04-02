@@ -3,7 +3,13 @@ export interface Lead {
   name: string
   email: string
   phone: string | null
-  company: string | null
+  company: {
+    name?: string
+    website?: string
+    industry?: string
+    size?: string
+    [key: string]: any
+  } | null
   position: string | null
   segment_id: string | null
   status: "new" | "contacted" | "qualified" | "converted" | "lost"

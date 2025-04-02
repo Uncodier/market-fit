@@ -1,18 +1,20 @@
 "use client"
 
-import dynamic from 'next/dynamic'
-import LayoutSkeleton from '@/app/components/ui/layout-skeleton'
-
-// Importar dinámicamente layout-client.tsx desde un componente cliente
-const LayoutClient = dynamic(() => import('./layout-client'), {
-  ssr: true, // Habilitar SSR para el layout
-  loading: () => <LayoutSkeleton />
-})
+import { usePathname } from "next/navigation"
+import LayoutClient from "./layout-client"
+import { shouldUseLayout } from "./config/routes"
 
 export default function ClientWrapper({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <LayoutClient>{children}</LayoutClient>
+  const pathname = usePathname()
+  const useLayout = shouldUseLayout(pathname)
+
+  if (useLayout) {
+    return <LayoutClient>{children}</LayoutClient>
+  }
+
+  return <>{children}</>
 } 

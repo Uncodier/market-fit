@@ -13,16 +13,16 @@ interface ProvidersProps {
 
 export default function Providers({ children }: ProvidersProps) {
   return (
-    <ThemeProvider>
-      <LayoutProvider isLayoutCollapsed={false}>
-        <SiteProvider>
-          <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <LayoutProvider>
+          <SiteProvider>
             <TooltipProvider>
               {children}
             </TooltipProvider>
-          </AuthProvider>
-        </SiteProvider>
-      </LayoutProvider>
-    </ThemeProvider>
+          </SiteProvider>
+        </LayoutProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 } 

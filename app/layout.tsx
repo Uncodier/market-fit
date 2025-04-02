@@ -6,6 +6,8 @@ import { Toaster } from "sonner"
 import ClientWrapper from './client-wrapper'
 import Script from 'next/script'
 import Providers from "./providers/Providers"
+import { ThemeProvider } from "./hooks/use-theme"
+import { shouldUseLayout } from './config/routes'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -38,14 +40,16 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <Providers>
-          <main className="min-h-screen bg-background">
-            <ClientWrapper>
-              {children}
-            </ClientWrapper>
-            <Toaster />
-          </main>
-        </Providers>
+        <ThemeProvider>
+          <Providers>
+            <main className="min-h-screen bg-background">
+              <ClientWrapper>
+                {children}
+              </ClientWrapper>
+              <Toaster />
+            </main>
+          </Providers>
+        </ThemeProvider>
         <Script id="safari-detection-and-fix">
           {`
             (function() {

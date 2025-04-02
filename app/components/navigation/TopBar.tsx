@@ -104,6 +104,35 @@ export function TopBar({
 
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Get the default title from the first route segment
+  const getDefaultTitle = useCallback(() => {
+    const pathSegments = pathname.split('/').filter(Boolean)
+    if (pathSegments.length === 0) return "Dashboard"
+    
+    const firstSegment = pathSegments[0]
+    const routeTitles: Record<string, string> = {
+      'dashboard': 'Dashboard',
+      'agents': 'Agents',
+      'segments': 'Segments',
+      'experiments': 'Experiments',
+      'requirements': 'Requirements',
+      'leads': 'Leads',
+      'assets': 'Assets',
+      'content': 'Content',
+      'settings': 'Settings',
+      'profile': 'Profile',
+      'help': 'Help',
+      'chat': 'Chat'
+    }
+    
+    return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
+  }, [pathname])
+
+  // Set the default title when the pathname changes
+  useEffect(() => {
+    setCustomTitle(getDefaultTitle())
+  }, [pathname, getDefaultTitle])
+
   // Escuchar eventos de actualización del breadcrumb
   useEffect(() => {
     const handleBreadcrumbUpdate = (event: any) => {
@@ -252,6 +281,24 @@ export function TopBar({
       breadcrumbItems.push({
         href: `/${pathSegments[0]}/${pathSegments[1]}`,
         label: customTitle || 'Lead Details',
+        isCurrent: true
+      });
+      
+      return breadcrumbItems;
+    }
+    
+    // Manejar caso especial para la página de detalle del contenido
+    if (pathSegments[0] === 'content' && pathSegments.length === 2) {
+      breadcrumbItems.push({
+        href: '/content',
+        label: 'Content',
+        isCurrent: false
+      });
+      
+      // Usar el título personalizado si está disponible
+      breadcrumbItems.push({
+        href: `/${pathSegments[0]}/${pathSegments[1]}`,
+        label: customTitle || 'Content Details',
         isCurrent: true
       });
       
@@ -633,7 +680,7 @@ export function TopBar({
               </ol>
             </nav>
           ) : (
-            <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{customTitle || getDefaultTitle()}</h1>
           )}
           
           {helpText && (

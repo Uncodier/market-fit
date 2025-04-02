@@ -399,27 +399,64 @@ const AnalysisSkeleton = () => (
   </div>
 );
 
-// Lazy load components
-const SegmentAnalysisTab = dynamic(() => import('./components/SegmentAnalysisTab'), { 
-  loading: () => <AnalysisSkeleton /> 
-})
+// Lazy load components with error boundaries and suspense
+const SegmentAnalysisTab = dynamic(
+  () => import('./components/SegmentAnalysisTab').catch(() => {
+    return () => <div className="p-4 text-center">Error loading analysis tab. Please try refreshing the page.</div>;
+  }),
+  { 
+    loading: () => <AnalysisSkeleton />,
+    ssr: false,
+    suspense: true
+  }
+);
 
-const SegmentThemesTab = dynamic(() => import('./components/SegmentThemesTab'), { 
-  loading: () => <TopicsSkeleton /> 
-})
+const SegmentThemesTab = dynamic(
+  () => import('./components/SegmentThemesTab').catch(() => {
+    return () => <div className="p-4 text-center">Error loading themes tab. Please try refreshing the page.</div>;
+  }),
+  { 
+    loading: () => <TopicsSkeleton />,
+    ssr: false,
+    suspense: true
+  }
+);
 
-const SegmentICPTab = dynamic(() => import('./components/SegmentICPTab'), { 
-  loading: () => <ICPProfileSkeleton /> 
-})
+const SegmentICPTab = dynamic(
+  () => import('./components/SegmentICPTab').catch(() => {
+    return () => <div className="p-4 text-center">Error loading ICP tab. Please try refreshing the page.</div>;
+  }),
+  { 
+    loading: () => <ICPProfileSkeleton />,
+    ssr: false,
+    suspense: true
+  }
+);
 
-const SegmentUrlModal = dynamic(() => import('./components/SegmentUrlModal'))
+const SegmentUrlModal = dynamic(
+  () => import('./components/SegmentUrlModal').catch(() => {
+    return () => <div className="p-4 text-center">Error loading URL modal. Please try refreshing the page.</div>;
+  }),
+  {
+    ssr: false,
+    suspense: true
+  }
+);
 
+// Wrap the component with Suspense
 export default function SegmentDetailPage({ params }: { params: { id: string } }) {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <SegmentDetailPageContent params={params} />
+    </Suspense>
+  );
+}
+
+// Move the main component logic to a separate component
+function SegmentDetailPageContent({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { currentSite } = useSite()
-  // Unwrap params using React.use() before accessing its properties
-  const unwrappedParams = React.use(params as any) as { id: string }
-  const segmentId = unwrappedParams.id
+  const segmentId = params.id
   
   const [segment, setSegment] = useState<Segment | null>(null)
   const [isActive, setIsActive] = useState(false)

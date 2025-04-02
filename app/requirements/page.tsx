@@ -1184,13 +1184,6 @@ export default function RequirementsPage() {
 
   return (
     <div className="flex-1 p-0">
-      {/* Loading indicator */}
-      {isLoading && (
-        <div className="fixed bottom-4 right-4 bg-blue-100 text-blue-800 p-4 rounded-md shadow-md z-50 animate-pulse">
-          Loading requirements...
-        </div>
-      )}
-      
       {/* Modal de filtros */}
       <FilterModal
         isOpen={isFilterModalOpen}

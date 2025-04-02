@@ -32,12 +32,11 @@ import { cn } from "@/lib/utils"
 import { AgentTool } from "@/app/components/agents/agent-tool"
 import { AgentIntegration } from "@/app/components/agents/agent-integration"
 import { ContextFile } from "@/app/components/agents/context-file"
+import { AgentTrigger } from "@/app/components/agents/agent-trigger"
 
-export default function AgentManagePage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+export default function AgentManagePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  // Usar React.use() para acceder a params.id
-  const unwrappedParams = React.use(params as Promise<{ id: string }>)
-  const agentId = unwrappedParams.id
+  const agentId = params.id
   
   // Find the agent from the mock data
   const agent = agents.find(a => a.id === agentId)
@@ -95,6 +94,15 @@ export default function AgentManagePage({ params }: { params: Promise<{ id: stri
     { id: "file3", name: "Pricing.xlsx", path: "/docs/pricing.xlsx" },
   ])
   
+  // Mock triggers data
+  const [triggers, setTriggers] = useState([
+    { id: "message", name: "New Message", description: "Trigger when a new message is received", enabled: true },
+    { id: "schedule", name: "Scheduled", description: "Trigger based on a schedule", enabled: false },
+    { id: "webhook", name: "Webhook", description: "Trigger via webhook endpoint", enabled: true },
+    { id: "email", name: "Email", description: "Trigger on new email", enabled: false },
+    { id: "api", name: "API Call", description: "Trigger via API request", enabled: false },
+  ])
+  
   // Handle tool toggle
   const handleToolToggle = (toolId: string, enabled: boolean) => {
     setTools(tools.map(tool => 
@@ -125,6 +133,13 @@ export default function AgentManagePage({ params }: { params: Promise<{ id: stri
     setContextFiles([...contextFiles, newFile])
   }
   
+  // Handle trigger toggle
+  const handleTriggerToggle = (triggerId: string, enabled: boolean) => {
+    setTriggers(triggers.map(trigger => 
+      trigger.id === triggerId ? { ...trigger, enabled } : trigger
+    ))
+  }
+  
   // Handle save
   const handleSave = () => {
     setIsSaving(true)
@@ -138,7 +153,8 @@ export default function AgentManagePage({ params }: { params: Promise<{ id: stri
         prompt,
         tools,
         integrations,
-        contextFiles
+        contextFiles,
+        triggers
       })
       // Here you would save the data to your backend
       setIsSaving(false)
@@ -172,6 +188,7 @@ export default function AgentManagePage({ params }: { params: Promise<{ id: stri
             <TabsList>
               <TabsTrigger value="basic">Basic Information</TabsTrigger>
               <TabsTrigger value="tools">Tools</TabsTrigger>
+              <TabsTrigger value="triggers">Triggers</TabsTrigger>
               <TabsTrigger value="integrations">Integrations</TabsTrigger>
               <TabsTrigger value="context">Context Files</TabsTrigger>
             </TabsList>
@@ -260,6 +277,31 @@ export default function AgentManagePage({ params }: { params: Promise<{ id: stri
                     description={tool.description}
                     enabled={tool.enabled}
                     onToggle={handleToolToggle}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {activeTab === "triggers" && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Triggers</CardTitle>
+              <CardDescription>
+                Configure when and how your agent should be activated
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {triggers.map(trigger => (
+                  <AgentTrigger 
+                    key={trigger.id}
+                    id={trigger.id}
+                    name={trigger.name}
+                    description={trigger.description}
+                    enabled={trigger.enabled}
+                    onToggle={handleTriggerToggle}
                   />
                 ))}
               </div>

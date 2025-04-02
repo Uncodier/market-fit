@@ -716,12 +716,53 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
             <div className="bg-muted/20 p-4 rounded-lg">
               <h4 className="text-sm font-medium mb-3">Secondary Education</h4>
               <div className="flex flex-wrap gap-2">
-                {Array.isArray(demographics.education.secondary) ? 
-                  demographics.education.secondary.map((edu: string, index: number) => (
-                    <Badge key={index} variant="outline" className="py-1.5 px-3 text-sm bg-muted/30">{edu}</Badge>
-                  )) : 
-                  <p className="text-md font-medium">{demographics.education.secondary}</p>
-                }
+                {(() => {
+                  const secondary = demographics.education.secondary;
+                  
+                  // Si es un array
+                  if (Array.isArray(secondary)) {
+                    return secondary.map((edu: string, index: number) => (
+                      <Badge key={index} variant="outline" className="py-1.5 px-3 text-sm bg-muted/30">
+                        {edu}
+                      </Badge>
+                    ));
+                  }
+                  
+                  // Si es un string
+                  if (typeof secondary === 'string') {
+                    return (
+                      <Badge variant="outline" className="py-1.5 px-3 text-sm bg-muted/30">
+                        {secondary}
+                      </Badge>
+                    );
+                  }
+                  
+                  // Si es un objeto
+                  if (typeof secondary === 'object' && secondary !== null) {
+                    const entries = Object.entries(secondary);
+                    if (entries.length > 0) {
+                      return entries.map(([key, value], index) => {
+                        // Asegurarnos de que el valor sea una cadena
+                        const displayValue = typeof value === 'string' ? value : 
+                                           typeof value === 'number' ? value.toString() :
+                                           typeof value === 'object' ? JSON.stringify(value) : 
+                                           String(value);
+                        return (
+                          <Badge key={index} variant="outline" className="py-1.5 px-3 text-sm bg-muted/30">
+                            {displayValue}
+                          </Badge>
+                        );
+                      });
+                    }
+                  }
+                  
+                  // Si no es ninguno de los anteriores o es un objeto vacío
+                  return (
+                    <Badge variant="outline" className="py-1.5 px-3 text-sm bg-muted/30">
+                      No secondary education data
+                    </Badge>
+                  );
+                })()}
               </div>
             </div>
           )}
