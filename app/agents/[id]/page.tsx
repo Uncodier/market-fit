@@ -33,6 +33,7 @@ import { AgentTool } from "@/app/components/agents/agent-tool"
 import { AgentIntegration } from "@/app/components/agents/agent-integration"
 import { ContextFile } from "@/app/components/agents/context-file"
 import { AgentTrigger } from "@/app/components/agents/agent-trigger"
+import { SearchInput } from "@/app/components/ui/search-input"
 
 export default function AgentManagePage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -102,6 +103,11 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
     { id: "email", name: "Email", description: "Trigger on new email", enabled: false },
     { id: "api", name: "API Call", description: "Trigger via API request", enabled: false },
   ])
+  
+  const [toolSearch, setToolSearch] = useState("")
+  const [triggerSearch, setTriggerSearch] = useState("")
+  const [integrationSearch, setIntegrationSearch] = useState("")
+  const [contextSearch, setContextSearch] = useState("")
   
   // Handle tool toggle
   const handleToolToggle = (toolId: string, enabled: boolean) => {
@@ -182,33 +188,64 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
   
   return (
     <div className="flex-1 p-0">
-      <StickyHeader>
-        <div className="flex items-center justify-between px-16 w-full">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-auto">
-            <TabsList>
-              <TabsTrigger value="basic">Basic Information</TabsTrigger>
-              <TabsTrigger value="tools">Tools</TabsTrigger>
-              <TabsTrigger value="triggers">Triggers</TabsTrigger>
-              <TabsTrigger value="integrations">Integrations</TabsTrigger>
-              <TabsTrigger value="context">Context Files</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              "Saving..."
-            ) : (
-              <>
-                <SaveIcon className="h-4 w-4 mr-2" />
-                Save changes
-              </>
-            )}
-          </Button>
-        </div>
-      </StickyHeader>
-      
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        {activeTab === "basic" && (
-          <>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="h-full">
+        <StickyHeader>
+          <div className="px-16 pt-0">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-8">
+                <TabsList>
+                  <TabsTrigger value="basic">Basic Information</TabsTrigger>
+                  <TabsTrigger value="tools">Tools</TabsTrigger>
+                  <TabsTrigger value="triggers">Triggers</TabsTrigger>
+                  <TabsTrigger value="integrations">Integrations</TabsTrigger>
+                  <TabsTrigger value="context">Context Files</TabsTrigger>
+                </TabsList>
+                {activeTab === "tools" && (
+                  <SearchInput
+                    placeholder="Search tools..."
+                    value={toolSearch}
+                    onSearch={setToolSearch}
+                  />
+                )}
+                {activeTab === "triggers" && (
+                  <SearchInput
+                    placeholder="Search triggers..."
+                    value={triggerSearch}
+                    onSearch={setTriggerSearch}
+                  />
+                )}
+                {activeTab === "integrations" && (
+                  <SearchInput
+                    placeholder="Search integrations..."
+                    value={integrationSearch}
+                    onSearch={setIntegrationSearch}
+                  />
+                )}
+                {activeTab === "context" && (
+                  <SearchInput
+                    placeholder="Search context files..."
+                    value={contextSearch}
+                    onSearch={setContextSearch}
+                  />
+                )}
+              </div>
+              <div className="ml-auto">
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    "Saving..."
+                  ) : (
+                    <>
+                      <SaveIcon className="h-4 w-4 mr-2" />
+                      Save changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </StickyHeader>
+        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
+          <TabsContent value="basic" className="space-y-4">
             <Card className="mb-8">
               <CardHeader>
                 <CardTitle>Basic Information</CardTitle>
@@ -256,126 +293,220 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
                 />
               </CardContent>
             </Card>
-          </>
-        )}
-        
-        {activeTab === "tools" && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Available Tools</CardTitle>
-              <CardDescription>
-                Enable or disable tools that your agent can use
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {tools.map(tool => (
-                  <AgentTool 
-                    key={tool.id}
-                    id={tool.id}
-                    name={tool.name}
-                    description={tool.description}
-                    enabled={tool.enabled}
-                    onToggle={handleToolToggle}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {activeTab === "triggers" && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Triggers</CardTitle>
-              <CardDescription>
-                Configure when and how your agent should be activated
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {triggers.map(trigger => (
-                  <AgentTrigger 
-                    key={trigger.id}
-                    id={trigger.id}
-                    name={trigger.name}
-                    description={trigger.description}
-                    enabled={trigger.enabled}
-                    onToggle={handleTriggerToggle}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {activeTab === "integrations" && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Integrations</CardTitle>
-              <CardDescription>
-                Connect your agent to external services and data sources
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {integrations.map(integration => (
-                  <AgentIntegration 
-                    key={integration.id}
-                    id={integration.id}
-                    name={integration.name}
-                    description={integration.description}
-                    connected={integration.connected}
-                    onToggle={handleIntegrationToggle}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {activeTab === "context" && (
-          <Card className="mb-8">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Context Files</CardTitle>
+          </TabsContent>
+
+          <TabsContent value="tools" className="space-y-4">
+            {/* Favorites Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Favorites</CardTitle>
                 <CardDescription>
-                  Add files that provide context for your agent
+                  Your most used tools
                 </CardDescription>
-              </div>
-              <Button onClick={handleAddFile} size="sm">
-                Add File
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {contextFiles.length > 0 ? (
-                <div className="space-y-2">
-                  {contextFiles.map(file => (
-                    <ContextFile 
-                      key={file.id}
-                      id={file.id}
-                      name={file.name}
-                      path={file.path}
-                      onRemove={handleFileRemove}
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {tools.slice(0, 2).map(tool => (
+                    <AgentTool 
+                      key={tool.id}
+                      id={tool.id}
+                      name={tool.name}
+                      description={tool.description}
+                      enabled={tool.enabled}
+                      onToggle={handleToolToggle}
                     />
                   ))}
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <FileText className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium mb-1">No context files added</p>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Add files to provide additional context for your agent
-                  </p>
-                  <Button onClick={handleAddFile} size="sm">
-                    Add File
-                  </Button>
+              </CardContent>
+            </Card>
+
+            {/* All Tools Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>All Tools</CardTitle>
+                <CardDescription>
+                  Enable or disable tools that your agent can use
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {tools
+                    .filter(tool => 
+                      tool.name.toLowerCase().includes(toolSearch.toLowerCase()) ||
+                      tool.description.toLowerCase().includes(toolSearch.toLowerCase())
+                    )
+                    .map(tool => (
+                      <AgentTool 
+                        key={tool.id}
+                        id={tool.id}
+                        name={tool.name}
+                        description={tool.description}
+                        enabled={tool.enabled}
+                        onToggle={handleToolToggle}
+                      />
+                    ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="triggers" className="space-y-4">
+            {/* Favorites Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Favorites</CardTitle>
+                <CardDescription>
+                  Your most used triggers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {triggers.slice(0, 2).map(trigger => (
+                    <AgentTrigger 
+                      key={trigger.id}
+                      id={trigger.id}
+                      name={trigger.name}
+                      description={trigger.description}
+                      enabled={trigger.enabled}
+                      onToggle={handleTriggerToggle}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* All Triggers Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>All Triggers</CardTitle>
+                <CardDescription>
+                  Configure when and how your agent should be activated
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {triggers
+                    .filter(trigger => 
+                      trigger.name.toLowerCase().includes(triggerSearch.toLowerCase()) ||
+                      trigger.description.toLowerCase().includes(triggerSearch.toLowerCase())
+                    )
+                    .map(trigger => (
+                      <AgentTrigger 
+                        key={trigger.id}
+                        id={trigger.id}
+                        name={trigger.name}
+                        description={trigger.description}
+                        enabled={trigger.enabled}
+                        onToggle={handleTriggerToggle}
+                      />
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="integrations" className="space-y-4">
+            {/* Favorites Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Favorites</CardTitle>
+                <CardDescription>
+                  Your most used integrations
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {integrations.slice(0, 2).map(integration => (
+                    <AgentIntegration 
+                      key={integration.id}
+                      id={integration.id}
+                      name={integration.name}
+                      description={integration.description}
+                      connected={integration.connected}
+                      onToggle={handleIntegrationToggle}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* All Integrations Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>All Integrations</CardTitle>
+                <CardDescription>
+                  Connect your agent to external services
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {integrations
+                    .filter(integration => 
+                      integration.name.toLowerCase().includes(integrationSearch.toLowerCase()) ||
+                      integration.description.toLowerCase().includes(integrationSearch.toLowerCase())
+                    )
+                    .map(integration => (
+                      <AgentIntegration 
+                        key={integration.id}
+                        id={integration.id}
+                        name={integration.name}
+                        description={integration.description}
+                        connected={integration.connected}
+                        onToggle={handleIntegrationToggle}
+                      />
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="context" className="space-y-4">
+            <Card className="mb-8">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Context Files</CardTitle>
+                  <CardDescription>
+                    Add files that provide context for your agent
+                  </CardDescription>
+                </div>
+                <Button onClick={handleAddFile} size="sm">
+                  Add File
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {contextFiles.length > 0 ? (
+                  <div className="space-y-2">
+                    {contextFiles
+                      .filter(file => 
+                        file.name.toLowerCase().includes(contextSearch.toLowerCase())
+                      )
+                      .map(file => (
+                        <ContextFile 
+                          key={file.id}
+                          id={file.id}
+                          name={file.name}
+                          path={file.path}
+                          onRemove={handleFileRemove}
+                        />
+                      ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <FileText className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium mb-1">No context files added</p>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Add files to provide additional context for your agent
+                    </p>
+                    <Button onClick={handleAddFile} size="sm">
+                      Add File
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   )
 } 
