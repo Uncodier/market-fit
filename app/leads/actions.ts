@@ -16,6 +16,7 @@ const LeadSchema = z.object({
     }).nullable(),
     position: z.string().nullable(),
     segment_id: z.string().nullable(),
+    campaign_id: z.string().nullable(),
     status: z.enum(["new", "contacted", "qualified", "converted", "lost"]),
     notes: z.string().nullable(),
     origin: z.string().nullable(),
@@ -45,6 +46,7 @@ const SingleLeadSchema = z.object({
     }).nullable(),
     position: z.string().nullable(),
     segment_id: z.string().nullable(),
+    campaign_id: z.string().nullable(),
     status: z.enum(["new", "contacted", "qualified", "converted", "lost"]),
     notes: z.string().nullable(),
     origin: z.string().nullable(),
@@ -116,6 +118,7 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
         company,
         position,
         segment_id,
+        campaign_id,
         status,
         notes,
         origin,
@@ -157,6 +160,7 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         company,
         position,
         segment_id,
+        campaign_id,
         status,
         notes,
         origin,
@@ -176,6 +180,44 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
   } catch (error) {
     console.error("Error loading leads:", error)
     return { error: "Error al cargar los leads", leads: [] }
+  }
+}
+
+export async function getLeadsByCampaignId(campaign_id: string, site_id: string): Promise<LeadResponse> {
+  try {
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase
+      .from("leads")
+      .select(`
+        id,
+        name,
+        email,
+        phone,
+        company,
+        position,
+        segment_id,
+        campaign_id,
+        status,
+        notes,
+        origin,
+        created_at,
+        updated_at,
+        last_contact,
+        site_id,
+        user_id
+      `)
+      .eq('campaign_id', campaign_id)
+      .eq('site_id', site_id)
+      .order("created_at", { ascending: false })
+
+    if (error) throw error
+
+    // Return empty array instead of null if no data
+    return { leads: data || [] }
+  } catch (error) {
+    console.error("Error loading campaign leads:", error)
+    return { error: "Error loading campaign leads", leads: [] }
   }
 }
 

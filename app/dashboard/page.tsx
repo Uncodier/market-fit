@@ -5,10 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { RecentActivity } from "@/app/components/dashboard/recent-activity"
 import { Overview } from "@/app/components/dashboard/overview"
 import { SegmentMetrics } from "@/app/components/dashboard/segment-metrics"
+import { CampaignRevenueDonut, formattedRevenueTotal } from "@/app/components/dashboard/campaign-revenue-donut"
+import { CostReports } from "@/app/components/dashboard/cost-reports"
+import { SalesReports } from "@/app/components/dashboard/sales-reports"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { HelpCircle } from "@/app/components/ui/icons"
 import { useAuth } from "@/app/hooks/use-auth"
+import { CohortTables } from "@/app/components/dashboard/cohort-tables"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -24,8 +28,8 @@ export default function DashboardPage() {
                 <TabsList>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                  <TabsTrigger value="reports">Reports</TabsTrigger>
-                  <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                  <TabsTrigger value="costs">Cost Reports</TabsTrigger>
+                  <TabsTrigger value="sales">Sales Reports</TabsTrigger>
                 </TabsList>
               </div>
               <div className="ml-auto">
@@ -253,7 +257,37 @@ export default function DashboardPage() {
                   <SegmentMetrics />
                 </CardContent>
               </Card>
+              <Card className="col-span-3">
+                <CardHeader>
+                  <CardTitle>Revenue by Campaign</CardTitle>
+                  <CardDescription>
+                    Distribution of revenue across marketing campaigns - {formattedRevenueTotal}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <CampaignRevenueDonut />
+                </CardContent>
+              </Card>
             </div>
+            <div className="grid gap-4 grid-cols-1">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cohort Analysis</CardTitle>
+                  <CardDescription>
+                    Weekly retention metrics for sales and usage cohorts.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <CohortTables />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="costs" className="space-y-4">
+            <CostReports />
+          </TabsContent>
+          <TabsContent value="sales" className="space-y-4">
+            <SalesReports />
           </TabsContent>
         </div>
       </Tabs>

@@ -13,6 +13,7 @@ export type ContentItem = {
   text: string | null
   status: string
   segment_id: string | null
+  campaign_id: string | null
   site_id: string
   author_id: string | null
   user_id: string | null
@@ -23,6 +24,7 @@ export type ContentItem = {
   word_count: number | null
   estimated_reading_time: number | null
   seo_score: number | null
+  performance_rating: number | null
 }
 
 export interface ContentResponse {
@@ -90,6 +92,7 @@ export async function createContent({
   description,
   content_type,
   segment_id,
+  campaign_id,
   tags,
   content
 }: {
@@ -98,6 +101,7 @@ export async function createContent({
   description?: string
   content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
   segment_id?: string | null
+  campaign_id?: string | null
   tags?: string[] | null
   content?: string
 }) {
@@ -112,6 +116,7 @@ export async function createContent({
         description,
         content_type,
         segment_id,
+        campaign_id,
         tags,
         content,
         status: 'draft',
@@ -169,18 +174,22 @@ export async function updateContent({
   description,
   content_type,
   segment_id,
+  campaign_id,
   tags,
   content,
-  text
+  text,
+  performance_rating
 }: {
   contentId: string
   title: string
   description?: string
   content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
   segment_id?: string | null
+  campaign_id?: string | null
   tags?: string[] | null
   content?: string
   text?: string
+  performance_rating?: number | null
 }) {
   try {
     const supabase = await createServiceClient()
@@ -192,8 +201,10 @@ export async function updateContent({
         description,
         content_type,
         segment_id,
+        campaign_id,
         tags,
         text,
+        performance_rating,
         updated_at: new Date().toISOString()
       })
       .eq('id', contentId)

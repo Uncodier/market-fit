@@ -33,7 +33,8 @@ export async function createExperiment(data: ExperimentFormValues) {
         conversion: data.conversion,
         roi: data.roi,
         site_id: data.site_id,
-        user_id: data.user_id
+        user_id: data.user_id,
+        campaign_id: data.campaign_id
       })
       .select()
       .single()

@@ -10,7 +10,7 @@ import {
 } from "@/app/components/ui/dialog"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { PlusCircle, FlaskConical, FileText, Users, XCircle } from "@/app/components/ui/icons"
+import { PlusCircle, FlaskConical, FileText, Users, XCircle, Tag } from "@/app/components/ui/icons"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect } from "react"
@@ -25,6 +25,7 @@ import { createClient } from "@/lib/supabase/client"
 import { type ExperimentFormValues } from "@/app/experiments/actions"
 import { experimentFormSchema } from "@/app/experiments/schema"
 import * as z from "zod"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 
 // Marca para React DevTools
 if (typeof window !== "undefined") {
@@ -40,12 +41,19 @@ interface Segment {
   description: string
 }
 
+interface Campaign {
+  id: string
+  title: string
+  description: string
+}
+
 interface CreateExperimentDialogProps {
   segments: Segment[]
+  campaigns?: Campaign[]
   onCreateExperiment: (values: ExperimentFormValues) => Promise<{ data?: any; error?: string }>
 }
 
-export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateExperimentDialogProps) {
+export function CreateExperimentDialog({ segments, campaigns = [], onCreateExperiment }: CreateExperimentDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [dialogState, setDialogState] = useState({
@@ -58,6 +66,14 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
   const { user } = useAuth()
   const { currentSite } = useSite()
 
+  // Log segments and campaigns when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      console.log('CreateExperimentDialog opened with segments:', segments);
+      console.log('CreateExperimentDialog opened with campaigns:', campaigns);
+    }
+  }, [isOpen, segments, campaigns]);
+
   const form = useForm<ExperimentFormValues>({
     resolver: zodResolver(experimentFormSchema),
     defaultValues: {
@@ -65,6 +81,7 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
       description: "",
       hypothesis: "",
       segments: [],
+      campaign_id: null,
       status: "draft",
       start_date: null,
       end_date: null,
@@ -97,6 +114,15 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
       formData: form.getValues()
     }))
   }, [form.formState.isValid, form.formState.isDirty, form])
+
+  // Debug component renders and updates to find segment display issue
+  useEffect(() => {
+    console.log('CreateExperimentDialog segments updated:', {
+      count: segments.length,
+      firstSegment: segments.length > 0 ? segments[0] : null,
+      isArrayType: Array.isArray(segments)
+    });
+  }, [segments]);
 
   const handleClose = () => {
     if (isLoading) return
@@ -133,6 +159,11 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
       values.user_id = user.id
       values.site_id = currentSite.id
       values.preview_url = currentSite.url || values.preview_url
+
+      console.log("Submitting experiment with data:", {
+        ...values,
+        campaign: values.campaign_id ? campaigns.find(c => c.id === values.campaign_id)?.title : null
+      });
 
       const { data, error } = await onCreateExperiment(values)
 
@@ -240,6 +271,7 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
                 </p>
               )}
             </div>
+            
             <div className="grid gap-2">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -247,41 +279,47 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
               </div>
               <ScrollArea className="h-[200px] rounded-md border">
                 <div className="p-4">
-                  {segments.map((segment) => (
-                    <div 
-                      key={segment.id} 
-                      className={cn(
-                        "flex items-center justify-between space-x-3 space-y-0 rounded-lg border p-4 mb-2 last:mb-0",
-                        "transition-colors hover:bg-muted/50"
-                      )}
-                    >
-                      <div className="grid gap-1.5 leading-none">
-                        <label
-                          htmlFor={`segment-${segment.id}`}
-                          className="text-sm font-medium leading-none cursor-pointer"
-                        >
-                          {segment.name}
-                        </label>
-                        <p className="text-sm text-muted-foreground">
-                          {segment.description}
-                        </p>
-                      </div>
-                      <Switch
-                        id={`segment-${segment.id}`}
-                        onCheckedChange={(checked) => {
-                          const currentSegments = form.getValues("segments")
-                          if (checked) {
-                            form.setValue("segments", [...currentSegments, segment.id])
-                          } else {
-                            form.setValue(
-                              "segments",
-                              currentSegments.filter((id) => id !== segment.id)
-                            )
-                          }
-                        }}
-                      />
+                  {segments.length === 0 ? (
+                    <div className="flex items-center justify-center h-24">
+                      <p className="text-sm text-muted-foreground">No segments available. Please create segments first.</p>
                     </div>
-                  ))}
+                  ) : (
+                    segments.map((segment) => (
+                      <div 
+                        key={segment.id} 
+                        className={cn(
+                          "flex items-center justify-between space-x-3 space-y-0 rounded-lg border p-4 mb-2 last:mb-0",
+                          "transition-colors hover:bg-muted/50"
+                        )}
+                      >
+                        <div className="grid gap-1.5 leading-none">
+                          <label
+                            htmlFor={`segment-${segment.id}`}
+                            className="text-sm font-medium leading-none cursor-pointer"
+                          >
+                            {segment.name}
+                          </label>
+                          <p className="text-sm text-muted-foreground">
+                            {segment.description}
+                          </p>
+                        </div>
+                        <Switch
+                          id={`segment-${segment.id}`}
+                          onCheckedChange={(checked) => {
+                            const currentSegments = form.getValues("segments")
+                            if (checked) {
+                              form.setValue("segments", [...currentSegments, segment.id])
+                            } else {
+                              form.setValue(
+                                "segments",
+                                currentSegments.filter((id) => id !== segment.id)
+                              )
+                            }
+                          }}
+                        />
+                      </div>
+                    ))
+                  )}
                 </div>
               </ScrollArea>
               {form.formState.errors.segments && (
@@ -291,6 +329,36 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
                 </p>
               )}
             </div>
+
+            {/* Campaign Selector */}
+            {campaigns.length > 0 && (
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  <Label>Associated Campaign</Label>
+                </div>
+                <Select
+                  onValueChange={(value) => {
+                    form.setValue("campaign_id", value === "none" ? null : value);
+                  }}
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select a campaign (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {campaigns.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>
+                        {campaign.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Link this experiment to a marketing campaign to track performance
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -318,6 +386,7 @@ export function CreateExperimentDialog({ segments, onCreateExperiment }: CreateE
                     description: "Debug description",
                     hypothesis: "Debug hypothesis",
                     segments: [segments[0].id], // Usar el ID del primer segmento disponible
+                    campaign_id: campaigns.length > 0 ? campaigns[0].id : null,
                     status: "draft" as const,
                     start_date: null,
                     end_date: null,

@@ -43,6 +43,8 @@ import { useSite } from "@/app/context/SiteContext"
 import { CreateLeadDialog } from "@/app/components/create-lead-dialog"
 import { createLead } from "@/app/leads/actions"
 import { CreateContentDialog } from "@/app/content/components"
+import { CreateCampaignDialog } from "@/app/components/create-campaign-dialog"
+import { createCampaign } from "@/app/control-center/actions/campaigns/create"
 import { useState, useEffect, useCallback } from "react"
 import { getSegments } from "@/app/segments/actions"
 import Link from "next/link"
@@ -85,6 +87,7 @@ export function TopBar({
   const isAgentsPage = pathname === "/agents"
   const isAssetsPage = pathname === "/assets"
   const isContentPage = pathname === "/content"
+  const isControlCenterPage = pathname === "/control-center"
   const { currentSite } = useSite()
   const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([])
   const [searchParams, setSearchParams] = useState<string>("")
@@ -103,6 +106,8 @@ export function TopBar({
   })
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [requirements, setRequirements] = useState<Array<{ id: string; title: string; description: string }>>([])
+  const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
 
   // Get the default title from the first route segment
   const getDefaultTitle = useCallback(() => {
@@ -122,7 +127,8 @@ export function TopBar({
       'settings': 'Settings',
       'profile': 'Profile',
       'help': 'Help',
-      'chat': 'Chat'
+      'chat': 'Chat',
+      'control-center': 'Control Center'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
@@ -178,6 +184,7 @@ export function TopBar({
       'assets': 'Assets',
       'chat': 'Chat',
       'dashboard': 'Dashboard',
+      'control-center': 'Control Center'
     };
     
     // Manejar casos especiales como chat con parámetros de consulta
@@ -369,32 +376,60 @@ export function TopBar({
     setBreadcrumbItems(generateBreadcrumbItems());
   }, [pathname, title, searchParams, customTitle, generateBreadcrumbItems]);
   
-  // Cargar segmentos cuando se está en la página de leads o contenido
+  // Cargar segmentos y requisitos cuando se está en ciertas páginas
   useEffect(() => {
-    async function loadSegments() {
-      if (!currentSite?.id || !(isLeadsPage || isContentPage)) return
+    async function loadData() {
+      if (!currentSite?.id) return
       
-      try {
-        const response = await getSegments(currentSite.id)
-        if (response.error) {
-          console.error(response.error)
-          return
+      // Only load segments for these pages
+      if (isLeadsPage || isContentPage || isControlCenterPage || isRequirementsPage || isExperimentsPage) {
+        try {
+          const response = await getSegments(currentSite.id)
+          if (response.error) {
+            console.error(response.error)
+          } else if (response.segments) {
+            setSegments(response.segments.map(s => ({
+              id: s.id,
+              name: s.name,
+              description: s.description || ""
+            })))
+          }
+        } catch (error) {
+          console.error("Error loading segments:", error)
         }
-        
-        if (response.segments) {
-          setSegments(response.segments.map(s => ({
-            id: s.id,
-            name: s.name,
-            description: s.description || ""
-          })))
+      }
+      
+      // Load requirements only for Control Center
+      if (isControlCenterPage) {
+        try {
+          const reqResponse = await fetch(`/api/requirements?siteId=${currentSite.id}`);
+          if (reqResponse.ok) {
+            const requirementsData = await reqResponse.json();
+            setRequirements(requirementsData);
+          }
+        } catch (reqErr) {
+          console.error("Error loading requirements:", reqErr);
+          setRequirements([]);
         }
-      } catch (error) {
-        console.error("Error loading segments:", error)
+      }
+
+      // Load campaigns for the Requirements page, Leads page, and Experiments page
+      if (isRequirementsPage || isLeadsPage || isExperimentsPage) {
+        try {
+          const campaignsResponse = await fetch(`/api/campaigns?siteId=${currentSite.id}`);
+          if (campaignsResponse.ok) {
+            const campaignsData = await campaignsResponse.json();
+            setCampaigns(campaignsData);
+          }
+        } catch (campaignErr) {
+          console.error("Error loading campaigns:", campaignErr);
+          setCampaigns([]);
+        }
       }
     }
 
-    loadSegments()
-  }, [currentSite, isLeadsPage, isContentPage])
+    loadData()
+  }, [currentSite, isLeadsPage, isContentPage, isControlCenterPage, isRequirementsPage, isExperimentsPage])
 
   const handleCreateSegment = async ({ 
     name, 
@@ -432,18 +467,34 @@ export function TopBar({
 
   const handleCreateExperiment = async (values: ExperimentFormValues): Promise<{ data?: any; error?: string }> => {
     try {
-      const result = await createExperiment(values)
+      // If segments aren't loaded yet, load them now
+      if (isExperimentsPage && segments.length === 0 && currentSite?.id) {
+        console.log("Fetching segments for experiment creation");
+        const response = await getSegments(currentSite.id);
+        if (response.error) {
+          console.error("Error fetching segments:", response.error);
+        } else if (response.segments) {
+          console.log("Loaded segments:", response.segments.length);
+          setSegments(response.segments.map(s => ({
+            id: s.id,
+            name: s.name,
+            description: s.description || ""
+          })));
+        }
+      }
+      
+      const result = await createExperiment(values);
 
       if (result.error) {
-        return { error: result.error }
+        return { error: result.error };
       }
 
       // Recargar la página para mostrar el nuevo experimento
-      window.location.reload()
-      return { data: result.data }
+      window.location.reload();
+      return { data: result.data };
     } catch (error) {
-      console.error("Error creating experiment:", error)
-      return { error: error instanceof Error ? error.message : "Error inesperado" }
+      console.error("Error creating experiment:", error);
+      return { error: error instanceof Error ? error.message : "Error inesperado" };
     }
   }
 
@@ -631,6 +682,25 @@ export function TopBar({
     }
   }
 
+  const handleCreateCampaign = async (values: any): Promise<{ data?: any; error?: string }> => {
+    try {
+      const response = await createCampaign(values);
+      if (response.error) {
+        return { error: response.error };
+      }
+      
+      toast.success("Campaign created successfully");
+      
+      // Reload the page to show the new campaign
+      window.location.reload();
+      
+      return { data: response.data };
+    } catch (error) {
+      console.error("Error creating campaign:", error);
+      return { error: error instanceof Error ? error.message : "An unexpected error occurred" };
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -708,6 +778,9 @@ export function TopBar({
               <Button>Download</Button>
             </>
           )}
+          {isControlCenterPage && (
+            <CalendarDateRangePicker />
+          )}
           {isSegmentsPage && (
             currentSite ? (
               <div className="flex items-center gap-2">
@@ -742,7 +815,11 @@ export function TopBar({
           {isExperimentsPage && (
             currentSite ? (
               <CreateExperimentDialog 
-                segments={segments || []}
+                segments={(() => {
+                  console.log('Segments being passed to experiment dialog:', segments);
+                  return segments || [];
+                })()}
+                campaigns={campaigns}
                 onCreateExperiment={handleCreateExperiment}
               />
             ) : (
@@ -757,6 +834,7 @@ export function TopBar({
               <>
                 <CreateRequirementDialog 
                   segments={segments || []}
+                  campaigns={campaigns}
                   onCreateRequirement={handleCreateRequirement}
                   trigger={
                     <Button>
@@ -782,6 +860,7 @@ export function TopBar({
                 </Button>
                 <CreateLeadDialog 
                   segments={segments.length > 0 ? segments : propSegments || []}
+                  campaigns={campaigns}
                   onCreateLead={handleCreateLead}
                   trigger={
                     <Button>
@@ -838,6 +917,26 @@ export function TopBar({
                   <Button>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     New Content
+                  </Button>
+                }
+              />
+            ) : (
+              <Button variant="outline" disabled>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Seleccione un sitio
+              </Button>
+            )
+          )}
+          {isControlCenterPage && (
+            currentSite ? (
+              <CreateCampaignDialog
+                segments={segments.length > 0 ? segments : propSegments || []}
+                requirements={requirements}
+                onCreateCampaign={handleCreateCampaign}
+                trigger={
+                  <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    New Campaign
                   </Button>
                 }
               />

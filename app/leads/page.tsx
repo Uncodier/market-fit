@@ -15,6 +15,7 @@ import { getLeads, createLead, updateLead } from "./actions"
 import { CreateLeadDialog } from "@/app/components/create-lead-dialog"
 import { toast } from "sonner"
 import { getSegments } from "@/app/segments/actions"
+import { getCampaigns } from "@/app/control-center/actions/campaigns/read"
 import React from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/app/components/ui/sheet"
 import { Separator } from "@/app/components/ui/separator"
@@ -23,19 +24,8 @@ import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { KanbanView, LeadFilters } from "@/app/components/kanban-view"
 import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
 import { useRouter } from "next/navigation"
-
-interface Lead {
-  id: string
-  name: string
-  email: string
-  phone: string | null
-  company: string | null
-  position: string | null
-  segment_id: string | null
-  status: "new" | "contacted" | "qualified" | "converted" | "lost"
-  created_at: string
-  origin: string | null
-}
+import { Lead } from "@/app/leads/types"
+import { Campaign } from "@/app/types"
 
 interface LeadsTableProps {
   leads: Lead[]
@@ -332,11 +322,12 @@ function LeadsTableSkeleton() {
 export default function LeadsPage() {
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(5)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [activeTab, setActiveTab] = useState("all")
   const [dbLeads, setDbLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [viewType, setViewType] = useState<ViewType>("table")
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
@@ -411,9 +402,27 @@ export default function LeadsPage() {
         console.error("Error loading segments:", error)
       }
     }
+    
+    async function loadCampaigns() {
+      if (!currentSite?.id) return
+      
+      try {
+        const result = await getCampaigns(currentSite.id)
+        
+        if (result.error) {
+          console.error(result.error)
+          return
+        }
+        
+        setCampaigns(result.data || [])
+      } catch (error) {
+        console.error("Error loading campaigns:", error)
+      }
+    }
 
     loadLeads()
     loadSegments()
+    loadCampaigns()
   }, [currentSite])
   
   const getFilteredLeads = (status: string) => {
@@ -492,6 +501,7 @@ export default function LeadsPage() {
         company: data.company,
         position: data.position,
         segment_id: data.segment_id,
+        campaign_id: data.campaign_id,
         status: data.status,
         notes: data.notes,
         origin: data.origin,
@@ -792,6 +802,7 @@ export default function LeadsPage() {
           </div>
         </div>
       </Tabs>
+      
     </div>
     </LeadsContext.Provider>
   )

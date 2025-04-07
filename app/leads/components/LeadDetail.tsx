@@ -17,7 +17,9 @@ import {
   ExternalLink,
   Trash2
 } from "@/app/components/ui/icons"
+import { Target } from "@/app/components/ui/target-icon"
 import { Lead, STATUS_STYLES, Segment } from "@/app/leads/types"
+import { Campaign } from "@/app/types"
 import { toast } from "sonner"
 import { 
   DropdownMenu, 
@@ -39,12 +41,13 @@ import {
 interface LeadDetailProps {
   lead: Lead
   segments: Segment[]
+  campaigns: Campaign[]
   onUpdateLead: (id: string, data: Partial<Lead>) => Promise<void>
   onClose: () => void
   onDeleteLead?: (id: string) => Promise<void>
 }
 
-export function LeadDetail({ lead, segments, onUpdateLead, onClose, onDeleteLead }: LeadDetailProps) {
+export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead }: LeadDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -56,6 +59,7 @@ export function LeadDetail({ lead, segments, onUpdateLead, onClose, onDeleteLead
     company: lead.company || { name: "", website: "", industry: "", size: "" },
     position: lead.position,
     segment_id: lead.segment_id,
+    campaign_id: lead.campaign_id,
     status: lead.status,
     origin: lead.origin
   })
@@ -65,6 +69,13 @@ export function LeadDetail({ lead, segments, onUpdateLead, onClose, onDeleteLead
     if (!segmentId) return "No Segment"
     const segment = segments.find(s => s.id === segmentId)
     return segment?.name || "Unknown Segment"
+  }
+  
+  // Función para obtener el nombre de la campaña
+  const getCampaignName = (campaignId: string | null) => {
+    if (!campaignId) return "No Campaign"
+    const campaign = campaigns.find(c => c.id === campaignId)
+    return campaign?.title || "Unknown Campaign"
   }
   
   // Función para guardar los cambios
@@ -358,6 +369,35 @@ export function LeadDetail({ lead, segments, onUpdateLead, onClose, onDeleteLead
                     </Select>
                   ) : (
                     <p className="text-sm font-medium">{getSegmentName(lead.segment_id)}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Campaign</p>
+                  {isEditing ? (
+                    <Select 
+                      value={editForm.campaign_id || "none"}
+                      onValueChange={(value) => setEditForm({...editForm, campaign_id: value === "none" ? null : value})}
+                    >
+                      <SelectTrigger className="h-12 text-sm">
+                        <SelectValue placeholder="Select campaign" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Not specified</SelectItem>
+                        {campaigns.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            {campaign.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm font-medium">{getCampaignName(lead.campaign_id)}</p>
                   )}
                 </div>
               </div>

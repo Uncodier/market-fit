@@ -1,11 +1,20 @@
-import React, { useState } from 'react'
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+"use client"
+
+import React, { useState, useEffect } from "react"
+import { useSite } from "@/app/context/SiteContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { ScrollArea } from "@/app/components/ui/scroll-area"
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
+import { Plus, X, Filter, ClipboardList } from "@/app/components/ui/icons"
+import { Button } from "./ui/button"
+import { cn } from "@/lib/utils"
+import { Input } from "./ui/input"
+import { Segment } from "@/app/leads/types"
+import { updateLead } from "@/app/leads/actions"
 import { toast } from "sonner"
-import { Button } from "@/app/components/ui/button"
-import { Filter, ClipboardList } from "@/app/components/ui/icons"
+import { useRouter } from "next/navigation"
+import { Lead } from "@/app/leads/types"
+import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { EmptyState } from "@/app/components/ui/empty-state"
 
 // Definimos los tipos de estado de los leads
@@ -26,24 +35,12 @@ const STATUS_COLORS: Record<string, string> = {
   lost: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
 }
 
-// Interfaz para los filtros de leads
+// Interface for filtered view
 export interface LeadFilters {
   status: string[]
   segments: string[]
   origin: string[]
-}
-
-interface Lead {
-  id: string
-  name: string
-  email: string
-  phone: string | null
-  company: { name?: string; website?: string; industry?: string; size?: string } | string | null
-  position: string | null
-  segment_id: string | null
-  status: "new" | "contacted" | "qualified" | "converted" | "lost"
-  created_at: string
-  origin: string | null
+  searchQuery?: string
 }
 
 interface KanbanViewProps {

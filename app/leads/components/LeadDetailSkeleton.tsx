@@ -101,6 +101,15 @@ export function LeadDetailSkeleton() {
                               <Skeleton className="h-5 w-40" />
                             </div>
                           </div>
+                          
+                          {/* Campaign */}
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-12 w-12 rounded-md" />
+                            <div className="flex-1">
+                              <Skeleton className="h-3 w-12 mb-2" />
+                              <Skeleton className="h-5 w-36" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                       

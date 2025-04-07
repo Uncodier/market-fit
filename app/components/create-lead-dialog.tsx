@@ -13,6 +13,7 @@ import {
   Phone,
   Tag
 } from "@/app/components/ui/icons"
+import { Target } from "@/app/components/ui/target-icon"
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,11 @@ interface CreateLeadDialogProps {
     id: string
     name: string
   }>
+  campaigns?: Array<{
+    id: string
+    title: string
+    description?: string
+  }>
   onCreateLead: (data: { 
     name: string
     email: string
@@ -44,6 +50,7 @@ interface CreateLeadDialogProps {
     company?: string
     position?: string
     segment_id?: string
+    campaign_id?: string
     status?: "new" | "contacted" | "qualified" | "converted" | "lost"
     notes?: string
     origin?: string
@@ -52,7 +59,7 @@ interface CreateLeadDialogProps {
   trigger?: React.ReactNode
 }
 
-export function CreateLeadDialog({ onCreateLead, segments = [], trigger }: CreateLeadDialogProps) {
+export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], trigger }: CreateLeadDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState("")
@@ -61,6 +68,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], trigger }: Creat
   const [company, setCompany] = useState("")
   const [position, setPosition] = useState("")
   const [segmentId, setSegmentId] = useState("")
+  const [campaignId, setCampaignId] = useState("")
   const [status, setStatus] = useState<"new" | "contacted" | "qualified" | "converted" | "lost">("new")
   const [notes, setNotes] = useState("")
   const [origin, setOrigin] = useState("")
@@ -91,6 +99,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], trigger }: Creat
         company: company || undefined,
         position: position || undefined,
         segment_id: segmentId || undefined,
+        campaign_id: campaignId === "none" ? undefined : campaignId || undefined,
         status,
         notes: notes || undefined,
         origin: origin || undefined,
@@ -109,6 +118,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], trigger }: Creat
       setCompany("")
       setPosition("")
       setSegmentId("")
+      setCampaignId("")
       setStatus("new")
       setNotes("")
       setOrigin("")
@@ -293,6 +303,34 @@ export function CreateLeadDialog({ onCreateLead, segments = [], trigger }: Creat
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
+              <label htmlFor="campaign" className="text-sm font-medium">
+                Campaign
+              </label>
+              <div className="relative">
+                <Target className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+                <Select value={campaignId} onValueChange={setCampaignId}>
+                  <SelectTrigger className="h-12 pl-9">
+                    <SelectValue placeholder="Select campaign" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not specified</SelectItem>
+                    {campaigns.length > 0 ? (
+                      campaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id} className="py-2 px-1">
+                          <div className="font-medium">{campaign.title}</div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="py-2 px-4 text-sm text-muted-foreground">
+                        No campaigns available
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <label htmlFor="status" className="text-sm font-medium">
                 Status
               </label>
@@ -314,21 +352,21 @@ export function CreateLeadDialog({ onCreateLead, segments = [], trigger }: Creat
                 </Select>
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="origin" className="text-sm font-medium">
-                Origin
-              </label>
-              <div className="relative">
-                <Tag className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="origin"
-                  placeholder="Lead source or origin"
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
-                  className="h-12 pl-9"
-                />
-              </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="origin" className="text-sm font-medium">
+              Origin
+            </label>
+            <div className="relative">
+              <Tag className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="origin"
+                placeholder="Lead source or origin"
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
+                className="h-12 pl-9"
+              />
             </div>
           </div>
           
@@ -360,6 +398,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], trigger }: Creat
                 setCompany("")
                 setPosition("")
                 setSegmentId("")
+                setCampaignId("")
                 setStatus("new")
                 setNotes("")
                 setOrigin("")

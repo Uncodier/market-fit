@@ -94,6 +94,41 @@ function SettingsFormSkeleton() {
           </div>
         </CardContent>
       </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-6 w-1/4" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full" />
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-6 w-12" />
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-6 w-1/4" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -101,7 +136,7 @@ function SettingsFormSkeleton() {
 export default function SettingsPage() {
   const { currentSite, updateSite, deleteSite, isLoading } = useSite()
   const [isSaving, setIsSaving] = useState(false)
-  const [activeSegment, setActiveSegment] = useState("all")
+  const [activeSegment, setActiveSegment] = useState("general")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Adaptar Site a SiteFormValues para el formulario
@@ -113,7 +148,11 @@ export default function SettingsPage() {
       logo_url: site.logo_url || "",
       resource_urls: site.resource_urls || [],
       competitors: site.competitors || [],
-      focusMode: site.focusMode || 50
+      focusMode: site.focusMode || 50,
+      billing: site.billing || {
+        plan: "free",
+        auto_renew: true
+      }
     }
   }
 
@@ -126,6 +165,7 @@ export default function SettingsPage() {
         resource_urls: data.resource_urls?.filter(url => url.key && url.url) || [],
         competitors: data.competitors?.filter(comp => comp.url) || [],
         focus_mode: data.focusMode || data.focus_mode || 50,
+        billing: data.billing
       } as Site)
       toast.success("Settings saved successfully")
     } catch (error) {
@@ -172,15 +212,13 @@ export default function SettingsPage() {
       <div className="flex-1">
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
-            <Tabs value="all" className="w-auto">
+            <Tabs value="general" className="w-auto">
               <TabsList>
-                <TabsTrigger value="all">All Settings</TabsTrigger>
-                <TabsTrigger value="focus">Focus Mode</TabsTrigger>
-                <TabsTrigger value="site">Site Info</TabsTrigger>
-                <TabsTrigger value="cache">Cache</TabsTrigger>
-                <TabsTrigger value="competitors">Competitors</TabsTrigger>
-                <TabsTrigger value="resources">Resources</TabsTrigger>
-                <TabsTrigger value="danger">Danger Zone</TabsTrigger>
+                <TabsTrigger value="general">General Settings</TabsTrigger>
+                <TabsTrigger value="company">Company</TabsTrigger>
+                <TabsTrigger value="marketing">Marketing</TabsTrigger>
+                <TabsTrigger value="tracking">Tracking</TabsTrigger>
+                <TabsTrigger value="billing">Billing</TabsTrigger>
               </TabsList>
             </Tabs>
             <Button disabled>Save settings</Button>
@@ -206,14 +244,13 @@ export default function SettingsPage() {
       <StickyHeader>
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
-            <TabsList>
-              <TabsTrigger value="all">All Settings</TabsTrigger>
-              <TabsTrigger value="focus">Focus Mode</TabsTrigger>
-              <TabsTrigger value="site">Site Info</TabsTrigger>
-              <TabsTrigger value="cache">Cache</TabsTrigger>
-              <TabsTrigger value="competitors">Competitors</TabsTrigger>
-              <TabsTrigger value="resources">Resources</TabsTrigger>
-              <TabsTrigger value="danger">Danger Zone</TabsTrigger>
+            <TabsList className="flex">
+              <TabsTrigger value="general" className="whitespace-nowrap">General Settings</TabsTrigger>
+              <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
+              <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
+              <TabsTrigger value="tracking" className="whitespace-nowrap">Tracking</TabsTrigger>
+              <TabsTrigger value="team" className="whitespace-nowrap">Team</TabsTrigger>
+              <TabsTrigger value="billing" className="whitespace-nowrap">Billing</TabsTrigger>
             </TabsList>
           </Tabs>
           <Button 

@@ -12,7 +12,8 @@ import {
   Home,
   FolderOpen,
   Bell,
-  FileText
+  FileText,
+  Rocket
 } from "@/app/components/ui/icons"
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
@@ -66,6 +67,11 @@ const navigationItems = [
     icon: Home,
   },
   {
+    title: "Control Center",
+    href: "/control-center",
+    icon: Rocket,
+  },
+  {
     title: "Segments",
     href: "/segments",
     icon: LayoutGrid,
@@ -81,7 +87,7 @@ const navigationItems = [
     icon: FlaskConical,
   },
   {
-    title: "Requirements",
+    title: "Tasks",
     href: "/requirements",
     icon: ClipboardList,
   },
@@ -96,7 +102,7 @@ const navigationItems = [
     icon: Users,
   },
   {
-    title: "Agents",
+    title: "AI Agents",
     href: "/agents",
     icon: Cpu, // Changed from MessageSquare to Cpu for AI representation
   },

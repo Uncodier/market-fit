@@ -20,6 +20,8 @@ import { useSite } from "@/app/context/SiteContext"
 import { type Segment } from "./types"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { FilterModal, type RequirementFilters } from "@/app/components/ui/filter-modal"
+import { KanbanView } from './kanban-view'
+import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,9 +57,13 @@ interface Requirement {
   status: RequirementStatusType
   completionStatus: CompletionStatusType
   source: string
+  campaigns?: string[]
+  campaignNames?: string[]
+  budget: number | null
   createdAt: string
   segments: string[]
   segmentNames?: string[]
+  isExpanded?: boolean
 }
 
 // Define el tipo para los datos de requisitos en Supabase
@@ -69,8 +75,10 @@ interface RequirementData {
   status: RequirementStatusType
   completion_status: CompletionStatusType
   source: string
+  budget: number | null
   created_at: string
   requirement_segments: Array<{ segment_id: string }> | null
+  requirement_campaigns: Array<{ campaign_id: string }> | null
 }
 
 // Define la interfaz para el segmento en Supabase
@@ -381,12 +389,16 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                   )}
                 </div>
                 <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Source</p>
-                  <p className="text-sm font-medium truncate">{requirement.source}</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Campaign</p>
+                  <p className="text-sm font-medium truncate">
+                    {requirement.campaignNames && requirement.campaignNames.length > 0 
+                      ? requirement.campaignNames[0] 
+                      : "No campaign"}
+                  </p>
                 </div>
                 <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Created</p>
-                  <p className="text-sm font-medium">{new Date(requirement.createdAt).toLocaleDateString()}</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Budget</p>
+                  <p className="text-sm font-medium">{requirement.budget ? `$${requirement.budget.toLocaleString()}` : "N/A"}</p>
                 </div>
                 <div className="min-w-[140px] sm:min-w-[120px] p-2 rounded-lg">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Completion</p>
@@ -406,6 +418,12 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                     <div className="text-sm text-muted-foreground">{requirement.description}</div>
                   </div>
                   <div className="grid gap-2">
+                    <div className="font-medium text-sm">Budget</div>
+                    <div className="text-sm text-muted-foreground">
+                      {requirement.budget ? `$${requirement.budget.toLocaleString()}` : "No budget assigned"}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
                     <div className="font-medium text-sm">Segments</div>
                     <div className="flex flex-wrap gap-2">
                       {requirement.segmentNames?.map((segment) => (
@@ -419,6 +437,22 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                       ))}
                     </div>
                   </div>
+                  {requirement.campaignNames && requirement.campaignNames.length > 0 && (
+                    <div className="grid gap-2">
+                      <div className="font-medium text-sm">Campaigns</div>
+                      <div className="flex flex-wrap gap-2">
+                        {requirement.campaignNames.map((campaign) => (
+                          <Badge
+                            key={campaign}
+                            variant="secondary"
+                            className="px-3 py-1 text-xs font-medium bg-blue-100/20 text-blue-700 dark:text-blue-300 hover:bg-blue-200/20 transition-colors border border-blue-300/30"
+                          >
+                            {campaign}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
                   {requirement.completionStatus === COMPLETION_STATUS.PENDING && (
@@ -719,10 +753,14 @@ type CacheStore = {
 export default function RequirementsPage() {
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [segments, setSegments] = useState<Segment[]>([])
+  const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
   const [filteredRequirements, setFilteredRequirements] = useState<Requirement[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  
+  // View mode state (list or kanban)
+  const [viewMode, setViewMode] = useState<ViewType>("table")
   
   // Estado de filtros avanzados
   const [filters, setFilters] = useState<RequirementFilters>({
@@ -829,11 +867,22 @@ export default function RequirementsPage() {
         // Load requirements - FIXING THE QUERY
         const { data: requirementData, error: requirementError } = await supabase
           .from("requirements")
-          .select("*, requirement_segments(segment_id)")
+          .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id)")
           .eq("site_id", siteId);
         
         if (requirementError) {
           throw new Error(`Error loading requirements: ${requirementError.message}`);
+        }
+        
+        // Load campaigns to get their names
+        const { data: campaignData, error: campaignError } = await supabase
+          .from("campaigns")
+          .select("id, title")
+          .eq("site_id", siteId);
+        
+        if (campaignError) {
+          console.warn("Error loading campaigns:", campaignError.message);
+          // We don't throw here to not block the requirements loading
         }
         
         // Map segments to expected format
@@ -843,6 +892,14 @@ export default function RequirementsPage() {
           description: segment.description || "",
         }));
         
+        // Create a campaigns map for quick lookup
+        const campaignsMap = new Map<string, string>();
+        if (campaignData && campaignData.length > 0) {
+          campaignData.forEach((campaign: { id: string, title: string }) => {
+            campaignsMap.set(campaign.id, campaign.title);
+          });
+        }
+        
         // Map requirements to expected format
         const requirements = (requirementData || []).map((req: any) => {
           // Extract related segment IDs
@@ -850,8 +907,16 @@ export default function RequirementsPage() {
           
           // Get segment names
           const segmentNames = segments
-            .filter((segment: SegmentData) => segmentIds.includes(segment.id))
-            .map((segment: SegmentData) => segment.name);
+            .filter((segment: any) => segmentIds.includes(segment.id))
+            .map((segment: any) => segment.name);
+          
+          // Extract related campaign IDs
+          const campaignIds = (req.campaign_requirements || []).map((cr: any) => cr.campaign_id);
+          
+          // Get campaign names
+          const campaignNames = campaignIds
+            .filter((id: string) => campaignsMap.has(id))
+            .map((id: string) => campaignsMap.get(id) || "");
           
           return {
             id: req.id,
@@ -861,11 +926,22 @@ export default function RequirementsPage() {
             status: req.status || "backlog",
             completionStatus: req.completion_status || "pending",
             source: req.source || "",
+            budget: req.budget || null,
             createdAt: req.created_at || new Date().toISOString(),
             segments: segmentIds,
-            segmentNames: segmentNames
+            segmentNames: segmentNames,
+            campaigns: campaignIds,
+            campaignNames: campaignNames
           };
         });
+        
+        // Save campaigns for the dropdown
+        const formattedCampaigns = (campaignData || []).map((campaign: { id: string; title: string; description?: string }) => ({
+          id: campaign.id,
+          title: campaign.title,
+          description: campaign.description || ""
+        }));
+        setCampaigns(formattedCampaigns);
         
         // Update state
         setSegments(segments);
@@ -1009,7 +1085,7 @@ export default function RequirementsPage() {
       filtered = filtered.filter(req => 
         req.title.toLowerCase().includes(query) || 
         req.description.toLowerCase().includes(query) ||
-        req.source.toLowerCase().includes(query)
+        (req.campaignNames && req.campaignNames.some(name => name.toLowerCase().includes(query)))
       );
     }
 
@@ -1182,6 +1258,17 @@ export default function RequirementsPage() {
     setIsFilterModalOpen(true);
   };
 
+  // Función para manejar el clic en un requisito (usado en la vista Kanban)
+  const handleRequirementClick = (requirement: Requirement) => {
+    // Expandimos el requisito directamente actualizando su estado
+    // Esto es solo simulación, en una implementación real podríamos tener otro enfoque
+    setRequirements(prevReqs => 
+      prevReqs.map(req => 
+        req.id === requirement.id ? { ...req, isExpanded: true } : req
+      )
+    )
+  }
+
   return (
     <div className="flex-1 p-0">
       {/* Modal de filtros */}
@@ -1218,7 +1305,7 @@ export default function RequirementsPage() {
                   Filter
                 </Button>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-4">
                 {/* Indicador de filtros activos */}
                 {(filters.priority.length > 0 || filters.completionStatus.length > 0 || filters.segments.length > 0) && (
                   <Button variant="ghost" size="sm" onClick={handleClearFilters}>
@@ -1228,6 +1315,7 @@ export default function RequirementsPage() {
                     <span className="ml-2">Clear filters</span>
                   </Button>
                 )}
+                <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
               </div>
             </div>
           </div>
@@ -1263,8 +1351,8 @@ export default function RequirementsPage() {
                 filteredRequirements.length === 0 ? (
                   <EmptyResults />
                 ) : 
-                /* Case 5: Show requirements */
-                (
+                /* Case 5: Show requirements - List or Kanban view */
+                viewMode === "table" ? (
                   <div className="space-y-2">
                     {filteredRequirements.map((requirement) => (
                       <RequirementCard 
@@ -1276,6 +1364,17 @@ export default function RequirementsPage() {
                       />
                     ))}
                   </div>
+                ) : (
+                  <KanbanView
+                    requirements={filteredRequirements}
+                    onUpdateRequirementStatus={(id, status) => 
+                      handleUpdateStatus(id, status as RequirementStatusType)
+                    }
+                    segments={segments}
+                    onRequirementClick={handleRequirementClick}
+                    filters={filters}
+                    onOpenFilters={handleOpenFilterModal}
+                  />
                 )}
               </TabsContent>
             ))}

@@ -18,6 +18,23 @@ export interface Site {
   competitors: CompetitorUrl[] | null
   focusMode: number
   focus_mode: number
+  tracking?: {
+    track_visitors: boolean
+    track_actions: boolean
+    record_screen: boolean
+  }
+  billing?: {
+    plan: "free" | "starter" | "professional" | "enterprise"
+    card_number?: string
+    card_expiry?: string
+    card_cvc?: string
+    card_name?: string
+    billing_address?: string
+    billing_city?: string
+    billing_postal_code?: string
+    billing_country?: string
+    auto_renew: boolean
+  }
 }
 
 export interface ResourceUrl {

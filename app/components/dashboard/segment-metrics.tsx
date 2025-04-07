@@ -68,12 +68,15 @@ export function SegmentMetrics() {
   const { isDarkMode } = useTheme()
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 p-2">
       {segments.map((segment, index) => (
-        <div className="flex items-center" key={segment.name}>
-          <div className="w-full">
-            <p className="text-sm font-medium leading-none">{segment.name}</p>
-            <div className={`mt-2 h-2 w-full rounded-full ${isDarkMode ? "bg-slate-700/50" : "bg-muted"}`}>
+        <div className="flex items-center p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors" key={segment.name}>
+          <div className="w-full pr-4">
+            <div className="flex justify-between mb-1.5">
+              <p className="text-sm font-medium leading-none">{segment.name}</p>
+              <p className="text-sm font-medium">{segment.value}%</p>
+            </div>
+            <div className={`h-3 w-full rounded-full ${isDarkMode ? "bg-slate-700/50" : "bg-muted"}`}>
               <div
                 className="h-full rounded-full transition-all duration-300"
                 style={{ 
@@ -83,13 +86,23 @@ export function SegmentMetrics() {
               />
             </div>
           </div>
-          <div className="ml-4 text-right">
-            <p className="text-sm font-medium">{segment.value}%</p>
-            <p className={`text-xs ${segment.delta > 0 
-              ? (isDarkMode ? "text-green-400" : "text-green-500") 
-              : (isDarkMode ? "text-red-400" : "text-red-500")}`}>
-              {segment.delta > 0 ? "+" : ""}{segment.delta}%
-            </p>
+          <div className="ml-2 min-w-16 flex items-center justify-end">
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
+              segment.delta > 0 
+                ? (isDarkMode ? "bg-green-950/40 text-green-400" : "bg-green-50 text-green-600") 
+                : (isDarkMode ? "bg-red-950/40 text-red-400" : "bg-red-50 text-red-600")
+            }`}>
+              {segment.delta > 0 ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m18 15-6-6-6 6"/>
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              )}
+              <span>{Math.abs(segment.delta)}%</span>
+            </div>
           </div>
         </div>
       ))}

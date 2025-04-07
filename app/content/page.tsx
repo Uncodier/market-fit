@@ -48,8 +48,10 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
-import { ContentEditor } from "./components/content-editor"
 import { useRouter } from "next/navigation"
+import { CreateContentDialog } from "./components"
+import { getContentTypeName, getSegmentName, getContentTypeIconClass } from "./utils"
+import { StarRating } from "@/app/components/ui/rating"
 
 // Definimos los tipos de estado del contenido
 const CONTENT_STATUSES = [
@@ -70,7 +72,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 // Iconos para los diferentes tipos de contenido
-const CONTENT_TYPE_ICONS: Record<string, JSX.Element> = {
+const CONTENT_TYPE_ICONS: Record<string, React.ReactElement> = {
   blog_post: <FileText className="h-4 w-4" />,
   video: <FileVideo className="h-4 w-4" />,
   podcast: <MessageSquare className="h-4 w-4" />,
@@ -96,9 +98,10 @@ interface ContentDetailProps {
   content: ContentItem
   onClose: () => void
   segments: Array<{ id: string; name: string }>
+  onRatingChange?: (contentId: string, rating: number) => void
 }
 
-function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
+function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -106,15 +109,36 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
     description: content.description || '',
     content_type: content.content_type,
     segment_id: content.segment_id || 'none',
-    tags: content.tags || []
+    tags: content.tags || [],
+    performance_rating: content.performance_rating
   })
   const [tagInput, setTagInput] = useState('')
 
-  const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return 'No segment'
-    const segment = segments.find(s => s.id === segmentId)
-    return segment ? segment.name : 'Unknown segment'
-  }
+  const handleRatingChange = (rating: number) => {
+    // Update local state
+    setEditForm(prev => ({ ...prev, performance_rating: rating }));
+    
+    // Call parent callback if provided
+    if (onRatingChange) {
+      onRatingChange(content.id, rating);
+    }
+    
+    // Update the rating immediately in the database
+    updateContent({
+      contentId: content.id,
+      title: content.title,
+      content_type: content.content_type,
+      performance_rating: rating
+    }).then(() => {
+      toast.success("Performance rating updated", {
+        position: "bottom-right",
+        duration: 2000
+      });
+    }).catch(error => {
+      console.error("Error updating rating:", error);
+      toast.error("Failed to update rating");
+    });
+  };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not set'
@@ -138,7 +162,8 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
         description: editForm.description || undefined,
         content_type: editForm.content_type,
         segment_id: editForm.segment_id === 'none' ? null : editForm.segment_id,
-        tags: editForm.tags.length > 0 ? editForm.tags : null
+        tags: editForm.tags.length > 0 ? editForm.tags : null,
+        performance_rating: editForm.performance_rating
       })
       
       if (result.error) {
@@ -209,7 +234,7 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
           
           <div className="grid gap-4">
             <div className="flex items-center gap-3">
-              <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+              <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.content_type)}`} style={{ width: '48px', height: '48px' }}>
                 {CONTENT_TYPE_ICONS[content.content_type]}
               </div>
               <div className="flex-1">
@@ -238,7 +263,7 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm font-medium capitalize">{content.content_type.replace('_', ' ')}</p>
+                  <p className="text-sm font-medium">{getContentTypeName(content.content_type)}</p>
                 )}
               </div>
             </div>
@@ -276,7 +301,7 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm font-medium">{getSegmentName(content.segment_id)}</p>
+                  <p className="text-sm font-medium">{getSegmentName(content.segment_id, segments)}</p>
                 )}
               </div>
             </div>
@@ -297,6 +322,25 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
                 ) : (
                   <p className="text-sm">{content.description || 'No description'}</p>
                 )}
+              </div>
+            </div>
+            
+            {/* Performance Rating */}
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                <BarChart className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground mb-[5px]">Performance Rating</p>
+                <div className="py-1">
+                  <StarRating 
+                    rating={editForm.performance_rating} 
+                    onRatingChange={handleRatingChange}
+                    readonly={false}
+                    size="lg"
+                    className="w-full justify-around"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -466,7 +510,8 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
                 description: content.description || '',
                 content_type: content.content_type,
                 segment_id: content.segment_id || 'none',
-                tags: content.tags || []
+                tags: content.tags || [],
+                performance_rating: content.performance_rating
               })
             }} variant="outline" className="w-full">
               <X className="mr-2 h-4 w-4" />
@@ -492,7 +537,8 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
                 description: content.description || '',
                 content_type: content.content_type,
                 segment_id: content.segment_id || 'none',
-                tags: content.tags || []
+                tags: content.tags || [],
+                performance_rating: content.performance_rating
               })
             }} variant="outline" className="w-full">
               <Pencil className="mr-2 h-4 w-4" />
@@ -509,16 +555,43 @@ function ContentDetail({ content, onClose, segments }: ContentDetailProps) {
   )
 }
 
-function ContentCard({ content, segments, onClick }: { 
+function ContentCard({ content, segments, onClick, onRatingChange }: { 
   content: ContentItem, 
   segments: Array<{ id: string; name: string }>,
-  onClick: (content: ContentItem) => void
+  onClick: (content: ContentItem) => void,
+  onRatingChange?: (contentId: string, rating: number) => void
 }) {
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return null
     const segment = segments.find(s => s.id === segmentId)
     return segment ? segment.name : null
   }
+
+  const handleRatingChange = (rating: number) => {
+    // Create updated content with new rating for optimistic UI update
+    const updatedContent = { ...content, performance_rating: rating };
+    
+    // Call the callback to update state in parent component
+    if (onRatingChange) {
+      onRatingChange(content.id, rating);
+    }
+    
+    // Update the rating in the database
+    updateContent({
+      contentId: content.id,
+      title: content.title,
+      content_type: content.content_type,
+      performance_rating: rating
+    }).then(() => {
+      toast.success("Performance rating updated", {
+        position: "bottom-right",
+        duration: 2000
+      });
+    }).catch(error => {
+      console.error("Error updating rating:", error);
+      toast.error("Failed to update rating");
+    });
+  };
 
   const segmentName = getSegmentName(content.segment_id)
   const formattedDate = new Date(content.created_at).toLocaleDateString(undefined, { 
@@ -534,22 +607,28 @@ function ContentCard({ content, segments, onClick }: {
     >
       <CardContent className="p-3">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '39px', height: '39px' }}>
+          <div className="flex gap-3 items-start">
+            <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.content_type)}`} style={{ width: '39px', height: '39px' }}>
               {CONTENT_TYPE_ICONS[content.content_type]}
             </div>
-            <span className="text-xs capitalize">{content.content_type.replace('_', ' ')}</span>
+            <div className="flex flex-col">
+              <h3 className="text-sm font-medium line-clamp-2 mt-0.5">{content.title}</h3>
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-xs text-muted-foreground">{getContentTypeName(content.content_type)}</span>
+              </div>
+            </div>
           </div>
-          <Badge className={STATUS_COLORS[content.status]}>
-            {content.status.charAt(0).toUpperCase() + content.status.slice(1)}
-          </Badge>
+          <div className="text-xs text-muted-foreground">
+            {formattedDate}
+          </div>
         </div>
-        <h3 className="font-medium mt-2 line-clamp-2">{content.title}</h3>
+        
         {content.description && (
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{content.description}</p>
+          <p className="text-xs text-muted-foreground mt-2 mb-2 line-clamp-2">{content.description}</p>
         )}
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/50">
-          <div className="flex items-center gap-2">
+        
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center gap-2 flex-grow-0 max-w-[65%]">
             {segmentName && (
               <Badge variant="outline" className="text-xs">
                 {segmentName}
@@ -559,8 +638,17 @@ function ContentCard({ content, segments, onClick }: {
               <span className="text-xs text-muted-foreground">{content.word_count} words</span>
             )}
           </div>
-          <div className="text-xs text-muted-foreground">
-            {formattedDate}
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="w-[30%] flex justify-end scale-75 origin-right"
+          >
+            <StarRating 
+              rating={content.performance_rating} 
+              onRatingChange={handleRatingChange}
+              readonly={false}
+              size="sm"
+              className="justify-end"
+            />
           </div>
         </div>
       </CardContent>
@@ -572,12 +660,14 @@ function ContentKanban({
   contentItems, 
   onUpdateContentStatus, 
   segments, 
-  onContentClick
+  onContentClick,
+  onRatingChange
 }: {
   contentItems: ContentItem[]
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
   segments: Array<{ id: string; name: string }>
   onContentClick: (content: ContentItem) => void
+  onRatingChange?: (contentId: string, rating: number) => void
 }) {
   const [items, setItems] = useState<Record<string, ContentItem[]>>({})
 
@@ -598,6 +688,33 @@ function ContentKanban({
     
     setItems(groupedItems)
   }, [contentItems])
+
+  // Handle rating changes within the kanban view
+  const handleRatingChange = (contentId: string, rating: number) => {
+    // Update the item in our local state
+    const newItems = { ...items };
+    
+    // Find which status column contains this content item
+    for (const status in newItems) {
+      const index = newItems[status].findIndex(item => item.id === contentId);
+      if (index !== -1) {
+        // Update the rating in our local state
+        newItems[status] = [
+          ...newItems[status].slice(0, index),
+          { ...newItems[status][index], performance_rating: rating },
+          ...newItems[status].slice(index + 1)
+        ];
+        break;
+      }
+    }
+    
+    setItems(newItems);
+    
+    // Also call the parent callback if provided
+    if (onRatingChange) {
+      onRatingChange(contentId, rating);
+    }
+  };
 
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result
@@ -685,6 +802,7 @@ function ContentKanban({
                                   content={item} 
                                   segments={segments}
                                   onClick={onContentClick}
+                                  onRatingChange={handleRatingChange}
                                 />
                               </div>
                             )}
@@ -730,13 +848,6 @@ function ContentTable({
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalContent / itemsPerPage)
   
-  // Función para obtener el nombre del segmento
-  const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return "No Segment"
-    const segment = segments.find(s => s.id === segmentId)
-    return segment?.name || "Unknown Segment"
-  }
-
   // Función para truncar texto largo
   const truncateText = (text: string, maxLength: number = 30) => {
     if (!text || text.length <= maxLength) return text
@@ -774,14 +885,14 @@ function ContentTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '24px', height: '24px' }}>
+                    <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.content_type)}`} style={{ width: '24px', height: '24px' }}>
                       {CONTENT_TYPE_ICONS[content.content_type]}
                     </div>
-                    <span className="text-sm capitalize">{content.content_type.replace('_', ' ')}</span>
+                    <span className="text-sm">{getContentTypeName(content.content_type)}</span>
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  {content.segment_id ? truncateText(getSegmentName(content.segment_id)) : "No Segment"}
+                  {truncateText(getSegmentName(content.segment_id, segments))}
                 </TableCell>
                 <TableCell>
                   <Badge className={STATUS_COLORS[content.status]}>
@@ -1358,81 +1469,91 @@ export default function ContentPage() {
   const [filteredContent, setFilteredContent] = useState<ContentItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [totalContent, setTotalContent] = useState(0)
+  const [campaigns, setCampaigns] = useState<Array<{id: string, title: string, description?: string}>>([])
 
-  // Función para cargar el contenido
-  const loadContent = useCallback(async () => {
-    if (!currentSite?.id) return
-    
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      // Load content
-      const contentResult = await getContent(currentSite.id)
-      if (contentResult.error) {
-        setError(contentResult.error)
-        return
-      }
-      
-      setContentItems(contentResult.content || [])
-      
-      // Load segments
-      const segmentsResult = await getSegments(currentSite.id)
-      if (segmentsResult.error) {
-        console.error("Error loading segments:", segmentsResult.error)
-      } else {
-        setSegments(segmentsResult.segments || [])
-      }
-    } catch (error) {
-      console.error("Error loading data:", error)
-      setError("Failed to load content. Please try again.")
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    if (currentSite?.id) {
+      refreshContentList()
+      loadSegments()
+      loadCampaigns()
     }
   }, [currentSite?.id])
 
-  // Attach the refresh function to window for global access
-  useEffect(() => {
-    // Define our refresh function
-    const refreshContentList = () => {
-      loadContent();
-    };
-    
-    // Attach it to the window object
-    // Create a type-safe way to do this
-    if (typeof window !== 'undefined') {
-      (window as any).refreshContentList = refreshContentList;
-    }
-    
-    // Clean up when component unmounts
-    return () => {
-      if (typeof window !== 'undefined') {
-        delete (window as any).refreshContentList;
+  const refreshContentList = useCallback(async () => {
+    if (!currentSite?.id) return
+
+    setIsLoading(true)
+    try {
+      const result = await getContent(currentSite.id)
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
       }
-    };
-  }, [loadContent]);
-
-  // Load content and segments
-  useEffect(() => {
-    loadContent()
-  }, [loadContent])
-
-  // Update filtered content when content items or filters change
-  useEffect(() => {
-    if (contentItems.length > 0) {
-      updateFilteredContent(searchTerm, filters)
-    } else {
-      setFilteredContent([])
+      
+      if (result.content) {
+        setContentItems(result.content)
+        setTotalContent(result.count)
+        setFilteredContent(result.content)
+        
+        if (searchTerm || filters.status.length > 0 || filters.content_type.length > 0 || filters.segments.length > 0) {
+          updateFilteredContent(searchTerm, filters, result.content)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching content:", error)
+      toast.error("An error occurred while loading content")
+    } finally {
+      setIsLoading(false)
     }
-  }, [contentItems, filters])
+  }, [currentSite?.id, searchTerm, filters])
 
-  const updateFilteredContent = (search: string, currentFilters: ContentFilters) => {
+  const loadSegments = async () => {
+    if (!currentSite?.id) return
+
+    try {
+      const { segments, error } = await getSegments(currentSite.id)
+      
+      if (error) {
+        toast.error("Failed to load segments: " + error)
+        return
+      }
+      
+      if (segments) {
+        setSegments(segments.map(segment => ({
+          id: segment.id,
+          name: segment.name,
+          description: segment.description
+        })))
+      }
+    } catch (error) {
+      console.error("Error loading segments:", error)
+      toast.error("An error occurred while loading segments")
+    }
+  }
+
+  const loadCampaigns = async () => {
+    if (!currentSite?.id) return
+    
+    try {
+      const response = await fetch(`/api/campaigns?siteId=${currentSite.id}`)
+      if (!response.ok) throw new Error('Failed to load campaigns')
+      
+      const data = await response.json()
+      setCampaigns(data)
+    } catch (error) {
+      console.error('Error loading campaigns:', error)
+    }
+  }
+
+  const updateFilteredContent = (search: string, currentFilters: ContentFilters, items = contentItems) => {
     const searchLower = search.toLowerCase()
     
-    // Debug to check if we have content items
-    console.log("Content items to filter:", contentItems.length);
+    // Debug para verificar si tenemos elementos de contenido
+    console.log("Content items to filter:", items.length);
     
-    const filtered = contentItems.filter(item => {
+    const filtered = items.filter(item => {
       // Filtrar por término de búsqueda
       const matchesSearch = search === '' || 
         item.title.toLowerCase().includes(searchLower) ||
@@ -1453,15 +1574,16 @@ export default function ContentPage() {
       return matchesSearch && matchesStatus && matchesType && matchesSegment
     })
     
-    // Debug to check filtered results
+    // Debug para verificar resultados filtrados
     console.log("Filtered content items:", filtered.length);
     
     setFilteredContent(filtered)
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value)
-    updateFilteredContent(e.target.value, filters)
+    const newSearchTerm = e.target.value
+    setSearchTerm(newSearchTerm)
+    updateFilteredContent(newSearchTerm, filters)
   }
 
   const handleFiltersChange = (newFilters: ContentFilters) => {
@@ -1515,6 +1637,27 @@ export default function ContentPage() {
     setCurrentPage(1)
   }
 
+  // Handle content rating changes
+  const handleContentRatingChange = (contentId: string, rating: number) => {
+    // Update the content items array
+    setContentItems(prevItems => 
+      prevItems.map(item => 
+        item.id === contentId 
+          ? { ...item, performance_rating: rating } 
+          : item
+      )
+    );
+    
+    // Also update the filtered content
+    setFilteredContent(prevItems => 
+      prevItems.map(item => 
+        item.id === contentId 
+          ? { ...item, performance_rating: rating } 
+          : item
+      )
+    );
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
@@ -1559,7 +1702,7 @@ export default function ContentPage() {
   )
 
   return (
-    <div className="flex-1 p-0">
+    <div className="h-full flex flex-col">
       <Tabs defaultValue="all">
         <StickyHeader showAIButton={false}>
           <div className="px-16 pt-0">
@@ -1651,6 +1794,7 @@ export default function ContentPage() {
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
+                  onRatingChange={handleContentRatingChange}
                 />
               ) : (
                 <ContentTable 
@@ -1677,6 +1821,7 @@ export default function ContentPage() {
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
+                  onRatingChange={handleContentRatingChange}
                 />
               ) : (
                 <ContentTable 
@@ -1703,6 +1848,7 @@ export default function ContentPage() {
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
+                  onRatingChange={handleContentRatingChange}
                 />
               ) : (
                 <ContentTable 
@@ -1729,6 +1875,7 @@ export default function ContentPage() {
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
+                  onRatingChange={handleContentRatingChange}
                 />
               ) : (
                 <ContentTable 
@@ -1755,6 +1902,7 @@ export default function ContentPage() {
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
+                  onRatingChange={handleContentRatingChange}
                 />
               ) : (
                 <ContentTable 
@@ -1780,14 +1928,14 @@ export default function ContentPage() {
             <SheetTitle>Content Details</SheetTitle>
           </SheetHeader>
           {selectedContent && (
-            <ContentEditor 
+            <ContentDetail 
               content={selectedContent} 
-              onClose={() => setIsDetailOpen(false)}
-              segments={segments}
-              onSave={() => {
-                setIsDetailOpen(false)
-                loadContent()
+              onClose={() => {
+                setIsDetailOpen(false);
+                refreshContentList();
               }}
+              segments={segments}
+              onRatingChange={handleContentRatingChange}
             />
           )}
         </SheetContent>
@@ -1800,6 +1948,12 @@ export default function ContentPage() {
         filters={filters}
         onFiltersChange={handleFiltersChange}
         segments={segments}
+      />
+      
+      <CreateContentDialog 
+        segments={segments}
+        campaigns={campaigns}
+        onSuccess={refreshContentList}
       />
     </div>
   )

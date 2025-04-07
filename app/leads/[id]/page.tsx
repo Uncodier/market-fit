@@ -6,7 +6,9 @@ import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 import { getLeadById, updateLead, deleteLead } from "@/app/leads/actions"
 import { getSegments } from "@/app/segments/actions"
+import { getCampaigns } from "@/app/control-center/actions/campaigns/read"
 import { Lead, Segment } from "@/app/leads/types"
+import { Campaign } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { ChevronLeft } from "@/app/components/ui/icons"
 import { Card, CardContent } from "@/app/components/ui/card"
@@ -16,6 +18,8 @@ import { JourneySummary } from "@/app/leads/components/JourneySummary"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { LeadDetailSkeleton } from "@/app/leads/components/LeadDetailSkeleton"
+import { Input } from "@/app/components/ui/input"
+import { Skeleton } from "@/app/components/ui/skeleton"
 
 export default function LeadDetailPage() {
   const params = useParams()
@@ -23,6 +27,7 @@ export default function LeadDetailPage() {
   const { currentSite } = useSite()
   const [lead, setLead] = useState<Lead | null>(null)
   const [segments, setSegments] = useState<Segment[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   
   useEffect(() => {
@@ -40,6 +45,7 @@ export default function LeadDetailPage() {
       
       loadLead()
       loadSegments()
+      loadCampaigns()
     }
   }, [currentSite?.id, params.id])
   
@@ -127,6 +133,23 @@ export default function LeadDetailPage() {
       setSegments(result.segments || [])
     } catch (error) {
       console.error("Error loading segments:", error)
+    }
+  }
+  
+  const loadCampaigns = async () => {
+    if (!currentSite?.id) return
+    
+    try {
+      const result = await getCampaigns(currentSite.id)
+      
+      if (result.error) {
+        console.error(result.error)
+        return
+      }
+      
+      setCampaigns(result.data || [])
+    } catch (error) {
+      console.error("Error loading campaigns:", error)
     }
   }
   
@@ -224,7 +247,8 @@ export default function LeadDetailPage() {
                   <CardContent className="p-0">
                     <LeadDetail 
                       lead={lead} 
-                      segments={segments} 
+                      segments={segments}
+                      campaigns={campaigns}
                       onUpdateLead={handleUpdateLead}
                       onClose={() => {}} 
                       onDeleteLead={handleDeleteLead}

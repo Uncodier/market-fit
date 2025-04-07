@@ -10,13 +10,39 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "sonner"
 import { createContent } from "./actions"
 import { useSite } from "@/app/context/SiteContext"
-import { PlusCircle, X } from "@/app/components/ui/icons"
+import { 
+  PlusCircle, 
+  X, 
+  Users, 
+  Target, 
+  Type, 
+  Tag, 
+  FileText, 
+  LayoutGrid 
+} from "@/app/components/ui/icons"
 import { Badge } from "@/app/components/ui/badge"
+import { Switch } from "@/app/components/ui/switch"
+import { ScrollArea } from "@/app/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
+import { ContentType, CONTENT_TYPE_NAMES } from "./utils"
+
+interface Segment {
+  id: string
+  name: string
+  description?: string
+}
+
+interface Campaign {
+  id: string
+  title: string
+  description?: string
+}
 
 interface CreateContentDialogProps {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  segments: Array<{ id: string; name: string }>
+  segments: Segment[]
+  campaigns?: Campaign[]
   onSuccess?: () => void
   trigger?: React.ReactNode
 }
@@ -25,6 +51,7 @@ export function CreateContentDialog({
   isOpen: controlledIsOpen, 
   onOpenChange: controlledOnOpenChange, 
   segments,
+  campaigns = [],
   onSuccess,
   trigger
 }: CreateContentDialogProps) {
@@ -33,10 +60,10 @@ export function CreateContentDialog({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [content_type, setContentType] = useState<"blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page">('blog_post')
-  const [segment_id, setSegmentId] = useState<string | null>(null)
+  const [selectedSegment, setSelectedSegment] = useState<string | null>(null)
+  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
-  const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isControlled = controlledIsOpen !== undefined
@@ -54,9 +81,9 @@ export function CreateContentDialog({
         title,
         description,
         content_type,
-        segment_id,
-        tags: tags.length > 0 ? tags : null,
-        content
+        segment_id: selectedSegment,
+        campaign_id: selectedCampaign,
+        tags: tags.length > 0 ? tags : null
       })
 
       if (result.error) {
@@ -65,7 +92,7 @@ export function CreateContentDialog({
       }
 
       toast.success("Content created successfully")
-      onOpenChange(false)
+      if (onOpenChange) onOpenChange(false)
       onSuccess && onSuccess()
     } catch (error) {
       console.error("Error creating content:", error)
@@ -93,6 +120,16 @@ export function CreateContentDialog({
     }
   }
 
+  // Function to toggle segment selection
+  const toggleSegment = (segmentId: string) => {
+    setSelectedSegment(prevSelected => prevSelected === segmentId ? null : segmentId);
+  }
+
+  // Function to toggle campaign selection
+  const toggleCampaign = (campaignId: string) => {
+    setSelectedCampaign(prevSelected => prevSelected === campaignId ? null : campaignId);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && (
@@ -110,7 +147,10 @@ export function CreateContentDialog({
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title" className="flex items-center gap-2">
+                <Type className="h-4 w-4 text-muted-foreground" />
+                Title
+              </Label>
               <Input
                 id="title"
                 value={title}
@@ -119,7 +159,10 @@ export function CreateContentDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                Description
+              </Label>
               <Textarea
                 id="description"
                 value={description}
@@ -129,61 +172,113 @@ export function CreateContentDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Enter content in markdown format"
-                rows={10}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="content_type">Content Type</Label>
+              <Label htmlFor="content_type" className="flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                Content Type
+              </Label>
               <Select
                 value={content_type}
                 onValueChange={(value: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page") => setContentType(value)}
               >
-                <SelectTrigger id="content_type">
+                <SelectTrigger id="content_type" className="h-12">
                   <SelectValue placeholder="Select content type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="blog_post">Blog Post</SelectItem>
-                  <SelectItem value="video">Video</SelectItem>
-                  <SelectItem value="podcast">Podcast</SelectItem>
-                  <SelectItem value="social_post">Social Media Post</SelectItem>
-                  <SelectItem value="newsletter">Newsletter</SelectItem>
-                  <SelectItem value="case_study">Case Study</SelectItem>
-                  <SelectItem value="whitepaper">Whitepaper</SelectItem>
-                  <SelectItem value="infographic">Infographic</SelectItem>
-                  <SelectItem value="webinar">Webinar</SelectItem>
-                  <SelectItem value="ebook">E-Book</SelectItem>
-                  <SelectItem value="ad">Advertisement</SelectItem>
-                  <SelectItem value="landing_page">Landing Page</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="segment">Segment</Label>
-              <Select
-                value={segment_id || ''}
-                onValueChange={(value) => setSegmentId(value === '' ? null : value)}
-              >
-                <SelectTrigger id="segment">
-                  <SelectValue placeholder="Select segment (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">No segment</SelectItem>
-                  {segments.map((segment) => (
-                    <SelectItem key={segment.id} value={segment.id}>
-                      {segment.name}
-                    </SelectItem>
+                  {Object.entries(CONTENT_TYPE_NAMES).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="tags">Tags</Label>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="segment">Segment</Label>
+              </div>
+              <ScrollArea className="h-[200px] rounded-md border">
+                <div className="p-4">
+                  {segments.map((segment) => {
+                    const isSelected = selectedSegment === segment.id;
+                    
+                    return (
+                      <div 
+                        key={segment.id} 
+                        className={cn(
+                          "flex items-center justify-between space-x-3 space-y-0 rounded-lg border p-4 mb-2 last:mb-0",
+                          "transition-colors hover:bg-muted/50"
+                        )}
+                      >
+                        <div className="grid gap-1.5 leading-none">
+                          <label
+                            htmlFor={`segment-${segment.id}`}
+                            className="text-sm font-medium leading-none cursor-pointer"
+                          >
+                            {segment.name}
+                          </label>
+                          <p className="text-sm text-muted-foreground">
+                            {segment.description || "No description available"}
+                          </p>
+                        </div>
+                        <Switch
+                          id={`segment-${segment.id}`}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSegment(segment.id)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {campaigns.length > 0 && (
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="campaign">Campaign</Label>
+                </div>
+                <ScrollArea className="h-[200px] rounded-md border">
+                  <div className="p-4">
+                    {campaigns.map((campaign) => {
+                      const isSelected = selectedCampaign === campaign.id;
+                      
+                      return (
+                        <div 
+                          key={campaign.id} 
+                          className={cn(
+                            "flex items-center justify-between space-x-3 space-y-0 rounded-lg border p-4 mb-2 last:mb-0",
+                            "transition-colors hover:bg-muted/50"
+                          )}
+                        >
+                          <div className="grid gap-1.5 leading-none">
+                            <label
+                              htmlFor={`campaign-${campaign.id}`}
+                              className="text-sm font-medium leading-none cursor-pointer"
+                            >
+                              {campaign.title}
+                            </label>
+                            <p className="text-sm text-muted-foreground">
+                              {campaign.description || "No description available"}
+                            </p>
+                          </div>
+                          <Switch
+                            id={`campaign-${campaign.id}`}
+                            checked={isSelected}
+                            onCheckedChange={() => toggleCampaign(campaign.id)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="tags" className="flex items-center gap-2">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                Tags
+              </Label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {tags.map((tag) => (
                   <Badge 
@@ -202,7 +297,7 @@ export function CreateContentDialog({
                   </Badge>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Input
                   id="tags"
                   value={tagInput}
@@ -210,12 +305,14 @@ export function CreateContentDialog({
                   onKeyDown={handleKeyDown}
                   placeholder="Add tags..."
                   disabled={isSubmitting}
+                  className="flex-1"
                 />
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={handleAddTag}
                   disabled={!tagInput.trim() || isSubmitting}
+                  className="h-12"
                 >
                   Add
                 </Button>

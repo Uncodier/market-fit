@@ -12,6 +12,7 @@ export interface Lead {
   } | null
   position: string | null
   segment_id: string | null
+  campaign_id: string | null
   status: "new" | "contacted" | "qualified" | "converted" | "lost"
   created_at: string
   origin: string | null

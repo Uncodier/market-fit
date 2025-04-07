@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/app/components/ui/sheet"
 import { Separator } from "@/app/components/ui/separator"
 import { useSite } from "@/app/context/SiteContext"
+import { Campaign } from "@/app/types"
 
 interface Segment {
   id: string
@@ -37,6 +38,7 @@ interface Experiment {
   roi: number | null
   preview_url: string | null
   hypothesis: string | null
+  campaign: Campaign | null
 }
 
 function ExperimentCardSkeleton() {
@@ -132,6 +134,8 @@ export default function ExperimentsPage() {
   const [initialFetchDone, setInitialFetchDone] = useState(false)
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([])
+  const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
   const { toast } = useToast()
   const { currentSite } = useSite()
 
@@ -150,6 +154,7 @@ export default function ExperimentsPage() {
       experiment.name.toLowerCase().includes(query) ||
       experiment.description?.toLowerCase().includes(query) ||
       experiment.hypothesis?.toLowerCase().includes(query) ||
+      experiment.campaign?.title.toLowerCase().includes(query) ||
       experiment.segments.some(segment => 
         segment.name.toLowerCase().includes(query)
       )
@@ -185,6 +190,7 @@ export default function ExperimentsPage() {
           roi,
           preview_url,
           hypothesis,
+          campaign_id,
           experiment_segments (
             segment:segments (
               id,
@@ -206,6 +212,37 @@ export default function ExperimentsPage() {
         return
       }
 
+      // Fetch associated campaigns
+      const campaignIds = experimentsData
+        .filter((exp: any) => exp.campaign_id)
+        .map((exp: any) => exp.campaign_id);
+      
+      let campaignsMap: Record<string, Campaign> = {};
+      
+      if (campaignIds.length > 0) {
+        const { data: campaignsData, error: campaignsError } = await supabase
+          .from("campaigns")
+          .select("*")
+          .in("id", campaignIds);
+          
+        if (campaignsError) {
+          console.error("Error fetching campaigns:", campaignsError);
+        } else if (campaignsData) {
+          campaignsMap = campaignsData.reduce((acc: Record<string, any>, campaign: any) => {
+            acc[campaign.id] = {
+              id: campaign.id,
+              title: campaign.title,
+              description: campaign.description,
+              priority: campaign.priority,
+              status: campaign.status,
+              type: campaign.type,
+              // Other necessary campaign properties
+            };
+            return acc;
+          }, {});
+        }
+      }
+
       // Transform the data to match our interface
       const transformedData = experimentsData.map((experiment: any) => ({
         ...experiment,
@@ -213,7 +250,8 @@ export default function ExperimentsPage() {
           id: es.segment.id,
           name: es.segment.name,
           participants: es.participants || 0
-        }))
+        })),
+        campaign: experiment.campaign_id ? campaignsMap[experiment.campaign_id] : null
       }))
 
       setExperiments(transformedData)
@@ -231,10 +269,56 @@ export default function ExperimentsPage() {
     }
   }, [toast, initialFetchDone, currentSite])
 
+  // Fetch segments and campaigns for experiment creation
+  const fetchSegmentsAndCampaigns = useCallback(async () => {
+    if (!currentSite) return;
+    
+    try {
+      const supabase = createClient();
+      
+      // Fetch segments
+      const { data: segmentsData, error: segmentsError } = await supabase
+        .from("segments")
+        .select("id, name, description")
+        .eq('site_id', currentSite.id)
+        .order('created_at', { ascending: false });
+        
+      if (segmentsError) {
+        console.error("Error fetching segments:", segmentsError);
+        return;
+      }
+      
+      setSegments(segmentsData || []);
+      
+      // Fetch campaigns
+      const { data: campaignsData, error: campaignsError } = await supabase
+        .from("campaigns")
+        .select("id, title, description")
+        .eq('site_id', currentSite.id)
+        .in('status', ['active', 'pending'])
+        .order('created_at', { ascending: false });
+        
+      if (campaignsError) {
+        console.error("Error fetching campaigns:", campaignsError);
+        return;
+      }
+      
+      setCampaigns(campaignsData || []);
+      
+    } catch (error) {
+      console.error("Error fetching data for experiment creation:", error);
+    }
+  }, [currentSite]);
+
   // Efecto para la carga inicial de datos
   useEffect(() => {
     fetchExperiments()
   }, [fetchExperiments])
+
+  // Fetch segments and campaigns when site changes
+  useEffect(() => {
+    fetchSegmentsAndCampaigns();
+  }, [fetchSegmentsAndCampaigns]);
 
   // Reset initialFetchDone when site changes to trigger a new fetch
   useEffect(() => {
@@ -325,6 +409,61 @@ export default function ExperimentsPage() {
     setSelectedExperiment(experiment);
     setIsDetailOpen(true);
   }
+
+  // Function to create a new experiment
+  const handleCreateExperiment = async (values: any) => {
+    try {
+      const supabase = createClient();
+      
+      // Create the experiment
+      const { data: experimentData, error: experimentError } = await supabase
+        .from("experiments")
+        .insert([{
+          name: values.name,
+          description: values.description,
+          hypothesis: values.hypothesis,
+          status: values.status,
+          site_id: values.site_id,
+          user_id: values.user_id,
+          start_date: values.start_date,
+          end_date: values.end_date,
+          conversion: values.conversion,
+          roi: values.roi,
+          preview_url: values.preview_url,
+          campaign_id: values.campaign_id
+        }])
+        .select()
+        .single();
+        
+      if (experimentError) {
+        return { error: experimentError.message };
+      }
+      
+      // Create experiment segments
+      if (values.segments && values.segments.length > 0) {
+        const experimentSegments = values.segments.map((segmentId: string) => ({
+          experiment_id: experimentData.id,
+          segment_id: segmentId,
+          participants: 0
+        }));
+        
+        const { error: segmentsError } = await supabase
+          .from("experiment_segments")
+          .insert(experimentSegments);
+          
+        if (segmentsError) {
+          return { error: `Experiment created but failed to add segments: ${segmentsError.message}` };
+        }
+      }
+      
+      // Refresh the experiments list
+      fetchExperiments();
+      
+      return { data: experimentData };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "An unexpected error occurred" };
+    }
+  };
 
   if (isLoadingData) {
     return (
@@ -520,10 +659,16 @@ export default function ExperimentsPage() {
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                ROI
+                                Campaign
                               </p>
                               <p className="text-base font-semibold text-card-foreground">
-                                {experiment.roi !== null ? `${experiment.roi}x` : "N/A"}
+                                {experiment.campaign ? (
+                                  <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
+                                    {experiment.campaign.title}
+                                  </Badge>
+                                ) : (
+                                  "None"
+                                )}
                               </p>
                             </div>
                           </div>
@@ -596,7 +741,7 @@ export default function ExperimentsPage() {
                                   variant="outline" 
                                   className="flex-1 transition-all text-sm font-medium h-10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/30 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                 >
-                                  <PenSquare className="mr-2 h-4 w-4 text-blue-700 dark:text-blue-400" />
+                                  <PenSquare className="mr-2 h-4 w-4 text-blue-700" />
                                   Edit
                                 </Button>
                               </>
@@ -683,10 +828,16 @@ export default function ExperimentsPage() {
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                ROI
+                                Campaign
                               </p>
                               <p className="text-base font-semibold text-card-foreground">
-                                {experiment.roi !== null ? `${experiment.roi}x` : "N/A"}
+                                {experiment.campaign ? (
+                                  <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
+                                    {experiment.campaign.title}
+                                  </Badge>
+                                ) : (
+                                  "None"
+                                )}
                               </p>
                             </div>
                           </div>
@@ -817,10 +968,16 @@ export default function ExperimentsPage() {
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                ROI
+                                Campaign
                               </p>
                               <p className="text-base font-semibold text-card-foreground">
-                                {experiment.roi !== null ? `${experiment.roi}x` : "N/A"}
+                                {experiment.campaign ? (
+                                  <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
+                                    {experiment.campaign.title}
+                                  </Badge>
+                                ) : (
+                                  "None"
+                                )}
                               </p>
                             </div>
                           </div>
@@ -1074,6 +1231,24 @@ export default function ExperimentsPage() {
                         <Tag className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Campaign</p>
+                        <p className="text-sm font-medium">
+                          {selectedExperiment.campaign ? (
+                            <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
+                              {selectedExperiment.campaign.title}
+                            </Badge>
+                          ) : (
+                            "None"
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                        <Tag className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
                         <p className="text-xs text-muted-foreground mb-1">ID</p>
                         <p className="text-sm font-medium">{selectedExperiment.id}</p>
                       </div>
@@ -1129,9 +1304,15 @@ export default function ExperimentsPage() {
                         <Tag className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs text-muted-foreground mb-1">ROI</p>
+                        <p className="text-xs text-muted-foreground mb-1">Campaign</p>
                         <p className="text-sm font-medium">
-                          {selectedExperiment.roi !== null ? `${selectedExperiment.roi}x` : "N/A"}
+                          {selectedExperiment.campaign ? (
+                            <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
+                              {selectedExperiment.campaign.title}
+                            </Badge>
+                          ) : (
+                            "None"
+                          )}
                         </p>
                       </div>
                     </div>

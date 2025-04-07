@@ -10,7 +10,7 @@ export const requirementFormSchema = z.object({
   priority: z.enum(["high", "medium", "low"], {
     required_error: "Por favor selecciona una prioridad",
   }),
-  status: z.enum(["validated", "in-progress", "backlog"], {
+  status: z.enum(["validated", "in-progress", "on-review", "done", "backlog", "canceled"], {
     required_error: "Por favor selecciona un estado",
   }),
   completionStatus: z.enum(["pending", "completed", "rejected"], {
@@ -19,9 +19,14 @@ export const requirementFormSchema = z.object({
   source: z.string({
     required_error: "Por favor selecciona una fuente",
   }),
+  budget: z.coerce.number()
+    .min(0, { message: "El presupuesto no puede ser negativo" })
+    .optional()
+    .nullable(),
   segments: z.array(z.string()).min(1, {
     message: "Por favor selecciona al menos un segmento",
   }),
+  campaigns: z.array(z.string()).optional().default([]),
   user_id: z.string(),
   site_id: z.string(),
   created_at: z.string(),

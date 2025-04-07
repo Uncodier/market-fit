@@ -5,6 +5,7 @@ export const experimentFormSchema = z.object({
   description: z.string().min(1, "La descripción es requerida"),
   hypothesis: z.string().min(1, "La hipótesis es requerida"),
   segments: z.array(z.string()).min(1, "Debe seleccionar al menos un segmento"),
+  campaign_id: z.string().nullable().optional(),
   status: z.enum(["draft", "active", "completed"]).default("draft"),
   start_date: z.string().nullable(),
   end_date: z.string().nullable(),

@@ -48,6 +48,7 @@ export async function createRequirement(data: RequirementFormValues) {
         status: data.status,
         completion_status: data.completionStatus,
         source: data.source,
+        budget: data.budget,
         site_id: data.site_id,
         user_id: data.user_id,
         created_at: data.created_at,
@@ -84,7 +85,31 @@ export async function createRequirement(data: RequirementFormValues) {
       }
     }
 
+    // Insertamos las relaciones con las campañas (si existen)
+    if (data.campaigns && data.campaigns.length > 0) {
+      const requirementCampaigns = data.campaigns.map(campaignId => ({
+        requirement_id: requirement.id,
+        campaign_id: campaignId
+      }))
+
+      const { error: campaignsError } = await supabase
+        .from("campaign_requirements")
+        .insert(requirementCampaigns)
+
+      if (campaignsError) {
+        console.error("Error al insertar relaciones de campañas:", campaignsError)
+        // No eliminamos el requerimiento si falla la relación con campañas
+        // ya que la relación con segmentos ya está creada
+      }
+    }
+
     revalidatePath("/requirements")
+    
+    // Asegurar que el cliente recargue para ver los nuevos datos
+    if (typeof window !== 'undefined') {
+      window.location.reload()
+    }
+    
     return { data: requirement }
   } catch (error) {
     return {

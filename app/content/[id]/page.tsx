@@ -9,7 +9,9 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
-import { updateContent } from "../actions"
+import { updateContent, updateContentStatus } from "../actions"
+import { getContentTypeName } from "../utils"
+import { StarRating } from "@/app/components/ui/rating"
 import { 
   ChevronLeft,
   Wand2, 
@@ -41,7 +43,14 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
-  ParagraphIcon
+  ParagraphIcon,
+  Megaphone,
+  Target,
+  Type,
+  Tag,
+  FileText as TextIcon,
+  Users,
+  BarChart
 } from "@/app/components/ui/icons"
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -57,6 +66,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select"
 
 const MenuBar = ({ editor, onSave, isSaving }: { editor: any, onSave: () => void, isSaving: boolean }) => {
   if (!editor) {
@@ -64,8 +80,28 @@ const MenuBar = ({ editor, onSave, isSaving }: { editor: any, onSave: () => void
   }
 
   return (
-    <div className="border-b p-2 flex flex-wrap gap-1 h-[71px] items-center justify-between">
+    <div className="border-b pl-[20px] pr-4 py-2 flex flex-wrap gap-1 h-[71px] items-center justify-between">
       <div className="flex items-center gap-1">
+        <Button
+          variant="secondary" 
+          size="default"
+          onClick={onSave}
+          disabled={isSaving}
+          className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+        >
+          {isSaving ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              Save
+            </>
+          )}
+        </Button>
+        <div className="w-px h-6 bg-border mx-1" />
         <Button
           variant="ghost"
           size="sm"
@@ -240,22 +276,6 @@ const MenuBar = ({ editor, onSave, isSaving }: { editor: any, onSave: () => void
           <Redo className="h-4 w-4" />
         </Button>
       </div>
-      <Button 
-        variant="default" 
-        size="sm"
-        onClick={onSave}
-        disabled={isSaving}
-        className="min-w-[180px]"
-      >
-        {isSaving ? (
-          <>Saving...</>
-        ) : (
-          <>
-            <Save className="h-4 w-4 mr-2" />
-            Save
-          </>
-        )}
-      </Button>
     </div>
   )
 }
@@ -321,6 +341,59 @@ const ContentSkeleton = () => {
   )
 }
 
+// Add Cpu icon for AI representation
+const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+      <rect x="9" y="9" width="6" height="6" />
+      <line x1="9" y1="1" x2="9" y2="4" />
+      <line x1="15" y1="1" x2="15" y2="4" />
+      <line x1="9" y1="20" x2="9" y2="23" />
+      <line x1="15" y1="20" x2="15" y2="23" />
+      <line x1="20" y1="9" x2="23" y2="9" />
+      <line x1="20" y1="14" x2="23" y2="14" />
+      <line x1="1" y1="9" x2="4" y2="9" />
+      <line x1="1" y1="14" x2="4" y2="14" />
+    </svg>
+  </div>
+)
+
+// Activity icon for status
+const ActivityIcon = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  </div>
+)
+
 export default function ContentDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -335,9 +408,12 @@ export default function ContentDetailPage() {
     text: '',
     content_type: '',
     segment_id: '',
+    campaign_id: '',
     tags: [] as string[],
     word_count: 0,
-    char_count: 0
+    char_count: 0,
+    performance_rating: null as number | null,
+    status: 'draft' // Default status
   })
   const [aiPrompt, setAiPrompt] = useState('')
   const [isAiProcessing, setIsAiProcessing] = useState(false)
@@ -353,6 +429,8 @@ export default function ContentDetailPage() {
   const [expertise, setExpertise] = useState('')
   const [interests, setInterests] = useState('')
   const [topicsToAvoid, setTopicsToAvoid] = useState('')
+  const [campaigns, setCampaigns] = useState<Array<{id: string, title: string, description?: string}>>([])
+  const [segments, setSegments] = useState<Array<{id: string, name: string}>>([])
 
   // Functions to determine slider labels
   const getToneLabel = (value: number) => {
@@ -478,6 +556,7 @@ export default function ContentDetailPage() {
         return
       }
 
+      console.log("Content loaded, campaign_id:", data.campaign_id)
       setContent(data)
       
       // Calcular conteos iniciales
@@ -492,13 +571,36 @@ export default function ContentDetailPage() {
         text: data.text || '',
         content_type: data.content_type,
         segment_id: data.segment_id || '',
+        campaign_id: data.campaign_id || '',
         tags: data.tags || [],
         word_count: wordCount,
-        char_count: charCount
+        char_count: charCount,
+        performance_rating: data.performance_rating,
+        status: data.status || 'draft' // Load status from content or default to draft
       })
       
       if (editor) {
         editor.commands.setContent(data.text || data.content || '')
+      }
+      
+      // Load campaigns after setting the content
+      if (data.site_id) {
+        const campaignsResult = await fetch(`/api/campaigns?siteId=${data.site_id}`)
+        const campaignsData = await campaignsResult.json()
+        
+        if (Array.isArray(campaignsData)) {
+          console.log("Campaigns loaded:", campaignsData.length)
+          console.log("First campaign:", campaignsData[0]?.title || "No campaigns found")
+          setCampaigns(campaignsData)
+        }
+        
+        // Load segments for the site
+        const segmentsResult = await fetch(`/api/segments?siteId=${data.site_id}`)
+        const segmentsData = await segmentsResult.json()
+        
+        if (Array.isArray(segmentsData)) {
+          setSegments(segmentsData)
+        }
       }
     } catch (error) {
       console.error("Error loading content:", error)
@@ -558,17 +660,22 @@ export default function ContentDetailPage() {
   const handleSaveChanges = async () => {
     if (!content) return
     
+    console.log("Saving with campaign_id:", editForm.campaign_id)
+    
     setIsSaving(true)
     try {
+      // First update the content
       const result = await updateContent({
         contentId: content.id,
         title: editForm.title,
         description: editForm.description || undefined,
         content_type: content.content_type,
         segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
+        campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
         tags: editForm.tags.length > 0 ? editForm.tags : null,
         content: editForm.content || undefined,
-        text: editForm.text || undefined
+        text: editForm.text || undefined,
+        performance_rating: editForm.performance_rating
       })
       
       if (result.error) {
@@ -576,6 +683,20 @@ export default function ContentDetailPage() {
         return
       }
       
+      // Then update the status if it has changed
+      if (content.status !== editForm.status) {
+        const statusResult = await updateContentStatus({
+          contentId: content.id,
+          status: editForm.status as any
+        })
+        
+        if (statusResult.error) {
+          toast.error(statusResult.error)
+          return
+        }
+      }
+      
+      console.log("Content saved successfully with campaign_id:", result.content?.campaign_id)
       setIsEditing(false)
       toast.success("Content updated successfully")
       loadContent()
@@ -694,7 +815,7 @@ export default function ContentDetailPage() {
           <div className="h-[71px] flex items-center justify-center border-b">
             <TabsList className="inline-flex rounded-none border-b-0">
               <TabsTrigger value="ai" className="rounded-none">
-                <Wand2 className="h-4 w-4 mr-2" />
+                <Cpu className="h-4 w-4 mr-2" />
                 AI Assistant
               </TabsTrigger>
               <TabsTrigger value="details" className="rounded-none">
@@ -707,371 +828,539 @@ export default function ContentDetailPage() {
           {/* Tabs Content */}
           <div className="flex-1 overflow-hidden">
             <TabsContent value="ai" className="h-full mt-0">
-              <ScrollArea className="h-full">
-                <div className="p-4 space-y-6">
-                  {/* Content Style Controls */}
-                  <Card className="border-none bg-muted/30">
-                    <CardContent className="p-0">
-                      <Collapsible defaultOpen>
-                        <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                            Style Controls
-                          </div>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="px-4 pb-4">
-                          <div className="space-y-6">
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">Tone</Label>
-                                <Badge variant="secondary" className="text-xs">
-                                  {getToneLabel(contentStyle.tone)}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-base text-muted-foreground">🧐</span>
-                                <Slider
-                                  value={[contentStyle.tone]}
-                                  onValueChange={([value]) => setContentStyle(prev => ({ ...prev, tone: value }))}
-                                  max={100}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <span className="text-base text-muted-foreground">😊</span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">Complexity</Label>
-                                <Badge variant="secondary" className="text-xs">
-                                  {getComplexityLabel(contentStyle.complexity)}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-base text-muted-foreground">📝</span>
-                                <Slider
-                                  value={[contentStyle.complexity]}
-                                  onValueChange={([value]) => setContentStyle(prev => ({ ...prev, complexity: value }))}
-                                  max={100}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <span className="text-base text-muted-foreground">📚</span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">Creativity</Label>
-                                <Badge variant="secondary" className="text-xs">
-                                  {getCreativityLabel(contentStyle.creativity)}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-base text-muted-foreground">📋</span>
-                                <Slider
-                                  value={[contentStyle.creativity]}
-                                  onValueChange={([value]) => setContentStyle(prev => ({ ...prev, creativity: value }))}
-                                  max={100}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <span className="text-base text-muted-foreground">🎨</span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">Persuasiveness</Label>
-                                <Badge variant="secondary" className="text-xs">
-                                  {getPersuasivenessLabel(contentStyle.persuasiveness)}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-base text-muted-foreground">ℹ️</span>
-                                <Slider
-                                  value={[contentStyle.persuasiveness]}
-                                  onValueChange={([value]) => setContentStyle(prev => ({ ...prev, persuasiveness: value }))}
-                                  max={100}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <span className="text-base text-muted-foreground">🔥</span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">Target Audience</Label>
-                                <Badge variant="secondary" className="text-xs">
-                                  {getTargetAudienceLabel(contentStyle.targetAudience)}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-base text-muted-foreground">👥</span>
-                                <Slider
-                                  value={[contentStyle.targetAudience]}
-                                  onValueChange={([value]) => setContentStyle(prev => ({ ...prev, targetAudience: value }))}
-                                  max={100}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <span className="text-base text-muted-foreground">👤</span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">Engagement</Label>
-                                <Badge variant="secondary" className="text-xs">
-                                  {getEngagementLabel(contentStyle.engagement)}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-base text-muted-foreground">👔</span>
-                                <Slider
-                                  value={[contentStyle.engagement]}
-                                  onValueChange={([value]) => setContentStyle(prev => ({ ...prev, engagement: value }))}
-                                  max={100}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <span className="text-base text-muted-foreground">🤩</span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">Size</Label>
-                                <Badge variant="secondary" className="text-xs">
-                                  {getSizeLabel(contentStyle.size)}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-base text-muted-foreground">📄</span>
-                                <Slider
-                                  value={[contentStyle.size]}
-                                  onValueChange={([value]) => setContentStyle(prev => ({ ...prev, size: value }))}
-                                  max={100}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <span className="text-base text-muted-foreground">📜</span>
-                              </div>
-                            </div>
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </CardContent>
-                  </Card>
-
-                  {/* Prompts Section */}
-                  <Card className="border-none bg-muted/30">
-                    <CardContent className="p-0">
-                      <Collapsible defaultOpen>
-                        <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                            Prompts
-                          </div>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="px-4 pb-4">
-                          <div className="space-y-6">
-                            {/* What I'm Good At */}
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">What I'm Good At</Label>
-                              <Textarea
-                                placeholder="List your key strengths, expertise areas, and what you're known for..."
-                                className="min-h-[100px]"
-                                value={expertise}
-                                onChange={(e) => setExpertise(e.target.value)}
-                              />
-                            </div>
-
-                            {/* Topics I'm Interested In */}
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Topics I'm Interested In</Label>
-                              <Textarea
-                                placeholder="List topics, industries, or areas you're passionate about..."
-                                className="min-h-[100px]"
-                                value={interests}
-                                onChange={(e) => setInterests(e.target.value)}
-                              />
-                            </div>
-
-                            {/* Topics to Avoid */}
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Topics to Avoid</Label>
-                              <Textarea
-                                placeholder="List topics, industries, or areas you want to avoid..."
-                                className="min-h-[100px]"
-                                value={topicsToAvoid}
-                                onChange={(e) => setTopicsToAvoid(e.target.value)}
-                              />
-                            </div>
-
-                            {/* AI Prompt */}
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">AI Prompt</Label>
-                              <Textarea
-                                value={aiPrompt}
-                                onChange={(e) => setAiPrompt(e.target.value)}
-                                placeholder="Describe what you want the AI to do..."
-                                className="min-h-[100px]"
-                              />
-                            </div>
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </CardContent>
-                  </Card>
-
-                  <div className="space-y-2">
-                    <Label className="text-base font-semibold">Quick Actions</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setAiPrompt(generatePromptFromStyle())
-                          handleAiAction('improve')
-                        }}
-                        disabled={isAiProcessing}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Improve
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setAiPrompt(generatePromptFromStyle())
-                          handleAiAction('expand')
-                        }}
-                        disabled={isAiProcessing}
-                      >
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Expand
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setAiPrompt(generatePromptFromStyle())
-                          handleAiAction('style')
-                        }}
-                        disabled={isAiProcessing}
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Style
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setAiPrompt(generatePromptFromStyle())
-                          handleAiAction('summarize')
-                        }}
-                        disabled={isAiProcessing}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Summarize
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </ScrollArea>
-            </TabsContent>
-            <TabsContent value="details" className="h-full mt-0">
-              <ScrollArea className="h-full">
-                <div className="p-4 space-y-6">
-                  <div className="space-y-4">
+              <div className="flex flex-col h-full">
+                <ScrollArea className="flex-1">
+                  <div className="p-4 space-y-6">
+                    {/* Quick Actions Section */}
                     <div className="space-y-2">
-                      <Label>Title</Label>
-                      <Input
-                        value={editForm.title}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Enter title"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea
-                        value={editForm.description}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Enter description"
-                        className="min-h-[100px]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Content Type</Label>
-                      <Input
-                        value={editForm.content_type}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Segment</Label>
-                      <Input
-                        value={editForm.segment_id}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, segment_id: e.target.value }))}
-                        placeholder="Enter segment ID"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tags</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {editForm.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary">
-                            {tag}
-                            <button
-                              onClick={() => setEditForm(prev => ({
-                                ...prev,
-                                tags: prev.tags.filter((_, i) => i !== index)
-                              }))}
-                              className="ml-1 hover:text-destructive"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
+                      <Label className="text-base font-semibold">Quick Actions</Label>
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const newTag = window.prompt('Enter new tag')
-                            if (newTag) {
-                              setEditForm(prev => ({
-                                ...prev,
-                                tags: [...prev.tags, newTag]
-                              }))
-                            }
+                            setAiPrompt(generatePromptFromStyle())
+                            handleAiAction('improve')
                           }}
+                          disabled={isAiProcessing}
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Improve
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setAiPrompt(generatePromptFromStyle())
+                            handleAiAction('expand')
+                          }}
+                          disabled={isAiProcessing}
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
-                          Add Tag
+                          Expand
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setAiPrompt(generatePromptFromStyle())
+                            handleAiAction('style')
+                          }}
+                          disabled={isAiProcessing}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Style
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setAiPrompt(generatePromptFromStyle())
+                            handleAiAction('summarize')
+                          }}
+                          disabled={isAiProcessing}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Summarize
                         </Button>
                       </div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Content Information</Label>
-                      <div className="grid grid-cols-2 gap-4 p-3 bg-muted rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{editForm.char_count || 0} characters</span>
+
+                    {/* Content Style Controls */}
+                    <Card className="border-none bg-muted/30">
+                      <CardContent className="p-0">
+                        <Collapsible defaultOpen>
+                          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                              Style Controls
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="px-4 pb-4">
+                            <div className="space-y-6">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium">Tone</Label>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getToneLabel(contentStyle.tone)}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-base text-muted-foreground">🧐</span>
+                                  <Slider
+                                    value={[contentStyle.tone]}
+                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, tone: value }))}
+                                    max={100}
+                                    step={1}
+                                    className="w-full"
+                                  />
+                                  <span className="text-base text-muted-foreground">😊</span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium">Complexity</Label>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getComplexityLabel(contentStyle.complexity)}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-base text-muted-foreground">📝</span>
+                                  <Slider
+                                    value={[contentStyle.complexity]}
+                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, complexity: value }))}
+                                    max={100}
+                                    step={1}
+                                    className="w-full"
+                                  />
+                                  <span className="text-base text-muted-foreground">📚</span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium">Creativity</Label>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getCreativityLabel(contentStyle.creativity)}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-base text-muted-foreground">📋</span>
+                                  <Slider
+                                    value={[contentStyle.creativity]}
+                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, creativity: value }))}
+                                    max={100}
+                                    step={1}
+                                    className="w-full"
+                                  />
+                                  <span className="text-base text-muted-foreground">🎨</span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium">Persuasiveness</Label>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getPersuasivenessLabel(contentStyle.persuasiveness)}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-base text-muted-foreground">ℹ️</span>
+                                  <Slider
+                                    value={[contentStyle.persuasiveness]}
+                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, persuasiveness: value }))}
+                                    max={100}
+                                    step={1}
+                                    className="w-full"
+                                  />
+                                  <span className="text-base text-muted-foreground">🔥</span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium">Target Audience</Label>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getTargetAudienceLabel(contentStyle.targetAudience)}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-base text-muted-foreground">👥</span>
+                                  <Slider
+                                    value={[contentStyle.targetAudience]}
+                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, targetAudience: value }))}
+                                    max={100}
+                                    step={1}
+                                    className="w-full"
+                                  />
+                                  <span className="text-base text-muted-foreground">👤</span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium">Engagement</Label>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getEngagementLabel(contentStyle.engagement)}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-base text-muted-foreground">👔</span>
+                                  <Slider
+                                    value={[contentStyle.engagement]}
+                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, engagement: value }))}
+                                    max={100}
+                                    step={1}
+                                    className="w-full"
+                                  />
+                                  <span className="text-base text-muted-foreground">🤩</span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium">Size</Label>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getSizeLabel(contentStyle.size)}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-base text-muted-foreground">📄</span>
+                                  <Slider
+                                    value={[contentStyle.size]}
+                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, size: value }))}
+                                    max={100}
+                                    step={1}
+                                    className="w-full"
+                                  />
+                                  <span className="text-base text-muted-foreground">📜</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </CardContent>
+                    </Card>
+
+                    {/* Prompts Section */}
+                    <Card className="border-none bg-muted/30">
+                      <CardContent className="p-0">
+                        <Collapsible defaultOpen>
+                          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                              Prompts
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="px-4 pb-4">
+                            <div className="space-y-6">
+                              {/* What I'm Good At */}
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">What I'm Good At</Label>
+                                <Textarea
+                                  placeholder="List your key strengths, expertise areas, and what you're known for..."
+                                  className="min-h-[100px]"
+                                  value={expertise}
+                                  onChange={(e) => setExpertise(e.target.value)}
+                                />
+                              </div>
+
+                              {/* Topics I'm Interested In */}
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Topics I'm Interested In</Label>
+                                <Textarea
+                                  placeholder="List topics, industries, or areas you're passionate about..."
+                                  className="min-h-[100px]"
+                                  value={interests}
+                                  onChange={(e) => setInterests(e.target.value)}
+                                />
+                              </div>
+
+                              {/* Topics to Avoid */}
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Topics to Avoid</Label>
+                                <Textarea
+                                  placeholder="List topics, industries, or areas you want to avoid..."
+                                  className="min-h-[100px]"
+                                  value={topicsToAvoid}
+                                  onChange={(e) => setTopicsToAvoid(e.target.value)}
+                                />
+                              </div>
+
+                              {/* AI Prompt */}
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">AI Prompt</Label>
+                                <Textarea
+                                  value={aiPrompt}
+                                  onChange={(e) => setAiPrompt(e.target.value)}
+                                  placeholder="Describe what you want the AI to do..."
+                                  className="min-h-[100px]"
+                                />
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </ScrollArea>
+                
+                {/* Fixed Footer with Generate Content button */}
+                <div className="border-t p-4 bg-background">
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    disabled={isAiProcessing}
+                    onClick={() => {
+                      setAiPrompt(generatePromptFromStyle())
+                      handleAiAction('generate')
+                    }}
+                  >
+                    <Cpu className="h-5 w-5 mr-2" />
+                    Generate Content
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="details" className="h-full mt-0">
+              <div className="flex flex-col h-full">
+                <ScrollArea className="flex-1">
+                  <div className="p-5 space-y-6">
+                    <div className="space-y-5">
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <BarChart className="h-4 w-4 text-muted-foreground" />
+                          Performance Rating
+                        </Label>
+                        <div className="h-12 py-2">
+                          <StarRating 
+                            rating={editForm.performance_rating} 
+                            onRatingChange={(rating) => {
+                              setEditForm(prev => ({ ...prev, performance_rating: rating }));
+                              // Save immediately when rating changes
+                              updateContent({
+                                contentId: content.id,
+                                title: editForm.title,
+                                description: editForm.description || undefined,
+                                content_type: content.content_type,
+                                segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
+                                campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
+                                tags: editForm.tags.length > 0 ? editForm.tags : null,
+                                text: editForm.text || undefined,
+                                performance_rating: rating
+                              }).then(() => {
+                                toast.success("Performance rating updated");
+                              }).catch(error => {
+                                console.error("Error updating rating:", error);
+                                toast.error("Failed to update rating");
+                              });
+                            }}
+                            readonly={false}
+                            size="lg"
+                            className="w-full justify-around"
+                          />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{editForm.word_count || 0} words</span>
+                      </div>
+                      
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <ActivityIcon className="h-4 w-4 text-muted-foreground" />
+                          Status
+                        </Label>
+                        <Select
+                          value={editForm.status}
+                          onValueChange={(value) => setEditForm(prev => ({ 
+                            ...prev, 
+                            status: value
+                          }))}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="review">In Review</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <Type className="h-4 w-4 text-muted-foreground" />
+                          Title
+                        </Label>
+                        <Input
+                          value={editForm.title}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Enter title"
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <TextIcon className="h-4 w-4 text-muted-foreground" />
+                          Description
+                        </Label>
+                        <Textarea
+                          value={editForm.description}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Enter description"
+                          className="min-h-[100px] resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          Content Type
+                        </Label>
+                        <Input
+                          value={getContentTypeName(editForm.content_type)}
+                          disabled
+                          className="bg-muted h-11"
+                        />
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          Segment
+                        </Label>
+                        <Select
+                          value={editForm.segment_id || "none"}
+                          onValueChange={(value) => setEditForm(prev => ({ 
+                            ...prev, 
+                            segment_id: value === "none" ? "" : value 
+                          }))}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select a segment" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No segment</SelectItem>
+                            {segments.map(segment => (
+                              <SelectItem key={segment.id} value={segment.id}>
+                                {segment.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <Target className="h-4 w-4 text-muted-foreground" />
+                          Campaign
+                        </Label>
+                        <Select
+                          value={editForm.campaign_id || "none"}
+                          onValueChange={(value) => setEditForm(prev => ({ 
+                            ...prev, 
+                            campaign_id: value === "none" ? "" : value 
+                          }))}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select a campaign" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No campaign</SelectItem>
+                            {campaigns.map(campaign => (
+                              <SelectItem key={campaign.id} value={campaign.id}>
+                                {campaign.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          Tags
+                        </Label>
+                        <div className="flex flex-wrap gap-2">
+                          {editForm.tags.map((tag, index) => (
+                            <Badge key={index} variant="secondary">
+                              {tag}
+                              <button
+                                onClick={() => setEditForm(prev => ({
+                                  ...prev,
+                                  tags: prev.tags.filter((_, i) => i !== index)
+                                }))}
+                                className="ml-1 hover:text-destructive"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Input
+                            placeholder="Enter tag"
+                            className="flex-1 h-11"
+                            id="new-tag-input"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const input = e.currentTarget;
+                                const newTag = input.value.trim();
+                                if (newTag) {
+                                  setEditForm(prev => ({
+                                    ...prev,
+                                    tags: [...prev.tags, newTag]
+                                  }));
+                                  input.value = '';
+                                }
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            className="h-11 whitespace-nowrap"
+                            onClick={() => {
+                              const input = document.getElementById('new-tag-input') as HTMLInputElement;
+                              const newTag = input.value.trim();
+                              if (newTag) {
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  tags: [...prev.tags, newTag]
+                                }));
+                                input.value = '';
+                              }
+                            }}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add Tag
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2.5">
+                        <Label className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          Content Information
+                        </Label>
+                        <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground">Characters</span>
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">{editForm.char_count.toLocaleString() || 0}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground">Words</span>
+                            <div className="flex items-center gap-2">
+                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">{editForm.word_count.toLocaleString() || 0}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </ScrollArea>
+                </ScrollArea>
+              </div>
             </TabsContent>
           </div>
         </Tabs>
