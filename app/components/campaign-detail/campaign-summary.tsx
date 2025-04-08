@@ -114,6 +114,9 @@ export interface CampaignSummaryProps {
   onDeleteCampaign?: () => void;
   onUpdateCampaign?: (data: any) => void;
   onReloadLeads?: () => void;
+  campaignRequirements?: any[];
+  loadingRequirements?: boolean;
+  onReloadRequirements?: () => void;
 }
 
 export function CampaignSummary({ 
@@ -127,7 +130,10 @@ export function CampaignSummary({
   onEditCampaign,
   onDeleteCampaign,
   onUpdateCampaign,
-  onReloadLeads
+  onReloadLeads,
+  campaignRequirements = [],
+  loadingRequirements = false,
+  onReloadRequirements
 }: CampaignSummaryProps) {
   const router = useRouter();
   const { loadingSegments, campaignSegments } = taskDetailContext;
@@ -180,6 +186,14 @@ export function CampaignSummary({
       }));
     }
   }, [campaign.segments, campaign.segmentObjects, segments]);
+  
+  // Debug log para ver los requirements que llegan
+  useEffect(() => {
+    console.log("CampaignSummary received requirements:", {
+      count: campaignRequirements?.length || 0,
+      requirements: campaignRequirements
+    });
+  }, [campaignRequirements]);
   
   const handleDeleteCampaign = () => {
     if (onDeleteCampaign) {
@@ -414,10 +428,23 @@ export function CampaignSummary({
         {/* Requirements Card */}
         <CampaignRequirements 
           campaignId={campaign.id}
+          externalRequirements={campaignRequirements}
+          externalLoading={loadingRequirements}
           renderAddButton={() => (
             <CampaignRequirementDialog
               campaignId={campaign.id}
-              onCreateRequirement={onCreateRequirement}
+              onCreateRequirement={(values) => {
+                // After creating a requirement, reload requirements
+                console.log("Creating requirement for campaign:", campaign.id, "with values:", values);
+                return onCreateRequirement(values).then(result => {
+                  console.log("Requirement creation result:", result);
+                  if (result.data && !result.error && onReloadRequirements) {
+                    console.log("Reloading requirements after creation");
+                    onReloadRequirements();
+                  }
+                  return result;
+                });
+              }}
               trigger={
                 <Button variant="outline" size="sm">
                   <PlusCircle className="mr-2 h-4 w-4" />

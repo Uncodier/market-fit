@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
 import { Checkbox } from "@/app/components/ui/checkbox"
-import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList } from "@/app/components/ui/icons"
+import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList, FileText } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
 import React, { useState, useEffect } from "react"
@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/app/components/ui/dropdown-menu"
+import { useRouter } from "next/navigation"
 
 // Constantes para estados
 const REQUIREMENT_STATUS = {
@@ -63,7 +64,6 @@ interface Requirement {
   createdAt: string
   segments: string[]
   segmentNames?: string[]
-  isExpanded?: boolean
 }
 
 // Define el tipo para los datos de requisitos en Supabase
@@ -94,7 +94,6 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
   onUpdateCompletionStatus: (id: string, status: CompletionStatusType) => Promise<void>,
   onUpdatePriority: (id: string, priority: "high" | "medium" | "low") => Promise<void>
 }) {
-  const [isExpanded, setIsExpanded] = React.useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isUpdatingCompletion, setIsUpdatingCompletion] = useState(false)
   const [isUpdatingPriority, setIsUpdatingPriority] = useState(false)
@@ -192,526 +191,234 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
     }
   }
 
+  // Function to navigate to requirement details
+  const router = useRouter()
+  const navigateToDetails = () => {
+    router.push(`/requirements/${requirement.id}`);
+  }
+
   return (
-    <Collapsible
-      open={isExpanded}
-      onOpenChange={setIsExpanded}
-      className="w-full"
+    <Card 
+      className="border border-border hover:border-foreground/20 transition-colors overflow-hidden cursor-pointer"
+      onClick={navigateToDetails}
     >
-      <div 
-        className="cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
-          <div className="flex items-center pl-6 hover:bg-muted/50 transition-colors">
-            <div className="flex items-center justify-center p-2">
-              {isExpanded ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
+        <CardContent className="flex-1 py-5 px-5 flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full">
+          <div className="w-full lg:w-1/3 min-w-[250px] flex-shrink-0">
+            <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
+            <p className="text-sm text-muted-foreground/80 truncate">{requirement.description}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full">
+            <div className="p-2 rounded-lg">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Priority</p>
+              {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
+                <Badge 
+                  variant="secondary" 
+                  className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
+                >
+                  {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                </Badge>
               ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                      <Badge variant="secondary" className={priorityColors[requirement.priority]}>
+                        {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                      </Badge>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingPriority}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdatePriority("high");
+                      }}
+                    >
+                      <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
+                      High Priority
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingPriority}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdatePriority("medium");
+                      }}
+                    >
+                      <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
+                      Medium Priority
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingPriority}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdatePriority("low");
+                      }}
+                    >
+                      <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
+                      Low Priority
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {isUpdatingPriority && (
+                <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
               )}
             </div>
-            <CardContent className="flex-1 p-6 flex flex-col lg:flex-row items-start lg:items-center gap-4">
-              <div className="w-full lg:w-1/4 min-w-[200px] max-w-full lg:max-w-[300px] mb-4 lg:mb-0">
-                <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
-                <p className="text-sm text-muted-foreground/80 truncate">{requirement.description}</p>
-              </div>
-              <div className="flex flex-wrap gap-6 w-full lg:w-3/4 justify-start lg:justify-between">
-                <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Priority</p>
-                  {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
-                    <Badge 
-                      variant="secondary" 
-                      className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
+            <div className="p-2 rounded-lg">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Status</p>
+              {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
+                <Badge 
+                  variant="secondary" 
+                  className={`${statusColors[requirement.status]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
+                >
+                  {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
+                    ? "In Progress" 
+                    : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
+                      ? "On Review"
+                      : requirement.status === REQUIREMENT_STATUS.DONE
+                        ? "Done"
+                        : requirement.status === REQUIREMENT_STATUS.CANCELED
+                          ? "Canceled"
+                          : requirement.status === REQUIREMENT_STATUS.VALIDATED
+                            ? "Validated"
+                            : "Backlog"}
+                </Badge>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                      <Badge variant="secondary" className={statusColors[requirement.status]}>
+                        {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
+                          ? "In Progress" 
+                          : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
+                            ? "On Review"
+                            : requirement.status === REQUIREMENT_STATUS.DONE
+                              ? "Done"
+                              : requirement.status === REQUIREMENT_STATUS.CANCELED
+                                ? "Canceled"
+                                : requirement.status === REQUIREMENT_STATUS.VALIDATED
+                                  ? "Validated"
+                                  : "Backlog"}
+                      </Badge>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingStatus}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG);
+                      }}
                     >
-                      {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
-                    </Badge>
-                  ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                          <Badge variant="secondary" className={priorityColors[requirement.priority]}>
-                            {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
-                          </Badge>
-                        </div>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-48">
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingPriority}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdatePriority("high");
-                          }}
-                        >
-                          <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
-                          High Priority
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingPriority}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdatePriority("medium");
-                          }}
-                        >
-                          <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
-                          Medium Priority
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingPriority}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdatePriority("low");
-                          }}
-                        >
-                          <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
-                          Low Priority
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  {isUpdatingPriority && (
-                    <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
-                  )}
-                </div>
-                <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Status</p>
-                  {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
-                    <Badge 
-                      variant="secondary" 
-                      className={`${statusColors[requirement.status]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
+                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
+                      Backlog
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingStatus}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateStatus(REQUIREMENT_STATUS.IN_PROGRESS);
+                      }}
                     >
-                      {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                        ? "In Progress" 
-                        : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                          ? "On Review"
-                          : requirement.status === REQUIREMENT_STATUS.DONE
-                            ? "Done"
-                            : requirement.status === REQUIREMENT_STATUS.CANCELED
-                              ? "Canceled"
-                              : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                                ? "Validated"
-                                : "Backlog"}
-                    </Badge>
+                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
+                      In Progress
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingStatus}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateStatus(REQUIREMENT_STATUS.ON_REVIEW);
+                      }}
+                    >
+                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
+                      On Review
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingStatus}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateStatus(REQUIREMENT_STATUS.DONE);
+                      }}
+                    >
+                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
+                      Done
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingStatus}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateStatus(REQUIREMENT_STATUS.VALIDATED);
+                      }}
+                    >
+                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
+                      Validated
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      disabled={isUpdatingStatus}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateStatus(REQUIREMENT_STATUS.CANCELED);
+                      }}
+                    >
+                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
+                      Canceled
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {isUpdatingStatus && (
+                <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
+              )}
+            </div>
+            <div className="p-2 rounded-lg">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Campaign</p>
+              <p className="text-sm font-medium truncate">
+                {requirement.campaignNames && requirement.campaignNames.length > 0 
+                  ? requirement.campaignNames[0] 
+                  : "No campaign"}
+              </p>
+            </div>
+            <div className="p-2 rounded-lg">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Budget</p>
+              <p className="text-sm font-medium">{requirement.budget ? `$${requirement.budget.toLocaleString()}` : "N/A"}</p>
+            </div>
+            <div className="p-2 rounded-lg">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Segments</p>
+              <div className="flex flex-wrap gap-1">
+                {requirement.segmentNames && requirement.segmentNames.length > 0 ? (
+                  requirement.segmentNames.length > 1 ? (
+                    <>
+                      <Badge variant="outline" className="text-xs">
+                        {requirement.segmentNames[0]}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        +{requirement.segmentNames.length - 1}
+                      </Badge>
+                    </>
                   ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                          <Badge variant="secondary" className={statusColors[requirement.status]}>
-                            {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                              ? "In Progress" 
-                              : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                                ? "On Review"
-                                : requirement.status === REQUIREMENT_STATUS.DONE
-                                  ? "Done"
-                                  : requirement.status === REQUIREMENT_STATUS.CANCELED
-                                    ? "Canceled"
-                                    : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                                      ? "Validated"
-                                      : "Backlog"}
-                          </Badge>
-                        </div>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-48">
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingStatus}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG);
-                          }}
-                        >
-                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
-                          Backlog
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingStatus}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(REQUIREMENT_STATUS.IN_PROGRESS);
-                          }}
-                        >
-                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
-                          In Progress
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingStatus}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(REQUIREMENT_STATUS.ON_REVIEW);
-                          }}
-                        >
-                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
-                          On Review
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingStatus}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(REQUIREMENT_STATUS.DONE);
-                          }}
-                        >
-                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
-                          Done
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingStatus}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(REQUIREMENT_STATUS.VALIDATED);
-                          }}
-                        >
-                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
-                          Validated
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          disabled={isUpdatingStatus}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(REQUIREMENT_STATUS.CANCELED);
-                          }}
-                        >
-                          <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
-                          Canceled
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  {isUpdatingStatus && (
-                    <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
-                  )}
-                </div>
-                <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Campaign</p>
-                  <p className="text-sm font-medium truncate">
-                    {requirement.campaignNames && requirement.campaignNames.length > 0 
-                      ? requirement.campaignNames[0] 
-                      : "No campaign"}
-                  </p>
-                </div>
-                <div className="min-w-[120px] sm:min-w-[100px] p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Budget</p>
-                  <p className="text-sm font-medium">{requirement.budget ? `$${requirement.budget.toLocaleString()}` : "N/A"}</p>
-                </div>
-                <div className="min-w-[140px] sm:min-w-[120px] p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Completion</p>
-                  <div className={`px-3 py-1 text-sm font-medium rounded-md border text-center ${completionStatusColors[requirement.completionStatus]}`}>
-                    {requirement.completionStatus.charAt(0).toUpperCase() + requirement.completionStatus.slice(1)}
-                  </div>
-                </div>
+                    <Badge variant="outline" className="text-xs">
+                      {requirement.segmentNames[0]}
+                    </Badge>
+                  )
+                ) : (
+                  <span className="text-sm text-muted-foreground">No segments</span>
+                )}
               </div>
-            </CardContent>
+            </div>
           </div>
-          <CollapsibleContent>
-            <CardContent className="pt-6 pb-6 px-6 border-t" onClick={(e) => e.stopPropagation()}>
-              <div className="space-y-6">
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <div className="font-medium text-sm">Description</div>
-                    <div className="text-sm text-muted-foreground">{requirement.description}</div>
-                  </div>
-                  <div className="grid gap-2">
-                    <div className="font-medium text-sm">Budget</div>
-                    <div className="text-sm text-muted-foreground">
-                      {requirement.budget ? `$${requirement.budget.toLocaleString()}` : "No budget assigned"}
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <div className="font-medium text-sm">Segments</div>
-                    <div className="flex flex-wrap gap-2">
-                      {requirement.segmentNames?.map((segment) => (
-                        <Badge
-                          key={segment}
-                          variant="secondary"
-                          className="px-3 py-1 text-xs font-medium bg-gray-100/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200/20 transition-colors border border-gray-300/30"
-                        >
-                          {segment}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  {requirement.campaignNames && requirement.campaignNames.length > 0 && (
-                    <div className="grid gap-2">
-                      <div className="font-medium text-sm">Campaigns</div>
-                      <div className="flex flex-wrap gap-2">
-                        {requirement.campaignNames.map((campaign) => (
-                          <Badge
-                            key={campaign}
-                            variant="secondary"
-                            className="px-3 py-1 text-xs font-medium bg-blue-100/20 text-blue-700 dark:text-blue-300 hover:bg-blue-200/20 transition-colors border border-blue-300/30"
-                          >
-                            {campaign}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
-                  {requirement.completionStatus === COMPLETION_STATUS.PENDING && (
-                    <>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className={`flex items-center gap-2 w-auto ${statusColors[requirement.status]} px-4 py-2 border-border transition-all duration-200 shadow-sm`}
-                          >
-                            <span className="font-medium">
-                              {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                                ? "In Progress" 
-                                : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                                  ? "On Review"
-                                  : requirement.status === REQUIREMENT_STATUS.DONE
-                                    ? "Done"
-                                    : requirement.status === REQUIREMENT_STATUS.CANCELED
-                                      ? "Canceled"
-                                      : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                                        ? "Validated"
-                                        : "Backlog"}
-                            </span>
-                            <ChevronDown className="h-4 w-4 opacity-70" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-48">
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingStatus}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG);
-                            }}
-                          >
-                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
-                            Backlog
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingStatus}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateStatus(REQUIREMENT_STATUS.IN_PROGRESS);
-                            }}
-                          >
-                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
-                            In Progress
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingStatus}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateStatus(REQUIREMENT_STATUS.ON_REVIEW);
-                            }}
-                          >
-                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
-                            On Review
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingStatus}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateStatus(REQUIREMENT_STATUS.DONE);
-                            }}
-                          >
-                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
-                            Done
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingStatus}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateStatus(REQUIREMENT_STATUS.VALIDATED);
-                            }}
-                          >
-                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
-                            Validated
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingStatus}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateStatus(REQUIREMENT_STATUS.CANCELED);
-                            }}
-                          >
-                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
-                            Canceled
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      {isUpdatingStatus && (
-                        <span className="text-sm text-muted-foreground animate-pulse self-center">Updating...</span>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className={`flex items-center gap-2 w-auto 
-                              ${requirement.priority === "high" 
-                                ? "bg-red-100/20 text-red-600 dark:text-red-400 hover:bg-red-100/30 border-red-300/30" 
-                                : requirement.priority === "medium"
-                                  ? "bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-100/30 border-yellow-300/30"
-                                  : "bg-blue-100/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100/30 border-blue-300/30"
-                              } px-4 py-2 border-border transition-all duration-200 shadow-sm`}
-                          >
-                            <span className="font-medium">
-                              {requirement.priority === "high" 
-                                ? "High Priority" 
-                                : requirement.priority === "medium"
-                                  ? "Medium Priority"
-                                  : "Low Priority"}
-                            </span>
-                            <ChevronDown className="h-4 w-4 opacity-70" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-48">
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingPriority}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdatePriority("high");
-                            }}
-                          >
-                            <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
-                            High Priority
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingPriority}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdatePriority("medium");
-                            }}
-                          >
-                            <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
-                            Medium Priority
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="cursor-pointer"
-                            disabled={isUpdatingPriority}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdatePriority("low");
-                            }}
-                          >
-                            <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
-                            Low Priority
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      {isUpdatingPriority && (
-                        <span className="text-sm text-muted-foreground animate-pulse self-center">Updating...</span>
-                      )}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-green-100/20 hover:bg-green-100/30 text-green-600 dark:text-green-400 border-green-300/30 transition-all duration-200 shadow-sm"
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          // Update both status and completion status
-                          setIsUpdatingCompletion(true)
-                          setIsUpdatingStatus(true)
-                          try {
-                            await handleUpdateStatus(REQUIREMENT_STATUS.DONE)
-                            await handleUpdateCompletionStatus(COMPLETION_STATUS.COMPLETED)
-                          } finally {
-                            setIsUpdatingCompletion(false)
-                            setIsUpdatingStatus(false)
-                          }
-                          toast({
-                            title: "Requirement completed",
-                            description: "The requirement has been marked as done and completed",
-                          })
-                        }}
-                        disabled={isUpdatingStatus || isUpdatingCompletion}
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span className="font-medium">Mark as Done</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-red-100/20 hover:bg-red-100/30 text-red-600 dark:text-red-400 border-red-300/30 transition-all duration-200 shadow-sm"
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          // Update both status and completion status
-                          setIsUpdatingCompletion(true)
-                          setIsUpdatingStatus(true)
-                          try {
-                            await handleUpdateStatus(REQUIREMENT_STATUS.CANCELED)
-                            await handleUpdateCompletionStatus(COMPLETION_STATUS.REJECTED)
-                          } finally {
-                            setIsUpdatingCompletion(false)
-                            setIsUpdatingStatus(false)
-                          }
-                          toast({
-                            title: "Requirement rejected",
-                            description: "The requirement has been rejected",
-                          })
-                        }}
-                        disabled={isUpdatingStatus || isUpdatingCompletion}
-                      >
-                        <Ban className="h-4 w-4" />
-                        <span className="font-medium">Reject</span>
-                      </Button>
-                    </>
-                  )}
-                  {requirement.completionStatus === COMPLETION_STATUS.COMPLETED && (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-amber-100/20 hover:bg-amber-100/30 text-amber-600 dark:text-amber-400 border-amber-300/30 transition-all duration-200 shadow-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUpdateCompletionStatus(COMPLETION_STATUS.PENDING)
-                        }}
-                        disabled={isUpdatingStatus || isUpdatingCompletion}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        <span className="font-medium">Return to Pending</span>
-                      </Button>
-                    </>
-                  )}
-                  {requirement.completionStatus === COMPLETION_STATUS.REJECTED && (
-                    <>
-                      {isUpdatingStatus && (
-                        <span className="text-sm text-muted-foreground animate-pulse self-center">Updating...</span>
-                      )}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex items-center gap-2 w-full sm:w-auto bg-amber-100/20 hover:bg-amber-100/30 text-amber-600 dark:text-amber-400 border-amber-300/30 transition-all duration-200 shadow-sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUpdateCompletionStatus(COMPLETION_STATUS.PENDING)
-                        }}
-                        disabled={isUpdatingStatus || isUpdatingCompletion}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        <span className="font-medium">Return to Pending</span>
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
+        </CardContent>
       </div>
-    </Collapsible>
+    </Card>
   )
 }
 
@@ -1260,13 +967,8 @@ export default function RequirementsPage() {
 
   // Función para manejar el clic en un requisito (usado en la vista Kanban)
   const handleRequirementClick = (requirement: Requirement) => {
-    // Expandimos el requisito directamente actualizando su estado
-    // Esto es solo simulación, en una implementación real podríamos tener otro enfoque
-    setRequirements(prevReqs => 
-      prevReqs.map(req => 
-        req.id === requirement.id ? { ...req, isExpanded: true } : req
-      )
-    )
+    // Navegar a la vista de detalles del requisito
+    window.location.href = `/requirements/${requirement.id}`;
   }
 
   return (

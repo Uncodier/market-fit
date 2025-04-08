@@ -200,4 +200,144 @@ export async function updateRequirementPriority(id: string, priority: "high" | "
 
   revalidatePath("/requirements")
   return { data: requirement }
+}
+
+export async function updateRequirementInstructions(id: string, instructions: string) {
+  const cookieStore = cookies()
+  const supabase = await createClient()
+
+  const { data: requirement, error } = await supabase
+    .from("requirements")
+    .update({ instructions })
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) {
+    return {
+      error: error.message
+    }
+  }
+
+  revalidatePath("/requirements")
+  return { data: requirement }
+}
+
+interface UpdateRequirementData {
+  id: string
+  title: string
+  description: string
+  priority: "high" | "medium" | "low"
+  status: RequirementStatusType
+  completionStatus: CompletionStatusType
+  source: string
+  budget: number | null
+  segments: string[]
+  campaigns: string[]
+  campaign_id: string
+  outsourceInstructions?: string // No se usa, este campo no existe en la DB
+}
+
+export async function updateRequirement(data: UpdateRequirementData) {
+  const cookieStore = cookies()
+  const supabase = await createClient()
+
+  try {
+    // Primero actualizamos el requerimiento principal
+    const { data: requirement, error: requirementError } = await supabase
+      .from("requirements")
+      .update({
+        title: data.title,
+        description: data.description,
+        priority: data.priority,
+        status: data.status,
+        completion_status: data.completionStatus,
+        source: data.source,
+        budget: data.budget,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", data.id)
+      .select()
+      .single()
+
+    if (requirementError) {
+      return {
+        error: requirementError.message
+      }
+    }
+
+    // Actualizamos las relaciones con los segmentos
+    // Primero eliminamos todas las relaciones existentes
+    const { error: deleteSegmentsError } = await supabase
+      .from("requirement_segments")
+      .delete()
+      .eq("requirement_id", data.id)
+
+    if (deleteSegmentsError) {
+      return {
+        error: deleteSegmentsError.message
+      }
+    }
+
+    // Luego insertamos las nuevas relaciones
+    if (data.segments.length > 0) {
+      const requirementSegments = data.segments.map(segmentId => ({
+        requirement_id: data.id,
+        segment_id: segmentId
+      }))
+
+      const { error: segmentsError } = await supabase
+        .from("requirement_segments")
+        .insert(requirementSegments)
+
+      if (segmentsError) {
+        return {
+          error: segmentsError.message
+        }
+      }
+    }
+
+    // Actualizamos las relaciones con las campañas
+    // Primero eliminamos todas las relaciones existentes
+    const { error: deleteCampaignsError } = await supabase
+      .from("campaign_requirements")
+      .delete()
+      .eq("requirement_id", data.id)
+
+    if (deleteCampaignsError) {
+      return {
+        error: deleteCampaignsError.message
+      }
+    }
+
+    // Si hay un campaign_id seleccionado, lo agregamos a campaigns para la relación
+    const campaignsToInsert = data.campaign_id ? 
+      [data.campaign_id] : 
+      (data.campaigns && data.campaigns.length > 0 ? data.campaigns : []);
+
+    // Luego insertamos las nuevas relaciones
+    if (campaignsToInsert.length > 0) {
+      const requirementCampaigns = campaignsToInsert.map(campaignId => ({
+        requirement_id: data.id,
+        campaign_id: campaignId
+      }))
+
+      const { error: campaignsError } = await supabase
+        .from("campaign_requirements")
+        .insert(requirementCampaigns)
+
+      if (campaignsError) {
+        return {
+          error: campaignsError.message
+        }
+      }
+    }
+
+    revalidatePath("/requirements")
+    return { data: requirement }
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Error inesperado al actualizar el requerimiento"
+    }
+  }
 } 

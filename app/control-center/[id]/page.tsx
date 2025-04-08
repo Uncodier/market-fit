@@ -96,6 +96,8 @@ export default function TaskDetailPage() {
   const [campaignSegments, setCampaignSegments] = useState<Array<{ id: string; name: string; description: string | null }>>([]);
   const [loadingSegments, setLoadingSegments] = useState(false);
   const [siteSegments, setSiteSegments] = useState<Array<{ id: string; name: string; }>>([]);
+  const [campaignRequirements, setCampaignRequirements] = useState<any[]>([]);
+  const [loadingRequirements, setLoadingRequirements] = useState(false);
   const [financialData, setFinancialData] = useState<{
     revenue: Revenue;
     budget: Budget;
@@ -150,27 +152,116 @@ export default function TaskDetailPage() {
   // Initialize command-k hook
   useCommandK();
 
-  // Add handleCreateRequirement inside the component to access campaignSegments
-  const handleCreateRequirementInternal = async (values: CampaignRequirementFormValues): Promise<{ data?: any; error?: string }> => {
+  // Function to load requirements for the campaign
+  const loadCampaignRequirements = async (campaignId: string) => {
+    if (!campaignId || !currentSite?.id) return;
+    
     try {
-      // Extract segment IDs from the current campaignSegments state
-      const segmentIds = campaignSegments.map(segment => segment.id);
-
-      // Adapt the values for the createRequirement action
-      const requirementData = {
-        ...values,
-        segments: segmentIds, // Use the campaign segments
-        campaigns: [values.campaign_id], // Set the campaign
-        source: "Campaign" // Set the source
-      };
-
-      const result = await createRequirement(requirementData as any);
-      return result;
+      setLoadingRequirements(true);
+      
+      const supabase = createClient();
+      
+      console.log("Loading requirements for campaign:", campaignId);
+      
+      // Enfoque mejorado usando un JOIN para obtener todos los datos en una consulta
+      const { data: relationData, error: relationError } = await supabase
+        .from("campaign_requirements")
+        .select(`
+          requirement_id,
+          requirements:requirement_id (
+            id, 
+            title, 
+            description, 
+            priority, 
+            status, 
+            completion_status, 
+            budget, 
+            created_at
+          )
+        `)
+        .eq("campaign_id", campaignId);
+      
+      if (relationError) {
+        console.error("Error fetching requirement relations:", relationError);
+        setLoadingRequirements(false);
+        return;
+      }
+      
+      if (!relationData || relationData.length === 0) {
+        console.log("No requirements found for campaign:", campaignId);
+        setCampaignRequirements([]);
+        setLoadingRequirements(false);
+        return;
+      }
+      
+      console.log("Found requirement relations:", relationData);
+      
+      // Extraer los objetos de requirements de los resultados
+      const requirementsData = relationData
+        .map((relation: any) => relation.requirements)
+        .filter((req: any) => req !== null); // Filtrar posibles valores nulos
+      
+      console.log("Extracted requirements data:", requirementsData);
+      
+      if (requirementsData.length === 0) {
+        setCampaignRequirements([]);
+        setLoadingRequirements(false);
+        return;
+      }
+      
+      // Obtenemos los segments para cada requirement
+      const requirementsWithSegments = await Promise.all(
+        requirementsData.map(async (req: any) => {
+          if (!req || !req.id) {
+            console.error("Invalid requirement object:", req);
+            return null;
+          }
+          
+          try {
+            // Get segments for this requirement
+            const { data: segmentRelations, error: segmentError } = await supabase
+              .from("requirement_segments")
+              .select("segment_id")
+              .eq("requirement_id", req.id);
+            
+            if (segmentError) {
+              console.error("Error fetching segments for requirement:", segmentError);
+              return req;
+            }
+            
+            if (segmentRelations && segmentRelations.length > 0) {
+              const segmentIds = segmentRelations.map((r: any) => r.segment_id);
+              
+              const { data: segmentData } = await supabase
+                .from("segments")
+                .select("name")
+                .in("id", segmentIds);
+              
+              return {
+                ...req,
+                segmentNames: segmentData?.map((s: any) => s.name) || []
+              };
+            }
+            
+            return req;
+          } catch (error) {
+            console.error("Error processing requirement:", error);
+            return req;
+          }
+        })
+      );
+      
+      // Filtrar posibles valores nulos
+      const validRequirements = requirementsWithSegments.filter(
+        (req: any) => req !== null
+      );
+      
+      console.log("Final requirements with segments:", validRequirements);
+      setCampaignRequirements(validRequirements);
     } catch (error) {
-      console.error("Error creating requirement:", error);
-      return { 
-        error: error instanceof Error ? error.message : "An unknown error occurred" 
-      };
+      console.error("Error loading requirements:", error);
+    } finally {
+      setLoadingRequirements(false);
     }
   };
 
@@ -257,6 +348,9 @@ export default function TaskDetailPage() {
             // Load campaign leads
             loadCampaignLeads(response.data.id);
             
+            // Load campaign requirements
+            loadCampaignRequirements(response.data.id);
+            
             // Load campaign segments if available
             if (response.data.segments && Array.isArray(response.data.segments) && response.data.segments.length > 0) {
               console.log("Loading segments for campaign:", response.data.segments);
@@ -336,6 +430,34 @@ export default function TaskDetailPage() {
     }
   }, []);
   
+  // Effect para recargar los requirements cuando cambie la campaña
+  useEffect(() => {
+    if (campaign?.id) {
+      loadCampaignRequirements(campaign.id);
+    }
+  }, [campaign?.id]);
+  
+  // Función para refrescar todos los datos de la campaña
+  const refreshCampaignData = async () => {
+    if (!params.id) return;
+    
+    try {
+      const response = await getCampaignById(params.id as string);
+      
+      if (response && response.data) {
+        setCampaign(response.data);
+        
+        // También recargamos los leads y requirements
+        if (response.data.id) {
+          loadCampaignLeads(response.data.id);
+          loadCampaignRequirements(response.data.id);
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing campaign data:", error);
+    }
+  };
+  
   const handleUpdateCampaign = (data: any) => {
     console.log("handleUpdateCampaign received data:", JSON.stringify(data));
     
@@ -347,12 +469,19 @@ export default function TaskDetailPage() {
         ...prev,
         ...data,
         // Ensure segments is an array
-        segments: Array.isArray(data.segments) ? data.segments : (prev.segments || [])
+        segments: Array.isArray(data.segments) ? data.segments : (prev.segments || []),
+        // Ensure requirements is an array 
+        requirements: Array.isArray(data.requirements) ? data.requirements : (prev.requirements || [])
       };
       
       console.log("Updated campaign state:", JSON.stringify(updatedCampaign));
       return updatedCampaign;
     });
+    
+    // If requirements were updated, reload them
+    if (data.requirements && campaign?.id) {
+      loadCampaignRequirements(campaign.id);
+    }
     
     // Use the segmentObjects if available, otherwise generate from IDs
     if (data.segmentObjects && Array.isArray(data.segmentObjects) && data.segmentObjects.length > 0) {
@@ -441,6 +570,68 @@ export default function TaskDetailPage() {
     }
   };
   
+  const handleCreateRequirementInternal = async (values: CampaignRequirementFormValues): Promise<{ data?: any; error?: string }> => {
+    try {
+      console.log("Creating requirement with values:", JSON.stringify(values));
+      
+      // Validate campaign_id
+      if (!values.campaign_id) {
+        console.error("Missing campaign_id in requirement values");
+        return { error: "Missing campaign ID" };
+      }
+      
+      // Extract segment IDs from the current campaignSegments state
+      const segmentIds = campaignSegments.map(segment => segment.id);
+      console.log("Using segment IDs for requirement:", segmentIds);
+
+      // Adapt the values for the createRequirement action
+      const requirementData = {
+        ...values,
+        segments: segmentIds, // Use the campaign segments
+        campaigns: [values.campaign_id], // Set the campaign
+        source: "Campaign" // Set the source
+      };
+
+      console.log("Calling createRequirement with:", JSON.stringify(requirementData));
+      const result = await createRequirement(requirementData as any);
+      console.log("createRequirement result:", JSON.stringify(result));
+      
+      // Si se creó correctamente, recargamos los requirements
+      if (result.data && !result.error && campaign?.id) {
+        console.log("Requirement created successfully, reloading requirements");
+        await loadCampaignRequirements(campaign.id);
+        
+        // Log campaign requirements after reload
+        console.log("Updated campaign requirements:", campaignRequirements);
+        
+        // También actualizamos el estado de la campaña para incluir el nuevo requirement
+        if (result.data.id) {
+          setCampaign((prevCampaign: any) => {
+            if (!prevCampaign) return null;
+            
+            const updatedRequirements = prevCampaign.requirements 
+              ? [...prevCampaign.requirements, result.data.id]
+              : [result.data.id];
+              
+            return {
+              ...prevCampaign,
+              requirements: updatedRequirements
+            };
+          });
+        }
+      } else if (result.error) {
+        console.error("Error creating requirement:", result.error);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error("Error creating requirement:", error);
+      return { 
+        error: error instanceof Error ? error.message : "An unknown error occurred" 
+      };
+    }
+  };
+  
   if (loading) {
     return <TaskDetailSkeleton />;
   }
@@ -509,6 +700,9 @@ export default function TaskDetailPage() {
                 onDeleteCampaign={handleDeleteCampaign}
                 onUpdateCampaign={handleUpdateCampaign}
                 onReloadLeads={() => loadCampaignLeads(campaign.id)}
+                campaignRequirements={campaignRequirements}
+                loadingRequirements={loadingRequirements}
+                onReloadRequirements={() => campaign?.id && loadCampaignRequirements(campaign.id)}
               />
             </TabsContent>
             

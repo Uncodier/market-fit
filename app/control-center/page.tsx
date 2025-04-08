@@ -22,6 +22,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { getCampaigns } from "@/app/control-center/actions/campaigns/read"
 import type { Campaign } from "@/app/types"
 import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 
 // Mock data for the Kanban board
 const mockTasks: {
@@ -565,6 +566,7 @@ export default function ControlCenterPage() {
     status?: string;
     priority?: "high" | "medium" | "low";
     completion_status?: string;
+    campaign_requirements?: Array<{campaign_id: string}>;
   }>>([]);
   const { currentSite } = useSite();
   
@@ -621,12 +623,21 @@ export default function ControlCenterPage() {
           setSegments([]);
         }
 
-        // Fetch requirements
+        // Fetch requirements from Supabase directly
         try {
-          const reqResponse = await fetch(`/api/requirements?siteId=${currentSite.id}`);
-          if (reqResponse.ok) {
-            const requirementsData = await reqResponse.json();
-            setRequirements(requirementsData);
+          const supabase = createClient();
+          const { data: requirementData, error: requirementError } = await supabase
+            .from("requirements")
+            .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id)")
+            .eq("site_id", currentSite.id);
+            
+          if (requirementError) {
+            console.error("Error fetching requirements:", requirementError);
+            setRequirements([]);
+          } else if (requirementData) {
+            console.log("Requirements loaded:", requirementData.length);
+            console.log("Sample requirement:", requirementData[0]);
+            setRequirements(requirementData);
           }
         } catch (reqErr) {
           console.error("Error loading requirements:", reqErr);
@@ -791,9 +802,20 @@ export default function ControlCenterPage() {
                           // Get requirements associated with this campaign
                           const campaignRequirements = requirements
                             ? requirements
-                                .filter(req => 
-                                  campaign.requirements?.includes(req.id)
-                                )
+                                .filter(req => {
+                                  // Check for campaign_requirements data in each requirement
+                                  const campaignReqs = req.campaign_requirements || [];
+                                  const isIncluded = campaignReqs.some(cr => cr.campaign_id === campaign.id);
+                                  
+                                  if (campaign.requirements && campaign.requirements.length > 0 && !isIncluded) {
+                                    // For debugging purposes, log when a campaign has requirements that we can't find
+                                    console.log(`Campaign ${campaign.title} (${campaign.id}) has requirement IDs but none match:`, 
+                                      campaign.requirements, 
+                                      "Looking in:", requirements.map(r => r.id)
+                                    );
+                                  }
+                                  return isIncluded;
+                                })
                                 .map(req => ({
                                   id: req.id,
                                   title: req.title,
@@ -803,6 +825,9 @@ export default function ControlCenterPage() {
                                   completion_status: req.completion_status || "pending"
                                 }))
                             : [];
+                          
+                          // Debug log - simplified to avoid linter errors
+                          console.log(`Campaign ${campaign.title} - Requirements:`, campaign.requirements, `Matched: ${campaignRequirements.length}`);
                             
                           return {
                             id: campaign.id,

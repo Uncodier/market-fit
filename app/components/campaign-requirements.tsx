@@ -50,6 +50,8 @@ interface CampaignRequirementsProps {
   campaignId: string;
   onOpenCreateRequirement?: () => void;
   renderAddButton?: () => React.ReactNode;
+  externalRequirements?: Requirement[];
+  externalLoading?: boolean;
 }
 
 // Interfaces para los tipos de datos de Supabase
@@ -68,14 +70,39 @@ interface SegmentData {
 export function CampaignRequirements({ 
   campaignId, 
   onOpenCreateRequirement,
-  renderAddButton 
+  renderAddButton,
+  externalRequirements,
+  externalLoading
 }: CampaignRequirementsProps) {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch campaign requirements
+  // Add debug logging to track requirements updates
   useEffect(() => {
+    console.log("CampaignRequirements component:", { 
+      campaignId, 
+      externalRequirementsLength: externalRequirements?.length,
+      externalLoading
+    });
+    
+    if (externalRequirements !== undefined) {
+      console.log("Using external requirements:", externalRequirements);
+    }
+  }, [campaignId, externalRequirements, externalLoading]);
+
+  // Fetch campaign requirements only if external requirements are not provided
+  useEffect(() => {
+    // If external requirements are provided, use those
+    if (externalRequirements !== undefined) {
+      console.log("Setting requirements from external source:", externalRequirements);
+      setRequirements(externalRequirements);
+      return;
+    }
+    
     const fetchRequirements = async () => {
+      // Skip if external requirements are provided
+      if (externalRequirements !== undefined) return;
+      
       setLoading(true);
       try {
         const supabase = createClient();
@@ -91,6 +118,7 @@ export function CampaignRequirements({
         }
         
         if (!relationData || relationData.length === 0) {
+          console.log("No requirements found via internal fetch for campaign:", campaignId);
           setRequirements([]);
           setLoading(false);
           return;
@@ -98,6 +126,8 @@ export function CampaignRequirements({
         
         // Get requirement details for those IDs
         const requirementIds = relationData.map((r: RelationData) => r.requirement_id);
+        console.log("Found requirement IDs via internal fetch:", requirementIds);
+        
         const { data, error } = await supabase
           .from("requirements")
           .select("*")
@@ -106,6 +136,8 @@ export function CampaignRequirements({
         if (error) {
           throw new Error(error.message);
         }
+        
+        console.log("Retrieved requirements via internal fetch:", data);
         
         // Fetch segments for each requirement
         if (data) {
@@ -138,6 +170,7 @@ export function CampaignRequirements({
             })
           );
           
+          console.log("Setting requirements from internal fetch:", requirementsWithSegments);
           setRequirements(requirementsWithSegments);
         }
       } catch (error) {
@@ -151,7 +184,10 @@ export function CampaignRequirements({
     if (campaignId) {
       fetchRequirements();
     }
-  }, [campaignId]);
+  }, [campaignId, externalRequirements]);
+
+  // Use external loading state if provided
+  const isLoading = externalLoading !== undefined ? externalLoading : loading;
 
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -184,7 +220,7 @@ export function CampaignRequirements({
           )}
         </div>
         
-        {loading ? (
+        {isLoading ? (
           <SkeletonCard 
             className="border-none shadow-none" 
             showHeader={false}

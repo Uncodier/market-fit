@@ -72,13 +72,6 @@ export function KanbanCard({
   const [expanded, setExpanded] = useState(false)
   const router = useRouter()
   
-  // Debug: Log requirements to see if descriptions are present
-  React.useEffect(() => {
-    if (hasRequirements && expanded) {
-      console.log("Requirements with descriptions:", requirements);
-    }
-  }, [expanded, requirements]);
-
   const priorityColor = {
     high: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
     medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
@@ -106,6 +99,15 @@ export function KanbanCard({
   const hasFinancialData = (
     revenue || budget || costs
   )
+  
+  // Debug: Log requirements to see if descriptions are present
+  React.useEffect(() => {
+    if (hasRequirements && expanded) {
+      console.log("Campaign:", id, title);
+      console.log("Requirements details:", requirements);
+      console.log("Requirements fields:", requirements.map(req => Object.keys(req)));
+    }
+  }, [expanded, requirements, id, title, hasRequirements]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Navigate to the detail page when card is clicked

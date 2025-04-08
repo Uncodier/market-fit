@@ -13,7 +13,8 @@ import {
   FolderOpen,
   Bell,
   FileText,
-  Rocket
+  Rocket,
+  Tag
 } from "@/app/components/ui/icons"
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
@@ -74,7 +75,7 @@ const navigationItems = [
   {
     title: "Segments",
     href: "/segments",
-    icon: LayoutGrid,
+    icon: Tag,
   },
   {
     title: "Content",

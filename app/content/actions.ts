@@ -244,4 +244,26 @@ export async function getContentById(contentId: string): Promise<{ content: Cont
     console.error("Error in getContentById:", error)
     return { content: null, error: "Failed to fetch content" }
   }
+}
+
+export async function deleteContent(contentId: string): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const supabase = await createServiceClient()
+    
+    const { error } = await supabase
+      .from('content')
+      .delete()
+      .eq('id', contentId)
+    
+    if (error) {
+      console.error("Error deleting content:", error)
+      return { error: error.message }
+    }
+    
+    revalidatePath("/content")
+    return { success: true }
+  } catch (error) {
+    console.error("Error in deleteContent:", error)
+    return { error: "Failed to delete content" }
+  }
 } 

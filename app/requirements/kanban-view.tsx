@@ -88,7 +88,6 @@ interface Requirement {
   createdAt: string
   segments: string[]
   segmentNames?: string[]
-  isExpanded?: boolean
 }
 
 interface KanbanViewProps {
@@ -420,19 +419,6 @@ function KanbanRequirementCard({
   snapshot: DraggableStateSnapshot,
   onClick: (requirement: Requirement) => void
 }) {
-  const [isExpanded, setIsExpanded] = useState(!!requirement.isExpanded)
-  
-  // Toggle expanded state and update the requirement object
-  const toggleExpand = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    
-    setIsExpanded((prev) => {
-      const newExpandedState = !prev
-      requirement.isExpanded = newExpandedState
-      return newExpandedState
-    })
-  }
-  
   return (
     <div
       ref={provided.innerRef}
@@ -454,22 +440,9 @@ function KanbanRequirementCard({
         <Badge className={`capitalize ${PRIORITY_COLORS[requirement.priority]}`}>{requirement.priority}</Badge>
       </div>
       
-      {/* Descripción colapsable */}
-      <div 
-        className={cn(
-          "text-sm text-muted-foreground mt-2",
-          isExpanded ? "" : "line-clamp-2"
-        )}
-      >
+      {/* Descripción sin botón de expandir */}
+      <div className="text-sm text-muted-foreground mt-2 line-clamp-2">
         {requirement.description}
-        {!isExpanded && requirement.description.length > 120 && (
-          <button 
-            className="text-xs text-primary ml-1"
-            onClick={toggleExpand}
-          >
-            Show more
-          </button>
-        )}
       </div>
       
       {/* Badges y metadatos */}

@@ -9,9 +9,10 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
-import { updateContent, updateContentStatus } from "../actions"
+import { updateContent, updateContentStatus, deleteContent, getContentById } from "../actions"
 import { getContentTypeName } from "../utils"
 import { StarRating } from "@/app/components/ui/rating"
+import { createClient } from "@/lib/supabase/client"
 import { 
   ChevronLeft,
   Wand2, 
@@ -50,7 +51,8 @@ import {
   Tag,
   FileText as TextIcon,
   Users,
-  BarChart
+  BarChart,
+  Trash2
 } from "@/app/components/ui/icons"
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -73,8 +75,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/app/components/ui/alert-dialog"
 
-const MenuBar = ({ editor, onSave, isSaving }: { editor: any, onSave: () => void, isSaving: boolean }) => {
+const MenuBar = ({ editor, onSave, isSaving, onDelete }: { 
+  editor: any, 
+  onSave: () => void, 
+  isSaving: boolean,
+  onDelete: () => void 
+}) => {
   if (!editor) {
     return null
   }
@@ -275,6 +293,34 @@ const MenuBar = ({ editor, onSave, isSaving }: { editor: any, onSave: () => void
         >
           <Redo className="h-4 w-4" />
         </Button>
+        
+        {/* Delete section divider and button */}
+        <div className="w-px h-6 bg-border mx-1" />
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Content</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this content? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={onDelete}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
@@ -320,10 +366,6 @@ const ContentSkeleton = () => {
           </div>
           <div className="space-y-3">
             <div className="h-4 bg-muted animate-pulse rounded w-2/3"></div>
-            <div className="h-8 bg-muted animate-pulse rounded w-full"></div>
-          </div>
-          <div className="space-y-3">
-            <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
             <div className="h-20 bg-muted animate-pulse rounded w-full"></div>
           </div>
           <div className="space-y-2 mt-6">
@@ -513,6 +555,23 @@ export default function ContentDetailPage() {
     },
   })
 
+  // Define handleDeleteContent here, before it's used in the return statement
+  const handleDeleteContent = async () => {
+    try {
+      const result = await deleteContent(content.id)
+      
+      if (result.error) {
+        throw new Error(result.error)
+      }
+      
+      toast.success("Content deleted successfully")
+      router.push('/content') // Redirect to content list page
+    } catch (error) {
+      console.error("Error deleting content:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to delete content")
+    }
+  }
+
   useEffect(() => {
     loadContent()
   }, [params.id])
@@ -548,62 +607,98 @@ export default function ContentDetailPage() {
   const loadContent = async () => {
     setIsLoading(true)
     try {
-      const result = await fetch(`/api/content/${params.id}`)
-      const data = await result.json()
+      console.log("Loading content with ID:", params.id)
       
-      if (data.error) {
-        toast.error(data.error)
+      // Import and use server action directly
+      const { content: contentData, error } = await getContentById(params.id as string)
+      
+      if (error) {
+        console.error("Error from getContentById:", error)
+        toast.error(error)
         return
       }
 
-      console.log("Content loaded, campaign_id:", data.campaign_id)
-      setContent(data)
+      if (!contentData) {
+        console.error("Content not found for ID:", params.id)
+        toast.error("Content not found")
+        return
+      }
+
+      console.log("Content loaded successfully:", contentData.id)
+      console.log("Content campaign_id:", contentData.campaign_id)
+      setContent(contentData)
       
       // Calcular conteos iniciales
-      const initialText = data.text || data.content || ''
+      const initialText = contentData.text || contentData.content || ''
       const wordCount = initialText.trim().split(/\s+/).filter((word: string) => word.length > 0).length
       const charCount = initialText.length
 
       setEditForm({
-        title: data.title,
-        description: data.description || '',
-        content: data.content || '',
-        text: data.text || '',
-        content_type: data.content_type,
-        segment_id: data.segment_id || '',
-        campaign_id: data.campaign_id || '',
-        tags: data.tags || [],
+        title: contentData.title,
+        description: contentData.description || '',
+        content: contentData.content || '',
+        text: contentData.text || '',
+        content_type: contentData.content_type,
+        segment_id: contentData.segment_id || '',
+        campaign_id: contentData.campaign_id || '',
+        tags: contentData.tags || [],
         word_count: wordCount,
         char_count: charCount,
-        performance_rating: data.performance_rating,
-        status: data.status || 'draft' // Load status from content or default to draft
+        performance_rating: contentData.performance_rating,
+        status: contentData.status || 'draft' // Load status from content or default to draft
       })
       
       if (editor) {
-        editor.commands.setContent(data.text || data.content || '')
+        editor.commands.setContent(contentData.text || contentData.content || '')
       }
       
       // Load campaigns after setting the content
-      if (data.site_id) {
-        const campaignsResult = await fetch(`/api/campaigns?siteId=${data.site_id}`)
-        const campaignsData = await campaignsResult.json()
-        
-        if (Array.isArray(campaignsData)) {
-          console.log("Campaigns loaded:", campaignsData.length)
-          console.log("First campaign:", campaignsData[0]?.title || "No campaigns found")
-          setCampaigns(campaignsData)
+      if (contentData.site_id) {
+        try {
+          console.log("Loading campaigns for site:", contentData.site_id)
+          
+          // Usar el cliente de Supabase del lado del cliente
+          const supabase = createClient()
+          const { data: campaignsData, error: campaignsError } = await supabase
+            .from("campaigns")
+            .select("id, title, description")
+            .eq("site_id", contentData.site_id)
+            .order("created_at", { ascending: false })
+          
+          if (campaignsError) {
+            console.error("Failed to load campaigns:", campaignsError.message)
+          } else if (campaignsData) {
+            console.log("Campaigns loaded:", campaignsData.length)
+            console.log("First campaign:", campaignsData[0]?.title || "No campaigns found")
+            setCampaigns(campaignsData)
+          }
+        } catch (campaignError) {
+          console.error("Error loading campaigns:", campaignError)
         }
         
         // Load segments for the site
-        const segmentsResult = await fetch(`/api/segments?siteId=${data.site_id}`)
-        const segmentsData = await segmentsResult.json()
-        
-        if (Array.isArray(segmentsData)) {
-          setSegments(segmentsData)
+        try {
+          console.log("Loading segments for site:", contentData.site_id)
+          
+          // Usar el cliente de Supabase del lado del cliente
+          const supabase = createClient()
+          const { data: segmentsData, error: segmentsError } = await supabase
+            .from("segments")
+            .select("id, name")
+            .eq("site_id", contentData.site_id)
+          
+          if (segmentsError) {
+            console.error("Failed to load segments:", segmentsError.message)
+          } else if (segmentsData) {
+            console.log("Segments loaded:", segmentsData.length)
+            setSegments(segmentsData)
+          }
+        } catch (segmentError) {
+          console.error("Error loading segments:", segmentError)
         }
       }
     } catch (error) {
-      console.error("Error loading content:", error)
+      console.error("Unexpected error in loadContent:", error)
       toast.error("Failed to load content")
     } finally {
       setIsLoading(false)
@@ -799,7 +894,7 @@ export default function ContentDetailPage() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none">
-          <MenuBar editor={editor} onSave={handleSaveChanges} isSaving={isSaving} />
+          <MenuBar editor={editor} onSave={handleSaveChanges} isSaving={isSaving} onDelete={handleDeleteContent} />
         </div>
         <div className="flex-1 overflow-auto">
           <div className="p-4 h-full flex flex-col">
@@ -812,13 +907,13 @@ export default function ContentDetailPage() {
       <div className="w-80 border-l bg-muted/30 flex flex-col h-full">
         <Tabs defaultValue="ai" className="flex flex-col h-full">
           {/* Tabs Header */}
-          <div className="h-[71px] flex items-center justify-center border-b">
-            <TabsList className="inline-flex rounded-none border-b-0">
-              <TabsTrigger value="ai" className="rounded-none">
+          <div className="h-[71px] border-b flex items-center justify-center px-4">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="ai">
                 <Cpu className="h-4 w-4 mr-2" />
                 AI Assistant
               </TabsTrigger>
-              <TabsTrigger value="details" className="rounded-none">
+              <TabsTrigger value="details">
                 <FileText className="h-4 w-4 mr-2" />
                 Details
               </TabsTrigger>
@@ -1125,183 +1220,228 @@ export default function ContentDetailPage() {
             </TabsContent>
             <TabsContent value="details" className="h-full mt-0">
               <div className="flex flex-col h-full">
-                <ScrollArea className="flex-1">
+                <ScrollArea className="h-full">
                   <div className="p-5 space-y-6">
-                    <div className="space-y-5">
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <BarChart className="h-4 w-4 text-muted-foreground" />
-                          Performance Rating
-                        </Label>
-                        <div className="h-12 py-2">
-                          <StarRating 
-                            rating={editForm.performance_rating} 
-                            onRatingChange={(rating) => {
-                              setEditForm(prev => ({ ...prev, performance_rating: rating }));
-                              // Save immediately when rating changes
-                              updateContent({
-                                contentId: content.id,
-                                title: editForm.title,
-                                description: editForm.description || undefined,
-                                content_type: content.content_type,
-                                segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
-                                campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
-                                tags: editForm.tags.length > 0 ? editForm.tags : null,
-                                text: editForm.text || undefined,
-                                performance_rating: rating
-                              }).then(() => {
-                                toast.success("Performance rating updated");
-                              }).catch(error => {
-                                console.error("Error updating rating:", error);
-                                toast.error("Failed to update rating");
-                              });
-                            }}
-                            readonly={false}
-                            size="lg"
-                            className="w-full justify-around"
+                    {/* Status and Performance Card */}
+                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                        Status and Performance
+                      </h3>
+                      
+                      <div className="space-y-5">
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <BarChart className="h-4 w-4 text-muted-foreground" />
+                            Performance Rating
+                          </Label>
+                          <div className="h-12 py-2">
+                            <StarRating 
+                              rating={editForm.performance_rating} 
+                              onRatingChange={(rating) => {
+                                setEditForm(prev => ({ ...prev, performance_rating: rating }));
+                                // Save immediately when rating changes
+                                updateContent({
+                                  contentId: content.id,
+                                  title: editForm.title,
+                                  description: editForm.description || undefined,
+                                  content_type: content.content_type,
+                                  segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
+                                  campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
+                                  tags: editForm.tags.length > 0 ? editForm.tags : null,
+                                  text: editForm.text || undefined,
+                                  performance_rating: rating
+                                }).then(() => {
+                                  toast.success("Performance rating updated");
+                                }).catch(error => {
+                                  console.error("Error updating rating:", error);
+                                  toast.error("Failed to update rating");
+                                });
+                              }}
+                              readonly={false}
+                              size="lg"
+                              className="w-full justify-around"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
+                            Status
+                          </Label>
+                          <Select
+                            value={editForm.status}
+                            onValueChange={(value) => setEditForm(prev => ({ 
+                              ...prev, 
+                              status: value
+                            }))}
+                          >
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="review">In Review</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="published">Published</SelectItem>
+                              <SelectItem value="archived">Archived</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Basic Information Card */}
+                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                        Basic Information
+                      </h3>
+                      
+                      <div className="space-y-5">
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <Type className="h-4 w-4 text-muted-foreground" />
+                            Title
+                          </Label>
+                          <Input
+                            value={editForm.title}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="Enter title"
+                            className="h-11"
+                          />
+                        </div>
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <TextIcon className="h-4 w-4 text-muted-foreground" />
+                            Description
+                          </Label>
+                          <Textarea
+                            value={editForm.description}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Enter description"
+                            className="min-h-[100px] resize-none"
+                          />
+                        </div>
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            Content Type
+                          </Label>
+                          <Input
+                            value={getContentTypeName(editForm.content_type)}
+                            disabled
+                            className="bg-muted h-11"
                           />
                         </div>
                       </div>
+                    </div>
+                    
+                    {/* Association Card */}
+                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                        Associations
+                      </h3>
                       
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <ActivityIcon className="h-4 w-4 text-muted-foreground" />
-                          Status
-                        </Label>
-                        <Select
-                          value={editForm.status}
-                          onValueChange={(value) => setEditForm(prev => ({ 
-                            ...prev, 
-                            status: value
-                          }))}
-                        >
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="review">In Review</SelectItem>
-                            <SelectItem value="approved">Approved</SelectItem>
-                            <SelectItem value="published">Published</SelectItem>
-                            <SelectItem value="archived">Archived</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <Type className="h-4 w-4 text-muted-foreground" />
-                          Title
-                        </Label>
-                        <Input
-                          value={editForm.title}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="Enter title"
-                          className="h-11"
-                        />
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <TextIcon className="h-4 w-4 text-muted-foreground" />
-                          Description
-                        </Label>
-                        <Textarea
-                          value={editForm.description}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="Enter description"
-                          className="min-h-[100px] resize-none"
-                        />
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          Content Type
-                        </Label>
-                        <Input
-                          value={getContentTypeName(editForm.content_type)}
-                          disabled
-                          className="bg-muted h-11"
-                        />
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          Segment
-                        </Label>
-                        <Select
-                          value={editForm.segment_id || "none"}
-                          onValueChange={(value) => setEditForm(prev => ({ 
-                            ...prev, 
-                            segment_id: value === "none" ? "" : value 
-                          }))}
-                        >
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select a segment" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No segment</SelectItem>
-                            {segments.map(segment => (
-                              <SelectItem key={segment.id} value={segment.id}>
-                                {segment.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <Target className="h-4 w-4 text-muted-foreground" />
-                          Campaign
-                        </Label>
-                        <Select
-                          value={editForm.campaign_id || "none"}
-                          onValueChange={(value) => setEditForm(prev => ({ 
-                            ...prev, 
-                            campaign_id: value === "none" ? "" : value 
-                          }))}
-                        >
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select a campaign" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No campaign</SelectItem>
-                            {campaigns.map(campaign => (
-                              <SelectItem key={campaign.id} value={campaign.id}>
-                                {campaign.title}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          Tags
-                        </Label>
-                        <div className="flex flex-wrap gap-2">
-                          {editForm.tags.map((tag, index) => (
-                            <Badge key={index} variant="secondary">
-                              {tag}
-                              <button
-                                onClick={() => setEditForm(prev => ({
-                                  ...prev,
-                                  tags: prev.tags.filter((_, i) => i !== index)
-                                }))}
-                                className="ml-1 hover:text-destructive"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </Badge>
-                          ))}
+                      <div className="space-y-5">
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            Segment
+                          </Label>
+                          <Select
+                            value={editForm.segment_id || "none"}
+                            onValueChange={(value) => setEditForm(prev => ({ 
+                              ...prev, 
+                              segment_id: value === "none" ? "" : value 
+                            }))}
+                          >
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Select a segment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No segment</SelectItem>
+                              {segments.map(segment => (
+                                <SelectItem key={segment.id} value={segment.id}>
+                                  {segment.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Input
-                            placeholder="Enter tag"
-                            className="flex-1 h-11"
-                            id="new-tag-input"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                const input = e.currentTarget;
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <Target className="h-4 w-4 text-muted-foreground" />
+                            Campaign
+                          </Label>
+                          <Select
+                            value={editForm.campaign_id || "none"}
+                            onValueChange={(value) => setEditForm(prev => ({ 
+                              ...prev, 
+                              campaign_id: value === "none" ? "" : value 
+                            }))}
+                          >
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Select a campaign" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No campaign</SelectItem>
+                              {campaigns.map(campaign => (
+                                <SelectItem key={campaign.id} value={campaign.id}>
+                                  {campaign.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-muted-foreground" />
+                            Tags
+                          </Label>
+                          <div className="flex flex-wrap gap-2">
+                            {editForm.tags.map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="px-3 py-1 text-xs font-medium bg-gray-100/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200/20 transition-colors border border-gray-300/30">
+                                {tag}
+                                <button
+                                  onClick={() => setEditForm(prev => ({
+                                    ...prev,
+                                    tags: prev.tags.filter((_, i) => i !== index)
+                                  }))}
+                                  className="ml-1 hover:text-destructive"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                            {editForm.tags.length === 0 && (
+                              <span className="text-muted-foreground text-sm">No tags assigned</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Input
+                              placeholder="Enter tag"
+                              className="flex-1 h-11"
+                              id="new-tag-input"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const input = e.currentTarget;
+                                  const newTag = input.value.trim();
+                                  if (newTag) {
+                                    setEditForm(prev => ({
+                                      ...prev,
+                                      tags: [...prev.tags, newTag]
+                                    }));
+                                    input.value = '';
+                                  }
+                                  e.preventDefault();
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="outline"
+                              className="h-11 whitespace-nowrap"
+                              onClick={() => {
+                                const input = document.getElementById('new-tag-input') as HTMLInputElement;
                                 const newTag = input.value.trim();
                                 if (newTag) {
                                   setEditForm(prev => ({
@@ -1310,49 +1450,38 @@ export default function ContentDetailPage() {
                                   }));
                                   input.value = '';
                                 }
-                                e.preventDefault();
-                              }
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            className="h-11 whitespace-nowrap"
-                            onClick={() => {
-                              const input = document.getElementById('new-tag-input') as HTMLInputElement;
-                              const newTag = input.value.trim();
-                              if (newTag) {
-                                setEditForm(prev => ({
-                                  ...prev,
-                                  tags: [...prev.tags, newTag]
-                                }));
-                                input.value = '';
-                              }
-                            }}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add Tag
-                          </Button>
+                              }}
+                            >
+                              <PlusCircle className="h-4 w-4 mr-2" />
+                              Add Tag
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="space-y-2.5">
-                        <Label className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          Content Information
-                        </Label>
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs text-muted-foreground">Characters</span>
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{editForm.char_count.toLocaleString() || 0}</span>
+                    </div>
+                    
+                    {/* Content Statistics Card */}
+                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                      <div className="space-y-5">
+                        <div className="space-y-2.5">
+                          <Label className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            Content Statistics
+                          </Label>
+                          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Characters</span>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">{editForm.char_count.toLocaleString() || 0}</span>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs text-muted-foreground">Words</span>
-                            <div className="flex items-center gap-2">
-                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{editForm.word_count.toLocaleString() || 0}</span>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">Words</span>
+                              <div className="flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">{editForm.word_count.toLocaleString() || 0}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
