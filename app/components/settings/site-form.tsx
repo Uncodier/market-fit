@@ -74,7 +74,8 @@ const siteFormSchema = z.object({
     role: z.enum(["view", "create", "delete", "admin"], {
       required_error: "Role is required",
     }),
-    name: z.string().optional()
+    name: z.string().optional(),
+    position: z.string().optional()
   })).optional().default([]),
   tracking: z.object({
     track_visitors: z.boolean().optional().default(false),
@@ -141,7 +142,10 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
         total: 0,
         available: 0
       },
-      team_members: initialData?.team_members || [],
+      team_members: initialData?.team_members?.map(member => ({
+        ...member, 
+        position: member.position || ""
+      })) || [],
       tracking: initialData?.tracking || {
         track_visitors: false,
         track_actions: false,
@@ -157,24 +161,11 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
   const [codeCopied, setCodeCopied] = useState(false)
 
   const handleSubmit = async (data: SiteFormValues) => {
-    const siteData: Partial<Site> = {
-      ...initialData,
-      name: data.name,
-      url: data.url,
-      description: data.description || null,
-      logo_url: data.logo_url || null,
-      resource_urls: data.resource_urls as ResourceUrl[] || null,
-      competitors: data.competitors as CompetitorUrl[] || null,
-      focus_mode: data.focusMode,
-      focusMode: data.focusMode,
-      tracking: data.tracking || {
-        track_visitors: false,
-        track_actions: false,
-        record_screen: false
-      },
-      billing: data.billing
-    }
-    onSubmit(siteData)
+    console.log("Form data in site-form component:", data);
+    
+    // Pass the entire form data to the parent component
+    // Let the parent handle the mapping to site/settings objects
+    onSubmit(data);
   }
 
   const getFocusModeConfig = (value: number) => {
@@ -552,7 +543,7 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                 <CardTitle className="text-xl font-semibold">SWOT Analysis</CardTitle>
               </CardHeader>
               <CardContent className="space-y-8 px-8 pb-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 gap-8">
                   <div className="space-y-4">
                     <FormField
                       control={form.control}
@@ -1280,6 +1271,26 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                     />
                     <FormField
                       control={form.control}
+                      name={`team_members.${index}.position`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-foreground">Position</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                className="pl-12 h-12 text-base" 
+                                placeholder="Job position"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs mt-2" />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
                       name={`team_members.${index}.role`}
                       render={({ field }) => (
                         <FormItem>
@@ -1310,7 +1321,7 @@ export function SiteForm({ id, initialData, onSubmit, onDeleteSite, onCacheAndRe
                   className="w-full h-12"
                   onClick={() => {
                     const current = form.getValues("team_members") || []
-                    form.setValue("team_members", [...current, { email: "", role: "view", name: "" }])
+                    form.setValue("team_members", [...current, { email: "", role: "view", name: "", position: "" }])
                   }}
                 >
                   <PlusCircle className="h-4 w-4 mr-2" />

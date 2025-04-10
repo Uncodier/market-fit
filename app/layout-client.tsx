@@ -42,9 +42,13 @@ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
     title: "Leads",
     helpText: "Manage and track potential customers"
   },
+  "/billing": {
+    title: "Billing",
+    helpText: "Manage your subscription plans and payment methods"
+  },
   "/agents": {
-    title: "Agents",
-    helpText: "Configure and manage AI agents for your product"
+    title: "AI Team",
+    helpText: "Configure and manage AI team for your product"
   },
   "/profile": {
     title: "Profile",

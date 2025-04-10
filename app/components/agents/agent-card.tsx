@@ -24,6 +24,7 @@ interface AgentCardProps {
   agent: Agent
   onManage?: (agent: Agent) => void
   onChat?: (agent: Agent) => void
+  onShowFunctions?: (agent: Agent) => void
   className?: string
 }
 
@@ -31,6 +32,7 @@ export function AgentCard({
   agent, 
   onManage, 
   onChat,
+  onShowFunctions,
   className 
 }: AgentCardProps) {
   // Añadir console.log para depuración
@@ -93,8 +95,10 @@ export function AgentCard({
       className={cn(
         "h-[340px] flex flex-col",
         agentCardVariants({ hover: true }),
-        className
+        className,
+        onShowFunctions && "cursor-pointer" // Make the card clickable if it has the onShowFunctions handler
       )}
+      onClick={() => onShowFunctions && onShowFunctions(agent)}
     >
       <CardHeader className="pb-4 flex-none">
         <div className="flex items-start justify-between gap-4">
@@ -147,7 +151,10 @@ export function AgentCard({
         <Button 
           variant="outline" 
           className="flex-1 h-9"
-          onClick={() => onManage?.(agent)}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent card click event
+            onManage?.(agent);
+          }}
           aria-label={`Manage ${agent.name}`}
         >
           <Pencil className="h-4 w-4 mr-2" aria-hidden={true} />
@@ -156,7 +163,10 @@ export function AgentCard({
         <Button 
           variant="outline" 
           className="flex-1 h-9"
-          onClick={() => onChat?.(agent)}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent card click event
+            onChat?.(agent);
+          }}
           aria-label={`Chat with ${agent.name}`}
         >
           <MessageSquare className="h-4 w-4 mr-2" aria-hidden={true} />

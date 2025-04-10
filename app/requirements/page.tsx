@@ -203,19 +203,16 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
       onClick={navigateToDetails}
     >
       <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
-        <CardContent className="flex-1 py-5 px-5 flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full">
-          <div className="w-full lg:w-1/3 min-w-[250px] flex-shrink-0">
+        <CardContent className="flex-1 p-4 flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full">
+          <div className="flex-1 min-w-[200px] flex-shrink-0">
             <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
             <p className="text-sm text-muted-foreground/80 truncate">{requirement.description}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full">
-            <div className="p-2 rounded-lg">
+          <div className="flex items-center gap-8 shrink-0">
+            <div className="w-[100px]">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Priority</p>
               {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
-                <Badge 
-                  variant="secondary" 
-                  className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
-                >
+                <Badge variant="secondary" className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}>
                   {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
                 </Badge>
               ) : (
@@ -268,7 +265,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                 <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
               )}
             </div>
-            <div className="p-2 rounded-lg">
+            <div className="w-[100px]">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Status</p>
               {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
                 <Badge 
@@ -380,7 +377,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                 <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
               )}
             </div>
-            <div className="p-2 rounded-lg">
+            <div className="w-[140px]">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Campaign</p>
               <p className="text-sm font-medium truncate">
                 {requirement.campaignNames && requirement.campaignNames.length > 0 
@@ -388,25 +385,25 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                   : "No campaign"}
               </p>
             </div>
-            <div className="p-2 rounded-lg">
+            <div className="w-[80px]">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Budget</p>
-              <p className="text-sm font-medium">{requirement.budget ? `$${requirement.budget.toLocaleString()}` : "N/A"}</p>
+              <p className="text-sm font-medium truncate">{requirement.budget ? `$${requirement.budget.toLocaleString()}` : "N/A"}</p>
             </div>
-            <div className="p-2 rounded-lg">
+            <div className="w-[250px]">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Segments</p>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex items-center gap-1">
                 {requirement.segmentNames && requirement.segmentNames.length > 0 ? (
                   requirement.segmentNames.length > 1 ? (
                     <>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs max-w-[180px] truncate">
                         {requirement.segmentNames[0]}
                       </Badge>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs shrink-0">
                         +{requirement.segmentNames.length - 1}
                       </Badge>
                     </>
                   ) : (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs max-w-[230px] truncate">
                       {requirement.segmentNames[0]}
                     </Badge>
                   )
@@ -870,33 +867,33 @@ export default function RequirementsPage() {
   const LoadingState = () => (
     <div className="space-y-3">
       {[1, 2, 3].map(i => (
-        <Card key={i} className="overflow-hidden">
-          <div className="p-6">
-            <div className="flex flex-col lg:flex-row items-start gap-4">
-              <div className="w-full lg:w-1/4">
+        <Card key={i} className="overflow-hidden border border-border">
+          <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
+            <div className="flex-1 p-4 flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full">
+              <div className="flex-1 min-w-[200px] flex-shrink-0">
                 <Skeleton className="h-6 w-3/4 mb-2" />
                 <Skeleton className="h-4 w-full" />
               </div>
-              <div className="flex flex-wrap gap-6 w-full lg:w-3/4">
-                <div className="min-w-[120px]">
+              <div className="flex items-center gap-8 shrink-0">
+                <div className="w-[100px]">
                   <Skeleton className="h-4 w-16 mb-2" />
                   <Skeleton className="h-6 w-24" />
                 </div>
-                <div className="min-w-[120px]">
+                <div className="w-[100px]">
                   <Skeleton className="h-4 w-16 mb-2" />
                   <Skeleton className="h-6 w-24" />
                 </div>
-                <div className="min-w-[120px]">
+                <div className="w-[140px]">
                   <Skeleton className="h-4 w-16 mb-2" />
                   <Skeleton className="h-6 w-24" />
                 </div>
-                <div className="min-w-[120px]">
+                <div className="w-[80px]">
                   <Skeleton className="h-4 w-16 mb-2" />
                   <Skeleton className="h-6 w-24" />
                 </div>
-                <div className="min-w-[120px]">
+                <div className="w-[250px]">
                   <Skeleton className="h-4 w-16 mb-2" />
-                  <Skeleton className="h-6 w-24" />
+                  <Skeleton className="h-6 w-48" />
                 </div>
               </div>
             </div>

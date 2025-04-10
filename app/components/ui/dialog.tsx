@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { SafariCloseButtonAbsolute } from "@/app/components/common/SafariCloseButtonAbsolute"
+import { useTheme } from "@/app/context/ThemeContext"
 
 const Dialog = DialogPrimitive.Root
 
@@ -71,16 +72,23 @@ DialogClose.displayName = "DialogClose";
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  // Use the useTheme hook to detect current theme
+  const { isDarkMode } = useTheme();
+  
+  return (
+    <DialogPrimitive.Overlay
+      ref={ref}
+      className={cn(
+        "fixed inset-0 z-50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        // Apply different background color based on theme
+        isDarkMode ? "bg-black/80" : "bg-white/80",
+        className
+      )}
+      {...props}
+    />
+  )
+})
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<

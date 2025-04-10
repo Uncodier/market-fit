@@ -13,10 +13,40 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { HelpCircle } from "@/app/components/ui/icons"
 import { useAuth } from "@/app/hooks/use-auth"
 import { CohortTables } from "@/app/components/dashboard/cohort-tables"
+import { useState, useEffect } from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { getSegments } from "@/app/segments/actions"
+import { useSite } from "@/app/context/SiteContext"
+import type { Segment } from "@/app/types/segments"
+import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { currentSite } = useSite()
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
+  const [segments, setSegments] = useState<Segment[]>([])
+  const [selectedSegment, setSelectedSegment] = useState<string>("all")
+  const [isLoadingSegments, setIsLoadingSegments] = useState(false)
+
+  useEffect(() => {
+    const loadSegments = async () => {
+      if (!currentSite || currentSite.id === "default") return
+
+      setIsLoadingSegments(true)
+      try {
+        const result = await getSegments(currentSite.id)
+        if (result.segments) {
+          setSegments(result.segments)
+        }
+      } catch (error) {
+        console.error("Error loading segments:", error)
+      } finally {
+        setIsLoadingSegments(false)
+      }
+    }
+
+    loadSegments()
+  }, [currentSite])
 
   return (
     <div className="flex-1 p-0">
@@ -32,8 +62,28 @@ export default function DashboardPage() {
                   <TabsTrigger value="sales">Sales Reports</TabsTrigger>
                 </TabsList>
               </div>
-              <div className="ml-auto">
-                {/* Any other buttons would go here */}
+              <div className="ml-auto flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Segment:</span>
+                  <Select 
+                    value={selectedSegment} 
+                    onValueChange={setSelectedSegment}
+                    disabled={isLoadingSegments}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All segments" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All segments</SelectItem>
+                      {segments.map((segment) => (
+                        <SelectItem key={segment.id} value={segment.id}>
+                          {segment.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <CalendarDateRangePicker />
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ export const routes: RouteConfig[] = [
   { path: "/agents", hasLayout: true },
   { path: "/chat", hasLayout: true },
   { path: "/notifications", hasLayout: true },
+  { path: "/billing", hasLayout: true },
   { path: "/settings", hasLayout: true },
   { path: "/security", hasLayout: true },
   { path: "/help", hasLayout: true },

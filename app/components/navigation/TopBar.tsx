@@ -774,7 +774,6 @@ export function TopBar({
         <div className="flex items-center gap-4">
           {isDashboardPage && (
             <>
-              <CalendarDateRangePicker />
               <Button>Download</Button>
             </>
           )}
@@ -879,10 +878,7 @@ export function TopBar({
           )}
           {isAgentsPage && (
             currentSite ? (
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Agent
-              </Button>
+              <></>
             ) : (
               <Button variant="outline" disabled>
                 <PlusCircle className="mr-2 h-4 w-4" />

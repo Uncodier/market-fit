@@ -14,7 +14,8 @@ import {
   Bell,
   FileText,
   Rocket,
-  Tag
+  Tag,
+  CreditCard
 } from "@/app/components/ui/icons"
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
@@ -98,12 +99,12 @@ const navigationItems = [
     icon: FolderOpen,
   },
   {
-    title: "Customer Journey",
+    title: "Leads",
     href: "/leads",
     icon: Users,
   },
   {
-    title: "AI Agents",
+    title: "AI Team",
     href: "/agents",
     icon: Cpu, // Changed from MessageSquare to Cpu for AI representation
   },
@@ -128,7 +129,7 @@ export function Sidebar({
       className={cn(
         "flex flex-col h-screen",
         isCollapsed ? "w-16" : "w-64",
-        "bg-background text-foreground transition-all duration-200 border-r border-border z-40",
+        "bg-background/80 text-foreground transition-all duration-200 border-r border-border z-40 backdrop-blur-[5px]",
         className
       )}
     >
@@ -185,7 +186,7 @@ export function Sidebar({
       </div>
 
       {/* Bottom Section - Fixed */}
-      <div className="flex-none border-t border-border bg-background">
+      <div className="flex-none border-t border-border">
         <ConfigurationSection className="px-3" isCollapsed={isCollapsed} />
         <div className={cn(
           "border-t border-border px-3 py-4",

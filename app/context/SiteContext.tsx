@@ -3,6 +3,18 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Tables } from "@/lib/types/database.types"
+import type { 
+  SwotAnalysis, 
+  Location, 
+  MarketingBudget, 
+  TrackingSettings, 
+  TeamMember, 
+  MarketingChannel, 
+  SocialMedia, 
+  CalendarItem 
+} from "@/lib/types/database.types"
+import { billingService, BillingData } from "../services/billing-service"
+import { toast } from "react-hot-toast"
 
 // Definición de la interfaz Site adaptada a la estructura de Supabase
 export interface Site {
@@ -18,23 +30,53 @@ export interface Site {
   competitors: CompetitorUrl[] | null
   focusMode: number
   focus_mode: number
-  tracking?: {
-    track_visitors: boolean
-    track_actions: boolean
-    record_screen: boolean
-  }
+  tracking?: TrackingSettings
   billing?: {
-    plan: "free" | "starter" | "professional" | "enterprise"
-    card_number?: string
-    card_expiry?: string
-    card_cvc?: string
+    plan: 'free' | 'starter' | 'professional' | 'enterprise'
+    masked_card_number?: string
     card_name?: string
+    card_expiry?: string
+    stripe_customer_id?: string
+    stripe_payment_method_id?: string
+    card_address?: string
+    card_city?: string
+    card_postal_code?: string
+    card_country?: string
+    tax_id?: string
     billing_address?: string
     billing_city?: string
     billing_postal_code?: string
     billing_country?: string
     auto_renew: boolean
+    credits_available?: number
   }
+  // New settings data
+  settings?: SiteSettings
+}
+
+export interface SiteSettings {
+  id?: string
+  site_id?: string
+  about?: string | null
+  company_size?: string | null
+  industry?: string | null
+  products?: string[] | null
+  services?: string[] | null
+  swot?: SwotAnalysis | null
+  locations?: Location[] | null
+  marketing_budget?: MarketingBudget | null
+  marketing_channels?: MarketingChannel[] | null
+  social_media?: SocialMedia[] | null
+  target_keywords?: string[] | null
+  content_calendar?: CalendarItem[] | null
+  tracking_code?: string | null
+  analytics_provider?: string | null
+  analytics_id?: string | null
+  team_members?: TeamMember[] | null
+  team_roles?: { name: string; permissions: string[]; description?: string }[] | null
+  org_structure?: Record<string, any> | null
+  created_at?: string
+  updated_at?: string
 }
 
 export interface ResourceUrl {
@@ -58,6 +100,11 @@ interface SiteContextType {
   createSite: (site: Omit<Site, 'id' | 'created_at' | 'updated_at'>) => Promise<Site>
   deleteSite: (id: string) => Promise<void>
   refreshSites: () => Promise<void>
+  updateSettings: (siteId: string, settings: Partial<SiteSettings>) => Promise<void>
+  getSettings: (siteId: string) => Promise<SiteSettings | null>
+  updateBilling: (siteId: string, billingData: BillingData) => Promise<{ success: boolean; error?: string }>
+  getBillingInfo: (siteId: string) => Promise<any>
+  purchaseCredits: (siteId: string, amount: number) => Promise<{ success: boolean; error?: string }>
 }
 
 // Crear el contexto
@@ -202,6 +249,26 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Referencia segura a supabase (inicializada solo en useEffect)
   const supabaseRef = useRef<any>(null)
   
+  // Helper function to parse JSON fields from the database
+  const parseJsonField = (field: any, defaultValue: any) => {
+    if (!field) return defaultValue;
+    
+    try {
+      // If it's already an object/array, return it
+      if (typeof field === 'object') return field;
+      
+      // If it's a string, try to parse it
+      if (typeof field === 'string') {
+        return JSON.parse(field);
+      }
+      
+      return defaultValue;
+    } catch (error) {
+      console.error("Error parsing JSON field:", error);
+      return defaultValue;
+    }
+  };
+  
   // Marcar que el componente está montado (solo después de hidratación)
   useEffect(() => {
     setIsMounted(true)
@@ -264,40 +331,107 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       console.log("Fetching sites for user:", session.user.id)
-      const { data, error } = await supabaseRef.current
+      const { data: sitesData, error: sitesError } = await supabaseRef.current
         .from('sites')
         .select('*')
         .eq('user_id', session.user.id)
       
-      if (error) {
-        console.error("Error fetching sites:", error)
+      if (sitesError) {
+        console.error("Error fetching sites:", sitesError)
         console.error("Error details:", {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
+          code: sitesError.code,
+          message: sitesError.message,
+          details: sitesError.details,
+          hint: sitesError.hint
         })
-        throw error
+        throw sitesError
       }
       
-      console.log("Raw sites data:", data)
-      console.log("Sites fetched successfully:", data?.length || 0, "sites found")
-      const siteData = data as Site[]
+      console.log("Raw sites data:", sitesData)
+      console.log("Sites fetched successfully:", sitesData?.length || 0, "sites found")
+      
+      // Get settings for all sites
+      const siteIds = sitesData?.map((site: Tables<'sites'>) => site.id) || []
+      let settingsData: Record<string, Tables<'settings'>> = {}
+      
+      if (siteIds.length > 0) {
+        console.log("Fetching settings for sites:", siteIds)
+        const { data: settings, error: settingsError } = await supabaseRef.current
+          .from('settings')
+          .select('*')
+          .in('site_id', siteIds)
+          
+        if (settingsError) {
+          console.error("Error fetching settings:", settingsError)
+          throw settingsError
+        }
+        
+        console.log("Settings data fetched:", settings)
+        
+        // Create a map of site_id to settings
+        settingsData = (settings || []).reduce((acc: Record<string, Tables<'settings'>>, setting: Tables<'settings'>) => {
+          acc[setting.site_id] = setting
+          return acc
+        }, {} as Record<string, Tables<'settings'>>)
+      }
       
       // Cargar focusMode desde localStorage o usar focus_mode de la base de datos
-      const sitesWithFocusMode = siteData.map(site => ({
-        ...site,
-        focusMode: getLocalStorage(`site_${site.id}_focusMode`, site.focus_mode || 50)
-      }))
+      const sitesWithData = (sitesData || []).map((site: Tables<'sites'>) => {
+        const siteSettings = settingsData[site.id]
+        console.log(`Settings for site ${site.id}:`, siteSettings)
+        
+        return {
+          ...site,
+          focusMode: getLocalStorage(`site_${site.id}_focusMode`, site.focus_mode || 50),
+          settings: siteSettings ? {
+            id: siteSettings.id,
+            site_id: siteSettings.site_id,
+            about: siteSettings.about,
+            company_size: siteSettings.company_size,
+            industry: siteSettings.industry,
+            products: parseJsonField(siteSettings.products, []),
+            services: parseJsonField(siteSettings.services, []),
+            swot: parseJsonField(siteSettings.swot, {
+              strengths: '',
+              weaknesses: '',
+              opportunities: '',
+              threats: ''
+            }),
+            locations: parseJsonField(siteSettings.locations, []),
+            marketing_budget: parseJsonField(siteSettings.marketing_budget, {
+              total: 0,
+              available: 0
+            }),
+            marketing_channels: parseJsonField(siteSettings.marketing_channels, []),
+            social_media: parseJsonField(siteSettings.social_media, []),
+            target_keywords: parseJsonField(siteSettings.target_keywords, []),
+            content_calendar: parseJsonField(siteSettings.content_calendar, []),
+            tracking: parseJsonField(siteSettings.tracking, {
+              track_visitors: false,
+              track_actions: false,
+              record_screen: false
+            }),
+            tracking_code: siteSettings.tracking_code,
+            analytics_provider: siteSettings.analytics_provider,
+            analytics_id: siteSettings.analytics_id,
+            team_members: parseJsonField(siteSettings.team_members, []),
+            team_roles: parseJsonField(siteSettings.team_roles, []),
+            org_structure: parseJsonField(siteSettings.org_structure, {}),
+            created_at: siteSettings.created_at,
+            updated_at: siteSettings.updated_at
+          } : undefined
+        }
+      })
       
-      setSites(sitesWithFocusMode)
+      console.log("Sites with settings:", sitesWithData)
+      setSites(sitesWithData as Site[])
       
       // Si hay sitios, intentamos restaurar el sitio guardado o usar el primero
-      if (sitesWithFocusMode.length > 0) {
+      if (sitesWithData.length > 0) {
         const savedSiteId = getLocalStorage("currentSiteId")
         console.log("Saved site ID from localStorage:", savedSiteId)
         
-        const savedSite = savedSiteId ? sitesWithFocusMode.find(site => site.id === savedSiteId) : null
+        const savedSite = savedSiteId ? sitesWithData.find((site: any) => site.id === savedSiteId) : null
         console.log("Found saved site:", savedSite ? "yes" : "no")
         
         // Si el sitio guardado existe en los datos actuales, lo usamos
@@ -307,9 +441,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
         } 
         // Si no hay sitio guardado o no se encuentra, usamos el primero
         else {
-          console.log("No saved site found, using first site:", sitesWithFocusMode[0].name)
-          handleSetCurrentSite(sitesWithFocusMode[0])
-          setLocalStorage("currentSiteId", sitesWithFocusMode[0].id)
+          console.log("No saved site found, using first site:", sitesWithData[0].name)
+          handleSetCurrentSite(sitesWithData[0])
+          setLocalStorage("currentSiteId", sitesWithData[0].id)
         }
       } else {
         console.log("No sites found for this user")
@@ -404,53 +538,51 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }
 
   // Actualizar un sitio en Supabase
-  const handleUpdateSite = async (updatedSite: Site) => {
+  const handleUpdateSite = async (site: Site) => {
     if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
     
     try {
       setError(null)
       
-      // Primero actualizamos el estado local
-      const updatedSiteWithTimestamp = {
-        ...updatedSite,
-        updated_at: new Date().toISOString()
-      }
-
-      // Preparamos los datos para Supabase (omitiendo campos que no están en la tabla)
-      const updateData = {
-        name: updatedSite.name,
-        url: updatedSite.url,
-        description: updatedSite.description,
-        logo_url: updatedSite.logo_url,
-        resource_urls: updatedSite.resource_urls,
-        competitors: updatedSite.competitors,
-        focus_mode: updatedSite.focusMode,
-        updated_at: updatedSiteWithTimestamp.updated_at
-      }
+      console.log("Updating site data:", site);
       
-      // Actualizamos en Supabase
+      // Extract settings from site object to update separately
+      const { settings, ...siteData } = site;
+      
+      // Ensure tracking data is properly formatted
+      const trackingData = siteData.tracking ? {
+        track_visitors: !!siteData.tracking.track_visitors,
+        track_actions: !!siteData.tracking.track_actions,
+        record_screen: !!siteData.tracking.record_screen
+      } : null;
+      
+      console.log("Tracking data to save:", trackingData);
+      
+      // Update the site record
       const { error } = await supabaseRef.current
         .from('sites')
-        .update(updateData)
-        .eq('id', updatedSite.id)
+        .update({
+          name: siteData.name,
+          url: siteData.url,
+          description: siteData.description,
+          logo_url: siteData.logo_url,
+          resource_urls: siteData.resource_urls,
+          competitors: siteData.competitors,
+          focus_mode: siteData.focusMode || siteData.focus_mode,
+          tracking: trackingData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', site.id)
       
       if (error) throw error
-
-      // Si no hay error, guardamos el focusMode en localStorage
-      setLocalStorage(`site_${updatedSite.id}_focusMode`, updatedSite.focusMode)
       
-      // Si el sitio actualizado es el actual, actualizamos el estado
-      if (currentSite?.id === updatedSite.id) {
-        handleSetCurrentSite(updatedSiteWithTimestamp)
+      // If settings provided, update them as well
+      if (settings) {
+        await handleUpdateSettings(site.id, settings)
       }
-
-      // Actualizamos la lista de sitios
-      setSites(prevSites => 
-        prevSites.map(site => 
-          site.id === updatedSite.id ? updatedSiteWithTimestamp : site
-        )
-      )
-
+      
+      await loadSites() // Reload the sites to get updated data
+      
     } catch (err) {
       console.error("Error updating site:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
@@ -542,6 +674,200 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
   }
   
+  // Function to get settings for a site
+  const handleGetSettings = async (siteId: string) => {
+    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
+    
+    try {
+      const { data, error } = await supabaseRef.current
+        .from('settings')
+        .select('*')
+        .eq('site_id', siteId)
+        .single()
+      
+      if (error && error.code !== 'PGRST116') throw error // PGRST116 means no rows returned
+      
+      return data || null
+    } catch (err) {
+      console.error("Error getting settings:", err)
+      setError(err instanceof Error ? err : new Error(String(err)))
+      throw err
+    }
+  }
+
+  // Function to update settings
+  const handleUpdateSettings = async (siteId: string, settings: Partial<SiteSettings>) => {
+    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
+    
+    try {
+      console.log("Updating settings for site:", siteId)
+      console.log("Raw settings data received:", settings)
+      
+      // Format the settings data to ensure it's properly saved
+      const formattedSettings: Record<string, any> = {
+        site_id: siteId,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Copy over all primitive fields directly
+      Object.entries(settings).forEach(([key, value]) => {
+        if (key === 'id' || key === 'site_id' || key === 'created_at' || key === 'updated_at') {
+          if (key === 'id') formattedSettings[key] = value;
+          // Skip other special fields as they're handled separately
+          return;
+        }
+        
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
+          formattedSettings[key] = value;
+        }
+      });
+      
+      // Format all object/array fields
+      if (settings.products !== undefined) {
+        formattedSettings.products = Array.isArray(settings.products) ? settings.products : [];
+      }
+      
+      if (settings.services !== undefined) {
+        formattedSettings.services = Array.isArray(settings.services) ? settings.services : [];
+      }
+      
+      if (settings.swot !== undefined) {
+        formattedSettings.swot = settings.swot || {
+          strengths: "",
+          weaknesses: "",
+          opportunities: "",
+          threats: ""
+        };
+      }
+      
+      if (settings.locations !== undefined) {
+        formattedSettings.locations = Array.isArray(settings.locations) ? settings.locations : [];
+      }
+      
+      if (settings.marketing_budget !== undefined) {
+        formattedSettings.marketing_budget = settings.marketing_budget || {
+          total: 0,
+          available: 0
+        };
+      }
+      
+      if (settings.marketing_channels !== undefined) {
+        formattedSettings.marketing_channels = Array.isArray(settings.marketing_channels) ? settings.marketing_channels : [];
+      }
+      
+      if (settings.social_media !== undefined) {
+        formattedSettings.social_media = Array.isArray(settings.social_media) ? settings.social_media : [];
+      }
+      
+      if (settings.target_keywords !== undefined) {
+        formattedSettings.target_keywords = Array.isArray(settings.target_keywords) ? settings.target_keywords : [];
+      }
+      
+      if (settings.content_calendar !== undefined) {
+        formattedSettings.content_calendar = Array.isArray(settings.content_calendar) ? settings.content_calendar : [];
+      }
+      
+      if (settings.team_members !== undefined) {
+        formattedSettings.team_members = Array.isArray(settings.team_members) ? settings.team_members : [];
+      }
+      
+      if (settings.team_roles !== undefined) {
+        formattedSettings.team_roles = Array.isArray(settings.team_roles) ? settings.team_roles : [];
+      }
+      
+      if (settings.org_structure !== undefined) {
+        formattedSettings.org_structure = settings.org_structure || {};
+      }
+      
+      console.log("Formatted settings data to save:", formattedSettings);
+      
+      // Use upsert operation
+      const { error } = await supabaseRef.current
+        .from('settings')
+        .upsert(formattedSettings, { 
+          onConflict: 'site_id',
+          ignoreDuplicates: false
+        })
+      
+      if (error) {
+        console.error("Error in upsert operation:", error)
+        throw error
+      }
+      
+      console.log("Settings updated successfully")
+      
+      // Reload sites to get updated data
+      await loadSites()
+      
+    } catch (err) {
+      console.error("Error updating settings:", err)
+      setError(err instanceof Error ? err : new Error(String(err)))
+      throw err
+    }
+  }
+
+  const updateBilling = async (siteId: string, billingData: BillingData) => {
+    try {
+      setIsLoading(true);
+      const result = await billingService.saveBillingInfo(siteId, billingData);
+      
+      if (result.success) {
+        // Refresh site data to get the updated billing info
+        await loadSites();
+        toast.success("Billing information updated successfully");
+      } else {
+        toast.error(result.error || "Failed to update billing information");
+      }
+      
+      return result;
+    } catch (error) {
+      console.error("Error updating billing:", error);
+      toast.error("Failed to update billing information");
+      return { success: false, error: "An unexpected error occurred" };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getBillingInfo = async (siteId: string) => {
+    try {
+      return await billingService.getBillingInfo(siteId);
+    } catch (error) {
+      console.error("Error getting billing info:", error);
+      return { data: null, error };
+    }
+  };
+
+  const purchaseCredits = async (siteId: string, amount: number) => {
+    try {
+      setIsLoading(true);
+      
+      // Use our database RPC function directly
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('purchase_credits', {
+        site_id: siteId,
+        amount: amount,
+        payment_method: 'credit_card'
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Refresh site data to get the updated credits
+      await loadSites();
+      toast.success(`Successfully purchased ${amount} credits`);
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error purchasing credits:", error);
+      toast.error("Failed to purchase credits");
+      return { success: false, error: "An unexpected error occurred" };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Valor del contexto
   const value = {
     sites,
@@ -552,7 +878,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
     updateSite: handleUpdateSite,
     createSite: handleCreateSite,
     deleteSite: handleDeleteSite,
-    refreshSites: loadSites
+    refreshSites: loadSites,
+    updateSettings: handleUpdateSettings,
+    getSettings: handleGetSettings,
+    updateBilling,
+    getBillingInfo,
+    purchaseCredits,
   }
   
   return (

@@ -50,6 +50,83 @@ export interface Database {
           focus_mode?: number | null
         }
       }
+      settings: {
+        Row: {
+          id: string
+          site_id: string
+          about: string | null
+          company_size: string | null
+          industry: string | null
+          products: Json | null
+          services: Json | null
+          swot: Json | null
+          locations: Json | null
+          marketing_budget: Json | null
+          marketing_channels: Json | null
+          social_media: Json | null
+          target_keywords: Json | null
+          content_calendar: Json | null
+          tracking: Json | null
+          tracking_code: string | null
+          analytics_provider: string | null
+          analytics_id: string | null
+          team_members: Json | null
+          team_roles: Json | null
+          org_structure: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          site_id: string
+          about?: string | null
+          company_size?: string | null
+          industry?: string | null
+          products?: Json | null
+          services?: Json | null
+          swot?: Json | null
+          locations?: Json | null
+          marketing_budget?: Json | null
+          marketing_channels?: Json | null
+          social_media?: Json | null
+          target_keywords?: Json | null
+          content_calendar?: Json | null
+          tracking?: Json | null
+          tracking_code?: string | null
+          analytics_provider?: string | null
+          analytics_id?: string | null
+          team_members?: Json | null
+          team_roles?: Json | null
+          org_structure?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          site_id?: string
+          about?: string | null
+          company_size?: string | null
+          industry?: string | null
+          products?: Json | null
+          services?: Json | null
+          swot?: Json | null
+          locations?: Json | null
+          marketing_budget?: Json | null
+          marketing_channels?: Json | null
+          social_media?: Json | null
+          target_keywords?: Json | null
+          content_calendar?: Json | null
+          tracking?: Json | null
+          tracking_code?: string | null
+          analytics_provider?: string | null
+          analytics_id?: string | null
+          team_members?: Json | null
+          team_roles?: Json | null
+          org_structure?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       users: {
         Row: {
           id: string
@@ -91,6 +168,65 @@ export interface ResourceUrl {
 export interface CompetitorUrl {
   url: string
   name?: string
+}
+
+// Create more specific types for the settings fields
+export interface Location {
+  name: string
+  address?: string
+  country?: string
+}
+
+export interface SwotAnalysis {
+  strengths: string
+  weaknesses: string
+  opportunities: string
+  threats: string
+}
+
+export interface MarketingBudget {
+  total: number
+  available: number
+}
+
+export interface SocialMedia {
+  platform: string
+  url: string
+  handle?: string
+}
+
+export interface MarketingChannel {
+  name: string
+  status: 'active' | 'inactive' | 'planned'
+  budget?: number
+  notes?: string
+}
+
+export interface CalendarItem {
+  title: string
+  date: string
+  type: string
+  status: 'planned' | 'completed' | 'in-progress'
+  notes?: string
+}
+
+export interface TrackingSettings {
+  track_visitors: boolean
+  track_actions: boolean
+  record_screen: boolean
+}
+
+export interface TeamMember {
+  email: string
+  role: 'view' | 'create' | 'delete' | 'admin'
+  name?: string
+  position?: string
+}
+
+export interface TeamRole {
+  name: string
+  permissions: string[]
+  description?: string
 }
 
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
