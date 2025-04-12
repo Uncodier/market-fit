@@ -59,6 +59,71 @@ export interface Database {
           user_id?: string
         }
       }
+      commands: {
+        Row: {
+          id: string
+          uuid: string
+          task: string
+          status: "pending" | "running" | "completed" | "failed" | "cancelled"
+          user_id: string
+          description: string | null
+          results: Json | null
+          targets: Json | null
+          tools: Json | null
+          context: string | null
+          supervisor: Json | null
+          created_at: string
+          updated_at: string
+          completion_date: string | null
+          duration: number | null
+          model: string | null
+          agent_id: string | null
+          output_tokens: number | null
+          input_tokens: number | null
+        }
+        Insert: {
+          id?: string
+          uuid: string
+          task: string
+          status?: "pending" | "running" | "completed" | "failed" | "cancelled"
+          user_id: string
+          description?: string | null
+          results?: Json | null
+          targets?: Json | null
+          tools?: Json | null
+          context?: string | null
+          supervisor?: Json | null
+          created_at?: string
+          updated_at?: string
+          completion_date?: string | null
+          duration?: number | null
+          model?: string | null
+          agent_id?: string | null
+          output_tokens?: number | null
+          input_tokens?: number | null
+        }
+        Update: {
+          id?: string
+          uuid?: string
+          task?: string
+          status?: "pending" | "running" | "completed" | "failed" | "cancelled"
+          user_id?: string
+          description?: string | null
+          results?: Json | null
+          targets?: Json | null
+          tools?: Json | null
+          context?: string | null
+          supervisor?: Json | null
+          created_at?: string
+          updated_at?: string
+          completion_date?: string | null
+          duration?: number | null
+          model?: string | null
+          agent_id?: string | null
+          output_tokens?: number | null
+          input_tokens?: number | null
+        }
+      }
     }
     Views: {
       [_ in never]: never

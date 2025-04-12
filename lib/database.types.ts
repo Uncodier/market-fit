@@ -14,7 +14,7 @@ export interface Database {
           id: string
           title: string
           description: string | null
-          content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+          type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
           status: "draft" | "review" | "approved" | "published" | "archived"
           segment_id: string | null
           site_id: string
@@ -32,7 +32,7 @@ export interface Database {
           id?: string
           title: string
           description?: string | null
-          content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+          type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
           status: "draft" | "review" | "approved" | "published" | "archived"
           segment_id?: string | null
           site_id: string
@@ -50,7 +50,7 @@ export interface Database {
           id?: string
           title?: string
           description?: string | null
-          content_type?: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+          type?: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
           status?: "draft" | "review" | "approved" | "published" | "archived"
           segment_id?: string | null
           site_id?: string

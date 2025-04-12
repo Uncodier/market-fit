@@ -30,6 +30,8 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { sendErrorReport } from "@/app/services/support-service"
 import { checkApiConnection, diagnoseApiConnection } from "@/app/services/ai-service"
 import { toast } from "sonner"
+import { JsonHighlighter } from "@/app/components/agents/json-highlighter"
+import { JsonDisplay } from "@/app/components/ui/json-display"
 
 // Tipos para el estado de conexión
 type ConnectionStatus = "success" | "error"
@@ -92,7 +94,7 @@ export function AIActionModal({
   const [isSendingReport, setIsSendingReport] = useState(false) // State to track if sending error report
   const [reportSent, setReportSent] = useState(false) // State to track if report was sent
   const [userFeedback, setUserFeedback] = useState("") // State for additional user comments
-  const [apiResponse, setApiResponse] = useState<string | null>(null) // State to store the actual API response
+  const [apiResponse, setApiResponse] = useState<string | object | null>(null) // State to store the actual API response
   const [serverError, setServerError] = useState(false) // State to track if the error is a server error
   const [isCheckingConnection, setIsCheckingConnection] = useState(false); // Estado para verificar la conexión
   const [isTestingConnection, setIsTestingConnection] = useState(false)
@@ -239,18 +241,18 @@ export function AIActionModal({
               result.error.includes("Connection refused")
             )) {
               // Es un error de conexión
-              setApiResponse(typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result));
+              setApiResponse(result);
               setServerError(true);
               throw new Error(result.error);
             } else {
               // Es un error normal de la API
-              setApiResponse(typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result));
+              setApiResponse(result);
               throw new Error(result.error || "The operation failed");
             }
           }
           
           // Guardar la respuesta de la API para mostrarla
-          setApiResponse(typeof result === 'string' ? result : JSON.stringify(result, null, 2));
+          setApiResponse(result);
         } else {
           setApiResponse("Action executed successfully, but no response data was returned.");
         }
@@ -304,8 +306,7 @@ export function AIActionModal({
             err.message.includes("Cannot connect to API server") ||
             err.message.includes("Connection refused"))) ||
           (apiResponse && (
-            apiResponse.includes("<!DOCTYPE html>") ||
-            apiResponse.includes("<html>")
+            typeof apiResponse === 'string' && (apiResponse.includes('<!DOCTYPE html>') || apiResponse.includes('<html>'))
           ))
         ) {
           setServerError(true);
@@ -374,21 +375,21 @@ export function AIActionModal({
         console.error("API diagnosis failed:", result);
         
         // Actualizar la respuesta de la API con el resultado del diagnóstico
-        setApiResponse(JSON.stringify(result, null, 2));
+        setApiResponse(result);
       }
     } catch (err) {
       console.error("Error checking API connection:", err);
       toast.error("Failed to check API connection");
       
       // Actualizar la respuesta de la API con el error
-      setApiResponse(JSON.stringify({
+      setApiResponse({
         success: false,
         error: err instanceof Error ? err.message : "Unknown error occurred",
         details: {
           message: err instanceof Error ? err.message : String(err),
           name: err instanceof Error ? err.name : 'Unknown Error'
         }
-      }, null, 2));
+      });
     } finally {
       setIsCheckingConnection(false);
     }
@@ -425,6 +426,13 @@ export function AIActionModal({
         });
         toast.error("Connection test failed: " + (result.error || "Unknown error"));
       }
+      
+      // Actualizar la respuesta de la API con el resultado de la prueba de conexión
+      setApiResponse({
+        status: "success",
+        message: "Connection test successful",
+        details: result
+      });
     } catch (error) {
       console.error("Error in direct connection test:", error);
       setConnectionStatus("error");
@@ -434,6 +442,19 @@ export function AIActionModal({
         error: error instanceof Error ? error.message : "Unknown error"
       });
       toast.error("Failed to perform direct connection test");
+      
+      // Actualizar la respuesta de la API con el error de la prueba de conexión
+      setApiResponse({
+        status: "error",
+        message: "Connection test failed",
+        details: error instanceof Error ? {
+          message: error.message,
+          name: error.name
+        } : {
+          message: String(error),
+          name: "UnknownError"
+        }
+      });
     } finally {
       setIsTestingConnection(false);
     }
@@ -450,7 +471,7 @@ export function AIActionModal({
       let apiUrl = "http://localhost:3001";
       if (apiResponse) {
         try {
-          const parsedResponse = JSON.parse(apiResponse);
+          const parsedResponse = typeof apiResponse === 'string' ? JSON.parse(apiResponse) : apiResponse;
           if (parsedResponse.apiUrl) {
             apiUrl = parsedResponse.apiUrl;
           }
@@ -472,15 +493,15 @@ export function AIActionModal({
       const timeoutId = setTimeout(() => {
         document.body.removeChild(iframe);
         toast.error("Iframe test timed out after 5 seconds");
-        setApiResponse(JSON.stringify({
-          success: false,
-          error: "Iframe test timed out after 5 seconds",
+        setApiResponse({
+          status: "error",
+          message: "Iframe test timed out after 5 seconds",
           details: {
             message: "Request timed out",
             name: "TimeoutError",
             possibleCause: "Server is not responding or not serving HTML content"
           }
-        }, null, 2));
+        });
         setIsCheckingConnection(false);
       }, 5000);
       
@@ -493,19 +514,28 @@ export function AIActionModal({
           const iframeContent = iframe.contentWindow?.document.body.innerHTML;
           
           toast.success("Iframe loaded successfully!");
-          setApiResponse(JSON.stringify({
-            success: true,
+          setApiResponse({
+            status: "success",
             message: "Iframe test successful - server is responding with HTML content",
-            contentPreview: iframeContent ? iframeContent.substring(0, 100) + "..." : "Content not accessible due to CORS"
-          }, null, 2));
+            details: {
+              url: apiUrl,
+              width: iframe.width,
+              height: iframe.height,
+              contentPreview: iframeContent ? iframeContent.substring(0, 100) + "..." : "Content not accessible due to CORS"
+            }
+          });
         } catch (corsError) {
           console.error("CORS error accessing iframe content:", corsError);
           toast.warning("Iframe loaded but content is not accessible due to CORS");
-          setApiResponse(JSON.stringify({
-            success: true,
+          setApiResponse({
+            status: "success",
             message: "Server is responding, but content is not accessible due to CORS",
-            error: corsError instanceof Error ? corsError.message : "CORS restriction"
-          }, null, 2));
+            details: {
+              url: apiUrl,
+              message: "Content is not accessible due to CORS",
+              error: corsError instanceof Error ? corsError.message : "CORS restriction"
+            }
+          });
         }
         
         document.body.removeChild(iframe);
@@ -518,15 +548,15 @@ export function AIActionModal({
         document.body.removeChild(iframe);
         
         toast.error("Failed to load iframe");
-        setApiResponse(JSON.stringify({
-          success: false,
-          error: "Failed to load iframe. The server might be down or not serving HTML content.",
+        setApiResponse({
+          status: "error",
+          message: "Failed to load iframe. The server might be down or not serving HTML content.",
           details: {
             message: "Iframe load error",
             name: "IframeError",
             possibleCause: "Server not running or not serving HTML content"
           }
-        }, null, 2));
+        });
         
         setIsCheckingConnection(false);
       };
@@ -554,7 +584,7 @@ export function AIActionModal({
       let apiUrl = "http://localhost:3001";
       if (apiResponse) {
         try {
-          const parsedResponse = JSON.parse(apiResponse);
+          const parsedResponse = typeof apiResponse === 'string' ? JSON.parse(apiResponse) : apiResponse;
           if (parsedResponse.apiUrl) {
             apiUrl = parsedResponse.apiUrl;
           }
@@ -579,15 +609,15 @@ export function AIActionModal({
       // Configurar un timeout
       const timeoutId = setTimeout(() => {
         toast.error("Image ping timed out after 5 seconds");
-        setApiResponse(JSON.stringify({
-          success: false,
-          error: "Image ping timed out after 5 seconds",
+        setApiResponse({
+          status: "error",
+          message: "Image ping timed out after 5 seconds",
           details: {
             message: "Request timed out",
             name: "TimeoutError",
             possibleCause: "Server is not responding or the resource doesn't exist"
           }
-        }, null, 2));
+        });
         setIsCheckingConnection(false);
       }, 5000);
       
@@ -595,15 +625,15 @@ export function AIActionModal({
       img.onload = () => {
         clearTimeout(timeoutId);
         toast.success("Server is reachable! Image loaded successfully.");
-        setApiResponse(JSON.stringify({
-          success: true,
+        setApiResponse({
+          status: "success",
           message: "Server is reachable. Image ping test successful.",
           details: {
             url: imgUrl,
             width: img.width,
             height: img.height
           }
-        }, null, 2));
+        });
         setIsCheckingConnection(false);
       };
       
@@ -611,15 +641,15 @@ export function AIActionModal({
       img.onerror = () => {
         clearTimeout(timeoutId);
         toast.error("Image ping failed. Server might be down or resource not found.");
-        setApiResponse(JSON.stringify({
-          success: false,
-          error: "Image ping failed. Server might be down or resource not found.",
+        setApiResponse({
+          status: "error",
+          message: "Image ping failed. Server might be down or resource not found.",
           details: {
             url: imgUrl,
             message: "Image failed to load",
             possibleCause: "Server not running, resource not found, or CORS restriction"
           }
-        }, null, 2));
+        });
         setIsCheckingConnection(false);
       };
       
@@ -645,11 +675,12 @@ export function AIActionModal({
     return `${mins}m ${secs}s`;
   };
 
-  // Function to copy text to clipboard
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-      .then(() => toast?.success?.("Copied to clipboard"))
-      .catch(err => console.error("Failed to copy text: ", err));
+  // Update the copyToClipboard function
+  const copyToClipboard = (text: string | object | null) => {
+    if (text === null) return;
+    const textToCopy = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+    navigator.clipboard.writeText(textToCopy);
+    toast.success("Copied to clipboard");
   };
 
   // Función para iniciar la cuenta regresiva
@@ -901,25 +932,8 @@ export function AIActionModal({
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  <div className={`max-h-28 overflow-y-auto overflow-x-hidden whitespace-pre-wrap text-xs font-mono ${serverError ? 'bg-destructive/5 p-2 rounded border border-destructive/20' : 'bg-background/50 p-2 rounded border'}`}>
-                    {apiResponse.includes('<!DOCTYPE html>') || apiResponse.includes('<html>')
-                      ? (
-                        <>
-                          <div className="mb-2 text-destructive font-semibold">HTML Response (formatted):</div>
-                          <div className="break-all overflow-hidden">
-                            {apiResponse
-                              .replace(/<[^>]*>/g, (match) => `\n${match}\n`)
-                              .replace(/\n+/g, '\n')
-                              .split('\n')
-                              .filter(line => line.trim())
-                              .slice(0, 15) // Reducir a 15 líneas para mejor visualización
-                              .join('\n')}
-                            {apiResponse.split('\n').length > 15 && '\n... (truncated)'}
-                          </div>
-                        </>
-                      )
-                      : <div className="break-all overflow-hidden">{apiResponse}</div>
-                    }
+                  <div className={`max-h-28 overflow-y-auto overflow-x-hidden text-xs font-mono ${serverError ? 'bg-destructive/5 p-2 rounded border border-destructive/20' : 'bg-background/50 p-2 rounded border'}`}>
+                    <JsonDisplay data={apiResponse} maxHeight="200px" />
                   </div>
                 </div>
               )}

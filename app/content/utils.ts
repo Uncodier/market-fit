@@ -29,8 +29,8 @@ export const CONTENT_TYPE_NAMES: Record<ContentType, string> = {
 };
 
 // Helper function to get a human-readable content type name
-export function getContentTypeName(contentType: ContentType | string): string {
-  return CONTENT_TYPE_NAMES[contentType as ContentType] || contentType;
+export function getContentTypeName(type: ContentType | string): string {
+  return CONTENT_TYPE_NAMES[type as ContentType] || type;
 }
 
 // Helper function to get a segment name from a segment ID and list of segments
@@ -46,8 +46,8 @@ export function getSegmentName(
 }
 
 // Helper to get content type icon class
-export function getContentTypeIconClass(contentType: ContentType | string): string {
-  switch (contentType as ContentType) {
+export function getContentTypeIconClass(type: ContentType | string): string {
+  switch (type as ContentType) {
     case "blog_post":
       return "text-blue-500";
     case "video":

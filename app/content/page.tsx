@@ -90,7 +90,7 @@ const CONTENT_TYPE_ICONS: Record<string, React.ReactElement> = {
 // Interfaz para los filtros de contenido
 interface ContentFilters {
   status: string[]
-  content_type: string[]
+  type: string[]
   segments: string[]
 }
 
@@ -107,7 +107,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
   const [editForm, setEditForm] = useState({
     title: content.title,
     description: content.description || '',
-    content_type: content.content_type,
+    type: content.type,
     segment_id: content.segment_id || 'none',
     tags: content.tags || [],
     performance_rating: content.performance_rating
@@ -127,7 +127,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
     updateContent({
       contentId: content.id,
       title: content.title,
-      content_type: content.content_type,
+      type: content.type,
       performance_rating: rating
     }).then(() => {
       toast.success("Performance rating updated", {
@@ -160,7 +160,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
         contentId: content.id,
         title: editForm.title,
         description: editForm.description || undefined,
-        content_type: editForm.content_type,
+        type: editForm.type,
         segment_id: editForm.segment_id === 'none' ? null : editForm.segment_id,
         tags: editForm.tags.length > 0 ? editForm.tags : null,
         performance_rating: editForm.performance_rating
@@ -234,15 +234,15 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
           
           <div className="grid gap-4">
             <div className="flex items-center gap-3">
-              <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.content_type)}`} style={{ width: '48px', height: '48px' }}>
-                {CONTENT_TYPE_ICONS[content.content_type]}
+              <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.type)}`} style={{ width: '48px', height: '48px' }}>
+                {CONTENT_TYPE_ICONS[content.type]}
               </div>
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground mb-[5px]">Content Type</p>
                 {isEditing ? (
                   <Select 
-                    value={editForm.content_type} 
-                    onValueChange={(value: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page") => setEditForm({...editForm, content_type: value})}
+                    value={editForm.type} 
+                    onValueChange={(value: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page") => setEditForm({...editForm, type: value})}
                   >
                     <SelectTrigger className="h-12 text-sm">
                       <SelectValue placeholder="Select type" />
@@ -263,7 +263,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm font-medium">{getContentTypeName(content.content_type)}</p>
+                  <p className="text-sm font-medium">{getContentTypeName(content.type)}</p>
                 )}
               </div>
             </div>
@@ -508,7 +508,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
               setEditForm({
                 title: content.title,
                 description: content.description || '',
-                content_type: content.content_type,
+                type: content.type,
                 segment_id: content.segment_id || 'none',
                 tags: content.tags || [],
                 performance_rating: content.performance_rating
@@ -535,7 +535,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
               setEditForm({
                 title: content.title,
                 description: content.description || '',
-                content_type: content.content_type,
+                type: content.type,
                 segment_id: content.segment_id || 'none',
                 tags: content.tags || [],
                 performance_rating: content.performance_rating
@@ -580,7 +580,7 @@ function ContentCard({ content, segments, onClick, onRatingChange }: {
     updateContent({
       contentId: content.id,
       title: content.title,
-      content_type: content.content_type,
+      type: content.type,
       performance_rating: rating
     }).then(() => {
       toast.success("Performance rating updated", {
@@ -608,13 +608,13 @@ function ContentCard({ content, segments, onClick, onRatingChange }: {
       <CardContent className="p-3">
         <div className="flex items-start justify-between">
           <div className="flex gap-3 items-start">
-            <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.content_type)}`} style={{ width: '39px', height: '39px' }}>
-              {CONTENT_TYPE_ICONS[content.content_type]}
+            <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.type)}`} style={{ width: '39px', height: '39px' }}>
+              {CONTENT_TYPE_ICONS[content.type]}
             </div>
             <div className="flex flex-col">
               <h3 className="text-sm font-medium line-clamp-2 mt-0.5">{content.title}</h3>
               <div className="flex items-center gap-1 mt-1">
-                <span className="text-xs text-muted-foreground">{getContentTypeName(content.content_type)}</span>
+                <span className="text-xs text-muted-foreground">{getContentTypeName(content.type)}</span>
               </div>
             </div>
           </div>
@@ -885,10 +885,10 @@ function ContentTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.content_type)}`} style={{ width: '24px', height: '24px' }}>
-                      {CONTENT_TYPE_ICONS[content.content_type]}
+                    <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.type)}`} style={{ width: '24px', height: '24px' }}>
+                      {CONTENT_TYPE_ICONS[content.type]}
                     </div>
-                    <span className="text-sm">{getContentTypeName(content.content_type)}</span>
+                    <span className="text-sm">{getContentTypeName(content.type)}</span>
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
@@ -1066,7 +1066,7 @@ function ContentFiltersDialog({
   // Estado para las secciones expandidas
   const [expandedSections, setExpandedSections] = useState({
     status: true,
-    content_type: true,
+    type: true,
     segments: true
   })
 
@@ -1098,17 +1098,17 @@ function ContentFiltersDialog({
     })
   }
 
-  const handleContentTypeChange = (type: string) => {
+  const handleTypeChange = (type: string) => {
     setLocalFilters(prev => {
-      if (prev.content_type.includes(type)) {
+      if (prev.type.includes(type)) {
         return {
           ...prev,
-          content_type: prev.content_type.filter(t => t !== type)
+          type: prev.type.filter(t => t !== type)
         }
       } else {
         return {
           ...prev,
-          content_type: [...prev.content_type, type]
+          type: [...prev.type, type]
         }
       }
     })
@@ -1138,7 +1138,7 @@ function ContentFiltersDialog({
   const handleResetFilters = () => {
     const resetFilters = {
       status: [],
-      content_type: [],
+      type: [],
       segments: []
     }
     setLocalFilters(resetFilters)
@@ -1148,7 +1148,7 @@ function ContentFiltersDialog({
 
   // Función para obtener el total de filtros activos
   const getTotalActiveFilters = () => {
-    return localFilters.status.length + localFilters.content_type.length + localFilters.segments.length
+    return localFilters.status.length + localFilters.type.length + localFilters.segments.length
   }
 
   // Función para obtener la clase del badge de estado
@@ -1239,32 +1239,32 @@ function ContentFiltersDialog({
           <div className="border rounded-lg">
             <div 
               className="flex items-center justify-between p-3 cursor-pointer"
-              onClick={() => toggleSection('content_type')}
+              onClick={() => toggleSection('type')}
             >
               <div className="flex items-center gap-2">
                 <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                 <h3 className="font-medium">Content Type</h3>
-                {localFilters.content_type.length > 0 && (
+                {localFilters.type.length > 0 && (
                   <Badge variant="outline" className="ml-2">
-                    {localFilters.content_type.length}
+                    {localFilters.type.length}
                   </Badge>
                 )}
               </div>
-              {expandedSections.content_type ? (
+              {expandedSections.type ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
               ) : (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               )}
             </div>
             
-            {expandedSections.content_type && (
+            {expandedSections.type && (
               <div className="px-3 py-[10px] border-t">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex items-center space-x-2">
                     <Switch 
                       id="type-blog_post"
-                      checked={localFilters.content_type.includes('blog_post')}
-                      onCheckedChange={() => handleContentTypeChange('blog_post')}
+                      checked={localFilters.type.includes('blog_post')}
+                      onCheckedChange={() => handleTypeChange('blog_post')}
                     />
                     <Label 
                       htmlFor="type-blog_post"
@@ -1277,8 +1277,8 @@ function ContentFiltersDialog({
                   <div className="flex items-center space-x-2">
                     <Switch 
                       id="type-video"
-                      checked={localFilters.content_type.includes('video')}
-                      onCheckedChange={() => handleContentTypeChange('video')}
+                      checked={localFilters.type.includes('video')}
+                      onCheckedChange={() => handleTypeChange('video')}
                     />
                     <Label 
                       htmlFor="type-video"
@@ -1291,8 +1291,8 @@ function ContentFiltersDialog({
                   <div className="flex items-center space-x-2">
                     <Switch 
                       id="type-podcast"
-                      checked={localFilters.content_type.includes('podcast')}
-                      onCheckedChange={() => handleContentTypeChange('podcast')}
+                      checked={localFilters.type.includes('podcast')}
+                      onCheckedChange={() => handleTypeChange('podcast')}
                     />
                     <Label 
                       htmlFor="type-podcast"
@@ -1305,8 +1305,8 @@ function ContentFiltersDialog({
                   <div className="flex items-center space-x-2">
                     <Switch 
                       id="type-social_post"
-                      checked={localFilters.content_type.includes('social_post')}
-                      onCheckedChange={() => handleContentTypeChange('social_post')}
+                      checked={localFilters.type.includes('social_post')}
+                      onCheckedChange={() => handleTypeChange('social_post')}
                     />
                     <Label 
                       htmlFor="type-social_post"
@@ -1319,8 +1319,8 @@ function ContentFiltersDialog({
                   <div className="flex items-center space-x-2">
                     <Switch 
                       id="type-newsletter"
-                      checked={localFilters.content_type.includes('newsletter')}
-                      onCheckedChange={() => handleContentTypeChange('newsletter')}
+                      checked={localFilters.type.includes('newsletter')}
+                      onCheckedChange={() => handleTypeChange('newsletter')}
                     />
                     <Label 
                       htmlFor="type-newsletter"
@@ -1333,8 +1333,8 @@ function ContentFiltersDialog({
                   <div className="flex items-center space-x-2">
                     <Switch 
                       id="type-case_study"
-                      checked={localFilters.content_type.includes('case_study')}
-                      onCheckedChange={() => handleContentTypeChange('case_study')}
+                      checked={localFilters.type.includes('case_study')}
+                      onCheckedChange={() => handleTypeChange('case_study')}
                     />
                     <Label 
                       htmlFor="type-case_study"
@@ -1461,7 +1461,7 @@ export default function ContentPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [filters, setFilters] = useState<ContentFilters>({
     status: [],
-    content_type: [],
+    type: [],
     segments: []
   })
   const [isFiltersDialogOpen, setIsFiltersDialogOpen] = useState(false)
@@ -1497,7 +1497,7 @@ export default function ContentPage() {
         setTotalContent(result.count)
         setFilteredContent(result.content)
         
-        if (searchTerm || filters.status.length > 0 || filters.content_type.length > 0 || filters.segments.length > 0) {
+        if (searchTerm || filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) {
           updateFilteredContent(searchTerm, filters, result.content)
         }
       }
@@ -1564,8 +1564,8 @@ export default function ContentPage() {
         currentFilters.status.includes(item.status)
       
       // Filtrar por tipo de contenido
-      const matchesType = currentFilters.content_type.length === 0 || 
-        currentFilters.content_type.includes(item.content_type)
+      const matchesType = currentFilters.type.length === 0 || 
+        currentFilters.type.includes(item.type)
       
       // Filtrar por segmento
       const matchesSegment = currentFilters.segments.length === 0 || 
@@ -1718,25 +1718,25 @@ export default function ContentPage() {
                   <TabsTrigger value="blog_post">
                     Blog Posts
                     <Badge variant="secondary" className="ml-2 bg-muted">
-                      {contentItems.filter(item => item.content_type === 'blog_post').length}
+                      {contentItems.filter(item => item.type === 'blog_post').length}
                     </Badge>
                   </TabsTrigger>
                   <TabsTrigger value="video">
                     Videos
                     <Badge variant="secondary" className="ml-2 bg-muted">
-                      {contentItems.filter(item => item.content_type === 'video').length}
+                      {contentItems.filter(item => item.type === 'video').length}
                     </Badge>
                   </TabsTrigger>
                   <TabsTrigger value="social_post">
                     Social Media
                     <Badge variant="secondary" className="ml-2 bg-muted">
-                      {contentItems.filter(item => item.content_type === 'social_post').length}
+                      {contentItems.filter(item => item.type === 'social_post').length}
                     </Badge>
                   </TabsTrigger>
                   <TabsTrigger value="ad">
                     Ads
                     <Badge variant="secondary" className="ml-2 bg-muted">
-                      {contentItems.filter(item => item.content_type === 'ad').length}
+                      {contentItems.filter(item => item.type === 'ad').length}
                     </Badge>
                   </TabsTrigger>
                 </TabsList>
@@ -1764,9 +1764,9 @@ export default function ContentPage() {
                 >
                   <Filter className="h-4 w-4 mr-2" />
                   Filters
-                  {(filters.status.length > 0 || filters.content_type.length > 0 || filters.segments.length > 0) && (
+                  {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
                     <Badge variant="secondary" className="ml-2">
-                      {filters.status.length + filters.content_type.length + filters.segments.length}
+                      {filters.status.length + filters.type.length + filters.segments.length}
                     </Badge>
                   )}
                 </Button>
@@ -1813,11 +1813,11 @@ export default function ContentPage() {
             <TabsContent value="blog_post" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.filter(item => item.content_type === 'blog_post').length === 0 ? (
+              ) : filteredContent.filter(item => item.type === 'blog_post').length === 0 ? (
                 emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
-                  contentItems={filteredContent.filter(item => item.content_type === 'blog_post')}
+                  contentItems={filteredContent.filter(item => item.type === 'blog_post')}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
@@ -1825,10 +1825,10 @@ export default function ContentPage() {
                 />
               ) : (
                 <ContentTable 
-                  contentItems={filteredContent.filter(item => item.content_type === 'blog_post')}
+                  contentItems={filteredContent.filter(item => item.type === 'blog_post')}
                   currentPage={currentPage}
                   itemsPerPage={itemsPerPage}
-                  totalContent={filteredContent.filter(item => item.content_type === 'blog_post').length}
+                  totalContent={filteredContent.filter(item => item.type === 'blog_post').length}
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
@@ -1840,11 +1840,11 @@ export default function ContentPage() {
             <TabsContent value="video" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.filter(item => item.content_type === 'video').length === 0 ? (
+              ) : filteredContent.filter(item => item.type === 'video').length === 0 ? (
                 emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
-                  contentItems={filteredContent.filter(item => item.content_type === 'video')}
+                  contentItems={filteredContent.filter(item => item.type === 'video')}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
@@ -1852,10 +1852,10 @@ export default function ContentPage() {
                 />
               ) : (
                 <ContentTable 
-                  contentItems={filteredContent.filter(item => item.content_type === 'video')}
+                  contentItems={filteredContent.filter(item => item.type === 'video')}
                   currentPage={currentPage}
                   itemsPerPage={itemsPerPage}
-                  totalContent={filteredContent.filter(item => item.content_type === 'video').length}
+                  totalContent={filteredContent.filter(item => item.type === 'video').length}
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
@@ -1867,11 +1867,11 @@ export default function ContentPage() {
             <TabsContent value="social_post" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.filter(item => item.content_type === 'social_post').length === 0 ? (
+              ) : filteredContent.filter(item => item.type === 'social_post').length === 0 ? (
                 emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
-                  contentItems={filteredContent.filter(item => item.content_type === 'social_post')}
+                  contentItems={filteredContent.filter(item => item.type === 'social_post')}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
@@ -1879,10 +1879,10 @@ export default function ContentPage() {
                 />
               ) : (
                 <ContentTable 
-                  contentItems={filteredContent.filter(item => item.content_type === 'social_post')}
+                  contentItems={filteredContent.filter(item => item.type === 'social_post')}
                   currentPage={currentPage}
                   itemsPerPage={itemsPerPage}
-                  totalContent={filteredContent.filter(item => item.content_type === 'social_post').length}
+                  totalContent={filteredContent.filter(item => item.type === 'social_post').length}
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
@@ -1894,11 +1894,11 @@ export default function ContentPage() {
             <TabsContent value="ad" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.filter(item => item.content_type === 'ad').length === 0 ? (
+              ) : filteredContent.filter(item => item.type === 'ad').length === 0 ? (
                 emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
-                  contentItems={filteredContent.filter(item => item.content_type === 'ad')}
+                  contentItems={filteredContent.filter(item => item.type === 'ad')}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
                   onContentClick={handleContentClick}
@@ -1906,10 +1906,10 @@ export default function ContentPage() {
                 />
               ) : (
                 <ContentTable 
-                  contentItems={filteredContent.filter(item => item.content_type === 'ad')}
+                  contentItems={filteredContent.filter(item => item.type === 'ad')}
                   currentPage={currentPage}
                   itemsPerPage={itemsPerPage}
-                  totalContent={filteredContent.filter(item => item.content_type === 'ad').length}
+                  totalContent={filteredContent.filter(item => item.type === 'ad').length}
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}

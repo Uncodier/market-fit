@@ -28,11 +28,15 @@ export function StickyHeader({
   // Check if we're in the leads detail page
   const isLeadsDetailPage = pathname?.startsWith('/leads/') && pathname !== '/leads';
   
+  // Check if we're in the agents page
+  const isAgentsPage = pathname?.startsWith('/agents');
+  
   return (
     <div className={cn(
-      "sticky top-16 min-h-[71px] flex items-center p-0",
+      "sticky flex items-center p-0",
       "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
       "border-b border-border/40 z-10",
+      isAgentsPage ? "top-[64px] min-h-[71px]" : "top-[64px] min-h-[71px]",
       className
     )}>
       <div className={cn(

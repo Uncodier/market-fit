@@ -22,7 +22,7 @@ import {
   MessageSquare
 } from "@/app/components/ui/icons"
 import { Agent } from "@/app/types/agents"
-import { agents } from "@/app/agents/page"
+import { agents } from "@/app/data/mock-agents"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { useTheme } from "@/app/context/ThemeContext"

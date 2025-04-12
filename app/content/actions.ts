@@ -8,7 +8,7 @@ export type ContentItem = {
   id: string
   title: string
   description: string | null
-  content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+  type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
   content: string | null
   text: string | null
   status: string
@@ -90,7 +90,7 @@ export async function createContent({
   siteId,
   title,
   description,
-  content_type,
+  type,
   segment_id,
   campaign_id,
   tags,
@@ -99,7 +99,7 @@ export async function createContent({
   siteId: string
   title: string
   description?: string
-  content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+  type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
   segment_id?: string | null
   campaign_id?: string | null
   tags?: string[] | null
@@ -114,7 +114,7 @@ export async function createContent({
         site_id: siteId,
         title,
         description,
-        content_type,
+        type,
         segment_id,
         campaign_id,
         tags,
@@ -172,7 +172,7 @@ export async function updateContent({
   contentId,
   title,
   description,
-  content_type,
+  type,
   segment_id,
   campaign_id,
   tags,
@@ -183,7 +183,7 @@ export async function updateContent({
   contentId: string
   title: string
   description?: string
-  content_type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
+  type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
   segment_id?: string | null
   campaign_id?: string | null
   tags?: string[] | null
@@ -199,7 +199,7 @@ export async function updateContent({
       .update({
         title,
         description,
-        content_type,
+        type,
         segment_id,
         campaign_id,
         tags,

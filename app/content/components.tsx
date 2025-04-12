@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { createContent } from "./actions"
 import { useSite } from "@/app/context/SiteContext"
 import { 
-  PlusCircle, 
+  Plus, 
   X, 
   Users, 
   Target, 
@@ -59,12 +59,12 @@ export function CreateContentDialog({
   const [isOpen, setIsOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [content_type, setContentType] = useState<"blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page">('blog_post')
+  const [type, setType] = useState<"blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page">('blog_post')
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null)
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   const isControlled = controlledIsOpen !== undefined
   const open = isControlled ? controlledIsOpen : isOpen
@@ -74,13 +74,13 @@ export function CreateContentDialog({
     e.preventDefault()
     if (!currentSite?.id) return
 
-    setIsSubmitting(true)
+    setIsCreating(true)
     try {
       const result = await createContent({
         siteId: currentSite.id,
         title,
         description,
-        content_type,
+        type,
         segment_id: selectedSegment,
         campaign_id: selectedCampaign,
         tags: tags.length > 0 ? tags : null
@@ -98,7 +98,7 @@ export function CreateContentDialog({
       console.error("Error creating content:", error)
       toast.error("Failed to create content")
     } finally {
-      setIsSubmitting(false)
+      setIsCreating(false)
     }
   }
 
@@ -172,16 +172,16 @@ export function CreateContentDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="content_type" className="flex items-center gap-2">
+              <Label htmlFor="type" className="flex items-center gap-2">
                 <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                 Content Type
               </Label>
               <Select
-                value={content_type}
-                onValueChange={(value: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page") => setContentType(value)}
+                value={type}
+                onValueChange={(value: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page") => setType(value)}
               >
-                <SelectTrigger id="content_type" className="h-12">
-                  <SelectValue placeholder="Select content type" />
+                <SelectTrigger id="type" className="h-12">
+                  <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(CONTENT_TYPE_NAMES).map(([value, label]) => (
@@ -290,7 +290,7 @@ export function CreateContentDialog({
                     <button 
                       onClick={() => handleRemoveTag(tag)}
                       className="ml-1 hover:text-red-500"
-                      disabled={isSubmitting}
+                      disabled={isCreating}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -304,14 +304,14 @@ export function CreateContentDialog({
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Add tags..."
-                  disabled={isSubmitting}
+                  disabled={isCreating}
                   className="flex-1"
                 />
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={handleAddTag}
-                  disabled={!tagInput.trim() || isSubmitting}
+                  disabled={!tagInput.trim() || isCreating}
                   className="h-12"
                 >
                   Add
@@ -320,8 +320,8 @@ export function CreateContentDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Content"}
+            <Button type="submit" disabled={isCreating}>
+              {isCreating ? "Creating..." : "Create Content"}
             </Button>
           </DialogFooter>
         </form>

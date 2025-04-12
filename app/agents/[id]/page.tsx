@@ -27,7 +27,7 @@ import {
   Trash2
 } from "@/app/components/ui/icons"
 import { Agent } from "@/app/types/agents"
-import { agents } from "../page"
+import { agents } from "@/app/data/mock-agents"
 import { cn } from "@/lib/utils"
 import { AgentTool } from "@/app/components/agents/agent-tool"
 import { AgentIntegration } from "@/app/components/agents/agent-integration"

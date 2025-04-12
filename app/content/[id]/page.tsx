@@ -448,7 +448,7 @@ export default function ContentDetailPage() {
     description: '',
     content: '',
     text: '',
-    content_type: '',
+    type: '',
     segment_id: '',
     campaign_id: '',
     tags: [] as string[],
@@ -638,7 +638,7 @@ export default function ContentDetailPage() {
         description: contentData.description || '',
         content: contentData.content || '',
         text: contentData.text || '',
-        content_type: contentData.content_type,
+        type: contentData.type,
         segment_id: contentData.segment_id || '',
         campaign_id: contentData.campaign_id || '',
         tags: contentData.tags || [],
@@ -764,7 +764,7 @@ export default function ContentDetailPage() {
         contentId: content.id,
         title: editForm.title,
         description: editForm.description || undefined,
-        content_type: content.content_type,
+        type: content.type,
         segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
         campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
         tags: editForm.tags.length > 0 ? editForm.tags : null,
@@ -1244,7 +1244,7 @@ export default function ContentDetailPage() {
                                   contentId: content.id,
                                   title: editForm.title,
                                   description: editForm.description || undefined,
-                                  content_type: content.content_type,
+                                  type: content.type,
                                   segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
                                   campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
                                   tags: editForm.tags.length > 0 ? editForm.tags : null,
@@ -1328,7 +1328,7 @@ export default function ContentDetailPage() {
                             Content Type
                           </Label>
                           <Input
-                            value={getContentTypeName(editForm.content_type)}
+                            value={getContentTypeName(editForm.type)}
                             disabled
                             className="bg-muted h-11"
                           />

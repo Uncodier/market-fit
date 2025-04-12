@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS public.content (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
   description TEXT,
-  content_type TEXT NOT NULL CHECK (content_type IN ('blog_post', 'video', 'podcast', 'social_post', 'newsletter', 'case_study', 'whitepaper', 'infographic', 'webinar', 'ebook', 'ad', 'landing_page')),
+  type TEXT NOT NULL CHECK (type IN ('blog_post', 'video', 'podcast', 'social_post', 'newsletter', 'case_study', 'whitepaper', 'infographic', 'webinar', 'ebook', 'ad', 'landing_page')),
   status TEXT NOT NULL CHECK (status IN ('draft', 'review', 'approved', 'published', 'archived')),
   segment_id UUID REFERENCES public.segments(id),
   site_id UUID NOT NULL REFERENCES public.sites(id),
