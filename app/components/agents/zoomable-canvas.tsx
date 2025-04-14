@@ -819,7 +819,7 @@ export function ZoomableCanvas({
       ref={wrapperRef}
       className={`${className} relative w-full`}
       style={{ 
-        height: "calc(100vh - 64px)",
+        height: "calc(100vh - 135px)",
         minHeight: "600px",
         overflow: "visible",
         cursor: isDragging ? "grabbing" : "grab",

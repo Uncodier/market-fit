@@ -7,15 +7,71 @@ import { MessageSquare, Pencil, PlayCircle, ChevronUp, ChevronDown } from "@/app
 import * as Icons from "@/app/components/ui/icons"
 import { agentStatusVariants, metricItemVariants } from "./agent-card.styles"
 import { AgentActivityItem } from "./agent-activity-item"
+import { Skeleton } from "@/app/components/ui/skeleton"
+
+// Extender el tipo Agent para incluir datos personalizados
+interface ExtendedAgent extends Agent {
+  dbData?: {
+    id: string;
+    name: string;
+    description: string;
+    status: string;
+    type: string;
+    conversations: number;
+    successRate: number;
+    lastActive: string;
+    role: string;
+  };
+  isDisabled?: boolean;
+}
 
 interface GridAgentRowProps {
-  agent: Agent
+  agent: ExtendedAgent
   isExpanded: boolean
-  onToggleExpand: (agent: Agent) => void
-  onManage: (agent: Agent) => void
-  onChat: (agent: Agent) => void
-  onExecuteActivity: (agent: Agent, activity: AgentActivity) => void
-  setSelectedAgent?: (agent: Agent | null) => void
+  onToggleExpand: (agent: ExtendedAgent) => void
+  onManage: (agent: ExtendedAgent) => void
+  onChat: (agent: ExtendedAgent) => void
+  onExecuteActivity: (agent: ExtendedAgent, activity: AgentActivity) => void
+  setSelectedAgent?: (agent: ExtendedAgent | null) => void
+  forceShow?: boolean
+}
+
+export function GridAgentRowSkeleton() {
+  return (
+    <div className="rounded-lg border shadow-sm overflow-hidden mb-4">
+      <div className="flex items-center p-4 bg-background">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-52" />
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-6 mx-4">
+          <div className="w-24 text-center">
+            <Skeleton className="w-24 h-5 mx-auto" />
+          </div>
+          <div className="w-28 text-center">
+            <Skeleton className="w-28 h-8 mx-auto" />
+          </div>
+          <div className="w-24 text-center">
+            <Skeleton className="w-24 h-8 mx-auto" />
+          </div>
+          <div className="w-28 text-center">
+            <Skeleton className="w-28 h-5 mx-auto" />
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-8 w-8 rounded-md" />
+          <Skeleton className="h-8 w-8 rounded-md" />
+          <Skeleton className="h-8 w-8 rounded-md" />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function GridAgentRow({
@@ -25,8 +81,18 @@ export function GridAgentRow({
   onManage,
   onChat,
   onExecuteActivity,
-  setSelectedAgent
+  setSelectedAgent,
+  forceShow = false
 }: GridAgentRowProps) {
+  // Si el agente está marcado como deshabilitado y no estamos forzando a mostrarlo, no renderizarlo
+  if (agent.isDisabled && !forceShow) {
+    console.log(`GridAgentRow: Ocultando agente ${agent.name} (${agent.id}) porque isDisabled=true`);
+    return null;
+  }
+  
+  // Determinar qué datos mostrar (DB o template)
+  const hasCustomData = !!agent.dbData;
+  
   // Get the icon component for the agent
   const getIconComponent = (iconName: string) => {
     // @ts-ignore - Icons is an object that contains all the icons
@@ -36,15 +102,31 @@ export function GridAgentRow({
   // Get the icon component
   const IconComponent = getIconComponent(agent.icon);
   
+  // Determinar nombre, rol y descripción a mostrar
+  const displayName = hasCustomData ? agent.dbData!.name : agent.name;
+  const displayDescription = hasCustomData ? agent.dbData!.description : agent.description;
+  const displayStatus = hasCustomData ? agent.dbData!.status : agent.status;
+  const displayRole = hasCustomData ? agent.dbData!.role : (agent.role || agent.name);
+  const displayType = hasCustomData ? agent.dbData!.type : agent.type;
+  const displayConversations = hasCustomData ? agent.dbData!.conversations : agent.conversations;
+  const displaySuccessRate = hasCustomData ? agent.dbData!.successRate : agent.successRate;
+  const displayLastActive = hasCustomData ? agent.dbData!.lastActive : agent.lastActive;
+  
+  // Determinar si mostrar el rol separadamente (si el nombre es diferente al rol)
+  const shouldShowRole = hasCustomData && displayName !== displayRole;
+  
   // Format date consistently
   const formattedDate = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric"
-  }).format(new Date(agent.lastActive));
+  }).format(new Date(displayLastActive));
 
   return (
-    <div className="rounded-lg border shadow-sm overflow-hidden mb-4 transition-all duration-200 hover:shadow-md hover:-translate-y-[1px]">
+    <div className={cn(
+      "rounded-lg border shadow-sm overflow-hidden mb-4 transition-all duration-200 hover:shadow-md hover:-translate-y-[1px]",
+      hasCustomData && "border-primary/30" // Highlight personalized agents
+    )}>
       {/* Agent Row */}
       <div 
         className={cn(
@@ -62,7 +144,7 @@ export function GridAgentRow({
           <Avatar className="h-10 w-10 ring-1 ring-border shadow-sm">
             <AvatarImage 
               src={`/avatars/agent-${agent.id}.png`} 
-              alt={`${agent.name}'s avatar`} 
+              alt={`${displayName}'s avatar`} 
             />
             <AvatarFallback className="bg-primary/5">
               <IconComponent className="h-4 w-4 text-primary" aria-hidden={true} />
@@ -70,24 +152,33 @@ export function GridAgentRow({
           </Avatar>
           
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">{agent.name}</h4>
-            <p className="text-xs text-muted-foreground truncate">{agent.description}</p>
+            <div className="flex items-center">
+              <h4 className="font-medium text-sm truncate">
+                {displayName}
+              </h4>
+              {shouldShowRole && (
+                <span className="text-xs font-medium text-primary/70 truncate ml-1.5">
+                  ({displayRole})
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground truncate">{displayDescription}</p>
           </div>
         </div>
         
         <div className="flex items-center gap-6 mx-4">
           <div className="w-24 text-center">
-            <span className="text-xs font-medium">{agent.type.charAt(0).toUpperCase() + agent.type.slice(1)}</span>
+            <span className="text-xs font-medium">{displayType.charAt(0).toUpperCase() + displayType.slice(1)}</span>
           </div>
           <div className="w-28 text-center">
             <div className={cn(metricItemVariants({ hover: true }), "flex flex-col")}>
-              <span className="text-xs font-medium">{agent.conversations}</span>
+              <span className="text-xs font-medium">{displayConversations}</span>
               <span className="text-xs text-muted-foreground">conversations</span>
             </div>
           </div>
           <div className="w-24 text-center">
             <div className={cn(metricItemVariants({ hover: true }), "flex flex-col")}>
-              <span className="text-xs font-medium">{agent.successRate}%</span>
+              <span className="text-xs font-medium">{displaySuccessRate}%</span>
               <span className="text-xs text-muted-foreground">success</span>
             </div>
           </div>
@@ -100,11 +191,11 @@ export function GridAgentRow({
           <Badge 
             className={cn(
               "flex-none",
-              agentStatusVariants({ status: agent.status })
+              agentStatusVariants({ status: displayStatus as any })
             )}
-            aria-label={`Agent status: ${agent.status}`}
+            aria-label={`Agent status: ${displayStatus}`}
           >
-            {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+            {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
           </Badge>
           
           <Button 
@@ -115,7 +206,7 @@ export function GridAgentRow({
               e.stopPropagation();
               onChat(agent);
             }}
-            aria-label={`Chat with ${agent.name}`}
+            aria-label={`Chat with ${displayName}`}
           >
             <MessageSquare className="h-4 w-4" />
           </Button>
@@ -128,7 +219,7 @@ export function GridAgentRow({
               e.stopPropagation();
               onManage(agent);
             }}
-            aria-label={`Manage ${agent.name}`}
+            aria-label={`Manage ${displayName}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -156,7 +247,7 @@ export function GridAgentRow({
             </div>
             
             <div className="divide-y divide-border/70">
-              {agent.activities.map(activity => (
+              {agent.activities.map((activity: AgentActivity) => (
                 <div 
                   key={activity.id}
                   className="group flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors"

@@ -20,10 +20,11 @@ export interface Command {
 interface CommandItemProps {
   command: Command
   onNavigate?: () => void
+  agentId?: string
 }
 
 // Memoized CommandItem component to prevent excessive re-renders
-export const CommandItem = memo(function CommandItem({ command, onNavigate }: CommandItemProps) {
+export const CommandItem = memo(function CommandItem({ command, onNavigate, agentId }: CommandItemProps) {
   const router = useRouter();
 
   // Handle navigation to command detail
@@ -32,12 +33,13 @@ export const CommandItem = memo(function CommandItem({ command, onNavigate }: Co
       if (onNavigate) {
         onNavigate();
       } else {
-        router.push(`/agents/command/${command.id}`);
+        const targetAgentId = agentId || 'default'; // Usar el ID del agente si está disponible, sino usar 'default'
+        router.push(`/agents/${targetAgentId}/${command.id}`);
       }
     } catch (error) {
       console.error("Error navigating to command detail:", error);
     }
-  }, [command.id, router, onNavigate]);
+  }, [command.id, router, onNavigate, agentId]);
 
   const getStatusIcon = () => {
     try {

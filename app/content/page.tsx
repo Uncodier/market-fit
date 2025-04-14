@@ -593,6 +593,11 @@ function ContentCard({ content, segments, onClick, onRatingChange }: {
     });
   };
 
+  const truncateText = (text: string | null, maxLength: number = 15) => {
+    if (!text) return null;
+    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+  }
+
   const segmentName = getSegmentName(content.segment_id)
   const formattedDate = new Date(content.created_at).toLocaleDateString(undefined, { 
     year: 'numeric', 
@@ -608,18 +613,17 @@ function ContentCard({ content, segments, onClick, onRatingChange }: {
       <CardContent className="p-3">
         <div className="flex items-start justify-between">
           <div className="flex gap-3 items-start">
-            <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.type)}`} style={{ width: '39px', height: '39px' }}>
+            <div className={`bg-primary/10 rounded-md flex items-center justify-center min-w-[39px] ${getContentTypeIconClass(content.type)}`} style={{ width: '39px', height: '39px' }}>
               {CONTENT_TYPE_ICONS[content.type]}
             </div>
             <div className="flex flex-col">
-              <h3 className="text-sm font-medium line-clamp-2 mt-0.5">{content.title}</h3>
-              <div className="flex items-center gap-1 mt-1">
+              <h3 className="text-sm font-medium line-clamp-1 mt-0.5">{content.title}</h3>
+              <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-muted-foreground">{getContentTypeName(content.type)}</span>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">{formattedDate}</span>
               </div>
             </div>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {formattedDate}
           </div>
         </div>
         
@@ -630,8 +634,8 @@ function ContentCard({ content, segments, onClick, onRatingChange }: {
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-2 flex-grow-0 max-w-[65%]">
             {segmentName && (
-              <Badge variant="outline" className="text-xs">
-                {segmentName}
+              <Badge variant="outline" className="text-xs whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
+                {truncateText(segmentName)}
               </Badge>
             )}
             {content.word_count && (
@@ -849,7 +853,7 @@ function ContentTable({
   const totalPages = Math.ceil(totalContent / itemsPerPage)
   
   // Función para truncar texto largo
-  const truncateText = (text: string, maxLength: number = 30) => {
+  const truncateText = (text: string | null, maxLength: number = 30) => {
     if (!text || text.length <= maxLength) return text
     return `${text.substring(0, maxLength)}...`
   }
@@ -892,7 +896,9 @@ function ContentTable({
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  {truncateText(getSegmentName(content.segment_id, segments))}
+                  <div className="max-w-[120px] whitespace-nowrap overflow-hidden text-ellipsis">
+                    {truncateText(getSegmentName(content.segment_id, segments), 20)}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge className={STATUS_COLORS[content.status]}>

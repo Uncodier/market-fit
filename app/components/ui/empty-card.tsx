@@ -12,6 +12,7 @@ interface EmptyCardProps {
   className?: string;
   contentClassName?: string;
   headerClassName?: string;
+  showShadow?: boolean;
 }
 
 /**
@@ -37,10 +38,14 @@ export function EmptyCard({
   actionButton,
   className,
   contentClassName,
-  headerClassName
+  headerClassName,
+  showShadow = true
 }: EmptyCardProps) {
   return (
-    <Card className={cn("border-dashed bg-card/50", className)}>
+    <Card className={cn(
+      showShadow ? "border-dashed bg-card/50" : "border-0 bg-transparent shadow-none", 
+      className
+    )}>
       {(title || description) && (
         <CardHeader className={cn("space-y-1 text-center", headerClassName)}>
           {title && <CardTitle className="text-base font-medium text-muted-foreground">{title}</CardTitle>}

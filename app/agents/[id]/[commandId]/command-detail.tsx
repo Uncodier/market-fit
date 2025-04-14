@@ -226,22 +226,31 @@ function renderBase64Images(contextString: string) {
   );
 }
 
-export default function CommandDetail({ command, commandId }: { command: Command | null, commandId: string }) {
+export default function CommandDetail({ command, commandId, agentName }: { command: Command | null, commandId: string, agentName: string }) {
   const router = useRouter();
+  
+  // Debug info to show in development (desactivado)
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   // Update the page title and breadcrumb when command is loaded
   useEffect(() => {
     if (command) {
       const commandTitle = command.task || `Command #${commandId}`
-      // Update the page title for the browser tab
-      document.title = `${commandTitle} | Commands`
+      const pageTitle = agentName ? `${commandTitle} - ${agentName}` : commandTitle;
       
-      // Emit a custom event to update the breadcrumb with command title
+      // Update the page title for the browser tab
+      document.title = `${pageTitle} | Commands`
+      
+      // Emit a custom event to update the breadcrumb with command title and agent name
       const event = new CustomEvent('breadcrumb:update', {
         detail: {
           title: commandTitle,
-          path: `/agents/command/${commandId}`,
-          section: 'agents'
+          path: window.location.pathname,
+          section: 'agents',
+          parent: {
+            title: agentName || 'Agent', 
+            path: `/agents/${command.agent_id || window.location.pathname.split('/')[2]}`
+          }
         }
       })
       
@@ -255,10 +264,12 @@ export default function CommandDetail({ command, commandId }: { command: Command
     return () => {
       document.title = 'Commands | Market Fit'
     }
-  }, [command, commandId])
+  }, [command, commandId, agentName])
 
   const handleBackClick = () => {
-    router.back();
+    const pathParts = window.location.pathname.split('/')
+    const agentId = pathParts[2] // Get the agent ID from the URL
+    router.push(`/agents/${agentId}`);
   };
 
   if (!command) {
@@ -271,6 +282,27 @@ export default function CommandDetail({ command, commandId }: { command: Command
           <Button onClick={handleBackClick} variant="outline">
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back to Commands
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // UI Debug Helper
+  if (showDebugInfo) {
+    return (
+      <div className="p-6">
+        <div className="p-4 mb-4 border rounded-md bg-muted">
+          <h2 className="text-lg font-bold mb-2">Debug Info</h2>
+          <p><strong>Agent Name Prop:</strong> {agentName || "(empty)"}</p>
+          <p><strong>Agent ID from URL:</strong> {window.location.pathname.split('/')[2]}</p>
+          <p><strong>Command agent_id:</strong> {command.agent_id || "(empty)"}</p>
+          <Button 
+            onClick={() => setShowDebugInfo(false)}
+            className="mt-4"
+            variant="outline"
+          >
+            Continue to Command Details
           </Button>
         </div>
       </div>
@@ -306,6 +338,16 @@ export default function CommandDetail({ command, commandId }: { command: Command
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground mb-[5px]">Description</p>
                   <p className="text-sm">{command.description || "No description available"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Agent</p>
+                  <p className="text-sm font-medium">{agentName}</p>
                 </div>
               </div>
 

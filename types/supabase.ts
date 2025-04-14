@@ -59,6 +59,132 @@ export interface Database {
           user_id?: string
         }
       }
+      agents: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          type: "sales" | "support" | "marketing"
+          status: "active" | "inactive" | "training"
+          prompt: string
+          conversations: number
+          success_rate: number
+          configuration: Json
+          role: string | null
+          tools: Json
+          activities: Json
+          integrations: Json
+          supervisor: string | null
+          site_id: string
+          user_id: string
+          created_at: string
+          updated_at: string
+          last_active: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          type: "sales" | "support" | "marketing"
+          status?: "active" | "inactive" | "training"
+          prompt: string
+          conversations?: number
+          success_rate?: number
+          configuration?: Json
+          role?: string | null
+          tools?: Json
+          activities?: Json
+          integrations?: Json
+          supervisor?: string | null
+          site_id: string
+          user_id: string
+          created_at?: string
+          updated_at?: string
+          last_active?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          type?: "sales" | "support" | "marketing"
+          status?: "active" | "inactive" | "training"
+          prompt?: string
+          conversations?: number
+          success_rate?: number
+          configuration?: Json
+          role?: string | null
+          tools?: Json
+          activities?: Json
+          integrations?: Json
+          supervisor?: string | null
+          site_id?: string
+          user_id?: string
+          created_at?: string
+          updated_at?: string
+          last_active?: string | null
+        }
+      }
+      agent_assets: {
+        Row: {
+          agent_id: string
+          asset_id: string
+          created_at: string
+        }
+        Insert: {
+          agent_id: string
+          asset_id: string
+          created_at?: string
+        }
+        Update: {
+          agent_id?: string
+          asset_id?: string
+          created_at?: string
+        }
+      }
+      assets: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          file_path: string
+          file_type: string
+          file_size: number | null
+          metadata: Json | null
+          is_public: boolean
+          site_id: string
+          user_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          file_path: string
+          file_type: string
+          file_size?: number | null
+          metadata?: Json | null
+          is_public?: boolean
+          site_id: string
+          user_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          file_path?: string
+          file_type?: string
+          file_size?: number | null
+          metadata?: Json | null
+          is_public?: boolean
+          site_id?: string
+          user_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       commands: {
         Row: {
           id: string

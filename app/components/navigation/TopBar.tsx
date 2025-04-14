@@ -94,6 +94,7 @@ export function TopBar({
   const [customTitle, setCustomTitle] = useState<string | null>(null)
   const [customAgentId, setCustomAgentId] = useState<string | null>(null)
   const [customAgentName, setCustomAgentName] = useState<string | null>(null)
+  const [parentInfo, setParentInfo] = useState<{title: string, path: string} | null>(null)
   
   // AI Action Modal state
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
@@ -152,6 +153,16 @@ export function TopBar({
         if (event.detail.agentId && event.detail.agentName) {
           setCustomAgentId(event.detail.agentId);
           setCustomAgentName(event.detail.agentName);
+        }
+        
+        // Si se proporciona información del padre (por ejemplo, para comandos de agentes)
+        if (event.detail.parent) {
+          setParentInfo({
+            title: event.detail.parent.title,
+            path: event.detail.parent.path
+          });
+        } else {
+          setParentInfo(null);
         }
       }
     };
@@ -258,6 +269,40 @@ export function TopBar({
       return breadcrumbItems;
     }
     
+    // Manejar caso especial para comandos de agentes
+    if (pathSegments[0] === 'agents' && pathSegments.length === 3) {
+      breadcrumbItems.push({
+        href: '/agents',
+        label: 'Agents',
+        isCurrent: false
+      });
+      
+      // Usar la información del parent si está disponible
+      if (parentInfo) {
+        breadcrumbItems.push({
+          href: parentInfo.path,
+          label: parentInfo.title,
+          isCurrent: false
+        });
+      } else {
+        // Fallback a un título genérico para el agente
+        breadcrumbItems.push({
+          href: `/agents/${pathSegments[1]}`,
+          label: 'Agent',
+          isCurrent: false
+        });
+      }
+      
+      // Usar el título personalizado para el comando
+      breadcrumbItems.push({
+        href: `/${pathSegments[0]}/${pathSegments[1]}/${pathSegments[2]}`,
+        label: customTitle || 'Command Details',
+        isCurrent: true
+      });
+      
+      return breadcrumbItems;
+    }
+    
     // Manejar caso especial para la página de detalle del segmento
     if (pathSegments[0] === 'segments' && pathSegments.length === 2) {
       breadcrumbItems.push({
@@ -346,7 +391,7 @@ export function TopBar({
     }
     
     return breadcrumbItems;
-  }, [pathname, searchParams, title, customTitle, customAgentId, customAgentName]);
+  }, [pathname, searchParams, title, customTitle, customAgentId, customAgentName, parentInfo]);
   
   const [breadcrumbItems, setBreadcrumbItems] = useState<Array<{
     href: string;
@@ -374,7 +419,7 @@ export function TopBar({
   // Actualizar breadcrumb cuando cambie la ruta
   useEffect(() => {
     setBreadcrumbItems(generateBreadcrumbItems());
-  }, [pathname, title, searchParams, customTitle, generateBreadcrumbItems]);
+  }, [pathname, title, searchParams, customTitle, parentInfo, generateBreadcrumbItems]);
   
   // Cargar segmentos y requisitos cuando se está en ciertas páginas
   useEffect(() => {

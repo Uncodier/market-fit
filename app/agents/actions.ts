@@ -11,6 +11,7 @@ const CommandSchema = z.object({
     task: z.string(),
     status: z.enum(["pending", "running", "completed", "failed", "cancelled"]),
     user_id: z.string(),
+    site_id: z.string(),
     description: z.string().nullable(),
     results: z.any().nullable(),
     targets: z.any().nullable(),
@@ -38,6 +39,7 @@ const SingleCommandSchema = z.object({
     task: z.string(),
     status: z.enum(["pending", "running", "completed", "failed", "cancelled"]),
     user_id: z.string(),
+    site_id: z.string(),
     description: z.string().nullable(),
     results: z.any().nullable(),
     targets: z.any().nullable(),
@@ -58,147 +60,33 @@ const SingleCommandSchema = z.object({
 
 export type SingleCommandResponse = z.infer<typeof SingleCommandSchema>
 
-// Mock data for fallback in case of connection issues
-const mockCommands: Command[] = [
-  {
-    id: "cmd1",
-    task: "Analyze keyword trends for tech industry",
-    description: "Generate a comprehensive analysis of trending keywords in the technology sector",
-    status: "completed",
-    user_id: "user123",
-    created_at: "2024-10-31T15:45:00Z",
-    updated_at: "2024-10-31T15:47:30Z",
-    completion_date: "2024-10-31T15:47:30Z",
-    duration: 150000,
-    model: "gpt-4",
-    output_tokens: 2450,
-    input_tokens: 720,
-    results: [
-      { topic: "AI Solutions", score: 0.92, volume: 45000 },
-      { topic: "Cloud Computing", score: 0.88, volume: 38000 },
-      { topic: "Cybersecurity", score: 0.85, volume: 32000 }
-    ],
-    targets: [
-      { type: "industry", id: "tech" },
-      { type: "timeframe", id: "q4-2024" }
-    ],
-    tools: [
-      { name: "keyword-analyzer", version: "2.1" },
-      { name: "trend-tracker", version: "1.5" }
-    ]
-  },
-  {
-    id: "cmd2",
-    task: "Generate content outline for blog post series",
-    description: "Create a detailed outline for a 5-part blog series on digital marketing trends",
-    status: "completed",
-    user_id: "user123",
-    created_at: "2024-10-30T11:20:00Z",
-    updated_at: "2024-10-30T11:23:45Z",
-    completion_date: "2024-10-30T11:23:45Z",
-    duration: 225000,
-    model: "gpt-4",
-    output_tokens: 3200,
-    input_tokens: 850,
-    results: [
-      {
-        title: "Digital Marketing in 2025: The Complete Roadmap",
-        parts: [
-          "Part 1: AI-Driven Marketing Strategies",
-          "Part 2: Social Commerce Evolution",
-          "Part 3: Privacy-First Advertising",
-          "Part 4: Metaverse Marketing Opportunities",
-          "Part 5: Voice Search Optimization"
-        ],
-        wordCount: 7500
-      }
-    ],
-    context: "Focus on emerging trends that will dominate digital marketing in the next 12 months"
-  },
-  {
-    id: "cmd3",
-    task: "Optimize product descriptions for e-commerce site",
-    description: "Generate SEO-optimized product descriptions for 10 new products",
-    status: "failed",
-    user_id: "user123",
-    created_at: "2024-10-29T09:15:00Z",
-    updated_at: "2024-10-29T09:16:30Z",
-    completion_date: "2024-10-29T09:16:30Z",
-    duration: 90000,
-    model: "gpt-4",
-    context: "API error: Rate limit exceeded during processing",
-    input_tokens: 1250,
-    output_tokens: 0,
-    targets: [
-      { type: "product", id: "prod-001" },
-      { type: "product", id: "prod-002" },
-      { type: "product", id: "prod-003" },
-      { type: "product", id: "prod-004" },
-      { type: "product", id: "prod-005" }
-    ]
-  },
-  {
-    id: "cmd4",
-    task: "Generate social media campaign ideas",
-    description: "Create 20 engaging social media post ideas for product launch",
-    status: "pending",
-    user_id: "user123",
-    created_at: "2024-11-01T08:30:00Z",
-    updated_at: "2024-11-01T08:30:00Z",
-    targets: [
-      { type: "platform", id: "instagram" },
-      { type: "platform", id: "tiktok" },
-      { type: "platform", id: "linkedin" }
-    ],
-    tools: [
-      { name: "content-generator", version: "3.0" },
-      { name: "image-suggester", version: "2.1" }
-    ]
-  },
-  {
-    id: "cmd5",
-    task: "Analyze competitor website content",
-    description: "Perform a detailed content analysis of top 3 competitor websites",
-    status: "running",
-    user_id: "user123",
-    created_at: "2024-11-01T10:15:00Z",
-    updated_at: "2024-11-01T10:16:45Z",
-    model: "gpt-4",
-    input_tokens: 1850,
-    targets: [
-      { type: "website", id: "competitor1.com" },
-      { type: "website", id: "competitor2.com" },
-      { type: "website", id: "competitor3.com" }
-    ],
-    tools: [
-      { name: "web-crawler", version: "2.5" },
-      { name: "content-analyzer", version: "3.2" },
-      { name: "seo-comparator", version: "1.8" }
-    ],
-    supervisor: [
-      { type: "priority", level: "high" },
-      { type: "notification", email: true, slack: true }
-    ]
-  }
-];
-
-// Get mock data for fallback scenarios
-export async function getMockCommands(): Promise<Command[]> {
-  return mockCommands;
-}
-
-export async function getCommands(): Promise<CommandsResponse> {
+export async function getCommands(site_id: string): Promise<CommandsResponse> {
   try {
     const supabase = await createClient()
     
-    // Verificar si estamos usando un cliente mock
-    if ((supabase as any)._isMock) {
-      console.warn("Se está utilizando un cliente mock de Supabase en getCommands()")
-      return { commands: mockCommands, error: "Usando datos mock porque el cliente Supabase es un mock" }
+    console.log("Iniciando consulta a Supabase en getCommands() para site_id:", site_id)
+    
+    // First, get agent IDs for this site
+    const { data: agentData, error: agentError } = await supabase
+      .from("agents")
+      .select("id")
+      .eq('site_id', site_id)
+    
+    if (agentError) {
+      console.error("Error fetching agents for site:", agentError)
+      throw agentError
     }
     
-    console.log("Iniciando consulta a Supabase en getCommands()...")
+    // Extract agent IDs
+    const agentIds = agentData?.map(agent => agent.id) || []
     
+    // If no agents found for this site, return empty array
+    if (agentIds.length === 0) {
+      console.log(`No agents found for site_id ${site_id}, returning empty commands array`)
+      return { commands: [] }
+    }
+    
+    // Get commands for these agents
     const { data, error } = await supabase
       .from("commands")
       .select(`
@@ -221,6 +109,7 @@ export async function getCommands(): Promise<CommandsResponse> {
         output_tokens,
         input_tokens
       `)
+      .in('agent_id', agentIds)
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -228,14 +117,13 @@ export async function getCommands(): Promise<CommandsResponse> {
       throw error
     }
 
-    console.log(`Datos recibidos de Supabase: ${data?.length || 0} registros`)
+    console.log(`Datos recibidos de Supabase: ${data?.length || 0} registros para agents de site_id ${site_id}`)
     
     // Si no hay datos, retornamos un array vacío en lugar de null
     return { commands: data || [] }
   } catch (error) {
     console.error("Error loading commands:", error)
-    // Use mock data in case of error
-    return { commands: mockCommands, error: "Error loading commands" }
+    return { commands: [], error: "Error loading commands" }
   }
 }
 
@@ -250,6 +138,7 @@ export async function getCommandById(id: string): Promise<SingleCommandResponse>
         task,
         status,
         user_id,
+        site_id,
         description,
         results,
         targets,
@@ -279,5 +168,180 @@ export async function getCommandById(id: string): Promise<SingleCommandResponse>
   } catch (error) {
     console.error("Error loading command:", error)
     return { error: "Error loading command", command: null }
+  }
+}
+
+// Define the Agent response schema
+const AgentSchema = z.object({
+  agent: z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().nullable(),
+    type: z.enum(["sales", "support", "marketing", "product"]),
+    status: z.enum(["active", "inactive", "learning", "error"]),
+    role: z.string().nullable(),
+    tools: z.record(z.any()).nullable(),
+    activities: z.union([z.record(z.any()), z.array(z.any())]).nullable(),
+    integrations: z.record(z.any()).nullable(),
+    supervisor: z.string().nullable(),
+    files: z.array(z.string()).nullable(),
+    configuration: z.any().nullable(),
+    conversations: z.number().nullable(),
+    success_rate: z.number().nullable(),
+    last_active: z.string().nullable(),
+    user_id: z.string().nullable(),
+    site_id: z.string().nullable(),
+    created_at: z.string().nullable(),
+    updated_at: z.string().nullable()
+  }).nullable(),
+  error: z.string().optional()
+})
+
+export type AgentResponse = z.infer<typeof AgentSchema>
+
+export async function getAgentById(id: string): Promise<AgentResponse> {
+  try {
+    console.log("getAgentById called with id:", id);
+    
+    if (!id) {
+      console.log("getAgentById received empty id");
+      return { error: "Agent ID not provided", agent: null };
+    }
+    
+    const supabase = await createClient()
+    
+    // Check if agentId is a valid UUID
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    if (isValidUUID) {
+      console.log("Querying agent with UUID:", id);
+      const { data, error } = await supabase
+        .from("agents")
+        .select(`
+          id,
+          name,
+          description,
+          type,
+          status,
+          role,
+          tools,
+          activities,
+          integrations,
+          supervisor,
+          files,
+          configuration,
+          conversations,
+          success_rate,
+          last_active,
+          user_id,
+          site_id,
+          created_at,
+          updated_at
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.log("Error in getAgentById with UUID:", error.code, error.message);
+        if (error.code === 'PGRST116') {
+          return { error: "Agent not found", agent: null }
+        }
+        throw error;
+      }
+
+      console.log("Agent data retrieved by UUID:", data ? { id: data.id, name: data.name } : "No data");
+      return { agent: data };
+    } else {
+      // If not a UUID, try to find by role
+      console.log("Trying to find agent by role:", id);
+      const { data, error } = await supabase
+        .from("agents")
+        .select(`
+          id,
+          name,
+          description,
+          type,
+          status,
+          role,
+          tools,
+          activities,
+          integrations,
+          supervisor,
+          files,
+          configuration,
+          conversations,
+          success_rate,
+          last_active,
+          user_id,
+          site_id,
+          created_at,
+          updated_at
+        `)
+        .eq('role', id)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        console.log("Error in getAgentById with role:", error.code, error.message);
+        throw error;
+      }
+
+      if (data) {
+        console.log("Agent data retrieved by role:", { id: data.id, name: data.name });
+        return { agent: data };
+      }
+      
+      // If we can't find by role, create a synthetic agent with the ID as the name
+      console.log("Creating synthetic agent for:", id);
+      return { 
+        agent: {
+          id: id,
+          name: id, // Use the ID as the name
+          description: null,
+          type: "support",
+          status: "active",
+          role: id,
+          tools: null,
+          activities: null,
+          integrations: null,
+          supervisor: null,
+          files: null,
+          configuration: null,
+          conversations: 0,
+          success_rate: 0,
+          last_active: new Date().toISOString(),
+          user_id: null,
+          site_id: null,
+          created_at: null,
+          updated_at: null
+        } 
+      };
+    }
+  } catch (error) {
+    console.error("Error loading agent:", error);
+    // Create a fallback agent with the ID as the name
+    return { 
+      error: "Error loading agent", 
+      agent: {
+        id: id,
+        name: id,
+        description: null,
+        type: "support",
+        status: "active",
+        role: null,
+        tools: null,
+        activities: null,
+        integrations: null,
+        supervisor: null,
+        files: null,
+        configuration: null,
+        conversations: 0,
+        success_rate: 0,
+        last_active: new Date().toISOString(),
+        user_id: null,
+        site_id: null,
+        created_at: null,
+        updated_at: null
+      }
+    };
   }
 } 

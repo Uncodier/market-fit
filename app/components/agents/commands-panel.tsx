@@ -7,13 +7,15 @@ import { CheckCircle2, AlertCircle, Clock, FileText, RotateCcw, PlayCircle } fro
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Card } from "@/app/components/ui/card"
 import { Command } from "@/app/agents/types"
-import { getCommands, getMockCommands } from "@/app/agents/actions"
+import { getCommands } from "@/app/agents/actions"
 import { CommandsTable } from "@/app/components/agents/commands-table"
 import { CommandList } from "@/app/components/agents/command-list"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 import { toast } from "sonner"
 import { cn } from "@/app/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useRouter } from "next/navigation"
+import { useSite } from "@/app/context/SiteContext"
 
 // Maximum size of arrays to process, to prevent freezes
 const MAX_ITEMS = 100;
@@ -23,51 +25,6 @@ const MAX_CONTEXT_LENGTH = 1000;
 const MAX_DEPTH = 3;
 // Maximum length for base64 strings
 const MAX_BASE64_LENGTH = 500;
-
-// Example commands for fallback
-const exampleCommands: Command[] = [
-  {
-    id: "example-cmd-1",
-    task: "Generate SEO Content",
-    description: "Create SEO optimized content for blog post",
-    status: "completed",
-    user_id: "user123",
-    created_at: "2024-01-30T10:15:00Z",
-    updated_at: "2024-01-30T10:15:45Z",
-    completion_date: "2024-01-30T10:15:45Z",
-    duration: 45000
-  },
-  {
-    id: "example-cmd-2",
-    task: "Analyze Keyword Density",
-    description: "Check keyword usage and suggest improvements",
-    status: "completed",
-    user_id: "user123",
-    created_at: "2024-01-30T09:45:00Z",
-    updated_at: "2024-01-30T09:45:12Z",
-    completion_date: "2024-01-30T09:45:12Z",
-    duration: 12000
-  },
-  {
-    id: "example-cmd-3",
-    task: "Generate Meta Descriptions",
-    description: "Create meta descriptions for 5 new blog posts",
-    status: "failed",
-    user_id: "user123",
-    created_at: "2024-01-29T16:20:00Z",
-    updated_at: "2024-01-29T16:20:30Z",
-    context: "API rate limit exceeded"
-  },
-  {
-    id: "example-cmd-4",
-    task: "Update Content Links",
-    description: "Update internal links in existing content",
-    status: "pending",
-    user_id: "user123",
-    created_at: "2024-01-31T11:30:00Z",
-    updated_at: "2024-01-31T11:30:00Z"
-  }
-];
 
 /**
  * Detects if a string is likely a base64 encoded image
@@ -334,15 +291,17 @@ export function CommandsPanel() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const router = useRouter();
+  const { currentSite } = useSite();
   
   // Handle navigation to command detail page
   const handleNavigateToCommand = useCallback((commandId: string) => {
     try {
-      router.push(`/agents/command/${commandId}`);
+      const agentId = currentSite?.id || 'default';
+      router.push(`/agents/${agentId}/${commandId}`);
     } catch (err) {
       console.error("Error navigating to command detail:", err);
     }
-  }, [router]);
+  }, [router, currentSite?.id]);
   
   // Function to load commands
   const loadCommands = async () => {
@@ -352,13 +311,24 @@ export function CommandsPanel() {
       return;
     }
     
+    // Si no hay un sitio seleccionado, no podemos cargar comandos
+    if (!currentSite?.id) {
+      console.log("No hay un sitio seleccionado, no se pueden cargar comandos");
+      setError("No site selected");
+      setLoading(false);
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
+      return;
+    }
+    
     try {
       setLoading(true);
-      console.log("Loading commands...");
+      console.log("Loading commands for site:", currentSite.id);
       
       // Use a timeout to prevent UI freezing from network requests
       const result = await Promise.race([
-        getCommands(),
+        getCommands(currentSite.id),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error("Command loading timed out")), 10000)
         )
@@ -370,22 +340,7 @@ export function CommandsPanel() {
         
         // Show toast only if it's not the initial load
         if (!isInitialLoad) {
-          toast.error("Error loading commands. Using cached data.");
-        }
-        
-        // Get mock data if we don't have commands or use existing as fallback
-        if (!commands || commands.length === 0) {
-          try {
-            const mockData = await getMockCommands();
-            // Sanitize commands before state update to avoid freezing the UI
-            const sanitizedMockCommands = sanitizeCommands(mockData || []);
-            setCommands(sanitizedMockCommands);
-          } catch (mockErr) {
-            console.error("Error loading mock data:", mockErr);
-            // Ensure example commands are sanitized too
-            const sanitizedExampleCommands = sanitizeCommands(exampleCommands || []);
-            setCommands(sanitizedExampleCommands);
-          }
+          toast.error("Error loading commands.");
         }
       } else {
         console.log(`Fetched ${result.commands?.length || 0} commands`);
@@ -405,24 +360,9 @@ export function CommandsPanel() {
       console.error("Error loading commands:", err);
       setError(safelyHandleError(err, "Failed to load commands"));
       
-      // Use mock data only if we don't have commands already
-      if (!commands || commands.length === 0) {
-        try {
-          const mockData = await getMockCommands();
-          // Sanitize commands before state update to avoid freezing the UI
-          const sanitizedMockCommands = sanitizeCommands(mockData || []);
-          setCommands(sanitizedMockCommands);
-        } catch (mockErr) {
-          console.error("Error loading mock data:", mockErr);
-          // Ensure example commands are sanitized too
-          const sanitizedExampleCommands = sanitizeCommands(exampleCommands || []);
-          setCommands(sanitizedExampleCommands);
-        }
-      }
-      
       // Show toast only if it's not the initial load
       if (!isInitialLoad) {
-        toast.error("Error loading commands. Using cached data.");
+        toast.error("Error loading commands.");
       }
     } finally {
       setLoading(false);
@@ -432,7 +372,7 @@ export function CommandsPanel() {
     }
   };
   
-  // Load commands when component mounts
+  // Load commands when component mounts or currentSite changes
   useEffect(() => {
     loadCommands();
     
@@ -441,7 +381,7 @@ export function CommandsPanel() {
     
     // Clear interval when unmounting
     return () => clearInterval(intervalId);
-  }, []);
+  }, [currentSite?.id]);
   
   // Handle tab change without triggering loadCommands
   const handleTabChange = (value: string) => {
@@ -609,20 +549,20 @@ export function CommandsPanel() {
             ))}
           </div>
         ) : filteredCommands.length === 0 ? (
-          <div className="text-center p-8" data-testid="empty-state">
-            <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm font-medium">No {activeTab} commands found</p>
-            {error && (
-              <p className="text-xs text-destructive mt-2" data-testid="error-message">
-                Error: {error}
-              </p>
-            )}
+          <div className="h-full flex items-center justify-center p-4" data-testid="empty-state">
+            <EmptyCard
+              icon={<FileText className="h-10 w-10 text-muted-foreground" />}
+              title={`No ${activeTab} commands found`}
+              description={error ? `Error: ${error}` : "There are no commands to display at this time."}
+              showShadow={false}
+            />
           </div>
         ) : (
           <CommandList 
             commands={filteredCommands} 
             hasError={!!error} 
             onNavigateToCommand={handleNavigateToCommand}
+            agentId={currentSite?.id || 'default'}
           />
         )}
       </div>

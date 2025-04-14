@@ -2,13 +2,18 @@ export interface Agent {
   id: string
   name: string
   description: string
-  type: "sales" | "support" | "marketing"
+  type: "sales" | "support" | "marketing" | "product"
   status: "active" | "inactive" | "learning" | "error"
   conversations: number
   successRate: number
   lastActive: string
   icon: string
-  activities?: AgentActivity[]
+  role?: string
+  tools?: Record<string, any>
+  activities?: Record<string, any> | AgentActivity[]
+  integrations?: Record<string, any>
+  supervisor?: string  // UUID of another agent
+  files?: string[]     // Array of asset IDs
 }
 
 export interface AgentActivity {

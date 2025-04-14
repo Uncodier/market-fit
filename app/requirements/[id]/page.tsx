@@ -10,6 +10,7 @@ import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
 import { updateRequirementStatus, updateCompletionStatus, updateRequirementPriority, updateRequirementInstructions, updateRequirement, deleteRequirement } from "../actions"
+import { markdownToHTML } from "../utils"
 import { 
   ChevronLeft,
   Save, 
@@ -62,6 +63,7 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
+import HardBreak from '@tiptap/extension-hard-break'
 import '../styles/editor.css'
 import {
   DropdownMenu,
@@ -266,9 +268,17 @@ function RequirementDetailContent() {
   // Initialize editor with TipTap
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        hardBreak: false, // We'll use our own configuration
+      }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
+      }),
+      HardBreak.configure({
+        keepMarks: true,
+        HTMLAttributes: {
+          class: 'markdown-line-break',
+        },
       }),
     ],
     content: '',
@@ -277,6 +287,11 @@ function RequirementDetailContent() {
         ...prev, 
         instructions: editor.getHTML()
       }))
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose-lg prose-headings:my-4 prose-p:my-3 prose-ul:my-3',
+      },
     },
   })
 
@@ -318,7 +333,9 @@ function RequirementDetailContent() {
   // Update editor when requirement is loaded
   useEffect(() => {
     if (editor && requirement?.instructions) {
-      editor.commands.setContent(requirement.instructions)
+      // Convert markdown to HTML for proper display
+      const formattedHTML = markdownToHTML(requirement.instructions);
+      editor.commands.setContent(formattedHTML);
     }
   }, [requirement, editor])
 
@@ -478,7 +495,8 @@ function RequirementDetailContent() {
 
       // Set editor content
       if (editor) {
-        editor.commands.setContent(formattedRequirement.instructions || '')
+        const formattedHTML = markdownToHTML(formattedRequirement.instructions || '');
+        editor.commands.setContent(formattedHTML);
       }
     } catch (error) {
       console.error("Error loading requirement:", error)

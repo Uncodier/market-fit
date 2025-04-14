@@ -9,6 +9,7 @@ export interface Command {
   completion_date?: string;
   duration?: number;
   model?: string;
+  agent_id?: string;
   output_tokens?: number;
   input_tokens?: number;
   results?: any[];

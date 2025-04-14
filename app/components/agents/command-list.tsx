@@ -6,12 +6,14 @@ interface CommandListProps {
   commands: Command[]
   hasError?: boolean
   onNavigateToCommand?: (commandId: string) => void
+  agentId?: string
 }
 
 export function CommandList({ 
   commands = [], 
   hasError = false, 
-  onNavigateToCommand
+  onNavigateToCommand,
+  agentId
 }: CommandListProps) {
   if (!commands.length) {
     return (
@@ -54,6 +56,7 @@ export function CommandList({
               key={command.id} 
               command={commandItemData} 
               onNavigate={() => onNavigateToCommand?.(command.id)}
+              agentId={agentId}
             />
           );
         })}

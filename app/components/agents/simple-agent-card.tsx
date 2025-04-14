@@ -9,16 +9,33 @@ import * as Icons from "@/app/components/ui/icons"
 import { agentStatusVariants, agentCardVariants } from "./agent-card.styles"
 import { AgentActivityList } from "./agent-activity-list"
 
+// Extender el tipo Agent para incluir datos personalizados
+interface ExtendedAgent extends Agent {
+  dbData?: {
+    id: string;
+    name: string;
+    description: string;
+    status: string;
+    type: string;
+    conversations: number;
+    successRate: number;
+    lastActive: string;
+    role: string;
+  };
+  isDisabled?: boolean;
+}
+
 interface SimpleAgentCardProps {
-  agent: Agent
-  onManage?: (agent: Agent) => void
-  onChat?: (agent: Agent) => void
-  onToggleActivities?: (agent: Agent) => void
+  agent: ExtendedAgent
+  onManage?: (agent: ExtendedAgent) => void
+  onChat?: (agent: ExtendedAgent) => void
+  onToggleActivities?: (agent: ExtendedAgent) => void
   showActivities?: boolean
-  onExecuteActivity?: (agent: Agent, activity: AgentActivity) => void
+  onExecuteActivity?: (agent: ExtendedAgent, activity: AgentActivity) => void
   className?: string
-  selectedAgent?: Agent | null
-  setSelectedAgent?: (agent: Agent | null) => void
+  selectedAgent?: ExtendedAgent | null
+  setSelectedAgent?: (agent: ExtendedAgent | null) => void
+  forceShow?: boolean
 }
 
 export function SimpleAgentCard({ 
@@ -30,8 +47,15 @@ export function SimpleAgentCard({
   onExecuteActivity,
   className,
   selectedAgent,
-  setSelectedAgent
+  setSelectedAgent,
+  forceShow = false
 }: SimpleAgentCardProps) {
+  // Si el agente está marcado como deshabilitado y no estamos forzando a mostrarlo, no renderizarlo
+  if (agent.isDisabled && !forceShow) {
+    console.log(`SimpleAgentCard: Ocultando agente ${agent.name} (${agent.id}) porque isDisabled=true`);
+    return null;
+  }
+
   // Function to get the icon component based on the name
   const getIconComponent = (iconName: string) => {
     // @ts-ignore - Icons is an object that contains all the icons
@@ -46,6 +70,18 @@ export function SimpleAgentCard({
       setSelectedAgent(agent);
     }
   };
+  
+  // Determinar qué datos mostrar (DB o template)
+  const hasCustomData = !!agent.dbData;
+  
+  // Determinar nombre y descripción a mostrar
+  const displayName = hasCustomData ? agent.dbData!.name : agent.name;
+  const displayDescription = hasCustomData ? agent.dbData!.description : agent.description;
+  const displayStatus = hasCustomData ? agent.dbData!.status : agent.status;
+  const displayRole = hasCustomData ? agent.dbData!.role : (agent.role || agent.name);
+  
+  // Determinar si mostrar el rol separadamente (si el nombre es diferente al rol)
+  const shouldShowRole = hasCustomData && displayName !== displayRole;
 
   return (
     <div className={cn(
@@ -56,6 +92,7 @@ export function SimpleAgentCard({
         className={cn(
           "h-auto flex flex-col",
           agentCardVariants({ hover: true }),
+          hasCustomData && "border-primary/30" // Highlight personalized agents
         )}
         onClick={handleCardClick}
       >
@@ -65,32 +102,39 @@ export function SimpleAgentCard({
               <Avatar className="h-10 w-10 ring-2 ring-background flex-none">
                 <AvatarImage 
                   src={`/avatars/agent-${agent.id}.png`} 
-                  alt={`${agent.name}'s avatar`} 
+                  alt={`${displayName}'s avatar`} 
                 />
                 <AvatarFallback className="bg-primary/10">
                   <IconComponent className="h-5 w-5" aria-hidden={true} />
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <CardTitle className="text-lg font-semibold leading-none mb-1.5 truncate">
-                  {agent.name}
-                </CardTitle>
+                <div className="flex items-center space-x-1.5 mb-1.5">
+                  <CardTitle className="text-lg font-semibold leading-none truncate">
+                    {displayName}
+                  </CardTitle>
+                  {shouldShowRole && (
+                    <div className="text-xs font-medium text-primary/70 truncate ml-1">
+                      ({displayRole})
+                    </div>
+                  )}
+                </div>
                 <CardDescription 
                   className="truncate text-sm"
-                  title={agent.description}
+                  title={displayDescription}
                 >
-                  {agent.description}
+                  {displayDescription}
                 </CardDescription>
               </div>
             </div>
             <Badge 
               className={cn(
                 "flex-none mt-1",
-                agentStatusVariants({ status: agent.status })
+                agentStatusVariants({ status: displayStatus as any })
               )}
-              aria-label={`Agent status: ${agent.status}`}
+              aria-label={`Agent status: ${displayStatus}`}
             >
-              {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+              {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
             </Badge>
           </div>
         </CardHeader>
@@ -117,7 +161,7 @@ export function SimpleAgentCard({
               e.stopPropagation();
               onManage?.(agent);
             }}
-            aria-label={`Manage ${agent.name}`}
+            aria-label={`Manage ${displayName}`}
           >
             <Pencil className="h-4 w-4 mr-2" aria-hidden={true} />
             Manage Agent
@@ -129,7 +173,7 @@ export function SimpleAgentCard({
               e.stopPropagation();
               onChat?.(agent);
             }}
-            aria-label={`Chat with ${agent.name}`}
+            aria-label={`Chat with ${displayName}`}
           >
             <MessageSquare className="h-4 w-4 mr-2" aria-hidden={true} />
             Chat

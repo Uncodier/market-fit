@@ -10,7 +10,7 @@ import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
 import { updateContent, updateContentStatus, deleteContent, getContentById } from "../actions"
-import { getContentTypeName } from "../utils"
+import { getContentTypeName, processMarkdownText, markdownToHTML } from "../utils"
 import { StarRating } from "@/app/components/ui/rating"
 import { createClient } from "@/lib/supabase/client"
 import { 
@@ -57,6 +57,7 @@ import {
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
+import HardBreak from '@tiptap/extension-hard-break'
 import '../styles/editor.css'
 import { Slider } from "@/app/components/ui/slider"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/app/components/ui/collapsible"
@@ -540,9 +541,17 @@ export default function ContentDetailPage() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        hardBreak: false, // We'll use our own configuration
+      }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
+      }),
+      HardBreak.configure({
+        keepMarks: true,
+        HTMLAttributes: {
+          class: 'markdown-line-break',
+        },
       }),
     ],
     content: '',
@@ -552,6 +561,11 @@ export default function ContentDetailPage() {
         content: editor.getHTML(),
         text: editor.getText()
       }))
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose-lg prose-headings:my-4 prose-p:my-3 prose-ul:my-3',
+      },
     },
   })
 
@@ -628,8 +642,11 @@ export default function ContentDetailPage() {
       console.log("Content campaign_id:", contentData.campaign_id)
       setContent(contentData)
       
+      // Convert markdown to HTML for the editor
+      const editorContent = markdownToHTML(contentData.text || contentData.content || '');
+      
       // Calcular conteos iniciales
-      const initialText = contentData.text || contentData.content || ''
+      const initialText = contentData.text || contentData.content || '';
       const wordCount = initialText.trim().split(/\s+/).filter((word: string) => word.length > 0).length
       const charCount = initialText.length
 
@@ -649,7 +666,8 @@ export default function ContentDetailPage() {
       })
       
       if (editor) {
-        editor.commands.setContent(contentData.text || contentData.content || '')
+        // Set content with HTML for proper formatting
+        editor.commands.setContent(editorContent);
       }
       
       // Load campaigns after setting the content
@@ -707,7 +725,9 @@ export default function ContentDetailPage() {
 
   useEffect(() => {
     if (editor && content?.text) {
-      editor.commands.setContent(content.text)
+      // Convert markdown to HTML for proper display
+      const formattedHTML = markdownToHTML(content.text);
+      editor.commands.setContent(formattedHTML);
     }
   }, [content, editor])
 
@@ -721,7 +741,9 @@ export default function ContentDetailPage() {
         setEditForm(prev => ({
           ...prev,
           word_count: wordCount,
-          char_count: charCount
+          char_count: charCount,
+          content: editor.getHTML(), // Store the HTML representation
+          text: editor.getText() // Store the plain text for word counting
         }))
       }
 
@@ -806,6 +828,14 @@ export default function ContentDetailPage() {
   const handleAiAction = async (action: string) => {
     setIsAiProcessing(true)
     try {
+      // Prepare the content for AI processing
+      const prepareContentForAi = (content: string) => {
+        // Convert HTML breaks back to newlines for the AI to process
+        return content.replace(/<br\s*\/?>/gi, '\n').replace(/<p>/gi, '').replace(/<\/p>/gi, '\n\n');
+      };
+      
+      const aiContent = prepareContentForAi(editor?.getHTML() || '');
+      
       // Here we would integrate with the AI service
       // For now, we'll just simulate a delay
       await new Promise(resolve => setTimeout(resolve, 2000))
