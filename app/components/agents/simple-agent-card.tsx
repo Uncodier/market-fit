@@ -77,11 +77,14 @@ export function SimpleAgentCard({
   // Determinar nombre y descripción a mostrar
   const displayName = hasCustomData ? agent.dbData!.name : agent.name;
   const displayDescription = hasCustomData ? agent.dbData!.description : agent.description;
-  const displayStatus = hasCustomData ? agent.dbData!.status : agent.status;
+  const displayStatus = hasCustomData ? agent.dbData!.status : "inactive";
   const displayRole = hasCustomData ? agent.dbData!.role : (agent.role || agent.name);
   
   // Determinar si mostrar el rol separadamente (si el nombre es diferente al rol)
   const shouldShowRole = hasCustomData && displayName !== displayRole;
+
+  // Determinar si el botón de chat debe estar deshabilitado
+  const isChatDisabled = !hasCustomData;
 
   return (
     <div className={cn(
@@ -174,6 +177,7 @@ export function SimpleAgentCard({
               onChat?.(agent);
             }}
             aria-label={`Chat with ${displayName}`}
+            disabled={isChatDisabled}
           >
             <MessageSquare className="h-4 w-4 mr-2" aria-hidden={true} />
             Chat

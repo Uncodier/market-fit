@@ -105,7 +105,7 @@ export function GridAgentRow({
   // Determinar nombre, rol y descripción a mostrar
   const displayName = hasCustomData ? agent.dbData!.name : agent.name;
   const displayDescription = hasCustomData ? agent.dbData!.description : agent.description;
-  const displayStatus = hasCustomData ? agent.dbData!.status : agent.status;
+  const displayStatus = hasCustomData ? agent.dbData!.status : "inactive";
   const displayRole = hasCustomData ? agent.dbData!.role : (agent.role || agent.name);
   const displayType = hasCustomData ? agent.dbData!.type : agent.type;
   const displayConversations = hasCustomData ? agent.dbData!.conversations : agent.conversations;
@@ -114,6 +114,9 @@ export function GridAgentRow({
   
   // Determinar si mostrar el rol separadamente (si el nombre es diferente al rol)
   const shouldShowRole = hasCustomData && displayName !== displayRole;
+  
+  // Determinar si el botón de chat debe estar deshabilitado
+  const isChatDisabled = !hasCustomData;
   
   // Format date consistently
   const formattedDate = new Intl.DateTimeFormat("en-US", {
@@ -207,6 +210,7 @@ export function GridAgentRow({
               onChat(agent);
             }}
             aria-label={`Chat with ${displayName}`}
+            disabled={isChatDisabled}
           >
             <MessageSquare className="h-4 w-4" />
           </Button>

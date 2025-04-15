@@ -26,11 +26,14 @@ import { agents } from "@/app/data/mock-agents"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { useTheme } from "@/app/context/ThemeContext"
+import { useSite } from "@/app/context/SiteContext"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { ChatList } from "@/app/components/chat/chat-list"
 import { ChatToggle } from "@/app/components/chat/chat-toggle"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { ChatMessage } from "@/app/types/chat"
+import { getConversationMessages, addMessage, getAgentForConversation } from "@/app/services/chat-service"
 
 export default function ChatPage() {
   const searchParams = useSearchParams()
@@ -42,10 +45,67 @@ export default function ChatPage() {
   const [message, setMessage] = useState("")
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const { user } = useAuthContext()
+  const { currentSite } = useSite()
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
   
   // Estado para controlar la visibilidad de la lista de chats
   const [isChatListCollapsed, setIsChatListCollapsed] = useState(false)
+  
+  // Estado para los mensajes del chat
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  
+  // Cargar mensajes cuando cambie la conversación seleccionada
+  useEffect(() => {
+    async function loadMessages() {
+      if (!conversationId) return;
+      
+      setIsLoadingMessages(true);
+      
+      try {
+        // Si es una nueva conversación, mostramos un mensaje de bienvenida
+        if (conversationId.startsWith("new-")) {
+          setChatMessages([{
+            id: "welcome",
+            role: "assistant",
+            text: `Hello! I'm ${agentName}. How can I help you today?`,
+            timestamp: new Date(),
+          }]);
+        } else {
+          // Cargar mensajes existentes de la API
+          const messages = await getConversationMessages(conversationId);
+          
+          // Log the messages to see the structure
+          console.log("Loaded chat messages from API:", messages);
+          
+          if (messages.length > 0) {
+            setChatMessages(messages);
+          } else {
+            // Si no hay mensajes, establecer un mensaje de bienvenida
+            setChatMessages([{
+              id: "welcome",
+              role: "assistant",
+              text: `Hello! I'm ${agentName}. How can I help you today?`,
+              timestamp: new Date(),
+            }]);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading messages:", error);
+        setChatMessages([{
+          id: "error",
+          role: "assistant",
+          text: "Sorry, there was an error loading the conversation. Please try again.",
+          timestamp: new Date(),
+        }]);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    }
+    
+    loadMessages();
+  }, [conversationId, agentName]);
   
   // Actualizar el breadcrumb cuando se cargue la página
   useEffect(() => {
@@ -73,21 +133,6 @@ export default function ChatPage() {
   
   // Inicializar el hook useCommandK
   useCommandK()
-  
-  // Log para depuración
-  useEffect(() => {
-    console.log("Tema actual:", theme);
-    console.log("¿Modo oscuro?:", isDarkMode);
-  }, [theme, isDarkMode]);
-
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
-  const [conversation, setConversation] = useState<{ sender: string; text: string; timestamp: Date }[]>([
-    {
-      sender: "agent",
-      text: `Hello! I'm ${agentName}. How can I help you today?`,
-      timestamp: new Date(),
-    },
-  ])
 
   useEffect(() => {
     // Find the agent in our list to get its icon
@@ -122,20 +167,6 @@ export default function ChatPage() {
       
       // Si no hay avatar en los metadatos, usar inicial con color generado del email
       if (user.email) {
-        // Generamos un color basado en el email para usarlo como fondo
-        const stringToColor = (str: string) => {
-          let hash = 0;
-          for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          let color = '#';
-          for (let i = 0; i < 3; i++) {
-            const value = (hash >> (i * 8)) & 0xFF;
-            color += ('00' + value.toString(16)).substr(-2);
-          }
-          return color;
-        };
-        
         // No usamos imagen, sólo setearemos a null para mostrar la inicial
         setUserAvatarUrl(null);
       }
@@ -144,31 +175,25 @@ export default function ChatPage() {
     fetchUserAvatar();
   }, [user]);
 
-  // Set breadcrumb for the layout
-  useEffect(() => {
-    // Eliminamos toda la funcionalidad de breadcrumb
-    // No es necesario actualizar nada
-  }, [currentAgent, agentName]);
-
   // Scroll to bottom when new messages are added
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [conversation])
+  }, [chatMessages])
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!message.trim() || isLoading) return
+    if (!message.trim() || isLoading || !currentSite?.id) return
+    
+    const userMessage: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      role: "user",
+      text: message,
+      timestamp: new Date(),
+    }
     
     // Add user message to conversation
-    setConversation([
-      ...conversation,
-      {
-        sender: "user",
-        text: message,
-        timestamp: new Date(),
-      },
-    ])
+    setChatMessages(prev => [...prev, userMessage])
     
     // Clear input
     setMessage("")
@@ -176,18 +201,54 @@ export default function ChatPage() {
     // Show loading state
     setIsLoading(true)
     
-    // Simulate agent response after a short delay
-    setTimeout(() => {
-      setConversation(prev => [
-        ...prev,
-        {
-          sender: "agent",
-          text: `This is a simulated response for the message: "${message}"`,
+    try {
+      // Si es una conversación nueva, necesitamos crear una conversación primero
+      // (Esta lógica se implementaría completa en el servicio)
+      
+      // Añadir mensaje a la BD
+      if (conversationId && !conversationId.startsWith("new-")) {
+        await addMessage(
+          conversationId,
+          "user",
+          user?.id || null,
+          message
+        )
+      }
+      
+      // Simular respuesta del agente
+      setTimeout(() => {
+        const agentResponse: ChatMessage = {
+          id: `temp-response-${Date.now()}`,
+          role: "assistant",
+          text: `This is a simulated response for your message. In a real implementation, this would come from an AI model or agent.`,
           timestamp: new Date(),
-        },
-      ])
+        }
+        
+        setChatMessages(prev => [...prev, agentResponse])
+        setIsLoading(false)
+        
+        // Guarda respuesta del agente (implementación completa requeriría guardar en BD)
+        if (conversationId && !conversationId.startsWith("new-")) {
+          addMessage(
+            conversationId,
+            "assistant",
+            agentId,
+            agentResponse.text
+          )
+        }
+      }, 1500)
+    } catch (error) {
+      console.error("Error sending message:", error)
       setIsLoading(false)
-    }, 1500)
+      
+      // Mostrar mensaje de error
+      setChatMessages(prev => [...prev, {
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        text: "Sorry, there was an error sending your message. Please try again.",
+        timestamp: new Date(),
+      }])
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -268,16 +329,64 @@ export default function ChatPage() {
     }
   };
 
+  // Función para seleccionar una conversación
+  const handleSelectConversation = (selectedConversationId: string, selectedAgentName: string, selectedAgentId: string) => {
+    router.push(`/chat?conversationId=${selectedConversationId}&agentId=${selectedAgentId}&agentName=${encodeURIComponent(selectedAgentName)}`)
+  };
+
+  // Let's also log the messages when they're displayed
+  useEffect(() => {
+    console.log("Current chat messages state:", chatMessages);
+  }, [chatMessages]);
+
+  // Fetch agent details when conversationId changes
+  useEffect(() => {
+    async function fetchConversationAgent() {
+      if (!conversationId || conversationId.startsWith("new-")) return;
+      
+      try {
+        // Get the conversation to find its agent ID
+        const { data: conversation, error } = await createClient()
+          .from("conversations")
+          .select("agent_id")
+          .eq("id", conversationId)
+          .single();
+          
+        if (error || !conversation) {
+          console.error("Error fetching conversation agent:", error);
+          return;
+        }
+        
+        const conversationAgentId = conversation.agent_id;
+        
+        // Only update if we have a valid agent ID and it's different from current agentId
+        if (conversationAgentId && conversationAgentId !== agentId) {
+          // Get agent details
+          const agent = await getAgentForConversation(conversationAgentId);
+          if (agent) {
+            // Update the URL with the agent details
+            router.replace(`/chat?conversationId=${conversationId}&agentId=${agent.id}&agentName=${encodeURIComponent(agent.name)}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching agent details:", error);
+      }
+    }
+    
+    fetchConversationAgent();
+  }, [conversationId, router, agentId]);
+
   return (
     <div className="flex h-full relative overflow-hidden">
       {/* Lista de chats */}
       <div className={cn(
         "h-full transition-all duration-300 ease-in-out",
-        isChatListCollapsed ? "w-0" : "w-80"
-      )}>
+        isChatListCollapsed ? "w-0 opacity-0" : "w-[319px]"
+      )} style={{ overflow: 'hidden' }}>
         <ChatList 
-          isCollapsed={isChatListCollapsed} 
-          currentConversationId={conversationId}
+          siteId={currentSite?.id || ""}
+          selectedConversationId={conversationId}
+          onSelectConversation={handleSelectConversation}
           className="border-r"
         />
       </div>
@@ -288,7 +397,8 @@ export default function ChatPage() {
         isChatListCollapsed ? "ml-0" : "ml-0"
       )}>
         {/* Agent info card - con altura exacta de 71px */}
-        <div className="border-b bg-card flex-none h-[71px] flex items-center relative">
+        <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999]" 
+          style={{ background: isDarkMode ? 'var(--background)' : '#ffffffed', backdropFilter: 'blur(10px)' }}>
           {/* Botones para mostrar/ocultar la lista de chats y nueva conversación */}
           <ChatToggle 
             isCollapsed={isChatListCollapsed} 
@@ -335,42 +445,54 @@ export default function ChatPage() {
         </div>
         
         {/* Chat messages - área con scroll */}
-        <div className="flex-1 overflow-auto py-6 px-4 md:px-8 bg-muted/30 transition-colors duration-300 ease-in-out">
-          <div className="max-w-3xl mx-auto space-y-6">
-            {conversation.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
-              >
-                {msg.sender === "agent" ? (
-                  <div 
-                    className={cn(
-                      "w-full rounded-lg p-4 transition-all duration-300 ease-in-out"
-                    )}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                    <p className="text-xs opacity-70 mt-1.5 text-left">
-                      {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </p>
+        <div className="flex-1 overflow-auto py-6 px-4 md:px-8 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-[200px]">
+          <div className="max-w-[80rem] mx-auto space-y-6">
+            {isLoadingMessages ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="flex flex-col items-center">
+                  <div className="flex space-x-2 mb-3">
+                    <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-bounce"></div>
+                    <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
                   </div>
-                ) : (
-                  <div 
-                    className={cn(
-                      "max-w-[85%] rounded-lg p-4 shadow-sm transition-all duration-300 ease-in-out", 
-                      "bg-primary text-primary-foreground rounded-tr-none"
-                    )}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                    <p className="text-xs opacity-70 mt-1.5 text-right">
-                      {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
-                )}
+                  <span className="text-sm text-muted-foreground">Loading messages...</span>
+                </div>
               </div>
-            ))}
+            ) : (
+              chatMessages.map((msg, index) => (
+                <div
+                  key={msg.id || index}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
+                >
+                  {(msg.role === "agent" || msg.role === "assistant") ? (
+                    <div className="max-w-[80rem] px-1">
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                      <p className="text-xs opacity-70 mt-1.5 text-left">
+                        {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  ) : (
+                    <div 
+                      className="max-w-[80rem] rounded-lg p-4 bg-primary text-primary-foreground transition-all duration-300 ease-in-out"
+                      style={{ 
+                        border: 'none', 
+                        boxShadow: 'none', 
+                        outline: 'none',
+                        filter: 'none' 
+                      }}
+                    >
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                      <p className="text-xs opacity-70 mt-1.5 text-right">
+                        {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
             {isLoading && (
               <div className="flex justify-start w-full animate-fade-in">
-                <div className="w-full rounded-lg p-4">
+                <div className="w-full rounded-lg p-4" style={{ boxShadow: 'none' }}>
                   <div className="flex space-x-2">
                     <div className="h-2 w-2 bg-muted-foreground/30 rounded-full animate-bounce"></div>
                     <div className="h-2 w-2 bg-muted-foreground/30 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
@@ -384,8 +506,9 @@ export default function ChatPage() {
         </div>
         
         {/* Message input - estilo minimalista */}
-        <div className="px-4 md:px-8 py-4 flex-none chat-input-container transition-all duration-300 ease-in-out">
-          <div className="max-w-3xl mx-auto">
+        <div className="px-4 md:px-8 py-4 flex-none chat-input-container transition-all duration-300 ease-in-out fixed w-[-webkit-fill-available] bottom-0" 
+          style={{ background: isDarkMode ? 'var(--background)' : '#ffffffed' }}>
+          <div className="max-w-[80rem] mx-auto">
             <form onSubmit={handleSendMessage} className="relative">
               <div className="relative">
                 <Textarea
@@ -393,13 +516,13 @@ export default function ChatPage() {
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Message..."
-                  className="resize-none h-[135px] w-full py-5 pl-[60px] pr-[60px] rounded-2xl border border-input bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
+                  className="resize-none h-[135px] w-full py-5 pl-[60px] pr-[60px] rounded-2xl border border-input bg-background focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
                   disabled={isLoading}
                   style={{
                     lineHeight: '1.5',
                     overflowY: 'auto',
                     wordWrap: 'break-word',
-                    paddingBottom: '50px', // Espacio adicional en la parte inferior
+                    paddingBottom: '50px' // Espacio adicional en la parte inferior
                   }}
                 />
                 {/* Botones de acciones a la izquierda */}
