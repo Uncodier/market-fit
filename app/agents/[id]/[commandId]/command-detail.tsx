@@ -226,6 +226,291 @@ function renderBase64Images(contextString: string) {
   );
 }
 
+// Función para detectar, procesar y renderizar contenido mixto con CSV
+function renderCSVTable(content: string) {
+  // Log de depuración inicial
+  console.log("Procesando contenido para renderizado:", { 
+    length: content.length,
+    hasCommas: content.includes(','),
+    linesCount: content.split('\n').length
+  });
+  
+  // Verificar si hay un bloque de código CSV
+  if (content.includes('```csv') && content.includes('```')) {
+    try {
+      // Extraer y procesar bloques de código CSV
+      const parts = [];
+      let lastIndex = 0;
+      const codeBlockRegex = /```csv\s*([\s\S]*?)```/g;
+      let match;
+      
+      while ((match = codeBlockRegex.exec(content)) !== null) {
+        // Agregar el texto antes del bloque CSV
+        if (match.index > lastIndex) {
+          const textBefore = content.substring(lastIndex, match.index);
+          parts.push({
+            type: 'text',
+            content: textBefore
+          });
+        }
+        
+        // Procesar y agregar el bloque CSV
+        const csvContent = match[1].trim();
+        parts.push({
+          type: 'csv',
+          content: csvContent
+        });
+        
+        lastIndex = match.index + match[0].length;
+      }
+      
+      // Agregar cualquier texto restante después del último bloque CSV
+      if (lastIndex < content.length) {
+        parts.push({
+          type: 'text',
+          content: content.substring(lastIndex)
+        });
+      }
+      
+      // Si encontramos bloques CSV, renderizamos el contenido mixto
+      if (parts.length > 0) {
+        return (
+          <div className="space-y-4">
+            {parts.map((part, index) => (
+              <div key={index}>
+                {part.type === 'text' ? (
+                  renderBase64Images(part.content)
+                ) : (
+                  processCSVContent(part.content)
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      }
+    } catch (error) {
+      console.error("Error procesando bloques CSV:", error);
+    }
+  }
+  
+  // Si no hay bloques de código CSV o hubo un error, intentamos procesar todo como CSV
+  // o caemos de nuevo a renderBase64Images si no es CSV
+  return tryProcessCSVContent(content);
+}
+
+// Función helper para procesar contenido puramente CSV
+function tryProcessCSVContent(content: string) {
+  try {
+    // Eliminar espacios en blanco al inicio y final
+    const trimmedContent = content.trim();
+    
+    // Dividir por líneas y filtrar líneas vacías
+    const lines = trimmedContent.split(/\r?\n/).filter(line => line.trim().length > 0);
+    
+    // Más logs de depuración
+    console.log("Analizando posible CSV:", {
+      lines: lines.length,
+      firstLine: lines.length > 0 ? lines[0] : '',
+      firstFewChars: trimmedContent.substring(0, 30),
+      exactMatch: trimmedContent.startsWith('Pregunta,Titulo,Respuesta')
+    });
+    
+    // Verificar si el contenido coincide exactamente con el ejemplo proporcionado
+    const hasExampleHeader = trimmedContent.includes('Pregunta,Titulo,Respuesta');
+    
+    // Si tenemos al menos 2 líneas y la primera es un encabezado con comas
+    // O si el contenido coincide con el formato de ejemplo conocido
+    if ((lines.length >= 2 && lines[0].includes(',')) || hasExampleHeader) {
+      // Verificar formato de CSV básico: cada línea debe tener al menos una coma
+      const linesWithCommas = lines.filter(line => line.includes(','));
+      const percentageWithCommas = linesWithCommas.length / lines.length;
+      
+      // Si al menos 50% de las líneas tienen comas, consideramos que es un CSV
+      if (percentageWithCommas >= 0.5 || hasExampleHeader) {
+        console.log("CSV detectado con alta probabilidad");
+        return processCSVContent(content);
+      }
+    }
+  } catch (error) {
+    console.error("Error en tryProcessCSVContent:", error);
+  }
+  
+  // Si no parece ser CSV, usar el renderizador de imágenes y texto
+  return renderBase64Images(content);
+}
+
+// Procesador específico de CSV para tablas
+function processCSVContent(csvContent: string) {
+  try {
+    // Asegurarse de que el contenido está limpio
+    const cleanContent = csvContent.trim();
+    
+    // Dividir por líneas y limpiar
+    const lines = cleanContent.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+    
+    console.log("Procesando CSV:", { 
+      lineCount: lines.length,
+      sample: lines.slice(0, 2)
+    });
+    
+    // Si tenemos pocas líneas, intentamos un enfoque simple pero robusto
+    if (lines.length > 0 && lines.length < 100) {
+      // División simple por comas para manejar el caso base
+      const headers = lines[0].split(',').map(header => header.trim());
+      const rows = [];
+      
+      // Procesar filas (si hay datos)
+      if (lines.length > 1) {
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i].split(',').map(cell => cell.trim());
+          rows.push(row);
+        }
+      }
+      
+      // Renderizar la tabla si tenemos encabezados
+      if (headers.length > 0) {
+        return (
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-full divide-y divide-border">
+              <thead>
+                <tr>
+                  {headers.map((header, index) => (
+                    <th 
+                      key={index}
+                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider bg-muted"
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-background">
+                {rows.map((row, rowIndex) => {
+                  // Asegurar que cada fila tenga la cantidad correcta de celdas
+                  const normalizedRow = [...row];
+                  while (normalizedRow.length < headers.length) {
+                    normalizedRow.push('');
+                  }
+                  
+                  return (
+                    <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-muted/30' : ''}>
+                      {normalizedRow.slice(0, headers.length).map((cell, cellIndex) => (
+                        <td key={cellIndex} className="px-4 py-2 text-sm">
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+    }
+    
+    // Si el enfoque simple no funciona, intentamos el enfoque más sofisticado
+    return renderOriginalCSV(csvContent);
+
+  } catch (error) {
+    console.error("Error procesando CSV:", error);
+    
+    // En caso de error, mostrar el contenido como texto
+    return (
+      <pre className="text-sm whitespace-pre-wrap font-mono">
+        {csvContent}
+      </pre>
+    );
+  }
+}
+
+// Fallback a la implementación original
+function renderOriginalCSV(csvContent: string) {
+  try {
+    const lines = csvContent.trim().split(/\r?\n/).filter(line => line.trim().length > 0);
+    
+    // Parser CSV más sofisticado
+    const parseCSVLine = (line: string) => {
+      const result = [];
+      let cell = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"' && (i === 0 || line[i-1] !== '\\')) {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(cell);
+          cell = '';
+        } else {
+          cell += char;
+        }
+      }
+      
+      // Añadir la última celda
+      result.push(cell);
+      return result.map(c => c.trim().replace(/^"|"$/g, ''));
+    };
+    
+    // Procesar cada línea
+    const headers = parseCSVLine(lines[0]);
+    const rows = lines.slice(1).map(parseCSVLine);
+    
+    // Solo proceder si tenemos encabezados y filas
+    if (headers.length > 0 && rows.length > 0) {
+      // Normalizar el número de columnas
+      const normalizedRows = rows.map(row => {
+        if (row.length === headers.length) return row;
+        if (row.length < headers.length) {
+          return [...row, ...Array(headers.length - row.length).fill('')];
+        }
+        return row.slice(0, headers.length);
+      });
+      
+      // Renderizar la tabla
+      return (
+        <div className="overflow-x-auto w-full">
+          <table className="min-w-full divide-y divide-border">
+            <thead>
+              <tr>
+                {headers.map((header, index) => (
+                  <th 
+                    key={index}
+                    className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider bg-muted"
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border bg-background">
+              {normalizedRows.map((row, rowIndex) => (
+                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-muted/30' : ''}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="px-4 py-2 text-sm">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+  } catch (error) {
+    console.error("Error en renderOriginalCSV:", error);
+  }
+  
+  // Si todo falla, mostrar el contenido original como texto
+  return (
+    <pre className="text-sm whitespace-pre-wrap font-mono">
+      {csvContent}
+    </pre>
+  );
+}
+
 export default function CommandDetail({ command, commandId, agentName }: { command: Command | null, commandId: string, agentName: string }) {
   const router = useRouter();
   
@@ -537,6 +822,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                 <TabsTrigger value="tools">Tools</TabsTrigger>
                 <TabsTrigger value="execution">Execution</TabsTrigger>
                 <TabsTrigger value="context">Context</TabsTrigger>
+                <TabsTrigger value="agent_background">Agent Background</TabsTrigger>
               </TabsList>
             </div>
           </StickyHeader>
@@ -721,6 +1007,37 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                           <Info className="h-12 w-12 text-muted-foreground/50 mb-4" />
                           <h3 className="text-lg font-medium mb-2">No Context Available</h3>
                           <p className="text-muted-foreground">This command has no context information available.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="agent_background" className="mt-0 p-0">
+                  <Card className="w-full">
+                    <CardContent className="pt-6">
+                      {command.agent_background ? (
+                        <div className="space-y-4 w-full">
+                          <h3 className="text-lg font-medium">Agent Background</h3>
+                          
+                          <div 
+                            className="bg-muted/30 rounded-lg p-4 border border-border/50 max-w-full overflow-x-auto break-all break-words" 
+                            style={{ wordWrap: 'break-word', maxWidth: '100%' }}
+                          >
+                            {typeof command.agent_background === 'string' ? (
+                              renderCSVTable(command.agent_background)
+                            ) : (
+                              <div className="max-w-full overflow-x-auto break-all break-words" style={{ wordWrap: 'break-word', maxWidth: '100%' }}>
+                                <JsonHighlighter data={command.agent_background} maxHeight="none" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <Info className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                          <h3 className="text-lg font-medium mb-2">No Agent Background Available</h3>
+                          <p className="text-muted-foreground">This command has no agent background information available.</p>
                         </div>
                       )}
                     </CardContent>

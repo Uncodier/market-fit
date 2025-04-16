@@ -37,6 +37,8 @@ import { Switch } from "@/app/components/ui/switch"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { UploadFileDialog } from "@/app/components/agents/upload-file-dialog"
+import { Skeleton } from "@/app/components/ui/skeleton"
 
 // Get default tools for role
 const getDefaultToolsForRole = (role: string = "") => {
@@ -72,6 +74,123 @@ const getDefaultTriggersForRole = () => {
     { id: "email", name: "Email", description: "Trigger on new email", enabled: false },
     { id: "api", name: "API Call", description: "Trigger via API request", enabled: false },
   ]
+}
+
+// Esqueleto de carga para la sección de archivos contextuales
+function ContextFilesSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between pb-3">
+        <div className="space-y-1">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-60" />
+        </div>
+        <Skeleton className="h-9 w-24" />
+      </div>
+      
+      <div className="space-y-3">
+        {Array(3).fill(0).map((_, i) => (
+          <div key={i} className="border rounded-lg p-3 flex items-center">
+            <div className="flex-1 flex items-center space-x-3">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <div className="space-y-1 flex-1">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+            </div>
+            <div className="flex space-x-1">
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Añadir nuevo componente de esqueleto para toda la página
+function AgentPageSkeleton() {
+  return (
+    <div className="flex-1 p-0">
+      <div className="sticky top-[64px] min-h-[71px] flex items-center p-0 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 z-10">
+        <div className="sticky left-[256px] w-[calc(100vw-256px)] transition-all duration-200 ease-in-out">
+          <div className="px-16 pt-0">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-8">
+                <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                  {['Basic Information', 'Tools', 'Triggers', 'Integrations', 'Context Files'].map((tab, index) => (
+                    <div 
+                      key={index} 
+                      className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ${
+                        index === 0 
+                          ? 'bg-background text-foreground shadow-sm' 
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {tab}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="ml-auto">
+                <div className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground h-10 px-4 py-2">
+                  Save changes
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
+        <div className="space-y-8">
+          {/* Basic information card */}
+          <div className="rounded-lg border shadow-sm">
+            <div className="p-6">
+              <div className="space-y-2 mb-4">
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+              
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b pb-4 mb-4">
+                  <div className="space-y-1">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-64" />
+                  </div>
+                  <Skeleton className="h-6 w-12 rounded-full" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Agent prompt card */}
+          <div className="rounded-lg border shadow-sm">
+            <div className="p-6">
+              <div className="space-y-2 mb-4">
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-4 w-80" />
+              </div>
+              
+              <Skeleton className="h-40 w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function AgentManagePage({ params }: { params: { id: string } }) {
@@ -195,7 +314,10 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
   const [integrationSearch, setIntegrationSearch] = useState("")
   const [contextSearch, setContextSearch] = useState("")
   
-  // Load agent data from the database if it's an existing agent
+  // Estado para el loading de archivos de contexto
+  const [isContextFilesLoading, setIsContextFilesLoading] = useState(false)
+  
+  // Load agent data and related assets
   useEffect(() => {
     // For new agents, just use the default values already set and don't load from DB
     if (isNewAgent) {
@@ -308,15 +430,42 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
             setIntegrations(defaultEmptyIntegrations)
           }
           
-          // Parse and set context files - empty array if none found
-          if (agentData.configuration && 
-              agentData.configuration.contextFiles && 
-              Array.isArray(agentData.configuration.contextFiles)) {
-            console.log("Setting context files from database:", agentData.configuration.contextFiles)
-            setContextFiles(agentData.configuration.contextFiles)
+          // Load related assets from agent_assets table
+          console.log("Loading agent assets for agent:", agentId)
+          const { data: agentAssets, error: assetsError } = await supabase
+            .from('agent_assets')
+            .select(`
+              asset_id,
+              assets:asset_id (
+                id, 
+                name, 
+                file_path
+              )
+            `)
+            .eq('agent_id', agentId)
+          
+          if (assetsError) {
+            console.error("Error loading agent assets:", assetsError)
+          } else if (agentAssets && agentAssets.length > 0) {
+            // Transform data into the format expected by the component
+            const files = agentAssets.map((item: { assets: { id: string, name: string, file_path: string } }) => ({
+              id: item.assets.id,
+              name: item.assets.name,
+              path: item.assets.file_path
+            }))
+            console.log("Setting context files from agent_assets:", files)
+            setContextFiles(files)
           } else {
-            console.log("No context files found, using empty array")
-            setContextFiles([])
+            // Fallback to legacy configuration.contextFiles if available
+            if (agentData.configuration && 
+                agentData.configuration.contextFiles && 
+                Array.isArray(agentData.configuration.contextFiles)) {
+              console.log("Setting context files from legacy format:", agentData.configuration.contextFiles)
+              setContextFiles(agentData.configuration.contextFiles)
+            } else {
+              console.log("No context files found, using empty array")
+              setContextFiles([])
+            }
           }
           
           // Parse and set triggers
@@ -403,19 +552,57 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
   }
   
   // Handle file removal
-  const handleFileRemove = (fileId: string) => {
-    setContextFiles(contextFiles.filter(file => file.id !== fileId))
+  const handleFileRemove = async (fileId: string) => {
+    // Mostrar el esqueleto mientras se actualiza la UI
+    setIsContextFilesLoading(true)
+    
+    // If this is a new agent, just remove from the local state
+    if (isNewAgent) {
+      setContextFiles(contextFiles.filter(file => file.id !== fileId))
+      setIsContextFilesLoading(false)
+      return
+    }
+    
+    try {
+      // First remove the relationship from agent_assets
+      const { error } = await supabase
+        .from('agent_assets')
+        .delete()
+        .match({ 
+          agent_id: agentId,
+          asset_id: fileId
+        })
+      
+      if (error) {
+        console.error("Error removing file association:", error)
+        setIsContextFilesLoading(false)
+        return
+      }
+      
+      // Then update the UI
+      setContextFiles(contextFiles.filter(file => file.id !== fileId))
+    } catch (err) {
+      console.error("Error removing file:", err)
+    } finally {
+      // Ocultar el esqueleto después de un pequeño retraso
+      setTimeout(() => {
+        setIsContextFilesLoading(false)
+      }, 800)
+    }
   }
   
-  // Handle add file
-  const handleAddFile = () => {
-    const newId = `file${contextFiles.length + 1}`
-    const newFile = { 
-      id: newId, 
-      name: `New File ${contextFiles.length + 1}.txt`, 
-      path: `/docs/new-file-${contextFiles.length + 1}.txt` 
-    }
-    setContextFiles([...contextFiles, newFile])
+  // Handle file upload completed
+  const handleFileUploaded = (fileData: { id: string; name: string; path: string }) => {
+    // Mostrar el esqueleto mientras se actualiza la UI
+    setIsContextFilesLoading(true)
+    
+    // Agregar el nuevo archivo a la lista
+    setContextFiles([...contextFiles, fileData])
+    
+    // Ocultar el esqueleto después de un pequeño retraso para mostrar la transición
+    setTimeout(() => {
+      setIsContextFilesLoading(false)
+    }, 800)
   }
   
   // Handle trigger toggle
@@ -497,7 +684,8 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         return config
       }, {} as Record<string, any>)
       
-      // Format context files for storage
+      // Legacy configuration format for context files
+      // Note: We're now using agent_assets table but keep this for backward compatibility
       const filesConfig = contextFiles.map(file => ({
         id: file.id,
         name: file.name,
@@ -570,6 +758,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       }
       
       let result;
+      let savedAgentId: string;
       
       // For agents with valid UUID, use upsert with onConflict='id'
       if (isExistingAgent) {
@@ -588,6 +777,8 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
           )
           .select()
           .single();
+        
+        savedAgentId = agentId;
       } else {
         // For new agents, check if there's already an agent with the same role, user_id, and site_id
         console.log("Checking for existing agent with same role, user_id, and site_id");
@@ -608,6 +799,8 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
             .eq('id', existingAgent.id)
             .select()
             .single();
+          
+          savedAgentId = existingAgent.id;
         } else {
           // If no agent exists, create a new one
           console.log("Creating new agent");
@@ -616,6 +809,8 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
             .insert(agentData)
             .select()
             .single();
+          
+          savedAgentId = result.data?.id;
         }
       }
       
@@ -652,17 +847,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
   
   // Show loading state
   if (isLoading) {
-    return (
-      <div className="flex-1 p-8 flex flex-col items-center justify-center">
-        <div className="animate-spin mb-4">
-          <svg className="h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-        <p className="text-muted-foreground">Loading agent data...</p>
-      </div>
-    )
+    return <AgentPageSkeleton />;
   }
   
   return (
@@ -961,12 +1146,15 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
                     Add files that provide context for your agent
                   </CardDescription>
                 </div>
-                <Button onClick={handleAddFile} size="sm">
-                  Add File
-                </Button>
+                <UploadFileDialog 
+                  agentId={agentId} 
+                  onFileUploaded={handleFileUploaded}
+                />
               </CardHeader>
               <CardContent>
-                {contextFiles.length > 0 ? (
+                {isContextFilesLoading ? (
+                  <ContextFilesSkeleton />
+                ) : contextFiles.length > 0 ? (
                   <div className="space-y-2">
                     {contextFiles
                       .filter(file => 
@@ -978,7 +1166,9 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
                           id={file.id}
                           name={file.name}
                           path={file.path}
+                          agentId={agentId}
                           onRemove={handleFileRemove}
+                          onUpdate={handleFileUploaded}
                         />
                       ))}
                   </div>

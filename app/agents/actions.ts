@@ -25,7 +25,8 @@ const CommandSchema = z.object({
     model: z.string().nullable(),
     agent_id: z.string().nullable(),
     output_tokens: z.number().nullable(),
-    input_tokens: z.number().nullable()
+    input_tokens: z.number().nullable(),
+    agent_background: z.string().nullable()
   })).nullable(),
   error: z.string().optional()
 })
@@ -53,7 +54,8 @@ const SingleCommandSchema = z.object({
     model: z.string().nullable(),
     agent_id: z.string().nullable(),
     output_tokens: z.number().nullable(),
-    input_tokens: z.number().nullable()
+    input_tokens: z.number().nullable(),
+    agent_background: z.string().nullable()
   }).nullable(),
   error: z.string().optional()
 })
@@ -107,7 +109,8 @@ export async function getCommands(site_id: string): Promise<CommandsResponse> {
         model,
         agent_id,
         output_tokens,
-        input_tokens
+        input_tokens,
+        agent_background
       `)
       .in('agent_id', agentIds)
       .order("created_at", { ascending: false })
@@ -152,7 +155,8 @@ export async function getCommandById(id: string): Promise<SingleCommandResponse>
         model,
         agent_id,
         output_tokens,
-        input_tokens
+        input_tokens,
+        agent_background
       `)
       .eq('id', id)
       .single()

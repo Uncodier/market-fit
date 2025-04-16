@@ -259,6 +259,7 @@ export default function ProfilePage() {
             bio: completeData.bio,
             role: completeData.role,
             picture: imageUrl, // Usamos URL segura, nunca base64
+            avatar_url: imageUrl, // También guardamos como avatar_url para el profile del email
             language: completeData.language,
             timezone: completeData.timezone,
             notifications: completeData.notifications,

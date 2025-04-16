@@ -289,32 +289,44 @@ export interface Database {
         Row: {
           id: string
           conversation_id: string
+          visitor_id: string | null
+          agent_id: string | null
+          user_id: string | null
+          lead_id: string | null
           role: string
-          sender_id: string | null
           content: string
+          read_at: string | null
+          custom_data: Json | null
           created_at: string
           updated_at: string
-          metadata: Json | null
         }
         Insert: {
           id?: string
           conversation_id: string
+          visitor_id?: string | null
+          agent_id?: string | null
+          user_id?: string | null
+          lead_id?: string | null
           role: string
-          sender_id?: string | null
           content: string
+          read_at?: string | null
+          custom_data?: Json | null
           created_at?: string
           updated_at?: string
-          metadata?: Json | null
         }
         Update: {
           id?: string
           conversation_id?: string
+          visitor_id?: string | null
+          agent_id?: string | null
+          user_id?: string | null
+          lead_id?: string | null
           role?: string
-          sender_id?: string | null
           content?: string
+          read_at?: string | null
+          custom_data?: Json | null
           created_at?: string
           updated_at?: string
-          metadata?: Json | null
         }
       }
     }

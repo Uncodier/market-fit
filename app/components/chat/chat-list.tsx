@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { Search, PlusCircle, MessageSquare } from "@/app/components/ui/icons"
+import { Search, PlusCircle, MessageSquare, Trash2 } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { Input } from "@/app/components/ui/input"
 import { useTheme } from "@/app/context/ThemeContext"
@@ -12,6 +12,8 @@ import { ConversationListItem } from "@/app/types/chat"
 import { getConversations } from "../../services/chat-service"
 import { formatDistanceToNow, format } from "date-fns"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { createClient } from "@/lib/supabase/client"
+import * as Icons from "@/app/components/ui/icons"
 
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
@@ -47,6 +49,8 @@ interface ChatListProps {
   selectedConversationId?: string
   onSelectConversation: (conversationId: string, agentName: string, agentId: string) => void
   className?: string
+  onLoadConversations?: (loadFunction: () => Promise<void>) => void
+  onDeleteConversation?: (conversationId: string) => Promise<void>
 }
 
 // Función auxiliar para formatear la fecha
@@ -93,7 +97,9 @@ export function ChatList({
   siteId,
   selectedConversationId,
   onSelectConversation,
-  className
+  className,
+  onLoadConversations,
+  onDeleteConversation
 }: ChatListProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
@@ -102,32 +108,43 @@ export function ChatList({
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasEmptyResult, setHasEmptyResult] = useState(false)
   const { isDarkMode } = useTheme()
+  // Reference for the subscription
+  const subscriptionRef = useRef<any>(null);
+  // Reference to store the current selected conversation ID
+  const selectedConversationIdRef = useRef<string | undefined>(selectedConversationId);
+  // Reference to store the loadConversations function
+  const loadConversationsRef = useRef<(() => Promise<void>) | null>(null);
+  
+  // Update the ref when selectedConversationId changes
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true
     
-    async function loadConversations() {
+    const loadConversations = async () => {
       if (!siteId) return;
       
       setIsLoading(true)
       try {
         const data = await getConversations(siteId)
         
-        if (isMounted) {
+        if (active) {
           setConversations(data)
           setHasEmptyResult(data.length === 0)
           setIsInitialLoad(false)
           
           // Pequeño retraso antes de ocultar el esqueleto para evitar parpadeos
           setTimeout(() => {
-            if (isMounted) {
+            if (active) {
               setIsLoading(false)
             }
           }, 300)
         }
       } catch (error) {
         console.error("Error loading conversations:", error)
-        if (isMounted) {
+        if (active) {
           setIsInitialLoad(false)
           setIsLoading(false)
         }
@@ -136,10 +153,156 @@ export function ChatList({
 
     loadConversations()
     
-    return () => {
-      isMounted = false;
+    // Store the loadConversations function in the ref
+    loadConversationsRef.current = loadConversations;
+    
+    // Solo ejecutar onLoadConversations si la prop existe, evitando ejecutarlo si no es necesario
+    if (onLoadConversations) {
+      onLoadConversations(loadConversations);
     }
-  }, [siteId])
+    
+    // Set up real-time subscription for conversations
+    if (siteId && !subscriptionRef.current) {
+      try {
+        const supabase = createClient();
+        
+        console.log(`Setting up real-time subscription for conversations in site: ${siteId}`);
+        
+        // Clean up previous subscription if exists
+        if (subscriptionRef.current) {
+          subscriptionRef.current.unsubscribe();
+        }
+        
+        // Create subscription for INSERT events (new conversations)
+        subscriptionRef.current = supabase
+          .channel(`site-conversations-${siteId}`)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'conversations',
+            filter: `site_id=eq.${siteId}`
+          }, async (payload: { 
+            new: { 
+              id: string; 
+              title: string;
+              agent_id: string;
+              site_id: string;
+              created_at: string;
+            }
+          }) => {
+            console.log('New conversation created - INSERT event received:', payload);
+            // Solo recargar si es una conversación nueva, no si estamos seleccionando una existente
+            loadConversations();
+          })
+          // Subscribe to UPDATE events (conversations updates)
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'conversations',
+            filter: `site_id=eq.${siteId}`
+          }, (payload: { 
+            new: { 
+              id: string; 
+              last_message_at: string;
+            }
+          }) => {
+            console.log('Conversation updated:', payload);
+            // Solo actualizar la conversación específica en lugar de recargar toda la lista
+            if (payload.new.id) {
+              // Actualizar solo la conversación modificada
+              setConversations(prevConversations => 
+                prevConversations.map(conv => 
+                  conv.id === payload.new.id 
+                    ? { ...conv, timestamp: new Date(payload.new.last_message_at) }
+                    : conv
+                )
+              );
+            }
+          })
+          // Subscribe to DELETE events (when conversations are deleted)
+          .on('postgres_changes', {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'conversations',
+            filter: `site_id=eq.${siteId}`
+          }, async (payload: { 
+            old: { 
+              id: string;
+            }
+          }) => {
+            console.log('Conversation deleted:', payload);
+            // If this is the currently selected conversation, redirect to chat list
+            if (payload.old.id === selectedConversationIdRef.current) {
+              console.log('Currently selected conversation was deleted, redirecting to chat list');
+              // This will be handled by the parent component when loading fails
+            }
+            // Refresh the conversation list
+            loadConversations();
+          })
+          // También optimizar el manejo de nuevos mensajes
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages'
+          }, (payload: any) => {
+            console.log('New message inserted, updating conversation details');
+            
+            // Si tenemos el conversation_id, actualizar solo esa conversación
+            if (payload.new && payload.new.conversation_id) {
+              try {
+                const supabase = createClient();
+                
+                // Obtener la conversación actualizada
+                supabase
+                  .from('conversations')
+                  .select('id, last_message_at, last_message')
+                  .eq('id', payload.new.conversation_id)
+                  .single()
+                  .then(({ data: updatedConversation, error }: { 
+                    data: { 
+                      id: string; 
+                      last_message_at: string; 
+                      last_message: string | null 
+                    } | null; 
+                    error: any 
+                  }) => {
+                    if (!error && updatedConversation) {
+                      // Actualizar solo esta conversación en la lista
+                      setConversations(prevConversations => 
+                        prevConversations.map(conv => 
+                          conv.id === updatedConversation.id 
+                            ? { 
+                                ...conv, 
+                                timestamp: new Date(updatedConversation.last_message_at),
+                                lastMessage: updatedConversation.last_message || conv.lastMessage 
+                              }
+                            : conv
+                        )
+                      );
+                    }
+                  });
+              } catch (err) {
+                console.error("Error updating conversation after new message:", err);
+              }
+            }
+          })
+          .subscribe();
+      } catch (error) {
+        console.error("Error setting up real-time subscription:", error);
+      }
+    }
+    
+    return () => {
+      active = false;
+      
+      // Clean up subscription
+      if (subscriptionRef.current) {
+        console.log('Unsubscribing from conversations');
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
+    }
+  }, [siteId, onLoadConversations])
 
   const filteredConversations = conversations.filter(conv => {
     const searchLower = searchQuery.toLowerCase()
@@ -157,8 +320,165 @@ export function ChatList({
   );
 
   const handleSelectConversation = (conversation: ConversationListItem) => {
+    // No hacer nada si ya está seleccionada la conversación
+    if (selectedConversationId === conversation.id) {
+      return;
+    }
+    
+    // Solo notificar al componente padre, sin recargar la lista
     onSelectConversation(conversation.id, conversation.agentName, conversation.agentId);
   }
+  
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      // Call the Supabase client to delete the conversation
+      const supabase = createClient();
+      
+      // First delete related messages
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+        
+      if (messagesError) {
+        console.error("Error deleting messages:", messagesError);
+        return;
+      }
+      
+      // Then delete the conversation
+      const { error: conversationError } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId);
+        
+      if (conversationError) {
+        console.error("Error deleting conversation:", conversationError);
+        return;
+      }
+      
+      // If the parent component provided a delete handler, call it
+      if (onDeleteConversation) {
+        await onDeleteConversation(conversationId);
+      }
+      
+      // Reload the conversation list
+      if (loadConversationsRef.current) {
+        await loadConversationsRef.current();
+      }
+      
+      // If the deleted conversation was selected, redirect to the chat list
+      if (selectedConversationIdRef.current === conversationId) {
+        router.push('/chat');
+      }
+    } catch (error) {
+      console.error("Error in deleteConversation:", error);
+    }
+  };
+
+  // Function to setup real-time subscription
+  const setupRealtimeSubscription = (siteId: string) => {
+    if (!siteId) return null;
+    
+    try {
+      console.log(`Setting up real-time subscription for conversations in site: ${siteId}`);
+      const supabase = createClient();
+      
+      // Clean up previous subscription if exists
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
+      
+      // Create new subscription
+      const subscription = supabase
+        .channel(`site-conversations-${siteId}`) // Removed timestamp to ensure consistent channel name
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversations',
+          filter: `site_id=eq.${siteId}`
+        }, (payload: { 
+          new: { 
+            id: string; 
+            title: string;
+            agent_id: string;
+            site_id: string;
+            created_at: string;
+          }
+        }) => {
+          console.log('New conversation created - INSERT event received:', payload);
+          if (loadConversationsRef.current) {
+            loadConversationsRef.current();
+          }
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversations',
+          filter: `site_id=eq.${siteId}`
+        }, (payload: { 
+          new: { 
+            id: string; 
+            last_message_at: string;
+          }
+        }) => {
+          console.log('Conversation updated:', payload);
+          if (loadConversationsRef.current) {
+            loadConversationsRef.current();
+          }
+        })
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'conversations',
+          filter: `site_id=eq.${siteId}`
+        }, (payload: { 
+          old: { 
+            id: string;
+          }
+        }) => {
+          console.log('Conversation deleted event received:', payload);
+          
+          // Update the UI immediately by filtering out the deleted conversation
+          setConversations(prevConversations => 
+            prevConversations.filter(conv => conv.id !== payload.old.id)
+          );
+          
+          // If this is the currently selected conversation, redirect to chat list
+          if (payload.old.id === selectedConversationIdRef.current) {
+            console.log('Currently selected conversation was deleted, redirecting to chat list');
+            router.push('/chat');
+          }
+          
+          // Also refresh the full list to ensure consistency
+          if (loadConversationsRef.current) {
+            loadConversationsRef.current();
+          }
+        })
+        // Also subscribe to messages table to catch last_message updates
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        }, () => {
+          console.log('New message inserted, refreshing conversations');
+          // Refresh conversations after a short delay
+          setTimeout(() => {
+            if (loadConversationsRef.current) {
+              loadConversationsRef.current();
+            }
+          }, 300);
+        })
+        .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
+          console.log(`Subscription status for conversations: ${status}`);
+        });
+      
+      return subscription;
+    } catch (error) {
+      console.error("Error setting up real-time subscription:", error);
+      return null;
+    }
+  };
 
   return (
     <div className={cn("flex flex-col h-full fixed", className)} style={{ width: '320px', maxWidth: '320px', overflow: 'hidden' }}>
@@ -210,23 +530,57 @@ export function ChatList({
                   className={cn(
                     "w-full text-left py-3 px-4 rounded-none transition-colors border-b border-border/30",
                     "hover:bg-accent/20",
-                    selectedConversationId === conversation.id && "bg-accent/20"
+                    selectedConversationId === conversation.id && 
+                      isDarkMode 
+                        ? "bg-primary/15" 
+                        : selectedConversationId === conversation.id && 
+                          "bg-primary/10"
                   )}
-                  style={{ width: '320px', maxWidth: '320px', boxSizing: 'border-box' }}
+                  style={{ 
+                    width: '320px', 
+                    maxWidth: '320px', 
+                    boxSizing: 'border-box',
+                    position: 'relative' 
+                  }}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm truncate max-w-[85%]">
+                    <span className={cn(
+                      "font-medium text-sm truncate max-w-[95%]",
+                      selectedConversationId === conversation.id && "text-primary"
+                    )}>
                       {truncateText(conversation.title || "Untitled Conversation", 35)}
                     </span>
-                    <span className="text-[11px] text-muted-foreground/70 whitespace-nowrap flex-shrink-0">
-                      {conversation.timestamp ? formatMessageDate(conversation.timestamp) : ""}
-                    </span>
+                    <div
+                      className="opacity-0 group-hover:opacity-100 hover:bg-accent/30 rounded-full p-1 absolute right-3 top-3"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteConversation(conversation.id);
+                      }}
+                    >
+                      <Icons.Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground/80 truncate">
+                  <div className={cn(
+                    "text-xs truncate",
+                    selectedConversationId === conversation.id ? "text-muted-foreground" : "text-muted-foreground/80"
+                  )}>
                     {truncateText(conversation.lastMessage || getDefaultMessage(conversation.title || ""), 50)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground/70 mt-0.5">
-                    with {conversation.agentName}
+                  <div className="flex justify-between items-center mt-0.5">
+                    <div className={cn(
+                      "text-[11px]",
+                      selectedConversationId === conversation.id ? "text-primary/70" : "text-muted-foreground/70"
+                    )}>
+                      {conversation.agentName || "No Agent Name"} 
+                      {!conversation.agentName && <span className="text-red-500">!</span>}
+                      {conversation.leadName && <span> · {conversation.leadName}</span>}
+                    </div>
+                    <span className={cn(
+                      "text-[11px] whitespace-nowrap flex-shrink-0",
+                      selectedConversationId === conversation.id ? "text-primary/70" : "text-muted-foreground/70"
+                    )}>
+                      {conversation.timestamp ? formatMessageDate(conversation.timestamp) : ""}
+                    </span>
                   </div>
                 </button>
               ))}

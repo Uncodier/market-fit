@@ -21,12 +21,17 @@ export interface ConversationListItem {
   timestamp: Date
   unreadCount?: number
   messageCount?: number
+  leadName?: string
 }
 
 export interface ChatMessage {
   id?: string
-  role: "user" | "agent" | "assistant"
+  role: "user" | "agent" | "assistant" | "team_member" | "visitor" | "system"
   text: string
   timestamp: Date
   metadata?: Record<string, any>
+  // Información del remitente (para retrocompatibilidad en la UI)
+  sender_id?: string
+  sender_name?: string
+  sender_avatar?: string
 } 
