@@ -15,6 +15,7 @@ export interface Command {
   results?: any[];
   targets?: any[];
   tools?: any[];
+  functions?: any[];
   context?: string;
   agent_background?: string;
   supervisor?: any[];

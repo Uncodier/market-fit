@@ -883,26 +883,25 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                               {command.tools.map((tool, index) => (
                                 <div key={index} className="bg-muted/30 rounded-lg p-4 border border-border/50">
                                   <div className="flex justify-between items-center mb-3">
-                                    <h4 className="text-sm font-medium">{tool.name || `Tool ${index + 1}`}</h4>
-                                    {tool.version && (
+                                    <h4 className="text-sm font-medium">
+                                      {tool.type === "function" && tool.function ? 
+                                        tool.function.name : 
+                                        (tool.name || `Tool ${index + 1}`)}
+                                    </h4>
+                                    {(tool.version || (tool.function && tool.function.version)) && (
                                       <Badge variant="outline" className="bg-primary/5 text-primary/90">
-                                        v{tool.version}
+                                        v{tool.version || tool.function.version}
                                       </Badge>
                                     )}
                                   </div>
-                                  {tool.description && (
-                                    <p className="text-sm text-muted-foreground mb-2">{tool.description}</p>
+                                  {(tool.description || (tool.function && tool.function.description)) && (
+                                    <p className="text-sm text-muted-foreground mb-2">
+                                      {tool.description || tool.function.description}
+                                    </p>
                                   )}
-                                  {Object.keys(tool).length > 2 && (
-                                    <div className="mt-3">
-                                      <JsonHighlighter 
-                                        data={Object.fromEntries(
-                                          Object.entries(tool).filter(([key]) => !['name', 'description', 'version'].includes(key))
-                                        )} 
-                                        maxHeight="none" 
-                                      />
-                                    </div>
-                                  )}
+                                  <div className="mt-3">
+                                    <JsonHighlighter data={tool} maxHeight="none" />
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -929,6 +928,70 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                       <div className="space-y-6">
                         <h3 className="text-lg font-medium">Model Completion</h3>
                         
+                        {/* Functions Information */}
+                        <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                          <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                            Functions
+                          </h3>
+                          
+                          {command.functions ? (
+                            <div className="space-y-4">
+                              {Array.isArray(command.functions) ? (
+                                command.functions.map((func, index) => (
+                                  <div key={index} className="bg-background rounded-md p-3 border border-border/50">
+                                    <div className="flex justify-between items-center mb-2">
+                                      <h4 className="text-sm font-medium">
+                                        {func.id || `Function Call ${index + 1}`}
+                                      </h4>
+                                      {func.status && (
+                                        <Badge variant="outline" className={cn(
+                                          "bg-primary/5 text-primary/90",
+                                          func.status === "completed" && "bg-success/10 text-success border-success/30",
+                                          func.status === "failed" && "bg-destructive/10 text-destructive border-destructive/30",
+                                          func.status === "initialized" && "bg-muted text-muted-foreground"
+                                        )}>
+                                          {func.status}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    
+                                    {func.type === "function" && func.function && (
+                                      <div className="mb-3 bg-muted/30 p-3 rounded-md">
+                                        <div className="flex justify-between items-center">
+                                          <h5 className="text-sm font-medium">
+                                            {func.function.name}
+                                          </h5>
+                                        </div>
+                                        
+                                        {func.function.arguments && (
+                                          <div className="mt-2">
+                                            <p className="text-xs font-medium text-muted-foreground mb-1">Arguments</p>
+                                            <pre className="text-xs font-mono bg-background p-2 rounded border border-border/50 overflow-x-auto">
+                                              {typeof func.function.arguments === 'string' 
+                                                ? JSON.stringify(JSON.parse(func.function.arguments), null, 2)
+                                                : JSON.stringify(func.function.arguments, null, 2)}
+                                            </pre>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    <JsonHighlighter data={func} maxHeight="none" />
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="bg-background rounded-md p-3 border border-border/50">
+                                  <JsonHighlighter data={command.functions} maxHeight="none" />
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center py-6 text-center">
+                              <p className="text-muted-foreground">No function calls were required for this command</p>
+                            </div>
+                          )}
+                        </div>
+                        
                         {/* Targets Information */}
                         <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
                           <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
@@ -944,7 +1007,38 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                                       <h4 className="text-sm font-medium">
                                         {target.type || "Target"} {target.id ? `- ${target.id}` : index + 1}
                                       </h4>
+                                      {target.status && (
+                                        <Badge variant="outline" className={cn(
+                                          "bg-primary/5 text-primary/90",
+                                          target.status === "completed" && "bg-success/10 text-success border-success/30",
+                                          target.status === "failed" && "bg-destructive/10 text-destructive border-destructive/30"
+                                        )}>
+                                          {target.status}
+                                        </Badge>
+                                      )}
                                     </div>
+                                    
+                                    {target.function && (
+                                      <div className="mb-3 bg-muted/30 p-3 rounded-md">
+                                        <div className="flex justify-between items-center">
+                                          <h5 className="text-sm font-medium">
+                                            {target.function.name}
+                                          </h5>
+                                        </div>
+                                        
+                                        {target.function.arguments && (
+                                          <div className="mt-2">
+                                            <p className="text-xs font-medium text-muted-foreground mb-1">Arguments</p>
+                                            <pre className="text-xs font-mono bg-background p-2 rounded border border-border/50 overflow-x-auto">
+                                              {typeof target.function.arguments === 'string' 
+                                                ? JSON.stringify(JSON.parse(target.function.arguments), null, 2)
+                                                : JSON.stringify(target.function.arguments, null, 2)}
+                                            </pre>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
                                     <JsonHighlighter data={target} maxHeight="none" />
                                   </div>
                                 ))

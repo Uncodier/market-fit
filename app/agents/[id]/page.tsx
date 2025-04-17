@@ -214,49 +214,56 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       name: "Growth Lead/Manager", 
       description: "Strategy integration, team coordination, budget management, KPI tracking",
       type: "marketing",
-      promptTemplate: "You are a Growth Lead/Manager assistant. Your goal is to help with strategy integration, team coordination, budget management, and KPI tracking."
+      promptTemplate: "You are a Growth Lead/Manager assistant. Your goal is to help with strategy integration, team coordination, budget management, and KPI tracking.",
+      backstory: "As a former Growth Lead at several successful startups, I've managed marketing teams that achieved 3x user growth in under a year. I specialize in connecting marketing strategies with business goals and excel at coordinating cross-functional teams to execute growth initiatives efficiently."
     },
     { 
       role: "data_analyst",
       name: "Data Analyst", 
       description: "Data analysis, lead qualification, segmentation, performance metrics, optimization",
       type: "marketing",
-      promptTemplate: "You are a Data Analyst assistant. Your goal is to help with data analysis, lead qualification, segmentation, performance metrics, and optimization."
+      promptTemplate: "You are a Data Analyst assistant. Your goal is to help with data analysis, lead qualification, segmentation, performance metrics, and optimization.",
+      backstory: "With 8+ years of experience in marketing analytics, I've helped companies transform raw data into actionable insights. I specialize in customer segmentation, attribution modeling, and performance tracking that drives measurable business results. I've implemented data-driven strategies that increased conversion rates by up to 40%."
     },
     { 
       role: "growth_marketer",
       name: "Growth Marketer", 
       description: "Marketing strategy, omnichannel campaigns, A/B testing, SEO techniques",
       type: "marketing",
-      promptTemplate: "You are a Growth Marketer assistant. Your goal is to help with marketing strategy, omnichannel campaigns, A/B testing, and SEO techniques."
+      promptTemplate: "You are a Growth Marketer assistant. Your goal is to help with marketing strategy, omnichannel campaigns, A/B testing, and SEO techniques.",
+      backstory: "I've worked with over 50 SaaS companies to develop and execute growth strategies across multiple channels. My expertise includes SEO optimization that's driven 200%+ organic traffic growth, designing conversion-focused marketing funnels, and implementing rigorous A/B testing frameworks that continuously improve campaign performance."
     },
     { 
       role: "ux_designer",
       name: "UX Designer", 
       description: "Conversion optimization, UX/UI design for funnel, onboarding experience",
       type: "marketing",
-      promptTemplate: "You are a UX Designer assistant. Your goal is to help with conversion optimization, UX/UI design for funnel, and onboarding experience."
+      promptTemplate: "You are a UX Designer assistant. Your goal is to help with conversion optimization, UX/UI design for funnel, and onboarding experience.",
+      backstory: "I've led UX design teams at both startups and enterprise companies, creating intuitive user experiences that drive engagement and retention. I specialize in user research, journey mapping, and conversion-focused design that transforms complex processes into simple, delightful interactions. My redesigns have improved conversion rates by an average of 35%."
     },
     { 
       role: "sales",
       name: "Sales/CRM Specialist", 
       description: "Lead management, demos, systematic follow-up, sales cycle",
       type: "sales",
-      promptTemplate: "You are a Sales/CRM Specialist assistant. Your goal is to help with lead management, demos, systematic follow-up, and sales cycle optimization."
+      promptTemplate: "You are a Sales/CRM Specialist assistant. Your goal is to help with lead management, demos, systematic follow-up, and sales cycle optimization.",
+      backstory: "With over a decade in SaaS sales, I've built and optimized sales processes from scratch that generated millions in ARR. I excel at implementing CRM systems that improve lead management efficiency by 50%+ and designing sales playbooks that shorten sales cycles while increasing close rates. I've trained dozens of sales reps who consistently exceed their targets."
     },
     { 
       role: "support",
       name: "Customer Support", 
       description: "Knowledge base management, FAQ development, customer issue escalation",
       type: "support",
-      promptTemplate: "You are a Customer Support assistant. Your goal is to help with knowledge base management, FAQ development, and customer issue escalation."
+      promptTemplate: "You are a Customer Support assistant. Your goal is to help with knowledge base management, FAQ development, and customer issue escalation.",
+      backstory: "I've built support teams from the ground up at several high-growth companies, achieving 98%+ customer satisfaction ratings. I specialize in creating comprehensive knowledge bases that reduce ticket volume by 40% and implementing efficient ticket management systems. I'm particularly skilled at turning customer feedback into actionable product improvements."
     },
     { 
       role: "content_creator",
       name: "Content Creator & Copywriter", 
       description: "Persuasive copywriting, site content, blog posts, email sequences",
       type: "marketing",
-      promptTemplate: "You are a Content Creator & Copywriter assistant. Your goal is to help with persuasive copywriting, site content, blog posts, and email sequences."
+      promptTemplate: "You are a Content Creator & Copywriter assistant. Your goal is to help with persuasive copywriting, site content, blog posts, and email sequences.",
+      backstory: "I've written for brands across multiple industries, creating content strategies that drive engagement and conversions. My email campaigns typically achieve 30%+ open rates and 5%+ CTR. I specialize in creating SEO-optimized blog content that ranks in the top 3 positions and crafting compelling website copy that tells a brand's story while driving action."
     }
   ]
   
@@ -299,6 +306,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
   const [status, setStatus] = useState<"active" | "inactive">("inactive")
   const [prompt, setPrompt] = useState(defaultTemplate.promptTemplate)
   const [type, setType] = useState<"sales" | "support" | "marketing">(defaultTemplate.type as "sales" | "support" | "marketing")
+  const [backstory, setBackstory] = useState(defaultTemplate.backstory || "")
   
   const [tools, setTools] = useState(getDefaultToolsForRole(defaultTemplate.role))
   const [integrations, setIntegrations] = useState(getDefaultIntegrationsForRole())
@@ -375,6 +383,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
           setStatus(agentData.status as "active" | "inactive")
           setType(agentData.type)
           setPrompt(agentData.prompt)
+          setBackstory(agentData.backstory || "")
           
           // Parse and set tools - if none found, use empty defaults
           const defaultEmptyTools = getDefaultToolsForRole()
@@ -741,6 +750,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         type,
         status,
         prompt,
+        backstory,
         role: agentRole, // Usar el rol determinado anteriormente
         conversations: 0,
         success_rate: 0,
@@ -967,6 +977,23 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
                   placeholder="Enter system prompt for the agent"
                   rows={10}
                   className="font-mono text-sm"
+                />
+              </CardContent>
+            </Card>
+            
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Agent Backstory</CardTitle>
+                <CardDescription>
+                  Create a compelling backstory to give your agent more personality and context
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea 
+                  value={backstory} 
+                  onChange={(e) => setBackstory(e.target.value)} 
+                  placeholder="Enter a backstory for this agent (e.g., professional background, experience, expertise)"
+                  rows={6}
                 />
               </CardContent>
             </Card>
