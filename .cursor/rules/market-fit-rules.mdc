@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+No uses Lucide-react, ya tenemos iconos en el proyecto.
+Todos los elementos de interfaz gráfica siempre en ingles.
+básate en los demas componentes y pantallas ya tenemos ejemplos de casi todo.
