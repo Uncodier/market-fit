@@ -10,7 +10,8 @@ import {
   createConversation,
   sendTeamMemberIntervention,
   sendAgentMessage,
-  addMessage
+  addMessage,
+  addTeamMemberMessage
 } from '@/app/services/chat-service'
 
 // Helper function to log detailed API errors
@@ -59,10 +60,10 @@ export function useChatOperations({
     const userName = user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'Team Member')
     const userAvatar = user.user_metadata?.avatar_url || "/avatars/user-default.png"
     
-    // Create a message for immediate display with the correct role
-    const userMessage: ChatMessage = {
+    // Create a temporary message for UI feedback with the correct role (always team_member for UI)
+    const tempUserMessage: ChatMessage = {
       id: `temp-${Date.now()}`,
-      role: "team_member", // Always team_member, even in direct conversations
+      role: "team_member", // Always team_member for UI display, regardless of conversation type
       text: message,
       timestamp: new Date(),
       sender_id: user.id,
@@ -70,8 +71,8 @@ export function useChatOperations({
       sender_avatar: userAvatar
     }
     
-    // Add message to conversation immediately
-    setChatMessages(prev => [...prev, userMessage])
+    // Add temporary message to conversation immediately for UI feedback
+    setChatMessages(prev => [...prev, tempUserMessage])
     
     // Set loading state while we send the API request
     setIsLoading(true)
@@ -106,7 +107,7 @@ export function useChatOperations({
         }
       }
       
-      // Custom data for local display
+      // Custom data for API
       const customData = {
         user_name: userName,
         avatar_url: userAvatar
@@ -119,14 +120,14 @@ export function useChatOperations({
         if (isAgentOnlyConversation) {
           // Use direct agent message API for agent-only conversations
           console.log("★★★ SENDING DIRECT AGENT MESSAGE ★★★")
-          console.log("Message text:", userMessage.text)
+          console.log("Message text:", tempUserMessage.text)
           
           try {
-            // Call the direct agent message API
+            // Call the direct agent message API - let the API handle the message creation
             console.log(`[${new Date().toISOString()}] 📞 Calling sendAgentMessage...`)
             const result = await sendAgentMessage(
               actualConversationId,
-              userMessage.text,
+              tempUserMessage.text,
               agentId,
               {
                 site_id: currentSite.id,
@@ -165,7 +166,7 @@ export function useChatOperations({
           
           await sendTeamMemberIntervention(
             actualConversationId,
-            userMessage.text,
+            tempUserMessage.text,
             user.id,
             agentId,
             {
@@ -178,28 +179,56 @@ export function useChatOperations({
         }
       } catch (apiError) {
         console.error(`[${new Date().toISOString()}] ❌ Error al enviar mensaje:`, apiError)
-        // If there's an error, show the message but allow it to continue
-        // to save at least locally
         logApiError(apiError, isAgentOnlyConversation ? 'DirectAgentMessage' : 'TeamIntervention')
         
         // Show a toast notification with the error
         toast.error(apiError instanceof Error 
           ? `Error: ${apiError.message}` 
-          : "Failed to send message to the server. Message saved locally."
+          : "Failed to send message to the server."
         )
         
-        // ONLY in case of error we save the message locally so it's not lost
+        // Si falla la API, crear mensaje en DB con status:failed
         try {
-          // Save the message locally only if the API call failed
-          await addMessage(
+          // Remove temporary message to avoid duplicates
+          setChatMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id))
+          
+          // Create error metadata
+          const errorMetadata = {
+            ...customData,
+            command_status: "failed",
+            error_message: apiError instanceof Error ? apiError.message : "API communication error"
+          }
+          
+          // Add message to database with failed status
+          const savedMessage = await addTeamMemberMessage(
             actualConversationId,
-            isAgentOnlyConversation ? "user" : "team_member",
             user.id,
-            userMessage.text,
-            customData
+            userName,
+            userAvatar,
+            tempUserMessage.text,
+            errorMetadata
           )
-        } catch (localSaveError) {
-          console.error("Error saving message locally:", localSaveError)
+          
+          if (savedMessage) {
+            // Add the saved message with failed status to UI
+            setChatMessages(prev => [...prev, {
+              id: savedMessage.id,
+              role: "team_member",
+              text: tempUserMessage.text,
+              timestamp: new Date(savedMessage.created_at),
+              sender_id: user.id,
+              sender_name: userName,
+              sender_avatar: userAvatar,
+              metadata: {
+                command_status: "failed",
+                error_message: errorMetadata.error_message
+              }
+            }])
+            
+            console.log(`[${new Date().toISOString()}] ⚠️ Mensaje guardado con estado 'failed'`, savedMessage.id)
+          }
+        } catch (dbError) {
+          console.error(`[${new Date().toISOString()}] 💥 Error al guardar mensaje de error en DB:`, dbError)
         }
       }
     } catch (error) {
@@ -214,6 +243,9 @@ export function useChatOperations({
           : "There was an error sending your message. Please try again.",
         timestamp: new Date()
       }])
+      
+      // Remove temporary message since there was an error
+      setChatMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id))
     } finally {
       // Always clear loading states
       setIsLoading(false)
@@ -248,6 +280,9 @@ export function useChatOperations({
     }
     
     try {
+      // Reset any active agent response animations before creating a new conversation
+      setIsAgentResponding(false)
+      
       // Debug parameters being passed to createConversation
       console.log("Creating conversation with parameters:")
       console.log("- siteId:", currentSite.id)
@@ -267,6 +302,10 @@ export function useChatOperations({
       
       if (conversation) {
         console.log("New conversation created successfully:", conversation)
+        
+        // Clear the chat messages to avoid any transitional issues
+        setChatMessages([])
+        
         router.push(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}`)
       } else {
         console.error("Failed to create conversation - returned null")
@@ -317,6 +356,9 @@ export function useChatOperations({
     }
     
     try {
+      // Reset any active agent response animations before creating a new conversation
+      setIsAgentResponding(false)
+      
       // Debug parameters being passed to createConversation
       console.log("Creating lead conversation with parameters:")
       console.log("- siteId:", currentSite.id)
@@ -339,6 +381,10 @@ export function useChatOperations({
       if (conversation) {
         console.log("New lead conversation created successfully:", conversation)
         console.log("Redirecting to:", `/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}`)
+        
+        // Clear the chat messages to avoid any transitional issues
+        setChatMessages([])
+        
         router.push(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}`)
       } else {
         console.error("Failed to create lead conversation - returned null")
@@ -381,6 +427,9 @@ export function useChatOperations({
     }
     
     try {
+      // Reset any active agent response animations before creating a new conversation
+      setIsAgentResponding(false)
+      
       // Debug parameters being passed to createConversation
       console.log("Creating AGENT-ONLY conversation with parameters:")
       console.log("- siteId:", currentSite.id)
@@ -407,6 +456,11 @@ export function useChatOperations({
         // Create URL with mode parameter for agent-only conversation
         const newUrl = `/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}&mode=agentOnly`
         console.log("Redirecting to new agent conversation URL:", newUrl)
+        
+        // Clear the chat messages to avoid any transitional issues
+        setChatMessages([])
+        
+        // Navigate to the new conversation
         router.push(newUrl) // Use router.push instead of window.history for proper routing
       } else {
         console.error("Failed to create agent conversation - returned null")
@@ -448,6 +502,9 @@ export function useChatOperations({
     }
     
     try {
+      // Reset any active agent response animations before creating a new conversation
+      setIsAgentResponding(false)
+      
       // Debug parameters being passed to createConversation
       console.log("Creating private conversation with parameters:")
       console.log("- siteId:", currentSite.id)
@@ -472,6 +529,10 @@ export function useChatOperations({
       if (conversation) {
         console.log("New private conversation created successfully:", conversation)
         console.log("Redirecting to:", `/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}&mode=private`)
+        
+        // Clear the chat messages to avoid any transitional issues
+        setChatMessages([])
+        
         router.push(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}&mode=private`)
       } else {
         console.error("Failed to create private conversation - returned null")

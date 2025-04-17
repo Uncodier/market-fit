@@ -1349,3 +1349,14 @@ export const Maximize = ({ className = "", size = 20, ...props }: IconProps) => 
     </svg>
   </IconWrapper>
 )
+
+// Añadimos el icono para los tres puntos verticales
+export const MoreVertical = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="5" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="12" cy="19" r="1" />
+    </svg>
+  </IconWrapper>
+)

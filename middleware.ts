@@ -25,6 +25,18 @@ export async function middleware(req: NextRequest) {
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     
+    // Establecer CSP headers para WebSockets
+    response.headers.set('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
+      "http://localhost:3001 http://192.168.87.25:3001; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self' data:;"
+    );
+    
+    console.log('Middleware: Establecidos headers CSP para WebSockets en OPTIONS');
     return response;
   }
 
@@ -36,6 +48,20 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
     res.headers.set('Access-Control-Allow-Credentials', 'true');
+    
+    // Añadir CSP header para permitir WebSockets
+    res.headers.set('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
+      "http://localhost:3001 http://192.168.87.25:3001; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self' data:;"
+    );
+    
+    // Solo para depuración
+    console.log('Middleware: Establecidos headers CSP para permitir WebSockets');
     
     // Crear el cliente de Supabase con configuración explícita de cookies
     const supabase = createServerClient(
@@ -98,6 +124,17 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
     res.headers.set('Access-Control-Allow-Credentials', 'true');
     
+    // Asegurar que el CSP header esté configurado incluso en caso de error
+    res.headers.set('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
+      "http://localhost:3001 http://192.168.87.25:3001; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self' data:;"
+    );
+    
     return res
   }
 }
@@ -111,7 +148,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - api (API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
   ],
 } 

@@ -236,6 +236,9 @@ async function getUserData(userId: string): Promise<{ name: string, avatar_url: 
  */
 export async function getConversations(siteId: string): Promise<ConversationListItem[]> {
   try {
+    console.log(`🔍 DEBUG: getConversations called for site: ${siteId}`);
+    const supabase = createClient();
+    
     // Primero obtenemos las conversaciones
     const { data: conversations, error: conversationsError } = await supabase
       .from("conversations")
@@ -263,9 +266,13 @@ export async function getConversations(siteId: string): Promise<ConversationList
     }
 
     if (!conversations || conversations.length === 0) {
+      console.log('🔍 DEBUG: No conversations found for site', siteId);
       return []
     }
-
+    
+    console.log(`🔍 DEBUG: Retrieved ${conversations.length} conversations from database`);
+    console.log('🔍 DEBUG: First conversation titles:', conversations.slice(0, 3).map((c: any) => c.title));
+    
     // Obtenemos los IDs de los agentes
     const agentIds = conversations.map((conv: any) => conv.agent_id).filter(Boolean)
     
@@ -516,6 +523,7 @@ export async function createConversation(
 
 /**
  * Add a message to a conversation
+ * @deprecated Use sendTeamMemberIntervention or sendAgentMessage instead. Direct database operations are not recommended.
  */
 export async function addMessage(
   conversationId: string,
@@ -524,6 +532,13 @@ export async function addMessage(
   content: string,
   metadata?: Record<string, any>
 ): Promise<Message | null> {
+  // Warning about using this function directly
+  console.warn(
+    "⚠️ WARNING: Using addMessage directly is deprecated. " +
+    "Messages should be created through the API using sendTeamMemberIntervention or sendAgentMessage. " +
+    "Direct database operations may cause inconsistencies."
+  );
+
   // Determinamos qué campo de ID rellenar según el rol
   let messageData: any = {
     conversation_id: conversationId,
@@ -557,6 +572,7 @@ export async function addMessage(
 
 /**
  * Add a team member message to a conversation
+ * @deprecated Use sendTeamMemberIntervention instead. Direct database operations are not recommended.
  */
 export async function addTeamMemberMessage(
   conversationId: string,
@@ -566,6 +582,13 @@ export async function addTeamMemberMessage(
   content: string,
   additionalMetadata?: Record<string, any>
 ): Promise<Message | null> {
+  // Warning about using this function directly
+  console.warn(
+    "⚠️ WARNING: Using addTeamMemberMessage directly is deprecated. " +
+    "Team member messages should be created through the API using sendTeamMemberIntervention. " +
+    "Direct database operations may cause inconsistencies."
+  );
+
   // Crear metadatos con información del usuario
   const metadata = {
     user_name: userName,
@@ -780,8 +803,21 @@ export async function getConversationMessages(conversationId: string): Promise<C
       return [];
     }
     
+    // Ordenar mensajes por fecha de creación antes de convertirlos
+    const sortedMessages = [...conversation.messages].sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateA - dateB; // Orden ascendente (más antiguos primero)
+    });
+    
+    console.log("🔄 Mensajes ordenados por fecha:", sortedMessages.map(m => ({
+      id: m.id.substring(0, 6),
+      role: m.role,
+      created_at: m.created_at
+    })));
+    
     // Convertir mensajes a formato ChatMessage
-    return await convertMessagesToChatFormat(conversation.messages);
+    return await convertMessagesToChatFormat(sortedMessages);
   } catch (error) {
     console.error("Error in getConversationMessages:", error);
     return [];

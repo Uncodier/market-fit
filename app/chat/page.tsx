@@ -121,22 +121,12 @@ export default function ChatPage() {
       
       if (mockAgent) {
         setCurrentAgent(mockAgent)
-        console.log("Found agent in mock list:", mockAgent.name, "with icon:", mockAgent.icon)
-        
-        // Verify the icon exists
-        const IconComponent = mockAgent.icon ? Icons[mockAgent.icon as keyof typeof Icons] : null
-        console.log("IconComponent exists:", !!IconComponent)
       } else {
-        console.log("Agent not found in mock list, trying database for id:", agentId)
-        
         // Try to load from database
         try {
           const dbAgent = await getAgentForConversation(agentId)
           if (dbAgent) {
-            console.log("Found agent in database:", dbAgent.name)
             setCurrentAgent(dbAgent)
-          } else {
-            console.log("Agent not found in database either for id:", agentId)
           }
         } catch (error) {
           console.error("Error fetching agent from database:", error)
@@ -227,8 +217,6 @@ export default function ChatPage() {
     
     // Manually update the conversationId, agentName and agentId to trigger UI updates
     if (conversationId !== selectedConversationId) {
-      console.log("Changing conversation without reload:", selectedConversationId)
-      
       // Clear any existing messages while we load the new conversation
       setChatMessages([])
     }
@@ -277,7 +265,6 @@ export default function ChatPage() {
       try {
         const isAvailable = await checkApiServerAvailability()
         setIsApiServerAvailable(isAvailable)
-        console.log("API server availability:", isAvailable ? "Available" : "Not available")
       } catch (error) {
         console.error("Error checking API server:", error)
         setIsApiServerAvailable(false)
@@ -297,11 +284,8 @@ export default function ChatPage() {
       const mode = url.searchParams.get('mode')
       
       if (convId && agId && agName && convId !== conversationId) {
-        console.log("popstate detected - loading conversation:", convId)
-        
         // Mode-specific handling
         if (mode === 'agentOnly' || mode === 'private') {
-          console.log("popstate detected - setting agent-only mode from URL")
           setIsAgentOnlyConversation(true)
         }
       }

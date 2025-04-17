@@ -130,6 +130,19 @@ export function createClient() {
               console.error('Error eliminando cookie:', error)
             }
           }
+        },
+        // Configuración adicional para Realtime
+        realtime: {
+          params: {
+            eventsPerSecond: 10
+          },
+          // Configuración básica de timeout
+          timeout: 60000 // 60 segundos de timeout para la conexión inicial
+        },
+        global: {
+          headers: {
+            'X-Supabase-Cache-Control': '0'
+          }
         }
       }
     )

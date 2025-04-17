@@ -6,6 +6,9 @@ import { Badge } from "@/app/components/ui/badge"
 import Link from "next/link"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ChatMessage } from "@/app/types/chat"
+import { EmptyConversation } from "./EmptyConversation"
+import * as Icons from "@/app/components/ui/icons"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -95,152 +98,235 @@ export function ChatMessages({
           </div>
         ) : (
           <div className="space-y-6">
-            {chatMessages.map((msg, index) => {
-              // Check if we need to show a date separator
-              const showDateSeparator = index > 0 && 
-                !isSameDay(
-                  new Date(chatMessages[index-1].timestamp), 
-                  new Date(msg.timestamp)
-                );
-              
-              return (
-                <React.Fragment key={msg.id || index}>
-                  {showDateSeparator && (
-                    <div className="flex justify-center my-8">
-                      <Badge variant="outline" className="px-3 py-1 text-xs bg-background/80 backdrop-blur">
-                        {formatDate(new Date(msg.timestamp))}
-                      </Badge>
-                    </div>
-                  )}
-                  <div
-                    className={`flex ${
-                      msg.role === "team_member" 
-                      ? (isAgentOnlyConversation ? "justify-end" : "justify-start")
-                      : (msg.role === "user" || msg.role === "visitor") ? "justify-end" : "justify-start"
-                    } animate-fade-in`}
-                  >
-                    {msg.role === "team_member" && !isAgentOnlyConversation ? (
-                      <div className="flex flex-col max-w-[calc(100%-240px)]">
-                        <div className="flex items-center mb-1 gap-2">
-                          <Avatar className="h-7 w-7 border border-primary/10">
-                            <AvatarImage src={msg.sender_avatar || `/avatars/user-default.png`} alt={msg.sender_name || "Team Member"} style={{ objectFit: 'cover' }} />
-                            <AvatarFallback className="text-xs bg-primary/10" style={{
-                              backgroundColor: msg.sender_id 
-                                ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
-                                : undefined
-                            }}>
-                              {msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : (msg.sender_id ? msg.sender_id.charAt(0).toUpperCase() : "T")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
-                        </div>
-                        <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9"
-                          style={{ 
-                            backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
-                            border: 'none', 
-                            boxShadow: 'none', 
-                            outline: 'none',
-                            filter: 'none' 
-                          }}
-                        >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                          <p className="text-xs opacity-70 mt-1.5">
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                    ) : msg.role === "team_member" && isAgentOnlyConversation ? (
-                      <div className="flex flex-col max-w-[calc(100%-240px)] items-end">
-                        <div className="flex items-center mb-1 gap-2 flex-row-reverse">
-                          <Avatar className="h-7 w-7 border border-primary/10">
-                            <AvatarImage src={msg.sender_avatar || `/avatars/user-default.png`} alt={msg.sender_name || "Team Member"} style={{ objectFit: 'cover' }} />
-                            <AvatarFallback className="text-xs bg-primary/10" style={{
-                              backgroundColor: msg.sender_id 
-                                ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
-                                : undefined
-                            }}>
-                              {msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : (msg.sender_id ? msg.sender_id.charAt(0).toUpperCase() : "T")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
-                        </div>
-                        <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9"
-                          style={{ 
-                            backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
-                            border: 'none', 
-                            boxShadow: 'none', 
-                            outline: 'none',
-                            filter: 'none' 
-                          }}
-                        >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                          <p className="text-xs opacity-70 mt-1.5 text-right">
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (msg.role === "agent" || msg.role === "assistant") ? (
-                      <div className="max-w-[calc(100%-240px)]">
-                        <div className="flex items-center mb-1 gap-2">
-                          <Avatar className="h-7 w-7 border border-primary/10">
-                            <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={agentName} />
-                            <AvatarFallback className="bg-primary/10">
-                              {agentName.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium text-primary">{agentName}</span>
-                        </div>
-                        <div className="ml-9">
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                        </div>
-                      </div>
-                    ) : (msg.role === "user" || msg.role === "visitor") ? (
-                      <div className="flex flex-col max-w-[calc(100%-240px)] items-end">
-                        <div className="flex items-center mb-1 gap-2 flex-row-reverse">
-                          <Avatar className="h-7 w-7 border border-amber-500/20">
-                            <AvatarImage src={leadData?.avatarUrl || "/avatars/visitor-default.png"} alt={leadData?.name || "Visitor"} />
-                            <AvatarFallback className="bg-amber-500/10 text-amber-600">
-                              {leadData?.name ? leadData.name.split(' ').map((n: string) => n[0]).join('') : "V"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium text-amber-600 dark:text-amber-500">{leadData?.name || "Visitor"}</span>
-                        </div>
-                        <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9"
-                          style={{ 
-                            backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
-                            border: 'none', 
-                            boxShadow: 'none', 
-                            outline: 'none',
-                            filter: 'none' 
-                          }}
-                        >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                          <p className="text-xs opacity-70 mt-1.5 text-right">
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div 
-                        className="max-w-[calc(100%-240px)] rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground"
-                        style={{ 
-                          backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
-                          border: 'none', 
-                          boxShadow: 'none', 
-                          outline: 'none',
-                          filter: 'none' 
-                        }}
-                      >
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                        <p className="text-xs opacity-70 mt-1.5">
-                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
+            {chatMessages.length === 0 ? (
+              <EmptyConversation 
+                agentId={agentId}
+                agentName={agentName}
+              />
+            ) : (
+              chatMessages.map((msg, index) => {
+                // Check if we need to show a date separator
+                const showDateSeparator = index > 0 && 
+                  !isSameDay(
+                    new Date(chatMessages[index-1].timestamp), 
+                    new Date(msg.timestamp)
+                  );
+                
+                return (
+                  <React.Fragment key={msg.id || index}>
+                    {showDateSeparator && (
+                      <div className="flex justify-center my-8">
+                        <Badge variant="outline" className="px-3 py-1 text-xs bg-background/80 backdrop-blur">
+                          {formatDate(new Date(msg.timestamp))}
+                        </Badge>
                       </div>
                     )}
-                  </div>
-                </React.Fragment>
-              );
-            })}
+                    <div
+                      className={`flex ${
+                        msg.role === "team_member" 
+                        ? (isAgentOnlyConversation ? "justify-end" : "justify-start")
+                        : (msg.role === "user" || msg.role === "visitor") ? "justify-end" : "justify-start"
+                      } animate-fade-in`}
+                    >
+                      {msg.role === "team_member" && !isAgentOnlyConversation ? (
+                        <div className="flex flex-col max-w-[calc(100%-240px)]">
+                          <div className="flex items-center mb-1 gap-2">
+                            <Avatar className="h-7 w-7 border border-primary/10">
+                              <AvatarImage src={msg.sender_avatar || `/avatars/user-default.png`} alt={msg.sender_name || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarFallback className="text-xs bg-primary/10" style={{
+                                backgroundColor: msg.sender_id 
+                                  ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                  : undefined
+                              }}>
+                                {msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : (msg.sender_id ? msg.sender_id.charAt(0).toUpperCase() : "T")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                          </div>
+                          <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9"
+                            style={{ 
+                              backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
+                              border: 'none', 
+                              boxShadow: 'none', 
+                              outline: 'none',
+                              filter: 'none' 
+                            }}
+                          >
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            <div className="flex items-center justify-between mt-1.5">
+                              <div>
+                                {msg.metadata?.command_status === "failed" && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center text-xs text-red-500 mr-2">
+                                          <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                          Failed to send
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                              <p className="text-xs opacity-70">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : msg.role === "team_member" && isAgentOnlyConversation ? (
+                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end">
+                          <div className="flex items-center mb-1 gap-2 flex-row-reverse">
+                            <Avatar className="h-7 w-7 border border-primary/10">
+                              <AvatarImage src={msg.sender_avatar || `/avatars/user-default.png`} alt={msg.sender_name || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarFallback className="text-xs bg-primary/10" style={{
+                                backgroundColor: msg.sender_id 
+                                  ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                  : undefined
+                              }}>
+                                {msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : (msg.sender_id ? msg.sender_id.charAt(0).toUpperCase() : "T")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                          </div>
+                          <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9"
+                            style={{ 
+                              backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
+                              border: 'none', 
+                              boxShadow: 'none', 
+                              outline: 'none',
+                              filter: 'none' 
+                            }}
+                          >
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            <div className="flex items-center justify-between mt-1.5">
+                              <div>
+                                {msg.metadata?.command_status === "failed" && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center text-xs text-red-500 mr-2">
+                                          <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                          Failed to send
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                              <p className="text-xs opacity-70 text-right">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (msg.role === "agent" || msg.role === "assistant") ? (
+                        <div className="max-w-[calc(100%-240px)]">
+                          <div className="flex items-center mb-1 gap-2">
+                            <Avatar className="h-7 w-7 border border-primary/10">
+                              <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={agentName} />
+                              <AvatarFallback className="bg-primary/10">
+                                {agentName.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-primary">{agentName}</span>
+                          </div>
+                          <div className="ml-9">
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          </div>
+                        </div>
+                      ) : (msg.role === "user" || msg.role === "visitor") ? (
+                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end">
+                          <div className="flex items-center mb-1 gap-2 flex-row-reverse">
+                            <Avatar className="h-7 w-7 border border-amber-500/20">
+                              <AvatarImage src={leadData?.avatarUrl || "/avatars/visitor-default.png"} alt={leadData?.name || "Visitor"} />
+                              <AvatarFallback className="bg-amber-500/10 text-amber-600">
+                                {leadData?.name ? leadData.name.split(' ').map((n: string) => n[0]).join('') : "V"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-amber-600 dark:text-amber-500">{leadData?.name || "Visitor"}</span>
+                          </div>
+                          <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9"
+                            style={{ 
+                              backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
+                              border: 'none', 
+                              boxShadow: 'none', 
+                              outline: 'none',
+                              filter: 'none' 
+                            }}
+                          >
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            <div className="flex items-center justify-between mt-1.5">
+                              <div>
+                                {msg.metadata?.command_status === "failed" && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center text-xs text-red-500 mr-2">
+                                          <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                          Failed to send
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                              <p className="text-xs opacity-70 text-right">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          className="max-w-[calc(100%-240px)] rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground"
+                          style={{ 
+                            backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
+                            border: 'none', 
+                            boxShadow: 'none', 
+                            outline: 'none',
+                            filter: 'none' 
+                          }}
+                        >
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          <div className="flex items-center justify-between mt-1.5">
+                            <div>
+                              {msg.metadata?.command_status === "failed" && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center text-xs text-red-500 mr-2">
+                                        <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                        Failed to send
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                            <p className="text-xs opacity-70">
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </React.Fragment>
+                );
+              })
+            )}
             
             {/* Animación de espera mientras el agente responde */}
             {isAgentResponding && isAgentOnlyConversation && (

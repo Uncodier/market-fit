@@ -24,14 +24,11 @@ export function useChatMessages(
       setIsLoadingMessages(true)
       
       try {
-        // If it's a new conversation, show a welcome message
+        // Si es una nueva conversación, iniciar con un array vacío en lugar de mensaje dummy
         if (conversationId.startsWith("new-")) {
-          setChatMessages([{
-            id: "welcome",
-            role: "user",
-            text: `Hello! I'm looking for help with my project.`,
-            timestamp: new Date(),
-          }])
+          setChatMessages([])
+          // Asegurarse que no haya animación de carga
+          setIsAgentResponding(false)
         } else {
           console.log("Loading messages for conversation:", conversationId)
           
@@ -53,17 +50,10 @@ export function useChatMessages(
               setIsAgentResponding(true)
             }
           } else {
-            // If there are no messages, set a welcome message
-            setChatMessages([{
-              id: "welcome",
-              role: "user",
-              text: `Hello! I'm looking for help with my project.`,
-              timestamp: new Date(),
-            }])
-            
-            // Show loading animation after welcome message
-            console.log(`[${new Date().toISOString()}] 🟢🟢🟢 ACTIVANDO ANIMACIÓN (mensaje de bienvenida) 🟢🟢🟢`)
-            setIsAgentResponding(true)
+            // Si no hay mensajes, inicializar con array vacío
+            setChatMessages([])
+            // No activar la animación de espera si no hay mensajes reales
+            setIsAgentResponding(false)
           }
           
           // Subscribe to new messages in real time
