@@ -19,6 +19,13 @@ export function useChatMessages(
   // Load messages when the conversation changes
   useEffect(() => {
     async function loadMessages() {
+      // Clean up any previous subscription
+      if (messageSubscriptionRef.current) {
+        console.log('Unsubscribing from previous conversation')
+        messageSubscriptionRef.current.unsubscribe()
+        messageSubscriptionRef.current = null
+      }
+    
       if (!conversationId) return
       
       setIsLoadingMessages(true)
@@ -62,11 +69,6 @@ export function useChatMessages(
             
             console.log(`Setting up real-time subscription for conversation: ${conversationId}`)
             
-            // Clean up any previous subscription if it exists
-            if (messageSubscriptionRef.current) {
-              messageSubscriptionRef.current.unsubscribe()
-            }
-            
             // Create new subscription
             messageSubscriptionRef.current = supabase
               .channel(`conversation-${conversationId}`)
@@ -96,19 +98,15 @@ export function useChatMessages(
                   // Disable immediately, without waiting
                   setIsAgentResponding(false)
                   
-                  // Update the messages to immediately add the assistant's response
-                  setChatMessages(prev => [...prev, {
-                    id: payload.new.id,
-                    role: 'assistant',
-                    text: payload.new.content,
-                    timestamp: new Date(payload.new.created_at)
-                  }])
+                  // Don't add to state immediately to avoid duplicates
+                  // Let the getConversationMessages call handle all updates
                 } else {
                   console.log(`[${new Date().toISOString()}] ⏳ Mensaje no es del asistente (${payload.new.role}), manteniendo animación`)
                 }
                 
                 // Get all updated messages to fully synchronize
                 getConversationMessages(conversationId).then(updatedMessages => {
+                  // Replace the entire state with the updated messages from the API
                   setChatMessages(updatedMessages)
                 })
               })
@@ -130,10 +128,10 @@ export function useChatMessages(
     
     loadMessages()
     
-    // Clean up subscription when conversation changes or component unmounts
+    // Clean up subscription when the component unmounts
     return () => {
       if (messageSubscriptionRef.current) {
-        console.log('Unsubscribing from previous conversation')
+        console.log('Unmounting: Unsubscribing from conversation')
         messageSubscriptionRef.current.unsubscribe()
         messageSubscriptionRef.current = null
       }

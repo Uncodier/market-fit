@@ -112,6 +112,9 @@ export function ChatHeader({
 
   // Get the appropriate icon component
   const IconComponent = getIconByRoleOrType()
+  
+  // Determine final agent name to display (preferring currentAgent.name over prop)
+  const displayAgentName = currentAgent?.name || agentName || "Agent";
 
   return (
     <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80" 
@@ -126,7 +129,7 @@ export function ChatHeader({
         onPrivateDiscussion={handlePrivateDiscussion}
         showNewConversationButton={true}
         isLead={isLead}
-        agentName={agentName}
+        agentName={displayAgentName}
         agentId={agentId}
         leadName={isLead ? leadData?.name || "Lead" : "Visitor"}
         leadId={isLead ? leadData?.id || "" : ""}
@@ -139,18 +142,18 @@ export function ChatHeader({
         {/* Agent info */}
         <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out">
           <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out">
-            <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={agentName} />
+            <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={displayAgentName} />
             <AvatarFallback className="bg-primary/10">
               {IconComponent ? (
                 <IconComponent className="h-6 w-6 transition-transform duration-200" aria-hidden={true} />
               ) : (
-                agentName.charAt(0)
+                displayAgentName.charAt(0)
               )}
             </AvatarFallback>
           </Avatar>
           <div className="transition-transform duration-300 ease-in-out">
             <div className="flex items-center gap-2">
-              <h2 className="font-medium text-lg">{agentName}</h2>
+              <h2 className="font-medium text-lg">{displayAgentName}</h2>
               <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300">
                 {agentRole}
               </Badge>

@@ -3,6 +3,54 @@ export type CampaignStatus = 'active' | 'pending' | 'completed';
 export type CampaignPriority = 'high' | 'medium' | 'low';
 export type CampaignType = 'inbound' | 'outbound' | 'branding' | 'product' | 'events' | 'success' | 'account' | 'community' | 'guerrilla' | 'affiliate' | 'experiential' | 'programmatic' | 'performance' | 'publicRelations';
 
+// KPI types
+export type KpiType = 'revenue' | 'conversion' | 'retention' | 'acquisition' | 'engagement' | 'satisfaction' | 'growth' | 'custom';
+export type KpiUnit = 'currency' | 'percentage' | 'count' | 'ratio' | 'time' | 'custom';
+
+export interface Kpi {
+  id: string;
+  name: string;
+  description: string | null;
+  value: number;
+  previous_value: number;
+  unit: string;
+  type: KpiType;
+  period_start: string;
+  period_end: string;
+  segment_id: string | null;
+  is_highlighted: boolean;
+  target_value: number | null;
+  metadata: any | null;
+  site_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  trend: number;
+  benchmark: number | null;
+}
+
+export interface KpiData {
+  id: string;
+  name: string;
+  description: string | null;
+  value: number;
+  previous_value: number;
+  unit: string;
+  type: string;
+  period_start: string;
+  period_end: string;
+  segment_id: string | null;
+  is_highlighted: boolean;
+  target_value: number | null;
+  metadata: any | null;
+  site_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  trend: number;
+  benchmark: number | null;
+}
+
 export interface Revenue {
   actual: number;
   projected: number;

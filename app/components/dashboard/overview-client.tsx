@@ -28,7 +28,7 @@ export function OverviewClient() {
   // Colores adaptables según el tema
   const colors = {
     text: isDarkMode ? "#CBD5E1" : "#9CA3AF",
-    grid: isDarkMode ? "rgba(203, 213, 225, 0.1)" : "#f0f0f0",
+    grid: isDarkMode ? "rgba(203, 213, 225, 0.2)" : "#f0f0f0",
     tooltipBackground: isDarkMode ? "#1E293B" : "white",
     tooltipBorder: isDarkMode ? "#475569" : "#e5e7eb",
     tooltipText: isDarkMode ? "#F8FAFC" : "#111827",
@@ -47,7 +47,7 @@ export function OverviewClient() {
             strokeDasharray="3 3" 
             vertical={false} 
             stroke={colors.grid} 
-            opacity={isDarkMode ? 0.3 : 1}
+            opacity={isDarkMode ? 0.6 : 1}
           />
           <XAxis 
             dataKey="name" 

@@ -19,6 +19,10 @@ import { getSegments } from "@/app/segments/actions"
 import { useSite } from "@/app/context/SiteContext"
 import type { Segment } from "@/app/types/segments"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
+import { RevenueWidget } from "@/app/components/dashboard/revenue-widget"
+import { format } from "date-fns"
+import { startOfMonth } from "date-fns"
+import { isSameDay, isSameMonth } from "date-fns"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -27,6 +31,11 @@ export default function DashboardPage() {
   const [segments, setSegments] = useState<Segment[]>([])
   const [selectedSegment, setSelectedSegment] = useState<string>("all")
   const [isLoadingSegments, setIsLoadingSegments] = useState(false)
+  const [selectedRangeType, setSelectedRangeType] = useState<string>("This month")
+  const [dateRange, setDateRange] = useState<{ startDate: Date; endDate: Date }>({
+    startDate: startOfMonth(new Date()),
+    endDate: new Date()
+  })
 
   useEffect(() => {
     const loadSegments = async () => {
@@ -47,6 +56,26 @@ export default function DashboardPage() {
 
     loadSegments()
   }, [currentSite])
+
+  const handleDateRangeChange = (startDate: Date, endDate: Date) => {
+    setDateRange({ startDate, endDate })
+    
+    // Determine range type based on dates
+    const today = new Date()
+    const monthStart = startOfMonth(today)
+    
+    if (isSameDay(startDate, today) && isSameDay(endDate, today)) {
+      setSelectedRangeType("Today")
+    } else if (
+      isSameDay(startDate, monthStart) && 
+      isSameMonth(startDate, today) && 
+      isSameDay(endDate, today)
+    ) {
+      setSelectedRangeType("This month")
+    } else {
+      setSelectedRangeType("Custom range")
+    }
+  }
 
   return (
     <div className="flex-1 p-0">
@@ -71,19 +100,36 @@ export default function DashboardPage() {
                     disabled={isLoadingSegments}
                   >
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="All segments" />
+                      <div className="flex-1 overflow-hidden">
+                        <span style={{ pointerEvents: 'none' }}>
+                          <SelectValue placeholder="All segments" />
+                        </span>
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All segments</SelectItem>
+                      <SelectItem 
+                        value="all"
+                        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}
+                      >
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ pointerEvents: 'none' }}>All segments</span>
+                        </div>
+                      </SelectItem>
                       {segments.map((segment) => (
-                        <SelectItem key={segment.id} value={segment.id}>
-                          {segment.name}
+                        <SelectItem 
+                          key={segment.id} 
+                          value={segment.id}
+                          style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}
+                        >
+                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ pointerEvents: 'none' }}>{segment.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <CalendarDateRangePicker />
+                <CalendarDateRangePicker onRangeChange={handleDateRangeChange} />
               </div>
             </div>
           </div>
@@ -94,7 +140,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
               <p className="text-muted-foreground">
-                Welcome to your control panel
+                Welcome to your control panel - Viewing {selectedRangeType} data ({format(dateRange.startDate, "MMMM d")} to {format(dateRange.endDate, "MMMM d, yyyy")})
               </p>
             </div>
           </div>
@@ -103,27 +149,11 @@ export default function DashboardPage() {
         <div className="px-16">
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Revenue
-                  </CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Total revenue across all segments
-                    </TooltipContent>
-                  </Tooltip>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$45,231.89</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className={20.1 > 0 ? "text-green-500" : "text-red-500"}>+20.1%</span> from last month
-                  </p>
-                </CardContent>
-              </Card>
+              <RevenueWidget 
+                segmentId={selectedSegment}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">

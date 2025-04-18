@@ -3,13 +3,14 @@
 import * as React from "react"
 import { CalendarIcon, ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
-import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, startOfDay, endOfDay, startOfWeek as dateStartOfWeek, endOfWeek as dateEndOfWeek, startOfMonth as dateStartOfMonth, endOfMonth as dateEndOfMonth, startOfYear, endOfYear, isSameYear } from "date-fns"
+import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, startOfDay, endOfDay, startOfWeek as dateStartOfWeek, endOfWeek as dateEndOfWeek, startOfMonth as dateStartOfMonth, endOfMonth as dateEndOfMonth, startOfYear, endOfYear, isSameYear, subYears } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/app/components/ui/badge"
 
 export type DateEventType = 'day' | 'week' | 'month' | 'year' | 'custom';
 export type DateEventPeriod = 'past' | 'future' | 'current';
-export type DatePickerMode = 'default' | 'task' | 'report' | 'calendar';
+export type DatePickerMode = 'default' | 'task' | 'report' | 'calendar' | 'range';
 
 export interface DateEvent {
   label: string;
@@ -30,6 +31,9 @@ export interface DatePickerProps {
   position?: "top" | "bottom" | "left" | "right";
   onRangeSelect?: (start: Date, end: Date) => void;
   mode?: DatePickerMode;
+  endDate?: Date;
+  setEndDate?: (date: Date) => void;
+  rangeDisplay?: string;
 }
 
 export function DatePicker({
@@ -44,9 +48,14 @@ export function DatePicker({
   position = "bottom",
   onRangeSelect,
   mode = 'default',
+  endDate,
+  setEndDate,
+  rangeDisplay
 }: DatePickerProps) {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
   const [open, setOpen] = React.useState(false)
+  const [isSelectingEndDate, setIsSelectingEndDate] = React.useState(false)
+  const [selectedPresetLabel, setSelectedPresetLabel] = React.useState<string | null>(null)
   
   // Generate mode-specific default events with shorter labels
   const getDefaultEvents = (): DateEvent[] => {
@@ -86,6 +95,18 @@ export function DatePicker({
           { label: "Next week", value: startOfWeek(addWeeks(today, 1)), type: "week", period: "future" },
           { label: "This month", value: dateStartOfMonth(today), type: "month", period: "current" },
           { label: "Next month", value: startOfMonth(addMonths(today, 1)), type: "month", period: "future" },
+        ];
+
+      case 'range':
+        return [
+          { label: "Today", value: today, type: "day", period: "current" },
+          { label: "This week", value: dateStartOfWeek(today), type: "week", period: "current" },
+          { label: "This month", value: dateStartOfMonth(today), type: "month", period: "current" },
+          { label: "Last month", value: startOfMonth(subMonths(today, 1)), type: "month", period: "past" },
+          { label: "This quarter", value: dateStartOfMonth(new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1)), type: "month", period: "current" },
+          { label: "Year to date", value: startOfYear(today), type: "year", period: "current" },
+          { label: "Last year", value: startOfYear(subYears(today, 1)), type: "year", period: "past" },
+          { label: "All time", value: new Date(2000, 0, 1), type: "custom", period: "past" },
         ];
       
       default:
@@ -142,33 +163,66 @@ export function DatePicker({
       e.stopPropagation()
     }
     
+    if (mode === 'range' && setEndDate) {
+      if (!isSelectingEndDate) {
+        // Selecting start date
+        setDate(selectedDate);
+        if (endDate && selectedDate > endDate) {
+          setEndDate(selectedDate);
+        }
+        setIsSelectingEndDate(true);
+        return;
+      } else {
+        // Selecting end date
+        if (selectedDate < date) {
+          // If selected end date is before start date, swap them
+          setEndDate(date);
+          setDate(selectedDate);
+        } else {
+          setEndDate(selectedDate);
+        }
+        setIsSelectingEndDate(false);
+        
+        if (onRangeSelect) {
+          onRangeSelect(date, selectedDate < date ? date : selectedDate);
+        }
+        
+        setOpen(false);
+        return;
+      }
+    }
+    
     setDate(selectedDate)
     
     // If range selection is enabled and event type is provided
     if (onRangeSelect && eventType) {
-      let endDate: Date;
+      let end: Date;
       const today = new Date();
       
       switch (eventType) {
         case 'day':
-          endDate = endOfDay(selectedDate);
+          end = endOfDay(selectedDate);
           break;
         case 'week':
-          endDate = endOfDay(dateEndOfWeek(selectedDate));
+          end = endOfDay(dateEndOfWeek(selectedDate));
           break;
         case 'month':
-          endDate = endOfDay(dateEndOfMonth(selectedDate));
+          end = endOfDay(dateEndOfMonth(selectedDate));
           break;
         case 'year':
-          endDate = isSameYear(selectedDate, today) 
+          end = isSameYear(selectedDate, today) 
             ? endOfDay(today) 
             : endOfYear(selectedDate);
           break;
         default:
-          endDate = selectedDate;
+          end = selectedDate;
       }
       
-      onRangeSelect(startOfDay(selectedDate), endDate);
+      if (setEndDate) {
+        setEndDate(end);
+      }
+      
+      onRangeSelect(startOfDay(selectedDate), end);
     }
     
     setOpen(false)
@@ -183,9 +237,17 @@ export function DatePicker({
         return "Date Ranges";
       case 'calendar':
         return "Jump To";
+      case 'range':
+        return "Preset Ranges";
       default:
         return "Quick Select";
     }
+  };
+
+  // Check if a day is within the selected range
+  const isDayInRange = (day: Date): boolean => {
+    if (mode !== 'range' || !endDate) return false;
+    return day >= date && day <= endDate;
   };
   
   return (
@@ -195,32 +257,56 @@ export function DatePicker({
           <Button
             variant="outline"
             className={cn(
-              "h-12 text-left font-normal w-full",
-              "px-4 py-3 flex items-center justify-between",
-              "rounded-md border border-input bg-background ring-offset-background",
-              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              "h-10 text-left font-normal w-full",
+              "px-3 py-1 flex items-center justify-between",
+              "rounded-md border border-input bg-background",
+              "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+              "hover:bg-muted hover:border-input hover:no-underline transition-colors duration-200",
               !date && "text-muted-foreground",
               className
             )}
             disabled={disabled}
           >
-            <div className="flex items-center flex-1 min-w-0">
-              <CalendarIcon className="mr-3 h-5 w-5 flex-shrink-0" />
-              <span className="truncate">{date ? format(date, "PPP") : placeholder}</span>
+            <div className="flex items-center flex-1 min-w-0 max-w-full overflow-hidden">
+              <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="truncate text-sm max-w-full overflow-hidden text-ellipsis">
+                {mode === 'range' && endDate && rangeDisplay ? 
+                  rangeDisplay : 
+                  date ? format(date, "PPP") : placeholder}
+              </span>
             </div>
-            <div className="opacity-50 ml-2 flex-shrink-0">
-              <ChevronLeft className="h-4 w-4 rotate-90" />
-            </div>
+            {mode !== 'range' && (
+              <div className="opacity-50 ml-1 flex-shrink-0">
+                <ChevronLeft className="h-3 w-3 rotate-90" />
+              </div>
+            )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0">
+        <PopoverContent className="p-0 w-auto" position={position}>
           <div className="flex flex-row">
             {/* Calendar */}
             <div className="p-4 min-w-[280px]">
+              {mode === 'range' && (
+                <div className="mb-3 text-sm flex flex-col gap-1">
+                  <div className="text-xs font-medium text-muted-foreground">Selected Range</div>
+                  <div className="flex items-center justify-between w-full">
+                    <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
+                      <span className="truncate">{format(date, "MMM d, yyyy")}</span>
+                    </Badge>
+                    <span className="px-2 text-muted-foreground flex-shrink-0">to</span>
+                    <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
+                      <span className="truncate">{endDate ? format(endDate, "MMM d, yyyy") : format(date, "MMM d, yyyy")}</span>
+                    </Badge>
+                  </div>
+                  {isSelectingEndDate && (
+                    <p className="text-xs text-muted-foreground mt-1">Select end date</p>
+                  )}
+                </div>
+              )}
               <div className="flex justify-between items-center mb-3">
                 <Button 
                   variant="ghost" 
-                  className="h-8 w-8 p-0" 
+                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150" 
                   onClick={prevMonth}
                   type="button"
                 >
@@ -232,7 +318,7 @@ export function DatePicker({
                 </span>
                 <Button 
                   variant="ghost" 
-                  className="h-8 w-8 p-0" 
+                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150" 
                   onClick={nextMonth}
                   type="button"
                 >
@@ -242,46 +328,105 @@ export function DatePicker({
               </div>
               <div className="grid grid-cols-7 gap-2">
                 {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-                  <div key={day} className="text-center text-xs text-muted-foreground py-1">
+                  <div 
+                    key={day} 
+                    className="text-center text-xs text-muted-foreground py-1"
+                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
                     {day}
                   </div>
                 ))}
-                {days.map((day, i) => (
-                  <Button
-                    key={i}
-                    variant="ghost"
-                    className={cn(
-                      "h-8 w-8 p-0 text-sm",
-                      !isSameMonth(day, currentMonth) && "text-muted-foreground opacity-50",
-                      isSameDay(day, date) && "bg-primary text-primary-foreground",
-                      isSameDay(day, new Date()) && !isSameDay(day, date) && "border border-primary"
-                    )}
-                    onClick={(e) => selectDate(day, e, "day")}
-                    type="button"
-                  >
-                    {format(day, "d")}
-                  </Button>
-                ))}
+                {days.map((day, i) => {
+                  const isInRange = isDayInRange(day);
+                  const isRangeStart = mode === 'range' && isSameDay(day, date);
+                  const isRangeEnd = mode === 'range' && endDate && isSameDay(day, endDate);
+                  
+                  return (
+                    <Button
+                      key={i}
+                      variant="ghost"
+                      className={cn(
+                        "h-8 w-8 p-0 text-sm relative",
+                        !isSameMonth(day, currentMonth) && "text-muted-foreground opacity-50",
+                        (mode === 'range' ? (isRangeStart || isRangeEnd) : isSameDay(day, date)) && "bg-primary text-primary-foreground",
+                        isSameDay(day, new Date()) && !(isRangeStart || isRangeEnd) && "border border-primary",
+                        isInRange && !isRangeStart && !isRangeEnd && "bg-primary/20",
+                        "hover:bg-muted transition-colors duration-150"
+                      )}
+                      onClick={(e) => selectDate(day, e, "day")}
+                      type="button"
+                    >
+                      {format(day, "d")}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
             
             {/* Events Sidebar */}
             {showEvents && displayEvents.length > 0 && (
-              <div className="border-l p-3 w-[160px] flex flex-col gap-2 max-h-[300px] overflow-y-auto">
+              <div className={cn(
+                "border-l p-3 w-[160px] flex flex-col gap-2 overflow-hidden",
+                mode !== 'range' && "max-h-[300px] overflow-y-auto"
+              )}>
                 <div className="text-xs font-medium text-muted-foreground mb-1">{getEventGroupTitle()}</div>
                 {displayEvents.map((event, index) => (
-                  <Button 
+                  <div 
                     key={index}
-                    size="sm"
-                    variant={event.period === "current" ? 
-                            (isSameDay(event.value, date) ? "default" : "outline") : 
-                            event.period === "past" ? "outline" : "secondary"}
-                    className="w-full text-xs justify-start py-1 px-2.5 h-auto min-h-[32px] whitespace-normal text-left"
-                    onClick={(e) => selectDate(event.value, e, event.type)}
-                    type="button"
+                    className={cn(
+                      "text-xs py-1.5 px-2.5 rounded-md cursor-pointer transition-colors duration-200",
+                      "hover:bg-muted w-full text-left",
+                      selectedPresetLabel === event.label ? "bg-primary/15 font-medium text-primary" : "text-foreground"
+                    )}
+                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    onClick={(e) => {
+                      const today = new Date();
+                      let end: Date;
+                      
+                      switch (event.type) {
+                        case 'day':
+                          end = endOfDay(event.value);
+                          break;
+                        case 'week':
+                          end = endOfDay(dateEndOfWeek(event.value));
+                          break;
+                        case 'month':
+                          end = endOfDay(dateEndOfMonth(event.value));
+                          break;
+                        case 'year':
+                          end = isSameYear(event.value, today) 
+                            ? endOfDay(today) 
+                            : endOfDay(endOfYear(event.value));
+                          break;
+                        default:
+                          end = today;
+                      }
+                      
+                      // Set the start date
+                      setDate(event.value);
+                      
+                      // Save which preset was selected
+                      setSelectedPresetLabel(event.label);
+                      
+                      // If range mode, set the end date
+                      if (mode === 'range' && setEndDate) {
+                        setEndDate(end);
+                        
+                        // Trigger range selection callback immediately
+                        if (onRangeSelect) {
+                          onRangeSelect(event.value, end);
+                        }
+                        
+                        // Close the popover immediately for range presets
+                        setOpen(false);
+                      } else {
+                        // Normal date selection
+                        selectDate(event.value, e, event.type);
+                      }
+                    }}
                   >
                     {event.label}
-                  </Button>
+                  </div>
                 ))}
                 
                 {customEvents && (

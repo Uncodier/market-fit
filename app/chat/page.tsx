@@ -127,17 +127,47 @@ export default function ChatPage() {
           const dbAgent = await getAgentForConversation(agentId)
           if (dbAgent) {
             setCurrentAgent(dbAgent)
+          } else {
+            // Si no se pudo cargar el agente y tenemos un nombre, creamos uno temporal
+            if (agentName) {
+              setCurrentAgent({
+                id: agentId,
+                name: agentName,
+                description: "",
+                type: "support",
+                status: "active",
+                conversations: 0,
+                successRate: 0,
+                lastActive: new Date().toISOString(),
+                icon: "User"
+              });
+            }
           }
         } catch (error) {
           console.error("Error fetching agent from database:", error)
+          // Si hubo error pero tenemos el nombre, al menos mostramos un agente temporal
+          if (agentName) {
+            setCurrentAgent({
+              id: agentId,
+              name: agentName,
+              description: "",
+              type: "support",
+              status: "active", 
+              conversations: 0,
+              successRate: 0,
+              lastActive: new Date().toISOString(),
+              icon: "User"
+            });
+          }
         }
       }
     }
     
     if (agentId) {
+      console.log(`Loading agent data for agentId: ${agentId}, name: ${agentName}`);
       loadAgent()
     }
-  }, [agentId])
+  }, [agentId, agentName])
 
   // Fetch user avatar
   useEffect(() => {
@@ -185,14 +215,17 @@ export default function ChatPage() {
 
   // Update breadcrumb when page is loaded
   useEffect(() => {
+    // Determinar el nombre a mostrar - preferir currentAgent.name sobre agentName
+    const displayName = currentAgent?.name || agentName;
+    
     // Update page title
-    document.title = `Chat with ${agentName} | Market Fit`
+    document.title = `Chat with ${displayName} | Market Fit`
     
     // Emit an event to update the breadcrumb
     const event = new CustomEvent('breadcrumb:update', {
       detail: {
         agentId,
-        agentName
+        agentName: displayName
       }
     })
     
@@ -202,7 +235,7 @@ export default function ChatPage() {
     return () => {
       document.title = 'Market Fit'
     }
-  }, [agentId, agentName])
+  }, [agentId, agentName, currentAgent])
 
   // Function to toggle chat list visibility
   const toggleChatList = () => {
@@ -211,15 +244,17 @@ export default function ChatPage() {
 
   // Function to select a conversation
   const handleSelectConversation = (selectedConversationId: string, selectedAgentName: string, selectedAgentId: string) => {
+    // First clear messages to avoid showing previous conversation data
+    if (conversationId !== selectedConversationId) {
+      setChatMessages([]);
+    }
+    
     // Use the native history API to update the URL without triggering a hard reload
     const newUrl = `/chat?conversationId=${selectedConversationId}&agentId=${selectedAgentId}&agentName=${encodeURIComponent(selectedAgentName)}`
     window.history.pushState(null, '', newUrl)
     
-    // Manually update the conversationId, agentName and agentId to trigger UI updates
-    if (conversationId !== selectedConversationId) {
-      // Clear any existing messages while we load the new conversation
-      setChatMessages([])
-    }
+    // We need to replace the window.location.search to ensure the component picks up the new parameters
+    router.replace(newUrl);
   }
 
   // Fetch agent details when conversationId changes
@@ -283,10 +318,63 @@ export default function ChatPage() {
       const agName = url.searchParams.get('agentName')
       const mode = url.searchParams.get('mode')
       
-      if (convId && agId && agName && convId !== conversationId) {
+      // Actualizar conversationId, agentId y agentName si han cambiado
+      if (convId && agId && agName) {
+        // Forzar recarga de mensajes si cambió la conversación
+        if (convId !== conversationId) {
+          setChatMessages([]);
+        }
+        
         // Mode-specific handling
         if (mode === 'agentOnly' || mode === 'private') {
           setIsAgentOnlyConversation(true)
+        } else {
+          setIsAgentOnlyConversation(false)
+        }
+        
+        // Forzar la carga del agente si cambió el agentId
+        if (agId !== agentId) {
+          // Primero intentar cargar desde la lista mock
+          const mockAgent = agents.find((a: Agent) => a.id === agId)
+          if (mockAgent) {
+            setCurrentAgent(mockAgent)
+          } else {
+            // Intenta cargar desde la base de datos
+            getAgentForConversation(agId).then(dbAgent => {
+              if (dbAgent) {
+                setCurrentAgent(dbAgent)
+              } else if (agName) {
+                // Fallback a un agente temporal con el nombre de la URL
+                setCurrentAgent({
+                  id: agId,
+                  name: agName,
+                  description: "",
+                  type: "support",
+                  status: "active",
+                  conversations: 0,
+                  successRate: 0,
+                  lastActive: new Date().toISOString(),
+                  icon: "User"
+                });
+              }
+            }).catch(error => {
+              console.error("Error fetching agent during popstate:", error)
+              // Fallback a un agente temporal con el nombre de la URL
+              if (agName) {
+                setCurrentAgent({
+                  id: agId,
+                  name: agName,
+                  description: "",
+                  type: "support",
+                  status: "active",
+                  conversations: 0,
+                  successRate: 0,
+                  lastActive: new Date().toISOString(),
+                  icon: "User"
+                });
+              }
+            });
+          }
         }
       }
     }
@@ -295,7 +383,7 @@ export default function ChatPage() {
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [conversationId, setIsAgentOnlyConversation])
+  }, [conversationId, agentId, setChatMessages, setIsAgentOnlyConversation])
 
   return (
     <div className="flex h-full relative overflow-hidden">

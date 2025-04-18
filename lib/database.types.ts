@@ -132,6 +132,71 @@ export interface Database {
           created_at?: string
         }
       }
+      kpis: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          value: number
+          previous_value: number
+          unit: string
+          type: string
+          period_start: string
+          period_end: string
+          segment_id: string | null
+          is_highlighted: boolean
+          target_value: number | null
+          metadata: Json | null
+          site_id: string
+          user_id: string | null
+          created_at: string
+          updated_at: string
+          trend: number
+          benchmark: number | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          value: number
+          previous_value: number
+          unit: string
+          type: string
+          period_start: string
+          period_end: string
+          segment_id?: string | null
+          is_highlighted?: boolean
+          target_value?: number | null
+          metadata?: Json | null
+          site_id: string
+          user_id?: string | null
+          created_at?: string
+          updated_at?: string
+          trend: number
+          benchmark?: number | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          value?: number
+          previous_value?: number
+          unit?: string
+          type?: string
+          period_start?: string
+          period_end?: string
+          segment_id?: string | null
+          is_highlighted?: boolean
+          target_value?: number | null
+          metadata?: Json | null
+          site_id?: string
+          user_id?: string | null
+          created_at?: string
+          updated_at?: string
+          trend?: number
+          benchmark?: number | null
+        }
+      }
       segments: {
         Row: {
           id: string

@@ -71,11 +71,19 @@ export function useChatOperations({
       sender_avatar: userAvatar
     }
     
-    // Add temporary message to conversation immediately for UI feedback
-    setChatMessages(prev => [...prev, tempUserMessage])
-    
     // Set loading state while we send the API request
     setIsLoading(true)
+    
+    // Add temporary message to conversation immediately for UI feedback
+    // Use a function version to ensure we work with latest state
+    setChatMessages(prevMessages => {
+      // Check if this temp message is already in the array to avoid duplicates
+      const isDuplicate = prevMessages.some(msg => msg.id === tempUserMessage.id);
+      if (isDuplicate) {
+        return prevMessages;
+      }
+      return [...prevMessages, tempUserMessage];
+    });
     
     // Activate waiting animation for agent response
     setIsAgentResponding(true)

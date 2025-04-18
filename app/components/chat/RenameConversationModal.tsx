@@ -12,6 +12,7 @@ interface RenameConversationModalProps {
   conversationId: string
   currentTitle: string
   onRename: () => Promise<void>
+  onDirectUpdate?: (conversationId: string, newTitle: string) => void
 }
 
 export function RenameConversationModal({
@@ -19,7 +20,8 @@ export function RenameConversationModal({
   onOpenChange,
   conversationId,
   currentTitle,
-  onRename
+  onRename,
+  onDirectUpdate
 }: RenameConversationModalProps) {
   const [newTitle, setNewTitle] = useState(currentTitle)
   const [isLoading, setIsLoading] = useState(false)
@@ -48,12 +50,15 @@ export function RenameConversationModal({
       }
       
       console.log(`🔍 DEBUG: Rename success, DB returned:`, data);
-      console.log(`🔍 DEBUG: Will now call onRename to refresh conversation list`);
       
-      // Call the onRename callback to refresh the conversations list
-      await onRename()
+      if (onDirectUpdate) {
+        console.log(`🔍 DEBUG: Using direct state update for conversation rename`);
+        onDirectUpdate(conversationId, newTitle.trim());
+      } else {
+        console.log(`🔍 DEBUG: Will now call onRename to refresh conversation list`);
+        await onRename();
+      }
       
-      // Close the modal
       onOpenChange(false)
     } catch (error) {
       console.error("Error renaming conversation:", error)

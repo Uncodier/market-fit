@@ -129,26 +129,26 @@ export function PopoverContent({ className, children, position = "bottom", onClo
         // Calculate positions based on props or available space
         const actualPosition = calculatePosition(position, triggerRect, contentRect, viewportHeight, viewportWidth)
         
-        // Apply the calculated position with tighter spacing
+        // Apply the calculated position with specific spacing for bottom position
         switch (actualPosition) {
           case "top":
-            content.style.bottom = `${window.innerHeight - triggerRect.top + 2}px`
+            content.style.bottom = `${window.innerHeight - triggerRect.top}px`
             content.style.left = `${triggerRect.left}px`
             content.style.transform = ""
             break
           case "bottom":
-            content.style.top = `${triggerRect.bottom + 2}px`
+            content.style.top = `${triggerRect.bottom + 20}px` // Set to 20px below the button
             content.style.left = `${triggerRect.left}px`
             content.style.transform = ""
             break
           case "left":
             content.style.top = `${triggerRect.top}px`
-            content.style.right = `${window.innerWidth - triggerRect.left + 2}px`
+            content.style.right = `${window.innerWidth - triggerRect.left}px`
             content.style.transform = ""
             break
           case "right":
             content.style.top = `${triggerRect.top}px`
-            content.style.left = `${triggerRect.right + 2}px`
+            content.style.left = `${triggerRect.right}px`
             content.style.transform = ""
             break
         }

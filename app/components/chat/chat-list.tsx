@@ -132,6 +132,9 @@ export function ChatList({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<ConversationListItem | null>(null)
   
+  // New ref to track initial load state
+  const isFirstLoadRef = useRef(true);
+
   // Update the ref when selectedConversationId changes
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
@@ -147,7 +150,17 @@ export function ChatList({
       }
       
       console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}`);
-      setIsLoading(true);
+      
+      // Solo mostrar el esqueleto en la primera carga
+      const isFirstLoad = isFirstLoadRef.current;
+      if (isFirstLoad) {
+        console.log('🔍 DEBUG: First load - showing skeleton');
+        setIsLoading(true);
+        // Establecer que ya no es la primera carga
+        isFirstLoadRef.current = false;
+      } else {
+        console.log('🔍 DEBUG: Not first load - skipping skeleton');
+      }
       
       try {
         // Request conversations from server
@@ -159,21 +172,26 @@ export function ChatList({
           setHasEmptyResult(result.length === 0)
           setIsInitialLoad(false)
           
-          // Pequeño retraso antes de ocultar el esqueleto para evitar parpadeos
-          setTimeout(() => {
-            if (active) {
-              setIsLoading(false)
-            }
-          }, 300)
+          // Solo aplicar el retraso para la primera carga
+          if (isFirstLoad) {
+            // Pequeño retraso antes de ocultar el esqueleto para evitar parpadeos
+            setTimeout(() => {
+              if (active) {
+                setIsLoading(false)
+              }
+            }, 300)
+          }
         }
       } catch (error) {
         console.error("Error loading conversations:", error)
         if (active) {
           setHasEmptyResult(true)
           setIsInitialLoad(false)
+          setIsLoading(false)
         }
       } finally {
-        if (active) {
+        if (active && !isFirstLoad) {
+          // Si no es la primera carga, asegurarse de que isLoading sea false
           setIsLoading(false)
         }
         console.log('🔍 DEBUG: loadConversations completed');
@@ -215,37 +233,117 @@ export function ChatList({
           }, (payload: any) => {
             console.log('🛑 DEBUG: UPDATE event received:', payload);
             
-            if (payload.new && payload.new.title) {
-              // Actualizar inmediatamente en la UI si hay un cambio de título
-              console.log(`🛑 DEBUG: Title detected in UPDATE: "${payload.new.title}"`);
+            if (payload.new) {
+              // Asegurar que isLoading sea false antes de actualizar
+              setIsLoading(false);
+              
+              // Actualizar sólo la conversación modificada en el estado
               setConversations(prevConversations => 
                 prevConversations.map(conv => 
                   conv.id === payload.new.id 
                     ? { 
                         ...conv, 
-                        title: payload.new.title, 
-                        timestamp: new Date(payload.new.last_message_at || payload.new.updated_at || new Date()) 
+                        title: payload.new.title || conv.title,
+                        timestamp: new Date(payload.new.updated_at || new Date()),
+                        lastMessage: payload.new.last_message || conv.lastMessage,
+                        agentId: conv.agentId,
+                        agentName: conv.agentName,
+                        unreadCount: conv.unreadCount,
+                        messageCount: conv.messageCount,
+                        leadName: conv.leadName
                       } 
                     : conv
-                  )
+                )
               );
-            }
-            
-            // Recargar la lista completa para asegurar consistencia
-            if (loadConversationsRef.current) {
-              loadConversationsRef.current();
+              
+              console.log(`🛑 DEBUG: Conversation ${payload.new.id} updated directly in state without reloading`);
             }
           })
-          .subscribe((status: string) => {
-            console.log(`🛑 DEBUG: UPDATE subscription status: ${status}`);
+        
+        // Crear una suscripción para eventos de INSERT
+        channel.on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversations',
+          filter: `site_id=eq.${siteId}`
+        }, (payload: any) => {
+          console.log('🛑 DEBUG: INSERT event received:', payload);
+          
+          // Asegurar que isLoading sea false antes de actualizar
+          setIsLoading(false);
+          
+          // En lugar de recargar toda la lista, añadir sólo la nueva conversación
+          // Comprobar si tenemos suficiente información para crear un objeto de conversación
+          if (payload.new && payload.new.id && payload.new.title) {
+            const newConversation: ConversationListItem = {
+              id: payload.new.id,
+              title: payload.new.title || "New Conversation",
+              agentId: payload.new.agent_id || "",
+              agentName: payload.new.agent_name || "Unknown Agent",
+              lastMessage: payload.new.last_message || "",
+              timestamp: new Date(payload.new.updated_at || payload.new.created_at || new Date()),
+              unreadCount: 0,
+              messageCount: 0
+            };
             
-            // Log adicional para depuración
-            if (status === 'CHANNEL_ERROR') {
-              console.error('🛑 DEBUG: ¡ERROR DE CANAL! Verifica configuración de CSP para WebSockets');
-              console.error('🛑 DEBUG: Si acabas de modificar next.config.js, necesitas reiniciar el servidor');
-              console.log('🛑 DEBUG: URL de Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+            // Añadir la nueva conversación al principio de la lista
+            setConversations(prev => [newConversation, ...prev]);
+            console.log(`🛑 DEBUG: New conversation ${newConversation.id} added directly to state`);
+          } else {
+            // Solo si no tenemos suficiente información, recargamos la lista completa
+            // pero sin activar el estado de carga
+            if (loadConversationsRef.current) {
+              // Guardar el estado original de isFirstLoadRef para restaurarlo después
+              const wasFirstLoad = isFirstLoadRef.current;
+              isFirstLoadRef.current = false; // Forzar a falso para evitar el esqueleto
+              
+              loadConversationsRef.current().then(() => {
+                console.log(`🛑 DEBUG: List reloaded for INSERT without showing skeleton`);
+              });
+              
+              console.log(`🛑 DEBUG: Insufficient data for new conversation, reloading without skeleton`);
             }
-          });
+          }
+        });
+        
+        // Crear una suscripción para eventos de DELETE
+        channel.on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'conversations',
+          filter: `site_id=eq.${siteId}`
+        }, (payload: any) => {
+          console.log('🛑 DEBUG: DELETE event received:', payload);
+          
+          // Asegurar que isLoading sea false antes de actualizar
+          setIsLoading(false);
+          
+          if (payload.old && payload.old.id) {
+            // Eliminar la conversación del estado directamente
+            setConversations(prevConversations => 
+              prevConversations.filter(conv => conv.id !== payload.old.id)
+            );
+            
+            console.log(`🛑 DEBUG: Conversation ${payload.old.id} removed from state without reloading`);
+            
+            // Si la conversación eliminada era la seleccionada, redirigir a la lista de chat
+            if (selectedConversationIdRef.current === payload.old.id) {
+              router.push('/chat');
+            }
+          }
+        });
+        
+        // Suscribir al canal
+        channel.subscribe((status: string) => {
+          console.log(`🛑 DEBUG: Channel subscription status: ${status}`);
+          
+          // Log adicional para depuración
+          if (status === 'CHANNEL_ERROR') {
+            console.error('🛑 DEBUG: ¡ERROR DE CANAL! Verifica configuración de CSP para WebSockets');
+            console.error('🛑 DEBUG: Si acabas de modificar next.config.js, necesitas reiniciar el servidor');
+            console.log('🛑 DEBUG: URL de Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+          }
+        });
         
         // Guardar la referencia
         subscriptionRef.current = channel;
@@ -295,6 +393,9 @@ export function ChatList({
   
   const deleteConversation = async (conversationId: string) => {
     try {
+      // Asegurar que no se muestre el esqueleto
+      setIsLoading(false);
+      
       // Call the Supabase client to delete the conversation
       const supabase = createClient();
       
@@ -325,10 +426,11 @@ export function ChatList({
         await onDeleteConversation(conversationId);
       }
       
-      // Reload the conversation list
-      if (loadConversationsRef.current) {
-        await loadConversationsRef.current();
-      }
+      // Eliminar directamente del estado en lugar de recargar
+      setConversations(prevConversations => 
+        prevConversations.filter(conv => conv.id !== conversationId)
+      );
+      console.log(`🔍 DEBUG: Conversation ${conversationId} removed from state directly`);
       
       // If the deleted conversation was selected, redirect to the chat list
       if (selectedConversationIdRef.current === conversationId) {
@@ -336,12 +438,18 @@ export function ChatList({
       }
     } catch (error) {
       console.error("Error in deleteConversation:", error);
+    } finally {
+      // Asegurar que isLoading permanezca en false
+      setIsLoading(false);
     }
   };
 
   // Función para archivar una conversación
   const archiveConversation = async (conversationId: string) => {
     try {
+      // Asegurar que no se muestre el esqueleto
+      setIsLoading(false);
+      
       const supabase = createClient();
       
       // Actualizar is_archived a true
@@ -355,10 +463,11 @@ export function ChatList({
         return;
       }
       
-      // Reload the conversation list
-      if (loadConversationsRef.current) {
-        await loadConversationsRef.current();
-      }
+      // Actualizar directamente en el estado en lugar de recargar
+      setConversations(prevConversations => 
+        prevConversations.filter(conv => conv.id !== conversationId)
+      );
+      console.log(`🔍 DEBUG: Archived conversation ${conversationId} removed from state directly`);
       
       // If the archived conversation was selected, redirect to the chat list
       if (selectedConversationIdRef.current === conversationId) {
@@ -366,6 +475,9 @@ export function ChatList({
       }
     } catch (error) {
       console.error("Error in archiveConversation:", error);
+    } finally {
+      // Asegurar que isLoading permanezca en false
+      setIsLoading(false);
     }
   };
 
@@ -373,6 +485,21 @@ export function ChatList({
   const openRenameModal = (conversation: ConversationListItem) => {
     setCurrentConversation(conversation);
     setRenameModalOpen(true);
+  };
+  
+  // Función para actualizar directamente el título de una conversación en el estado
+  const handleDirectTitleUpdate = (conversationId: string, newTitle: string) => {
+    // Asegurar que no se muestre el esqueleto
+    setIsLoading(false);
+    
+    setConversations(prevConversations => 
+      prevConversations.map(conv => 
+        conv.id === conversationId 
+          ? { ...conv, title: newTitle } 
+          : conv
+      )
+    );
+    console.log(`🔍 DEBUG: Conversation ${conversationId} title updated directly in state to "${newTitle}"`);
   };
   
   // Función para abrir el modal de confirmación de eliminación
@@ -540,6 +667,7 @@ export function ChatList({
           conversationId={currentConversation.id}
           currentTitle={currentConversation.title}
           onRename={loadConversationsRef.current || (() => Promise.resolve())}
+          onDirectUpdate={handleDirectTitleUpdate}
         />
       )}
       
