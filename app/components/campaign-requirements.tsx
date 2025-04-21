@@ -10,6 +10,7 @@ import { ClipboardList, PlusCircle } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { useRouter } from "next/navigation"
 
 // Status and priority colors
 const STATUS_COLORS: Record<string, string> = {
@@ -76,6 +77,7 @@ export function CampaignRequirements({
 }: CampaignRequirementsProps) {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   // Add debug logging to track requirements updates
   useEffect(() => {
@@ -198,7 +200,7 @@ export function CampaignRequirements({
   }
 
   const navigateToRequirement = (requirementId: string) => {
-    window.open(`/requirements?selected=${requirementId}`, '_blank');
+    router.push(`/requirements/${requirementId}`);
   };
 
   return (

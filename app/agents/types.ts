@@ -19,6 +19,7 @@ export interface Command {
   context?: string;
   agent_background?: string;
   supervisor?: any[];
+  performance?: number; // Bitmask: bit 0 = like (1), bit 1 = dislike (2), bit 2 = flag (4)
 }
 
 export interface CommandsResponse {

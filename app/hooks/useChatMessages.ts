@@ -120,6 +120,11 @@ export function useChatMessages(
           role: "assistant",
           text: "Sorry, there was an error loading the conversation. Please try again.",
           timestamp: new Date(),
+          command_id: undefined,
+          metadata: {
+            command_status: "failed",
+            error_message: "Failed to load conversation messages"
+          }
         }])
       } finally {
         setIsLoadingMessages(false)

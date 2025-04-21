@@ -1,14 +1,18 @@
 "use client"
 
-import React, { RefObject } from "react"
+import React, { RefObject, useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Badge } from "@/app/components/ui/badge"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ChatMessage } from "@/app/types/chat"
 import { EmptyConversation } from "./EmptyConversation"
 import * as Icons from "@/app/components/ui/icons"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
+import ReactMarkdown from "react-markdown"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -37,6 +41,242 @@ interface ChatMessagesProps {
   leadData: any
 }
 
+// Message feedback widget component
+interface MessageFeedbackProps {
+  messageId: string;
+  commandId?: string;
+  agentId: string;
+}
+
+const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId, agentId }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [performance, setPerformance] = useState<number | null>(null);
+  const supabase = createClient();
+  const router = useRouter();
+
+  // Cargar el estado actual del performance cuando se monta el componente
+  useEffect(() => {
+    if (commandId) {
+      fetchPerformanceStatus();
+    }
+  }, [commandId]);
+
+  // Función para obtener el estado actual del performance
+  const fetchPerformanceStatus = async () => {
+    if (!commandId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .rpc('get_performance_status', { command_id: commandId });
+      
+      if (error) {
+        console.error('Error fetching performance status:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        // Convertir el resultado a un número de bitmask
+        let bitmask = 0;
+        if (data[0].has_like) bitmask |= 1;
+        if (data[0].has_dislike) bitmask |= 2;
+        if (data[0].has_flag) bitmask |= 4;
+        
+        setPerformance(bitmask);
+      }
+    } catch (error) {
+      console.error('Error in fetchPerformanceStatus:', error);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!commandId || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .rpc('set_like', { command_id: commandId });
+      
+      if (error) {
+        console.error('Error setting like:', error);
+        toast.error("Failed to save like");
+      } else {
+        // Actualizar el estado local
+        setPerformance((prev) => {
+          if (prev === null) return 1;
+          return (prev & ~2) | 1; // Eliminar dislike si existe y establecer like
+        });
+        toast.success("Like saved successfully");
+      }
+    } catch (error) {
+      console.error('Error in handleLike:', error);
+      toast.error("Failed to save like");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDislike = async () => {
+    if (!commandId || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .rpc('set_dislike', { command_id: commandId });
+      
+      if (error) {
+        console.error('Error setting dislike:', error);
+        toast.error("Failed to save dislike");
+      } else {
+        // Actualizar el estado local
+        setPerformance((prev) => {
+          if (prev === null) return 2;
+          return (prev & ~1) | 2; // Eliminar like si existe y establecer dislike
+        });
+        toast.success("Dislike saved successfully");
+      }
+    } catch (error) {
+      console.error('Error in handleDislike:', error);
+      toast.error("Failed to save dislike");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFlag = async () => {
+    if (!commandId || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .rpc('toggle_flag', { command_id: commandId });
+      
+      if (error) {
+        console.error('Error toggling flag:', error);
+        toast.error("Failed to save flag");
+      } else {
+        // Actualizar el estado local
+        setPerformance((prev) => {
+          if (prev === null) return 4;
+          return prev ^ 4; // Alternar el bit del flag
+        });
+        toast.success("Flag saved successfully");
+      }
+    } catch (error) {
+      console.error('Error in handleFlag:', error);
+      toast.error("Failed to save flag");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInspect = () => {
+    if (!commandId) return;
+    
+    // Use Next.js router for client-side navigation instead of window.location.href
+    router.push(`/agents/${agentId}/${commandId}`);
+  };
+
+  return (
+    <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              onClick={handleLike} 
+              disabled={isLoading}
+              className={`w-8 h-8 flex items-center justify-center rounded hover:bg-green-100 dark:hover:bg-green-900/30 ${
+                performance !== null && (performance & 1) === 1 
+                  ? 'text-green-500 bg-green-100 dark:bg-green-900/30' 
+                  : 'text-green-500'
+              }`}
+              aria-label="Like"
+            >
+              {/* Thumbs Up Icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 10v12" />
+                <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z" />
+              </svg>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Like</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              onClick={handleDislike} 
+              disabled={isLoading}
+              className={`w-8 h-8 flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 ${
+                performance !== null && (performance & 2) === 2 
+                  ? 'text-red-500 bg-red-100 dark:bg-red-900/30' 
+                  : 'text-red-500'
+              }`}
+              aria-label="Dislike"
+            >
+              {/* Thumbs Down Icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 14V2" />
+                <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z" />
+              </svg>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Dislike</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              onClick={handleInspect} 
+              disabled={isLoading || !commandId}
+              className="w-8 h-8 flex items-center justify-center rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500"
+              aria-label="Inspect"
+            >
+              <Icons.Eye size={16} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Inspect</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              onClick={handleFlag} 
+              disabled={isLoading}
+              className={`w-8 h-8 flex items-center justify-center rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 ${
+                performance !== null && (performance & 4) === 4 
+                  ? 'text-amber-500 bg-amber-100 dark:bg-amber-900/30' 
+                  : 'text-amber-500'
+              }`}
+              aria-label="Report Issue"
+            >
+              {/* Flag Icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                <line x1="4" y1="22" x2="4" y2="15"></line>
+              </svg>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Report Issue</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+}
+
 export function ChatMessages({
   chatMessages,
   isLoadingMessages,
@@ -49,6 +289,33 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   // Use theme context for dark mode detection
   const { isDarkMode } = useTheme()
+
+  // Componentes personalizados para ReactMarkdown
+  const markdownComponents = {
+    img: ({ node, ...props }: any) => (
+      <img 
+        style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px' }} 
+        {...props} 
+      />
+    ),
+    pre: ({ node, ...props }: any) => (
+      <pre 
+        style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }} 
+        {...props} 
+      />
+    ),
+    code: ({ node, ...props }: any) => (
+      <code 
+        style={{ wordBreak: 'break-word' }} 
+        {...props} 
+      />
+    ),
+    table: ({ node, ...props }: any) => (
+      <div style={{ overflowX: 'auto', width: '100%' }}>
+        <table {...props} />
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-[200px]">
@@ -152,7 +419,9 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                              <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                            </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div>
                                 {msg.metadata?.command_status === "failed" && (
@@ -201,7 +470,9 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                              <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                            </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div>
                                 {msg.metadata?.command_status === "failed" && (
@@ -227,7 +498,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "agent" || msg.role === "assistant") ? (
-                        <div className="max-w-[calc(100%-240px)]">
+                        <div className="max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
                               <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={agentName} />
@@ -238,7 +509,16 @@ export function ChatMessages({
                             <span className="text-sm font-medium text-primary">{agentName}</span>
                           </div>
                           <div className="ml-9">
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                              <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                            </div>
+                            
+                            {/* Message feedback widget */}
+                            <MessageFeedback 
+                              messageId={String(msg.id || index)} 
+                              commandId={msg.command_id} 
+                              agentId={agentId} 
+                            />
                           </div>
                         </div>
                       ) : (msg.role === "user" || msg.role === "visitor") ? (
@@ -261,7 +541,9 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                              <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                            </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div>
                                 {msg.metadata?.command_status === "failed" && (
@@ -297,7 +579,9 @@ export function ChatMessages({
                             filter: 'none' 
                           }}
                         >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                            <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                          </div>
                           <div className="flex items-center justify-between mt-1.5">
                             <div>
                               {msg.metadata?.command_status === "failed" && (

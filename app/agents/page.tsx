@@ -383,8 +383,6 @@ export default function AgentsPage() {
         
         <div className="flex items-center gap-6 mx-4">
           <Skeleton className="w-24 h-5" />
-          <Skeleton className="w-28 h-8" />
-          <Skeleton className="w-24 h-8" />
           <Skeleton className="w-28 h-5" />
         </div>
         

@@ -299,6 +299,7 @@ export interface Database {
           custom_data: Json | null
           created_at: string
           updated_at: string
+          command_id: string | null
         }
         Insert: {
           id?: string
@@ -313,6 +314,7 @@ export interface Database {
           custom_data?: Json | null
           created_at?: string
           updated_at?: string
+          command_id?: string | null
         }
         Update: {
           id?: string
@@ -327,6 +329,7 @@ export interface Database {
           custom_data?: Json | null
           created_at?: string
           updated_at?: string
+          command_id?: string | null
         }
       }
     }

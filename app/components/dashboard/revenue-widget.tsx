@@ -11,6 +11,7 @@ import { Button } from "@/app/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
 import { Badge } from "@/app/components/ui/badge";
 import { useSite } from "@/app/context/SiteContext";
+import { useAuth } from "@/app/hooks/use-auth";
 
 interface RevenueWidgetProps {
   segmentId?: string;
@@ -54,6 +55,7 @@ export function RevenueWidget({
   endDate: propEndDate
 }: RevenueWidgetProps) {
   const { currentSite } = useSite();
+  const { user } = useAuth();
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -82,6 +84,9 @@ export function RevenueWidget({
         const params = new URLSearchParams();
         params.append("segmentId", segmentId);
         params.append("siteId", currentSite.id);
+        if (user?.id) {
+          params.append("userId", user.id);
+        }
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
@@ -99,7 +104,7 @@ export function RevenueWidget({
     };
 
     fetchRevenue();
-  }, [segmentId, startDate, endDate, currentSite]);
+  }, [segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleRangeSelect = (start: Date, end: Date) => {

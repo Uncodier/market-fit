@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
+import { useSupabaseClient } from './use-supabase-client'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
+  const supabase = useSupabaseClient()
 
   // Verificar estado de autenticación inicial y suscribirse a cambios
   useEffect(() => {

@@ -620,7 +620,8 @@ export function convertMessagesToChatFormat(messages: Message[]): Promise<ChatMe
       role,
       text: msg.content,
       timestamp: new Date(msg.created_at),
-      metadata: msg.custom_data as Record<string, any> | undefined
+      metadata: msg.custom_data as Record<string, any> | undefined,
+      command_id: msg.command_id
     };
     
     // Caso específico: mensajes de miembros del equipo (team_member)

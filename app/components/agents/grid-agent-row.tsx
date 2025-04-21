@@ -6,7 +6,6 @@ import { Button } from "@/app/components/ui/button"
 import { MessageSquare, Pencil, PlayCircle, ChevronUp, ChevronDown } from "@/app/components/ui/icons"
 import * as Icons from "@/app/components/ui/icons"
 import { agentStatusVariants, metricItemVariants } from "./agent-card.styles"
-import { AgentActivityItem } from "./agent-activity-item"
 import { Skeleton } from "@/app/components/ui/skeleton"
 
 // Extender el tipo Agent para incluir datos personalizados
@@ -51,12 +50,6 @@ export function GridAgentRowSkeleton() {
         <div className="flex items-center gap-6 mx-4">
           <div className="w-24 text-center">
             <Skeleton className="w-24 h-5 mx-auto" />
-          </div>
-          <div className="w-28 text-center">
-            <Skeleton className="w-28 h-8 mx-auto" />
-          </div>
-          <div className="w-24 text-center">
-            <Skeleton className="w-24 h-8 mx-auto" />
           </div>
           <div className="w-28 text-center">
             <Skeleton className="w-28 h-5 mx-auto" />
@@ -108,8 +101,6 @@ export function GridAgentRow({
   const displayStatus = hasCustomData ? agent.dbData!.status : "inactive";
   const displayRole = hasCustomData ? agent.dbData!.role : (agent.role || agent.name);
   const displayType = hasCustomData ? agent.dbData!.type : agent.type;
-  const displayConversations = hasCustomData ? agent.dbData!.conversations : agent.conversations;
-  const displaySuccessRate = hasCustomData ? agent.dbData!.successRate : agent.successRate;
   const displayLastActive = hasCustomData ? agent.dbData!.lastActive : agent.lastActive;
   
   // Determinar si mostrar el rol separadamente (si el nombre es diferente al rol)
@@ -172,18 +163,6 @@ export function GridAgentRow({
         <div className="flex items-center gap-6 mx-4">
           <div className="w-24 text-center">
             <span className="text-xs font-medium">{displayType.charAt(0).toUpperCase() + displayType.slice(1)}</span>
-          </div>
-          <div className="w-28 text-center">
-            <div className={cn(metricItemVariants({ hover: true }), "flex flex-col")}>
-              <span className="text-xs font-medium">{displayConversations}</span>
-              <span className="text-xs text-muted-foreground">conversations</span>
-            </div>
-          </div>
-          <div className="w-24 text-center">
-            <div className={cn(metricItemVariants({ hover: true }), "flex flex-col")}>
-              <span className="text-xs font-medium">{displaySuccessRate}%</span>
-              <span className="text-xs text-muted-foreground">success</span>
-            </div>
           </div>
           <div className="w-28 text-center">
             <span className="text-xs text-muted-foreground">{formattedDate}</span>
@@ -249,7 +228,6 @@ export function GridAgentRow({
                 {agent.activities.length} activities
               </Badge>
             </div>
-            
             <div className="divide-y divide-border/70">
               {agent.activities.map((activity: AgentActivity) => (
                 <div 
@@ -291,5 +269,5 @@ export function GridAgentRow({
         </div>
       )}
     </div>
-  );
+  )
 } 

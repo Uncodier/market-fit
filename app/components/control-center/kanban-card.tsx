@@ -121,7 +121,7 @@ export function KanbanCard({
 
   const handleRequirementClick = (e: React.MouseEvent, requirementId: string) => {
     e.stopPropagation(); // Prevent card click event from navigating
-    window.open(`/requirements?selected=${requirementId}`, '_blank');
+    router.push(`/requirements/${requirementId}`);
   };
 
   // Calculate derived costs from budget if they're not provided

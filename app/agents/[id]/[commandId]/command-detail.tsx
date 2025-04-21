@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent } from "@/app/components/ui/card"
@@ -16,15 +16,20 @@ import {
   Info, 
   Target, 
   User,
-  RotateCcw
+  RotateCcw,
+  ThumbsUp,
+  ThumbsDown,
+  Flag
 } from "@/app/components/ui/icons"
 import { JsonHighlighter } from "@/app/components/agents/json-highlighter"
 import { PageTransition } from "@/app/components/ui/page-transition"
 import { cn } from "@/app/lib/utils"
 import { Command } from "@/app/agents/types"
-import { useEffect } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import React from "react"
+import { useSupabase } from "@/app/hooks/use-supabase"
+import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
 // For consistent formatting of dates across the application
 function formatDate(dateString: string | undefined | null) {
@@ -511,11 +516,149 @@ function renderOriginalCSV(csvContent: string) {
   );
 }
 
+interface Performance {
+  performance: number; // Bitmask: bit 0 = like (1), bit 1 = dislike (2), bit 2 = flag (4)
+}
+
 export default function CommandDetail({ command, commandId, agentName }: { command: Command | null, commandId: string, agentName: string }) {
   const router = useRouter();
+  const { id: agentId } = useParams();
+  const { supabase } = useSupabase();
   
-  // Debug info to show in development (desactivado)
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [performance, setPerformance] = useState<Performance>({ performance: 0 });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Bitmask constants
+  const LIKE_BIT = 1;    // 001
+  const DISLIKE_BIT = 2; // 010
+  const FLAG_BIT = 4;    // 100
+
+  // Cargar el estado inicial y suscribirse a cambios
+  useEffect(() => {
+    fetchCurrentPerformance();
+
+    // Suscribirse a cambios en la tabla commands
+    const channel = supabase
+      .channel('command_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'commands',
+          filter: `id=eq.${commandId}`
+        },
+        (payload) => {
+          if (payload.new.performance !== undefined) {
+            setPerformance({ performance: payload.new.performance });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [commandId]);
+
+  const fetchCurrentPerformance = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('commands')
+        .select('performance')
+        .eq('id', commandId)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setPerformance({ performance: data.performance || 0 });
+      }
+    } catch (error) {
+      console.error('Error fetching performance:', error);
+    }
+  };
+
+  const handleLike = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      const currentValue = performance.performance;
+      const hasLike = (currentValue & LIKE_BIT) === LIKE_BIT;
+      const newValue = hasLike 
+        ? (currentValue & ~LIKE_BIT) 
+        : (currentValue & ~DISLIKE_BIT) | LIKE_BIT;
+
+      const { error } = await supabase
+        .from('commands')
+        .update({ performance: newValue })
+        .eq('id', commandId);
+
+      if (error) throw error;
+      
+      setPerformance({ performance: newValue });
+      toast.success(hasLike ? 'Like removed' : 'Command liked');
+    } catch (error) {
+      console.error('Error updating like:', error);
+      toast.error('Error updating like status');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDislike = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      const currentValue = performance.performance;
+      const hasDislike = (currentValue & DISLIKE_BIT) === DISLIKE_BIT;
+      const newValue = hasDislike 
+        ? (currentValue & ~DISLIKE_BIT)
+        : (currentValue & ~LIKE_BIT) | DISLIKE_BIT;
+
+      const { error } = await supabase
+        .from('commands')
+        .update({ performance: newValue })
+        .eq('id', commandId);
+
+      if (error) throw error;
+      
+      setPerformance({ performance: newValue });
+      toast.success(hasDislike ? 'Dislike removed' : 'Command disliked');
+    } catch (error) {
+      console.error('Error updating dislike:', error);
+      toast.error('Error updating dislike status');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFlag = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      const currentValue = performance.performance;
+      const hasFlag = (currentValue & FLAG_BIT) === FLAG_BIT;
+      const newValue = hasFlag 
+        ? (currentValue & ~FLAG_BIT)
+        : currentValue | FLAG_BIT;
+
+      const { error } = await supabase
+        .from('commands')
+        .update({ performance: newValue })
+        .eq('id', commandId);
+
+      if (error) throw error;
+      
+      setPerformance({ performance: newValue });
+      toast.success(hasFlag ? 'Report removed' : 'Issue reported');
+    } catch (error) {
+      console.error('Error updating flag:', error);
+      toast.error('Error reporting issue');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Update the page title and breadcrumb when command is loaded
   useEffect(() => {
@@ -816,7 +959,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
       <div className="flex-1">
         <Tabs defaultValue="results">
           <StickyHeader>
-            <div className="px-16 pt-0 flex items-center h-full">
+            <div className="px-16 pt-0 flex items-center justify-between h-full">
               <TabsList className="mt-0">
                 <TabsTrigger value="results">Results</TabsTrigger>
                 <TabsTrigger value="tools">Tools</TabsTrigger>
@@ -824,6 +967,81 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                 <TabsTrigger value="context">Context</TabsTrigger>
                 <TabsTrigger value="agent_background">Agent Background</TabsTrigger>
               </TabsList>
+              
+              {/* Performance Feedback Controls */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button 
+                          onClick={handleLike} 
+                          disabled={isLoading}
+                          className={`w-8 h-8 flex items-center justify-center rounded hover:bg-green-100 dark:hover:bg-green-900/30 ${
+                            Boolean(performance.performance & LIKE_BIT)
+                              ? 'text-green-500 bg-green-100 dark:bg-green-900/30' 
+                              : 'text-green-500'
+                          }`}
+                          aria-label="Like"
+                        >
+                          <ThumbsUp className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {Boolean(performance.performance & LIKE_BIT) ? 'Remove like' : 'Like this command'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button 
+                          onClick={handleDislike} 
+                          disabled={isLoading}
+                          className={`w-8 h-8 flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 ${
+                            Boolean(performance.performance & DISLIKE_BIT)
+                              ? 'text-red-500 bg-red-100 dark:bg-red-900/30' 
+                              : 'text-red-500'
+                          }`}
+                          aria-label="Dislike"
+                        >
+                          <ThumbsDown className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {Boolean(performance.performance & DISLIKE_BIT) ? 'Remove dislike' : 'Dislike this command'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button 
+                          onClick={handleFlag} 
+                          disabled={isLoading}
+                          className={`w-8 h-8 flex items-center justify-center rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 ${
+                            Boolean(performance.performance & FLAG_BIT)
+                              ? 'text-amber-500 bg-amber-100 dark:bg-amber-900/30' 
+                              : 'text-amber-500'
+                          }`}
+                          aria-label="Report Issue"
+                        >
+                          <Flag className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {Boolean(performance.performance & FLAG_BIT) ? 'Remove report' : 'Report an issue'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
             </div>
           </StickyHeader>
 

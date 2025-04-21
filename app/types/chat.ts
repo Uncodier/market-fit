@@ -34,4 +34,6 @@ export interface ChatMessage {
   sender_id?: string
   sender_name?: string
   sender_avatar?: string
+  // ID del comando asociado al mensaje (para feedback)
+  command_id?: string
 } 
