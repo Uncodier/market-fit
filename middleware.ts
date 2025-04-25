@@ -20,7 +20,7 @@ export async function middleware(req: NextRequest) {
     const response = new NextResponse(null, { status: 204 });
     
     // Add the CORS headers to the response
-    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
     response.headers.set('Access-Control-Allow-Credentials', 'true');
@@ -29,7 +29,7 @@ export async function middleware(req: NextRequest) {
     response.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001; " +
+      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:*; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
@@ -44,7 +44,7 @@ export async function middleware(req: NextRequest) {
     const res = NextResponse.next()
     
     // Add CORS headers to all responses
-    res.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.headers.set('Access-Control-Allow-Origin', '*');
     res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
     res.headers.set('Access-Control-Allow-Credentials', 'true');
@@ -53,7 +53,7 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001; " +
+      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:*; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
@@ -119,7 +119,7 @@ export async function middleware(req: NextRequest) {
     const res = NextResponse.next()
     
     // Ensure CORS headers are set even in case of error
-    res.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.headers.set('Access-Control-Allow-Origin', '*');
     res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
     res.headers.set('Access-Control-Allow-Credentials', 'true');
@@ -128,7 +128,7 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001; " +
+      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:*; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +

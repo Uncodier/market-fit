@@ -52,9 +52,17 @@ export function useChatMessages(
             // Check if the last message was from the user or team_member
             // If so, we need to show the loading animation for the agent's response
             const lastMessage = messages[messages.length - 1]
-            if (lastMessage && (lastMessage.role === 'user' || lastMessage.role === 'team_member' || lastMessage.role === 'visitor')) {
+            
+            // Only activate the loading animation if the last message is from a user AND doesn't have an error status
+            if (lastMessage && 
+                (lastMessage.role === 'user' || lastMessage.role === 'team_member' || lastMessage.role === 'visitor') && 
+                (!lastMessage.metadata?.command_status || lastMessage.metadata?.command_status !== "failed")) {
               console.log(`[${new Date().toISOString()}] 🟢🟢🟢 ACTIVANDO ANIMACIÓN (último mensaje del usuario) 🟢🟢🟢`)
               setIsAgentResponding(true)
+            } else {
+              // Disable animation for error messages or assistant messages
+              setIsAgentResponding(false)
+              console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (último mensaje con error o del asistente) 🔴🔴🔴`)
             }
           } else {
             // Si no hay mensajes, inicializar con array vacío
@@ -84,6 +92,7 @@ export function useChatMessages(
                   content: string
                   role: string
                   created_at: string
+                  custom_data?: Record<string, any>
                 }
               }) => {
                 console.log(`[${new Date().toISOString()}] 📨 Nuevo mensaje via suscripción:`, {
@@ -101,7 +110,15 @@ export function useChatMessages(
                   // Don't add to state immediately to avoid duplicates
                   // Let the getConversationMessages call handle all updates
                 } else {
-                  console.log(`[${new Date().toISOString()}] ⏳ Mensaje no es del asistente (${payload.new.role}), manteniendo animación`)
+                  // Check if the message has custom_data with a failed command_status
+                  const customData = payload.new.custom_data as Record<string, any> | undefined;
+                  
+                  if (customData && customData.command_status === "failed") {
+                    console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (suscripción - mensaje con error) 🔴🔴🔴`)
+                    setIsAgentResponding(false)
+                  } else {
+                    console.log(`[${new Date().toISOString()}] ⏳ Mensaje no es del asistente (${payload.new.role}), manteniendo animación`)
+                  }
                 }
                 
                 // Get all updated messages to fully synchronize
@@ -143,13 +160,14 @@ export function useChatMessages(
     }
   }, [conversationId, agentName, isAgentOnlyConversation])
   
-  // Add an effect to disable animation when we detect assistant messages
+  // Add an effect to disable animation when we detect assistant messages or error messages
   useEffect(() => {
-    // If we have messages and the last one is from the assistant, disable the animation
+    // If we have messages and the last one is from the assistant or has error status, disable the animation
     if (chatMessages.length > 0) {
       const lastMessage = chatMessages[chatMessages.length - 1]
-      if (lastMessage.role === 'assistant') {
-        console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (mensaje del asistente detectado en useEffect) 🔴🔴🔴`)
+      if (lastMessage.role === 'assistant' || 
+          (lastMessage.metadata?.command_status === "failed")) {
+        console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (mensaje del asistente o con error detectado en useEffect) 🔴🔴🔴`)
         setIsAgentResponding(false)
       }
     }

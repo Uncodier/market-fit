@@ -64,8 +64,6 @@ export interface Database {
           marketing_budget: Json | null
           marketing_channels: Json | null
           social_media: Json | null
-          target_keywords: Json | null
-          content_calendar: Json | null
           tracking: Json | null
           tracking_code: string | null
           analytics_provider: string | null
@@ -89,8 +87,6 @@ export interface Database {
           marketing_budget?: Json | null
           marketing_channels?: Json | null
           social_media?: Json | null
-          target_keywords?: Json | null
-          content_calendar?: Json | null
           tracking?: Json | null
           tracking_code?: string | null
           analytics_provider?: string | null
@@ -114,8 +110,6 @@ export interface Database {
           marketing_budget?: Json | null
           marketing_channels?: Json | null
           social_media?: Json | null
-          target_keywords?: Json | null
-          content_calendar?: Json | null
           tracking?: Json | null
           tracking_code?: string | null
           analytics_provider?: string | null
@@ -199,14 +193,6 @@ export interface MarketingChannel {
   name: string
   status: 'active' | 'inactive' | 'planned'
   budget?: number
-  notes?: string
-}
-
-export interface CalendarItem {
-  title: string
-  date: string
-  type: string
-  status: 'planned' | 'completed' | 'in-progress'
   notes?: string
 }
 

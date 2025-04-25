@@ -119,7 +119,7 @@ async function findOrCreateKpi(
     description: `${kpiParams.name} for ${periodType} period`,
     value: kpiParams.value,
     previous_value: kpiParams.previousValue,
-    unit: "currency",
+    unit: "count",
     type: kpiParams.type,
     period_start: formattedStart,
     period_end: formattedEnd,
@@ -127,8 +127,7 @@ async function findOrCreateKpi(
     is_highlighted: true,
     target_value: null,
     metadata: {
-      period_type: periodType,
-      currency: "USD"
+      period_type: periodType
     },
     site_id: kpiParams.siteId,
     user_id: kpiParams.userId,
@@ -187,9 +186,6 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         actual: 0,
-        projected: 0,
-        estimated: 0,
-        currency: "USD",
         percentChange: 0,
         periodType: "monthly"
       },
@@ -229,8 +225,8 @@ export async function GET(request: Request) {
           segmentId,
           periodStart: prevStart,
           periodEnd: prevEnd,
-          type: "revenue",
-          name: "Total Revenue",
+          type: "engagement",
+          name: "Active Users",
           value: 0, // This will be updated if we need to create
           previousValue: undefined
         }
@@ -240,8 +236,8 @@ export async function GET(request: Request) {
         // If we found an existing KPI, use its value
         previousValue = prevKpi.value;
       } else {
-        // Calculate previous period value from sales data
-        const prevSalesQuery = await fetchPreviousPeriodSales(
+        // Calculate previous period value
+        const prevUsersQuery = await fetchPreviousPeriodActiveUsers(
           supabase,
           siteId,
           segmentId,
@@ -250,8 +246,8 @@ export async function GET(request: Request) {
         );
         
         // If we successfully calculated a value, create the KPI only once
-        if (prevSalesQuery.value !== null) {
-          previousValue = prevSalesQuery.value;
+        if (prevUsersQuery.value !== null) {
+          previousValue = prevUsersQuery.value;
           
           // Try creating the KPI again with the calculated value
           await findOrCreateKpi(
@@ -263,8 +259,8 @@ export async function GET(request: Request) {
               segmentId,
               periodStart: prevStart,
               periodEnd: prevEnd,
-              type: "revenue",
-              name: "Total Revenue",
+              type: "engagement",
+              name: "Active Users",
               value: previousValue,
               previousValue: undefined
             }
@@ -273,7 +269,7 @@ export async function GET(request: Request) {
       }
       
       // Create current period KPI if it doesn't exist already
-      const currentSalesQuery = await fetchCurrentPeriodSales(
+      const currentUsersQuery = await fetchCurrentPeriodActiveUsers(
         supabase,
         siteId,
         segmentId,
@@ -281,7 +277,7 @@ export async function GET(request: Request) {
         endDate
       );
       
-      const currentValue = currentSalesQuery.value || 0;
+      const currentValue = currentUsersQuery.value || 0;
       
       // Store current period KPI only if we have data for it
       if (currentValue > 0) {
@@ -294,8 +290,8 @@ export async function GET(request: Request) {
             segmentId,
             periodStart: startDate,
             periodEnd: endDate,
-            type: "revenue",
-            name: "Total Revenue",
+            type: "engagement",
+            name: "Active Users",
             value: currentValue,
             previousValue
           }
@@ -305,20 +301,17 @@ export async function GET(request: Request) {
       // Calculate trend
       const trend = calculateTrend(currentValue, previousValue);
       
-      // Return the revenue data
-      const revenue = {
+      // Return the active users data
+      const activeUsers = {
         actual: currentValue,
-        projected: currentValue * 1.2, // Example projection
-        estimated: currentValue * 1.5, // Example estimation
-        currency: "USD",
         percentChange: trend,
         periodType
       };
       
-      return NextResponse.json(revenue);
+      return NextResponse.json(activeUsers);
     } else {
       // If no userId or skipping KPI creation, just calculate the values
-      const prevSalesQuery = await fetchPreviousPeriodSales(
+      const prevUsersQuery = await fetchPreviousPeriodActiveUsers(
         supabase,
         siteId,
         segmentId,
@@ -326,12 +319,12 @@ export async function GET(request: Request) {
         prevEnd
       );
       
-      if (prevSalesQuery.value !== null) {
-        previousValue = prevSalesQuery.value;
+      if (prevUsersQuery.value !== null) {
+        previousValue = prevUsersQuery.value;
       }
       
       // Now calculate current period value (always dynamic)
-      const currentSalesQuery = await fetchCurrentPeriodSales(
+      const currentUsersQuery = await fetchCurrentPeriodActiveUsers(
         supabase,
         siteId,
         segmentId,
@@ -339,31 +332,25 @@ export async function GET(request: Request) {
         endDate
       );
       
-      const currentValue = currentSalesQuery.value || 0;
+      const currentValue = currentUsersQuery.value || 0;
       
       // Calculate trend
       const trend = calculateTrend(currentValue, previousValue);
       
-      // Return the revenue data without saving KPIs
-      const revenue = {
+      // Return the active users data without saving KPIs
+      const activeUsers = {
         actual: currentValue,
-        projected: currentValue * 1.2, // Example projection
-        estimated: currentValue * 1.5, // Example estimation
-        currency: "USD",
         percentChange: trend,
         periodType
       };
       
-      return NextResponse.json(revenue);
+      return NextResponse.json(activeUsers);
     }
   } catch (error) {
-    console.error("Error in revenue API:", error);
+    console.error("Error in active users API:", error);
     return NextResponse.json(
       {
         actual: 0,
-        projected: 0,
-        estimated: 0,
-        currency: "USD",
         percentChange: 0,
         periodType: "monthly"
       },
@@ -372,8 +359,8 @@ export async function GET(request: Request) {
   }
 }
 
-// Helper function to fetch previous period sales
-async function fetchPreviousPeriodSales(
+// Helper function to fetch previous period active users
+async function fetchPreviousPeriodActiveUsers(
   supabase: any,
   siteId: string,
   segmentId: string | null,
@@ -381,36 +368,37 @@ async function fetchPreviousPeriodSales(
   endDate: Date
 ): Promise<{ value: number | null, error: any }> {
   try {
-    let salesQuery = supabase
-      .from("sales")
-      .select("amount, segment_id, status, created_at")
-      .eq("status", "completed")
+    let query = supabase
+      .from("visitor_events")
+      .select("lead_id")
+      .eq("event_type", "page_view")
       .eq("site_id", siteId)
       .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"));
+      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"))
+      .not("lead_id", "is", null);
     
     if (segmentId && segmentId !== "all") {
-      salesQuery = salesQuery.eq("segment_id", segmentId);
+      query = query.eq("segment_id", segmentId);
     }
     
-    const { data, error } = await salesQuery;
+    const { data, error } = await query;
     
     if (error) {
-      console.error("Error fetching previous period sales:", error);
+      console.error("Error fetching previous period active users:", error);
       return { value: null, error };
     }
     
-    const total = data?.reduce((sum: number, sale: { amount: number | string }) => 
-      sum + parseFloat(sale.amount.toString()), 0) || 0;
-    return { value: total, error: null };
+    // Count unique lead_ids
+    const uniqueLeads = new Set(data.map((event: any) => event.lead_id));
+    return { value: uniqueLeads.size, error: null };
   } catch (err) {
-    console.error("Exception fetching previous period sales:", err);
+    console.error("Exception fetching previous period active users:", err);
     return { value: null, error: err };
   }
 }
 
-// Helper function to fetch current period sales
-async function fetchCurrentPeriodSales(
+// Helper function to fetch current period active users
+async function fetchCurrentPeriodActiveUsers(
   supabase: any,
   siteId: string,
   segmentId: string | null,
@@ -418,30 +406,31 @@ async function fetchCurrentPeriodSales(
   endDate: Date
 ): Promise<{ value: number | null, error: any }> {
   try {
-    let salesQuery = supabase
-      .from("sales")
-      .select("amount, segment_id, status, created_at")
-      .eq("status", "completed")
+    let query = supabase
+      .from("visitor_events")
+      .select("lead_id")
+      .eq("event_type", "page_view")
       .eq("site_id", siteId)
       .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"));
+      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"))
+      .not("lead_id", "is", null);
     
     if (segmentId && segmentId !== "all") {
-      salesQuery = salesQuery.eq("segment_id", segmentId);
+      query = query.eq("segment_id", segmentId);
     }
     
-    const { data, error } = await salesQuery;
+    const { data, error } = await query;
     
     if (error) {
-      console.error("Error fetching current period sales:", error);
+      console.error("Error fetching current period active users:", error);
       return { value: null, error };
     }
     
-    const total = data?.reduce((sum: number, sale: { amount: number | string }) => 
-      sum + parseFloat(sale.amount.toString()), 0) || 0;
-    return { value: total, error: null };
+    // Count unique lead_ids
+    const uniqueLeads = new Set(data.map((event: any) => event.lead_id));
+    return { value: uniqueLeads.size, error: null };
   } catch (err) {
-    console.error("Exception fetching current period sales:", err);
+    console.error("Exception fetching current period active users:", err);
     return { value: null, error: err };
   }
 } 

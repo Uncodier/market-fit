@@ -23,6 +23,9 @@ import { agents as mockAgents } from "@/app/data/mock-agents"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 import { Database } from "@/lib/types/database.types"
+import { createConversation } from "@/app/services/chat-service"
+import { useAuthContext } from "@/app/components/auth/auth-provider"
+import { toast } from "react-hot-toast"
 
 // Type-safe version of the example commands
 const exampleCommands: Command[] = [
@@ -106,6 +109,7 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<ExtendedAgent[]>([])
   const { currentSite } = useSite()
   const supabase = createClient()
+  const { user } = useAuthContext()
   
   // Layout configuration
   const sidebarWidth = isLayoutCollapsed ? 72 : 240; // Width in pixels when collapsed or expanded
@@ -320,9 +324,66 @@ export default function AgentsPage() {
     }
   };
   
-  const handleChatWithAgent = (agent: Agent) => {
+  const handleChatWithAgent = async (agent: Agent) => {
     console.log('Chatting with agent:', agent.name);
-    setSelectedAgent(agent);
+    
+    const extendedAgent = agent as ExtendedAgent;
+    const agentId = extendedAgent.dbData?.id || agent.id;
+    const agentName = agent.name;
+    
+    try {
+      if (!currentSite?.id) {
+        toast?.error?.("Cannot create conversation: No site selected");
+        return;
+      }
+      
+      if (!user?.id) {
+        toast?.error?.("Cannot create conversation: Not logged in");
+        return;
+      }
+      
+      console.log("Creating conversation with parameters:");
+      console.log("- siteId:", currentSite.id);
+      console.log("- userId:", user.id);
+      console.log("- agentId:", agentId);
+      console.log("- title:", `Chat with ${agentName}`);
+      
+      // Create a real conversation in the database
+      const { data: conversation, error } = await supabase
+        .from("conversations")
+        .insert({
+          site_id: currentSite.id,
+          user_id: user.id,
+          agent_id: agentId,
+          title: `Chat with ${agentName}`,
+          status: 'active',
+          is_archived: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_message_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error creating conversation:", error);
+        toast?.error?.("Failed to create conversation. Please try again.");
+        return;
+      }
+      
+      if (conversation) {
+        console.log("New conversation created successfully:", conversation);
+        
+        // Redirect to the chat page with the URL format: conversationId first, then agentId and agentName
+        router.push(`/chat?conversationId=${conversation.id}&agentId=${agentId}&agentName=${encodeURIComponent(agentName)}`);
+      } else {
+        console.error("Failed to create conversation - no data returned");
+        toast?.error?.("Failed to create conversation. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error in handleChatWithAgent:", error);
+      toast?.error?.("An error occurred while creating the conversation.");
+    }
   };
   
   const handleToggleActivities = (agent: Agent) => {

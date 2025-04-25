@@ -613,7 +613,7 @@ export function ChatMessages({
             )}
             
             {/* Animación de espera mientras el agente responde */}
-            {isAgentResponding && isAgentOnlyConversation && (
+            {isAgentResponding && (
               <div className="flex justify-start animate-fade-in">
                 <div className="max-w-[calc(100%-240px)] flex items-center space-x-2 p-4">
                   <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>

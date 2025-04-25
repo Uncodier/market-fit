@@ -20,6 +20,7 @@ import { useSite } from "@/app/context/SiteContext"
 import type { Segment } from "@/app/types/segments"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { RevenueWidget } from "@/app/components/dashboard/revenue-widget"
+import { ActiveUsersWidget } from "@/app/components/dashboard/active-users-widget"
 import { format } from "date-fns"
 import { startOfMonth } from "date-fns"
 import { isSameDay, isSameMonth } from "date-fns"
@@ -154,27 +155,11 @@ export default function DashboardPage() {
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
               />
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Active Users
-                  </CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Users active in the last 30 days
-                    </TooltipContent>
-                  </Tooltip>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">+2350</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className={180.1 > 0 ? "text-green-500" : "text-red-500"}>+180.1%</span> from last month
-                  </p>
-                </CardContent>
-              </Card>
+              <ActiveUsersWidget
+                segmentId={selectedSegment}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">

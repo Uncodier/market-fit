@@ -10,8 +10,7 @@ import type {
   TrackingSettings, 
   TeamMember, 
   MarketingChannel, 
-  SocialMedia, 
-  CalendarItem 
+  SocialMedia
 } from "@/lib/types/database.types"
 import { billingService, BillingData } from "../services/billing-service"
 import { toast } from "react-hot-toast"
@@ -27,9 +26,6 @@ export interface Site {
   created_at: string
   updated_at: string
   resource_urls: ResourceUrl[] | null
-  competitors: CompetitorUrl[] | null
-  focusMode: number
-  focus_mode: number
   tracking?: TrackingSettings
   billing?: {
     plan: 'free' | 'starter' | 'professional' | 'enterprise'
@@ -67,8 +63,6 @@ export interface SiteSettings {
   marketing_budget?: MarketingBudget | null
   marketing_channels?: MarketingChannel[] | null
   social_media?: SocialMedia[] | null
-  target_keywords?: string[] | null
-  content_calendar?: CalendarItem[] | null
   tracking_code?: string | null
   analytics_provider?: string | null
   analytics_id?: string | null
@@ -77,6 +71,14 @@ export interface SiteSettings {
   org_structure?: Record<string, any> | null
   created_at?: string
   updated_at?: string
+  competitors?: CompetitorUrl[] | null
+  focus_mode?: number
+  goals?: {
+    quarter?: string
+    year?: string
+    five_year?: string
+    ten_year?: string
+  } | null
 }
 
 export interface ResourceUrl {
@@ -255,11 +257,24 @@ export function SiteProvider({ children }: SiteProviderProps) {
     
     try {
       // If it's already an object/array, return it
-      if (typeof field === 'object') return field;
+      if (typeof field === 'object') {
+        // Special handling for arrays to ensure they're valid
+        if (Array.isArray(field)) {
+          return field;
+        }
+        return field;
+      }
       
       // If it's a string, try to parse it
       if (typeof field === 'string') {
-        return JSON.parse(field);
+        const parsed = JSON.parse(field);
+        
+        // Special handling for products and services to ensure they're valid arrays
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+        
+        return parsed;
       }
       
       return defaultValue;
@@ -350,80 +365,17 @@ export function SiteProvider({ children }: SiteProviderProps) {
       console.log("Raw sites data:", sitesData)
       console.log("Sites fetched successfully:", sitesData?.length || 0, "sites found")
       
-      // Get settings for all sites
-      const siteIds = sitesData?.map((site: Tables<'sites'>) => site.id) || []
-      let settingsData: Record<string, Tables<'settings'>> = {}
-      
-      if (siteIds.length > 0) {
-        console.log("Fetching settings for sites:", siteIds)
-        const { data: settings, error: settingsError } = await supabaseRef.current
-          .from('settings')
-          .select('*')
-          .in('site_id', siteIds)
-          
-        if (settingsError) {
-          console.error("Error fetching settings:", settingsError)
-          throw settingsError
-        }
-        
-        console.log("Settings data fetched:", settings)
-        
-        // Create a map of site_id to settings
-        settingsData = (settings || []).reduce((acc: Record<string, Tables<'settings'>>, setting: Tables<'settings'>) => {
-          acc[setting.site_id] = setting
-          return acc
-        }, {} as Record<string, Tables<'settings'>>)
-      }
-      
       // Cargar focusMode desde localStorage o usar focus_mode de la base de datos
       const sitesWithData = (sitesData || []).map((site: Tables<'sites'>) => {
-        const siteSettings = settingsData[site.id]
-        console.log(`Settings for site ${site.id}:`, siteSettings)
-        
         return {
           ...site,
-          focusMode: getLocalStorage(`site_${site.id}_focusMode`, site.focus_mode || 50),
-          settings: siteSettings ? {
-            id: siteSettings.id,
-            site_id: siteSettings.site_id,
-            about: siteSettings.about,
-            company_size: siteSettings.company_size,
-            industry: siteSettings.industry,
-            products: parseJsonField(siteSettings.products, []),
-            services: parseJsonField(siteSettings.services, []),
-            swot: parseJsonField(siteSettings.swot, {
-              strengths: '',
-              weaknesses: '',
-              opportunities: '',
-              threats: ''
-            }),
-            locations: parseJsonField(siteSettings.locations, []),
-            marketing_budget: parseJsonField(siteSettings.marketing_budget, {
-              total: 0,
-              available: 0
-            }),
-            marketing_channels: parseJsonField(siteSettings.marketing_channels, []),
-            social_media: parseJsonField(siteSettings.social_media, []),
-            target_keywords: parseJsonField(siteSettings.target_keywords, []),
-            content_calendar: parseJsonField(siteSettings.content_calendar, []),
-            tracking: parseJsonField(siteSettings.tracking, {
-              track_visitors: false,
-              track_actions: false,
-              record_screen: false
-            }),
-            tracking_code: siteSettings.tracking_code,
-            analytics_provider: siteSettings.analytics_provider,
-            analytics_id: siteSettings.analytics_id,
-            team_members: parseJsonField(siteSettings.team_members, []),
-            team_roles: parseJsonField(siteSettings.team_roles, []),
-            org_structure: parseJsonField(siteSettings.org_structure, {}),
-            created_at: siteSettings.created_at,
-            updated_at: siteSettings.updated_at
-          } : undefined
+          focus_mode: getLocalStorage(`site_${site.id}_focus_mode`, site.focus_mode || 50),
+          // No incluimos settings aquí, se cargarán específicamente para el sitio actual
+          settings: undefined
         }
       })
       
-      console.log("Sites with settings:", sitesWithData)
+      console.log("Sites prepared:", sitesWithData)
       setSites(sitesWithData as Site[])
       
       // Si hay sitios, intentamos restaurar el sitio guardado o usar el primero
@@ -434,16 +386,91 @@ export function SiteProvider({ children }: SiteProviderProps) {
         const savedSite = savedSiteId ? sitesWithData.find((site: any) => site.id === savedSiteId) : null
         console.log("Found saved site:", savedSite ? "yes" : "no")
         
+        let siteToUse = null;
+        
         // Si el sitio guardado existe en los datos actuales, lo usamos
         if (savedSite) {
-          console.log("Setting saved site as current:", savedSite.name)
-          handleSetCurrentSite(savedSite)
+          console.log("Using saved site as current:", savedSite.name)
+          siteToUse = savedSite;
         } 
         // Si no hay sitio guardado o no se encuentra, usamos el primero
         else {
           console.log("No saved site found, using first site:", sitesWithData[0].name)
-          handleSetCurrentSite(sitesWithData[0])
+          siteToUse = sitesWithData[0];
           setLocalStorage("currentSiteId", sitesWithData[0].id)
+        }
+        
+        // Ahora cargamos los settings específicamente para este sitio
+        if (siteToUse) {
+          try {
+            console.log(`Loading settings specifically for site: ${siteToUse.id}`);
+            const { data: settingsData, error: settingsError } = await supabaseRef.current
+              .from('settings')
+              .select('*')
+              .eq('site_id', siteToUse.id)
+              .single();
+            
+            if (settingsError && settingsError.code !== 'PGRST116') {
+              // PGRST116 significa que no se encontraron registros (es normal para un sitio nuevo)
+              console.error(`Error loading settings for site ${siteToUse.id}:`, settingsError);
+            }
+            
+            // Si tenemos settings, los agregamos al sitio
+            if (settingsData) {
+              console.log(`Settings found for site ${siteToUse.id}:`, settingsData);
+              siteToUse = {
+                ...siteToUse,
+                settings: {
+                  id: settingsData.id,
+                  site_id: settingsData.site_id,
+                  about: settingsData.about,
+                  company_size: settingsData.company_size,
+                  industry: settingsData.industry,
+                  products: parseJsonField(settingsData.products, []),
+                  services: parseJsonField(settingsData.services, []),
+                  swot: parseJsonField(settingsData.swot, {
+                    strengths: '',
+                    weaknesses: '',
+                    opportunities: '',
+                    threats: ''
+                  }),
+                  locations: parseJsonField(settingsData.locations, []),
+                  marketing_budget: parseJsonField(settingsData.marketing_budget, {
+                    total: 0,
+                    available: 0
+                  }),
+                  marketing_channels: parseJsonField(settingsData.marketing_channels, []),
+                  social_media: parseJsonField(settingsData.social_media, []),
+                  tracking_code: settingsData.tracking_code,
+                  analytics_provider: settingsData.analytics_provider,
+                  analytics_id: settingsData.analytics_id,
+                  team_members: parseJsonField(settingsData.team_members, []),
+                  team_roles: parseJsonField(settingsData.team_roles, []),
+                  org_structure: parseJsonField(settingsData.org_structure, {}),
+                  created_at: settingsData.created_at,
+                  updated_at: settingsData.updated_at,
+                  competitors: parseJsonField(settingsData.competitors, []),
+                  focus_mode: settingsData.focus_mode,
+                  goals: parseJsonField(settingsData.goals, {
+                    quarter: '',
+                    year: '',
+                    five_year: '',
+                    ten_year: ''
+                  })
+                }
+              };
+            } else {
+              console.log(`No settings found for site ${siteToUse.id}, using defaults`);
+            }
+          } catch (settingsErr) {
+            console.error(`Error handling settings for site ${siteToUse.id}:`, settingsErr);
+            // Continuamos con el sitio sin settings
+          }
+          
+          // Establecer el sitio actual con sus settings (si existen)
+          handleSetCurrentSite(siteToUse as Site).catch(err => {
+            console.error("Error setting current site:", err);
+          });
         }
       } else {
         console.log("No sites found for this user")
@@ -496,8 +523,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
     if (!isInitialized || !isMounted || !supabaseRef.current) return
 
     // Suscribirse a cambios en la tabla sites
-    const subscription = supabaseRef.current
-      .channel('table-db-changes')
+    const sitesSubscription = supabaseRef.current
+      .channel('sites-db-changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -516,9 +543,32 @@ export function SiteProvider({ children }: SiteProviderProps) {
       })
       .subscribe()
     
+    // Suscribirse a cambios en la tabla settings
+    const settingsSubscription = supabaseRef.current
+      .channel('settings-db-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'settings' 
+      }, (payload: { eventType: string; new: any; old: any }) => {
+        // Reload sites when settings change
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+          // For settings changes, check if it affects the current site
+          if (payload.new && payload.new.site_id === currentSite?.id) {
+            console.log('Settings changed for current site, reloading sites data')
+            loadSites()
+          } else if (payload.old && payload.old.site_id === currentSite?.id) {
+            console.log('Settings deleted for current site, reloading sites data')
+            loadSites()
+          }
+        }
+      })
+      .subscribe()
+    
     return () => {
       try {
-        subscription.unsubscribe()
+        sitesSubscription.unsubscribe()
+        settingsSubscription.unsubscribe()
       } catch (error) {
         console.error("Error unsubscribing from channels:", error)
       }
@@ -526,59 +576,118 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }, [isInitialized, currentSite?.id, isMounted])
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
-  const handleSetCurrentSite = (site: Site) => {
-    setCurrentSite(site)
-    
+  const handleSetCurrentSite = async (site: Site) => {
     // Solo guardar si es un sitio válido y no es el 'default'
     if (site && site.id) {
+      try {
+        // Cargar los settings específicamente para este sitio
+        if (!site.settings && supabaseRef.current) {
+          console.log(`Loading settings for site being set as current: ${site.id}`);
+          const { data: settingsData, error: settingsError } = await supabaseRef.current
+            .from('settings')
+            .select('*')
+            .eq('site_id', site.id)
+            .single();
+          
+          if (settingsError && settingsError.code !== 'PGRST116') {
+            // PGRST116 significa que no se encontraron registros (es normal para un sitio nuevo)
+            console.error(`Error loading settings for site ${site.id}:`, settingsError);
+          }
+          
+          // Si tenemos settings, los agregamos al sitio
+          if (settingsData) {
+            console.log(`Settings found for site ${site.id}:`, settingsData);
+            site = {
+              ...site,
+              settings: {
+                id: settingsData.id,
+                site_id: settingsData.site_id,
+                about: settingsData.about,
+                company_size: settingsData.company_size,
+                industry: settingsData.industry,
+                products: parseJsonField(settingsData.products, []),
+                services: parseJsonField(settingsData.services, []),
+                swot: parseJsonField(settingsData.swot, {
+                  strengths: '',
+                  weaknesses: '',
+                  opportunities: '',
+                  threats: ''
+                }),
+                locations: parseJsonField(settingsData.locations, []),
+                marketing_budget: parseJsonField(settingsData.marketing_budget, {
+                  total: 0,
+                  available: 0
+                }),
+                marketing_channels: parseJsonField(settingsData.marketing_channels, []),
+                social_media: parseJsonField(settingsData.social_media, []),
+                tracking_code: settingsData.tracking_code,
+                analytics_provider: settingsData.analytics_provider,
+                analytics_id: settingsData.analytics_id,
+                team_members: parseJsonField(settingsData.team_members, []),
+                team_roles: parseJsonField(settingsData.team_roles, []),
+                org_structure: parseJsonField(settingsData.org_structure, {}),
+                created_at: settingsData.created_at,
+                updated_at: settingsData.updated_at,
+                competitors: parseJsonField(settingsData.competitors, []),
+                focus_mode: settingsData.focus_mode,
+                goals: parseJsonField(settingsData.goals, {
+                  quarter: '',
+                  year: '',
+                  five_year: '',
+                  ten_year: ''
+                })
+              }
+            };
+          } else {
+            console.log(`No settings found for site ${site.id}, using defaults`);
+          }
+        }
+      } catch (err) {
+        console.error(`Error handling settings for site ${site.id}:`, err);
+        // Continuamos con el sitio sin settings en caso de error
+      }
+      
       // Guardar el ID directamente - nuestra función setLocalStorage ya maneja la limpieza
       console.log(`Estableciendo sitio actual: ${site.name} (${site.id})`)
       setLocalStorage("currentSiteId", site.id)
     }
+    
+    // Establecer el sitio como actual
+    setCurrentSite(site)
   }
 
   // Actualizar un sitio en Supabase
   const handleUpdateSite = async (site: Site) => {
-    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
-    
     try {
-      setError(null)
+      setIsLoading(true);
       
-      console.log("Updating site data:", site);
-      
-      // Extract settings from site object to update separately
-      const { settings, ...siteData } = site;
-      
-      // Ensure tracking data is properly formatted
-      const trackingData = siteData.tracking ? {
-        track_visitors: !!siteData.tracking.track_visitors,
-        track_actions: !!siteData.tracking.track_actions,
-        record_screen: !!siteData.tracking.record_screen
-      } : null;
-      
-      console.log("Tracking data to save:", trackingData);
+      // Extract tracking data for clean update
+      const trackingData = site.tracking || {
+        track_visitors: false,
+        track_actions: false,
+        record_screen: false
+      };
       
       // Update the site record
-      const { error } = await supabaseRef.current
+      const { data: updatedSiteData, error: updateError } = await supabaseRef.current
         .from('sites')
         .update({
-          name: siteData.name,
-          url: siteData.url,
-          description: siteData.description,
-          logo_url: siteData.logo_url,
-          resource_urls: siteData.resource_urls,
-          competitors: siteData.competitors,
-          focus_mode: siteData.focusMode || siteData.focus_mode,
+          name: site.name,
+          url: site.url,
+          description: site.description,
+          logo_url: site.logo_url,
+          resource_urls: site.resource_urls,
           tracking: trackingData,
           updated_at: new Date().toISOString()
         })
         .eq('id', site.id)
+        .select()
       
-      if (error) throw error
+      if (updateError) throw updateError;
       
       // If settings provided, update them as well
-      if (settings) {
-        await handleUpdateSettings(site.id, settings)
+      if (site.settings) {
+        await handleUpdateSettings(site.id, site.settings)
       }
       
       await loadSites() // Reload the sites to get updated data
@@ -592,50 +701,64 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Crear un nuevo sitio
   const handleCreateSite = async (newSite: Omit<Site, 'id' | 'created_at' | 'updated_at'>): Promise<Site> => {
-    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
-    
     try {
-      setError(null)
+      setIsLoading(true);
       
-      const { data: { session } } = await supabaseRef.current.auth.getSession()
+      // Ensure user is authenticated
+      const { data: { session } } = await supabaseRef.current.auth.getSession();
+      if (!session) throw new Error("User not authenticated");
       
-      if (!session) {
-        throw new Error("No active session")
-      }
-      
-      const now = new Date().toISOString()
-      const { data, error } = await supabaseRef.current
+      // Crear el nuevo sitio en la base de datos
+      const now = new Date().toISOString();
+      const { data: createdSiteData, error: createError } = await supabaseRef.current
         .from('sites')
         .insert({
           name: newSite.name,
-          url: newSite.url,
-          description: newSite.description,
+          url: newSite.url || null,
+          description: newSite.description || null,
           logo_url: newSite.logo_url,
           resource_urls: newSite.resource_urls,
-          competitors: newSite.competitors || null,
-          focus_mode: newSite.focusMode || 50,
+          tracking: newSite.tracking,
           user_id: session.user.id,
           created_at: now,
           updated_at: now
         })
         .select()
       
-      if (error) throw error
-      if (!data || data.length === 0) throw new Error("Could not create site")
+      if (createError) throw createError;
+      if (!createdSiteData || createdSiteData.length === 0) throw new Error("Could not create site");
       
+      // Iniciar con un sitio vacío
       const createdSite = {
-        ...data[0],
-        focusMode: newSite.focusMode || 50
-      } as Site
+        ...createdSiteData[0],
+        settings: {}
+      } as Site;
       
-      // Guardar focusMode en localStorage
-      setLocalStorage(`site_${createdSite.id}_focusMode`, createdSite.focusMode)
+      // Crear configuración inicial si el sitio se creó correctamente
+      if (createdSite && createdSite.id) {
+        // Valores iniciales para settings
+        const initialSettings: Partial<SiteSettings> = {
+          site_id: createdSite.id,
+          // Asignar los valores iniciales para competitors y focusMode que ahora pertenecen a settings
+          competitors: [],
+          focus_mode: 50
+        };
+        
+        try {
+          await handleUpdateSettings(createdSite.id, initialSettings);
+          
+          // Actualizar el objeto createdSite con los settings iniciales
+          createdSite.settings = initialSettings as SiteSettings;
+        } catch (settingsError) {
+          console.error("Error creating initial settings:", settingsError);
+        }
+      }
       
       await loadSites() // Recargar los sitios
       
       // Si es el primer sitio, lo establecemos como actual
       if (sites.length === 0) {
-        handleSetCurrentSite(createdSite)
+        await handleSetCurrentSite(createdSite);
       }
       
       return createdSite
@@ -665,7 +788,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Si el sitio eliminado es el actual, cambiamos a otro
       if (currentSite?.id === id && sites.length > 0) {
         const newCurrentSite = sites.find(site => site.id !== id)
-        if (newCurrentSite) handleSetCurrentSite(newCurrentSite)
+        if (newCurrentSite) handleSetCurrentSite(newCurrentSite).catch(err => {
+          console.error("Error setting new current site after delete:", err);
+        });
       }
     } catch (err) {
       console.error("Error deleting site:", err)
@@ -697,32 +822,27 @@ export function SiteProvider({ children }: SiteProviderProps) {
 
   // Function to update settings
   const handleUpdateSettings = async (siteId: string, settings: Partial<SiteSettings>) => {
-    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
-    
     try {
-      console.log("Updating settings for site:", siteId)
-      console.log("Raw settings data received:", settings)
+      setIsLoading(true);
+      const now = new Date().toISOString();
       
-      // Format the settings data to ensure it's properly saved
-      const formattedSettings: Record<string, any> = {
+      // Check if settings already exist for this site
+      const { data: existingSettings, error: fetchError } = await supabaseRef.current
+        .from('settings')
+        .select('*')
+        .eq('site_id', siteId)
+        .maybeSingle();
+      
+      if (fetchError) throw fetchError;
+      
+      // Ensure we have valid settings data
+      const formattedSettings: Partial<SiteSettings> = {
         site_id: siteId,
-        updated_at: new Date().toISOString()
+        ...settings,
+        updated_at: now
       };
       
-      // Copy over all primitive fields directly
-      Object.entries(settings).forEach(([key, value]) => {
-        if (key === 'id' || key === 'site_id' || key === 'created_at' || key === 'updated_at') {
-          if (key === 'id') formattedSettings[key] = value;
-          // Skip other special fields as they're handled separately
-          return;
-        }
-        
-        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
-          formattedSettings[key] = value;
-        }
-      });
-      
-      // Format all object/array fields
+      // Process JSON fields to make sure they are valid
       if (settings.products !== undefined) {
         formattedSettings.products = Array.isArray(settings.products) ? settings.products : [];
       }
@@ -732,11 +852,11 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       if (settings.swot !== undefined) {
-        formattedSettings.swot = settings.swot || {
-          strengths: "",
-          weaknesses: "",
-          opportunities: "",
-          threats: ""
+        formattedSettings.swot = typeof settings.swot === 'object' ? settings.swot : {
+          strengths: '',
+          weaknesses: '',
+          opportunities: '',
+          threats: ''
         };
       }
       
@@ -745,7 +865,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       if (settings.marketing_budget !== undefined) {
-        formattedSettings.marketing_budget = settings.marketing_budget || {
+        formattedSettings.marketing_budget = typeof settings.marketing_budget === 'object' ? settings.marketing_budget : {
           total: 0,
           available: 0
         };
@@ -759,12 +879,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
         formattedSettings.social_media = Array.isArray(settings.social_media) ? settings.social_media : [];
       }
       
-      if (settings.target_keywords !== undefined) {
-        formattedSettings.target_keywords = Array.isArray(settings.target_keywords) ? settings.target_keywords : [];
+      if (settings.tracking_code !== undefined) {
+        formattedSettings.tracking_code = typeof settings.tracking_code === 'string' ? settings.tracking_code : null;
       }
       
-      if (settings.content_calendar !== undefined) {
-        formattedSettings.content_calendar = Array.isArray(settings.content_calendar) ? settings.content_calendar : [];
+      if (settings.analytics_provider !== undefined) {
+        formattedSettings.analytics_provider = typeof settings.analytics_provider === 'string' ? settings.analytics_provider : null;
+      }
+      
+      if (settings.analytics_id !== undefined) {
+        formattedSettings.analytics_id = typeof settings.analytics_id === 'string' ? settings.analytics_id : null;
       }
       
       if (settings.team_members !== undefined) {
@@ -775,13 +899,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
         formattedSettings.team_roles = Array.isArray(settings.team_roles) ? settings.team_roles : [];
       }
       
-      if (settings.org_structure !== undefined) {
-        formattedSettings.org_structure = settings.org_structure || {};
+      // Nuevos campos migrados de site a settings
+      if (settings.competitors !== undefined) {
+        formattedSettings.competitors = Array.isArray(settings.competitors) ? settings.competitors : [];
+      }
+      
+      if (settings.focus_mode !== undefined && settings.focus_mode === undefined) {
+        formattedSettings.focus_mode = typeof settings.focus_mode === 'number' ? settings.focus_mode : 50;
       }
       
       console.log("Formatted settings data to save:", formattedSettings);
       
-      // Use upsert operation
+      // Use upsert operation with site_id as the conflict resolution field
       const { error } = await supabaseRef.current
         .from('settings')
         .upsert(formattedSettings, { 
@@ -796,8 +925,71 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       console.log("Settings updated successfully")
       
-      // Reload sites to get updated data
-      await loadSites()
+      // Cargar los settings actualizados para el sitio actual
+      if (currentSite && currentSite.id === siteId) {
+        console.log("Reloading settings for current site after update");
+        const { data: updatedSettings, error: fetchError } = await supabaseRef.current
+          .from('settings')
+          .select('*')
+          .eq('site_id', siteId)
+          .single();
+          
+        if (fetchError) {
+          console.error("Error loading updated settings:", fetchError);
+        } else if (updatedSettings) {
+          console.log("Updated settings loaded:", updatedSettings);
+          
+          // Actualizar el sitio actual con los nuevos settings
+          const updatedSite = {
+            ...currentSite,
+            settings: {
+              id: updatedSettings.id,
+              site_id: updatedSettings.site_id,
+              about: updatedSettings.about,
+              company_size: updatedSettings.company_size,
+              industry: updatedSettings.industry,
+              products: parseJsonField(updatedSettings.products, []),
+              services: parseJsonField(updatedSettings.services, []),
+              swot: parseJsonField(updatedSettings.swot, {
+                strengths: '',
+                weaknesses: '',
+                opportunities: '',
+                threats: ''
+              }),
+              locations: parseJsonField(updatedSettings.locations, []),
+              marketing_budget: parseJsonField(updatedSettings.marketing_budget, {
+                total: 0,
+                available: 0
+              }),
+              marketing_channels: parseJsonField(updatedSettings.marketing_channels, []),
+              social_media: parseJsonField(updatedSettings.social_media, []),
+              tracking_code: updatedSettings.tracking_code,
+              analytics_provider: updatedSettings.analytics_provider,
+              analytics_id: updatedSettings.analytics_id,
+              team_members: parseJsonField(updatedSettings.team_members, []),
+              team_roles: parseJsonField(updatedSettings.team_roles, []),
+              org_structure: parseJsonField(updatedSettings.org_structure, {}),
+              created_at: updatedSettings.created_at,
+              updated_at: updatedSettings.updated_at,
+              competitors: parseJsonField(updatedSettings.competitors, []),
+              focus_mode: updatedSettings.focus_mode,
+              goals: parseJsonField(updatedSettings.goals, {
+                quarter: '',
+                year: '',
+                five_year: '',
+                ten_year: ''
+              })
+            }
+          };
+          
+          // Actualizar el sitio actual con los nuevos settings
+          setCurrentSite(updatedSite);
+        }
+      } else {
+        // Si no es el sitio actual, simplemente recargamos todos los sitios
+        console.log("Not the current site, reloading all sites");
+        await loadSites();
+      }
       
     } catch (err) {
       console.error("Error updating settings:", err)
