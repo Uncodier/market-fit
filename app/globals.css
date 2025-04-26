@@ -599,4 +599,87 @@ html.safari [class*="select-trigger"] svg {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+/* Custom style for slider thumbs/knobs */
+.style-slider-thumb .slider-thumb {
+  background-color: hsl(var(--primary));
+  border: 3px solid hsl(var(--background));
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px !important;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.style-slider-thumb .slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.style-slider-thumb .slider-track {
+  height: 8px;
+  background-color: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 9999px !important;
+  overflow: hidden;
+}
+
+.style-slider-thumb .slider-range {
+  background-color: hsl(var(--primary));
+  height: 8px;
+  border-radius: 9999px 0 0 9999px !important;
+}
+
+/* Direct styling for sliders with color classes */
+[data-radix-slider-track] {
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+  height: 8px !important;
+}
+
+[data-radix-slider-range] {
+  border-radius: 9999px 0 0 9999px !important;
+  height: 8px !important;
+}
+
+[data-radix-slider-thumb] {
+  width: 24px !important;
+  height: 24px !important;
+  border-width: 3px !important;
+  border-radius: 9999px !important;
+}
+
+/* Fix for thumb transform */
+[style*="--radix-slider-thumb-transform"] {
+  border-radius: 9999px !important;
+}
+
+/* Color-specific slider styles */
+.bg-blue-700 {
+  background-color: #1d4ed8;
+}
+
+.bg-blue-600 {
+  background-color: #2563eb;
+}
+
+.bg-blue-500 {
+  background-color: #3b82f6;
+}
+
+.bg-purple-600 {
+  background-color: #9333ea;
+}
+
+.bg-purple-500 {
+  background-color: #a855f7;
+}
+
+.bg-green-600 {
+  background-color: #16a34a;
+}
+
+.bg-green-700 {
+  background-color: #15803d;
 } 

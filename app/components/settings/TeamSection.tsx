@@ -7,7 +7,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/
 import { Input } from "../ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
-import { PlusCircle, Trash2, User } from "../ui/icons"
+import { PlusCircle, Trash2, User, Mail, FileText } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 
 interface TeamSectionProps {
@@ -54,32 +54,34 @@ export function TeamSection({ active }: TeamSectionProps) {
         </p>
       </CardHeader>
       <CardContent className="space-y-6 px-8 pb-8">
-        <div className="space-y-4">
-          {teamList.map((member, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+        {teamList.map((member, index) => (
+          <div key={index} className="space-y-4 p-4 border border-border rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name={`team_members.${index}.name`}
                 render={({ field }) => (
-                  <FormItem className="md:col-span-3">
-                    <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                      Name
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Name</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Full name"
-                        {...field}
-                        value={field.value || ""}
-                        onChange={(e) => {
-                          field.onChange(e)
-                          const newTeamList = [...teamList]
-                          newTeamList[index] = {
-                            ...newTeamList[index],
-                            name: e.target.value
-                          }
-                          setTeamList(newTeamList)
-                        }}
-                      />
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-12 h-12 text-base"
+                          placeholder="Full name"
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => {
+                            field.onChange(e)
+                            const newTeamList = [...teamList]
+                            newTeamList[index] = {
+                              ...newTeamList[index],
+                              name: e.target.value
+                            }
+                            setTeamList(newTeamList)
+                          }}
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -89,111 +91,116 @@ export function TeamSection({ active }: TeamSectionProps) {
                 control={form.control}
                 name={`team_members.${index}.email`}
                 render={({ field }) => (
-                  <FormItem className="md:col-span-3">
-                    <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                      Email
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Email</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Email address"
-                        type="email"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e)
-                          const newTeamList = [...teamList]
-                          newTeamList[index] = {
-                            ...newTeamList[index],
-                            email: e.target.value
-                          }
-                          setTeamList(newTeamList)
-                        }}
-                      />
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-12 h-12 text-base"
+                          placeholder="Email address"
+                          type="email"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e)
+                            const newTeamList = [...teamList]
+                            newTeamList[index] = {
+                              ...newTeamList[index],
+                              email: e.target.value
+                            }
+                            setTeamList(newTeamList)
+                          }}
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name={`team_members.${index}.position`}
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                      Position
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Position</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Job title"
-                        {...field}
-                        value={field.value || ""}
-                        onChange={(e) => {
-                          field.onChange(e)
-                          const newTeamList = [...teamList]
-                          newTeamList[index] = {
-                            ...newTeamList[index],
-                            position: e.target.value
-                          }
-                          setTeamList(newTeamList)
-                        }}
-                      />
+                      <div className="relative">
+                        <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-12 h-12 text-base"
+                          placeholder="Job title"
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => {
+                            field.onChange(e)
+                            const newTeamList = [...teamList]
+                            newTeamList[index] = {
+                              ...newTeamList[index],
+                              position: e.target.value
+                            }
+                            setTeamList(newTeamList)
+                          }}
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name={`team_members.${index}.role`}
-                render={({ field }) => (
-                  <FormItem className="md:col-span-3">
-                    <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                      Role
-                    </FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) => {
-                        field.onChange(value)
-                        const newTeamList = [...teamList]
-                        newTeamList[index] = {
-                          ...newTeamList[index],
-                          role: value as TeamRole
-                        }
-                        setTeamList(newTeamList)
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TEAM_ROLES.map((role) => (
-                          <SelectItem key={role.value} value={role.value}>
-                            {role.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex items-end justify-center md:justify-start md:col-span-1">
+              <div className="flex items-end space-x-4">
+                <FormField
+                  control={form.control}
+                  name={`team_members.${index}.role`}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel className="text-sm font-medium">Role</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          const newTeamList = [...teamList]
+                          newTeamList[index] = {
+                            ...newTeamList[index],
+                            role: value as TeamRole
+                          }
+                          setTeamList(newTeamList)
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-12">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {TEAM_ROLES.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Button
                   size="icon"
                   variant="ghost"
                   type="button"
                   onClick={() => removeTeamMember(index)}
+                  className="h-12 w-12 mt-2"
                 >
                   <Trash2 className="h-5 w-5" />
                 </Button>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
         <Button
           variant="outline"
-          className="mt-2"
+          className="mt-2 w-full h-12"
           type="button"
           onClick={addTeamMember}
         >

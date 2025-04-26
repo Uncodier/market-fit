@@ -6,9 +6,8 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescripti
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Slider } from "../ui/slider"
 import { Button } from "../ui/button"
-import { PlusCircle, Trash2, UploadCloud } from "../ui/icons"
+import { PlusCircle, Trash2, UploadCloud, AppWindow, Globe, Tag } from "../ui/icons"
 import { useDropzone } from "react-dropzone"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -16,45 +15,10 @@ import { useState } from "react"
 
 interface GeneralSectionProps {
   active: boolean
-  focusModeConfig: (value: number) => any
 }
 
-export function GeneralSection({ active, focusModeConfig }: GeneralSectionProps) {
+export function GeneralSection({ active }: GeneralSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [resourceList, setResourceList] = useState<{key: string, url: string}[]>(
-    form.getValues("resource_urls") || []
-  )
-  const [competitorList, setCompetitorList] = useState<{name?: string, url: string}[]>(
-    form.getValues("competitors") || []
-  )
-
-  // Add resource entry
-  const addResource = () => {
-    const newResources = [...resourceList, { key: "", url: "" }]
-    setResourceList(newResources)
-    form.setValue("resource_urls", newResources)
-  }
-
-  // Remove resource entry
-  const removeResource = (index: number) => {
-    const newResources = resourceList.filter((_, i) => i !== index)
-    setResourceList(newResources)
-    form.setValue("resource_urls", newResources)
-  }
-
-  // Add competitor entry
-  const addCompetitor = () => {
-    const newCompetitors = [...competitorList, { name: "", url: "" }]
-    setCompetitorList(newCompetitors)
-    form.setValue("competitors", newCompetitors as any)
-  }
-
-  // Remove competitor entry
-  const removeCompetitor = (index: number) => {
-    const newCompetitors = competitorList.filter((_, i) => i !== index)
-    setCompetitorList(newCompetitors)
-    form.setValue("competitors", newCompetitors as any)
-  }
 
   // Handle logo upload
   const { getRootProps, getInputProps } = useDropzone({
@@ -77,8 +41,6 @@ export function GeneralSection({ active, focusModeConfig }: GeneralSectionProps)
 
   if (!active) return null
 
-  const focusConfig = focusModeConfig(form.watch("focusMode"))
-
   return (
     <>
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -93,34 +55,41 @@ export function GeneralSection({ active, focusModeConfig }: GeneralSectionProps)
                 name="logo_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Logo</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">Logo</FormLabel>
                     <FormControl>
-                      <div
-                        {...getRootProps()}
-                        className={cn(
-                          "relative flex h-40 w-40 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 text-center transition-colors hover:bg-gray-100",
-                          field.value && "border-0 p-0"
-                        )}
-                      >
-                        <input {...getInputProps()} />
+                      <div className="w-[240px] h-[240px] relative">
                         {field.value ? (
-                          <Image
-                            src={field.value}
-                            alt="Logo"
-                            fill
-                            className="object-contain p-2"
-                          />
+                          <div className="w-full h-full relative group">
+                            <Image
+                              src={field.value}
+                              alt="Site logo"
+                              fill
+                              className="object-contain rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => field.onChange("")}
+                              className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
+                            >
+                              <Trash2 className="h-4 w-4 text-white" />
+                            </button>
+                          </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center space-y-2">
-                            <UploadCloud className="h-8 w-8 text-gray-400" />
-                            <p className="text-sm text-gray-500">
-                              Drag & drop or click to upload
-                            </p>
+                          <div
+                            {...getRootProps()}
+                            className="w-full h-full rounded-lg border-2 border-dashed border-input bg-muted flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-input/80 hover:bg-muted/80 transition-colors"
+                          >
+                            <input {...getInputProps()} />
+                            <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                            <div className="text-sm text-center">
+                              <p className="font-medium text-foreground">Click to upload</p>
+                              <p className="text-muted-foreground">or drag and drop</p>
+                            </div>
                           </div>
                         )}
                       </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs mt-2" />
                   </FormItem>
                 )}
               />
@@ -131,11 +100,18 @@ export function GeneralSection({ active, focusModeConfig }: GeneralSectionProps)
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Site Name</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">Site Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="My Awesome Site" {...field} />
+                      <div className="relative">
+                        <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          className="pl-12 h-12 text-base" 
+                          placeholder="Enter your site name"
+                          {...field} 
+                        />
+                      </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs mt-2" />
                   </FormItem>
                 )}
               />
@@ -144,11 +120,18 @@ export function GeneralSection({ active, focusModeConfig }: GeneralSectionProps)
                 name="url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Site URL</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">Site URL</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://example.com" {...field} />
+                      <div className="relative">
+                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          className="pl-12 h-12 text-base" 
+                          placeholder="https://example.com"
+                          {...field} 
+                        />
+                      </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs mt-2" />
                   </FormItem>
                 )}
               />
@@ -159,215 +142,22 @@ export function GeneralSection({ active, focusModeConfig }: GeneralSectionProps)
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Description</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground">Description</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="A brief description of your site"
-                    className="min-h-[100px]"
-                    {...field}
-                    value={field.value || ""}
-                  />
+                  <div className="relative">
+                    <Tag className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
+                    <Textarea 
+                      className="pl-12 resize-none min-h-[120px] text-base"
+                      placeholder="Describe your site..."
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-xs mt-2" />
               </FormItem>
             )}
           />
-        </CardContent>
-      </Card>
-      
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Resources & Links</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
-          {resourceList.map((resource, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <FormField
-                control={form.control}
-                name={`resource_urls.${index}.key`}
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormControl>
-                      <Input
-                        placeholder="Resource name"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e)
-                          const newResources = [...resourceList]
-                          newResources[index].key = e.target.value
-                          setResourceList(newResources)
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={`resource_urls.${index}.url`}
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormControl>
-                      <Input
-                        placeholder="https://example.com/resource"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e)
-                          const newResources = [...resourceList]
-                          newResources[index].url = e.target.value
-                          setResourceList(newResources)
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                size="icon"
-                variant="ghost"
-                type="button"
-                onClick={() => removeResource(index)}
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
-            </div>
-          ))}
-          <Button
-            variant="outline"
-            className="mt-2"
-            type="button"
-            onClick={addResource}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Resource
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
-          {competitorList.map((competitor, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <FormField
-                control={form.control}
-                name={`competitors.${index}.name`}
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormControl>
-                      <Input
-                        placeholder="Competitor name"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e)
-                          const newCompetitors = [...competitorList]
-                          newCompetitors[index].name = e.target.value
-                          setCompetitorList(newCompetitors)
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={`competitors.${index}.url`}
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormControl>
-                      <Input
-                        placeholder="https://competitor.com"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e)
-                          const newCompetitors = [...competitorList]
-                          newCompetitors[index].url = e.target.value
-                          setCompetitorList(newCompetitors)
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                size="icon"
-                variant="ghost"
-                type="button"
-                onClick={() => removeCompetitor(index)}
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
-            </div>
-          ))}
-          <Button
-            variant="outline"
-            className="mt-2"
-            type="button"
-            onClick={addCompetitor}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Competitor
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">AI Focus Mode</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Adjust the focus balance between sales conversion and user growth
-          </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          <div className="space-y-6">
-            <FormField
-              control={form.control}
-              name="focusMode"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-blue-600">Sales</span>
-                      <span className={`text-xl font-bold ${focusConfig.color}`}>
-                        {focusConfig.label}
-                      </span>
-                      <span className="text-sm font-medium text-green-600">Growth</span>
-                    </div>
-                    <FormControl>
-                      <Slider
-                        value={[field.value]}
-                        min={0}
-                        max={100}
-                        step={1}
-                        onValueChange={(value) => {
-                          field.onChange(value[0])
-                        }}
-                        className={`${focusConfig.sliderClass}`}
-                      />
-                    </FormControl>
-                    <p className="text-sm text-muted-foreground">{focusConfig.description}</p>
-                    <div className="mt-4 space-y-3">
-                      <h4 className="text-sm font-semibold">Agent Behavior:</h4>
-                      <ul className="space-y-2">
-                        {focusConfig.features.map((feature: string, i: number) => (
-                          <li key={i} className="text-sm flex items-start">
-                            <div className="rounded-full h-1.5 w-1.5 mt-1.5 mr-2 bg-primary" />
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </FormItem>
-              )}
-            />
-          </div>
         </CardContent>
       </Card>
     </>

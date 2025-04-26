@@ -44,11 +44,35 @@ const SOCIAL_PLATFORMS = [
   { value: "custom", label: "Custom" }
 ]
 
-// Función para obtener el componente de ícono según la plataforma
+// Mapping of platforms to their required fields
+const PLATFORM_FIELDS = {
+  "whatsapp": ["phone", "phoneCode"],
+  "telegram": ["handle", "url"],
+  "discord": ["inviteCode", "url"],
+  "default": ["url", "handle"]
+};
+
+// Country codes for phone fields
+const COUNTRY_CODES = [
+  { value: "+1", label: "+1 (US)" },
+  { value: "+44", label: "+44 (UK)" },
+  { value: "+34", label: "+34 (Spain)" },
+  { value: "+52", label: "+52 (Mexico)" },
+  { value: "+91", label: "+91 (India)" },
+  { value: "+55", label: "+55 (Brazil)" },
+  { value: "+49", label: "+49 (Germany)" },
+  { value: "+33", label: "+33 (France)" },
+  { value: "+81", label: "+81 (Japan)" },
+  { value: "+86", label: "+86 (China)" },
+  { value: "+39", label: "+39 (Italy)" },
+  { value: "+7", label: "+7 (Russia)" },
+  { value: "+82", label: "+82 (South Korea)" },
+  { value: "+61", label: "+61 (Australia)" }
+];
+
+// Function to get platform icon
 const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
   if (!platform) return <GlobeIcon size={size} />;
-  
-  console.log("getPlatformIcon called with platform:", platform, "type:", typeof platform);
   
   switch (platform.toLowerCase()) {
     case 'facebook': return <FacebookIcon size={size} />;
@@ -64,32 +88,62 @@ const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
     case 'whatsapp': return <WhatsAppIcon size={size} />;
     case 'telegram': return <TelegramIcon size={size} />;
     case 'discord': return <DiscordIcon size={size} />;
-    default: 
-      console.log("No case matched for platform:", platform, "falling back to GlobeIcon");
-      return <GlobeIcon size={size} />;
+    default: return <GlobeIcon size={size} />;
   }
 };
 
-// Muestra un grid de todos los íconos disponibles
-const SocialIconsGrid = ({ size = 24 }: { size?: number }) => {
-  return (
-    <div className="mt-8 p-4 bg-muted/30 rounded-md">
-      <h3 className="mb-4 text-sm font-medium">Available platforms</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        {SOCIAL_PLATFORMS.map((platform) => (
-          <div 
-            key={platform.value}
-            className="flex flex-col items-center gap-1 p-2 border rounded-md"
-            title={platform.label}
-          >
-            {getPlatformIcon(platform.value, size)}
-            <span className="text-xs">{platform.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+// Get platform-specific fields and proper labels
+const getPlatformFields = (platform: string) => {
+  switch (platform) {
+    case 'whatsapp':
+      return {
+        fields: PLATFORM_FIELDS.whatsapp,
+        labels: {
+          phone: "Phone Number",
+          phoneCode: "Country Code"
+        },
+        placeholders: {
+          phone: "123456789"
+        }
+      };
+    case 'telegram':
+      return {
+        fields: PLATFORM_FIELDS.telegram,
+        labels: {
+          handle: "Username",
+          url: "Invite Link"
+        },
+        placeholders: {
+          handle: "@username",
+          url: "https://t.me/username"
+        }
+      };
+    case 'discord':
+      return {
+        fields: PLATFORM_FIELDS.discord,
+        labels: {
+          inviteCode: "Invite Code",
+          url: "Server URL"
+        },
+        placeholders: {
+          inviteCode: "discord-invite-code",
+          url: "https://discord.gg/code"
+        }
+      };
+    default:
+      return {
+        fields: PLATFORM_FIELDS.default,
+        labels: {
+          url: "URL",
+          handle: "Username"
+        },
+        placeholders: {
+          url: "https://example.com/profile",
+          handle: "@username"
+        }
+      };
+  }
+};
 
 interface SocialSectionProps {
   active: boolean
@@ -97,7 +151,15 @@ interface SocialSectionProps {
 
 export function SocialSection({ active }: SocialSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [socialList, setSocialList] = useState<{platform: string, url: string, handle?: string}[]>(
+  const [socialList, setSocialList] = useState<{
+    platform: string, 
+    url: string, 
+    handle?: string,
+    phone?: string,
+    phoneCode?: string,
+    inviteCode?: string,
+    channelId?: string
+  }[]>(
     form.getValues("social_media") || []
   )
   const [forceUpdate, setForceUpdate] = useState(0)
@@ -109,7 +171,15 @@ export function SocialSection({ active }: SocialSectionProps) {
 
   // Add social media entry
   const addSocialMedia = () => {
-    const newSocialMedia = [...socialList, { platform: "", url: "", handle: "" }]
+    const newSocialMedia = [...socialList, { 
+      platform: "", 
+      url: "",
+      handle: "",
+      phone: "",
+      phoneCode: "+1",
+      inviteCode: "",
+      channelId: ""
+    }]
     setSocialList(newSocialMedia)
     form.setValue("social_media", newSocialMedia)
     setForceUpdate(prev => prev + 1)
@@ -134,123 +204,311 @@ export function SocialSection({ active }: SocialSectionProps) {
         </p>
       </CardHeader>
       <CardContent className="space-y-6 px-8 pb-8">
-        {socialList.map((social, index) => (
-          <div key={`social-row-${index}-${forceUpdate}`} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <FormField
-              control={form.control}
-              name={`social_media.${index}.platform`}
-              render={({ field }) => (
-                <FormItem className="md:col-span-1">
-                  <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                    Platform
-                  </FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => {
-                      field.onChange(value)
-                      const newSocialMedia = [...socialList]
-                      newSocialMedia[index].platform = value
-                      setSocialList(newSocialMedia)
-                      setForceUpdate(prev => prev + 1)
-                    }}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select platform">
-                          {field.value && (
-                            <div className="flex items-center gap-2">
-                              {getPlatformIcon(field.value, 16)}
-                              <span>{SOCIAL_PLATFORMS.find(p => p.value === field.value)?.label || field.value}</span>
-                            </div>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {SOCIAL_PLATFORMS.map((platform) => (
-                        <SelectItem key={platform.value} value={platform.value}>
-                          <div className="flex items-center gap-2">
-                            {getPlatformIcon(platform.value, 16)}
-                            <span>{platform.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={`social_media.${index}.url`}
-              render={({ field }) => (
-                <FormItem className="md:col-span-2">
-                  <FormLabel className={index !== 0 ? "sr-only" : undefined}>URL</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center relative">
-                      {social.platform && (
-                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
-                          {getPlatformIcon(social.platform, 16)}
-                        </div>
-                      )}
-                      <Input
-                        placeholder="https://example.com/profile"
-                        {...field}
-                        className={social.platform ? "pl-9" : ""}
-                        onChange={(e) => {
-                          field.onChange(e)
+        {socialList.map((social, index) => {
+          const platformConfig = getPlatformFields(social.platform);
+          
+          return (
+            <div key={`social-row-${index}-${forceUpdate}`} className="space-y-4">
+              <div className="grid grid-cols-12 gap-4 items-center">
+                <FormField
+                  control={form.control}
+                  name={`social_media.${index}.platform`}
+                  render={({ field }) => (
+                    <FormItem className="col-span-4 md:col-span-3">
+                      <FormLabel className={index !== 0 ? "sr-only" : undefined}>
+                        Platform
+                      </FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value)
                           const newSocialMedia = [...socialList]
-                          newSocialMedia[index].url = e.target.value
+                          newSocialMedia[index] = { ...newSocialMedia[index], platform: value }
                           setSocialList(newSocialMedia)
+                          setForceUpdate(prev => prev + 1)
                         }}
-                      />
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-12">
+                            <SelectValue placeholder="Select Platform" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="z-[50]">
+                          {SOCIAL_PLATFORMS.map((platform) => (
+                            <SelectItem key={platform.value} value={platform.value}>
+                              <div className="flex items-center gap-2">
+                                {getPlatformIcon(platform.value, 16)}
+                                <span>{platform.label}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {social.platform && (
+                  <>
+                    {/* WhatsApp specific fields */}
+                    {social.platform === 'whatsapp' && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name={`social_media.${index}.phoneCode`}
+                          render={({ field }) => (
+                            <FormItem className="col-span-3 md:col-span-3">
+                              <FormLabel className={index !== 0 ? "sr-only" : undefined}>Country Code</FormLabel>
+                              <Select
+                                value={field.value || "+1"}
+                                onValueChange={(value) => {
+                                  field.onChange(value)
+                                  const newSocialMedia = [...socialList]
+                                  newSocialMedia[index] = { ...newSocialMedia[index], phoneCode: value }
+                                  setSocialList(newSocialMedia)
+                                }}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-12">
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="z-[50]">
+                                  {COUNTRY_CODES.map((code) => (
+                                    <SelectItem key={code.value} value={code.value}>
+                                      {code.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`social_media.${index}.phone`}
+                          render={({ field }) => (
+                            <FormItem className="col-span-4 md:col-span-5">
+                              <FormLabel className={index !== 0 ? "sr-only" : undefined}>Phone Number</FormLabel>
+                              <FormControl>
+                                <div className="flex items-center relative">
+                                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-[1]">
+                                    {getPlatformIcon(social.platform, 16)}
+                                  </div>
+                                  <Input
+                                    placeholder="123456789"
+                                    {...field}
+                                    className="pl-9 h-12"
+                                    onChange={(e) => {
+                                      field.onChange(e)
+                                      const newSocialMedia = [...socialList]
+                                      newSocialMedia[index] = { ...newSocialMedia[index], phone: e.target.value }
+                                      setSocialList(newSocialMedia)
+                                    }}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
+                    )}
+
+                    {/* Telegram specific fields */}
+                    {social.platform === 'telegram' && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name={`social_media.${index}.handle`}
+                          render={({ field }) => (
+                            <FormItem className="col-span-3 md:col-span-4">
+                              <FormLabel className={index !== 0 ? "sr-only" : undefined}>Username</FormLabel>
+                              <FormControl>
+                                <div className="flex items-center relative">
+                                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-[1]">
+                                    {getPlatformIcon(social.platform, 16)}
+                                  </div>
+                                  <Input
+                                    placeholder="@username"
+                                    {...field}
+                                    className="pl-9 h-12"
+                                    onChange={(e) => {
+                                      field.onChange(e)
+                                      const newSocialMedia = [...socialList]
+                                      newSocialMedia[index] = { ...newSocialMedia[index], handle: e.target.value }
+                                      setSocialList(newSocialMedia)
+                                    }}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`social_media.${index}.url`}
+                          render={({ field }) => (
+                            <FormItem className="col-span-4 md:col-span-4">
+                              <FormLabel className={index !== 0 ? "sr-only" : undefined}>Invite Link (Optional)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="https://t.me/username"
+                                  {...field}
+                                  className="h-12"
+                                  onChange={(e) => {
+                                    field.onChange(e)
+                                    const newSocialMedia = [...socialList]
+                                    newSocialMedia[index] = { ...newSocialMedia[index], url: e.target.value }
+                                    setSocialList(newSocialMedia)
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
+                    )}
+
+                    {/* Discord specific fields */}
+                    {social.platform === 'discord' && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name={`social_media.${index}.inviteCode`}
+                          render={({ field }) => (
+                            <FormItem className="col-span-3 md:col-span-4">
+                              <FormLabel className={index !== 0 ? "sr-only" : undefined}>Invite Code</FormLabel>
+                              <FormControl>
+                                <div className="flex items-center relative">
+                                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-[1]">
+                                    {getPlatformIcon(social.platform, 16)}
+                                  </div>
+                                  <Input
+                                    placeholder="discord-invite-code"
+                                    {...field}
+                                    className="pl-9 h-12"
+                                    onChange={(e) => {
+                                      field.onChange(e)
+                                      const newSocialMedia = [...socialList]
+                                      newSocialMedia[index] = { ...newSocialMedia[index], inviteCode: e.target.value }
+                                      setSocialList(newSocialMedia)
+                                    }}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`social_media.${index}.url`}
+                          render={({ field }) => (
+                            <FormItem className="col-span-4 md:col-span-4">
+                              <FormLabel className={index !== 0 ? "sr-only" : undefined}>Server URL (Optional)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="https://discord.gg/code"
+                                  {...field}
+                                  className="h-12"
+                                  onChange={(e) => {
+                                    field.onChange(e)
+                                    const newSocialMedia = [...socialList]
+                                    newSocialMedia[index] = { ...newSocialMedia[index], url: e.target.value }
+                                    setSocialList(newSocialMedia)
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
+                    )}
+
+                    {/* Default fields for other platforms */}
+                    {!['whatsapp', 'telegram', 'discord'].includes(social.platform) && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name={`social_media.${index}.url`}
+                          render={({ field }) => (
+                            <FormItem className="col-span-3 md:col-span-4">
+                              <FormLabel className={index !== 0 ? "sr-only" : undefined}>URL</FormLabel>
+                              <FormControl>
+                                <div className="flex items-center relative">
+                                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-[1]">
+                                    {getPlatformIcon(social.platform, 16)}
+                                  </div>
+                                  <Input
+                                    placeholder="https://example.com/profile"
+                                    {...field}
+                                    className="pl-9 h-12"
+                                    onChange={(e) => {
+                                      field.onChange(e)
+                                      const newSocialMedia = [...socialList]
+                                      newSocialMedia[index] = { ...newSocialMedia[index], url: e.target.value }
+                                      setSocialList(newSocialMedia)
+                                    }}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`social_media.${index}.handle`}
+                          render={({ field }) => (
+                            <FormItem className="col-span-4 md:col-span-4">
+                              <FormLabel className={index !== 0 ? "sr-only" : undefined}>Username (Optional)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="@username"
+                                  {...field}
+                                  className="h-12"
+                                  onChange={(e) => {
+                                    field.onChange(e)
+                                    const newSocialMedia = [...socialList]
+                                    newSocialMedia[index] = { ...newSocialMedia[index], handle: e.target.value }
+                                    setSocialList(newSocialMedia)
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
+                    )}
+                    
+                    <div className="col-span-1 flex items-center justify-center">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        onClick={() => removeSocialMedia(index)}
+                        className="h-12 w-12"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
                     </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={`social_media.${index}.handle`}
-              render={({ field }) => (
-                <FormItem className="md:col-span-1">
-                  <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                    Handle
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="@username"
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e)
-                        const newSocialMedia = [...socialList]
-                        newSocialMedia[index].handle = e.target.value
-                        setSocialList(newSocialMedia)
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex items-end justify-center md:justify-start">
-              <Button
-                size="icon"
-                variant="ghost"
-                type="button"
-                onClick={() => removeSocialMedia(index)}
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         
         <Button
           variant="outline"
-          className="mt-2"
+          className="mt-2 w-full h-12"
           type="button"
           onClick={addSocialMedia}
         >
@@ -258,23 +516,9 @@ export function SocialSection({ active }: SocialSectionProps) {
           Add Social Network
         </Button>
         
-        {socialList.filter(social => social.platform && social.url).length > 0 && (
-          <div className="flex flex-wrap gap-4 mt-6">
-            {socialList.filter(social => social.platform && social.url).map((social, index) => (
-              <div key={`preview-${social.platform}-${index}-${forceUpdate}`} className="flex items-center p-2 border rounded-md hover:bg-muted/50 transition-colors">
-                {getPlatformIcon(social.platform, 20)}
-                <span className="ml-2 text-sm font-medium">{SOCIAL_PLATFORMS.find(p => p.value === social.platform)?.label || social.platform}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        
         <div className="text-sm text-muted-foreground mt-4">
-          <p>Connect your social media accounts to enhance your site's presence. Only accounts with valid URLs will be saved.</p>
+          <p>Connect your social media accounts to enhance your site's presence. Different platforms require different information.</p>
         </div>
-        
-        {/* Muestra todos los íconos disponibles */}
-        <SocialIconsGrid />
       </CardContent>
     </Card>
   )

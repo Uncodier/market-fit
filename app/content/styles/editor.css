@@ -124,4 +124,41 @@
 
 .dark .ProseMirror p.is-editor-empty:first-child::before {
   color: #6b7280;
+}
+
+/* Editor styles */
+
+/* Line break style */
+.markdown-line-break {
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin: 0.5em 0;
+}
+
+/* Custom style for slider thumbs/knobs */
+.style-slider-thumb .slider-thumb {
+  background-color: hsl(var(--primary));
+  border: 2px solid hsl(var(--background));
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.style-slider-thumb .slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+.style-slider-thumb .slider-track {
+  height: 4px;
+  background-color: hsl(var(--muted-foreground) / 0.2);
+}
+
+.style-slider-thumb .slider-range {
+  background-color: hsl(var(--primary));
+  height: 4px;
 } 

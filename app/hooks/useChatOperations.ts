@@ -85,10 +85,6 @@ export function useChatOperations({
       return [...prevMessages, tempUserMessage];
     });
     
-    // Activate waiting animation for agent response
-    setIsAgentResponding(true)
-    console.log(`[${new Date().toISOString()}] 🟢🟢🟢 ACTIVANDO ANIMACIÓN DE ESPERA 🟢🟢🟢`)
-    
     try {
       // For new conversations, create a real conversation first
       let actualConversationId = conversationId
@@ -255,10 +251,8 @@ export function useChatOperations({
       // Remove temporary message since there was an error
       setChatMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id))
     } finally {
-      // Always clear loading states
+      // Only clear loading state for UI feedback
       setIsLoading(false)
-      setIsAgentResponding(false)
-      console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (finally) 🔴🔴🔴`)
     }
   }
 

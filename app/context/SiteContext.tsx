@@ -74,10 +74,10 @@ export interface SiteSettings {
   competitors?: CompetitorUrl[] | null
   focus_mode?: number
   goals?: {
-    quarter?: string
-    year?: string
-    five_year?: string
-    ten_year?: string
+    quarterly?: string
+    yearly?: string
+    fiveYear?: string
+    tenYear?: string
   } | null
 }
 
@@ -267,6 +267,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       // If it's a string, try to parse it
       if (typeof field === 'string') {
+        console.log(`Parsing JSON string: ${field}`);
         const parsed = JSON.parse(field);
         
         // Special handling for products and services to ensure they're valid arrays
@@ -274,12 +275,24 @@ export function SiteProvider({ children }: SiteProviderProps) {
           return parsed;
         }
         
+        // Special handling for goals to ensure correct structure
+        if (defaultValue && defaultValue.quarterly !== undefined) {
+          // This is probably goals data
+          console.log("Detected goals data:", parsed);
+          return {
+            quarterly: typeof parsed.quarterly === 'string' ? parsed.quarterly : '',
+            yearly: typeof parsed.yearly === 'string' ? parsed.yearly : '',
+            fiveYear: typeof parsed.fiveYear === 'string' ? parsed.fiveYear : '',
+            tenYear: typeof parsed.tenYear === 'string' ? parsed.tenYear : ''
+          };
+        }
+        
         return parsed;
       }
       
       return defaultValue;
     } catch (error) {
-      console.error("Error parsing JSON field:", error);
+      console.error("Error parsing JSON field:", error, "Raw value:", field);
       return defaultValue;
     }
   };
@@ -418,6 +431,27 @@ export function SiteProvider({ children }: SiteProviderProps) {
             // Si tenemos settings, los agregamos al sitio
             if (settingsData) {
               console.log(`Settings found for site ${siteToUse.id}:`, settingsData);
+              console.log("Raw goals data from DB:", settingsData.goals);
+              
+              let parsedGoals = {
+                quarterly: '',
+                yearly: '',
+                fiveYear: '',
+                tenYear: ''
+              };
+              
+              try {
+                parsedGoals = parseJsonField(settingsData.goals, {
+                  quarterly: '',
+                  yearly: '',
+                  fiveYear: '',
+                  tenYear: ''
+                });
+                console.log("Goals after parsing:", parsedGoals);
+              } catch (goalsError) {
+                console.error("Error parsing goals:", goalsError);
+              }
+              
               siteToUse = {
                 ...siteToUse,
                 settings: {
@@ -451,12 +485,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   updated_at: settingsData.updated_at,
                   competitors: parseJsonField(settingsData.competitors, []),
                   focus_mode: settingsData.focus_mode,
-                  goals: parseJsonField(settingsData.goals, {
-                    quarter: '',
-                    year: '',
-                    five_year: '',
-                    ten_year: ''
-                  })
+                  goals: parsedGoals
                 }
               };
             } else {
@@ -597,6 +626,27 @@ export function SiteProvider({ children }: SiteProviderProps) {
           // Si tenemos settings, los agregamos al sitio
           if (settingsData) {
             console.log(`Settings found for site ${site.id}:`, settingsData);
+            console.log("Raw goals data from DB:", settingsData.goals);
+            
+            let parsedGoals = {
+              quarterly: '',
+              yearly: '',
+              fiveYear: '',
+              tenYear: ''
+            };
+            
+            try {
+              parsedGoals = parseJsonField(settingsData.goals, {
+                quarterly: '',
+                yearly: '',
+                fiveYear: '',
+                tenYear: ''
+              });
+              console.log("Goals after parsing:", parsedGoals);
+            } catch (goalsError) {
+              console.error("Error parsing goals:", goalsError);
+            }
+            
             site = {
               ...site,
               settings: {
@@ -630,12 +680,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 updated_at: settingsData.updated_at,
                 competitors: parseJsonField(settingsData.competitors, []),
                 focus_mode: settingsData.focus_mode,
-                goals: parseJsonField(settingsData.goals, {
-                  quarter: '',
-                  year: '',
-                  five_year: '',
-                  ten_year: ''
-                })
+                goals: parsedGoals
               }
             };
           } else {
@@ -823,17 +868,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Function to update settings
   const handleUpdateSettings = async (siteId: string, settings: Partial<SiteSettings>) => {
     try {
+      console.log("UPDATE SETTINGS 1: Inicio del proceso");
+      console.log("UPDATE SETTINGS 2: Data recibida:", {
+        siteId, 
+        goals: settings.goals
+      });
+      
       setIsLoading(true);
       const now = new Date().toISOString();
       
-      // Check if settings already exist for this site
-      const { data: existingSettings, error: fetchError } = await supabaseRef.current
-        .from('settings')
-        .select('*')
-        .eq('site_id', siteId)
-        .maybeSingle();
-      
-      if (fetchError) throw fetchError;
+      console.log("UPDATE SETTINGS 3: Preparando datos formateados");
       
       // Ensure we have valid settings data
       const formattedSettings: Partial<SiteSettings> = {
@@ -904,97 +948,99 @@ export function SiteProvider({ children }: SiteProviderProps) {
         formattedSettings.competitors = Array.isArray(settings.competitors) ? settings.competitors : [];
       }
       
-      if (settings.focus_mode !== undefined && settings.focus_mode === undefined) {
+      if (settings.focus_mode !== undefined) {
         formattedSettings.focus_mode = typeof settings.focus_mode === 'number' ? settings.focus_mode : 50;
       }
       
-      console.log("Formatted settings data to save:", formattedSettings);
-      
-      // Use upsert operation with site_id as the conflict resolution field
-      const { error } = await supabaseRef.current
-        .from('settings')
-        .upsert(formattedSettings, { 
-          onConflict: 'site_id',
-          ignoreDuplicates: false
-        })
-      
-      if (error) {
-        console.error("Error in upsert operation:", error)
-        throw error
+      // Handle goals field
+      if (settings.goals !== undefined) {
+        console.log("UPDATE SETTINGS 4: Procesando campo goals:", settings.goals);
+        const goalsObj = settings.goals || {};
+        
+        // Esto puede necesitar convertirse a un formato específico para PostgreSQL (JSON)
+        // Asegurarse de que ningún field sea undefined y convertir todo a string si es necesario
+        const goalsForDB = {
+          quarterly: typeof goalsObj.quarterly === 'string' ? goalsObj.quarterly : '',
+          yearly: typeof goalsObj.yearly === 'string' ? goalsObj.yearly : '',
+          fiveYear: typeof goalsObj.fiveYear === 'string' ? goalsObj.fiveYear : '',
+          tenYear: typeof goalsObj.tenYear === 'string' ? goalsObj.tenYear : ''
+        };
+        
+        // IMPORTANTE: Asegurarnos de que estos campos son válidos para PostgreSQL
+        // Convertir explícitamente a JSON string para garantizar que se guarda correctamente
+        // Esto previene problemas de serialización y hace que sea un JSON válido
+        formattedSettings.goals = goalsForDB;
+        
+        // Supabase puede tener problemas al serializar objetos directamente
+        // Así que lo convertimos explícitamente a string JSON y luego Supabase lo guardará correctamente
+        // Esta estrategia es para debugging, no es necesaria normalmente
+        try {
+          // Guardar como string JSON explícitamente (solo para propósitos de debugging)
+          // formattedSettings.goals_json_string = JSON.stringify(goalsForDB);
+          console.log("UPDATE SETTINGS 5: Campo goals procesado para DB:", formattedSettings.goals);
+          console.log("UPDATE SETTINGS 5: JSON.stringify result:", JSON.stringify(formattedSettings.goals));
+        } catch (goalsSerializeError) {
+          console.error("Error al serializar goals:", goalsSerializeError);
+        }
       }
       
-      console.log("Settings updated successfully")
+      console.log("UPDATE SETTINGS 6: Enviando datos a Supabase");
+      console.log("UPDATE SETTINGS 7: Datos a guardar:", {
+        site_id: formattedSettings.site_id,
+        goals: formattedSettings.goals
+      });
       
-      // Cargar los settings actualizados para el sitio actual
-      if (currentSite && currentSite.id === siteId) {
-        console.log("Reloading settings for current site after update");
-        const { data: updatedSettings, error: fetchError } = await supabaseRef.current
+      // Use upsert operation with site_id as the conflict resolution field
+      try {
+        console.log("UPDATE SETTINGS: Raw upsert data:", JSON.stringify(formattedSettings));
+        console.log("UPDATE SETTINGS: Goals before upsert:", formattedSettings.goals);
+        
+        const { error } = await supabaseRef.current
           .from('settings')
-          .select('*')
+          .upsert(formattedSettings, { 
+            onConflict: 'site_id',
+            ignoreDuplicates: false
+          });
+        
+        if (error) {
+          console.error("UPDATE SETTINGS ERROR en upsert:", error);
+          console.error("UPDATE SETTINGS ERROR detalles:", error.code, error.message, error.details);
+          throw error;
+        }
+        
+        console.log("UPDATE SETTINGS 8: Datos guardados correctamente en Supabase");
+        
+        // Verificar que se guardaron correctamente los datos
+        console.log("UPDATE SETTINGS: Verificando el guardado...");
+        const { data: verifyData, error: verifyError } = await supabaseRef.current
+          .from('settings')
+          .select('goals')
           .eq('site_id', siteId)
           .single();
           
-        if (fetchError) {
-          console.error("Error loading updated settings:", fetchError);
-        } else if (updatedSettings) {
-          console.log("Updated settings loaded:", updatedSettings);
-          
-          // Actualizar el sitio actual con los nuevos settings
-          const updatedSite = {
-            ...currentSite,
-            settings: {
-              id: updatedSettings.id,
-              site_id: updatedSettings.site_id,
-              about: updatedSettings.about,
-              company_size: updatedSettings.company_size,
-              industry: updatedSettings.industry,
-              products: parseJsonField(updatedSettings.products, []),
-              services: parseJsonField(updatedSettings.services, []),
-              swot: parseJsonField(updatedSettings.swot, {
-                strengths: '',
-                weaknesses: '',
-                opportunities: '',
-                threats: ''
-              }),
-              locations: parseJsonField(updatedSettings.locations, []),
-              marketing_budget: parseJsonField(updatedSettings.marketing_budget, {
-                total: 0,
-                available: 0
-              }),
-              marketing_channels: parseJsonField(updatedSettings.marketing_channels, []),
-              social_media: parseJsonField(updatedSettings.social_media, []),
-              tracking_code: updatedSettings.tracking_code,
-              analytics_provider: updatedSettings.analytics_provider,
-              analytics_id: updatedSettings.analytics_id,
-              team_members: parseJsonField(updatedSettings.team_members, []),
-              team_roles: parseJsonField(updatedSettings.team_roles, []),
-              org_structure: parseJsonField(updatedSettings.org_structure, {}),
-              created_at: updatedSettings.created_at,
-              updated_at: updatedSettings.updated_at,
-              competitors: parseJsonField(updatedSettings.competitors, []),
-              focus_mode: updatedSettings.focus_mode,
-              goals: parseJsonField(updatedSettings.goals, {
-                quarter: '',
-                year: '',
-                five_year: '',
-                ten_year: ''
-              })
-            }
-          };
-          
-          // Actualizar el sitio actual con los nuevos settings
-          setCurrentSite(updatedSite);
+        if (verifyError) {
+          console.error("UPDATE SETTINGS: Error al verificar guardado:", verifyError);
+        } else {
+          console.log("UPDATE SETTINGS: Datos verificados de la base:", verifyData);
+          console.log("UPDATE SETTINGS: Goals guardados:", verifyData.goals);
         }
-      } else {
-        // Si no es el sitio actual, simplemente recargamos todos los sitios
-        console.log("Not the current site, reloading all sites");
-        await loadSites();
+      } catch (upsertError) {
+        console.error("UPDATE SETTINGS ERROR excepción en upsert:", upsertError);
+        throw upsertError;
       }
       
+      console.log("UPDATE SETTINGS 9: Recargando información");
+      // Reload settings after update
+      await loadSites();
+      console.log("UPDATE SETTINGS 10: Proceso completado con éxito");
+      
     } catch (err) {
-      console.error("Error updating settings:", err)
-      setError(err instanceof Error ? err : new Error(String(err)))
-      throw err
+      console.error("UPDATE SETTINGS ERROR GENERAL:", err);
+      console.error("UPDATE SETTINGS ERROR tipo:", typeof err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
   }
 

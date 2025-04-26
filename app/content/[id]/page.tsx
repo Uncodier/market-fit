@@ -1037,7 +1037,7 @@ export default function ContentDetailPage() {
                                     onValueChange={([value]) => setContentStyle(prev => ({ ...prev, tone: value }))}
                                     max={100}
                                     step={1}
-                                    className="w-full"
+                                    className="w-full style-slider-thumb"
                                   />
                                   <span className="text-base text-muted-foreground">😊</span>
                                 </div>
@@ -1057,7 +1057,7 @@ export default function ContentDetailPage() {
                                     onValueChange={([value]) => setContentStyle(prev => ({ ...prev, complexity: value }))}
                                     max={100}
                                     step={1}
-                                    className="w-full"
+                                    className="w-full style-slider-thumb"
                                   />
                                   <span className="text-base text-muted-foreground">📚</span>
                                 </div>
@@ -1077,7 +1077,7 @@ export default function ContentDetailPage() {
                                     onValueChange={([value]) => setContentStyle(prev => ({ ...prev, creativity: value }))}
                                     max={100}
                                     step={1}
-                                    className="w-full"
+                                    className="w-full style-slider-thumb"
                                   />
                                   <span className="text-base text-muted-foreground">🎨</span>
                                 </div>
@@ -1097,7 +1097,7 @@ export default function ContentDetailPage() {
                                     onValueChange={([value]) => setContentStyle(prev => ({ ...prev, persuasiveness: value }))}
                                     max={100}
                                     step={1}
-                                    className="w-full"
+                                    className="w-full style-slider-thumb"
                                   />
                                   <span className="text-base text-muted-foreground">🔥</span>
                                 </div>
@@ -1117,7 +1117,7 @@ export default function ContentDetailPage() {
                                     onValueChange={([value]) => setContentStyle(prev => ({ ...prev, targetAudience: value }))}
                                     max={100}
                                     step={1}
-                                    className="w-full"
+                                    className="w-full style-slider-thumb"
                                   />
                                   <span className="text-base text-muted-foreground">👤</span>
                                 </div>
@@ -1137,7 +1137,7 @@ export default function ContentDetailPage() {
                                     onValueChange={([value]) => setContentStyle(prev => ({ ...prev, engagement: value }))}
                                     max={100}
                                     step={1}
-                                    className="w-full"
+                                    className="w-full style-slider-thumb"
                                   />
                                   <span className="text-base text-muted-foreground">🤩</span>
                                 </div>
@@ -1157,7 +1157,7 @@ export default function ContentDetailPage() {
                                     onValueChange={([value]) => setContentStyle(prev => ({ ...prev, size: value }))}
                                     max={100}
                                     step={1}
-                                    className="w-full"
+                                    className="w-full style-slider-thumb"
                                   />
                                   <span className="text-base text-muted-foreground">📜</span>
                                 </div>

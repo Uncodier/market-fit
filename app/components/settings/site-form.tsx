@@ -201,6 +201,40 @@ export function SiteForm({
     }
   }, [siteId, form]);
 
+  useEffect(() => {
+    // Exponer el formulario para depuración
+    if (typeof window !== 'undefined') {
+      (window as any).__debug_form = form;
+    }
+    
+    return () => {
+      // Limpiar la referencia al salir
+      if (typeof window !== 'undefined') {
+        (window as any).__debug_form = undefined;
+      }
+    };
+  }, [form]);
+
+  // Actualizar explícitamente el formulario cuando cambien los initialData
+  useEffect(() => {
+    if (initialData) {
+      console.log("SiteForm: initialData changed, updating form values");
+      
+      // Asegurar que los valores de goals se establecen correctamente
+      if (initialData.goals) {
+        console.log("SiteForm: Updating goals fields:", initialData.goals);
+        form.setValue("goals", {
+          quarterly: initialData.goals.quarterly || "",
+          yearly: initialData.goals.yearly || "",
+          fiveYear: initialData.goals.fiveYear || "",
+          tenYear: initialData.goals.tenYear || ""
+        });
+      }
+      
+      // Puedes hacer lo mismo con otros campos si es necesario
+    }
+  }, [initialData, form]);
+
   const handleSubmit = async (data: SiteFormValues) => {
     console.log("Form data in site-form component:", data);
     
@@ -219,24 +253,65 @@ export function SiteForm({
         throw new Error("Site URL must be a valid URL starting with http:// or https://");
       }
       
+      // Ensure goals fields are always strings
+      if (data.goals) {
+        data.goals = {
+          quarterly: data.goals.quarterly || "",
+          yearly: data.goals.yearly || "",
+          fiveYear: data.goals.fiveYear || "",
+          tenYear: data.goals.tenYear || ""
+        };
+      }
+      
       // Filter social media to only include entries with valid URLs
       if (data.social_media) {
         data.social_media = data.social_media.filter(sm => {
           if (!sm.platform) return false;
           
-          // Skip entries with empty URLs - keep entries with empty URLs
-          if (!sm.url || sm.url.trim() === '') {
-            return true; // Keep entries with empty URLs
+          // Platform-specific validations
+          switch (sm.platform) {
+            case 'whatsapp':
+              // WhatsApp requires phone number
+              if (!sm.phone || sm.phone.trim() === '') {
+                return false;
+              }
+              return true;
+            
+            case 'telegram':
+              // Telegram requires either a handle or a URL
+              if ((!sm.handle || sm.handle.trim() === '') && (!sm.url || sm.url.trim() === '')) {
+                return false;
+              }
+              
+              // Validate URL format if provided
+              if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
+                return false;
+              }
+              return true;
+              
+            case 'discord':
+              // Discord requires either an invite code or a URL
+              if ((!sm.inviteCode || sm.inviteCode.trim() === '') && (!sm.url || sm.url.trim() === '')) {
+                return false;
+              }
+              
+              // Validate URL format if provided
+              if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
+                return false;
+              }
+              return true;
+              
+            default:
+              // For standard platforms, URL is not required - we can just have a handle
+              // But if URL is provided, validate its format
+              if (sm.url && sm.url.trim() !== '') {
+                const hasValidUrl = sm.url.match(/^https?:\/\/.+/);
+                if (!hasValidUrl) {
+                  return false;
+                }
+              }
+              return true;
           }
-          
-          // Validate URL format for non-empty entries
-          const hasValidUrl = sm.url.match(/^https?:\/\/.+/);
-          if (!hasValidUrl) {
-            console.log(`Skipping social media entry with platform ${sm.platform} due to invalid URL format: "${sm.url}"`);
-            return false;
-          }
-          
-          return true;
         });
       }
       
@@ -315,128 +390,13 @@ export function SiteForm({
 
   return (
     <FormProvider {...form}>
-      <form id={id} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-12">
+      <form id={id} onSubmit={(e) => {
+        console.log("Form Submit Event Triggered", e);
+        form.handleSubmit(handleSubmit)(e);
+      }} className="space-y-12">
         <div className="space-y-12">
           {renderCard("general", 
-            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Site Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
-                <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
-                  <div className="min-w-[240px] flex-shrink-0">
-                    <FormField
-                      control={form.control}
-                      name="logo_url"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Logo</FormLabel>
-                          <FormControl>
-                            <div className="w-[240px] h-[240px] relative">
-                              {field.value ? (
-                                <div className="w-full h-full relative group">
-                                  <Image
-                                    src={field.value}
-                                    alt="Site logo"
-                                    fill
-                                    className="object-contain rounded-lg"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => field.onChange("")}
-                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-white" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div
-                                  {...getRootProps()}
-                                  className="w-full h-full rounded-lg border-2 border-dashed border-input bg-muted flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-input/80 hover:bg-muted/80 transition-colors"
-                                >
-                                  <input {...getInputProps()} />
-                                  <UploadCloud className="h-8 w-8 text-muted-foreground" />
-                                  <div className="text-sm text-center">
-                                    <p className="font-medium text-foreground">Click to upload</p>
-                                    <p className="text-muted-foreground">or drag and drop</p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </FormControl>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex-1 space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Site Name</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <AppWindow className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input 
-                                className="pl-12 h-12 text-base" 
-                                placeholder="Enter your site name"
-                                {...field} 
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="url"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Site URL</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input 
-                                className="pl-12 h-12 text-base" 
-                                placeholder="https://example.com"
-                                {...field} 
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">Description</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Tag className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
-                          <Textarea 
-                            className="pl-12 resize-none min-h-[120px] text-base"
-                            placeholder="Describe your site..."
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
+            <GeneralSection active={true} />
           )}
 
           {renderCard("company",

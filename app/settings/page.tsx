@@ -184,9 +184,45 @@ export default function SettingsPage() {
     });
   }
 
+  // Convert existing social media data to the new format with all fields
+  const formatSocialMedia = (socialMedia: any[]): any[] => {
+    if (!socialMedia || !Array.isArray(socialMedia)) return [];
+    
+    return socialMedia.map(sm => {
+      // Ensure every social media item has the required fields
+      // URL is still marked as required for backward compatibility
+      const formattedItem = {
+        platform: sm.platform || '',
+        url: sm.url || '',
+        handle: sm.handle || '',
+        phone: sm.phone || '',
+        phoneCode: sm.phoneCode || '',
+        inviteCode: sm.inviteCode || '',
+        channelId: sm.channelId || ''
+      };
+      
+      return formattedItem;
+    });
+  }
+
   // Adaptar Site a SiteFormValues para el formulario
   const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     console.log("Adapting site to form:", site);
+    
+    // Convertir los campos de goals al nuevo formato si existen
+    const goalsData = site.settings?.goals 
+      ? {
+          quarterly: site.settings.goals.quarterly || "",
+          yearly: site.settings.goals.yearly || "",
+          fiveYear: site.settings.goals.fiveYear || "",
+          tenYear: site.settings.goals.tenYear || ""
+        }
+      : {
+          quarterly: "",
+          yearly: "",
+          fiveYear: "",
+          tenYear: ""
+        };
     
     return {
       name: site.name,
@@ -207,13 +243,8 @@ export default function SettingsPage() {
       products: Array.isArray(site.settings?.products) ? site.settings.products : [],
       services: Array.isArray(site.settings?.services) ? site.settings.services : [],
       locations: site.settings?.locations || [],
-      // Add goals
-      goals: site.settings?.goals || {
-        quarter: "",
-        year: "",
-        five_year: "",
-        ten_year: ""
-      },
+      // Add goals with converted field names
+      goals: goalsData,
       swot: site.settings?.swot || {
         strengths: "",
         weaknesses: "",
@@ -226,7 +257,7 @@ export default function SettingsPage() {
         available: 0
       },
       marketing_channels: formatMarketingChannels(site.settings?.marketing_channels || []),
-      social_media: site.settings?.social_media || [],
+      social_media: formatSocialMedia(site.settings?.social_media || []),
       // Add tracking info
       tracking: site.tracking || {
         track_visitors: false,
@@ -242,6 +273,14 @@ export default function SettingsPage() {
       billing: site.billing || {
         plan: "free",
         auto_renew: true
+      },
+      // Agregar datos de company (este campo es requerido por el esquema)
+      company: {
+        name: "",
+        vision: "",
+        mission: "",
+        values: "",
+        differentiators: ""
       }
     }
   }
@@ -250,9 +289,8 @@ export default function SettingsPage() {
     if (!currentSite) return;
     
     try {
+      console.log("SAVE 1: Inicio del proceso de guardado");
       setIsSaving(true)
-      
-      console.log("Form data from site-form:", data);
       
       // Validate required fields
       if (!data.name?.trim()) {
@@ -267,18 +305,22 @@ export default function SettingsPage() {
         return;
       }
       
+      console.log("SAVE 2: Validaciones básicas completadas");
+      
       // Extract site-specific fields
       const { 
         name, url, description, logo_url, resource_urls, 
         competitors, focusMode, billing, tracking, ...settingsData 
       } = data;
       
-      console.log("Social media before filtering:", settingsData.social_media);
+      console.log("SAVE 3: Datos extraídos del formulario:", {
+        site: { name, url, description },
+        settings: { goals: settingsData.goals, about: settingsData.about }
+      });
       
       // Guardar inmediatamente el focusMode en localStorage para asegurar que persista
       if (typeof focusMode === 'number') {
         try {
-          console.log(`Saving focus_mode to localStorage: site_${currentSite.id}_focus_mode = ${focusMode}`);
           localStorage.setItem(`site_${currentSite.id}_focus_mode`, String(focusMode));
         } catch (e) {
           console.error("Error saving focus_mode to localStorage:", e);
@@ -289,28 +331,85 @@ export default function SettingsPage() {
       const filteredResourceUrls = resource_urls?.filter((url: any) => url.key && url.url && url.key.trim() !== '' && url.url.trim() !== '') || [];
       const filteredCompetitors = competitors?.filter((comp: any) => comp.url && comp.url.trim() !== '') || [];
       
-      // Filter out social media entries with empty URLs
+      console.log("SAVE 4: Datos filtrados");
+      
+      // Filter out social media entries with empty URLs or required fields based on platform
       const filteredSocialMedia = settingsData.social_media?.filter((sm: any) => {
         // If platform is empty, don't include it
         if (!sm.platform || sm.platform.trim() === '') {
           return false;
         }
         
-        // Keep entries with empty URLs
-        if (!sm.url || sm.url.trim() === '') {
-          return true;
+        // Platform-specific validations
+        switch (sm.platform) {
+          case 'whatsapp':
+            // WhatsApp requires phone number
+            if (!sm.phone || sm.phone.trim() === '') {
+              console.log(`Skipping WhatsApp entry due to missing phone number`);
+              return false;
+            }
+            return true;
+          
+          case 'telegram':
+            // Telegram requires either a handle or a URL
+            if ((!sm.handle || sm.handle.trim() === '') && (!sm.url || sm.url.trim() === '')) {
+              console.log(`Skipping Telegram entry due to missing handle or URL`);
+              return false;
+            }
+            
+            // Validate URL format if provided
+            if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
+              console.log(`Skipping Telegram entry due to invalid URL: ${sm.url}`);
+              return false;
+            }
+            return true;
+            
+          case 'discord':
+            // Discord requires either an invite code or a URL
+            if ((!sm.inviteCode || sm.inviteCode.trim() === '') && (!sm.url || sm.url.trim() === '')) {
+              console.log(`Skipping Discord entry due to missing invite code or URL`);
+              return false;
+            }
+            
+            // Validate URL format if provided
+            if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
+              console.log(`Skipping Discord entry due to invalid URL: ${sm.url}`);
+              return false;
+            }
+            return true;
+            
+          default:
+            // For standard platforms, URL is not required - we can just have a handle
+            // But if URL is provided, validate its format
+            if (sm.url && sm.url.trim() !== '') {
+              const hasValidUrl = sm.url.match(/^https?:\/\/.+/);
+              if (!hasValidUrl) {
+                console.log(`Skipping social media entry with platform ${sm.platform} due to invalid URL format: "${sm.url}"`);
+                return false;
+              }
+            }
+            return true;
         }
-        
-        // Validate URL format for non-empty entries
-        const hasValidUrl = sm.url.match(/^https?:\/\/.+/);
-        if (!hasValidUrl && sm.platform) {
-          console.log(`Skipping social media entry with platform ${sm.platform} due to invalid URL format: "${sm.url}"`);
-          return false;
-        }
-        return true;
       }) || [];
       
-      console.log("Social media after filtering:", filteredSocialMedia);
+      // Ensure SWOT and goals have the correct structure
+      const swot = {
+        strengths: settingsData.swot?.strengths || "",
+        weaknesses: settingsData.swot?.weaknesses || "",
+        opportunities: settingsData.swot?.opportunities || "",
+        threats: settingsData.swot?.threats || ""
+      };
+      
+      console.log("SAVE 5: Goals data original:", settingsData.goals);
+      
+      const goals = {
+        quarterly: settingsData.goals?.quarterly || "",
+        yearly: settingsData.goals?.yearly || "",
+        fiveYear: settingsData.goals?.fiveYear || "",
+        tenYear: settingsData.goals?.tenYear || ""
+      };
+      
+      console.log("SAVE 6: Goals data procesado:", goals);
       
       // Update site basic info
       const siteUpdate = {
@@ -326,20 +425,17 @@ export default function SettingsPage() {
         }
       };
       
+      console.log("SAVE 7: Site update preparado:", siteUpdate);
+      
       // Create settings object with direct field access to prevent undefined values
       const settings = {
         site_id: currentSite.id, // Explicitly set the site_id to ensure it's always correct
-        about: settingsData.about,
-        company_size: settingsData.company_size,
-        industry: settingsData.industry,
+        about: settingsData.about || "",
+        company_size: settingsData.company_size || "",
+        industry: settingsData.industry || "",
         products: Array.isArray(settingsData.products) ? settingsData.products : [],
         services: Array.isArray(settingsData.services) ? settingsData.services : [],
-        swot: {
-          strengths: settingsData.swot?.strengths || "",
-          weaknesses: settingsData.swot?.weaknesses || "",
-          opportunities: settingsData.swot?.opportunities || "",
-          threats: settingsData.swot?.threats || ""
-        },
+        swot, // Use the validated swot object
         locations: settingsData.locations || [],
         marketing_budget: {
           total: settingsData.marketing_budget?.total || 0,
@@ -347,21 +443,19 @@ export default function SettingsPage() {
         },
         marketing_channels: settingsData.marketing_channels || [],
         social_media: filteredSocialMedia,
-        tracking_code: settingsData.tracking_code,
-        analytics_provider: settingsData.analytics_provider,
-        analytics_id: settingsData.analytics_id,
+        tracking_code: settingsData.tracking_code || "",
+        analytics_provider: settingsData.analytics_provider || "",
+        analytics_id: settingsData.analytics_id || "",
         team_members: settingsData.team_members || [],
-        // Incluir competitors y focusMode en settings en lugar de site
+        // Incluir competitors y focus_mode en settings en lugar de site
         competitors: filteredCompetitors?.length > 0 ? filteredCompetitors : [],
-        focusMode: focusMode || 50,
         focus_mode: focusMode || 50,
-        // Include goals field
-        goals: settingsData.goals || {
-          quarter: "",
-          year: "",
-          five_year: "",
-          ten_year: ""
-        }
+        goals: {
+          quarterly: goals.quarterly || "",
+          yearly: goals.yearly || "", 
+          fiveYear: goals.fiveYear || "",
+          tenYear: goals.tenYear || ""
+        } // Use the validated goals object with correct field names
       };
       
       // Preserve existing settings ID if it exists
@@ -369,38 +463,39 @@ export default function SettingsPage() {
         (settings as any).id = currentSite.settings.id;
       }
       
-      console.log("Final site update data:", siteUpdate);
-      console.log("Final settings data to save with site_id:", settings.site_id);
+      console.log("SAVE 8: Settings preparado:", {
+        id: (settings as any).id,
+        site_id: settings.site_id,
+        goals: settings.goals
+      });
       
       // First update the site
-      await updateSite({
-        ...currentSite,
-        ...siteUpdate
-      } as any);
+      console.log("SAVE 9: Llamando a updateSite...");
+      try {
+        await updateSite({
+          ...currentSite,
+          ...siteUpdate
+        } as any);
+        console.log("SAVE 10: updateSite completado con éxito");
+      } catch (siteError) {
+        console.error("SAVE ERROR en updateSite:", siteError);
+        throw siteError;
+      }
       
       // Then update the settings
-      await updateSettings(currentSite.id, settings as any);
+      console.log("SAVE 11: Llamando a updateSettings...");
+      try {
+        await updateSettings(currentSite.id, settings as any);
+        console.log("SAVE 12: updateSettings completado con éxito");
+      } catch (settingsError) {
+        console.error("SAVE ERROR en updateSettings:", settingsError);
+        throw settingsError;
+      }
       
+      console.log("SAVE 13: Todo el proceso completado con éxito");
       toast.success("Settings saved successfully");
-      
-      // Actualizar el currentSite localmente para mantener el focusMode consistente
-      const updatedCurrentSite = {
-        ...currentSite,
-        ...siteUpdate,
-        settings: {
-          ...currentSite.settings,
-          ...settings
-        }
-      } as any; // Use type assertion to avoid TypeScript errors
-      
-      // Force form re-render with updated data sólo si hay cambios reales
-      setTimeout(() => {
-        // Incrememntar el formKey para forzar la re-renderización
-        setFormKey(prev => prev + 1);
-      }, 500);
-      
     } catch (error) {
-      console.error("Error saving settings:", error);
+      console.error("SAVE ERROR GENERAL:", error);
       
       // Show more specific error message if available
       if (error instanceof Error) {
@@ -409,6 +504,7 @@ export default function SettingsPage() {
         toast.error("Error saving settings");
       }
     } finally {
+      // Always set saving to false, even if there was an error
       setIsSaving(false);
     }
   }
@@ -443,6 +539,34 @@ export default function SettingsPage() {
       setShowDeleteDialog(false)
     }
   }
+
+  // Función para guardar manualmente (sin depender del submit)
+  const handleManualSave = async () => {
+    console.log("MANUAL SAVE: Obteniendo formulario");
+    const formElement = document.getElementById('settings-form') as HTMLFormElement;
+    if (!formElement) {
+      console.error("MANUAL SAVE ERROR: No se encontró el formulario");
+      return;
+    }
+    
+    console.log("MANUAL SAVE: Disparando validación");
+    // Obtener una referencia al formulario React Hook Form dentro del SiteForm
+    // Esto es un hack, idealmente debería hacerse de otra manera
+    const form = (window as any).__debug_form;
+    if (!form) {
+      console.error("MANUAL SAVE ERROR: No se pudo obtener el formulario");
+      console.log("MANUAL SAVE FALLBACK: Usando evento submit directo");
+      formElement.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      return;
+    }
+    
+    console.log("MANUAL SAVE: Obteniendo valores del formulario");
+    const formValues = form.getValues();
+    console.log("MANUAL SAVE: Valores del formulario:", formValues);
+    
+    // Procesar con el handleSave normal
+    await handleSave(formValues);
+  };
 
   if (isLoading) {
     return (
@@ -492,8 +616,8 @@ export default function SettingsPage() {
             </TabsList>
           </Tabs>
           <Button 
-            type="submit"
-            form="settings-form"
+            type="button"
+            onClick={handleManualSave}
             disabled={isSaving}
           >
             {isSaving ? "Saving..." : "Save settings"}

@@ -279,4 +279,71 @@ describe('Revenue API', () => {
       periodType: expect.any(String)
     });
   });
+  
+  it('should standardize period dates for consistent KPI creation', async () => {
+    // Create a mock Supabase client that returns standardized dates for KPIs
+    const mockSupabase = {
+      from: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis()
+    };
+    
+    // Mock the behavior to return empty KPI first time
+    mockSupabase.select.mockResolvedValueOnce({
+      data: [],
+      error: null
+    });
+    
+    // Mock current period sales data
+    mockSupabase.select.mockResolvedValueOnce({
+      data: [{ amount: 1000 }],
+      error: null
+    });
+    
+    // Mock previous period sales data
+    mockSupabase.select.mockResolvedValueOnce({
+      data: [{ amount: 500 }],
+      error: null
+    });
+    
+    // Mock successful KPI insert with standardized dates
+    mockSupabase.insert.mockImplementation((kpiData) => {
+      // Capture the inserted data for assertions
+      return {
+        data: kpiData,
+        error: null,
+        select: () => ({
+          single: () => ({
+            data: kpiData,
+            error: null
+          })
+        })
+      };
+    });
+    
+    (createApiClient as jest.Mock).mockReturnValue(mockSupabase);
+    
+    // Create request with custom dates (Jan 15th is mid-month)
+    const request = {
+      url: 'https://example.com/api/revenue?segmentId=all&siteId=site-789&userId=user-123&startDate=2023-01-15&endDate=2023-01-20'
+    } as Request;
+    
+    // Call API
+    await GET(request);
+    
+    // Check that KPI was created with standardized monthly dates (Jan 1 - Jan 31)
+    expect(mockSupabase.insert).toHaveBeenCalled();
+    
+    // Extract the call arguments to check standardized dates
+    const insertCallArgs = mockSupabase.insert.mock.calls[0][0];
+    
+    // The standardized dates should start at beginning of month and end at end of month
+    expect(insertCallArgs.period_start).toContain('2023-01-01');
+    expect(insertCallArgs.period_end).toContain('2023-01-31');
+    expect(insertCallArgs.metadata.period_type).toBe('monthly');
+  });
 }); 
