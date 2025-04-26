@@ -13,6 +13,7 @@ interface ChatInputProps {
   isLoading: boolean
   handleSendMessage: (e: FormEvent) => Promise<void>
   handleKeyDown: (e: React.KeyboardEvent) => void
+  conversationId?: string
 }
 
 export function ChatInput({
@@ -20,7 +21,8 @@ export function ChatInput({
   setMessage,
   isLoading,
   handleSendMessage,
-  handleKeyDown
+  handleKeyDown,
+  conversationId
 }: ChatInputProps) {
   // Local state to avoid re-rendering parent on every keystroke
   const [localMessage, setLocalMessage] = useState(message)
@@ -44,6 +46,14 @@ export function ChatInput({
   React.useEffect(() => {
     setLocalMessage(message);
   }, [message]);
+  
+  // Check if a conversation is selected
+  const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
+  
+  // If no conversation is selected, don't render the input
+  if (!hasSelectedConversation) {
+    return null;
+  }
   
   return (
     <div className={cn(

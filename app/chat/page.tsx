@@ -23,6 +23,7 @@ import { ChatInput } from "@/app/components/chat/ChatInput"
 import { useLeadData } from "@/app/hooks/useLeadData"
 import { useChatMessages } from "@/app/hooks/useChatMessages"
 import { useChatOperations } from "@/app/hooks/useChatOperations"
+import { useApiRequestTracker } from "@/app/hooks/useApiRequestTracker"
 
 export default function ChatPage() {
   const searchParams = useSearchParams()
@@ -48,6 +49,9 @@ export default function ChatPage() {
   
   // Initialize the useCommandK hook
   useCommandK()
+  
+  // Track API requests to /agents/chat/message
+  const { hasActiveChatRequest } = useApiRequestTracker()
   
   // Use our new hooks for better organization
   const {
@@ -83,10 +87,12 @@ export default function ChatPage() {
     leadData
   })
 
-  // Scroll to bottom when new messages are added
+  // Scroll to bottom when new messages are added or when loading state changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [chatMessages])
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [chatMessages, isAgentResponding])
 
   // Wrapper function for the form submission
   const handleSendMessageSubmit = async (e: React.FormEvent) => {
@@ -94,6 +100,11 @@ export default function ChatPage() {
     if (message.trim()) {
       await handleSendMessage(message)
       setMessage("")
+      
+      // Forzar scroll al final inmediatamente después de enviar un mensaje
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      }, 100)
     }
   }
 
@@ -385,6 +396,16 @@ export default function ChatPage() {
     }
   }, [conversationId, agentId, setChatMessages, setIsAgentOnlyConversation])
 
+  // Sobrescribe el estado de isAgentResponding desde el tracker de API
+  useEffect(() => {
+    // Sincronizar estado de animación de carga según peticiones activas
+    setIsAgentResponding(hasActiveChatRequest)
+    
+    if (hasActiveChatRequest) {
+      console.log("[ChatPage] Animación activada por petición activa a /agents/chat/message")
+    }
+  }, [hasActiveChatRequest, setIsAgentResponding])
+
   return (
     <div className="flex h-full relative overflow-hidden">
       {/* Chat list */}
@@ -422,6 +443,7 @@ export default function ChatPage() {
             handleNewLeadConversation={handleNewLeadConversation}
             handleNewAgentConversation={handleNewAgentConversation}
             handlePrivateDiscussion={handlePrivateDiscussion}
+            conversationId={conversationId}
           />
         </div>
         
@@ -435,6 +457,7 @@ export default function ChatPage() {
           agentName={agentName}
           isAgentOnlyConversation={isAgentOnlyConversation}
           leadData={leadData}
+          conversationId={conversationId}
         />
         
         {/* Message input area */}
@@ -444,6 +467,7 @@ export default function ChatPage() {
           isLoading={isLoading}
           handleSendMessage={handleSendMessageSubmit}
           handleKeyDown={handleKeyDown}
+          conversationId={conversationId}
         />
       </div>
     </div>

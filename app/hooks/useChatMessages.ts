@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { ChatMessage } from '@/app/types/chat'
 import { getConversationMessages, getAgentForConversation } from '@/app/services/chat-service'
 import { createClient } from '@/lib/supabase/client'
+import { useApiRequestTracker } from './useApiRequestTracker'
 
 export function useChatMessages(
   conversationId: string,
@@ -14,7 +15,15 @@ export function useChatMessages(
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [isAgentResponding, setIsAgentResponding] = useState(false)
+  const { hasActiveChatRequest } = useApiRequestTracker()
   const messageSubscriptionRef = useRef<any>(null)
+  
+  // Efecto para controlar la animación de carga basado en peticiones API activas
+  useEffect(() => {
+    // Solo activar la animación de respuesta cuando hay una petición API activa a /agents/chat/message
+    setIsAgentResponding(hasActiveChatRequest)
+    console.log(`[ApiTracker] Estado de animación: ${hasActiveChatRequest ? '🟢 ACTIVA' : '🔴 INACTIVA'}`)
+  }, [hasActiveChatRequest])
   
   // Load messages when the conversation changes
   useEffect(() => {
@@ -34,7 +43,7 @@ export function useChatMessages(
         // Si es una nueva conversación, iniciar con un array vacío en lugar de mensaje dummy
         if (conversationId.startsWith("new-")) {
           setChatMessages([])
-          // Asegurarse que no haya animación de carga
+          // No mostrar animación para nuevas conversaciones hasta que se envíe el primer mensaje
           setIsAgentResponding(false)
         } else {
           console.log("Loading messages for conversation:", conversationId)
@@ -49,21 +58,9 @@ export function useChatMessages(
           if (messages.length > 0) {
             setChatMessages(messages)
             
-            // Check if the last message was from the user or team_member
-            // If so, we need to show the loading animation for the agent's response
-            const lastMessage = messages[messages.length - 1]
-            
-            // Only activate the loading animation if the last message is from a user AND doesn't have an error status
-            if (lastMessage && 
-                (lastMessage.role === 'user' || lastMessage.role === 'team_member' || lastMessage.role === 'visitor') && 
-                (!lastMessage.metadata?.command_status || lastMessage.metadata?.command_status !== "failed")) {
-              console.log(`[${new Date().toISOString()}] 🟢🟢🟢 ACTIVANDO ANIMACIÓN (último mensaje del usuario) 🟢🟢🟢`)
-              setIsAgentResponding(true)
-            } else {
-              // Disable animation for error messages or assistant messages
-              setIsAgentResponding(false)
-              console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (último mensaje con error o del asistente) 🔴🔴🔴`)
-            }
+            // Ya no necesitamos esto porque ahora detectamos las peticiones API activas
+            // Solo mostraremos la animación cuando hay peticiones activas a /agents/chat/message
+            setIsAgentResponding(false)
           } else {
             // Si no hay mensajes, inicializar con array vacío
             setChatMessages([])
@@ -101,25 +98,8 @@ export function useChatMessages(
                   contentPreview: payload.new.content.substring(0, 30) + "..."
                 })
                 
-                // If the message is from the assistant, disable the waiting animation
-                if (payload.new.role === 'assistant') {
-                  console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (suscripción - mensaje asistente) 🔴🔴🔴`)
-                  // Disable immediately, without waiting
-                  setIsAgentResponding(false)
-                  
-                  // Don't add to state immediately to avoid duplicates
-                  // Let the getConversationMessages call handle all updates
-                } else {
-                  // Check if the message has custom_data with a failed command_status
-                  const customData = payload.new.custom_data as Record<string, any> | undefined;
-                  
-                  if (customData && customData.command_status === "failed") {
-                    console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (suscripción - mensaje con error) 🔴🔴🔴`)
-                    setIsAgentResponding(false)
-                  } else {
-                    console.log(`[${new Date().toISOString()}] ⏳ Mensaje no es del asistente (${payload.new.role}), manteniendo animación`)
-                  }
-                }
+                // Ya no necesitamos desactivar la animación aquí, se desactivará automáticamente
+                // cuando la petición API termine
                 
                 // Get all updated messages to fully synchronize
                 getConversationMessages(conversationId).then(updatedMessages => {
@@ -160,19 +140,6 @@ export function useChatMessages(
     }
   }, [conversationId, agentName, isAgentOnlyConversation])
   
-  // Add an effect to disable animation when we detect assistant messages or error messages
-  useEffect(() => {
-    // If we have messages and the last one is from the assistant or has error status, disable the animation
-    if (chatMessages.length > 0) {
-      const lastMessage = chatMessages[chatMessages.length - 1]
-      if (lastMessage.role === 'assistant' || 
-          (lastMessage.metadata?.command_status === "failed")) {
-        console.log(`[${new Date().toISOString()}] 🔴🔴🔴 DESACTIVANDO ANIMACIÓN (mensaje del asistente o con error detectado en useEffect) 🔴🔴🔴`)
-        setIsAgentResponding(false)
-      }
-    }
-  }, [chatMessages])
-  
   // Log messages when they're displayed
   useEffect(() => {
     console.log("Current chat messages state:", chatMessages)
@@ -182,6 +149,8 @@ export function useChatMessages(
       console.log("Message roles:", chatMessages.map(msg => ({
         id: msg.id,
         role: msg.role,
+        hasVisitorId: !!msg.metadata?.visitor_id,
+        hasLeadId: !!msg.metadata?.lead_id,
         isAgentOnly: isAgentOnlyConversation
       })))
     }

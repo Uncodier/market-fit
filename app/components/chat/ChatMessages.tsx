@@ -39,6 +39,7 @@ interface ChatMessagesProps {
   agentName: string
   isAgentOnlyConversation: boolean
   leadData: any
+  conversationId?: string
 }
 
 // Message feedback widget component
@@ -285,10 +286,14 @@ export function ChatMessages({
   agentId,
   agentName,
   isAgentOnlyConversation,
-  leadData
+  leadData,
+  conversationId
 }: ChatMessagesProps) {
   // Use theme context for dark mode detection
   const { isDarkMode } = useTheme()
+
+  // Check if a conversation is selected
+  const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
 
   // Componentes personalizados para ReactMarkdown
   const markdownComponents = {
@@ -317,8 +322,24 @@ export function ChatMessages({
     )
   }
 
+  if (!hasSelectedConversation) {
+    return (
+      <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-[200px]">
+        <div className="max-w-[calc(100%-240px)] mx-auto flex items-center justify-center h-full">
+          <div className="text-center p-8 rounded-lg">
+            <Icons.MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/60" />
+            <h3 className="text-lg font-medium mb-2">No conversation selected</h3>
+            <p className="text-muted-foreground max-w-md">
+              Select a conversation from the list or start a new one to begin chatting.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-[200px]">
+    <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px]">
       <div className="max-w-[calc(100%-240px)] mx-auto">
         {isLoadingMessages ? (
           <div className="space-y-6 w-full">
@@ -331,21 +352,7 @@ export function ChatMessages({
                     </div>
                     <div className="space-y-2 w-[350px]">
                       <div className="h-4 bg-primary/10 rounded w-24"></div>
-                      <div className="rounded-lg p-4 bg-background" style={{ 
-                        boxShadow: 'var(--shadow-sm)',
-                        border: '1px solid var(--border)'
-                      }}>
-                        <div className="h-4 bg-muted-foreground/10 rounded w-[90%]"></div>
-                        <div className="h-4 bg-muted-foreground/10 rounded w-[75%] mt-2"></div>
-                        <div className="h-4 bg-muted-foreground/10 rounded w-[85%] mt-2"></div>
-                        <div className="h-3 bg-muted-foreground/10 rounded w-14 mt-2"></div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start justify-end gap-3 max-w-[calc(100%-240px)]">
-                    <div className="space-y-2 w-[350px]">
-                      <div className="bg-muted/40 rounded-lg p-4" style={{ 
+                      <div className="rounded-lg p-4" style={{ 
                         backgroundColor: 'var(--muted)', 
                         border: 'none', 
                         boxShadow: 'none', 
@@ -353,9 +360,23 @@ export function ChatMessages({
                         filter: 'none'
                       }}>
                         <div className="h-4 bg-muted-foreground/20 rounded w-[90%]"></div>
-                        <div className="h-4 bg-muted-foreground/20 rounded w-[70%] mt-2"></div>
-                        <div className="h-4 bg-muted-foreground/20 rounded w-[80%] mt-2"></div>
-                        <div className="h-3 bg-muted-foreground/15 rounded w-14 mt-2 ml-auto"></div>
+                        <div className="h-4 bg-muted-foreground/20 rounded w-[75%] mt-2"></div>
+                        <div className="h-4 bg-muted-foreground/20 rounded w-[85%] mt-2"></div>
+                        <div className="h-3 bg-muted-foreground/15 rounded w-14 mt-2"></div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-end gap-3 max-w-[calc(100%-240px)]">
+                    <div className="space-y-2 w-[350px]">
+                      <div className="rounded-lg p-4 bg-background" style={{ 
+                        boxShadow: 'var(--shadow-sm)',
+                        border: '1px solid var(--border)'
+                      }}>
+                        <div className="h-4 bg-muted-foreground/10 rounded w-[90%]"></div>
+                        <div className="h-4 bg-muted-foreground/10 rounded w-[70%] mt-2"></div>
+                        <div className="h-4 bg-muted-foreground/10 rounded w-[80%] mt-2"></div>
+                        <div className="h-3 bg-muted-foreground/10 rounded w-14 mt-2 ml-auto"></div>
                       </div>
                     </div>
                   </div>
@@ -614,17 +635,21 @@ export function ChatMessages({
             
             {/* Animación de espera mientras el agente responde */}
             {isAgentResponding && (
-              <div className="flex justify-start animate-fade-in">
-                <div className="max-w-[calc(100%-240px)] flex items-center space-x-2 p-4">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              <div className="flex justify-start animate-fade-in mt-6 mb-8">
+                <div className="max-w-[calc(100%-240px)] flex items-center space-x-2 p-4 ml-9 bg-muted/20 rounded-md">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
                 </div>
               </div>
             )}
+            
+            {/* Agregar espacio adicional después de los mensajes para evitar que la animación quede pegada al área de texto */}
+            <div className="h-40"></div>
           </div>
         )}
-        <div ref={messagesEndRef} />
+        {/* Elemento de referencia para el scroll automático - desplazado del fondo para mejor visualización */}
+        <div ref={messagesEndRef} className="pt-16 pb-32"></div>
       </div>
     </div>
   )

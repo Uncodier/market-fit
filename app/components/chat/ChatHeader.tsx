@@ -22,6 +22,7 @@ interface ChatHeaderProps {
   handleNewLeadConversation: () => void
   handleNewAgentConversation: () => void
   handlePrivateDiscussion: () => void
+  conversationId?: string
 }
 
 export function ChatHeader({
@@ -37,7 +38,8 @@ export function ChatHeader({
   startNewConversation,
   handleNewLeadConversation,
   handleNewAgentConversation,
-  handlePrivateDiscussion
+  handlePrivateDiscussion,
+  conversationId
 }: ChatHeaderProps) {
   // Helper function to get the icon component dynamically
   const getIconComponent = (iconName: string) => {
@@ -115,6 +117,9 @@ export function ChatHeader({
   
   // Determine final agent name to display (preferring currentAgent.name over prop)
   const displayAgentName = currentAgent?.name || agentName || "Agent";
+  
+  // Check if a conversation is selected
+  const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
 
   return (
     <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80" 
@@ -139,64 +144,66 @@ export function ChatHeader({
       <div className={cn(
         "max-w-[calc(100%-240px)] mx-auto w-full flex items-center justify-between transition-all duration-300 ease-in-out"
       )}>
-        {/* Agent info */}
-        <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out">
-          <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out">
-            <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={displayAgentName} />
-            <AvatarFallback className="bg-primary/10">
-              {IconComponent ? (
-                <IconComponent className="h-6 w-6 transition-transform duration-200" aria-hidden={true} />
-              ) : (
-                displayAgentName.charAt(0)
-              )}
-            </AvatarFallback>
-          </Avatar>
-          <div className="transition-transform duration-300 ease-in-out">
-            <div className="flex items-center gap-2">
-              <h2 className="font-medium text-lg">{displayAgentName}</h2>
-              <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300">
-                {agentRole}
-              </Badge>
-              <span className="text-xs text-muted-foreground transition-colors duration-300">
-                {(() => {
-                  // Determinar el color según el estado
-                  let statusColor = "bg-amber-500"; // Default color
-                  let statusText = "Offline";
-                  
-                  if (currentAgent?.status) {
-                    statusText = currentAgent.status.charAt(0).toUpperCase() + currentAgent.status.slice(1);
+        {/* Agent info - only shown when a conversation is selected */}
+        {hasSelectedConversation && (
+          <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out">
+            <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out">
+              <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={displayAgentName} />
+              <AvatarFallback className="bg-primary/10">
+                {IconComponent ? (
+                  <IconComponent className="h-6 w-6 transition-transform duration-200" aria-hidden={true} />
+                ) : (
+                  displayAgentName.charAt(0)
+                )}
+              </AvatarFallback>
+            </Avatar>
+            <div className="transition-transform duration-300 ease-in-out">
+              <div className="flex items-center gap-2">
+                <h2 className="font-medium text-lg">{displayAgentName}</h2>
+                <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300">
+                  {agentRole}
+                </Badge>
+                <span className="text-xs text-muted-foreground transition-colors duration-300">
+                  {(() => {
+                    // Determinar el color según el estado
+                    let statusColor = "bg-amber-500"; // Default color
+                    let statusText = "Offline";
                     
-                    switch(currentAgent.status) {
-                      case 'active':
-                        statusColor = "bg-green-500";
-                        statusText = "Online";
-                        break;
-                      case 'learning':
-                        statusColor = "bg-blue-500";
-                        break;
-                      case 'error':
-                        statusColor = "bg-red-500";
-                        break;
-                      case 'inactive':
-                        statusColor = "bg-amber-500";
-                        break;
+                    if (currentAgent?.status) {
+                      statusText = currentAgent.status.charAt(0).toUpperCase() + currentAgent.status.slice(1);
+                      
+                      switch(currentAgent.status) {
+                        case 'active':
+                          statusColor = "bg-green-500";
+                          statusText = "Online";
+                          break;
+                        case 'learning':
+                          statusColor = "bg-blue-500";
+                          break;
+                        case 'error':
+                          statusColor = "bg-red-500";
+                          break;
+                        case 'inactive':
+                          statusColor = "bg-amber-500";
+                          break;
+                      }
                     }
-                  }
-                  
-                  return (
-                    <span className="flex items-center gap-1.5">
-                      <span className={`h-1.5 w-1.5 rounded-full ${statusColor} transition-colors duration-300`}></span> 
-                      {statusText}
-                    </span>
-                  );
-                })()}
-              </span>
+                    
+                    return (
+                      <span className="flex items-center gap-1.5">
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusColor} transition-colors duration-300`}></span> 
+                        {statusText}
+                      </span>
+                    );
+                  })()}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
-        {/* Visitor/Lead info - solo se muestra cuando no está cargando y tenemos datos o es un visitante */}
-        {!isLoadingLead && !isAgentOnlyConversation && (
+        {/* Visitor/Lead info - only shown when not loading, not agent-only conversation, and a conversation is selected */}
+        {!isLoadingLead && !isAgentOnlyConversation && hasSelectedConversation && (
           <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out">
             <div className="transition-transform duration-300 ease-in-out text-right">
               <div className="flex items-center gap-2 justify-end">
