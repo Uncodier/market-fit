@@ -8,6 +8,9 @@ import { DemographicsComponent } from "./analysisComponents/DemographicsComponen
 import { BehaviorComponent } from "./analysisComponents/BehaviorComponent"
 import { MarketPenetrationComponent } from "./analysisComponents/MarketPenetrationComponent"
 import { RegionalDistributionComponent } from "./analysisComponents/RegionalDistributionComponent"
+import { EmptyState } from "@/app/components/ui/empty-state"
+import { Button } from "@/app/components/ui/button"
+import { BarChart } from "@/app/components/ui/icons"
 
 interface SegmentAnalysisTabProps {
   segment: Segment
@@ -211,6 +214,56 @@ const safelyProcessSegment = (segment: Segment): Segment => {
   return processedSegment;
 };
 
+// Function to check if segment has analysis data
+const hasAnalysisData = (segment: Segment): boolean => {
+  if (!segment) return false;
+  
+  // Check if analysis exists and is non-empty
+  if (!segment.analysis) return false;
+  
+  // If analysis is an array, check if it has items with data
+  if (Array.isArray(segment.analysis)) {
+    return segment.analysis.some(item => 
+      item && item.data && 
+      (item.data.adPlatforms || 
+       Object.keys(item.data).length > 0)
+    );
+  }
+  
+  // If analysis is an object with data property
+  if (segment.analysis.data) {
+    // Check if data.adPlatforms exists
+    if (segment.analysis.data.adPlatforms) {
+      // Check if any ad platform has data
+      const adPlatforms = segment.analysis.data.adPlatforms;
+      return Object.keys(adPlatforms).some(platform => 
+        adPlatforms[platform] && 
+        Object.keys(adPlatforms[platform]).length > 0
+      );
+    }
+    
+    // Otherwise check if data has any properties
+    return Object.keys(segment.analysis.data).length > 0;
+  }
+  
+  // If analysis has direct adPlatforms property
+  if ((segment.analysis as any).adPlatforms) {
+    const adPlatforms = (segment.analysis as any).adPlatforms;
+    return Object.keys(adPlatforms).some(platform => 
+      adPlatforms[platform] && 
+      Object.keys(adPlatforms[platform]).length > 0
+    );
+  }
+  
+  // Check if segment has audience data
+  if (segment.audience) {
+    return true;
+  }
+  
+  // If none of the above, assume no analysis data
+  return false;
+};
+
 export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
   const [selectedAdPlatform, setSelectedAdPlatform] = useState<NewAdPlatformType>("googleAds")
   const [copyStates, setCopyStates] = useState<CopyStates>({
@@ -221,6 +274,7 @@ export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
   })
   const { isDarkMode } = useTheme()
   const [parsedSegment, setParsedSegment] = useState<Segment | null>(null)
+  const [hasAnalysis, setHasAnalysis] = useState<boolean>(false)
 
   // Debug log for behavior data
   useEffect(() => {
@@ -274,9 +328,13 @@ export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
         } else {
           setParsedSegment(processedSegment);
         }
+        
+        // Check if the segment has analysis data
+        setHasAnalysis(hasAnalysisData(processedSegment));
       } catch (error) {
         console.error("Error processing segment:", error);
         setParsedSegment(segment);
+        setHasAnalysis(hasAnalysisData(segment));
       }
     }
   }, [segment]);
@@ -302,6 +360,26 @@ export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
       // Show error state briefly
       setCopyStates(prev => ({ ...prev, [id]: false }))
     }
+  }
+
+  // If there's no analysis data, show an empty state
+  if (!hasAnalysis) {
+    return (
+      <EmptyState
+        icon={<BarChart className="h-12 w-12 text-primary/60" />}
+        title="No Audience Analysis Available"
+        description="There's no audience analysis data for this segment yet. Run an analysis to understand your audience's demographics, behaviors, and preferences."
+        action={
+          <Button 
+            variant="default" 
+            className="flex items-center gap-2"
+          >
+            <BarChart className="h-4 w-4" />
+            Analyze with AI
+          </Button>
+        }
+      />
+    );
   }
 
   return (

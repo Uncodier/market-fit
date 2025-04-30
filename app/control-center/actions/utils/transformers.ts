@@ -38,6 +38,7 @@ export function transformTransactionData(data: TransactionData): Transaction {
     type: data.type,
     amount: data.amount,
     description: data.description || "",
+    category: data.category,
     date: data.date,
     currency: data.currency,
     siteId: data.site_id,

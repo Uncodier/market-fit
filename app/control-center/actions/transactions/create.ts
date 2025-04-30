@@ -10,6 +10,7 @@ export async function createTransaction(values: {
   type: 'fixed' | 'variable';
   amount: number;
   description?: string;
+  category: string;
   date: string;
   currency?: string;
   siteId: string;
@@ -23,6 +24,7 @@ export async function createTransaction(values: {
       type: values.type,
       amount: values.amount,
       description: values.description || null,
+      category: values.category,
       date: values.date,
       currency: values.currency || "USD",
       site_id: values.siteId,

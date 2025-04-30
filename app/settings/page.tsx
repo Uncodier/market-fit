@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSite } from "../context/SiteContext"
+import { useTheme } from "../context/ThemeContext"
 import { toast } from "sonner"
 import { type Site, type SiteSettings } from "../context/SiteContext"
 import { Button } from "../components/ui/button"
@@ -147,6 +148,7 @@ function SettingsFormSkeleton() {
 
 export default function SettingsPage() {
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings } = useSite()
+  const { theme } = useTheme()
   const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("general")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -262,11 +264,14 @@ export default function SettingsPage() {
       tracking: site.tracking || {
         track_visitors: false,
         track_actions: false,
-        record_screen: false
+        record_screen: false,
+        enable_chat: false
       },
       analytics_provider: site.settings?.analytics_provider || "",
       analytics_id: site.settings?.analytics_id || "",
       tracking_code: site.settings?.tracking_code || "",
+      // Add WhatsApp Business token
+      whatsapp_token: site.settings?.whatsapp_token || "",
       // Add team info
       team_members: site.settings?.team_members || [],
       // Billing info
@@ -310,7 +315,7 @@ export default function SettingsPage() {
       // Extract site-specific fields
       const { 
         name, url, description, logo_url, resource_urls, 
-        competitors, focusMode, billing, tracking, ...settingsData 
+        competitors, focusMode, billing, tracking, whatsapp_token, ...settingsData 
       } = data;
       
       console.log("SAVE 3: Datos extraídos del formulario:", {
@@ -421,7 +426,8 @@ export default function SettingsPage() {
         tracking: {
           track_visitors: tracking?.track_visitors === true,
           track_actions: tracking?.track_actions === true,
-          record_screen: tracking?.record_screen === true
+          record_screen: tracking?.record_screen === true,
+          enable_chat: tracking?.enable_chat === true
         }
       };
       
@@ -446,6 +452,7 @@ export default function SettingsPage() {
         tracking_code: settingsData.tracking_code || "",
         analytics_provider: settingsData.analytics_provider || "",
         analytics_id: settingsData.analytics_id || "",
+        whatsapp_token: whatsapp_token || "",
         team_members: settingsData.team_members || [],
         // Incluir competitors y focus_mode en settings en lugar de site
         competitors: filteredCompetitors?.length > 0 ? filteredCompetitors : [],
@@ -579,7 +586,7 @@ export default function SettingsPage() {
                 <TabsTrigger value="company">Company</TabsTrigger>
                 <TabsTrigger value="marketing">Marketing</TabsTrigger>
                 <TabsTrigger value="social">Social Networks</TabsTrigger>
-                <TabsTrigger value="tracking">Tracking</TabsTrigger>
+                <TabsTrigger value="channels">Channels</TabsTrigger>
                 <TabsTrigger value="team">Team</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -611,17 +618,37 @@ export default function SettingsPage() {
               <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
               <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
               <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger>
-              <TabsTrigger value="tracking" className="whitespace-nowrap">Tracking</TabsTrigger>
+              <TabsTrigger value="channels" className="whitespace-nowrap">Channels</TabsTrigger>
               <TabsTrigger value="team" className="whitespace-nowrap">Team</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button 
-            type="button"
-            onClick={handleManualSave}
-            disabled={isSaving}
-          >
-            {isSaving ? "Saving..." : "Save settings"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {theme === "system" && (
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  // Simulate the media query change event to test system theme handling
+                  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+                  const event = new MediaQueryListEvent('change', {
+                    media: mediaQuery.media,
+                    matches: !mediaQuery.matches
+                  });
+                  mediaQuery.dispatchEvent(event);
+                  toast.success(`Simulated system theme change to ${mediaQuery.matches ? 'dark' : 'light'}`);
+                }}
+                size="sm"
+              >
+                Test System Theme Change
+              </Button>
+            )}
+            <Button 
+              type="button"
+              onClick={handleManualSave}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save settings"}
+            </Button>
+          </div>
         </div>
       </StickyHeader>
       <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">

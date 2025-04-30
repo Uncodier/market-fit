@@ -3,7 +3,7 @@
 import { AuthForm } from "@/app/components/auth/auth-form"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
-import { useTheme } from "@/app/hooks/use-theme"
+import { useTheme } from "@/app/context/ThemeContext"
 
 export default function AuthPage() {
   const searchParams = useSearchParams()

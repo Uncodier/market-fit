@@ -100,74 +100,44 @@ function SegmentCard({
         className="cursor-pointer"
         onClick={(e) => {
           e.preventDefault();
+          navigateToSegmentDetail(segment.id);
+        }}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
           onToggle(segment.id);
         }}
       >
         <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
-          <div className="flex items-center pl-6 hover:bg-muted/50 transition-colors">
-            <div className="flex items-center justify-center p-2">
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-            </div>
-            <CardContent className="flex-1 p-6 pr-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-              <div className="w-full lg:w-[320px] min-w-[280px] max-w-[320px] mb-4 lg:mb-0 shrink-0">
-                <h3 className="font-semibold text-lg truncate">{segment.name}</h3>
-                <p className="text-sm text-muted-foreground/80 truncate">
-                  {segment.description || 'No description available'}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-[160px_90px_110px_110px_170px_200px] gap-2 sm:gap-4 w-full lg:max-w-[900px]">
-                <div className="p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Audience</p>
-                  <p className="text-sm font-medium truncate text-right">{getDisplayValue(segment.audience)}</p>
+          <div className="flex items-center hover:bg-muted/50 transition-colors">
+            <CardContent className="flex-1 p-4 w-full overflow-x-auto">
+              <div className="flex items-start gap-2 min-w-[800px]">
+                <div className="w-[500px] min-w-[450px] pr-2 flex-grow">
+                  <h3 className="font-semibold text-lg truncate">{segment.name}</h3>
+                  <p className="text-sm text-muted-foreground/80 truncate">
+                    {segment.description || 'No description available'}
+                  </p>
                 </div>
-                <div className="p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Language</p>
-                  <p className="text-sm font-medium text-right">{segment.language ? segment.language.toUpperCase() : 'N/A'}</p>
+                <div className="w-[120px] min-w-[120px] flex-shrink-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Audience</p>
+                  <p className="text-sm font-medium truncate text-center">{getDisplayValue(segment.audience)}</p>
                 </div>
-                <div className="hidden lg:block p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Size</p>
-                  <p className="text-sm font-medium text-right">{getDisplayValue(segment.size, 'number')}</p>
+                <div className="w-[80px] min-w-[80px] flex-shrink-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Language</p>
+                  <p className="text-sm font-medium text-center">{segment.language ? segment.language.toUpperCase() : 'N/A'}</p>
                 </div>
-                <div className="p-2 rounded-lg">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Engagement</p>
-                  <p className="text-sm font-medium text-right">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
+                <div className="w-[80px] min-w-[80px] flex-shrink-0 hidden lg:block">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Size</p>
+                  <p className="text-sm font-medium text-center">{getDisplayValue(segment.size, 'number')}</p>
                 </div>
-                <div className="hidden lg:block p-2 rounded-lg">
-                  <div className="flex items-center justify-end h-full">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigateToSegmentDetail(segment.id);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 px-3 h-9"
-                    >
-                      <svg 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        className="h-3.5 w-3.5 flex-shrink-0"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="16" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12.01" y2="8" />
-                      </svg>
-                      <span>View Details</span>
-                    </Button>
-                  </div>
+                <div className="w-[80px] min-w-[80px] flex-shrink-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Engagement</p>
+                  <p className="text-sm font-medium text-center">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
                 </div>
-                <div onClick={(e) => e.stopPropagation()} className="bg-transparent p-2 rounded-lg col-span-2 sm:col-span-2 lg:col-span-1">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-right">Status</p>
-                  <div className="flex items-center justify-end gap-0.5">
-                    <span className={`text-xs font-medium w-10 text-right truncate ${activeSegments[segment.id] ? 'text-green-500' : 'text-yellow-500'}`}>
+                <div className="w-[100px] min-w-[100px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Status</p>
+                  <div className="flex items-center justify-center gap-0.5">
+                    <span className={`text-xs font-medium text-center truncate ${activeSegments[segment.id] ? 'text-green-500' : 'text-yellow-500'}`}>
                       {activeSegments[segment.id] ? "Active" : "Draft"}
                     </span>
                     <Switch 
@@ -361,39 +331,32 @@ function SegmentCard({
 function SegmentRowSkeleton() {
   return (
     <Card className="border border-border overflow-hidden">
-      <div className="flex items-center pl-6">
-        <div className="flex items-center justify-center p-2">
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <CardContent className="flex-1 p-6 pr-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div className="w-full lg:w-[320px] min-w-[280px] max-w-[320px] mb-4 lg:mb-0 shrink-0 space-y-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-[160px_90px_110px_110px_170px_200px] gap-2 sm:gap-4 w-full lg:max-w-[900px]">
-            <div className="p-2 rounded-lg">
-              <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-3/4" />
+      <div className="flex items-center">
+        <CardContent className="flex-1 p-4 w-full overflow-x-auto">
+          <div className="flex items-start gap-2 min-w-[800px]">
+            <div className="w-[500px] min-w-[450px] pr-2 flex-grow space-y-2">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-full" />
             </div>
-            <div className="p-2 rounded-lg">
+            <div className="w-[120px] min-w-[120px] flex-shrink-0">
               <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-3/4 mx-auto" />
             </div>
-            <div className="hidden lg:block p-2 rounded-lg">
+            <div className="w-[80px] min-w-[80px] flex-shrink-0">
               <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/2 mx-auto" />
             </div>
-            <div className="p-2 rounded-lg">
+            <div className="w-[80px] min-w-[80px] flex-shrink-0 hidden lg:block">
               <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3 mx-auto" />
             </div>
-            <div className="hidden lg:block p-2 rounded-lg">
+            <div className="w-[80px] min-w-[80px] flex-shrink-0">
               <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2 mx-auto" />
             </div>
-            <div className="bg-background/50 p-2 rounded-lg col-span-2 sm:col-span-2 lg:col-span-1">
+            <div className="w-[100px] min-w-[100px] flex-shrink-0">
               <Skeleton className="h-4 w-full mb-2" />
-              <div className="flex items-center justify-end gap-0.5">
+              <div className="flex items-center justify-center gap-0.5">
                 <Skeleton className="h-4 w-10" />
                 <Skeleton className="h-5 w-10 rounded-full flex-shrink-0 ml-1" />
               </div>

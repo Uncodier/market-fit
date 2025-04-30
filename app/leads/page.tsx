@@ -26,6 +26,28 @@ import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
 import { useRouter } from "next/navigation"
 import { Lead } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
+import { getTasksByLeadId } from "@/app/leads/tasks/actions"
+import { JOURNEY_STAGES } from "@/app/leads/types"
+
+// Cache de etapas para cada lead
+const leadJourneyStagesCache: Record<string, string> = {};
+
+// Colores para las etapas del journey
+const JOURNEY_STAGE_COLORS: Record<string, string> = {
+  awareness: 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200',
+  consideration: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200',
+  decision: 'bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200',
+  purchase: 'bg-green-50 text-green-700 hover:bg-green-50 border-green-200',
+  retention: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-50 border-indigo-200',
+  referral: 'bg-pink-50 text-pink-700 hover:bg-pink-50 border-pink-200',
+  not_contacted: 'bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200'
+}
+
+// Obtener el nombre legible de una etapa
+const getJourneyStageName = (stageId: string) => {
+  if (stageId === "not_contacted") return "Unaware"
+  return JOURNEY_STAGES.find(stage => stage.id === stageId)?.label || "Unknown"
+}
 
 interface LeadsTableProps {
   leads: Lead[]
@@ -51,10 +73,68 @@ function LeadsTable({
   const { segments } = useLeadsContext()
   const { currentSite } = useSite()
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
+  const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(true)
+  
+  // Cargar etapas del journey para cada lead
+  useEffect(() => {
+    const fetchJourneyStagesForLeads = async () => {
+      if (!currentSite?.id || leads.length === 0) {
+        setIsLoadingJourneyStages(false)
+        return
+      }
+      
+      setIsLoadingJourneyStages(true)
+      const stages: Record<string, string> = {}
+      
+      // Usar promesas en paralelo para mejorar el rendimiento
+      const promises = leads.map(async (lead) => {
+        // Si ya tenemos la etapa en el cache, no hacemos una nueva petición
+        if (leadJourneyStagesCache[lead.id]) {
+          stages[lead.id] = leadJourneyStagesCache[lead.id]
+          return
+        }
+        
+        try {
+          const result = await getTasksByLeadId(lead.id)
+          
+          if (result.error || !result.tasks) {
+            stages[lead.id] = "not_contacted"
+            return
+          }
+          
+          // Ordenar las etapas del journey por prioridad
+          const stageOrder = ["referral", "retention", "purchase", "decision", "consideration", "awareness"]
+          
+          // Encontrar la etapa más alta
+          const highestStage = result.tasks
+            .filter(task => task.status === "completed")
+            .sort((a, b) => {
+              const aIndex = stageOrder.indexOf(a.stage)
+              const bIndex = stageOrder.indexOf(b.stage)
+              return aIndex - bIndex
+            })[0]?.stage || "not_contacted"
+          
+          stages[lead.id] = highestStage
+          leadJourneyStagesCache[lead.id] = highestStage
+        } catch (error) {
+          console.error(`Error fetching tasks for lead ${lead.id}:`, error)
+          stages[lead.id] = "not_contacted"
+        }
+      })
+      
+      await Promise.all(promises)
+      setLeadJourneyStages(stages)
+      setIsLoadingJourneyStages(false)
+    }
+    
+    fetchJourneyStagesForLeads()
+  }, [leads, currentSite?.id])
   
   // Debug logs
   console.log('Leads:', leads)
   console.log('Segments:', segments)
+  console.log('Journey Stages:', leadJourneyStages)
   
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
@@ -94,6 +174,7 @@ function LeadsTable({
             <TableHead>Company</TableHead>
             <TableHead>Segment</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Journey Stage</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -126,6 +207,11 @@ function LeadsTable({
                     <TableCell>
                       <Badge className={`${statusStyles[lead.status]}`}>
                         {String(lead.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${JOURNEY_STAGE_COLORS[leadJourneyStages[lead.id] || 'not_contacted']}`}>
+                        {getJourneyStageName(leadJourneyStages[lead.id] || 'not_contacted')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -161,7 +247,7 @@ function LeadsTable({
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No leads found.
                 </TableCell>
               </TableRow>
@@ -296,7 +382,7 @@ function LeadsTableSkeleton() {
                 <Skeleton className="h-5 w-24 rounded-full" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-24 rounded-full" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-20" />
@@ -501,7 +587,6 @@ export default function LeadsPage() {
         company: data.company,
         position: data.position,
         segment_id: data.segment_id,
-        campaign_id: data.campaign_id,
         status: data.status,
         notes: data.notes,
         origin: data.origin,

@@ -838,7 +838,8 @@ function ContentTable({
   onPageChange,
   onItemsPerPageChange,
   onContentClick,
-  segments
+  segments,
+  onRatingChange
 }: { 
   contentItems: ContentItem[]
   currentPage: number
@@ -848,6 +849,7 @@ function ContentTable({
   onItemsPerPageChange: (value: string) => void
   onContentClick: (content: ContentItem) => void
   segments: Array<{ id: string; name: string }>
+  onRatingChange?: (contentId: string, rating: number) => void
 }) {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalContent / itemsPerPage)
@@ -857,18 +859,42 @@ function ContentTable({
     if (!text || text.length <= maxLength) return text
     return `${text.substring(0, maxLength)}...`
   }
+
+  const handleRatingChange = (contentId: string, rating: number) => {
+    // Call parent callback if provided
+    if (onRatingChange) {
+      onRatingChange(contentId, rating);
+    }
+    
+    // Update the rating in the database
+    updateContent({
+      contentId: contentId,
+      title: contentItems.find(item => item.id === contentId)?.title || '',
+      type: contentItems.find(item => item.id === contentId)?.type || 'blog_post',
+      performance_rating: rating
+    }).then(() => {
+      toast.success("Performance rating updated", {
+        position: "bottom-right",
+        duration: 2000
+      });
+    }).catch(error => {
+      console.error("Error updating rating:", error);
+      toast.error("Failed to update rating");
+    });
+  };
   
   return (
     <Card>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[300px]">Title</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Segment</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="w-[45%]">Title</TableHead>
+            <TableHead className="w-[12%]">Type</TableHead>
+            <TableHead className="w-[10%]">Segment</TableHead>
+            <TableHead className="w-[10%]">Status</TableHead>
+            <TableHead className="w-[8%]">Created</TableHead>
+            <TableHead className="w-[10%]">Performance</TableHead>
+            <TableHead className="w-[5%] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -881,9 +907,9 @@ function ContentTable({
               >
                 <TableCell>
                   <div className="space-y-0.5">
-                    <p className="font-medium text-sm">{truncateText(content.title)}</p>
+                    <p className="font-medium text-sm">{content.title}</p>
                     {content.description && (
-                      <p className="text-xs text-muted-foreground">{truncateText(content.description, 50)}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{content.description}</p>
                     )}
                   </div>
                 </TableCell>
@@ -905,8 +931,18 @@ function ContentTable({
                     {content.status.charAt(0).toUpperCase() + content.status.slice(1)}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="text-sm whitespace-nowrap">
                   {new Date(content.created_at).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  <div onClick={(e) => e.stopPropagation()} className="scale-75 origin-left">
+                    <StarRating 
+                      rating={content.performance_rating}
+                      onRatingChange={(rating) => handleRatingChange(content.id, rating)}
+                      readonly={false}
+                      size="sm"
+                    />
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button
@@ -926,7 +962,7 @@ function ContentTable({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={7} className="h-24 text-center">
                 No content found.
               </TableCell>
             </TableRow>
@@ -1007,12 +1043,13 @@ function ContentTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[300px]">Title</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Segment</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="w-[45%]">Title</TableHead>
+            <TableHead className="w-[12%]">Type</TableHead>
+            <TableHead className="w-[10%]">Segment</TableHead>
+            <TableHead className="w-[10%]">Status</TableHead>
+            <TableHead className="w-[8%]">Created</TableHead>
+            <TableHead className="w-[10%]">Performance</TableHead>
+            <TableHead className="w-[5%] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1035,6 +1072,9 @@ function ContentTableSkeleton() {
               </TableCell>
               <TableCell>
                 <Skeleton className="h-6 w-16 rounded-full" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-24" />
@@ -1812,6 +1852,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  onRatingChange={handleContentRatingChange}
                 />
               )}
             </TabsContent>
@@ -1839,6 +1880,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  onRatingChange={handleContentRatingChange}
                 />
               )}
             </TabsContent>
@@ -1866,6 +1908,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  onRatingChange={handleContentRatingChange}
                 />
               )}
             </TabsContent>
@@ -1893,6 +1936,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  onRatingChange={handleContentRatingChange}
                 />
               )}
             </TabsContent>
@@ -1920,6 +1964,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  onRatingChange={handleContentRatingChange}
                 />
               )}
             </TabsContent>

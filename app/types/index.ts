@@ -70,6 +70,7 @@ export interface Transaction {
   type: 'fixed' | 'variable';
   amount: number;
   description: string;
+  category: string;
   date: string;
   currency: string;
   siteId: string;
@@ -152,6 +153,7 @@ export interface TransactionData {
   type: 'fixed' | 'variable';
   amount: number;
   description: string | null;
+  category: string;
   date: string;
   currency: string;
   site_id: string;

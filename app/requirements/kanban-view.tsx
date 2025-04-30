@@ -233,17 +233,18 @@ export function KanbanView({
           hint="Try clearing your filters or create a new requirement to get started."
         />
       ) : (
-        <div className="overflow-auto">
+        <div className="overflow-x-auto pb-8">
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="inline-flex gap-4 pb-4">
+            <div className="inline-flex gap-4 pb-4 min-h-[200px]">
               {REQUIREMENT_STATUSES.map(status => {
                 const isCollapsed = collapsedColumns[status.id] || false;
+                const columnItems = requirementsByStatus[status.id];
                 return (
                   <div 
                     key={status.id} 
                     className={cn(
                       "flex flex-col h-full transition-all duration-300 ease-in-out",
-                      isCollapsed ? "w-12" : "w-[295px]"
+                      isCollapsed ? "w-12" : "w-[280px]"
                     )}
                   >
                     <div 
@@ -254,7 +255,7 @@ export function KanbanView({
                         <div className="flex flex-col items-center w-full">
                           <ChevronRight className="h-4 w-4 text-muted-foreground mb-1.5" />
                           <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full mb-2">
-                            {requirementsByStatus[status.id].length}
+                            {columnItems.length}
                           </span>
                           <div className="kanban-writing-mode-vertical text-xs text-muted-foreground">
                             {status.name.split("").join(" ")}
@@ -266,7 +267,7 @@ export function KanbanView({
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             <h3 className="font-medium text-sm">{status.name}</h3>
                           </div>
-                          <Badge variant="outline">{requirementsByStatus[status.id].length}</Badge>
+                          <Badge variant="outline" className="rounded-full">{columnItems.length}</Badge>
                         </>
                       )}
                     </div>
@@ -277,122 +278,83 @@ export function KanbanView({
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`flex-1 rounded-md p-2 min-h-[500px] w-full ${
+                            className={`flex-1 rounded-md p-1 w-full ${
                               snapshot.isDraggingOver 
                                 ? 'bg-gray-100/80 dark:bg-primary/10' 
                                 : 'bg-gray-50/80 dark:bg-[rgb(2,8,23)]/5'
                             }`}
                           >
-                            <ScrollArea className="h-[500px] w-full">
-                              {requirementsByStatus[status.id].map((requirement, index) => (
-                                <Draggable 
-                                  key={requirement.id} 
-                                  draggableId={requirement.id} 
-                                  index={index}
-                                  isDragDisabled={!isDraggable(requirement)}
-                                >
-                                  {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
-                                    <div className="w-full mb-3">
-                                      <Card
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        {...provided.dragHandleProps}
-                                        className={`transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer w-full ${
-                                          snapshot.isDragging 
-                                            ? 'shadow-lg dark:shadow-black/20 border-primary/20' 
-                                            : ''
-                                        } ${!isDraggable(requirement) ? 'opacity-80' : ''}`}
-                                        onClick={(e) => handleCardClick(e, requirement)}
-                                      >
-                                        <CardHeader className="p-3 pb-1 space-y-0">
-                                          <CardTitle className="text-sm font-medium flex items-start justify-between gap-2 w-full">
-                                            <div className="min-w-0 flex-1">
-                                              <span className="truncate">{requirement.title}</span>
-                                            </div>
-                                            <Badge className={`text-xs whitespace-nowrap flex-shrink-0 ${PRIORITY_COLORS[requirement.priority]}`}>
-                                              {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
-                                            </Badge>
-                                          </CardTitle>
-                                        </CardHeader>
-                                        
-                                        <CardContent className="p-3 pt-1 space-y-2 w-full">
-                                          {/* Description section with icon */}
-                                          <div className="flex gap-1.5 items-start w-full">
-                                            <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 break-words min-w-0 flex-1">
-                                              {requirement.description}
-                                            </p>
-                                          </div>
-                                          
-                                          <Separator className="my-1" />
-                                          
-                                          {/* Status badges with icons - Stacked layout for smaller column width */}
-                                          <div className="flex flex-col gap-1.5 w-full">
-                                            <div className="flex items-center justify-between w-full">
-                                              <div className="flex items-center gap-1.5">
-                                                <Target className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                                <span className="text-xs text-muted-foreground truncate flex-1">
-                                                  {requirement.campaignNames && requirement.campaignNames.length > 0 
-                                                    ? requirement.campaignNames[0]
-                                                    : "No campaign"}
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-1.5">
-                                                <svg 
-                                                  xmlns="http://www.w3.org/2000/svg" 
-                                                  width="16" 
-                                                  height="16" 
-                                                  viewBox="0 0 24 24" 
-                                                  fill="none" 
-                                                  stroke="currentColor" 
-                                                  strokeWidth="2" 
-                                                  strokeLinecap="round" 
-                                                  strokeLinejoin="round" 
-                                                  className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0"
-                                                >
-                                                  <circle cx="12" cy="12" r="10"/>
-                                                  <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
-                                                  <path d="M12 18V6"/>
-                                                </svg>
-                                                <span className="text-xs text-muted-foreground truncate">
-                                                  {requirement.budget ? `$${requirement.budget.toLocaleString()}` : "No budget"}
-                                                </span>
-                                              </div>
-                                            </div>
-                                          </div>
-                                          
-                                          {/* Segments section with tags icon */}
-                                          {requirement.segmentNames && requirement.segmentNames.length > 0 && (
-                                            <div className="flex items-start gap-1.5 w-full">
-                                              <Tag className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                                              <div className="flex flex-wrap gap-1 min-w-0 flex-1">
-                                                {requirement.segmentNames.slice(0, 1).map(segmentName => (
-                                                  <Badge 
-                                                    key={segmentName}
-                                                    variant="secondary" 
-                                                    className="text-xs max-w-full truncate bg-gray-100/20 text-gray-700 dark:text-gray-300 border-gray-300/30"
-                                                  >
-                                                    {segmentName}
-                                                  </Badge>
-                                                ))}
-                                                {requirement.segmentNames.length > 1 && (
-                                                  <Badge 
-                                                    variant="secondary" 
-                                                    className="text-xs bg-gray-100/20 text-gray-700 dark:text-gray-300 border-gray-300/30"
-                                                  >
-                                                    +{requirement.segmentNames.length - 1}
-                                                  </Badge>
-                                                )}
-                                              </div>
-                                            </div>
-                                          )}
-                                        </CardContent>
-                                      </Card>
+                            {columnItems.map((requirement, index) => (
+                              <Draggable 
+                                key={requirement.id} 
+                                draggableId={requirement.id} 
+                                index={index}
+                                isDragDisabled={!isDraggable(requirement)}
+                              >
+                                {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
+                                  <div 
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    onClick={(e) => handleCardClick(e, requirement)}
+                                    className={`mb-2 px-4 py-3 bg-white dark:bg-gray-900 border border-border rounded-md shadow-sm transition-all duration-200 hover:shadow-md hover:border-foreground/20 cursor-pointer ${
+                                      snapshot.isDragging 
+                                        ? 'shadow-lg dark:shadow-black/20 border-primary/20' 
+                                        : ''
+                                    } ${!isDraggable(requirement) ? 'opacity-80' : ''}`}
+                                  >
+                                    <div className="flex justify-between items-start mb-2">
+                                      <h3 className="font-medium text-sm leading-tight">{requirement.title}</h3>
+                                      <Badge className={`text-xs whitespace-nowrap ml-2 ${PRIORITY_COLORS[requirement.priority]}`}>
+                                        {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                                      </Badge>
                                     </div>
-                                  )}
-                                </Draggable>
-                              ))}
-                              {provided.placeholder}
-                            </ScrollArea>
+                                    
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+                                      {requirement.description}
+                                    </p>
+                                    
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                      {requirement.campaignNames && requirement.campaignNames.length > 0 ? (
+                                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                                          <Target className="h-3 w-3" />
+                                          <span className="truncate max-w-[120px]">{requirement.campaignNames[0]}</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-500">
+                                          <Target className="h-3 w-3" />
+                                          <span>No campaign</span>
+                                        </div>
+                                      )}
+                                      
+                                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                                        {requirement.budget ? (
+                                          <span>${requirement.budget.toLocaleString()}</span>
+                                        ) : (
+                                          <span className="text-gray-500 dark:text-gray-500">No budget</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    {requirement.segmentNames && requirement.segmentNames.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        {requirement.segmentNames.slice(0, 1).map(segment => (
+                                          <Badge key={segment} variant="outline" className="text-xs py-0 h-5 truncate max-w-full">
+                                            {segment}
+                                          </Badge>
+                                        ))}
+                                        {requirement.segmentNames.length > 1 && (
+                                          <Badge variant="outline" className="text-xs py-0 h-5">
+                                            +{requirement.segmentNames.length - 1}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
                           </div>
                         )}
                       </Droppable>

@@ -18,6 +18,8 @@ import { sampleICPProfile } from "./dummyData";
 import { cn } from "@/app/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { useTheme } from '@/app/context/ThemeContext';
+import { EmptyState } from "@/app/components/ui/empty-state";
+import { Button } from "@/app/components/ui/button";
 
 interface SegmentICPTabProps {
   segment: Segment;
@@ -386,6 +388,9 @@ export function SegmentICPTab({ segment }: SegmentICPTabProps) {
     { id: "custom", label: "Custom", icon: Settings },
   ];
 
+  // Check if the segment has ICP data
+  const hasICPData = !!segment?.icp?.profile || Object.keys(segment?.icp || {}).length > 0;
+
   // Extract the ICP profile data from the segment, or use sample data if none exists
   // Usamos any como intermediario para evitar errores de tipo
   const profileData = segment?.icp?.profile || fallbackICPProfile;
@@ -432,6 +437,26 @@ export function SegmentICPTab({ segment }: SegmentICPTabProps) {
         return <DemographicsTab icpProfile={completeProfile} />;
     }
   };
+
+  // If there's no ICP data, show an empty state
+  if (!hasICPData) {
+    return (
+      <EmptyState
+        icon={<Users className="h-12 w-12 text-primary/60" />}
+        title="No ICP Profile Available"
+        description="There's no Ideal Customer Profile data for this segment yet. Generate an ICP to better understand your audience's demographics, psychographics, and behavior."
+        action={
+          <Button 
+            variant="default" 
+            className="flex items-center gap-2"
+          >
+            <Users className="h-4 w-4" />
+            Generate ICP Profile with AI
+          </Button>
+        }
+      />
+    );
+  }
 
   return (
     <div>

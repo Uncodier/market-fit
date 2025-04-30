@@ -466,33 +466,92 @@ async function fetchPreviousPeriodActiveUsers(
   endDate: Date
 ): Promise<{ value: number | null, error: any }> {
   try {
-    let query = supabase
-      .from("visitor_events")
-      .select("visitor_id, segment_id, created_at", { count: "exact", head: false })
+    console.log("[ActiveUsersAPI] Fetching previous period data from:", format(startDate, "yyyy-MM-dd"), "to:", format(endDate, "yyyy-MM-dd"));
+
+    // Primero, obtenemos los visitor_id de las sesiones (sin filtrar por segment)
+    const { data: sessionsData, error: sessionsError } = await supabase
+      .from("session_events")
+      .select("visitor_id, created_at")
       .eq("site_id", siteId)
       .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"));
+      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"))
+      .limit(10000);
     
-    if (segmentId && segmentId !== "all") {
-      query = query.eq("segment_id", segmentId);
+    if (sessionsError) {
+      console.error("Error fetching previous period sessions:", sessionsError);
+      return { value: null, error: sessionsError };
     }
     
-    const { data, error, count } = await query.limit(10000); // Set a reasonable limit
-    
-    if (error) {
-      console.error("Error fetching previous period active users:", error);
-      return { value: null, error };
-    }
-    
-    // Count unique visitors
-    const uniqueVisitorIds = new Set();
-    data?.forEach((event: { visitor_id?: string }) => {
-      if (event.visitor_id) {
-        uniqueVisitorIds.add(event.visitor_id);
+    // Recolectar visitor_ids únicos
+    const uniqueVisitorIds = new Set<string>();
+    sessionsData?.forEach((session: { visitor_id?: string }) => {
+      if (session.visitor_id) {
+        uniqueVisitorIds.add(session.visitor_id);
       }
     });
     
-    return { value: uniqueVisitorIds.size, error: null };
+    console.log("[ActiveUsersAPI] Found unique visitors:", uniqueVisitorIds.size);
+    
+    // Si no hay visitors, retornamos 0
+    if (uniqueVisitorIds.size === 0) {
+      return { value: 0, error: null };
+    }
+    
+    // Convertir el Set en un array para la consulta
+    const visitorIdsArray = Array.from(uniqueVisitorIds);
+    
+    // Ahora, obtenemos los leads asociados a esos visitors
+    const { data: visitorData, error: visitorError } = await supabase
+      .from("visitors")
+      .select("lead_id")
+      .in("id", visitorIdsArray)
+      .not("lead_id", "is", null);
+    
+    if (visitorError) {
+      console.error("Error fetching visitor leads:", visitorError);
+      return { value: null, error: visitorError };
+    }
+    
+    // Recolectar lead_ids únicos
+    const uniqueLeadIds = new Set<string>();
+    visitorData?.forEach((visitor: { lead_id?: string }) => {
+      if (visitor.lead_id) {
+        uniqueLeadIds.add(visitor.lead_id);
+      }
+    });
+    
+    // Si estamos filtrando por segmento, necesitamos verificar qué leads pertenecen a ese segmento
+    if (segmentId && segmentId !== "all" && uniqueLeadIds.size > 0) {
+      console.log("[ActiveUsersAPI] Filtering leads by segment:", segmentId);
+      
+      const leadIdsArray = Array.from(uniqueLeadIds);
+      
+      // Consultar qué leads están en el segmento especificado
+      const { data: leadSegmentData, error: leadSegmentError } = await supabase
+        .from("lead_segments")
+        .select("lead_id")
+        .in("lead_id", leadIdsArray)
+        .eq("segment_id", segmentId);
+      
+      if (leadSegmentError) {
+        console.error("Error fetching lead segments:", leadSegmentError);
+        return { value: null, error: leadSegmentError };
+      }
+      
+      // Contar solo los leads que están en el segmento
+      const segmentLeadIds = new Set<string>();
+      leadSegmentData?.forEach((item: { lead_id: string }) => {
+        if (item.lead_id) {
+          segmentLeadIds.add(item.lead_id);
+        }
+      });
+      
+      console.log("[ActiveUsersAPI] Previous period unique leads in segment:", segmentLeadIds.size);
+      return { value: segmentLeadIds.size, error: null };
+    }
+    
+    console.log("[ActiveUsersAPI] Previous period unique leads:", uniqueLeadIds.size);
+    return { value: uniqueLeadIds.size, error: null };
   } catch (err) {
     console.error("Exception fetching previous period active users:", err);
     return { value: null, error: err };
@@ -508,33 +567,92 @@ async function fetchCurrentPeriodActiveUsers(
   endDate: Date
 ): Promise<{ value: number | null, error: any }> {
   try {
-    let query = supabase
-      .from("visitor_events")
-      .select("visitor_id, segment_id, created_at", { count: "exact", head: false })
+    console.log("[ActiveUsersAPI] Fetching current period data from:", format(startDate, "yyyy-MM-dd"), "to:", format(endDate, "yyyy-MM-dd"));
+
+    // Primero, obtenemos los visitor_id de las sesiones (sin filtrar por segment)
+    const { data: sessionsData, error: sessionsError } = await supabase
+      .from("session_events")
+      .select("visitor_id, created_at")
       .eq("site_id", siteId)
       .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"));
+      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"))
+      .limit(10000);
     
-    if (segmentId && segmentId !== "all") {
-      query = query.eq("segment_id", segmentId);
+    if (sessionsError) {
+      console.error("Error fetching current period sessions:", sessionsError);
+      return { value: null, error: sessionsError };
     }
     
-    const { data, error, count } = await query.limit(10000); // Set a reasonable limit
-    
-    if (error) {
-      console.error("Error fetching current period active users:", error);
-      return { value: null, error };
-    }
-    
-    // Count unique visitors
-    const uniqueVisitorIds = new Set();
-    data?.forEach((event: { visitor_id?: string }) => {
-      if (event.visitor_id) {
-        uniqueVisitorIds.add(event.visitor_id);
+    // Recolectar visitor_ids únicos
+    const uniqueVisitorIds = new Set<string>();
+    sessionsData?.forEach((session: { visitor_id?: string }) => {
+      if (session.visitor_id) {
+        uniqueVisitorIds.add(session.visitor_id);
       }
     });
     
-    return { value: uniqueVisitorIds.size, error: null };
+    console.log("[ActiveUsersAPI] Found unique visitors:", uniqueVisitorIds.size);
+    
+    // Si no hay visitors, retornamos 0
+    if (uniqueVisitorIds.size === 0) {
+      return { value: 0, error: null };
+    }
+    
+    // Convertir el Set en un array para la consulta
+    const visitorIdsArray = Array.from(uniqueVisitorIds);
+    
+    // Ahora, obtenemos los leads asociados a esos visitors
+    const { data: visitorData, error: visitorError } = await supabase
+      .from("visitors")
+      .select("lead_id")
+      .in("id", visitorIdsArray)
+      .not("lead_id", "is", null);
+    
+    if (visitorError) {
+      console.error("Error fetching visitor leads:", visitorError);
+      return { value: null, error: visitorError };
+    }
+    
+    // Recolectar lead_ids únicos
+    const uniqueLeadIds = new Set<string>();
+    visitorData?.forEach((visitor: { lead_id?: string }) => {
+      if (visitor.lead_id) {
+        uniqueLeadIds.add(visitor.lead_id);
+      }
+    });
+    
+    // Si estamos filtrando por segmento, necesitamos verificar qué leads pertenecen a ese segmento
+    if (segmentId && segmentId !== "all" && uniqueLeadIds.size > 0) {
+      console.log("[ActiveUsersAPI] Filtering leads by segment:", segmentId);
+      
+      const leadIdsArray = Array.from(uniqueLeadIds);
+      
+      // Consultar qué leads están en el segmento especificado
+      const { data: leadSegmentData, error: leadSegmentError } = await supabase
+        .from("lead_segments")
+        .select("lead_id")
+        .in("lead_id", leadIdsArray)
+        .eq("segment_id", segmentId);
+      
+      if (leadSegmentError) {
+        console.error("Error fetching lead segments:", leadSegmentError);
+        return { value: null, error: leadSegmentError };
+      }
+      
+      // Contar solo los leads que están en el segmento
+      const segmentLeadIds = new Set<string>();
+      leadSegmentData?.forEach((item: { lead_id: string }) => {
+        if (item.lead_id) {
+          segmentLeadIds.add(item.lead_id);
+        }
+      });
+      
+      console.log("[ActiveUsersAPI] Current period unique leads in segment:", segmentLeadIds.size);
+      return { value: segmentLeadIds.size, error: null };
+    }
+    
+    console.log("[ActiveUsersAPI] Current period unique leads:", uniqueLeadIds.size);
+    return { value: uniqueLeadIds.size, error: null };
   } catch (err) {
     console.error("Exception fetching current period active users:", err);
     return { value: null, error: err };

@@ -14,15 +14,39 @@ type ThemeProviderState = {
   theme: Theme
   setTheme: (theme: Theme) => void
   isDarkMode: boolean
+  toggleTheme: () => void
 }
 
 const initialState: ThemeProviderState = {
   theme: "system",
   setTheme: () => null,
   isDarkMode: false,
+  toggleTheme: () => null
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
+
+// Helper function to apply theme and refresh CSS variables
+const applyTheme = (theme: string, setIsDarkMode: (isDark: boolean) => void) => {
+  const root = window.document.documentElement;
+  root.classList.remove("light", "dark");
+  root.classList.add(theme);
+  setIsDarkMode(theme === "dark");
+  
+  // Force refresh of CSS variables by triggering a layout recalculation
+  // This ensures all components using CSS variables get updated
+  const currentScroll = window.scrollY;
+  document.body.style.display = "none";
+  // This forces a reflow, flushing the CSS changes
+  void document.body.offsetHeight;
+  document.body.style.display = "";
+  window.scrollTo(0, currentScroll);
+  
+  // Dispatch a custom event so components can react to theme changes
+  window.dispatchEvent(new CustomEvent("themechange", {
+    detail: { isDark: theme === "dark" }
+  }));
+};
 
 export function ThemeProvider({
   children,
@@ -41,22 +65,53 @@ export function ThemeProvider({
   }, [storageKey])
 
   useEffect(() => {
-    const root = window.document.documentElement
-    root.classList.remove("light", "dark")
-
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light"
       
-      root.classList.add(systemTheme)
-      setIsDarkMode(systemTheme === "dark")
+      applyTheme(systemTheme, setIsDarkMode);
       return
     }
 
-    root.classList.add(theme)
-    setIsDarkMode(theme === "dark")
+    applyTheme(theme, setIsDarkMode);
   }, [theme])
+
+  // Add listener for system theme changes
+  useEffect(() => {
+    if (theme !== "system") return;
+    
+    // This handler will update the theme when system preference changes
+    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+      const newTheme = event.matches ? "dark" : "light";
+      applyTheme(newTheme, setIsDarkMode);
+    };
+    
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+    
+    return () => {
+      mediaQuery.removeEventListener("change", handleSystemThemeChange);
+    };
+  }, [theme]);
+
+  // Toggle between dark and light mode
+  const toggleTheme = () => {
+    setTheme(prev => {
+      // If system, choose the opposite of the current system preference
+      if (prev === "system") {
+        const systemIsDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const newTheme = systemIsDark ? "light" : "dark";
+        localStorage.setItem(storageKey, newTheme);
+        return newTheme;
+      }
+      
+      // Otherwise toggle between light/dark
+      const newTheme = prev === "dark" ? "light" : "dark";
+      localStorage.setItem(storageKey, newTheme);
+      return newTheme;
+    });
+  };
 
   const value = {
     theme,
@@ -65,6 +120,7 @@ export function ThemeProvider({
       setTheme(theme)
     },
     isDarkMode,
+    toggleTheme
   }
 
   return (

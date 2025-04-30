@@ -26,7 +26,12 @@ export interface Site {
   created_at: string
   updated_at: string
   resource_urls: ResourceUrl[] | null
-  tracking?: TrackingSettings
+  tracking?: {
+    track_visitors: boolean;
+    track_actions: boolean;
+    record_screen: boolean;
+    enable_chat: boolean;
+  }
   billing?: {
     plan: 'free' | 'starter' | 'professional' | 'enterprise'
     masked_card_number?: string
@@ -66,6 +71,7 @@ export interface SiteSettings {
   tracking_code?: string | null
   analytics_provider?: string | null
   analytics_id?: string | null
+  whatsapp_token?: string | null
   team_members?: TeamMember[] | null
   team_roles?: { name: string; permissions: string[]; description?: string }[] | null
   org_structure?: Record<string, any> | null
@@ -478,6 +484,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   tracking_code: settingsData.tracking_code,
                   analytics_provider: settingsData.analytics_provider,
                   analytics_id: settingsData.analytics_id,
+                  whatsapp_token: settingsData.whatsapp_token,
                   team_members: parseJsonField(settingsData.team_members, []),
                   team_roles: parseJsonField(settingsData.team_roles, []),
                   org_structure: parseJsonField(settingsData.org_structure, {}),
@@ -673,6 +680,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 tracking_code: settingsData.tracking_code,
                 analytics_provider: settingsData.analytics_provider,
                 analytics_id: settingsData.analytics_id,
+                whatsapp_token: settingsData.whatsapp_token,
                 team_members: parseJsonField(settingsData.team_members, []),
                 team_roles: parseJsonField(settingsData.team_roles, []),
                 org_structure: parseJsonField(settingsData.org_structure, {}),

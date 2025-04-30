@@ -11,7 +11,7 @@ import { GeneralSection } from "./GeneralSection"
 import { CompanySection } from "./CompanySection"
 import { MarketingSection } from "./MarketingSection"
 import { SocialSection } from "./SocialSection"
-import { TrackingSection } from "./TrackingSection"
+import { ChannelsSection } from "./ChannelsSection"
 import { TeamSection } from "./TeamSection"
 import { RotateCcw } from "../ui/icons"
 import { useDropzone } from "react-dropzone"
@@ -115,9 +115,9 @@ export function SiteForm({
             { platform: "github", url: "", handle: "" },
             { platform: "reddit", url: "", handle: "" },
             { platform: "medium", url: "", handle: "" },
-            { platform: "whatsapp", url: "", handle: "" },
-            { platform: "telegram", url: "", handle: "" },
-            { platform: "discord", url: "", handle: "" }
+            { platform: "whatsapp", url: "", handle: "", phone: "", phoneCode: "" },
+            { platform: "telegram", url: "", handle: "", inviteCode: "", channelId: "" },
+            { platform: "discord", url: "", handle: "", inviteCode: "", channelId: "" }
           ],
       team_members: initialData?.team_members?.map(member => ({
         ...member, 
@@ -126,11 +126,13 @@ export function SiteForm({
       tracking: initialData?.tracking || {
         track_visitors: false,
         track_actions: false,
-        record_screen: false
+        record_screen: false,
+        enable_chat: false
       },
       analytics_provider: initialData?.analytics_provider || "",
       analytics_id: initialData?.analytics_id || "",
       tracking_code: initialData?.tracking_code || "",
+      whatsapp_token: initialData?.whatsapp_token || "",
       billing: initialData?.billing || {
         plan: "free",
         auto_renew: true
@@ -411,8 +413,8 @@ export function SiteForm({
             <SocialSection active={true} />
           )}
 
-          {renderCard("tracking",
-            <TrackingSection active={true} copyTrackingCode={copyTrackingCode} codeCopied={codeCopied} />
+          {renderCard("channels",
+            <ChannelsSection active={true} copyTrackingCode={copyTrackingCode} codeCopied={codeCopied} />
           )}
 
           {renderCard("team",

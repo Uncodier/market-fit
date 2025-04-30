@@ -751,7 +751,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         status,
         prompt,
         backstory,
-        role: agentRole, // Usar el rol determinado anteriormente
+        role: name, // Usar el nombre en lugar del rol para evitar problemas con snake_case
         conversations: 0,
         success_rate: 0,
         tools: toolsConfig,
@@ -791,11 +791,11 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         savedAgentId = agentId;
       } else {
         // For new agents, check if there's already an agent with the same role, user_id, and site_id
-        console.log("Checking for existing agent with same role, user_id, and site_id");
+        console.log("Checking for existing agent with same name, user_id, and site_id");
         const { data: existingAgent } = await supabase
           .from('agents')
           .select('id')
-          .eq('role', agentRole)
+          .eq('role', name)
           .eq('user_id', session.user.id)
           .eq('site_id', currentSite.id)
           .maybeSingle();

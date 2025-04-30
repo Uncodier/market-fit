@@ -384,6 +384,43 @@ const ContentSkeleton = () => {
   )
 }
 
+// Modificar el componente AiGenerationSkeleton
+const AiGenerationSkeleton = () => {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 space-y-6 flex-1">
+        <div className="flex items-center space-x-3">
+          <div className="h-8 w-8 bg-muted animate-pulse rounded-full"></div>
+          <div className="h-6 bg-muted animate-pulse rounded w-40"></div>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
+          <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
+          <div className="h-4 bg-muted animate-pulse rounded w-5/6"></div>
+          <div className="h-4 bg-muted animate-pulse rounded w-4/5"></div>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="h-4 bg-muted animate-pulse rounded w-2/3"></div>
+          <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
+          <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
+          <div className="h-4 bg-muted animate-pulse rounded w-4/5"></div>
+        </div>
+        
+        <div className="h-32 bg-muted animate-pulse rounded w-full"></div>
+      </div>
+      
+      {/* Botón esqueleto en el footer */}
+      <div className="border-t p-4 bg-background">
+        <div className="h-11 bg-primary/20 animate-pulse rounded-md w-full flex items-center justify-center">
+          <div className="h-4 w-36 bg-muted animate-pulse rounded"></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Add Cpu icon for AI representation
 const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
   <div 
@@ -437,6 +474,46 @@ const ActivityIcon = ({ className = "", size = 20, ...props }: { className?: str
   </div>
 )
 
+// Full URL with protocol - using same pattern as in chat-service.ts
+const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || '';
+
+// Ensure URL has proper protocol and use correct host
+const getFullApiUrl = (baseUrl: string) => {
+  if (!baseUrl) return '';
+  
+  // If already has http:// or https://, extract the host and port
+  let apiUrl = baseUrl;
+  
+  if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
+    // Extract the protocol, host, and port
+    const url = new URL(baseUrl);
+    const protocol = url.protocol;
+    const port = url.port;
+    
+    // If we're in a browser environment and the baseUrl is using localhost
+    if (typeof window !== 'undefined' && url.hostname === 'localhost') {
+      // Get the current origin
+      const origin = window.location.origin;
+      const originUrl = new URL(origin);
+      
+      // If we're accessing from an IP address instead of localhost
+      if (originUrl.hostname !== 'localhost' && /^\d+\.\d+\.\d+\.\d+$/.test(originUrl.hostname)) {
+        // Replace localhost with the same IP as the origin
+        apiUrl = `${protocol}//${originUrl.hostname}:${port}`;
+        console.log(`Replaced localhost with origin IP: ${apiUrl}`);
+      }
+    }
+    
+    return apiUrl;
+  }
+  
+  // If it's just a host:port without protocol, add http://
+  return `http://${baseUrl}`;
+};
+
+// Full URL with protocol
+const FULL_API_SERVER_URL = getFullApiUrl(API_SERVER_URL);
+
 export default function ContentDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -444,6 +521,7 @@ export default function ContentDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const [editForm, setEditForm] = useState({
     title: '',
     description: '',
@@ -915,6 +993,144 @@ export default function ContentDetailPage() {
     return `Write content with ${prompts.join(", ")}.`
   }
 
+  // Function to convert slider values to API expected string values
+  const mapStyleControlsToApi = () => {
+    // Map tone value to expected string
+    const getToneValue = (value: number) => {
+      if (value < 40) return "formal"
+      if (value > 60) return "friendly"
+      return "neutral"
+    }
+
+    // Map complexity value to expected string
+    const getComplexityValue = (value: number) => {
+      if (value < 33) return "simple"
+      if (value > 66) return "advanced"
+      return "moderate"
+    }
+
+    // Map creativity value to expected string
+    const getCreativityValue = (value: number) => {
+      if (value < 33) return "factual"
+      if (value > 66) return "creative"
+      return "balanced"
+    }
+
+    // Map persuasiveness value to expected string
+    const getPersuasivenessValue = (value: number) => {
+      if (value < 33) return "informative"
+      if (value > 66) return "persuasive"
+      return "balanced"
+    }
+
+    // Map target audience value to expected string
+    const getTargetAudienceValue = (value: number) => {
+      if (value < 50) return "mixed"
+      return "specific"
+    }
+
+    // Map engagement value to expected string
+    const getEngagementValue = (value: number) => {
+      if (value < 33) return "professional"
+      if (value > 66) return "engaging"
+      return "balanced"
+    }
+
+    // Map size value to expected string
+    const getSizeValue = (value: number) => {
+      if (value < 33) return "short"
+      if (value > 66) return "long"
+      return "medium"
+    }
+
+    return {
+      tone: getToneValue(contentStyle.tone),
+      complexity: getComplexityValue(contentStyle.complexity),
+      creativity: getCreativityValue(contentStyle.creativity),
+      persuasiveness: getPersuasivenessValue(contentStyle.persuasiveness),
+      targetAudience: getTargetAudienceValue(contentStyle.targetAudience),
+      engagement: getEngagementValue(contentStyle.engagement),
+      size: getSizeValue(contentStyle.size)
+    }
+  }
+
+  const generateContent = async (quickAction?: string) => {
+    if (!content?.id || !content?.site_id) {
+      toast.error("Content ID or site ID not available")
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      // Prepare request body
+      const requestBody = {
+        contentId: content.id,
+        siteId: content.site_id,
+        segmentId: editForm.segment_id || undefined,
+        campaignId: editForm.campaign_id || undefined,
+        userId: undefined, // Can be populated if needed from auth context
+        quickAction: quickAction,
+        styleControls: mapStyleControlsToApi(),
+        whatImGoodAt: expertise || undefined,
+        topicsImInterestedIn: interests || undefined,
+        topicsToAvoid: topicsToAvoid || undefined,
+        aiPrompt: aiPrompt || undefined
+      }
+
+      console.log("Generating content with request:", requestBody)
+      console.log("API URL:", `${FULL_API_SERVER_URL}/api/agents/copywriter/content-editor`)
+
+      // Direct API call to the copywriter service
+      const response = await fetch(`${FULL_API_SERVER_URL}/api/agents/copywriter/content-editor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        mode: 'cors',
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error generating content: ${response.status} ${response.statusText}. ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      if (data.content && editor) {
+        // Si recibimos contenido, actualizamos el editor
+        editor.commands.setContent(data.content);
+        
+        // Update the form state with the new content
+        setEditForm(prev => ({
+          ...prev,
+          content: data.content,
+          text: editor.getText()
+        }));
+        
+        toast.success("Content generated successfully");
+      } else if (data.message) {
+        toast.success(data.message);
+      } else {
+        // Si no hay contenido ni mensaje, asumimos que solo se procesó la solicitud
+        toast.success("Content generation request processed");
+        
+        // Recargamos el contenido para obtener cualquier actualización
+        setTimeout(() => loadContent(), 2000);
+      }
+    } catch (error) {
+      console.error("Error generating content:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to generate content")
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   if (isLoading) {
     return <ContentSkeleton />
   }
@@ -953,300 +1169,289 @@ export default function ContentDetailPage() {
           {/* Tabs Content */}
           <div className="flex-1 overflow-hidden">
             <TabsContent value="ai" className="h-full mt-0">
-              <div className="flex flex-col h-full">
-                <ScrollArea className="flex-1">
-                  <div className="p-4 space-y-6">
-                    {/* Quick Actions Section */}
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Quick Actions</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setAiPrompt(generatePromptFromStyle())
-                            handleAiAction('improve')
-                          }}
-                          disabled={isAiProcessing}
-                        >
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Improve
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setAiPrompt(generatePromptFromStyle())
-                            handleAiAction('expand')
-                          }}
-                          disabled={isAiProcessing}
-                        >
-                          <PlusCircle className="h-4 w-4 mr-2" />
-                          Expand
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setAiPrompt(generatePromptFromStyle())
-                            handleAiAction('style')
-                          }}
-                          disabled={isAiProcessing}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Style
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setAiPrompt(generatePromptFromStyle())
-                            handleAiAction('summarize')
-                          }}
-                          disabled={isAiProcessing}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Summarize
-                        </Button>
+              {isGenerating ? (
+                <AiGenerationSkeleton />
+              ) : (
+                <div className="flex flex-col h-full">
+                  <ScrollArea className="flex-1">
+                    <div className="p-4 space-y-6">
+                      {/* Quick Actions Section */}
+                      <div className="space-y-2">
+                        <Label className="text-base font-semibold">Quick Actions</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => generateContent("improve")}
+                            disabled={isGenerating}
+                          >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Improve
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => generateContent("expand")}
+                            disabled={isGenerating}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Expand
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => generateContent("style")}
+                            disabled={isGenerating}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Style
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => generateContent("summarize")}
+                            disabled={isGenerating}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Summarize
+                          </Button>
+                        </div>
                       </div>
+
+                      {/* Content Style Controls */}
+                      <Card className="border-none bg-muted/30">
+                        <CardContent className="p-0">
+                          <Collapsible defaultOpen>
+                            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                                Style Controls
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-4 pb-4">
+                              <div className="space-y-6">
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Tone</Label>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getToneLabel(contentStyle.tone)}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-base text-muted-foreground">🧐</span>
+                                    <Slider
+                                      value={[contentStyle.tone]}
+                                      onValueChange={([value]) => setContentStyle(prev => ({ ...prev, tone: value }))}
+                                      max={100}
+                                      step={1}
+                                      className="w-full style-slider-thumb"
+                                    />
+                                    <span className="text-base text-muted-foreground">😊</span>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Complexity</Label>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getComplexityLabel(contentStyle.complexity)}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-base text-muted-foreground">📝</span>
+                                    <Slider
+                                      value={[contentStyle.complexity]}
+                                      onValueChange={([value]) => setContentStyle(prev => ({ ...prev, complexity: value }))}
+                                      max={100}
+                                      step={1}
+                                      className="w-full style-slider-thumb"
+                                    />
+                                    <span className="text-base text-muted-foreground">📚</span>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Creativity</Label>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getCreativityLabel(contentStyle.creativity)}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-base text-muted-foreground">📋</span>
+                                    <Slider
+                                      value={[contentStyle.creativity]}
+                                      onValueChange={([value]) => setContentStyle(prev => ({ ...prev, creativity: value }))}
+                                      max={100}
+                                      step={1}
+                                      className="w-full style-slider-thumb"
+                                    />
+                                    <span className="text-base text-muted-foreground">🎨</span>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Persuasiveness</Label>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getPersuasivenessLabel(contentStyle.persuasiveness)}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-base text-muted-foreground">ℹ️</span>
+                                    <Slider
+                                      value={[contentStyle.persuasiveness]}
+                                      onValueChange={([value]) => setContentStyle(prev => ({ ...prev, persuasiveness: value }))}
+                                      max={100}
+                                      step={1}
+                                      className="w-full style-slider-thumb"
+                                    />
+                                    <span className="text-base text-muted-foreground">🔥</span>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Target Audience</Label>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getTargetAudienceLabel(contentStyle.targetAudience)}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-base text-muted-foreground">👥</span>
+                                    <Slider
+                                      value={[contentStyle.targetAudience]}
+                                      onValueChange={([value]) => setContentStyle(prev => ({ ...prev, targetAudience: value }))}
+                                      max={100}
+                                      step={1}
+                                      className="w-full style-slider-thumb"
+                                    />
+                                    <span className="text-base text-muted-foreground">👤</span>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Engagement</Label>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getEngagementLabel(contentStyle.engagement)}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-base text-muted-foreground">👔</span>
+                                    <Slider
+                                      value={[contentStyle.engagement]}
+                                      onValueChange={([value]) => setContentStyle(prev => ({ ...prev, engagement: value }))}
+                                      max={100}
+                                      step={1}
+                                      className="w-full style-slider-thumb"
+                                    />
+                                    <span className="text-base text-muted-foreground">🤩</span>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Size</Label>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getSizeLabel(contentStyle.size)}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-base text-muted-foreground">📄</span>
+                                    <Slider
+                                      value={[contentStyle.size]}
+                                      onValueChange={([value]) => setContentStyle(prev => ({ ...prev, size: value }))}
+                                      max={100}
+                                      step={1}
+                                      className="w-full style-slider-thumb"
+                                    />
+                                    <span className="text-base text-muted-foreground">📜</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </CardContent>
+                      </Card>
+
+                      {/* Prompts Section */}
+                      <Card className="border-none bg-muted/30">
+                        <CardContent className="p-0">
+                          <Collapsible defaultOpen>
+                            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                                Prompts
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-4 pb-4">
+                              <div className="space-y-6">
+                                {/* What I'm Good At */}
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">What I'm Good At</Label>
+                                  <Textarea
+                                    placeholder="List your key strengths, expertise areas, and what you're known for..."
+                                    className="min-h-[100px]"
+                                    value={expertise}
+                                    onChange={(e) => setExpertise(e.target.value)}
+                                  />
+                                </div>
+
+                                {/* Topics I'm Interested In */}
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Topics I'm Interested In</Label>
+                                  <Textarea
+                                    placeholder="List topics, industries, or areas you're passionate about..."
+                                    className="min-h-[100px]"
+                                    value={interests}
+                                    onChange={(e) => setInterests(e.target.value)}
+                                  />
+                                </div>
+
+                                {/* Topics to Avoid */}
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Topics to Avoid</Label>
+                                  <Textarea
+                                    placeholder="List topics, industries, or areas you want to avoid..."
+                                    className="min-h-[100px]"
+                                    value={topicsToAvoid}
+                                    onChange={(e) => setTopicsToAvoid(e.target.value)}
+                                  />
+                                </div>
+
+                                {/* AI Prompt */}
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">AI Prompt</Label>
+                                  <Textarea
+                                    value={aiPrompt}
+                                    onChange={(e) => setAiPrompt(e.target.value)}
+                                    placeholder="Describe what you want the AI to do..."
+                                    className="min-h-[100px]"
+                                  />
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </CardContent>
+                      </Card>
                     </div>
-
-                    {/* Content Style Controls */}
-                    <Card className="border-none bg-muted/30">
-                      <CardContent className="p-0">
-                        <Collapsible defaultOpen>
-                          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                              Style Controls
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="px-4 pb-4">
-                            <div className="space-y-6">
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium">Tone</Label>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getToneLabel(contentStyle.tone)}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-base text-muted-foreground">🧐</span>
-                                  <Slider
-                                    value={[contentStyle.tone]}
-                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, tone: value }))}
-                                    max={100}
-                                    step={1}
-                                    className="w-full style-slider-thumb"
-                                  />
-                                  <span className="text-base text-muted-foreground">😊</span>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium">Complexity</Label>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getComplexityLabel(contentStyle.complexity)}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-base text-muted-foreground">📝</span>
-                                  <Slider
-                                    value={[contentStyle.complexity]}
-                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, complexity: value }))}
-                                    max={100}
-                                    step={1}
-                                    className="w-full style-slider-thumb"
-                                  />
-                                  <span className="text-base text-muted-foreground">📚</span>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium">Creativity</Label>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getCreativityLabel(contentStyle.creativity)}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-base text-muted-foreground">📋</span>
-                                  <Slider
-                                    value={[contentStyle.creativity]}
-                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, creativity: value }))}
-                                    max={100}
-                                    step={1}
-                                    className="w-full style-slider-thumb"
-                                  />
-                                  <span className="text-base text-muted-foreground">🎨</span>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium">Persuasiveness</Label>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getPersuasivenessLabel(contentStyle.persuasiveness)}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-base text-muted-foreground">ℹ️</span>
-                                  <Slider
-                                    value={[contentStyle.persuasiveness]}
-                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, persuasiveness: value }))}
-                                    max={100}
-                                    step={1}
-                                    className="w-full style-slider-thumb"
-                                  />
-                                  <span className="text-base text-muted-foreground">🔥</span>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium">Target Audience</Label>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getTargetAudienceLabel(contentStyle.targetAudience)}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-base text-muted-foreground">👥</span>
-                                  <Slider
-                                    value={[contentStyle.targetAudience]}
-                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, targetAudience: value }))}
-                                    max={100}
-                                    step={1}
-                                    className="w-full style-slider-thumb"
-                                  />
-                                  <span className="text-base text-muted-foreground">👤</span>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium">Engagement</Label>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getEngagementLabel(contentStyle.engagement)}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-base text-muted-foreground">👔</span>
-                                  <Slider
-                                    value={[contentStyle.engagement]}
-                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, engagement: value }))}
-                                    max={100}
-                                    step={1}
-                                    className="w-full style-slider-thumb"
-                                  />
-                                  <span className="text-base text-muted-foreground">🤩</span>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium">Size</Label>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getSizeLabel(contentStyle.size)}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-base text-muted-foreground">📄</span>
-                                  <Slider
-                                    value={[contentStyle.size]}
-                                    onValueChange={([value]) => setContentStyle(prev => ({ ...prev, size: value }))}
-                                    max={100}
-                                    step={1}
-                                    className="w-full style-slider-thumb"
-                                  />
-                                  <span className="text-base text-muted-foreground">📜</span>
-                                </div>
-                              </div>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </CardContent>
-                    </Card>
-
-                    {/* Prompts Section */}
-                    <Card className="border-none bg-muted/30">
-                      <CardContent className="p-0">
-                        <Collapsible defaultOpen>
-                          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                              Prompts
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="px-4 pb-4">
-                            <div className="space-y-6">
-                              {/* What I'm Good At */}
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">What I'm Good At</Label>
-                                <Textarea
-                                  placeholder="List your key strengths, expertise areas, and what you're known for..."
-                                  className="min-h-[100px]"
-                                  value={expertise}
-                                  onChange={(e) => setExpertise(e.target.value)}
-                                />
-                              </div>
-
-                              {/* Topics I'm Interested In */}
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Topics I'm Interested In</Label>
-                                <Textarea
-                                  placeholder="List topics, industries, or areas you're passionate about..."
-                                  className="min-h-[100px]"
-                                  value={interests}
-                                  onChange={(e) => setInterests(e.target.value)}
-                                />
-                              </div>
-
-                              {/* Topics to Avoid */}
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Topics to Avoid</Label>
-                                <Textarea
-                                  placeholder="List topics, industries, or areas you want to avoid..."
-                                  className="min-h-[100px]"
-                                  value={topicsToAvoid}
-                                  onChange={(e) => setTopicsToAvoid(e.target.value)}
-                                />
-                              </div>
-
-                              {/* AI Prompt */}
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">AI Prompt</Label>
-                                <Textarea
-                                  value={aiPrompt}
-                                  onChange={(e) => setAiPrompt(e.target.value)}
-                                  placeholder="Describe what you want the AI to do..."
-                                  className="min-h-[100px]"
-                                />
-                              </div>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </CardContent>
-                    </Card>
+                  </ScrollArea>
+                  
+                  {/* Fixed Footer con Generate Content button */}
+                  <div className="border-t p-4 bg-background">
+                    <Button 
+                      className="w-full" 
+                      size="lg" 
+                      disabled={isGenerating}
+                      onClick={() => generateContent()}
+                    >
+                      <Cpu className="h-5 w-5 mr-2" />
+                      Generate Content
+                    </Button>
                   </div>
-                </ScrollArea>
-                
-                {/* Fixed Footer with Generate Content button */}
-                <div className="border-t p-4 bg-background">
-                  <Button 
-                    className="w-full" 
-                    size="lg" 
-                    disabled={isAiProcessing}
-                    onClick={() => {
-                      setAiPrompt(generatePromptFromStyle())
-                      handleAiAction('generate')
-                    }}
-                  >
-                    <Cpu className="h-5 w-5 mr-2" />
-                    Generate Content
-                  </Button>
                 </div>
-              </div>
+              )}
             </TabsContent>
             <TabsContent value="details" className="h-full mt-0">
               <div className="flex flex-col h-full">

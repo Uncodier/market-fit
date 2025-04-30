@@ -4,7 +4,7 @@ import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
-import { useTheme } from '@/app/hooks/use-theme'
+import { useTheme } from '@/app/context/ThemeContext'
 import { useEffect, useState } from 'react'
 
 interface AuthFormProps {

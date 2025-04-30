@@ -102,7 +102,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
       // Transformar las transacciones al formato esperado por la tabla
       const formattedTransactions = result.data?.map(transaction => ({
         id: transaction.id,
-        category: transaction.description, // Usar description como categoría
+        category: transaction.category, // Usar category directamente
         amount: transaction.amount,
         type: transaction.type,
         date: transaction.date
@@ -251,7 +251,8 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         campaignId: campaign.id,
         type: newTransaction.type as 'fixed' | 'variable',
         amount: parseFloat(newTransaction.amount),
-        description: categoryLabels[newTransaction.category] || newTransaction.category,
+        description: newTransaction.notes || categoryLabels[newTransaction.category] || newTransaction.category,
+        category: newTransaction.category,
         date: newTransaction.date,
         currency: "USD",
         siteId: currentSite.id,
@@ -369,6 +370,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         type: editingTransaction.type as 'fixed' | 'variable',
         amount: parseFloat(editingTransaction.amount),
         description: editingTransaction.category,
+        category: editingTransaction.category,
         date: editingTransaction.date
       });
       
@@ -453,11 +455,44 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
+                            {/* Marketing expenses */}
+                            <SelectItem value="advertising">Advertising</SelectItem>
                             <SelectItem value="content">Content Creation</SelectItem>
-                            <SelectItem value="advertising">Digital Advertising</SelectItem>
-                            <SelectItem value="tools">Marketing Tools</SelectItem>
-                            <SelectItem value="freelance">Freelancer Support</SelectItem>
                             <SelectItem value="adspend">Ad Spend</SelectItem>
+                            <SelectItem value="seo">SEO Services</SelectItem>
+                            <SelectItem value="social">Social Media Marketing</SelectItem>
+                            <SelectItem value="email">Email Marketing</SelectItem>
+                            <SelectItem value="events">Events and Conferences</SelectItem>
+                            <SelectItem value="print">Print Materials</SelectItem>
+                            <SelectItem value="sponsorship">Sponsorships</SelectItem>
+                            
+                            {/* Sales expenses */}
+                            <SelectItem value="sales_commission">Sales Commissions</SelectItem>
+                            <SelectItem value="sales_travel">Sales Travel</SelectItem>
+                            <SelectItem value="crm">CRM and Sales Tools</SelectItem>
+                            
+                            {/* Technology expenses */}
+                            <SelectItem value="software">Software Subscriptions</SelectItem>
+                            <SelectItem value="hosting">Hosting and Infrastructure</SelectItem>
+                            <SelectItem value="tools">Marketing Tools</SelectItem>
+                            
+                            {/* Operational expenses */}
+                            <SelectItem value="freelance">Freelancer Support</SelectItem>
+                            <SelectItem value="agency">Agency Fees</SelectItem>
+                            <SelectItem value="consulting">Consulting Services</SelectItem>
+                            <SelectItem value="research">Market Research</SelectItem>
+                            <SelectItem value="utilities">Utilities</SelectItem>
+                            <SelectItem value="rent">Office Rent</SelectItem>
+                            
+                            {/* Administrative expenses */}
+                            <SelectItem value="salaries">Salaries and Benefits</SelectItem>
+                            <SelectItem value="insurance">Insurance</SelectItem>
+                            <SelectItem value="legal">Legal and Professional</SelectItem>
+                            <SelectItem value="travel">Travel and Entertainment</SelectItem>
+                            <SelectItem value="training">Training and Development</SelectItem>
+                            
+                            {/* Other expenses */}
+                            <SelectItem value="other">Other Expenses</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -769,11 +804,54 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="edit-transaction-category">Category</Label>
-              <Input 
-                id="edit-transaction-category" 
+              <Select 
                 value={editingTransaction?.category || ""}
-                onChange={(e) => handleEditTransactionChange('category', e.target.value)}
-              />
+                onValueChange={(value) => handleEditTransactionChange('category', value)}
+              >
+                <SelectTrigger id="edit-transaction-category" className="h-12">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Marketing expenses */}
+                  <SelectItem value="advertising">Advertising</SelectItem>
+                  <SelectItem value="content">Content Creation</SelectItem>
+                  <SelectItem value="adspend">Ad Spend</SelectItem>
+                  <SelectItem value="seo">SEO Services</SelectItem>
+                  <SelectItem value="social">Social Media Marketing</SelectItem>
+                  <SelectItem value="email">Email Marketing</SelectItem>
+                  <SelectItem value="events">Events and Conferences</SelectItem>
+                  <SelectItem value="print">Print Materials</SelectItem>
+                  <SelectItem value="sponsorship">Sponsorships</SelectItem>
+                  
+                  {/* Sales expenses */}
+                  <SelectItem value="sales_commission">Sales Commissions</SelectItem>
+                  <SelectItem value="sales_travel">Sales Travel</SelectItem>
+                  <SelectItem value="crm">CRM and Sales Tools</SelectItem>
+                  
+                  {/* Technology expenses */}
+                  <SelectItem value="software">Software Subscriptions</SelectItem>
+                  <SelectItem value="hosting">Hosting and Infrastructure</SelectItem>
+                  <SelectItem value="tools">Marketing Tools</SelectItem>
+                  
+                  {/* Operational expenses */}
+                  <SelectItem value="freelance">Freelancer Support</SelectItem>
+                  <SelectItem value="agency">Agency Fees</SelectItem>
+                  <SelectItem value="consulting">Consulting Services</SelectItem>
+                  <SelectItem value="research">Market Research</SelectItem>
+                  <SelectItem value="utilities">Utilities</SelectItem>
+                  <SelectItem value="rent">Office Rent</SelectItem>
+                  
+                  {/* Administrative expenses */}
+                  <SelectItem value="salaries">Salaries and Benefits</SelectItem>
+                  <SelectItem value="insurance">Insurance</SelectItem>
+                  <SelectItem value="legal">Legal and Professional</SelectItem>
+                  <SelectItem value="travel">Travel and Entertainment</SelectItem>
+                  <SelectItem value="training">Training and Development</SelectItem>
+                  
+                  {/* Other expenses */}
+                  <SelectItem value="other">Other Expenses</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-transaction-amount">Amount</Label>

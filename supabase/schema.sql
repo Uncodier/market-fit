@@ -222,7 +222,7 @@ CREATE TABLE IF NOT EXISTS public.kpis (
   value DECIMAL NOT NULL,
   previous_value DECIMAL,
   unit TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('conversion', 'engagement', 'traffic', 'revenue', 'growth', 'custom')),
+  type TEXT NOT NULL CHECK (type IS NOT NULL),
   period_start TIMESTAMPTZ NOT NULL,
   period_end TIMESTAMPTZ NOT NULL,
   segment_id UUID REFERENCES public.segments(id) ON DELETE SET NULL,

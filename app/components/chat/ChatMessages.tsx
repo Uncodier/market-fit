@@ -55,18 +55,20 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
   const supabase = createClient();
   const router = useRouter();
 
-  // Cargar el estado actual del performance cuando se monta el componente
+  // Debug logs to check if component is mounting with correct props
   useEffect(() => {
+    console.log(`MessageFeedback mounted for message: ${messageId}, command: ${commandId}`);
     if (commandId) {
       fetchPerformanceStatus();
     }
-  }, [commandId]);
+  }, [commandId, messageId]);
 
   // Función para obtener el estado actual del performance
   const fetchPerformanceStatus = async () => {
     if (!commandId) return;
     
     try {
+      console.log(`Fetching performance status for command: ${commandId}`);
       const { data, error } = await supabase
         .rpc('get_performance_status', { command_id: commandId });
       
@@ -82,6 +84,7 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         if (data[0].has_dislike) bitmask |= 2;
         if (data[0].has_flag) bitmask |= 4;
         
+        console.log(`Performance status loaded: ${bitmask}`);
         setPerformance(bitmask);
       }
     } catch (error) {
@@ -89,9 +92,14 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
     }
   };
 
-  const handleLike = async () => {
+  const handleLike = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!commandId || isLoading) return;
     
+    console.log(`Liking command: ${commandId}`);
     setIsLoading(true);
     try {
       const { error } = await supabase
@@ -116,9 +124,14 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
     }
   };
 
-  const handleDislike = async () => {
+  const handleDislike = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!commandId || isLoading) return;
     
+    console.log(`Disliking command: ${commandId}`);
     setIsLoading(true);
     try {
       const { error } = await supabase
@@ -143,9 +156,14 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
     }
   };
 
-  const handleFlag = async () => {
+  const handleFlag = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!commandId || isLoading) return;
     
+    console.log(`Toggling flag for command: ${commandId}`);
     setIsLoading(true);
     try {
       const { error } = await supabase
@@ -170,10 +188,15 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
     }
   };
 
-  const handleInspect = () => {
+  const handleInspect = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!commandId) return;
     
     // Use Next.js router for client-side navigation instead of window.location.href
+    console.log(`Inspecting command: ${commandId} for agent: ${agentId}`);
     router.push(`/agents/${agentId}/${commandId}`);
   };
 
@@ -191,6 +214,7 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
                   : 'text-green-500'
               }`}
               aria-label="Like"
+              type="button"
             >
               {/* Thumbs Up Icon */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -217,6 +241,7 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
                   : 'text-red-500'
               }`}
               aria-label="Dislike"
+              type="button"
             >
               {/* Thumbs Down Icon */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -239,6 +264,7 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
               disabled={isLoading || !commandId}
               className="w-8 h-8 flex items-center justify-center rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500"
               aria-label="Inspect"
+              type="button"
             >
               <Icons.Eye size={16} />
             </button>
@@ -261,6 +287,7 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
                   : 'text-amber-500'
               }`}
               aria-label="Report Issue"
+              type="button"
             >
               {/* Flag Icon */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -534,12 +561,28 @@ export function ChatMessages({
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
                             
+                            {/* Debug the command_id */}
+                            {msg.command_id && (
+                              <div className="text-xs text-muted-foreground mt-1 hidden">
+                                Command ID: {msg.command_id}
+                              </div>
+                            )}
+                            
                             {/* Message feedback widget */}
-                            <MessageFeedback 
-                              messageId={String(msg.id || index)} 
-                              commandId={msg.command_id} 
-                              agentId={agentId} 
-                            />
+                            {msg.command_id && (
+                              <MessageFeedback 
+                                messageId={String(msg.id || index)} 
+                                commandId={msg.command_id} 
+                                agentId={agentId} 
+                              />
+                            )}
+                            
+                            {/* Show placeholder message feedback widget if no command_id is available */}
+                            {!msg.command_id && (
+                              <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <p className="text-xs text-muted-foreground">No command ID available for this message</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (msg.role === "user" || msg.role === "visitor") ? (

@@ -100,7 +100,13 @@ export const siteFormSchema = z.object({
   social_media: z.array(z.object({
     platform: z.string().min(1, "Platform is required"),
     url: z.string().optional().default(""),
-    handle: z.string().optional()
+    handle: z.string().optional(),
+    // Add fields for WhatsApp
+    phone: z.string().optional(),
+    phoneCode: z.string().optional(),
+    // Add fields for Discord and Telegram
+    inviteCode: z.string().optional(),
+    channelId: z.string().optional()
   }).superRefine((data, ctx) => {
     // Only validate URL if it's not empty
     if (data.url && data.url.trim() !== '') {
@@ -124,16 +130,20 @@ export const siteFormSchema = z.object({
   tracking: z.object({
     track_visitors: z.boolean().optional().default(false),
     track_actions: z.boolean().optional().default(false),
-    record_screen: z.boolean().optional().default(false)
+    record_screen: z.boolean().optional().default(false),
+    enable_chat: z.boolean().optional().default(false)
   }).optional().default({
     track_visitors: false,
     track_actions: false,
-    record_screen: false
+    record_screen: false,
+    enable_chat: false
   }),
   // New fields for analytics
   analytics_provider: z.string().optional(),
   analytics_id: z.string().optional(),
   tracking_code: z.string().optional(),
+  // WhatsApp Business API token
+  whatsapp_token: z.string().optional(),
   // Billing fields
   billing: z.object({
     plan: z.enum(["free", "starter", "professional", "enterprise"]).default("free"),
@@ -171,6 +181,10 @@ export interface SocialMedia {
   platform: string
   url: string
   handle?: string
+  phone?: string
+  phoneCode?: string
+  inviteCode?: string
+  channelId?: string
 }
 
 export const getFocusModeConfig = (focusMode: number) => {

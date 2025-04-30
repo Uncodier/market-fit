@@ -5,6 +5,7 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Button } from "@/app/components/ui/button"
 import { FileText, Copy, BarChart, CalendarIcon, FileVideo, Download, Link, Mail } from "@/app/components/ui/icons"
 import { Segment } from "../page"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 
 // Define content types for columns
 const CONTENT_TYPES = [
@@ -377,6 +378,11 @@ export function ContentIdeasKanban({ segment }: ContentIdeasKanbanProps) {
     )
   }
 
+  // Get the appropriate icon for the content type
+  const getContentTypeIcon = (typeId: string) => {
+    return CONTENT_TYPE_ICONS[typeId] || CONTENT_TYPE_ICONS.default;
+  };
+
   return (
     <div className="h-[calc(100vh-12rem)] overflow-hidden">
       <div className="flex gap-4 h-full overflow-x-auto pb-4">
@@ -399,9 +405,13 @@ export function ContentIdeasKanban({ segment }: ContentIdeasKanbanProps) {
                     </div>
                   ))
                 ) : (
-                  <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-                    No {type.name.toLowerCase()} ideas
-                  </div>
+                  <EmptyCard
+                    icon={getContentTypeIcon(type.id)}
+                    title={`No ${type.name}`}
+                    description={`There are no ${type.name.toLowerCase()} ideas available for this segment yet.`}
+                    showShadow={false}
+                    contentClassName="py-4"
+                  />
                 )}
               </ScrollArea>
             </div>

@@ -203,199 +203,200 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
       onClick={navigateToDetails}
     >
       <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
-        <CardContent className="flex-1 p-4 flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full">
-          <div className="flex-1 min-w-[200px] flex-shrink-0">
-            <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
-            <p className="text-sm text-muted-foreground/80 truncate">{requirement.description}</p>
-          </div>
-          <div className="flex items-center gap-8 shrink-0">
-            <div className="w-[100px]">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Priority</p>
-              {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
-                <Badge variant="secondary" className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}>
-                  {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
-                </Badge>
-              ) : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                      <Badge variant="secondary" className={priorityColors[requirement.priority]}>
-                        {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
-                      </Badge>
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingPriority}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdatePriority("high");
-                      }}
-                    >
-                      <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
-                      High Priority
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingPriority}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdatePriority("medium");
-                      }}
-                    >
-                      <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
-                      Medium Priority
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingPriority}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdatePriority("low");
-                      }}
-                    >
-                      <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
-                      Low Priority
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              {isUpdatingPriority && (
-                <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
-              )}
+        <CardContent className="flex-1 p-4 w-full overflow-x-auto">
+          <div className="flex items-start gap-4 min-w-[1000px]">
+            <div className="w-[500px] min-w-[500px] pr-2 flex-grow">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
+                {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
+                  <Badge variant="secondary" className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}>
+                    {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                  </Badge>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                        <Badge variant="secondary" className={priorityColors[requirement.priority]}>
+                          {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                        </Badge>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingPriority}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdatePriority("high");
+                        }}
+                      >
+                        <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
+                        High Priority
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingPriority}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdatePriority("medium");
+                        }}
+                      >
+                        <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
+                        Medium Priority
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingPriority}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdatePriority("low");
+                        }}
+                      >
+                        <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
+                        Low Priority
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {isUpdatingPriority && (
+                  <span className="text-xs text-muted-foreground animate-pulse">Updating...</span>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground/80 line-clamp-1">{requirement.description}</p>
             </div>
-            <div className="w-[100px]">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Status</p>
-              {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
-                <Badge 
-                  variant="secondary" 
-                  className={`${statusColors[requirement.status]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
-                >
-                  {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                    ? "In Progress" 
-                    : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                      ? "On Review"
-                      : requirement.status === REQUIREMENT_STATUS.DONE
-                        ? "Done"
-                        : requirement.status === REQUIREMENT_STATUS.CANCELED
-                          ? "Canceled"
-                          : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                            ? "Validated"
-                            : "Backlog"}
-                </Badge>
-              ) : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                      <Badge variant="secondary" className={statusColors[requirement.status]}>
-                        {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                          ? "In Progress" 
-                          : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                            ? "On Review"
-                            : requirement.status === REQUIREMENT_STATUS.DONE
-                              ? "Done"
-                              : requirement.status === REQUIREMENT_STATUS.CANCELED
-                                ? "Canceled"
-                                : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                                  ? "Validated"
-                                  : "Backlog"}
-                      </Badge>
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingStatus}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG);
-                      }}
-                    >
-                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
-                      Backlog
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingStatus}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdateStatus(REQUIREMENT_STATUS.IN_PROGRESS);
-                      }}
-                    >
-                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
-                      In Progress
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingStatus}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdateStatus(REQUIREMENT_STATUS.ON_REVIEW);
-                      }}
-                    >
-                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
-                      On Review
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingStatus}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdateStatus(REQUIREMENT_STATUS.DONE);
-                      }}
-                    >
-                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
-                      Done
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingStatus}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdateStatus(REQUIREMENT_STATUS.VALIDATED);
-                      }}
-                    >
-                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
-                      Validated
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      disabled={isUpdatingStatus}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpdateStatus(REQUIREMENT_STATUS.CANCELED);
-                      }}
-                    >
-                      <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
-                      Canceled
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              {isUpdatingStatus && (
-                <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
-              )}
+            <div className="w-[100px] min-w-[100px] flex-shrink-0">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Status</p>
+              <div className="flex justify-center">
+                {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
+                  <Badge 
+                    variant="secondary" 
+                    className={`${statusColors[requirement.status]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
+                  >
+                    {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
+                      ? "In Progress" 
+                      : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
+                        ? "On Review"
+                        : requirement.status === REQUIREMENT_STATUS.DONE
+                          ? "Done"
+                          : requirement.status === REQUIREMENT_STATUS.CANCELED
+                            ? "Canceled"
+                            : requirement.status === REQUIREMENT_STATUS.VALIDATED
+                              ? "Validated"
+                              : "Backlog"}
+                  </Badge>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                        <Badge variant="secondary" className={statusColors[requirement.status]}>
+                          {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
+                            ? "In Progress" 
+                            : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
+                              ? "On Review"
+                              : requirement.status === REQUIREMENT_STATUS.DONE
+                                ? "Done"
+                                : requirement.status === REQUIREMENT_STATUS.CANCELED
+                                  ? "Canceled"
+                                  : requirement.status === REQUIREMENT_STATUS.VALIDATED
+                                    ? "Validated"
+                                    : "Backlog"}
+                        </Badge>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingStatus}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG);
+                        }}
+                      >
+                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
+                        Backlog
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingStatus}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdateStatus(REQUIREMENT_STATUS.IN_PROGRESS);
+                        }}
+                      >
+                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
+                        In Progress
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingStatus}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdateStatus(REQUIREMENT_STATUS.ON_REVIEW);
+                        }}
+                      >
+                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
+                        On Review
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingStatus}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdateStatus(REQUIREMENT_STATUS.DONE);
+                        }}
+                      >
+                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
+                        Done
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingStatus}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdateStatus(REQUIREMENT_STATUS.VALIDATED);
+                        }}
+                      >
+                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
+                        Validated
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        disabled={isUpdatingStatus}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdateStatus(REQUIREMENT_STATUS.CANCELED);
+                        }}
+                      >
+                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
+                        Canceled
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {isUpdatingStatus && (
+                  <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
+                )}
+              </div>
             </div>
-            <div className="w-[140px]">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Campaign</p>
-              <p className="text-sm font-medium truncate">
+            <div className="w-[120px] min-w-[120px] flex-shrink-0">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Campaign</p>
+              <p className="text-sm font-medium truncate text-center">
                 {requirement.campaignNames && requirement.campaignNames.length > 0 
                   ? requirement.campaignNames[0] 
                   : "No campaign"}
               </p>
             </div>
-            <div className="w-[80px]">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Budget</p>
-              <p className="text-sm font-medium truncate">{requirement.budget ? `$${requirement.budget.toLocaleString()}` : "N/A"}</p>
+            <div className="w-[80px] min-w-[80px] flex-shrink-0">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Budget</p>
+              <p className="text-sm font-medium truncate text-center">{requirement.budget ? `$${requirement.budget.toLocaleString()}` : "N/A"}</p>
             </div>
-            <div className="w-[250px]">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Segments</p>
-              <div className="flex items-center gap-1">
+            <div className="w-[180px] min-w-[180px] flex-shrink-0">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Segments</p>
+              <div className="flex items-center gap-1 justify-center">
                 {requirement.segmentNames && requirement.segmentNames.length > 0 ? (
                   requirement.segmentNames.length > 1 ? (
                     <>
-                      <Badge variant="outline" className="text-xs max-w-[180px] truncate">
+                      <Badge variant="outline" className="text-xs max-w-[120px] truncate">
                         {requirement.segmentNames[0]}
                       </Badge>
                       <Badge variant="outline" className="text-xs shrink-0">
@@ -403,7 +404,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                       </Badge>
                     </>
                   ) : (
-                    <Badge variant="outline" className="text-xs max-w-[230px] truncate">
+                    <Badge variant="outline" className="text-xs max-w-[160px] truncate">
                       {requirement.segmentNames[0]}
                     </Badge>
                   )
@@ -869,31 +870,30 @@ export default function RequirementsPage() {
       {[1, 2, 3].map(i => (
         <Card key={i} className="overflow-hidden border border-border">
           <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
-            <div className="flex-1 p-4 flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full">
-              <div className="flex-1 min-w-[200px] flex-shrink-0">
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-              <div className="flex items-center gap-8 shrink-0">
-                <div className="w-[100px]">
-                  <Skeleton className="h-4 w-16 mb-2" />
-                  <Skeleton className="h-6 w-24" />
+            <div className="flex-1 p-4 w-full overflow-x-auto">
+              <div className="flex items-start gap-4 min-w-[1000px]">
+                <div className="w-[500px] min-w-[500px] pr-2 flex-grow">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                  <Skeleton className="h-4 w-full" />
                 </div>
-                <div className="w-[100px]">
-                  <Skeleton className="h-4 w-16 mb-2" />
-                  <Skeleton className="h-6 w-24" />
+                <div className="w-[100px] min-w-[100px] flex-shrink-0">
+                  <Skeleton className="h-4 w-16 mb-2 mx-auto" />
+                  <Skeleton className="h-6 w-24 mx-auto" />
                 </div>
-                <div className="w-[140px]">
-                  <Skeleton className="h-4 w-16 mb-2" />
-                  <Skeleton className="h-6 w-24" />
+                <div className="w-[120px] min-w-[120px] flex-shrink-0">
+                  <Skeleton className="h-4 w-16 mb-2 mx-auto" />
+                  <Skeleton className="h-6 w-24 mx-auto" />
                 </div>
-                <div className="w-[80px]">
-                  <Skeleton className="h-4 w-16 mb-2" />
-                  <Skeleton className="h-6 w-24" />
+                <div className="w-[80px] min-w-[80px] flex-shrink-0">
+                  <Skeleton className="h-4 w-16 mb-2 mx-auto" />
+                  <Skeleton className="h-6 w-24 mx-auto" />
                 </div>
-                <div className="w-[250px]">
-                  <Skeleton className="h-4 w-16 mb-2" />
-                  <Skeleton className="h-6 w-48" />
+                <div className="w-[180px] min-w-[180px] flex-shrink-0">
+                  <Skeleton className="h-4 w-16 mb-2 mx-auto" />
+                  <Skeleton className="h-6 w-48 mx-auto" />
                 </div>
               </div>
             </div>

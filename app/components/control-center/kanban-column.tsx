@@ -98,11 +98,11 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
               <span className="font-medium">{title}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
-                {filteredTasks.length} campaigns
+              <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
+                {filteredTasks.length} {filteredTasks.length === 1 ? 'camp.' : 'camp.'}
               </div>
-              <div className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full">
-                {requirementsCount} requirements
+              <div className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
+                {requirementsCount} {requirementsCount === 1 ? 'req.' : 'req.'}
               </div>
             </div>
           </>

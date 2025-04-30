@@ -21,6 +21,12 @@ import type { Segment } from "@/app/types/segments"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { RevenueWidget } from "@/app/components/dashboard/revenue-widget"
 import { ActiveUsersWidget } from "@/app/components/dashboard/active-users-widget"
+import { ActiveSegmentsWidget } from "@/app/components/dashboard/active-segments-widget"
+import { ActiveExperimentsWidget } from "@/app/components/dashboard/active-experiments-widget"
+import { LTVWidget } from "@/app/components/dashboard/ltv-widget"
+import { ROIWidget } from "@/app/components/dashboard/roi-widget"
+import { CACWidget } from "@/app/components/dashboard/cac-widget"
+import { CPLWidget } from "@/app/components/dashboard/cpl-widget"
 import { format } from "date-fns"
 import { startOfMonth } from "date-fns"
 import { isSameDay, isSameMonth } from "date-fns"
@@ -107,24 +113,20 @@ export default function DashboardPage() {
                         </span>
                       </div>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="min-w-[180px] w-auto">
                       <SelectItem 
                         value="all"
-                        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}
+                        className="flex-wrap whitespace-normal"
                       >
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          <span style={{ pointerEvents: 'none' }}>All segments</span>
-                        </div>
+                        <span style={{ pointerEvents: 'none' }}>All segments</span>
                       </SelectItem>
                       {segments.map((segment) => (
                         <SelectItem 
                           key={segment.id} 
                           value={segment.id}
-                          style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}
+                          className="flex-wrap whitespace-normal"
                         >
-                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            <span style={{ pointerEvents: 'none' }}>{segment.name}</span>
-                          </div>
+                          <span style={{ pointerEvents: 'none' }}>{segment.name}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -136,7 +138,7 @@ export default function DashboardPage() {
           </div>
         </StickyHeader>
 
-        <div className="px-16 pt-6 pb-4">
+        <div className="px-16 pt-3 pb-4">
           <div className="flex items-center justify-between space-x-4">
             <div>
               <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
@@ -149,7 +151,7 @@ export default function DashboardPage() {
 
         <div className="px-16">
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
               <RevenueWidget 
                 segmentId={selectedSegment}
                 startDate={dateRange.startDate}
@@ -160,132 +162,34 @@ export default function DashboardPage() {
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
               />
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Active Segments
-                  </CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Number of active user segments
-                    </TooltipContent>
-                  </Tooltip>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">12</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className={3 > 0 ? "text-green-500" : "text-red-500"}>+3</span> from last month
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Active Experiments
-                  </CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Number of running experiments
-                    </TooltipContent>
-                  </Tooltip>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">4</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className={1 > 0 ? "text-green-500" : "text-red-500"}>+1</span> from last month
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    LTV (Life Time Value)
-                  </CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Average value a customer generates during their lifecycle
-                    </TooltipContent>
-                  </Tooltip>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$2,420</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className={15.2 > 0 ? "text-green-500" : "text-red-500"}>+15.2%</span> from last month
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    CAC (Customer Acquisition Cost)
-                  </CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Average cost of acquiring a new customer
-                    </TooltipContent>
-                  </Tooltip>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$380</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className={-8.4 > 0 ? "text-green-500" : "text-red-500"}>-8.4%</span> from last month
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    ROI (Return on Investment)
-                  </CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Return on marketing investment
-                    </TooltipContent>
-                  </Tooltip>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">6.37x</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className={24.8 > 0 ? "text-green-500" : "text-red-500"}>+24.8%</span> from last month
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    CPC (Cost per Click)
-                  </CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Average cost per ad click
-                    </TooltipContent>
-                  </Tooltip>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$1.25</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className={-12.3 > 0 ? "text-green-500" : "text-red-500"}>-12.3%</span> from last month
-                  </p>
-                </CardContent>
-              </Card>
+              <ActiveSegmentsWidget
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+              <ActiveExperimentsWidget
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+              <LTVWidget
+                segmentId={selectedSegment}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+              <CACWidget
+                segmentId={selectedSegment}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+              <ROIWidget
+                segmentId={selectedSegment}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+              <CPLWidget
+                segmentId={selectedSegment}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
             </div>
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
               <Card className="col-span-4">
@@ -293,18 +197,26 @@ export default function DashboardPage() {
                   <CardTitle>Overview</CardTitle>
                 </CardHeader>
                 <CardContent className="pl-2">
-                  <Overview />
+                  <div className="min-h-[350px]">
+                    <Overview 
+                      startDate={dateRange.startDate}
+                      endDate={dateRange.endDate}
+                      segmentId={selectedSegment}
+                    />
+                  </div>
                 </CardContent>
               </Card>
               <Card className="col-span-3">
                 <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
+                  <CardTitle>Recent commercial activity</CardTitle>
                   <CardDescription>
-                    You had 265 interactions this month.
+                    Completed lead tasks and user interactions.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <RecentActivity />
+                  <div className="min-h-[200px]">
+                    <RecentActivity />
+                  </div>
                 </CardContent>
               </Card>
             </div>

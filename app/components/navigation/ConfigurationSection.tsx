@@ -106,7 +106,7 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
   const dummyFocusRef = useRef<HTMLDivElement>(null);
   
   // Use theme context instead of local state
-  const { isDarkMode, setTheme } = useTheme()
+  const { isDarkMode, toggleTheme } = useTheme()
   
   // Check if Settings is active or if any settings child is active
   const isSettingsActive = pathname.startsWith('/settings')
@@ -194,26 +194,6 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
     
     // Finally, move focus to body as a last resort
     document.body.focus();
-  };
-  
-  const toggleTheme = () => {
-    // Force immediate loss of focus
-    setTimeout(() => removeFocus(), 50);
-    
-    setIsChanging(true);
-    setTheme(isDarkMode ? "light" : "dark");
-    
-    // Simulate a small delay for animation
-    setTimeout(() => {
-      setIsChanging(false);
-      // Remove focus again after animation
-      setTimeout(() => removeFocus(), 50);
-    }, 300);
-    
-    // Asegurarnos de que no se cierre el menú después de cambiar el tema
-    if (shouldShowSettingsChildren) {
-      setForceShowChildren(true);
-    }
   };
   
   const handleLogout = async () => {

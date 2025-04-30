@@ -3,6 +3,7 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { Button } from "@/app/components/ui/button"
 import { ZoomIn, ZoomOut, Maximize } from "@/app/components/ui/icons"
 import { debounce, throttle } from "lodash"
+import { useTheme } from "@/app/context/ThemeContext"
 
 interface ZoomableCanvasProps {
   children: React.ReactNode
@@ -15,6 +16,8 @@ export function ZoomableCanvas({
 }: ZoomableCanvasProps) {
   // Use the layout context to get the current state
   const { isLayoutCollapsed } = useLayout();
+  // Use theme context to detect changes
+  const { isDarkMode } = useTheme();
   
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -57,20 +60,31 @@ export function ZoomableCanvas({
     };
   }, []);
 
-  // Detect theme to use the correct dot color
+  // Detect theme to use the correct dot color - now using the theme context
   useEffect(() => {
     const updateDotColor = () => {
-      const isDarkMode = document.documentElement.classList.contains('dark');
+      // Use isDarkMode from context instead of checking manually
       document.documentElement.style.setProperty(
         '--theme-dots-color', 
         isDarkMode ? 'var(--dots-color-dark)' : 'var(--dots-color-light)'
       );
+      
+      // Update the background reference to refresh immediately
+      if (backgroundRef.current) {
+        // Force refresh by briefly hiding and showing
+        const originalDisplay = backgroundRef.current.style.display;
+        backgroundRef.current.style.display = 'none';
+        // Force reflow
+        void backgroundRef.current.offsetHeight;
+        // Restore display
+        backgroundRef.current.style.display = originalDisplay;
+      }
     };
 
-    // Setup initially
+    // Update immediately when theme changes
     updateDotColor();
-
-    // Observe theme changes
+    
+    // Observe theme changes as a fallback
     const observer = new MutationObserver(updateDotColor);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -78,7 +92,7 @@ export function ZoomableCanvas({
     });
 
     return () => observer.disconnect();
-  }, []);
+  }, [isDarkMode]); // Add isDarkMode as dependency
 
   // Measure content size without transformations - optimized to avoid loops
   const measureContent = useCallback(() => {

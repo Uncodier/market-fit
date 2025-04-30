@@ -184,7 +184,7 @@ export function KanbanCard({
               <div className="flex items-center">
                 <ClipboardList className="h-3.5 w-3.5 text-primary mr-1.5" />
                 <span className="text-xs font-medium text-primary mr-1">{requirements.length}</span>
-                <span className="text-xs text-muted-foreground">requirements</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[60px]">req.</span>
               </div>
             )}
           </div>
@@ -217,7 +217,7 @@ export function KanbanCard({
             {/* Requirements section - Only shown in expanded view */}
             {hasRequirements && (
               <div className="pt-2 border-t w-full">
-                <h4 className="text-xs font-medium mb-2">Requirements ({requirements.length})</h4>
+                <h4 className="text-xs font-medium mb-2">Req. ({requirements.length})</h4>
                 <div className="w-full text-xs overflow-visible">
                   <div className="w-full border rounded-md overflow-hidden">
                     <table className="w-full">

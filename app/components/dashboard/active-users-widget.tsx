@@ -1,15 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
-import { HelpCircle, CalendarIcon } from "@/app/components/ui/icons";
-import { Skeleton } from "@/app/components/ui/skeleton";
-import { DatePicker } from "@/app/components/ui/date-picker";
 import { format, subDays } from "date-fns";
-import { Button } from "@/app/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
-import { Badge } from "@/app/components/ui/badge";
+import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 
@@ -48,7 +41,6 @@ export function ActiveUsersWidget({
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   // Update local state when props change
   useEffect(() => {
@@ -95,81 +87,28 @@ export function ActiveUsersWidget({
   }, [segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
-  const handleRangeSelect = (start: Date, end: Date) => {
+  const handleDateChange = (start: Date, end: Date) => {
     setStartDate(start);
     setEndDate(end);
-    setIsDatePickerOpen(false);
   };
 
+  const formattedValue = activeUsers ? activeUsers.actual.toLocaleString() : "0";
+  const changeText = `${activeUsers?.percentChange || 0}% from ${formatPeriodType(activeUsers?.periodType || "monthly")}`;
+  const isPositiveChange = (activeUsers?.percentChange || 0) > 0;
+  
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">
-          Active Users
-        </CardTitle>
-        <div className="flex items-center space-x-2">
-          {!propStartDate && !propEndDate && (
-            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs">
-                  <CalendarIcon className="h-3 w-3 mr-1" />
-                  <span>
-                    {format(startDate, "MMM d")} - {format(endDate, "MMM d, yyyy")}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="p-0 w-auto" position="bottom">
-                <div className="flex flex-col p-2">
-                  <div className="flex gap-2 items-center pb-2">
-                    <Badge variant="outline" className="text-xs py-1">
-                      {format(startDate, "MMM d, yyyy")}
-                    </Badge>
-                    <span>to</span>
-                    <Badge variant="outline" className="text-xs py-1">
-                      {format(endDate, "MMM d, yyyy")}
-                    </Badge>
-                  </div>
-                  <DatePicker 
-                    date={startDate}
-                    setDate={setStartDate}
-                    className="w-full"
-                    mode="report"
-                    onRangeSelect={handleRangeSelect}
-                    placeholder="Select date range"
-                  />
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-          <Tooltip>
-            <TooltipTrigger>
-              <HelpCircle className="h-4 w-4 text-muted-foreground" />
-            </TooltipTrigger>
-            <TooltipContent>
-              Users active in the selected time period
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <>
-            <Skeleton className="h-8 w-32 mb-1" />
-            <Skeleton className="h-4 w-24" />
-          </>
-        ) : (
-          <>
-            <div className="text-2xl font-bold">
-              {activeUsers ? activeUsers.actual.toLocaleString() : "0"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              <span className={(activeUsers?.percentChange || 0) > 0 ? "text-green-500" : "text-red-500"}>
-                {(activeUsers?.percentChange || 0) > 0 ? '+' : ''}{activeUsers?.percentChange || 0}%
-              </span> from {formatPeriodType(activeUsers?.periodType || "monthly")}
-            </p>
-          </>
-        )}
-      </CardContent>
-    </Card>
+    <BaseKpiWidget
+      title="Active Users"
+      tooltipText="Users active in the selected time period"
+      value={formattedValue}
+      changeText={changeText}
+      isPositiveChange={isPositiveChange}
+      isLoading={isLoading}
+      showDatePicker={!propStartDate && !propEndDate}
+      startDate={startDate}
+      endDate={endDate}
+      onDateChange={handleDateChange}
+      segmentBadge={segmentId !== "all"}
+    />
   );
 } 

@@ -1,0 +1,108 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { BaseKpiWidget } from "../base-kpi-widget";
+import { useSite } from "@/app/context/SiteContext";
+import { format } from "date-fns";
+
+interface MarketingCostsWidgetProps {
+  startDate: Date;
+  endDate: Date;
+}
+
+interface CostData {
+  costCategories: Array<{
+    name: string;
+    amount: number;
+    prevAmount: number;
+    percentChange: number;
+  }>;
+  periodType: string;
+}
+
+// Format period type for display
+const formatPeriodType = (periodType: string): string => {
+  switch (periodType) {
+    case "daily": return "yesterday";
+    case "weekly": return "last week";
+    case "monthly": return "last month";
+    case "quarterly": return "last quarter";
+    case "yearly": return "last year";
+    default: return "previous period";
+  }
+};
+
+// Format currency
+const formatCurrency = (amount: number, currency = "USD") => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
+export function MarketingCostsWidget({ 
+  startDate,
+  endDate
+}: MarketingCostsWidgetProps) {
+  const { currentSite } = useSite();
+  const [costData, setCostData] = useState<CostData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [marketingCost, setMarketingCost] = useState({
+    amount: 0,
+    prevAmount: 0, 
+    percentChange: 0
+  });
+
+  useEffect(() => {
+    const fetchCostData = async () => {
+      if (!currentSite || currentSite.id === "default") return;
+      
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/costs?siteId=${currentSite.id}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch cost data');
+        }
+        const data = await response.json();
+        setCostData(data);
+
+        // Find marketing costs from the categories
+        const marketingCategory = data.costCategories.find(
+          (category: any) => category.name === "Marketing"
+        );
+        
+        if (marketingCategory) {
+          setMarketingCost({
+            amount: marketingCategory.amount,
+            prevAmount: marketingCategory.prevAmount,
+            percentChange: marketingCategory.percentChange
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching marketing costs:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCostData();
+  }, [startDate, endDate, currentSite]);
+
+  const formattedValue = formatCurrency(marketingCost.amount);
+  const changeText = `${marketingCost.percentChange.toFixed(1)}% from ${formatPeriodType(costData?.periodType || "monthly")}`;
+  const isPositiveChange = marketingCost.percentChange < 0;
+  
+  return (
+    <BaseKpiWidget
+      title="Marketing Costs"
+      tooltipText="Total expenditure on marketing activities"
+      value={formattedValue}
+      changeText={changeText}
+      isPositiveChange={isPositiveChange}
+      isLoading={isLoading}
+      startDate={startDate}
+      endDate={endDate}
+    />
+  );
+} 

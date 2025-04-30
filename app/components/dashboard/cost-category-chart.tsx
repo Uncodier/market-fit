@@ -1,26 +1,31 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useState, useEffect } from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { useTheme } from "@/app/context/ThemeContext"
 
-// Dummy data for cost categories
-const data = [
-  { name: "Materials", value: 15000 },
-  { name: "Labor", value: 25000 },
-  { name: "Overhead", value: 10000 },
-  { name: "Logistics", value: 8000 },
-  { name: "Marketing", value: 12000 },
+interface CostCategoryItem {
+  category: string;
+  percentage: number;
+  amount: number;
+}
+
+interface CostCategoryChartProps {
+  data?: CostCategoryItem[];
+}
+
+// Default data if none is provided
+const defaultData = [
+  { category: "Marketing", percentage: 50, amount: 15000 },
+  { category: "Operations", percentage: 30, amount: 10000 },
+  { category: "Administration", percentage: 20, amount: 8000 },
 ]
 
-// Calculate total
-const total = data.reduce((sum, item) => sum + item.value, 0)
-
-export function CostCategoryChart() {
+export function CostCategoryChart({ data = defaultData }: CostCategoryChartProps) {
   const { isDarkMode } = useTheme()
   const [mounted, setMounted] = useState(false)
   
-  // Mounted effect para asegurar que el componente solo se renderice en el cliente
+  // Mount effect
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -28,6 +33,15 @@ export function CostCategoryChart() {
   if (!mounted) {
     return <div className="w-full h-[300px] flex items-center justify-center">Loading chart...</div>
   }
+  
+  // Process data for Recharts
+  const chartData = data.map(item => ({
+    name: item.category,
+    value: item.amount
+  }))
+  
+  // Calculate total
+  const total = chartData.reduce((sum, item) => sum + item.value, 0)
   
   // Theme-adaptive colors
   const COLORS = isDarkMode 
@@ -41,12 +55,12 @@ export function CostCategoryChart() {
       const percentage = ((data.value / total) * 100).toFixed(1)
       
       return (
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="p-3 rounded-lg border bg-card shadow-md">
           <p className="font-medium">{data.name}</p>
-          <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+          <p className="text-sm text-muted-foreground">
             ${data.value.toLocaleString()}
           </p>
-          <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+          <p className="text-xs text-muted-foreground">
             {percentage}% of total
           </p>
         </div>
@@ -57,19 +71,21 @@ export function CostCategoryChart() {
 
   return (
     <div className="w-full h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie
-            data={data}
+            data={chartData}
             cx="50%"
             cy="50%"
             innerRadius={60}
             outerRadius={90}
             paddingAngle={2}
             dataKey="value"
+            nameKey="name"
             labelLine={false}
+            isAnimationActive={false}
           >
-            {data.map((entry, index) => (
+            {chartData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
                 fill={COLORS[index % COLORS.length]} 
@@ -79,16 +95,7 @@ export function CostCategoryChart() {
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            layout="horizontal" 
-            verticalAlign="bottom" 
-            align="center"
-            formatter={(value) => (
-              <span className={isDarkMode ? 'text-slate-300' : 'text-gray-700'}>
-                {value}
-              </span>
-            )}
-          />
+          <Legend />
         </PieChart>
       </ResponsiveContainer>
     </div>

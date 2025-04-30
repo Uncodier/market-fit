@@ -11,6 +11,7 @@ export async function updateTransaction(
     type?: 'fixed' | 'variable';
     amount?: number;
     description?: string;
+    category?: string;
     date?: string;
   }
 ) {
@@ -35,6 +36,7 @@ export async function updateTransaction(
         type: values.type,
         amount: values.amount,
         description: values.description,
+        category: values.category,
         date: values.date
       })
       .eq("id", transactionId)

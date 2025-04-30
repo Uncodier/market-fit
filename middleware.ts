@@ -29,7 +29,8 @@ export async function middleware(req: NextRequest) {
     response.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:*; " +
+      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
+      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:*; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
@@ -53,7 +54,8 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:*; " +
+      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
+      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:*; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
@@ -128,7 +130,8 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Content-Security-Policy', 
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:*; " +
+      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
+      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:*; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
