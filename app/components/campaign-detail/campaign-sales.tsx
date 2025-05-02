@@ -105,6 +105,7 @@ export function CampaignSales({ campaign }: { campaign: any }) {
     productName: "",
     saleDate: new Date().toISOString().split('T')[0],
     paymentMethod: "credit_card",
+    source: "online",
     notes: ""
   })
   
@@ -177,6 +178,7 @@ export function CampaignSales({ campaign }: { campaign: any }) {
         productName: newSale.productName,
         saleDate: newSale.saleDate,
         paymentMethod: newSale.paymentMethod,
+        source: newSale.source as 'retail' | 'online',
         notes: newSale.notes,
         siteId: currentSite.id,
         userId: currentSite.user_id
@@ -200,6 +202,7 @@ export function CampaignSales({ campaign }: { campaign: any }) {
         productName: "",
         saleDate: new Date().toISOString().split('T')[0],
         paymentMethod: "credit_card",
+        source: "online",
         notes: ""
       })
       setIsCreating(false)
@@ -223,7 +226,8 @@ export function CampaignSales({ campaign }: { campaign: any }) {
       status: sale.status || "completed",
       productName: sale.productName || "",
       saleDate: sale.saleDate,
-      paymentMethod: sale.paymentMethod || "credit_card"
+      paymentMethod: sale.paymentMethod || "credit_card",
+      source: sale.source || "online"
     });
     setIsEditingSale(true);
   };
@@ -256,7 +260,8 @@ export function CampaignSales({ campaign }: { campaign: any }) {
         status: status as 'pending' | 'completed' | 'cancelled' | 'refunded',
         productName: editingSale.productName,
         saleDate: editingSale.saleDate,
-        paymentMethod: editingSale.paymentMethod
+        paymentMethod: editingSale.paymentMethod,
+        source: editingSale.source as 'retail' | 'online'
       });
       
       if (result.error) {
@@ -414,6 +419,22 @@ export function CampaignSales({ campaign }: { campaign: any }) {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label htmlFor="source">Source</Label>
+                  <Select
+                    value={newSale.source}
+                    onValueChange={(value) => handleSelectChange("source", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="retail">Retail</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Input
                     id="notes"
@@ -453,6 +474,7 @@ export function CampaignSales({ campaign }: { campaign: any }) {
                     <th className="text-left p-3 font-medium text-sm">Date</th>
                     <th className="text-left p-3 font-medium text-sm">Status</th>
                     <th className="text-left p-3 font-medium text-sm">Payment</th>
+                    <th className="text-left p-3 font-medium text-sm">Source</th>
                     <th className="text-right p-3 font-medium text-sm w-10"></th>
                   </tr>
                 </thead>
@@ -489,6 +511,9 @@ export function CampaignSales({ campaign }: { campaign: any }) {
                           <td className="p-3 capitalize">
                             {sale.paymentMethod?.replace('_', ' ')}
                           </td>
+                          <td className="p-3 capitalize">
+                            {sale.source || "online"}
+                          </td>
                           <td className="p-3 text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -517,6 +542,7 @@ export function CampaignSales({ campaign }: { campaign: any }) {
                       <tr className="bg-muted/20 font-medium">
                         <td className="p-3">Total Sales</td>
                         <td className="p-3">{formatCurrency(calculateTotalSales())}</td>
+                        <td className="p-3"></td>
                         <td className="p-3"></td>
                         <td className="p-3"></td>
                         <td className="p-3"></td>
@@ -614,6 +640,22 @@ export function CampaignSales({ campaign }: { campaign: any }) {
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-source">Source</Label>
+              <Select
+                value={editingSale?.source || "online"}
+                onValueChange={(value) => handleEditSaleChange("source", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="retail">Retail</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -79,11 +79,24 @@ export interface Transaction {
   updatedAt: string;
 }
 
+export interface Payment {
+  id: string;
+  date: string;
+  amount: number;
+  method: string;
+  notes?: string;
+}
+
 export interface Sale {
   id: string;
   title: string;
+  description?: string;
   productName: string;
+  productType?: string | null;
+  productDetails?: any;
   amount: number;
+  amount_due: number;
+  currency?: string;
   status: 'pending' | 'completed' | 'cancelled' | 'refunded';
   leadId: string | null;
   leadName: string | null;
@@ -91,10 +104,59 @@ export interface Sale {
   segmentId: string | null;
   saleDate: string;
   paymentMethod: string;
+  paymentDetails?: any;
+  payments?: Payment[];
+  invoiceNumber?: string;
+  referenceCode?: string;
+  externalId?: string;
+  source: 'retail' | 'online';
+  channel?: string;
+  notes?: string;
+  tags?: string[];
   siteId: string;
   userId: string;
   createdAt: string;
   updatedAt: string;
+  commandId?: string;
+}
+
+export interface SaleOrderItem {
+  id: string;
+  name: string;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+  taxRate?: number;
+  subtotal: number;
+}
+
+export interface SaleOrder {
+  id: string;
+  saleId: string;
+  orderNumber: string;
+  items: SaleOrderItem[];
+  subtotal: number;
+  taxTotal: number;
+  discountTotal: number;
+  total: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaleOrderData {
+  id: string;
+  sale_id: string;
+  order_number: string;
+  items: SaleOrderItem[]; // stored as JSONB in the database
+  subtotal: number;
+  tax_total: number;
+  discount_total: number;
+  total: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CampaignSubtask {
@@ -166,7 +228,9 @@ export interface SaleData {
   id: string;
   title: string;
   product_name: string | null;
+  product_type: string | null;
   amount: number;
+  amount_due: number;
   status: 'pending' | 'completed' | 'cancelled' | 'refunded';
   lead_id: string | null;
   lead_name?: string | null; // Para cuando se carga con joins
@@ -174,6 +238,8 @@ export interface SaleData {
   segment_id: string | null;
   sale_date: string;
   payment_method: string | null;
+  payments?: Payment[];
+  source: 'retail' | 'online';
   notes: string | null;
   site_id: string;
   user_id: string;

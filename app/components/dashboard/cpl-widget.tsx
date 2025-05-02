@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
@@ -12,6 +12,34 @@ interface CPLWidgetProps {
   endDate?: Date;
 }
 
+interface CPLData {
+  actual: number;
+  percentChange: number;
+  periodType: string;
+}
+
+// Format period type for display
+const formatPeriodType = (periodType: string): string => {
+  switch (periodType) {
+    case "daily": return "yesterday";
+    case "weekly": return "last week";
+    case "monthly": return "last month";
+    case "quarterly": return "last quarter";
+    case "yearly": return "last year";
+    default: return "previous period";
+  }
+};
+
+// Format currency for display
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
 export function CPLWidget({ 
   segmentId = "all",
   startDate: propStartDate,
@@ -19,77 +47,54 @@ export function CPLWidget({
 }: CPLWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [cplValue, setCplValue] = useState<number>(0);
-  const [percentChange, setPercentChange] = useState<number>(0);
-  const [periodType, setPeriodType] = useState<string>("monthly");
+  const [cpl, setCpl] = useState<CPLData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
+  // Update local state when props change
   useEffect(() => {
-    if (propStartDate) setStartDate(propStartDate);
-    if (propEndDate) setEndDate(propEndDate);
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
   }, [propStartDate, propEndDate]);
 
   useEffect(() => {
-    if (!currentSite?.id) return;
-    
-    const fetchCPL = async () => {
+    const fetchCpl = async () => {
+      if (!currentSite || currentSite.id === "default") return;
+      
       setIsLoading(true);
       try {
-        const queryParams = new URLSearchParams();
-        queryParams.append('siteId', currentSite.id);
-        if (user?.id) queryParams.append('userId', user.id);
-        queryParams.append('startDate', startDate.toISOString());
-        queryParams.append('endDate', endDate.toISOString());
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
-        if (segmentId && segmentId !== "all") {
-          queryParams.append('segmentId', segmentId);
-          console.log(`[CPL Widget] Applying segment filter: ${segmentId}`);
+        const params = new URLSearchParams();
+        params.append("segmentId", segmentId);
+        params.append("siteId", currentSite.id);
+        if (user?.id) {
+          params.append("userId", user.id);
         }
-
-        const response = await fetch(`/api/cpl?${queryParams.toString()}`);
+        if (start) params.append("startDate", start);
+        if (end) params.append("endDate", end);
         
+        const response = await fetch(`/api/cpl?${params.toString()}`);
         if (!response.ok) {
           throw new Error('Failed to fetch CPL data');
         }
-        
         const data = await response.json();
-        setCplValue(data.actual !== undefined && data.actual !== null ? data.actual : 0);
-        setPercentChange(data.percentChange !== undefined && data.percentChange !== null ? data.percentChange : 0);
-        setPeriodType(data.periodType || "monthly");
-        
-        console.log(`[CPL Widget] Received CPL value: $${data.actual}, type: ${typeof data.actual}, segment: ${segmentId || 'all'}`);
+        setCpl(data);
       } catch (error) {
-        console.error('Error fetching CPL:', error);
-        setCplValue(42.50); // Default fallback value
+        console.error("Error fetching CPL:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchCPL();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId]);
 
-  // Format the CPL value as currency
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 2
-    }).format(value);
-  };
-
-  const formatPeriodType = (periodType: string) => {
-    switch (periodType) {
-      case "daily": return "previous day";
-      case "weekly": return "previous week";
-      case "monthly": return "previous month";
-      case "quarterly": return "previous quarter";
-      case "yearly": return "previous year";
-      default: return "previous period";
-    }
-  };
+    fetchCpl();
+  }, [segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -97,18 +102,14 @@ export function CPLWidget({
     setEndDate(end);
   };
 
-  const formattedValue = formatCurrency(cplValue);
-  const changeText = percentChange !== 0 
-    ? `${percentChange}% from ${formatPeriodType(periodType)}`
-    : "No change";
-    
-  // For CPL, lower is better, so invert the positive/negative sentiment
-  const isPositiveChange = percentChange > 0 ? false : percentChange < 0 ? true : undefined;
+  const formattedValue = cpl ? formatCurrency(cpl.actual) : "$0";
+  const changeText = `${cpl?.percentChange || 0}% from ${formatPeriodType(cpl?.periodType || "monthly")}`;
+  const isPositiveChange = (cpl?.percentChange || 0) < 0; // Note: For CPL, a decrease is positive
   
   return (
     <BaseKpiWidget
-      title="CPL (Cost per Lead)"
-      tooltipText={`Average cost of acquiring a lead${segmentId && segmentId !== "all" ? " for this segment" : ""}`}
+      title="CPL"
+      tooltipText="Cost Per Lead"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}

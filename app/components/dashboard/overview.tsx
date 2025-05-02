@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
+import { useRequestController } from "@/app/hooks/useRequestController"
 import { 
   differenceInDays, differenceInMonths, format, 
   addDays, addMonths, addQuarters, addYears,
@@ -31,49 +32,40 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
   const { currentSite } = useSite()
   const [chartData, setChartData] = useState<ChartDataItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { fetchWithController, cancelAllRequests } = useRequestController()
   
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchSalesData = async () => {
+      // Always start with loading state
+      if (isMounted) {
+        setIsLoading(true)
+      }
+      
       if (!startDate || !endDate || !currentSite?.id || currentSite.id === "default") {
-        // Default data if no dates are provided or site not selected
-        setChartData([
-          { name: "Jan", total: 1200, date: new Date(2023, 0, 1) },
-          { name: "Feb", total: 1900, date: new Date(2023, 1, 1) },
-          { name: "Mar", total: 1500, date: new Date(2023, 2, 1) },
-          { name: "Apr", total: 1700, date: new Date(2023, 3, 1) },
-          { name: "May", total: 2400, date: new Date(2023, 4, 1) },
-          { name: "Jun", total: 2100, date: new Date(2023, 5, 1) },
-          { name: "Jul", total: 2300, date: new Date(2023, 6, 1) },
-          { name: "Aug", total: 2800, date: new Date(2023, 7, 1) },
-          { name: "Sep", total: 3200, date: new Date(2023, 8, 1) },
-          { name: "Oct", total: 2900, date: new Date(2023, 9, 1) },
-          { name: "Nov", total: 3500, date: new Date(2023, 10, 1) },
-          { name: "Dec", total: 3700, date: new Date(2023, 11, 1) }
-        ])
-        setIsLoading(false)
+        // No default data, just keep showing the skeleton
         return
       }
-
-      setIsLoading(true)
       
       try {
-      // Determine the interval type based on the date range
-      const daysDiff = differenceInDays(endDate, startDate)
-      const monthsDiff = differenceInMonths(endDate, startDate)
-      
-      let intervalType: 'day' | 'week' | 'month' | 'quarter' | 'year' = 'month'
-      
-      // Determine the appropriate interval type based on date range
-      if (daysDiff <= 14) {
-        intervalType = 'day'
-      } else if (daysDiff <= 90) {
-        intervalType = 'week'
-      } else if (monthsDiff <= 24) {
-        intervalType = 'month'
-      } else {
-        intervalType = 'quarter'
-        }
+        // Determine the interval type based on the date range
+        const daysDiff = differenceInDays(endDate, startDate)
+        const monthsDiff = differenceInMonths(endDate, startDate)
         
+        let intervalType: 'day' | 'week' | 'month' | 'quarter' | 'year' = 'month'
+        
+        // Determine the appropriate interval type based on date range
+        if (daysDiff <= 14) {
+          intervalType = 'day'
+        } else if (daysDiff <= 90) {
+          intervalType = 'week'
+        } else if (monthsDiff <= 24) {
+          intervalType = 'month'
+        } else {
+          intervalType = 'quarter'
+        }
+          
         // Always use 12 intervals
         const TOTAL_INTERVALS = 12
         
@@ -86,10 +78,21 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
           params.append("segmentId", segmentId)
         }
         
-        const response = await fetch(`/api/sales?${params.toString()}`)
+        console.log("[Overview] Fetching sales data with params:", Object.fromEntries(params.entries()));
+        
+        const response = await fetchWithController(`/api/sales?${params.toString()}`)
+        // Check if request was aborted or component unmounted
+        if (response === null || !isMounted) {
+          console.log("[Overview] Request was cancelled or component unmounted");
+          return; // Exit early, don't update state for cancelled requests
+        }
+        
         if (!response.ok) throw new Error("Failed to fetch sales data")
         
         const salesData: SaleData[] = await response.json()
+        
+        // If component unmounted during fetch, don't continue
+        if (!isMounted) return;
         
         // Generate intervals based on the type
         const intervals = generateIntervals(startDate, endDate, intervalType, TOTAL_INTERVALS)
@@ -115,18 +118,42 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
           }
         })
         
-        setChartData(data)
+        if (isMounted) {
+          setChartData(data)
+        }
       } catch (error) {
+        // Ignore AbortError as it's handled in the fetchWithController
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log("[Overview] Request was aborted");
+          return;
+        }
+        
         console.error("Error fetching sales data:", error)
         // Fallback to empty data
-        setChartData([])
+        if (isMounted) {
+          setChartData([])
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
     
     fetchSalesData()
-  }, [startDate, endDate, currentSite, segmentId])
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      cancelAllRequests();
+    };
+  }, [
+    startDate, 
+    endDate, 
+    currentSite?.id, // Only depend on site ID, not the entire object 
+    segmentId
+    // Note: fetchWithController and cancelAllRequests are stable now with useCallback
+  ])
 
   // Calculate intervals based on date range and type
   const generateIntervals = (
@@ -295,6 +322,20 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
           <div className={`border-t w-full h-0 ${isDarkMode ? "border-slate-700/70" : "border-gray-100"}`}></div>
         </div>
 
+        {/* Definiciones de gradientes para barras */}
+        <svg width="0" height="0" className="absolute">
+          <defs>
+            <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={isDarkMode ? "#818cf8" : "#6366f1"} /> {/* indigo-400 o indigo-500 */}
+              <stop offset="100%" stopColor={isDarkMode ? "#6366f1" : "#4f46e5"} /> {/* indigo-500 o indigo-600 */}
+            </linearGradient>
+            <linearGradient id="barGradientHover" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={isDarkMode ? "#a5b4fc" : "#818cf8"} /> {/* indigo-300 o indigo-400 */}
+              <stop offset="100%" stopColor={isDarkMode ? "#818cf8" : "#6366f1"} /> {/* indigo-400 o indigo-500 */}
+            </linearGradient>
+          </defs>
+        </svg>
+
         {/* Contenedor de barras */}
         <div className="w-full ml-14 pr-4 h-full flex items-end space-x-1">
           {chartData.map((item, index) => {
@@ -331,17 +372,28 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
                   </div>
                 )}
                 
-                {/* Barra con animación al cargar */}
+                {/* Barra con animación al cargar y gradiente */}
                 {hasData ? (
                   <div 
-                    className={`
-                      w-full transition-all rounded-t-sm origin-bottom
-                      ${isDarkMode ? "bg-indigo-400 hover:bg-indigo-300" : "bg-indigo-500 hover:bg-indigo-600"}
-                    `}
+                    className="w-full transition-all rounded-t-sm origin-bottom group-hover:scale-x-105"
                     style={{ 
                       height: `${height}%`,
                       animation: `growUp 1s ease-out forwards`,
-                      animationDelay: `${index * 0.05}s`
+                      animationDelay: `${index * 0.05}s`,
+                      background: isDarkMode 
+                        ? "linear-gradient(to bottom, #818cf8, #6366f1)" 
+                        : "linear-gradient(to bottom, #6366f1, #4f46e5)",
+                      boxShadow: 'rgba(0, 0, 0, 0.05) 0px 1px 2px'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = isDarkMode 
+                        ? "linear-gradient(to bottom, #a5b4fc, #818cf8)" 
+                        : "linear-gradient(to bottom, #818cf8, #6366f1)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = isDarkMode 
+                        ? "linear-gradient(to bottom, #818cf8, #6366f1)" 
+                        : "linear-gradient(to bottom, #6366f1, #4f46e5)";
                     }}
                   />
                 ) : (

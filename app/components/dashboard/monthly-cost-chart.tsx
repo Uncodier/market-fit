@@ -11,22 +11,15 @@ interface MonthlyDataItem {
 }
 
 interface MonthlyCostChartProps {
-  data?: MonthlyDataItem[];
+  data: MonthlyDataItem[];
   isLoading?: boolean;
 }
 
 // Datos predeterminados
-const defaultData = [
-  { month: "Jan", fixedCosts: 12000, variableCosts: 8500 },
-  { month: "Feb", fixedCosts: 12000, variableCosts: 9200 },
-  { month: "Mar", fixedCosts: 12000, variableCosts: 10500 },
-  { month: "Apr", fixedCosts: 13500, variableCosts: 11200 },
-  { month: "May", fixedCosts: 13500, variableCosts: 14000 },
-  { month: "Jun", fixedCosts: 13500, variableCosts: 13200 }
-]
+// Eliminados para evitar mostrar dummy data
 
 export function MonthlyCostChart({ 
-  data = defaultData,
+  data,
   isLoading = false 
 }: MonthlyCostChartProps) {
   const { isDarkMode } = useTheme()
@@ -39,7 +32,9 @@ export function MonthlyCostChart({
     tooltipBorder: isDarkMode ? "#475569" : "#e5e7eb",
     tooltipText: isDarkMode ? "#F8FAFC" : "#111827",
     fixedCostsFill: isDarkMode ? "#818CF8" : "#6366F1", // Indigo para costos fijos
+    fixedCostsStart: isDarkMode ? "#A5B4FC" : "#818CF8", // Color más claro para el gradiente
     variableCostsFill: isDarkMode ? "#F472B6" : "#EC4899", // Rosa para costos variables
+    variableCostsStart: isDarkMode ? "#F9A8D4" : "#F472B6", // Color más claro para el gradiente
     barHover: isDarkMode ? "rgba(165, 180, 252, 0.4)" : "rgba(99, 102, 241, 0.1)",
   }
 
@@ -57,6 +52,11 @@ export function MonthlyCostChart({
     return (
       <div className="w-full h-[300px] bg-slate-100 dark:bg-slate-800 rounded-md animate-pulse" />
     )
+  }
+
+  // Verificar si hay datos disponibles
+  if (!data || data.length === 0) {
+    return null
   }
 
   // Preparar datos para el gráfico - convertir 'month' a 'name' para el eje X
@@ -109,10 +109,21 @@ export function MonthlyCostChart({
             cursor={{ fill: colors.barHover }}
             itemStyle={{ color: colors.tooltipText }}
           />
+          {/* Definición de gradientes para las barras */}
+          <defs>
+            <linearGradient id="fixedCostsGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={colors.fixedCostsStart} />
+              <stop offset="100%" stopColor={colors.fixedCostsFill} />
+            </linearGradient>
+            <linearGradient id="variableCostsGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={colors.variableCostsStart} />
+              <stop offset="100%" stopColor={colors.variableCostsFill} />
+            </linearGradient>
+          </defs>
           <Bar 
             dataKey="fixedCosts" 
             name="Fixed Costs"
-            fill={colors.fixedCostsFill} 
+            fill="url(#fixedCostsGradient)" 
             radius={[4, 4, 0, 0]} 
             barSize={20}
             minPointSize={8}
@@ -121,7 +132,7 @@ export function MonthlyCostChart({
           <Bar 
             dataKey="variableCosts" 
             name="Variable Costs"
-            fill={colors.variableCostsFill} 
+            fill="url(#variableCostsGradient)" 
             radius={[4, 4, 0, 0]} 
             barSize={20}
             minPointSize={8}
@@ -133,11 +144,15 @@ export function MonthlyCostChart({
       {/* Leyenda */}
       <div className="flex justify-center space-x-4 mt-1">
         <div className="flex items-center">
-          <div className="w-3 h-3 rounded mr-1" style={{ backgroundColor: colors.fixedCostsFill }}></div>
+          <div className="w-3 h-3 rounded mr-1" style={{ 
+            background: `linear-gradient(to bottom, ${colors.fixedCostsStart}, ${colors.fixedCostsFill})`
+          }}></div>
           <span className={`text-xs ${isDarkMode ? "text-slate-300" : "text-gray-700"}`}>Fixed Costs</span>
         </div>
         <div className="flex items-center">
-          <div className="w-3 h-3 rounded mr-1" style={{ backgroundColor: colors.variableCostsFill }}></div>
+          <div className="w-3 h-3 rounded mr-1" style={{ 
+            background: `linear-gradient(to bottom, ${colors.variableCostsStart}, ${colors.variableCostsFill})`
+          }}></div>
           <span className={`text-xs ${isDarkMode ? "text-slate-300" : "text-gray-700"}`}>Variable Costs</span>
         </div>
       </div>

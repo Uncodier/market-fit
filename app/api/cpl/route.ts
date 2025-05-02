@@ -42,10 +42,81 @@ export async function GET(request: NextRequest) {
     else if (daysDiff <= 92) periodType = "quarterly";
     else periodType = "yearly";
 
-    // Hasta que la tabla de marketing_costs exista, utilizamos valores por defecto
-    console.log("Using default values for marketing costs since the table doesn't exist yet");
-    const totalCosts = 5000; // Valor por defecto para costos
-    const prevTotalCosts = 4000; // Valor por defecto para costos del período anterior
+    // Get transactions for current period
+    let transactionQuery = supabase
+      .from('transactions')
+      .select('id, amount, campaign_id')
+      .eq('site_id', siteId)
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
+    
+    // Apply segment filter if provided
+    if (segmentId && segmentId !== 'all') {
+      // Necesitamos obtener primero las campañas del segmento
+      const { data: segmentCampaigns } = await supabase
+        .from('campaign_segments')
+        .select('campaign_id')
+        .eq('segment_id', segmentId);
+      
+      if (segmentCampaigns && segmentCampaigns.length > 0) {
+        const campaignIds = segmentCampaigns.map(sc => sc.campaign_id);
+        transactionQuery = transactionQuery.in('campaign_id', campaignIds);
+      }
+    }
+    
+    const { data: transactions, error: transactionsError } = await transactionQuery;
+    
+    if (transactionsError) {
+      console.error('Error fetching transactions:', transactionsError);
+      return NextResponse.json(
+        { error: 'Failed to fetch transaction data' },
+        { status: 500 }
+      );
+    }
+    
+    // Sum all transaction amounts
+    const totalCosts = transactions?.reduce((sum, transaction) => {
+      const amount = typeof transaction.amount === 'number' 
+        ? transaction.amount 
+        : parseFloat(transaction.amount?.toString() || '0');
+      return sum + amount;
+    }, 0) || 0;
+    
+    // Get previous period transactions
+    let prevTransactionQuery = supabase
+      .from('transactions')
+      .select('id, amount, campaign_id')
+      .eq('site_id', siteId)
+      .gte('created_at', previousPeriodStart.toISOString())
+      .lte('created_at', previousPeriodEnd.toISOString());
+    
+    // Apply segment filter if provided
+    if (segmentId && segmentId !== 'all') {
+      // Usar los mismos IDs de campañas del segmento
+      const { data: segmentCampaigns } = await supabase
+        .from('campaign_segments')
+        .select('campaign_id')
+        .eq('segment_id', segmentId);
+      
+      if (segmentCampaigns && segmentCampaigns.length > 0) {
+        const campaignIds = segmentCampaigns.map(sc => sc.campaign_id);
+        prevTransactionQuery = prevTransactionQuery.in('campaign_id', campaignIds);
+      }
+    }
+    
+    const { data: prevTransactions, error: prevTransactionsError } = await prevTransactionQuery;
+    
+    if (prevTransactionsError) {
+      console.error('Error fetching previous transactions:', prevTransactionsError);
+    }
+    
+    // Sum previous transaction amounts
+    const prevTotalCosts = prevTransactions?.reduce((sum, transaction) => {
+      const amount = typeof transaction.amount === 'number' 
+        ? transaction.amount 
+        : parseFloat(transaction.amount?.toString() || '0');
+      return sum + amount;
+    }, 0) || 0;
 
     // Get leads count for current period
     let leadsQuery = supabase
@@ -93,7 +164,7 @@ export async function GET(request: NextRequest) {
     const leadsCount = leadsData?.length || 0;
     const prevLeadsCount = prevLeadsData?.length || 0;
 
-    // Calculate CPL - Cost per Lead
+    // Calculate CPL - Cost per Lead (using transaction costs instead of campaign budgets)
     const cpl = leadsCount > 0 ? totalCosts / leadsCount : 0;
     const prevCpl = prevLeadsCount > 0 ? prevTotalCosts / prevLeadsCount : 0;
 

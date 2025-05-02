@@ -13,6 +13,7 @@ export const routes: RouteConfig[] = [
   { path: "/control-center", hasLayout: true },
   { path: "/assets", hasLayout: true },
   { path: "/leads", hasLayout: true },
+  { path: "/sales", hasLayout: true },
   { path: "/agents", hasLayout: true },
   { path: "/chat", hasLayout: true },
   { path: "/notifications", hasLayout: true },

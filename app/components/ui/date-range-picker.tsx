@@ -4,22 +4,28 @@ import * as React from "react"
 import { Button } from "@/app/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
-import { format, subDays } from "date-fns"
+import { format, startOfMonth } from "date-fns"
 import { DatePicker } from "@/app/components/ui/date-picker"
 
 export interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
   onRangeChange?: (startDate: Date, endDate: Date) => void;
+  initialStartDate?: Date;
+  initialEndDate?: Date;
 }
 
 export function CalendarDateRangePicker({
   className,
   onRangeChange,
+  initialStartDate = startOfMonth(new Date()),
+  initialEndDate = new Date(),
 }: DateRangePickerProps) {
-  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date>(new Date());
-
+  const [startDate, setStartDate] = useState<Date>(initialStartDate);
+  const [endDate, setEndDate] = useState<Date>(initialEndDate);
+  
   // Handle date range selection
   const handleRangeSelect = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
     if (onRangeChange) {
       onRangeChange(start, end);
     }

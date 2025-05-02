@@ -18,7 +18,12 @@ jest.mock('next/server', () => ({
       status: options.status || 200,
       json: async () => body
     }))
-  }
+  },
+  NextRequest: jest.fn().mockImplementation((url) => ({
+    url,
+    nextUrl: new URL(url),
+    headers: new Headers()
+  }))
 }));
 
 // Import after mocking
@@ -49,10 +54,7 @@ describe('Revenue API', () => {
 
   // Helper to create request mock
   const createRequestMock = (url: string) => {
-    return {
-      url,
-      headers: new Headers()
-    } as unknown as Request;
+    return new NextRequest(url);
   };
 
   it('should return existing KPI data if found', async () => {
@@ -199,9 +201,7 @@ describe('Revenue API', () => {
     (createApiClient as jest.Mock).mockReturnValue(mockSupabase);
 
     // Create mock request
-    const request = {
-      url: 'https://example.com/api/revenue?segmentId=all&siteId=site-456&startDate=2023-01-01&endDate=2023-01-31'
-    } as Request;
+    const request = createRequestMock('https://example.com/api/revenue?segmentId=all&siteId=site-456&startDate=2023-01-01&endDate=2023-01-31');
 
     // Call the API
     const response = await GET(request);
@@ -223,9 +223,7 @@ describe('Revenue API', () => {
 
   it('should handle error when site id is missing', async () => {
     // Create mock request without site ID
-    const request = {
-      url: 'https://example.com/api/revenue?segmentId=all&startDate=2023-01-01&endDate=2023-01-31'
-    } as Request;
+    const request = createRequestMock('https://example.com/api/revenue?segmentId=all&startDate=2023-01-01&endDate=2023-01-31');
 
     // Call the API
     const response = await GET(request);
@@ -260,9 +258,7 @@ describe('Revenue API', () => {
     (createApiClient as jest.Mock).mockReturnValue(mockSupabase);
 
     // Create mock request
-    const request = {
-      url: 'https://example.com/api/revenue?segmentId=all&siteId=site-123&startDate=2023-01-01&endDate=2023-01-31'
-    } as Request;
+    const request = createRequestMock('https://example.com/api/revenue?segmentId=all&siteId=site-123&startDate=2023-01-01&endDate=2023-01-31');
 
     // Call the API
     const response = await GET(request);
@@ -328,9 +324,7 @@ describe('Revenue API', () => {
     (createApiClient as jest.Mock).mockReturnValue(mockSupabase);
     
     // Create request with custom dates (Jan 15th is mid-month)
-    const request = {
-      url: 'https://example.com/api/revenue?segmentId=all&siteId=site-789&userId=user-123&startDate=2023-01-15&endDate=2023-01-20'
-    } as Request;
+    const request = createRequestMock('https://example.com/api/revenue?segmentId=all&siteId=site-789&userId=user-123&startDate=2023-01-15&endDate=2023-01-20');
     
     // Call API
     await GET(request);

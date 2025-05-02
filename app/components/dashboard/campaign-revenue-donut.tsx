@@ -1,33 +1,16 @@
 import * as React from "react"
+import { useState, useEffect } from "react"
+import { useSite } from "@/app/context/SiteContext"
+import { useAuth } from "@/app/hooks/use-auth"
+import { format } from "date-fns"
+import { EmptyCard } from "@/app/components/ui/empty-card"
+import { PieChart } from "@/app/components/ui/icons"
 
-// Simulated data for campaign revenue
-const campaignData = [
-  {
-    name: "Social Media Campaign",
-    value: 42500,
-    color: "#6366f1" // Indigo
-  },
-  {
-    name: "Email Marketing",
-    value: 28900,
-    color: "#ec4899" // Pink
-  },
-  {
-    name: "Content Marketing",
-    value: 18700,
-    color: "#14b8a6" // Teal
-  },
-  {
-    name: "Paid Advertising",
-    value: 34200,
-    color: "#f59e0b" // Amber
-  },
-  {
-    name: "Referral Program",
-    value: 12600,
-    color: "#8b5cf6" // Purple
-  }
-]
+interface CampaignData {
+  name: string
+  value: number
+  color: string
+}
 
 // Format currency
 const formatCurrency = (amount: number, currency = "USD") => {
@@ -38,24 +21,115 @@ const formatCurrency = (amount: number, currency = "USD") => {
   }).format(amount)
 }
 
-// Calculate total revenue
-const totalRevenue = campaignData.reduce((sum, campaign) => sum + campaign.value, 0)
-
 interface CampaignRevenueDonutProps {
   showTotalRevenue?: boolean;
+  segmentId?: string;
+  startDate?: Date;
+  endDate?: Date;
+  onTotalUpdate?: (formattedTotal: string) => void;
 }
 
-export function CampaignRevenueDonut({ showTotalRevenue = false }: CampaignRevenueDonutProps) {
+export function CampaignRevenueDonut({ 
+  showTotalRevenue = false, 
+  segmentId = "all", 
+  startDate, 
+  endDate,
+  onTotalUpdate
+}: CampaignRevenueDonutProps) {
+  const { currentSite } = useSite()
+  const { user } = useAuth()
+  const [campaignData, setCampaignData] = useState<CampaignData[]>([])
+  const [totalRevenue, setTotalRevenue] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+  
   // SVG dimensions
   const size = 380
   const center = size / 2
   const radius = 100
   const innerRadius = 60
   
+  // Fetch campaign revenue data
+  useEffect(() => {
+    const fetchCampaignRevenue = async () => {
+      if (!currentSite || currentSite.id === "default" || !startDate || !endDate) {
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(true);
+      setHasError(false);
+      
+      try {
+        const params = new URLSearchParams();
+        params.append("siteId", currentSite.id);
+        if (user?.id) {
+          params.append("userId", user.id);
+        }
+        params.append("startDate", format(startDate, "yyyy-MM-dd"));
+        params.append("endDate", format(endDate, "yyyy-MM-dd"));
+        if (segmentId && segmentId !== "all") {
+          params.append("segmentId", segmentId);
+        }
+        
+        console.log(`[CampaignRevenueDonut] Fetching data with params:`, Object.fromEntries(params.entries()));
+        
+        const response = await fetch(`/api/campaign-revenue?${params.toString()}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[CampaignRevenueDonut] API error ${response.status}: ${errorText}`);
+          throw new Error(`Error ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`[CampaignRevenueDonut] Received data:`, data);
+        
+        if (!data.campaigns || !Array.isArray(data.campaigns) || data.campaigns.length === 0) {
+          console.error("[CampaignRevenueDonut] No campaign data found in response");
+          setHasError(true);
+          setCampaignData([]);
+          setTotalRevenue(0);
+          
+          // Notify parent about the zero total
+          if (onTotalUpdate) {
+            onTotalUpdate(formatCurrency(0));
+          }
+          return;
+        }
+        
+        setCampaignData(data.campaigns);
+        
+        // Calculate total revenue
+        const total = data.campaigns.reduce((sum: number, campaign: CampaignData) => sum + campaign.value, 0);
+        setTotalRevenue(total);
+        
+        // Send formatted total to parent if callback provided
+        if (onTotalUpdate) {
+          onTotalUpdate(formatCurrency(total));
+        }
+      } catch (error) {
+        console.error("Error fetching campaign revenue:", error);
+        setHasError(true);
+        setCampaignData([]);
+        setTotalRevenue(0);
+        
+        // Notify parent about the error with zero total
+        if (onTotalUpdate) {
+          onTotalUpdate(formatCurrency(0));
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchCampaignRevenue();
+  }, [segmentId, startDate, endDate, currentSite, user, onTotalUpdate]);
+  
   // Calculate slices for the donut
   let startAngle = 0
   const slices = campaignData.map(item => {
-    const percentage = item.value / totalRevenue
+    // Si solo hay un item, hacer un círculo completo (360°)
+    const percentage = campaignData.length === 1 ? 1 : (totalRevenue > 0 ? item.value / totalRevenue : 0)
     const angle = percentage * 2 * Math.PI
     const endAngle = startAngle + angle
     
@@ -74,17 +148,34 @@ export function CampaignRevenueDonut({ showTotalRevenue = false }: CampaignReven
     const x4 = center + innerRadius * Math.cos(startAngle)
     const y4 = center + innerRadius * Math.sin(startAngle)
     
-    // Create the path for the donut slice
-    const path = [
-      `M ${x1},${y1}`, // Move to outer start point
-      `A ${radius},${radius} 0 ${largeArcFlag},1 ${x2},${y2}`, // Outer arc
-      `L ${x3},${y3}`, // Line to inner end point
-      `A ${innerRadius},${innerRadius} 0 ${largeArcFlag},0 ${x4},${y4}`, // Inner arc (reverse direction)
-      "Z" // Close path
-    ].join(" ")
+    // Crear path especial para el caso de un solo sector (círculo completo)
+    let path;
+    if (campaignData.length === 1) {
+      // Para un solo sector, crear dos semicírculos para formar un círculo completo
+      path = [
+        `M ${center + radius},${center}`, // Punto de inicio en la derecha
+        `A ${radius},${radius} 0 1,1 ${center - radius},${center}`, // Semicírculo superior
+        `A ${radius},${radius} 0 1,1 ${center + radius},${center}`, // Semicírculo inferior
+        `M ${center + innerRadius},${center}`, // Punto de inicio del círculo interno
+        `A ${innerRadius},${innerRadius} 0 1,0 ${center - innerRadius},${center}`, // Semicírculo interno superior
+        `A ${innerRadius},${innerRadius} 0 1,0 ${center + innerRadius},${center}`, // Semicírculo interno inferior
+        "Z" // Cerrar el path
+      ].join(" ");
+    } else {
+      // Path normal para múltiples sectores
+      path = [
+        `M ${x1},${y1}`, // Move to outer start point
+        `A ${radius},${radius} 0 ${largeArcFlag},1 ${x2},${y2}`, // Outer arc
+        `L ${x3},${y3}`, // Line to inner end point
+        `A ${innerRadius},${innerRadius} 0 ${largeArcFlag},0 ${x4},${y4}`, // Inner arc (reverse direction)
+        "Z" // Close path
+      ].join(" ");
+    }
     
     // Calculate position for label (percentage)
-    const midAngle = startAngle + angle / 2
+    const midAngle = campaignData.length === 1 
+      ? Math.PI / 2 // Para un solo sector, colocar etiqueta en la parte superior
+      : startAngle + angle / 2;
     
     // Calculate inner label (percentage)
     const innerLabelRadius = (radius + innerRadius) / 2
@@ -130,6 +221,45 @@ export function CampaignRevenueDonut({ showTotalRevenue = false }: CampaignReven
     return slice
   })
   
+  if (isLoading) {
+    return (
+      <div className="w-full flex flex-col justify-center items-center h-[320px]">
+        <div className="relative w-40 h-40 mb-8">
+          {/* Círculo de fondo */}
+          <div className="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-700"></div>
+          {/* Círculo interior */}
+          <div className="absolute inset-8 rounded-full bg-background dark:bg-background"></div>
+        </div>
+        
+        {/* Etiquetas de leyenda */}
+        <div className="w-full max-w-xs">
+          <div className="flex justify-between items-center mb-2 animate-pulse">
+            <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
+          <div className="flex justify-between items-center mb-2 animate-pulse">
+            <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-3 w-14 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
+          <div className="flex justify-between items-center animate-pulse">
+            <div className="h-3 w-28 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (hasError || campaignData.length === 0 || totalRevenue === 0) {
+    return (
+      <EmptyCard 
+        icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
+        title="No revenue data available"
+        description="There is no campaign revenue data available for the selected period."
+      />
+    );
+  }
+  
   return (
     <div className="flex flex-col items-center">
       {showTotalRevenue && (
@@ -140,12 +270,42 @@ export function CampaignRevenueDonut({ showTotalRevenue = false }: CampaignReven
       
       <div className="w-full flex justify-center">
         <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="max-h-[420px]">
+          {/* Gradient definitions */}
+          <defs>
+            {slices.map((slice, index) => {
+              const baseColor = slice.color;
+              // Extract RGB components from hex color
+              const r = parseInt(baseColor.slice(1, 3), 16);
+              const g = parseInt(baseColor.slice(3, 5), 16);
+              const b = parseInt(baseColor.slice(5, 7), 16);
+              
+              // Create slightly lighter and darker versions for gradient
+              const lighterColor = `rgba(${Math.min(255, r + 40)}, ${Math.min(255, g + 40)}, ${Math.min(255, b + 40)}, 0.9)`;
+              const darkerColor = `rgba(${Math.max(0, r - 20)}, ${Math.max(0, g - 20)}, ${Math.max(0, b - 20)}, 1)`;
+              
+              return (
+                <radialGradient 
+                  key={`gradient-${index}`}
+                  id={`campaign-slice-gradient-${index}`}
+                  cx="50%" 
+                  cy="50%" 
+                  r="70%" 
+                  fx="50%" 
+                  fy="50%"
+                >
+                  <stop offset="0%" stopColor={lighterColor} />
+                  <stop offset="100%" stopColor={darkerColor} />
+                </radialGradient>
+              );
+            })}
+          </defs>
+          
           {/* Donut slices */}
           {slices.map((slice, index) => (
             <path
               key={`slice-${index}`}
               d={slice.path}
-              fill={slice.color}
+              fill={`url(#campaign-slice-gradient-${index})`}
               stroke="white"
               strokeWidth="1"
             />
@@ -153,72 +313,90 @@ export function CampaignRevenueDonut({ showTotalRevenue = false }: CampaignReven
           
           {/* Percentage labels (inside) */}
           {slices.map((slice, index) => {
-            if (slice.percentage < 0.08) return null // Skip small slices
-            return (
-              <text
-                key={`inner-label-${index}`}
-                x={slice.innerLabelX}
-                y={slice.innerLabelY}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="12"
-                fontWeight="bold"
-                fill="white"
-                className="text-xs"
-              >
-                {slice.formattedPercentage}
-              </text>
-            )
+            // Para un solo sector, siempre mostrar el porcentaje y hacerlo más grande
+            if (campaignData.length === 1 || slice.percentage >= 0.08) {
+              return (
+                <text
+                  key={`inner-label-${index}`}
+                  x={slice.innerLabelX}
+                  y={slice.innerLabelY}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={campaignData.length === 1 ? "16" : "12"}
+                  fontWeight="bold"
+                  fill="white"
+                  className={campaignData.length === 1 ? "text-base" : "text-xs"}
+                >
+                  {slice.formattedPercentage}
+                </text>
+              )
+            }
+            return null // Skip small slices
           })}
           
           {/* Connector lines and external labels */}
-          {slices.map((slice, index) => (
-            <g key={`label-group-${index}`}>
-              {/* Connector line */}
-              <line
-                x1={slice.labelLineStartX}
-                y1={slice.labelLineStartY}
-                x2={slice.labelLineEndX}
-                y2={slice.labelLineEndY}
-                stroke="currentColor"
-                strokeWidth="1"
-                strokeOpacity="0.6"
-              />
-              
-              {/* Segment name */}
-              <text
-                x={slice.labelX}
-                y={slice.labelY - 8}
-                textAnchor={slice.textAnchor}
-                dominantBaseline="baseline"
-                fontSize="11"
-                fontWeight="medium"
-                fill="currentColor"
-                className="text-xs"
-              >
-                {slice.name}
-              </text>
-              
-              {/* Value and percentage */}
-              <text
-                x={slice.labelX}
-                y={slice.labelY + 8}
-                textAnchor={slice.textAnchor}
-                dominantBaseline="hanging"
-                fontSize="11"
-                fill="currentColor"
-                className="text-xs opacity-80"
-              >
-                {slice.formattedValue} ({slice.formattedPercentage})
-              </text>
-            </g>
-          ))}
+          {slices.map((slice, index) => {
+            // Ajustar posición de la etiqueta cuando hay un solo sector
+            const adjustedLabelX = campaignData.length === 1 
+              ? center 
+              : slice.labelX;
+            const adjustedLabelY = campaignData.length === 1 
+              ? center + radius + 40 // Colocar debajo del círculo cuando hay un solo sector
+              : slice.labelY;
+            const adjustedTextAnchor = campaignData.length === 1 
+              ? "middle" 
+              : slice.textAnchor;
+            
+            return (
+              <g key={`label-group-${index}`}>
+                {/* Connector line - ocultar para un solo sector */}
+                {campaignData.length > 1 && (
+                  <line
+                    x1={slice.labelLineStartX}
+                    y1={slice.labelLineStartY}
+                    x2={slice.labelLineEndX}
+                    y2={slice.labelLineEndY}
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeOpacity="0.6"
+                  />
+                )}
+                
+                {/* Segment name */}
+                <text
+                  x={adjustedLabelX}
+                  y={adjustedLabelY - 8}
+                  textAnchor={adjustedTextAnchor}
+                  dominantBaseline="baseline"
+                  fontSize="11"
+                  fontWeight="medium"
+                  fill="currentColor"
+                  className="text-xs"
+                >
+                  {slice.name}
+                </text>
+                
+                {/* Value and percentage */}
+                <text
+                  x={adjustedLabelX}
+                  y={adjustedLabelY + 8}
+                  textAnchor={adjustedTextAnchor}
+                  dominantBaseline="hanging"
+                  fontSize="11"
+                  fill="currentColor"
+                  className="text-xs opacity-80"
+                >
+                  {slice.formattedValue} ({slice.formattedPercentage})
+                </text>
+              </g>
+            );
+          })}
         </svg>
       </div>
     </div>
   )
 }
 
-// Exportamos el total para que pueda ser usado por el componente padre
-export const revenueTotalAmount = totalRevenue
-export const formattedRevenueTotal = formatCurrency(totalRevenue) 
+// Export the formatted total revenue for use in other components
+export const formattedRevenueTotal = (totalRevenue: number): string => formatCurrency(totalRevenue)
+export { formatCurrency } 

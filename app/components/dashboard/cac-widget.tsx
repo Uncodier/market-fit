@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
@@ -12,6 +12,38 @@ interface CACWidgetProps {
   endDate?: Date;
 }
 
+interface CACData {
+  actual: number;
+  percentChange: number;
+  periodType: string;
+}
+
+// Format period type for display
+const formatPeriodType = (periodType: string): string => {
+  switch (periodType) {
+    case "daily": return "yesterday";
+    case "weekly": return "last week";
+    case "monthly": return "last month";
+    case "quarterly": return "last quarter";
+    case "yearly": return "last year";
+    default: return "previous period";
+  }
+};
+
+// Format currency for display
+const formatCurrency = (value: number): string => {
+  // Special case for CAC = -1 (infinite/too high)
+  if (value === -1) {
+    return "∞";
+  }
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
 export function CACWidget({ 
   segmentId = "all",
   startDate: propStartDate,
@@ -19,77 +51,54 @@ export function CACWidget({
 }: CACWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [cacValue, setCacValue] = useState<number>(0);
-  const [percentChange, setPercentChange] = useState<number>(0);
-  const [periodType, setPeriodType] = useState<string>("monthly");
+  const [cac, setCac] = useState<CACData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
+  // Update local state when props change
   useEffect(() => {
-    if (propStartDate) setStartDate(propStartDate);
-    if (propEndDate) setEndDate(propEndDate);
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
   }, [propStartDate, propEndDate]);
 
   useEffect(() => {
-    if (!currentSite?.id) return;
-    
-    const fetchCAC = async () => {
+    const fetchCac = async () => {
+      if (!currentSite || currentSite.id === "default") return;
+      
       setIsLoading(true);
       try {
-        const queryParams = new URLSearchParams();
-        queryParams.append('siteId', currentSite.id);
-        if (user?.id) queryParams.append('userId', user.id);
-        queryParams.append('startDate', startDate.toISOString());
-        queryParams.append('endDate', endDate.toISOString());
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
-        if (segmentId && segmentId !== "all") {
-          queryParams.append('segmentId', segmentId);
-          console.log(`[CAC Widget] Applying segment filter: ${segmentId}`);
+        const params = new URLSearchParams();
+        params.append("segmentId", segmentId);
+        params.append("siteId", currentSite.id);
+        if (user?.id) {
+          params.append("userId", user.id);
         }
-
-        const response = await fetch(`/api/cac?${queryParams.toString()}`);
+        if (start) params.append("startDate", start);
+        if (end) params.append("endDate", end);
         
+        const response = await fetch(`/api/cac?${params.toString()}`);
         if (!response.ok) {
           throw new Error('Failed to fetch CAC data');
         }
-        
         const data = await response.json();
-        setCacValue(data.actual !== undefined && data.actual !== null ? data.actual : 0);
-        setPercentChange(data.percentChange !== undefined && data.percentChange !== null ? data.percentChange : 0);
-        setPeriodType(data.periodType || "monthly");
-        
-        console.log(`[CAC Widget] Received CAC value: $${data.actual}, type: ${typeof data.actual}, segment: ${segmentId || 'all'}`);
+        setCac(data);
       } catch (error) {
-        console.error('Error fetching CAC:', error);
-        setCacValue(380); // Default fallback
+        console.error("Error fetching CAC:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchCAC();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId]);
 
-  // Format the CAC value as currency
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  const formatPeriodType = (periodType: string) => {
-    switch (periodType) {
-      case "daily": return "previous day";
-      case "weekly": return "previous week";
-      case "monthly": return "previous month";
-      case "quarterly": return "previous quarter";
-      case "yearly": return "previous year";
-      default: return "previous period";
-    }
-  };
+    fetchCac();
+  }, [segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -97,18 +106,16 @@ export function CACWidget({
     setEndDate(end);
   };
 
-  const formattedValue = formatCurrency(cacValue);
-  const changeText = percentChange !== 0 
-    ? `${percentChange}% from ${formatPeriodType(periodType)}`
-    : "No change";
-    
-  // For CAC, lower is better, so invert the positive/negative sentiment
-  const isPositiveChange = percentChange > 0 ? false : percentChange < 0 ? true : undefined;
+  const formattedValue = cac ? formatCurrency(cac.actual) : "$0";
+  const changeText = cac && cac.actual === -1
+    ? "No conversions"
+    : `${cac?.percentChange || 0}% from ${formatPeriodType(cac?.periodType || "monthly")}`;
+  const isPositiveChange = (cac?.percentChange || 0) < 0; // Note: For CAC, a decrease is positive
   
   return (
     <BaseKpiWidget
-      title="CAC (Customer Acquisition Cost)"
-      tooltipText={`Average cost of acquiring a customer${segmentId && segmentId !== "all" ? " for this segment" : ""}`}
+      title="CAC"
+      tooltipText="Customer Acquisition Cost"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}

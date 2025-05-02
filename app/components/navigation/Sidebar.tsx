@@ -104,6 +104,11 @@ const navigationItems = [
     icon: Users,
   },
   {
+    title: "Sales",
+    href: "/sales",
+    icon: CreditCard,
+  },
+  {
     title: "AI Team",
     href: "/agents",
     icon: Cpu, // Changed from MessageSquare to Cpu for AI representation

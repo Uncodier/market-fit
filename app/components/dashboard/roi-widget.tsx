@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
@@ -12,6 +12,24 @@ interface ROIWidgetProps {
   endDate?: Date;
 }
 
+interface ROIData {
+  actual: number;
+  percentChange: number;
+  periodType: string;
+}
+
+// Format period type for display
+const formatPeriodType = (periodType: string): string => {
+  switch (periodType) {
+    case "daily": return "yesterday";
+    case "weekly": return "last week";
+    case "monthly": return "last month";
+    case "quarterly": return "last quarter";
+    case "yearly": return "last year";
+    default: return "previous period";
+  }
+};
+
 export function ROIWidget({ 
   segmentId = "all",
   startDate: propStartDate,
@@ -19,73 +37,54 @@ export function ROIWidget({
 }: ROIWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [roiValue, setRoiValue] = useState<number>(0);
-  const [percentChange, setPercentChange] = useState<number>(0);
-  const [periodType, setPeriodType] = useState<string>("monthly");
+  const [roi, setRoi] = useState<ROIData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
+  // Update local state when props change
   useEffect(() => {
-    if (propStartDate) setStartDate(propStartDate);
-    if (propEndDate) setEndDate(propEndDate);
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
   }, [propStartDate, propEndDate]);
 
   useEffect(() => {
-    if (!currentSite?.id) return;
-    
-    const fetchROI = async () => {
+    const fetchRoi = async () => {
+      if (!currentSite || currentSite.id === "default") return;
+      
       setIsLoading(true);
       try {
-        const queryParams = new URLSearchParams();
-        queryParams.append('siteId', currentSite.id);
-        if (user?.id) queryParams.append('userId', user.id);
-        queryParams.append('startDate', startDate.toISOString());
-        queryParams.append('endDate', endDate.toISOString());
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
-        if (segmentId && segmentId !== "all") {
-          queryParams.append('segmentId', segmentId);
-          console.log(`[ROI Widget] Applying segment filter: ${segmentId}`);
+        const params = new URLSearchParams();
+        params.append("segmentId", segmentId);
+        params.append("siteId", currentSite.id);
+        if (user?.id) {
+          params.append("userId", user.id);
         }
-
-        const response = await fetch(`/api/roi?${queryParams.toString()}`);
+        if (start) params.append("startDate", start);
+        if (end) params.append("endDate", end);
         
+        const response = await fetch(`/api/roi?${params.toString()}`);
         if (!response.ok) {
           throw new Error('Failed to fetch ROI data');
         }
-        
         const data = await response.json();
-        setRoiValue(data.actual !== undefined && data.actual !== null ? data.actual : 0);
-        setPercentChange(data.percentChange !== undefined && data.percentChange !== null ? data.percentChange : 0);
-        setPeriodType(data.periodType || "monthly");
-        
-        console.log(`[ROI Widget] Received ROI value: ${data.actual}%, type: ${typeof data.actual}, segment: ${segmentId || 'all'}`);
+        setRoi(data);
       } catch (error) {
-        console.error('Error fetching ROI:', error);
-        setRoiValue(0);
+        console.error("Error fetching ROI:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchROI();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId]);
 
-  // Format the ROI value as percentage
-  const formatPercentage = (value: number) => {
-    return `${value}%`;
-  };
-
-  const formatPeriodType = (periodType: string) => {
-    switch (periodType) {
-      case "daily": return "previous day";
-      case "weekly": return "previous week";
-      case "monthly": return "previous month";
-      case "quarterly": return "previous quarter";
-      case "yearly": return "previous year";
-      default: return "previous period";
-    }
-  };
+    fetchRoi();
+  }, [segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -93,16 +92,14 @@ export function ROIWidget({
     setEndDate(end);
   };
 
-  const formattedValue = formatPercentage(roiValue);
-  const changeText = percentChange !== 0 
-    ? `${percentChange}% from ${formatPeriodType(periodType)}`
-    : "No change";
-  const isPositiveChange = percentChange > 0 ? true : percentChange < 0 ? false : undefined;
+  const formattedValue = roi ? `${roi.actual}%` : "0%";
+  const changeText = `${roi?.percentChange || 0}% from ${formatPeriodType(roi?.periodType || "monthly")}`;
+  const isPositiveChange = (roi?.percentChange || 0) > 0;
   
   return (
     <BaseKpiWidget
-      title="Return on Investment"
-      tooltipText={`Leads converted per campaign budget${segmentId && segmentId !== "all" ? " for this segment" : ""}`}
+      title="ROI"
+      tooltipText="Return on Investment"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}

@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { RecentActivity } from "@/app/components/dashboard/recent-activity"
 import { Overview } from "@/app/components/dashboard/overview"
-import { SegmentMetrics } from "@/app/components/dashboard/segment-metrics"
-import { CampaignRevenueDonut, formattedRevenueTotal } from "@/app/components/dashboard/campaign-revenue-donut"
+import { SegmentDonut } from "@/app/components/dashboard/segment-donut"
+import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { CostReports } from "@/app/components/dashboard/cost-reports"
 import { SalesReports } from "@/app/components/dashboard/sales-reports"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -30,6 +30,8 @@ import { CPLWidget } from "@/app/components/dashboard/cpl-widget"
 import { format } from "date-fns"
 import { startOfMonth } from "date-fns"
 import { isSameDay, isSameMonth } from "date-fns"
+import { useState as useFormatState } from "react"
+import { useRequestController } from "@/app/hooks/useRequestController"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -38,11 +40,23 @@ export default function DashboardPage() {
   const [segments, setSegments] = useState<Segment[]>([])
   const [selectedSegment, setSelectedSegment] = useState<string>("all")
   const [isLoadingSegments, setIsLoadingSegments] = useState(false)
+  const { cancelAllRequests } = useRequestController()
+  
+  // Initialize dates and range type
+  const today = new Date()
+  const firstDayOfMonth = startOfMonth(today)
   const [selectedRangeType, setSelectedRangeType] = useState<string>("This month")
   const [dateRange, setDateRange] = useState<{ startDate: Date; endDate: Date }>({
-    startDate: startOfMonth(new Date()),
-    endDate: new Date()
+    startDate: firstDayOfMonth,
+    endDate: today
   })
+  const [formattedTotal, setFormattedTotal] = useFormatState("");
+  const [activeTab, setActiveTab] = useState("overview")
+
+  // Initialize date range when the component mounts
+  useEffect(() => {
+    determineRangeType(firstDayOfMonth, today);
+  }, []);
 
   useEffect(() => {
     const loadSegments = async () => {
@@ -64,10 +78,8 @@ export default function DashboardPage() {
     loadSegments()
   }, [currentSite])
 
-  const handleDateRangeChange = (startDate: Date, endDate: Date) => {
-    setDateRange({ startDate, endDate })
-    
-    // Determine range type based on dates
+  // Determine the type of date range based on start and end dates
+  const determineRangeType = (startDate: Date, endDate: Date) => {
     const today = new Date()
     const monthStart = startOfMonth(today)
     
@@ -84,9 +96,45 @@ export default function DashboardPage() {
     }
   }
 
+  const handleDateRangeChange = (startDate: Date, endDate: Date) => {
+    // Evitar actualizaciones de estado innecesarias si no hay cambios reales
+    if (isSameDay(startDate, dateRange.startDate) && isSameDay(endDate, dateRange.endDate)) {
+      return;
+    }
+    
+    // Cancel all in-flight requests first to avoid race conditions
+    cancelAllRequests();
+    
+    // Then update the date range
+    setDateRange({ startDate, endDate });
+    determineRangeType(startDate, endDate);
+  }
+
+  // Handle segment change
+  const handleSegmentChange = (newSegmentId: string) => {
+    // Cancel all in-flight requests when segment changes
+    cancelAllRequests();
+    setSelectedSegment(newSegmentId);
+  }
+
+  // Handle tab changes - cancel all pending requests
+  const handleTabChange = (newTab: string) => {
+    // If tab actually changed, cancel all pending requests
+    if (newTab !== activeTab) {
+      console.log(`[Dashboard] Changing tab from ${activeTab} to ${newTab}, cancelling all requests`);
+      cancelAllRequests();
+      setActiveTab(newTab);
+    }
+  }
+
   return (
     <div className="flex-1 p-0">
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs 
+        defaultValue="overview" 
+        className="space-y-4"
+        value={activeTab}
+        onValueChange={handleTabChange}
+      >
         <StickyHeader showAIButton={false}>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
@@ -103,7 +151,7 @@ export default function DashboardPage() {
                   <span className="text-sm text-muted-foreground">Segment:</span>
                   <Select 
                     value={selectedSegment} 
-                    onValueChange={setSelectedSegment}
+                    onValueChange={handleSegmentChange}
                     disabled={isLoadingSegments}
                   >
                     <SelectTrigger className="w-[180px]">
@@ -132,7 +180,11 @@ export default function DashboardPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <CalendarDateRangePicker onRangeChange={handleDateRangeChange} />
+                <CalendarDateRangePicker 
+                  onRangeChange={handleDateRangeChange} 
+                  initialStartDate={dateRange.startDate}
+                  initialEndDate={dateRange.endDate}
+                />
               </div>
             </div>
           </div>
@@ -222,27 +274,72 @@ export default function DashboardPage() {
             </div>
           </TabsContent>
           <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Segment Metrics</CardTitle>
-                  <CardDescription>
-                    Segment performance metrics for the last 30 days.
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 min-h-[160px]">
+              <Card className="col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Clients by Segment</CardTitle>
+                  <CardDescription className="text-xs">
+                    Distribution of clients across segments
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="pl-2">
-                  <SegmentMetrics />
+                <CardContent className="pt-0">
+                  <SegmentDonut
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                    endpoint="clients-by-segment"
+                  />
                 </CardContent>
               </Card>
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Revenue by Campaign</CardTitle>
-                  <CardDescription>
-                    Distribution of revenue across marketing campaigns - {formattedRevenueTotal}
+              <Card className="col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Revenue by Segment</CardTitle>
+                  <CardDescription className="text-xs">
+                    Distribution of revenue across segments
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <CampaignRevenueDonut />
+                <CardContent className="pt-0">
+                  <SegmentDonut
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                    endpoint="revenue-by-segment"
+                    formatValues={true}
+                  />
+                </CardContent>
+              </Card>
+              <Card className="col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Clients by Campaign</CardTitle>
+                  <CardDescription className="text-xs">
+                    Distribution of clients across campaigns
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <SegmentDonut
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                    endpoint="clients-by-campaign"
+                  />
+                </CardContent>
+              </Card>
+              <Card className="col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Revenue by Campaign</CardTitle>
+                  <CardDescription className="text-xs">
+                    Revenue across campaigns{formattedTotal ? ` - ${formattedTotal}` : ""}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <SegmentDonut
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                    endpoint="revenue-by-campaign"
+                    formatValues={true}
+                    onTotalUpdate={(total) => setFormattedTotal(total)}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -255,16 +352,28 @@ export default function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <CohortTables />
+                  <CohortTables
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
           <TabsContent value="costs" className="space-y-4">
-            <CostReports />
+            <CostReports 
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              segmentId={selectedSegment}
+            />
           </TabsContent>
           <TabsContent value="sales" className="space-y-4">
-            <SalesReports />
+            <SalesReports 
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              segmentId={selectedSegment}
+            />
           </TabsContent>
         </div>
       </Tabs>

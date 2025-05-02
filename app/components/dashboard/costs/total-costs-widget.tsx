@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BaseKpiWidget } from "../base-kpi-widget";
+import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { format } from "date-fns";
 
 interface TotalCostsWidgetProps {
   startDate: Date;
   endDate: Date;
-  onDateChange?: (start: Date, end: Date) => void;
 }
 
 interface CostData {
@@ -20,6 +19,7 @@ interface CostData {
     formattedPrevious: string;
   };
   periodType: string;
+  noData?: boolean;
 }
 
 // Format period type for display
@@ -41,6 +41,7 @@ export function TotalCostsWidget({
   const { currentSite } = useSite();
   const [costData, setCostData] = useState<CostData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasData, setHasData] = useState(true);
 
   useEffect(() => {
     const fetchCostData = async () => {
@@ -54,8 +55,10 @@ export function TotalCostsWidget({
         }
         const data = await response.json();
         setCostData(data);
+        setHasData(!data.noData);
       } catch (error) {
         console.error("Error fetching total costs:", error);
+        setHasData(false);
       } finally {
         setIsLoading(false);
       }
@@ -64,15 +67,15 @@ export function TotalCostsWidget({
     fetchCostData();
   }, [startDate, endDate, currentSite]);
 
-  const formattedValue = costData 
+  const formattedValue = costData && hasData
     ? `$${costData.totalCosts.formattedActual}` 
     : "$0";
     
-  const changeText = costData 
+  const changeText = costData && hasData
     ? `${costData.totalCosts.percentChange.toFixed(1)}% from ${formatPeriodType(costData.periodType)}` 
-    : "0% from previous period";
+    : "No data available";
     
-  const isPositiveChange = costData ? costData.totalCosts.percentChange < 0 : false;
+  const isPositiveChange = costData && hasData ? costData.totalCosts.percentChange < 0 : undefined;
   
   return (
     <BaseKpiWidget

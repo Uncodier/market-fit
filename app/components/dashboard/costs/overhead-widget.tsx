@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BaseKpiWidget } from "../base-kpi-widget";
+import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 
 interface OverheadWidgetProps {
@@ -17,6 +17,7 @@ interface CostData {
     percentChange: number;
   }>;
   periodType: string;
+  noData?: boolean;
 }
 
 // Format period type for display
@@ -52,6 +53,7 @@ export function OverheadWidget({
     prevAmount: 0, 
     percentChange: 0
   });
+  const [hasData, setHasData] = useState(true);
 
   useEffect(() => {
     const fetchCostData = async () => {
@@ -65,35 +67,47 @@ export function OverheadWidget({
         }
         const data = await response.json();
         setCostData(data);
+        setHasData(!data.noData);
 
-        // Calculate overhead costs (Administration + Operations)
-        const adminCategory = data.costCategories.find(
-          (category: any) => category.name === "Administration"
-        );
-        
-        const operationsCategory = data.costCategories.find(
-          (category: any) => category.name === "Operations"
-        );
-        
-        const currentOverhead = 
-          (adminCategory ? adminCategory.amount : 0) + 
-          (operationsCategory ? operationsCategory.amount : 0);
+        // Process data only if we have valid data
+        if (!data.noData) {
+          // Calculate overhead costs (Administration + Operations)
+          const adminCategory = data.costCategories.find(
+            (category: any) => category.name === "Administration"
+          );
           
-        const prevOverhead = 
-          (adminCategory ? adminCategory.prevAmount : 0) + 
-          (operationsCategory ? operationsCategory.prevAmount : 0);
+          const operationsCategory = data.costCategories.find(
+            (category: any) => category.name === "Operations"
+          );
           
-        const percentChange = prevOverhead > 0 
-          ? ((currentOverhead - prevOverhead) / prevOverhead) * 100 
-          : 0;
-        
-        setOverhead({
-          amount: currentOverhead,
-          prevAmount: prevOverhead,
-          percentChange: percentChange
-        });
+          const currentOverhead = 
+            (adminCategory ? adminCategory.amount : 0) + 
+            (operationsCategory ? operationsCategory.amount : 0);
+            
+          const prevOverhead = 
+            (adminCategory ? adminCategory.prevAmount : 0) + 
+            (operationsCategory ? operationsCategory.prevAmount : 0);
+            
+          const percentChange = prevOverhead > 0 
+            ? ((currentOverhead - prevOverhead) / prevOverhead) * 100 
+            : 0;
+          
+          setOverhead({
+            amount: currentOverhead,
+            prevAmount: prevOverhead,
+            percentChange: percentChange
+          });
+        } else {
+          // Reset to zeros if no data
+          setOverhead({
+            amount: 0,
+            prevAmount: 0,
+            percentChange: 0
+          });
+        }
       } catch (error) {
         console.error("Error fetching overhead costs:", error);
+        setHasData(false);
       } finally {
         setIsLoading(false);
       }
@@ -103,7 +117,9 @@ export function OverheadWidget({
   }, [startDate, endDate, currentSite]);
 
   const formattedValue = formatCurrency(overhead.amount);
-  const changeText = `${overhead.percentChange.toFixed(1)}% from ${formatPeriodType(costData?.periodType || "monthly")}`;
+  const changeText = hasData 
+    ? `${overhead.percentChange.toFixed(1)}% from ${formatPeriodType(costData?.periodType || "monthly")}`
+    : "No data available";
   const isPositiveChange = overhead.percentChange < 0;
   
   return (
@@ -112,7 +128,7 @@ export function OverheadWidget({
       tooltipText="Administrative and operational expenses"
       value={formattedValue}
       changeText={changeText}
-      isPositiveChange={isPositiveChange}
+      isPositiveChange={hasData ? isPositiveChange : undefined}
       isLoading={isLoading}
       startDate={startDate}
       endDate={endDate}

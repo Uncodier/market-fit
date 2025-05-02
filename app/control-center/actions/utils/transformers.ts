@@ -74,6 +74,7 @@ export function transformSaleData(data: SaleData): Sale {
     segmentId: data.segment_id,
     saleDate: data.sale_date,
     paymentMethod: data.payment_method || "other",
+    source: data.source || "online",
     siteId: data.site_id,
     userId: data.user_id,
     createdAt: data.created_at,

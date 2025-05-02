@@ -15,6 +15,7 @@ export async function createSale(values: {
   productName?: string;
   saleDate: string;
   paymentMethod?: string;
+  source?: 'retail' | 'online';
   notes?: string;
   siteId: string;
   userId: string;
@@ -32,6 +33,7 @@ export async function createSale(values: {
       product_name: values.productName || null,
       sale_date: values.saleDate,
       payment_method: values.paymentMethod || "other",
+      source: values.source || "online",
       notes: values.notes || null,
       site_id: values.siteId,
       user_id: values.userId
@@ -53,6 +55,6 @@ export async function createSale(values: {
     return { data: transformSaleData(data), error: null }
   } catch (error) {
     console.error("Error in createSale:", error)
-    return { data: null, error: error instanceof Error ? error.message : "An unknown error occurred" }
+    return { data: null, error: error instanceof Error ? error.message : "An unexpected error occurred" }
   }
 } 

@@ -31,9 +31,14 @@ export function SalesCategoryChart() {
   }
   
   // Theme-adaptive colors
-  const COLORS = isDarkMode 
+  const BASE_COLORS = isDarkMode 
     ? ['#818CF8', '#A5B4FC', '#C7D2FE', '#DDD6FE', '#F5D0FE'] 
     : ['#6366F1', '#8B5CF6', '#EC4899', '#F97316', '#14B8A6']
+    
+  // Lighter versions of colors for gradients
+  const LIGHT_COLORS = isDarkMode
+    ? ['#A5B4FC', '#C7D2FE', '#DDD6FE', '#F5D0FE', '#FBCFE8']
+    : ['#818CF8', '#A78BFA', '#F472B6', '#FB923C', '#2DD4BF']
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
@@ -60,6 +65,23 @@ export function SalesCategoryChart() {
     <div className="w-full h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
+          {/* Definición de gradientes para los sectores */}
+          <defs>
+            {BASE_COLORS.map((color, index) => (
+              <radialGradient
+                key={`gradient-${index}`}
+                id={`salesCategoryGradient-${index}`}
+                cx="50%"
+                cy="50%"
+                r="70%"
+                fx="50%"
+                fy="50%"
+              >
+                <stop offset="0%" stopColor={LIGHT_COLORS[index]} stopOpacity={0.9} />
+                <stop offset="100%" stopColor={color} stopOpacity={1} />
+              </radialGradient>
+            ))}
+          </defs>
           <Pie
             data={data}
             cx="50%"
@@ -73,7 +95,7 @@ export function SalesCategoryChart() {
             {data.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
-                fill={COLORS[index % COLORS.length]} 
+                fill={`url(#salesCategoryGradient-${index % BASE_COLORS.length})`} 
                 stroke={isDarkMode ? '#1E293B' : '#fff'}
                 strokeWidth={2}
               />

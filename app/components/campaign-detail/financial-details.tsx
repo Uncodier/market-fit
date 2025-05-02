@@ -306,10 +306,16 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
     
     // Only update actual and estimated revenue, keeping projected as is
     const revenue = {
-      actual: financialData.revenue.actual || 0,
-      estimated: financialData.revenue.estimated || 0,
-      projected: financialData.revenue.projected || 0, // Keep as is
-      currency: financialData.revenue.currency
+      actual: typeof financialData.revenue.actual === 'string' ? 
+        parseFloat(financialData.revenue.actual) || 0 : 
+        (financialData.revenue.actual || 0),
+      estimated: typeof financialData.revenue.estimated === 'string' ? 
+        parseFloat(financialData.revenue.estimated) || 0 : 
+        (financialData.revenue.estimated || 0),
+      projected: typeof financialData.revenue.projected === 'string' ? 
+        parseFloat(financialData.revenue.projected) || 0 : 
+        (financialData.revenue.projected || 0),
+      currency: financialData.revenue.currency || "USD"
     };
     
     // Build the data to update

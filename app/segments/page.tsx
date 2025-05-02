@@ -109,10 +109,10 @@ function SegmentCard({
         }}
       >
         <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
-          <div className="flex items-center hover:bg-muted/50 transition-colors">
+          <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
             <CardContent className="flex-1 p-4 w-full overflow-x-auto">
-              <div className="flex items-start gap-2 min-w-[800px]">
-                <div className="w-[500px] min-w-[450px] pr-2 flex-grow">
+              <div className="flex items-start gap-4 min-w-[1000px]">
+                <div className="w-[500px] min-w-[500px] pr-2 flex-grow">
                   <h3 className="font-semibold text-lg truncate">{segment.name}</h3>
                   <p className="text-sm text-muted-foreground/80 truncate">
                     {segment.description || 'No description available'}
@@ -333,8 +333,8 @@ function SegmentRowSkeleton() {
     <Card className="border border-border overflow-hidden">
       <div className="flex items-center">
         <CardContent className="flex-1 p-4 w-full overflow-x-auto">
-          <div className="flex items-start gap-2 min-w-[800px]">
-            <div className="w-[500px] min-w-[450px] pr-2 flex-grow space-y-2">
+          <div className="flex items-start gap-4 min-w-[1000px]">
+            <div className="w-[500px] min-w-[500px] pr-2 flex-grow space-y-2">
               <Skeleton className="h-6 w-3/4" />
               <Skeleton className="h-4 w-full" />
             </div>
@@ -842,7 +842,7 @@ export default function SegmentsPage() {
               ) : filteredSegments.length === 0 ? (
                 segmentsEmptyState
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {filteredSegments.map((segment) => (
                     <SegmentCard
                       key={segment.id}
@@ -869,7 +869,7 @@ export default function SegmentsPage() {
               {segments.filter(segment => activeSegments[segment.id]).length === 0 ? (
                 segmentsEmptyState
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {segments
                     .filter((segment: Segment) => activeSegments[segment.id])
                     .map((segment: Segment) => (
@@ -898,7 +898,7 @@ export default function SegmentsPage() {
               {segments.filter(segment => !activeSegments[segment.id]).length === 0 ? (
                 segmentsEmptyState
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {segments
                     .filter((segment: Segment) => !activeSegments[segment.id])
                     .map((segment: Segment) => (

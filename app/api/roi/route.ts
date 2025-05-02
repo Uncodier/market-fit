@@ -24,6 +24,28 @@ interface KpiData {
   benchmark: number | null;
 }
 
+/**
+ * ROI Calculation Strategy:
+ * 
+ * This API calculates ROI using multiple strategies depending on available data:
+ * 
+ * 1. Standard ROI: ((Revenue - Transaction Costs) / Transaction Costs) * 100
+ *    - Used when transaction data is available
+ *    - Most accurate measure of marketing ROI based on actual expenditures
+ * 
+ * 2. Alternative ROI: ((Revenue - Campaign Budgets) / Campaign Budgets) * 100
+ *    - Used as fallback when transaction data is unavailable
+ *    - Less accurate as it uses budgeted amounts rather than actual expenditures
+ * 
+ * 3. Simplified ROI: 100%
+ *    - Used when there is revenue but no cost data available
+ *    - Represents a positive return but with unmeasured magnitude
+ * 
+ * 4. Default ROI: 0%
+ *    - Used when no revenue or cost data is available
+ *    - Represents no measurable return
+ */
+
 // Helper function to format date for DB
 function formatDateForDb(date: Date): string {
   return date.toISOString();
@@ -241,7 +263,7 @@ export async function GET(request: NextRequest) {
   const userId = searchParams.get('userId');
   const startDateStr = searchParams.get('startDate');
   const endDateStr = searchParams.get('endDate');
-  const segmentId = searchParams.get('segmentId');
+  const segmentId = searchParams.get('segmentId') || 'all'; // Usar 'all' como valor predeterminado
   const skipKpiCreation = searchParams.get('skipKpiCreation') === 'true';
   
   // Validate required parameters
@@ -249,50 +271,62 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
   
-  console.log('[ROI API] Request for site ID:', siteId);
+  console.log('[ROI API] Request parameters:', { 
+    siteId, 
+    userId, 
+    segmentId, 
+    startDate: startDateStr, 
+    endDate: endDateStr 
+  });
   
   try {
     // Usar el cliente de servicio con permisos elevados para evitar restricciones RLS
     const supabase = createServiceApiClient();
     
-    // Calculate period dates
+    // Calculate period dates - utilizando UTC para evitar problemas de zona horaria
     let periodStart = startDateStr ? new Date(startDateStr) : subDays(new Date(), 30);
     let periodEnd = endDateStr ? new Date(endDateStr) : new Date();
     
-    // Standardize dates for consistency
-    const { periodStart: standardizedStart, periodEnd: standardizedEnd, periodType } = 
-      standardizePeriodDates(periodStart, periodEnd);
+    console.log('[ROI API] Raw period dates:', {
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString()
+    });
+
+    // No estandarizamos las fechas para consultas, usamos las fechas tal como fueron proporcionadas
+    // para evitar cualquier problema con la estandarización
+    const periodType = getPeriodType(periodStart, periodEnd);
     
-    // Calculate previous period dates based on current period length
-    let standardizedPrevStart: Date;
-    let standardizedPrevEnd: Date;
-    
+    // Calcular fechas para el período anterior manteniendo el mismo intervalo
+    const daysDiff = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 3600 * 24));
+    let prevPeriodStart = new Date(periodStart);
+    let prevPeriodEnd = new Date(periodEnd);
+
     if (periodType === "daily") {
-      standardizedPrevStart = subDays(standardizedStart, 1);
-      standardizedPrevEnd = subDays(standardizedEnd, 1);
+      prevPeriodStart = subDays(periodStart, 1);
+      prevPeriodEnd = subDays(periodEnd, 1);
     } else if (periodType === "weekly") {
-      standardizedPrevStart = subDays(standardizedStart, 7);
-      standardizedPrevEnd = subDays(standardizedEnd, 7);
+      prevPeriodStart = subDays(periodStart, 7);
+      prevPeriodEnd = subDays(periodEnd, 7);
     } else if (periodType === "monthly") {
-      standardizedPrevStart = subMonths(standardizedStart, 1);
-      standardizedPrevEnd = subMonths(standardizedEnd, 1);
+      prevPeriodStart = subMonths(periodStart, 1);
+      prevPeriodEnd = subMonths(periodEnd, 1);
     } else if (periodType === "quarterly") {
-      standardizedPrevStart = subQuarters(standardizedStart, 1);
-      standardizedPrevEnd = subQuarters(standardizedEnd, 1);
+      prevPeriodStart = subQuarters(periodStart, 1);
+      prevPeriodEnd = subQuarters(periodEnd, 1);
     } else {
-      standardizedPrevStart = subYears(standardizedStart, 1);
-      standardizedPrevEnd = subYears(standardizedEnd, 1);
+      prevPeriodStart = subYears(periodStart, 1);
+      prevPeriodEnd = subYears(periodEnd, 1);
     }
     
     // STEP 1: Get all campaign transactions
     let campaignQuery = supabase
       .from('campaigns')
-      .select('id, budget')
+      .select('id, budget, created_at')
       .eq('site_id', siteId)
-      .gte('created_at', standardizedStart.toISOString())
-      .lte('created_at', standardizedEnd.toISOString());
+      .gte('created_at', periodStart.toISOString())
+      .lte('created_at', periodEnd.toISOString());
     
-    // If segmentId is provided, filter by segment
+    // If segmentId is provided and not 'all', filter by segment
     if (segmentId && segmentId !== 'all') {
       campaignQuery = campaignQuery.eq('segment_id', segmentId);
     }
@@ -306,17 +340,26 @@ export async function GET(request: NextRequest) {
         details: campaignsError 
       }, { status: 500 });
     }
+
+    // Debug: Imprimir qué consulta estamos ejecutando exactamente
+    console.log(`[ROI API] Campaign query range: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+    
+    // Debug: Print what we found to troubleshoot campaigns
+    console.log(`[ROI API] Found ${campaigns?.length || 0} campaigns for period ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+    if (campaigns && campaigns.length > 0) {
+      console.log('[ROI API] First campaign example:', JSON.stringify(campaigns[0]));
+    }
     
     // STEP 2: Get all converted leads
     let leadsQuery = supabase
       .from('leads')
       .select('id')
       .eq('site_id', siteId)
-      .eq('status', 'converted')
-      .gte('created_at', standardizedStart.toISOString())
-      .lte('created_at', standardizedEnd.toISOString());
-      
-    // If segmentId is provided, filter by segment  
+      .gte('created_at', periodStart.toISOString())
+      .lte('created_at', periodEnd.toISOString())
+      .eq('status', 'converted');
+    
+    // If segmentId is provided and not 'all', filter by segment
     if (segmentId && segmentId !== 'all') {
       leadsQuery = leadsQuery.eq('segment_id', segmentId);
     }
@@ -334,13 +377,15 @@ export async function GET(request: NextRequest) {
     // STEP 3: Get sales data to calculate revenue
     let salesQuery = supabase
       .from('sales')
-      .select('id, amount')
+      .select('id, amount, created_at, status, lead_id')
       .eq('site_id', siteId)
-      .eq('status', 'completed')
-      .gte('created_at', standardizedStart.toISOString())
-      .lte('created_at', standardizedEnd.toISOString());
+      .gte('created_at', periodStart.toISOString())
+      .lte('created_at', periodEnd.toISOString());
     
-    // If segmentId is provided, filter by segment
+    // Debug: Imprimir la consulta exacta para diagnosticar problemas
+    console.log(`[ROI API] Sales query range: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+    
+    // If segmentId is provided and not 'all', filter by segment
     if (segmentId && segmentId !== 'all') {
       salesQuery = salesQuery.eq('segment_id', segmentId);
     }
@@ -354,28 +399,138 @@ export async function GET(request: NextRequest) {
         details: salesError 
       }, { status: 500 });
     }
+
+    // Debug: Print what we found to troubleshoot
+    console.log(`[ROI API] Found ${sales?.length || 0} sales for period ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+    
+    // Filtrar ventas completadas y otras para diagnóstico
+    const completedSales = sales?.filter(sale => sale.status === 'completed') || [];
+    const otherSales = sales?.filter(sale => sale.status !== 'completed') || [];
+    const salesWithLeadId = sales?.filter(sale => sale.lead_id) || [];
+    const salesWithoutLeadId = sales?.filter(sale => !sale.lead_id) || [];
+    
+    console.log(`[ROI API] Sales breakdown: ${completedSales.length} completed, ${otherSales.length} other status`);
+    console.log(`[ROI API] Sales by lead: ${salesWithLeadId.length} with lead_id, ${salesWithoutLeadId.length} without lead_id`);
+    
+    if (sales && sales.length > 0) {
+      console.log('[ROI API] First sale example:', JSON.stringify(sales[0]));
+    }
     
     // STEP 4: Calculate ROI
     let roiValue = 0;
+    let alternativeRoiValue = null;
     
     // Sum all campaign budgets (costs)
     const totalCampaignBudget = campaigns?.reduce((sum, campaign) => {
-      return sum + (campaign.budget || 0);
+      // Access the allocated property from the budget object
+      const budgetAmount = campaign.budget?.allocated || 0;
+      
+      // Validar el valor para evitar valores negativos o inválidos
+      if (typeof budgetAmount !== 'number' || isNaN(budgetAmount)) {
+        console.error(`[ROI API] Invalid campaign budget amount: ${campaign.budget?.allocated}`);
+        return sum;
+      }
+      
+      // Asegurar que es positivo
+      const validBudgetAmount = Math.max(0, budgetAmount);
+      console.log(`[ROI API] Campaign ID ${campaign.id}: budget amount = ${validBudgetAmount}`);
+      
+      return sum + validBudgetAmount;
     }, 0) || 0;
     
-    // Sum all sales (revenue)
+    // Sum all sales (revenue) - incluyendo TODAS las ventas (no solo las completadas)
     const totalRevenue = sales?.reduce((sum, sale) => {
-      return sum + (parseFloat(sale.amount.toString()) || 0);
+      // Parsear y validar el valor
+      let amount = 0;
+      try {
+        amount = typeof sale.amount === 'number' ? sale.amount : parseFloat(sale.amount?.toString() || '0');
+        if (isNaN(amount)) {
+          console.error(`[ROI API] Invalid sale amount: ${sale.amount}`);
+          amount = 0;
+        }
+      } catch (e) {
+        console.error(`[ROI API] Error parsing sale amount: ${sale.amount}`, e);
+        amount = 0;
+      }
+      
+      // Asegurar que es positivo
+      const validAmount = Math.max(0, amount);
+      if (validAmount > 0) {
+        console.log(`[ROI API] Sale ID ${sale.id}: amount = ${validAmount}`);
+      }
+      
+      return sum + validAmount;
     }, 0) || 0;
+
+    console.log(`[ROI API] Total campaign budget: ${totalCampaignBudget}`);
+    console.log(`[ROI API] Total revenue: ${totalRevenue}, from ${sales?.length || 0} sales`);
     
-    if (totalCampaignBudget > 0) {
+    // STEP 5: Get transactions data to calculate alternative ROI (sales/transactions)
+    const transQuery = supabase
+      .from('transactions')
+      .select('id, amount, created_at, type')
+      .eq('site_id', siteId)
+      .gte('created_at', periodStart.toISOString())
+      .lte('created_at', periodEnd.toISOString());
+    
+    // Debug: Imprimir la consulta exacta para diagnosticar problemas
+    console.log(`[ROI API] Transactions query range: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+    
+    if (segmentId && segmentId !== 'all') {
+      transQuery.eq('segment_id', segmentId);
+    }
+    
+    const { data: transData, error: transError } = await transQuery;
+    
+    console.log(`[ROI API] Found ${transData?.length || 0} transactions for period ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+    if (transData && transData.length > 0) {
+      console.log('[ROI API] First transaction example:', JSON.stringify(transData[0]));
+    }
+
+    // Ya no consultamos la tabla costs porque no existe
+    
+    let totalTransactions = 0;
+    
+    if (!transError && transData) {
+      // Sum all transactions (costs)
+      totalTransactions = transData.reduce((sum, transaction) => {
+        const amount = parseFloat(transaction.amount?.toString() || '0');
+        return sum + amount;
+      }, 0) || 0;
+      
+      console.log(`[ROI API] Total transactions value: ${totalTransactions}`);
+    } else if (transError) {
+      console.error('[ROI API] Error fetching transactions:', transError);
+    }
+    
+    // Calculate ROI based on transactions data if available
+    if (totalTransactions > 0 && totalRevenue > 0) {
+      // Calculate primary ROI using transactions data
+      roiValue = Math.round(((totalRevenue - totalTransactions) / totalTransactions) * 100);
+      console.log(`[ROI API] Calculated primary ROI (from transactions): ${roiValue}% (total revenue: $${totalRevenue}, total transactions: $${totalTransactions})`);
+    }
+    // Fallback to campaign budget only if no transaction data is available
+    else if (totalCampaignBudget > 0 && totalRevenue > 0) {
+      // Mostrar valores exactos para depuración
+      console.log(`[ROI API] CALCULATION DEBUG - totalRevenue: ${totalRevenue}, totalCampaignBudget: ${totalCampaignBudget}`);
+      console.log(`[ROI API] CALCULATION DEBUG - difference: ${totalRevenue - totalCampaignBudget}, division: ${(totalRevenue - totalCampaignBudget) / totalCampaignBudget}`);
+      
       // Calculate ROI as percentage: ((Revenue - Cost) / Cost) * 100
       roiValue = Math.round(((totalRevenue - totalCampaignBudget) / totalCampaignBudget) * 100);
-      console.log(`[ROI API] Calculated ROI: ${roiValue}% (total revenue: $${totalRevenue}, campaign budget: $${totalCampaignBudget})`);
+      console.log(`[ROI API] Calculated alternative ROI (using campaign budget): ${roiValue}% (total revenue: $${totalRevenue}, campaign budget: $${totalCampaignBudget})`);
+      
+      // Verificación alternativa
+      if (roiValue < 0 && totalRevenue > totalCampaignBudget) {
+        console.error(`[ROI API] CALCULATION ERROR: ROI es negativo (${roiValue}) pero revenue > budget!`);
+      }
+    } else if (totalRevenue > 0) {
+      // Si hay ingresos pero no hay presupuesto ni transacciones, usamos una medida simplificada
+      roiValue = 100;
+      console.log(`[ROI API] Using simplified ROI: 100% (total revenue: $${totalRevenue}, no cost data available)`);
     } else {
-      // If no campaign budget, ROI cannot be calculated
+      // If no campaign budget, no transactions, and no revenue, ROI cannot be calculated
       roiValue = 0;
-      console.log('[ROI API] Using default ROI: 0% (no campaign budget)');
+      console.log('[ROI API] Using default ROI: 0% (no revenue data available)');
     }
     
     // Get previous period ROI for comparison
@@ -397,8 +552,8 @@ export async function GET(request: NextRequest) {
           siteId,
           userId,
           segmentId: segmentId !== 'all' ? segmentId : null,
-          periodStart: standardizedPrevStart,
-          periodEnd: standardizedPrevEnd,
+          periodStart: prevPeriodStart,
+          periodEnd: prevPeriodEnd,
           type: "roi",
           name: "Return on Investment",
           value: 0, // Will be updated if needed
@@ -416,8 +571,8 @@ export async function GET(request: NextRequest) {
           .from('campaigns')
           .select('id, budget')
           .eq('site_id', siteId)
-          .gte('created_at', standardizedPrevStart.toISOString())
-          .lte('created_at', standardizedPrevEnd.toISOString());
+          .gte('created_at', prevPeriodStart.toISOString())
+          .lte('created_at', prevPeriodEnd.toISOString());
         
         // If segmentId is provided, filter by segment
         if (segmentId && segmentId !== 'all') {
@@ -429,34 +584,105 @@ export async function GET(request: NextRequest) {
         // Get previous period sales
         let prevSalesQuery = supabase
           .from('sales')
-          .select('id, amount')
+          .select('id, amount, created_at, status')
           .eq('site_id', siteId)
-          .eq('status', 'completed')
-          .gte('created_at', standardizedPrevStart.toISOString())
-          .lte('created_at', standardizedPrevEnd.toISOString());
+          .gte('created_at', prevPeriodStart.toISOString())
+          .lte('created_at', prevPeriodEnd.toISOString());
         
         // If segmentId is provided, filter by segment
         if (segmentId && segmentId !== 'all') {
           prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
         }
         
-        const { data: prevSales } = await prevSalesQuery;
+        const { data: prevSales, error: prevSalesError } = await prevSalesQuery;
+        
+        if (prevSalesError) {
+          console.error('[ROI API] Error fetching previous sales:', prevSalesError);
+        } else {
+          console.log(`[ROI API] Found ${prevSales?.length || 0} sales for previous period ${prevPeriodStart.toISOString()} to ${prevPeriodEnd.toISOString()}`);
+          if (prevSales && prevSales.length > 0) {
+            console.log('[ROI API] First previous sale example:', JSON.stringify(prevSales[0]));
+          }
+        }
         
         // Calculate previous period costs and revenue
         const prevTotalCampaignBudget = prevCampaigns?.reduce((sum, campaign) => {
-          return sum + (campaign.budget || 0);
+          // Access the allocated property from the budget object
+          const budgetAmount = campaign.budget?.allocated || 0;
+          return sum + budgetAmount;
         }, 0) || 0;
         
         const prevTotalRevenue = prevSales?.reduce((sum, sale) => {
-          return sum + (parseFloat(sale.amount.toString()) || 0);
+          const amount = parseFloat(sale.amount?.toString() || '0');
+          return sum + amount;
         }, 0) || 0;
         
-        if (prevTotalCampaignBudget > 0) {
-          // Calculate previous ROI
+        console.log(`[ROI API] Previous total revenue: ${prevTotalRevenue}, from ${prevSales?.length || 0} sales`);
+        
+        // Get previous period transactions for alternative calculation
+        let prevTransQuery = supabase
+          .from('transactions')
+          .select('id, amount, created_at, type')
+          .eq('site_id', siteId)
+          .gte('created_at', prevPeriodStart.toISOString())
+          .lte('created_at', prevPeriodEnd.toISOString());
+        
+        // If segmentId is provided, filter by segment
+        if (segmentId && segmentId !== 'all') {
+          prevTransQuery = prevTransQuery.eq('segment_id', segmentId);
+        }
+        
+        const { data: prevTransData, error: prevTransError } = await prevTransQuery;
+        
+        if (prevTransError) {
+          console.error('[ROI API] Error fetching previous transactions:', prevTransError);
+        } else {
+          console.log(`[ROI API] Found ${prevTransData?.length || 0} transactions for previous period ${prevPeriodStart.toISOString()} to ${prevPeriodEnd.toISOString()}`);
+          if (prevTransData && prevTransData.length > 0) {
+            console.log('[ROI API] First previous transaction example:', JSON.stringify(prevTransData[0]));
+          }
+        }
+        
+        // Calculate previous ROI
+        let prevTotalTransactions = 0;
+        
+        if (prevTransData && prevTransData.length > 0) {
+          prevTotalTransactions = prevTransData.reduce((sum, transaction) => {
+            const amount = parseFloat(transaction.amount?.toString() || '0');
+            return sum + amount;
+          }, 0) || 0;
+          
+          console.log(`[ROI API] Previous total transactions value: ${prevTotalTransactions}`);
+        }
+        
+        // Calculate previous ROI prioritizing transaction data
+        if (prevTotalTransactions > 0 && prevTotalRevenue > 0) {
+          // Calculate previous ROI using transactions data
+          previousValue = Math.round(((prevTotalRevenue - prevTotalTransactions) / prevTotalTransactions) * 100);
+          console.log(`[ROI API] Calculated previous ROI (from transactions): ${previousValue}% (revenue: $${prevTotalRevenue}, transactions: $${prevTotalTransactions})`);
+        }
+        // Fallback to campaign budget only if no transaction data
+        else if (prevTotalCampaignBudget > 0 && prevTotalRevenue > 0) {
+          // Mostrar valores exactos para depuración del período anterior
+          console.log(`[ROI API] PREV CALCULATION DEBUG - totalRevenue: ${prevTotalRevenue}, totalCampaignBudget: ${prevTotalCampaignBudget}`);
+          console.log(`[ROI API] PREV CALCULATION DEBUG - difference: ${prevTotalRevenue - prevTotalCampaignBudget}, division: ${(prevTotalRevenue - prevTotalCampaignBudget) / prevTotalCampaignBudget}`);
+          
+          // Calculate previous ROI using campaign budget as fallback
           previousValue = Math.round(((prevTotalRevenue - prevTotalCampaignBudget) / prevTotalCampaignBudget) * 100);
+          console.log(`[ROI API] Calculated previous alternative ROI (using campaign budget): ${previousValue}%`);
+          
+          // Verificación alternativa
+          if (previousValue < 0 && prevTotalRevenue > prevTotalCampaignBudget) {
+            console.error(`[ROI API] CALCULATION ERROR: Previous ROI es negativo (${previousValue}) pero revenue > budget!`);
+          }
+        } else if (prevTotalRevenue > 0) {
+          // If revenue but no costs, use simplified value
+          previousValue = 100;
+          console.log(`[ROI API] Using previous simplified ROI: 100%`);
         } else {
           // Use fallback value for previous period
           previousValue = 0;
+          console.log(`[ROI API] Using previous default ROI: 0%`);
         }
         
         // Store the previous period ROI
@@ -467,8 +693,8 @@ export async function GET(request: NextRequest) {
             siteId,
             userId,
             segmentId: segmentId !== 'all' ? segmentId : null,
-            periodStart: standardizedPrevStart,
-            periodEnd: standardizedPrevEnd,
+            periodStart: prevPeriodStart,
+            periodEnd: prevPeriodEnd,
             type: "roi",
             name: "Return on Investment",
             value: previousValue,
@@ -485,8 +711,8 @@ export async function GET(request: NextRequest) {
           siteId,
           userId,
           segmentId: segmentId !== 'all' ? segmentId : null,
-          periodStart: standardizedStart,
-          periodEnd: standardizedEnd,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
           type: "roi",
           name: "Return on Investment",
           value: roiValue,
@@ -516,7 +742,10 @@ export async function GET(request: NextRequest) {
         campaignCount: campaigns?.length || 0,
         campaignBudget: totalCampaignBudget,
         convertedLeadsCount: convertedLeads?.length || 0,
-        totalRevenue: totalRevenue
+        totalRevenue: totalRevenue,
+        alternativeRoi: alternativeRoiValue,
+        transactionsCount: transData?.length || 0,
+        totalTransactions: totalTransactions
       }
     };
     
@@ -531,5 +760,22 @@ export async function GET(request: NextRequest) {
       error: 'Failed to calculate ROI',
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
+  }
+}
+
+// Nueva función para determinar el tipo de período sin estandarizar las fechas
+function getPeriodType(periodStart: Date, periodEnd: Date): string {
+  const daysDiff = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 3600 * 24));
+  
+  if (daysDiff <= 1) {
+    return "daily";
+  } else if (daysDiff <= 7) {
+    return "weekly";
+  } else if (daysDiff <= 31) {
+    return "monthly";
+  } else if (daysDiff <= 90) {
+    return "quarterly";
+  } else {
+    return "yearly";
   }
 } 

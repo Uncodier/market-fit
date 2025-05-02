@@ -15,6 +15,7 @@ export async function updateSale(
     productName?: string;
     saleDate?: string;
     paymentMethod?: string;
+    source?: 'retail' | 'online';
   }
 ) {
   try {
@@ -40,7 +41,8 @@ export async function updateSale(
         status: values.status,
         product_name: values.productName,
         sale_date: values.saleDate,
-        payment_method: values.paymentMethod
+        payment_method: values.paymentMethod,
+        source: values.source
       })
       .eq("id", saleId)
       .select()

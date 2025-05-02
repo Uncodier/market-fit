@@ -98,8 +98,8 @@ export function ActiveUsersWidget({
   
   return (
     <BaseKpiWidget
-      title="Active Users"
-      tooltipText="Users active in the selected time period"
+      title="Active Clients"
+      tooltipText="Clients active in the selected time period"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}

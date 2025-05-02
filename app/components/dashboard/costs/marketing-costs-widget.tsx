@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BaseKpiWidget } from "../base-kpi-widget";
+import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { format } from "date-fns";
 
@@ -18,6 +18,7 @@ interface CostData {
     percentChange: number;
   }>;
   periodType: string;
+  noData?: boolean;
 }
 
 // Format period type for display
@@ -53,6 +54,7 @@ export function MarketingCostsWidget({
     prevAmount: 0, 
     percentChange: 0
   });
+  const [hasData, setHasData] = useState(true);
 
   useEffect(() => {
     const fetchCostData = async () => {
@@ -66,21 +68,39 @@ export function MarketingCostsWidget({
         }
         const data = await response.json();
         setCostData(data);
+        setHasData(!data.noData);
 
-        // Find marketing costs from the categories
-        const marketingCategory = data.costCategories.find(
-          (category: any) => category.name === "Marketing"
-        );
-        
-        if (marketingCategory) {
+        // Find marketing costs from the categories if we have data
+        if (!data.noData) {
+          const marketingCategory = data.costCategories.find(
+            (category: any) => category.name === "Marketing"
+          );
+          
+          if (marketingCategory) {
+            setMarketingCost({
+              amount: marketingCategory.amount,
+              prevAmount: marketingCategory.prevAmount,
+              percentChange: marketingCategory.percentChange
+            });
+          } else {
+            // No marketing category found, set zeros
+            setMarketingCost({
+              amount: 0,
+              prevAmount: 0,
+              percentChange: 0
+            });
+          }
+        } else {
+          // No data available, set zeros
           setMarketingCost({
-            amount: marketingCategory.amount,
-            prevAmount: marketingCategory.prevAmount,
-            percentChange: marketingCategory.percentChange
+            amount: 0,
+            prevAmount: 0,
+            percentChange: 0
           });
         }
       } catch (error) {
         console.error("Error fetching marketing costs:", error);
+        setHasData(false);
       } finally {
         setIsLoading(false);
       }
@@ -90,7 +110,9 @@ export function MarketingCostsWidget({
   }, [startDate, endDate, currentSite]);
 
   const formattedValue = formatCurrency(marketingCost.amount);
-  const changeText = `${marketingCost.percentChange.toFixed(1)}% from ${formatPeriodType(costData?.periodType || "monthly")}`;
+  const changeText = hasData 
+    ? `${marketingCost.percentChange.toFixed(1)}% from ${formatPeriodType(costData?.periodType || "monthly")}` 
+    : "No data available";
   const isPositiveChange = marketingCost.percentChange < 0;
   
   return (
@@ -99,7 +121,7 @@ export function MarketingCostsWidget({
       tooltipText="Total expenditure on marketing activities"
       value={formattedValue}
       changeText={changeText}
-      isPositiveChange={isPositiveChange}
+      isPositiveChange={hasData ? isPositiveChange : undefined}
       isLoading={isLoading}
       startDate={startDate}
       endDate={endDate}

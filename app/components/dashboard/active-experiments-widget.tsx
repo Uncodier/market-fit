@@ -9,68 +9,79 @@ import { useAuth } from "@/app/hooks/use-auth";
 interface ActiveExperimentsWidgetProps {
   startDate?: Date;
   endDate?: Date;
-  segmentId?: string;
 }
+
+interface ActiveExperimentsData {
+  actual: number;
+  percentChange: number;
+  periodType: string;
+}
+
+// Format period type for display
+const formatPeriodType = (periodType: string): string => {
+  switch (periodType) {
+    case "daily": return "yesterday";
+    case "weekly": return "last week";
+    case "monthly": return "last month";
+    case "quarterly": return "last quarter";
+    case "yearly": return "last year";
+    default: return "previous period";
+  }
+};
 
 export function ActiveExperimentsWidget({ 
   startDate: propStartDate,
-  endDate: propEndDate,
-  segmentId = "all"
+  endDate: propEndDate
 }: ActiveExperimentsWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [experimentsCount, setExperimentsCount] = useState<number>(0);
-  const [percentChange, setPercentChange] = useState<number>(0);
-  const [periodType, setPeriodType] = useState<string>("monthly");
+  const [activeExperiments, setActiveExperiments] = useState<ActiveExperimentsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
+  // Update local state when props change
   useEffect(() => {
-    if (propStartDate) setStartDate(propStartDate);
-    if (propEndDate) setEndDate(propEndDate);
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
   }, [propStartDate, propEndDate]);
 
   useEffect(() => {
-    if (!currentSite?.id) return;
-    
     const fetchActiveExperiments = async () => {
+      if (!currentSite || currentSite.id === "default") return;
+      
       setIsLoading(true);
       try {
-        const queryParams = new URLSearchParams();
-        queryParams.append('siteId', currentSite.id);
-        if (user?.id) queryParams.append('userId', user.id);
-        queryParams.append('startDate', startDate.toISOString());
-        queryParams.append('endDate', endDate.toISOString());
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
-        // Asegurarse de que el segmentId se aplique correctamente
-        if (segmentId && segmentId !== "all") {
-          queryParams.append('segmentId', segmentId);
-          console.log(`[ActiveExperimentsWidget] Applying segment filter: ${segmentId}`);
+        const params = new URLSearchParams();
+        params.append("siteId", currentSite.id);
+        if (user?.id) {
+          params.append("userId", user.id);
         }
-
-        const response = await fetch(`/api/active-experiments?${queryParams.toString()}`);
+        if (start) params.append("startDate", start);
+        if (end) params.append("endDate", end);
         
+        const response = await fetch(`/api/active-experiments?${params.toString()}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch active experiments');
+          throw new Error('Failed to fetch active experiments data');
         }
-        
         const data = await response.json();
-        setExperimentsCount(data.actual !== undefined && data.actual !== null ? data.actual : 0);
-        setPercentChange(data.percentChange !== undefined && data.percentChange !== null ? data.percentChange : 0);
-        setPeriodType(data.periodType || "monthly");
-        
-        console.log(`[ActiveExperimentsWidget] Received count: ${data.actual}, segment: ${segmentId || 'all'}`);
+        setActiveExperiments(data);
       } catch (error) {
-        console.error('Error fetching active experiments:', error);
-        setExperimentsCount(0);
+        console.error("Error fetching active experiments:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     fetchActiveExperiments();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId]);
+  }, [startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -78,45 +89,22 @@ export function ActiveExperimentsWidget({
     setEndDate(end);
   };
 
-  // Format period type for display
-  const formatPeriodType = (type: string): string => {
-    switch (type) {
-      case "daily": return "day";
-      case "weekly": return "week";
-      case "monthly": return "month";
-      case "quarterly": return "quarter";
-      case "yearly": return "year";
-      default: return "period";
-    }
-  };
-
-  // Custom status for special cases
-  let customStatus = null;
-  let formattedValue = experimentsCount.toString();
-  let changeText = "";
-  let isPositiveChange = undefined;
-
-  if (percentChange === 0 && experimentsCount === 0) {
-    customStatus = <p className="text-xs text-muted-foreground">No experiments running</p>;
-  } else {
-    changeText = `${percentChange}% from last ${formatPeriodType(periodType)}`;
-    isPositiveChange = percentChange > 0;
-  }
+  const formattedValue = activeExperiments ? activeExperiments.actual.toString() : "0";
+  const changeText = `${activeExperiments?.percentChange || 0}% from ${formatPeriodType(activeExperiments?.periodType || "monthly")}`;
+  const isPositiveChange = (activeExperiments?.percentChange || 0) > 0;
   
   return (
     <BaseKpiWidget
       title="Active Experiments"
-      tooltipText={`Number of currently running experiments${segmentId && segmentId !== "all" ? " for this segment" : ""}`}
+      tooltipText="Experiments running in the selected time period"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}
       isLoading={isLoading}
-      customStatus={customStatus}
       showDatePicker={!propStartDate && !propEndDate}
       startDate={startDate}
       endDate={endDate}
       onDateChange={handleDateChange}
-      segmentBadge={segmentId !== "all"}
     />
   );
 } 

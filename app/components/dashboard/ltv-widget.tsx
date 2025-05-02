@@ -12,6 +12,34 @@ interface LTVWidgetProps {
   endDate?: Date;
 }
 
+interface LTVData {
+  actual: number;
+  percentChange: number;
+  periodType: string;
+}
+
+// Format period type for display
+const formatPeriodType = (periodType: string): string => {
+  switch (periodType) {
+    case "daily": return "yesterday";
+    case "weekly": return "last week";
+    case "monthly": return "last month";
+    case "quarterly": return "last quarter";
+    case "yearly": return "last year";
+    default: return "previous period";
+  }
+};
+
+// Format currency for display
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
 export function LTVWidget({ 
   segmentId = "all",
   startDate: propStartDate,
@@ -19,57 +47,54 @@ export function LTVWidget({
 }: LTVWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [ltvValue, setLtvValue] = useState<number>(0);
-  const [percentChange, setPercentChange] = useState<number>(0);
-  const [periodType, setPeriodType] = useState<string>("monthly");
+  const [ltv, setLtv] = useState<LTVData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
+  // Update local state when props change
   useEffect(() => {
-    if (propStartDate) setStartDate(propStartDate);
-    if (propEndDate) setEndDate(propEndDate);
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
   }, [propStartDate, propEndDate]);
 
   useEffect(() => {
-    if (!currentSite?.id) return;
-    
-    const fetchLTV = async () => {
+    const fetchLtv = async () => {
+      if (!currentSite || currentSite.id === "default") return;
+      
       setIsLoading(true);
       try {
-        const queryParams = new URLSearchParams();
-        queryParams.append('siteId', currentSite.id);
-        if (user?.id) queryParams.append('userId', user.id);
-        queryParams.append('startDate', startDate.toISOString());
-        queryParams.append('endDate', endDate.toISOString());
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
-        if (segmentId && segmentId !== "all") {
-          queryParams.append('segmentId', segmentId);
-          console.log(`[LTV Widget] Applying segment filter: ${segmentId}`);
+        const params = new URLSearchParams();
+        params.append("segmentId", segmentId);
+        params.append("siteId", currentSite.id);
+        if (user?.id) {
+          params.append("userId", user.id);
         }
-
-        const response = await fetch(`/api/ltv?${queryParams.toString()}`);
+        if (start) params.append("startDate", start);
+        if (end) params.append("endDate", end);
         
+        const response = await fetch(`/api/ltv?${params.toString()}`);
         if (!response.ok) {
           throw new Error('Failed to fetch LTV data');
         }
-        
         const data = await response.json();
-        setLtvValue(data.actual !== undefined && data.actual !== null ? data.actual : 0);
-        setPercentChange(data.percentChange !== undefined && data.percentChange !== null ? data.percentChange : 0);
-        setPeriodType(data.periodType || "monthly");
-        
-        console.log(`[LTV Widget] Received LTV value: ${data.actual}, type: ${typeof data.actual}, segment: ${segmentId || 'all'}`);
+        setLtv(data);
       } catch (error) {
-        console.error('Error fetching LTV:', error);
-        setLtvValue(0);
+        console.error("Error fetching LTV:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchLTV();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId]);
+
+    fetchLtv();
+  }, [segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -77,33 +102,14 @@ export function LTVWidget({
     setEndDate(end);
   };
 
-  // Format the LTV value as currency
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-  
-  // Generate period type display text
-  const getPeriodText = (periodType: string): string => {
-    return periodType === "daily" ? "day" : 
-           periodType === "weekly" ? "week" : 
-           periodType === "monthly" ? "month" : 
-           periodType === "quarterly" ? "quarter" : "year";
-  };
-
-  const formattedValue = formatCurrency(ltvValue);
-  const changeText = percentChange !== 0 
-    ? `${percentChange}% from last ${getPeriodText(periodType)}`
-    : "No change";
-  const isPositiveChange = percentChange > 0 ? true : percentChange < 0 ? false : undefined;
+  const formattedValue = ltv ? formatCurrency(ltv.actual) : "$0";
+  const changeText = `${ltv?.percentChange || 0}% from ${formatPeriodType(ltv?.periodType || "monthly")}`;
+  const isPositiveChange = (ltv?.percentChange || 0) > 0;
   
   return (
     <BaseKpiWidget
-      title="LTV (Lifetime Value)"
-      tooltipText={`Average value a customer generates during their lifecycle${segmentId && segmentId !== "all" ? " for this segment" : ""}`}
+      title="Lifetime Value"
+      tooltipText="Average customer lifetime value"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}

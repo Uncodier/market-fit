@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BaseKpiWidget } from "../base-kpi-widget";
+import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 
 interface EfficiencyWidgetProps {
@@ -16,12 +16,17 @@ interface CostData {
     percentChange: number;
   };
   periodType: string;
+  noData?: boolean;
 }
 
 interface RevenueData {
-  actual: number;
-  percentChange: number;
+  totalSales: {
+    actual: number;
+    previous: number;
+    percentChange: number;
+  };
   periodType: string;
+  noData?: boolean;
 }
 
 // Format period type for display
@@ -49,6 +54,7 @@ export function EfficiencyWidget({
     prevRatio: 0,
     percentChange: 0
   });
+  const [hasData, setHasData] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,26 +78,51 @@ export function EfficiencyWidget({
         const revenueDataResult = await revenueResponse.json();
         setRevenueData(revenueDataResult);
 
-        // Calculate efficiency ratio (Revenue / Cost)
-        const currentRatio = costDataResult.totalCosts.actual > 0 
-          ? revenueDataResult.actual / costDataResult.totalCosts.actual 
-          : 0;
-        
-        const prevRatio = costDataResult.totalCosts.previous > 0 
-          ? (revenueDataResult.actual / (1 + revenueDataResult.percentChange / 100)) / costDataResult.totalCosts.previous 
-          : 0;
-          
-        const percentChangeRatio = prevRatio > 0 
-          ? ((currentRatio - prevRatio) / prevRatio) * 100 
-          : 0;
+        // Check if either API returned noData flag
+        const noDataAvailable = costDataResult.noData || revenueDataResult.noData;
+        setHasData(!noDataAvailable);
 
-        setEfficiency({
-          ratio: currentRatio,
-          prevRatio: prevRatio,
-          percentChange: percentChangeRatio
-        });
+        // Only calculate if we have actual data
+        if (!noDataAvailable) {
+          // Get the current revenue and costs
+          const currentRevenue = revenueDataResult.totalSales?.actual || 0;
+          const currentCost = costDataResult.totalCosts?.actual || 0;
+          
+          // Get the previous revenue and costs
+          const prevRevenue = revenueDataResult.totalSales?.previous || 0;
+          const prevCost = costDataResult.totalCosts?.previous || 0;
+          
+          // Calculate efficiency ratio (Revenue / Cost)
+          const currentRatio = currentCost > 0 ? currentRevenue / currentCost : 0;
+          const prevRatio = prevCost > 0 ? prevRevenue / prevCost : 0;
+          
+          // Calculate percent change in ratio
+          const percentChangeRatio = prevRatio > 0 
+            ? ((currentRatio - prevRatio) / prevRatio) * 100 
+            : 0;
+
+          setEfficiency({
+            ratio: currentRatio,
+            prevRatio: prevRatio,
+            percentChange: percentChangeRatio
+          });
+        } else {
+          // Reset to zeros if no data
+          setEfficiency({
+            ratio: 0,
+            prevRatio: 0,
+            percentChange: 0
+          });
+        }
       } catch (error) {
         console.error("Error fetching efficiency data:", error);
+        // Set default values in case of error
+        setEfficiency({
+          ratio: 0,
+          prevRatio: 0,
+          percentChange: 0
+        });
+        setHasData(false);
       } finally {
         setIsLoading(false);
       }
@@ -102,13 +133,15 @@ export function EfficiencyWidget({
 
   // Format the efficiency ratio as a readable value
   const formatEfficiency = (ratio: number): string => {
-    if (ratio === 0) return "0:1";
+    if (isNaN(ratio) || ratio === 0) return "0:1";
     return `${ratio.toFixed(1)}:1`;
   };
 
   const formattedValue = formatEfficiency(efficiency.ratio);
-  const changeText = `${efficiency.percentChange.toFixed(1)}% from ${formatPeriodType(costData?.periodType || "monthly")}`;
-  const isPositiveChange = efficiency.percentChange > 0;
+  const changeText = hasData
+    ? `${!isNaN(efficiency.percentChange) ? efficiency.percentChange.toFixed(1) : "0"}% from ${formatPeriodType(costData?.periodType || "monthly")}`
+    : "No data available";
+  const isPositiveChange = !isNaN(efficiency.percentChange) && efficiency.percentChange > 0;
   
   return (
     <BaseKpiWidget
@@ -116,7 +149,7 @@ export function EfficiencyWidget({
       tooltipText="Revenue to cost ratio (higher is better)"
       value={formattedValue}
       changeText={changeText}
-      isPositiveChange={isPositiveChange}
+      isPositiveChange={hasData ? isPositiveChange : undefined}
       isLoading={isLoading}
       startDate={startDate}
       endDate={endDate}

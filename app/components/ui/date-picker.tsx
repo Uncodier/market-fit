@@ -52,10 +52,17 @@ export function DatePicker({
   setEndDate,
   rangeDisplay
 }: DatePickerProps) {
-  const [currentMonth, setCurrentMonth] = React.useState(new Date())
+  const [currentMonth, setCurrentMonth] = React.useState(new Date(date))
   const [open, setOpen] = React.useState(false)
   const [isSelectingEndDate, setIsSelectingEndDate] = React.useState(false)
   const [selectedPresetLabel, setSelectedPresetLabel] = React.useState<string | null>(null)
+  
+  // Update currentMonth when date changes - solo si cambia significativamente
+  React.useEffect(() => {
+    if (!isSameMonth(currentMonth, date)) {
+      setCurrentMonth(new Date(date));
+    }
+  }, [date, currentMonth]);
   
   // Generate mode-specific default events with shorter labels
   const getDefaultEvents = (): DateEvent[] => {
@@ -174,17 +181,26 @@ export function DatePicker({
         return;
       } else {
         // Selecting end date
+        let start = date;
+        let end = selectedDate;
+        
         if (selectedDate < date) {
           // If selected end date is before start date, swap them
-          setEndDate(date);
-          setDate(selectedDate);
+          start = selectedDate;
+          end = date;
+          setDate(start);
+          setEndDate(end);
         } else {
-          setEndDate(selectedDate);
+          setEndDate(end);
         }
+        
         setIsSelectingEndDate(false);
         
         if (onRangeSelect) {
-          onRangeSelect(date, selectedDate < date ? date : selectedDate);
+          // Notificar solo si hay cambios reales
+          if (!endDate || !isSameDay(end, endDate) || !isSameDay(start, date)) {
+            onRangeSelect(start, end);
+          }
         }
         
         setOpen(false);
@@ -192,9 +208,12 @@ export function DatePicker({
       }
     }
     
-    setDate(selectedDate)
+    // Si no es modo rango, simplemente actualizar la fecha
+    if (!isSameDay(date, selectedDate)) {
+      setDate(selectedDate);
+    }
     
-    // If range selection is enabled and event type is provided
+    // Si hay callback de selección de rango y se especificó tipo de evento
     if (onRangeSelect && eventType) {
       let end: Date;
       const today = new Date();
@@ -222,7 +241,10 @@ export function DatePicker({
         setEndDate(end);
       }
       
-      onRangeSelect(startOfDay(selectedDate), end);
+      // Notificar solo si hay cambios reales
+      if (!endDate || !isSameDay(end, endDate) || !isSameDay(selectedDate, date)) {
+        onRangeSelect(startOfDay(selectedDate), end);
+      }
     }
     
     setOpen(false)
@@ -250,6 +272,69 @@ export function DatePicker({
     return day >= date && day <= endDate;
   };
   
+  // Format the range display
+  const displayText = React.useMemo(() => {
+    if (mode === 'range' && endDate && rangeDisplay) {
+      return rangeDisplay;
+    } else if (date) {
+      return format(date, "PPP");
+    }
+    return placeholder;
+  }, [date, endDate, mode, placeholder, rangeDisplay]);
+  
+  // Function to handle preset selection
+  const handlePresetSelection = (event: DateEvent, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const today = new Date();
+    let end: Date;
+    
+    switch (event.type) {
+      case 'day':
+        end = endOfDay(event.value);
+        break;
+      case 'week':
+        end = endOfDay(dateEndOfWeek(event.value));
+        break;
+      case 'month':
+        end = endOfDay(dateEndOfMonth(event.value));
+        break;
+      case 'year':
+        end = isSameYear(event.value, today) 
+          ? endOfDay(today) 
+          : endOfDay(endOfYear(event.value));
+        break;
+      default:
+        end = today;
+    }
+    
+    // Set the start date
+    setDate(event.value);
+    
+    // Save which preset was selected
+    setSelectedPresetLabel(event.label);
+    
+    // If range mode, set the end date
+    if (mode === 'range' && setEndDate) {
+      setEndDate(end);
+      
+      // Trigger range selection callback immediately
+      if (onRangeSelect) {
+        // Notificar solo si hay cambios reales
+        if (!isSameDay(event.value, date) || !endDate || !isSameDay(end, endDate)) {
+          onRangeSelect(event.value, end);
+        }
+      }
+      
+      // Close the popover immediately for range presets
+      setOpen(false);
+    } else {
+      // Normal date selection
+      selectDate(event.value, e, event.type);
+    }
+  };
+  
   return (
     <div className="w-full">
       <Popover open={open} onOpenChange={setOpen}>
@@ -270,9 +355,7 @@ export function DatePicker({
             <div className="flex items-center flex-1 min-w-0 max-w-full overflow-hidden">
               <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
               <span className="truncate text-sm max-w-full overflow-hidden text-ellipsis">
-                {mode === 'range' && endDate && rangeDisplay ? 
-                  rangeDisplay : 
-                  date ? format(date, "PPP") : placeholder}
+                {displayText}
               </span>
             </div>
             {mode !== 'range' && (
@@ -379,51 +462,7 @@ export function DatePicker({
                       selectedPresetLabel === event.label ? "bg-primary/15 font-medium text-primary" : "text-foreground"
                     )}
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                    onClick={(e) => {
-                      const today = new Date();
-                      let end: Date;
-                      
-                      switch (event.type) {
-                        case 'day':
-                          end = endOfDay(event.value);
-                          break;
-                        case 'week':
-                          end = endOfDay(dateEndOfWeek(event.value));
-                          break;
-                        case 'month':
-                          end = endOfDay(dateEndOfMonth(event.value));
-                          break;
-                        case 'year':
-                          end = isSameYear(event.value, today) 
-                            ? endOfDay(today) 
-                            : endOfDay(endOfYear(event.value));
-                          break;
-                        default:
-                          end = today;
-                      }
-                      
-                      // Set the start date
-                      setDate(event.value);
-                      
-                      // Save which preset was selected
-                      setSelectedPresetLabel(event.label);
-                      
-                      // If range mode, set the end date
-                      if (mode === 'range' && setEndDate) {
-                        setEndDate(end);
-                        
-                        // Trigger range selection callback immediately
-                        if (onRangeSelect) {
-                          onRangeSelect(event.value, end);
-                        }
-                        
-                        // Close the popover immediately for range presets
-                        setOpen(false);
-                      } else {
-                        // Normal date selection
-                        selectDate(event.value, e, event.type);
-                      }
-                    }}
+                    onClick={(e) => handlePresetSelection(event, e)}
                   >
                     {event.label}
                   </div>

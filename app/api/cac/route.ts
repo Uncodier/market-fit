@@ -45,31 +45,23 @@ function standardizePeriodDates(
   const daysDiff = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 3600 * 24));
   
   let periodType = "monthly";
-  let standardizedStart = periodStart;
-  let standardizedEnd = periodEnd;
   
+  // Solo usamos las fechas originales sin ajustarlas
+  // El tipo de período se determina basado en la duración pero no afecta las fechas
   if (daysDiff <= 1) {
     periodType = "daily";
-    // Keep as is
   } else if (daysDiff <= 7) {
     periodType = "weekly";
-    // Keep as is
   } else if (daysDiff <= 31) {
     periodType = "monthly";
-    standardizedStart = startOfMonth(periodStart);
-    standardizedEnd = endOfMonth(periodStart);
   } else if (daysDiff <= 90) {
     periodType = "quarterly";
-    // First day of current quarter to last day of current quarter
-    standardizedStart = startOfMonth(periodStart);
-    standardizedEnd = endOfMonth(new Date(periodStart.getFullYear(), periodStart.getMonth() + 2, 1));
   } else {
     periodType = "yearly";
-    standardizedStart = new Date(periodStart.getFullYear(), 0, 1);
-    standardizedEnd = new Date(periodStart.getFullYear(), 11, 31);
   }
   
-  return { periodStart: standardizedStart, periodEnd: standardizedEnd, periodType };
+  // Siempre devolvemos las fechas originales sin modificar
+  return { periodStart, periodEnd, periodType };
 }
 
 // Helper function to check if a KPI exists and create it if it doesn't
@@ -244,6 +236,16 @@ export async function GET(request: NextRequest) {
   const segmentId = searchParams.get('segmentId');
   const skipKpiCreation = searchParams.get('skipKpiCreation') === 'true';
   
+  // Log raw parameters and dates
+  console.log(`[CAC API] Request parameters: `, {
+    siteId,
+    userId,
+    startDate: startDateStr,
+    endDate: endDateStr,
+    segmentId,
+    skipKpiCreation
+  });
+  
   // Validate required parameters
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
@@ -259,9 +261,24 @@ export async function GET(request: NextRequest) {
     let periodStart = startDateStr ? new Date(startDateStr) : subDays(new Date(), 30);
     let periodEnd = endDateStr ? new Date(endDateStr) : new Date();
     
+    // Log raw period dates
+    console.log(`[CAC API] Raw period dates:`, {
+      startDate: startDateStr,
+      endDate: endDateStr,
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString()
+    });
+    
     // Standardize dates for consistency
     const { periodStart: standardizedStart, periodEnd: standardizedEnd, periodType } = 
       standardizePeriodDates(periodStart, periodEnd);
+    
+    // Log standardized dates
+    console.log(`[CAC API] Standardized period dates:`, {
+      standardizedStart: standardizedStart.toISOString(),
+      standardizedEnd: standardizedEnd.toISOString(),
+      periodType
+    });
     
     // Calculate previous period dates based on current period length
     let standardizedPrevStart: Date;
@@ -307,46 +324,169 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
     
-    // STEP 2: Get all converted leads
-    let leadsQuery = supabase
-      .from('leads')
-      .select('id')
+    // STEP 1B: Get real transaction costs
+    let transactionsQuery = supabase
+      .from('transactions')
+      .select('id, amount, type, campaign_id')
       .eq('site_id', siteId)
-      .eq('status', 'converted')
       .gte('created_at', standardizedStart.toISOString())
       .lte('created_at', standardizedEnd.toISOString());
       
-    // If segmentId is provided, filter by segment  
+    // If segmentId is provided, filter by segment
     if (segmentId && segmentId !== 'all') {
-      leadsQuery = leadsQuery.eq('segment_id', segmentId);
+      transactionsQuery = transactionsQuery.eq('segment_id', segmentId);
     }
     
-    const { data: convertedLeads, error: leadsError } = await leadsQuery;
+    // Log the transaction query range
+    console.log(`[CAC API] Transactions query range: ${standardizedStart.toISOString()} to ${standardizedEnd.toISOString()}`);
     
-    if (leadsError) {
-      console.error('[CAC API] Error fetching converted leads:', leadsError);
+    const { data: transactions, error: transactionsError } = await transactionsQuery;
+    
+    if (transactionsError) {
+      console.error('[CAC API] Error fetching transactions:', transactionsError);
       return NextResponse.json({ 
-        error: 'Failed to fetch converted leads',
-        details: leadsError 
+        error: 'Failed to fetch transactions',
+        details: transactionsError 
       }, { status: 500 });
     }
     
+    console.log(`[CAC API] Found ${transactions?.length || 0} transactions`);
+    if (transactions && transactions.length > 0) {
+      console.log(`[CAC API] First transaction example:`, JSON.stringify(transactions[0]));
+    } else {
+      console.log(`[CAC API] No transactions found in date range`);
+      
+      // Debug query with broader date range to verify if there are any transactions
+      const debugQuery = await supabase
+        .from('transactions')
+        .select('id, amount, type, campaign_id, created_at')
+        .eq('site_id', siteId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+        
+      console.log(`[CAC API] Debug: Found ${debugQuery.data?.length || 0} transactions in site`);
+      if (debugQuery.data && debugQuery.data.length > 0) {
+        console.log(`[CAC API] Debug: First transaction example:`, JSON.stringify(debugQuery.data[0]));
+        console.log(`[CAC API] Debug: Date ranges issue detected - transactions exist but not in specified range. Range start: ${standardizedStart.toISOString()}, Range end: ${standardizedEnd.toISOString()}`);
+        // Log the created_at dates of found transactions to compare with our range
+        debugQuery.data.forEach((transaction, index) => {
+          console.log(`[CAC API] Debug: Transaction ${index+1} created_at: ${transaction.created_at}`);
+          // Check if this transaction would be included in our range
+          const transactionDate = new Date(transaction.created_at);
+          const inRange = transactionDate >= standardizedStart && transactionDate <= standardizedEnd;
+          console.log(`[CAC API] Debug: Transaction ${index+1} in range: ${inRange} (${transaction.created_at})`);
+        });
+      }
+    }
+    
+    // STEP 2: Obtener ventas con lead_id como principal fuente de conversiones
+    // En lugar de consultar leads convertidos, vamos directamente a sales
+    let salesQuery = supabase
+      .from('sales')
+      .select('id, lead_id, amount, created_at, status')
+      .eq('site_id', siteId)
+      .gte('created_at', standardizedStart.toISOString())
+      .lte('created_at', standardizedEnd.toISOString())
+      .not('lead_id', 'is', null); // Solo ventas asociadas a leads
+      
+    // If segmentId is provided, filter by segment
+    if (segmentId && segmentId !== 'all') {
+      salesQuery = salesQuery.eq('segment_id', segmentId);
+    }
+    
+    // Log the sales query range
+    console.log(`[CAC API] Sales query range: ${standardizedStart.toISOString()} to ${standardizedEnd.toISOString()}`);
+    
+    const { data: sales, error: salesError } = await salesQuery;
+    
+    if (salesError) {
+      console.error('[CAC API] Error fetching sales:', salesError);
+      return NextResponse.json({ 
+        error: 'Failed to fetch sales',
+        details: salesError 
+      }, { status: 500 });
+    }
+    
+    console.log(`[CAC API] Found ${sales?.length || 0} sales with lead_id`);
+    if (sales && sales.length > 0) {
+      console.log(`[CAC API] First sale example:`, JSON.stringify(sales[0]));
+    } else {
+      console.log(`[CAC API] No sales with lead_id found in date range`);
+      
+      // Debug query with broader date range to verify if there are any sales
+      const debugQuery = await supabase
+        .from('sales')
+        .select('id, lead_id, amount, created_at, status')
+        .eq('site_id', siteId)
+        .not('lead_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(5);
+        
+      console.log(`[CAC API] Debug: Found ${debugQuery.data?.length || 0} sales with lead_id in site`);
+      if (debugQuery.data && debugQuery.data.length > 0) {
+        console.log(`[CAC API] Debug: First sale example:`, JSON.stringify(debugQuery.data[0]));
+        console.log(`[CAC API] Debug: Date ranges issue detected - sales exist but not in specified range. Range start: ${standardizedStart.toISOString()}, Range end: ${standardizedEnd.toISOString()}`);
+        // Log the created_at dates of found sales to compare with our range
+        debugQuery.data.forEach((sale, index) => {
+          console.log(`[CAC API] Debug: Sale ${index+1} created_at: ${sale.created_at}`);
+          // Check if this sale would be included in our range
+          const saleDate = new Date(sale.created_at);
+          const inRange = saleDate >= standardizedStart && saleDate <= standardizedEnd;
+          console.log(`[CAC API] Debug: Sale ${index+1} in range: ${inRange} (${sale.created_at})`);
+        });
+      }
+    }
+    
+    // Contar ventas únicas por lead_id para no duplicar conversiones
+    const uniqueLeadIds = new Set(sales?.map(sale => sale.lead_id) || []);
+    const salesCount = uniqueLeadIds.size;
+    console.log(`[CAC API] Found ${salesCount} unique leads with sales`);
+    
     // STEP 3: Calculate CAC
     let cacValue = 0;
+    let hasRealData = false;
+    let conversionCount = salesCount;
     
-    // Sum all campaign budgets
-    const totalCampaignBudget = campaigns?.reduce((sum, campaign) => {
-      return sum + (campaign.budget || 0);
+    // Sum all real transaction costs
+    const totalTransactionCosts = transactions?.reduce((sum, transaction) => {
+      return sum + (transaction.amount || 0);
     }, 0) || 0;
     
-    if (convertedLeads && convertedLeads.length > 0 && totalCampaignBudget > 0) {
-      // Calculate CAC as total campaign budget divided by number of converted leads
-      cacValue = Math.round(totalCampaignBudget / convertedLeads.length);
-      console.log(`[CAC API] Calculated CAC: $${cacValue} (converted leads: ${convertedLeads.length}, campaign budget: $${totalCampaignBudget})`);
+    // Sum all campaign budgets (como respaldo si no hay transacciones)
+    const totalCampaignBudget = campaigns?.reduce((sum, campaign) => {
+      // Access the allocated property from the budget object
+      const budgetAmount = campaign.budget?.allocated || 0;
+      return sum + budgetAmount;
+    }, 0) || 0;
+    
+    console.log(`[CAC API] Total campaign budget: $${totalCampaignBudget}, Total transaction costs: $${totalTransactionCosts}, Conversion count: ${conversionCount}`);
+    
+    // Use transaction costs for CAC calculation if available, otherwise fallback to campaign budget
+    const costValue = totalTransactionCosts > 0 ? totalTransactionCosts : totalCampaignBudget;
+    
+    if (conversionCount > 0 && costValue > 0) {
+      // Calculate CAC as total costs divided by number of converted leads or sales
+      cacValue = Math.round(costValue / conversionCount);
+      hasRealData = true;
+      console.log(`[CAC API] Calculated CAC: $${cacValue} (conversions: ${conversionCount}, ${totalTransactionCosts > 0 ? 'transaction costs' : 'campaign budget'}: $${costValue})`);
     } else {
-      // Default fallback value if no data
-      cacValue = 380; // Fallback CAC value
-      console.log('[CAC API] Using default CAC: $380');
+      // No real data
+      console.log('[CAC API] No valid data for CAC calculation in specified period');
+      // Log more details about why we don't have real data
+      if (conversionCount === 0) {
+        console.log('[CAC API] No conversions found (neither converted leads nor sales with leads)');
+      }
+      if (costValue === 0) {
+        console.log('[CAC API] No costs found (neither transactions nor campaign budget)');
+      }
+      // Even if we have costs but no conversions, we should report the costs
+      if (costValue > 0) {
+        console.log(`[CAC API] Costs exist ($${costValue}) but no conversions found`);
+      }
+      // Show campaign details if available
+      if (campaigns && campaigns.length > 0) {
+        console.log(`[CAC API] First campaign example:`, JSON.stringify(campaigns[0]));
+      }
     }
     
     // Get previous period CAC for comparison
@@ -359,7 +499,7 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     
-    if (userId && !skipKpiCreation) {
+    if (userId && !skipKpiCreation && hasRealData) {
       // First try to find existing KPI for previous period
       const { kpi: prevKpi } = await findOrCreateKpi(
         supabase,
@@ -397,80 +537,156 @@ export async function GET(request: NextRequest) {
         
         const { data: prevCampaigns } = await prevCampaignQuery;
         
-        let prevLeadsQuery = supabase
-          .from('leads')
-          .select('id')
+        // Get previous period transaction costs
+        let prevTransactionsQuery = supabase
+          .from('transactions')
+          .select('id, amount, type, campaign_id')
           .eq('site_id', siteId)
-          .eq('status', 'converted')
           .gte('created_at', standardizedPrevStart.toISOString())
           .lte('created_at', standardizedPrevEnd.toISOString());
           
-        // If segmentId is provided, filter by segment  
+        // If segmentId is provided, filter by segment
         if (segmentId && segmentId !== 'all') {
-          prevLeadsQuery = prevLeadsQuery.eq('segment_id', segmentId);
+          prevTransactionsQuery = prevTransactionsQuery.eq('segment_id', segmentId);
         }
         
-        const { data: prevConvertedLeads } = await prevLeadsQuery;
+        const { data: prevTransactions } = await prevTransactionsQuery;
+        
+        if (prevTransactions && prevTransactions.length > 0) {
+          console.log(`[CAC API] Previous period: Found ${prevTransactions.length} transactions`);
+        }
+        
+        // Obtener ventas con lead_id para el periodo anterior
+        let prevSalesQuery = supabase
+          .from('sales')
+          .select('id, lead_id, amount')
+          .eq('site_id', siteId)
+          .gte('created_at', standardizedPrevStart.toISOString())
+          .lte('created_at', standardizedPrevEnd.toISOString())
+          .not('lead_id', 'is', null); // Solo ventas asociadas a leads
+          
+        // If segmentId is provided, filter by segment
+        if (segmentId && segmentId !== 'all') {
+          prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
+        }
+        
+        const { data: prevSales } = await prevSalesQuery;
+        
+        // Contar ventas únicas por lead_id para no duplicar conversiones
+        const prevUniqueLeadIds = new Set(prevSales?.map(sale => sale.lead_id) || []);
+        const prevSalesCount = prevUniqueLeadIds.size;
+        
+        if (prevSales && prevSales.length > 0) {
+          console.log(`[CAC API] Previous period: Found ${prevSalesCount} unique leads with sales`);
+        }
         
         // Sum previous campaign budgets
         const prevTotalCampaignBudget = prevCampaigns?.reduce((sum, campaign) => {
-          return sum + (campaign.budget || 0);
+          // Access the allocated property from the budget object
+          const budgetAmount = campaign.budget?.allocated || 0;
+          return sum + budgetAmount;
         }, 0) || 0;
         
-        if (prevConvertedLeads && prevConvertedLeads.length > 0 && prevTotalCampaignBudget > 0) {
+        // Sum previous transaction costs
+        const prevTotalTransactionCosts = prevTransactions?.reduce((sum, transaction) => {
+          return sum + (transaction.amount || 0);
+        }, 0) || 0;
+        
+        // Use transaction costs if available, otherwise fallback to campaign budget
+        const prevCostValue = prevTotalTransactionCosts > 0 ? prevTotalTransactionCosts : prevTotalCampaignBudget;
+        
+        console.log(`[CAC API] Previous period: Campaign budget: $${prevTotalCampaignBudget}, Transaction costs: $${prevTotalTransactionCosts}`);
+        
+        // Usar ventas como conversiones
+        let prevConversionCount = prevSalesCount;
+        
+        if (prevConversionCount > 0 && prevCostValue > 0) {
           // Calculate previous CAC
-          previousValue = Math.round(prevTotalCampaignBudget / prevConvertedLeads.length);
-        } else {
-          // Use fallback value for previous period
-          previousValue = cacValue * 1.1; // Assume a 10% higher CAC in previous period as fallback
+          previousValue = Math.round(prevCostValue / prevConversionCount);
+          console.log(`[CAC API] Previous period: Calculated CAC: $${previousValue} using ${prevTotalTransactionCosts > 0 ? 'transaction costs' : 'campaign budget'}`);
         }
         
-        // Store the previous period CAC
-        await findOrCreateKpi(
+        // Store the previous period CAC only if we have real data
+        if (hasRealData) {
+          await findOrCreateKpi(
+            supabase,
+            supabaseAdmin,
+            {
+              siteId,
+              userId,
+              segmentId: segmentId !== 'all' ? segmentId : null,
+              periodStart: standardizedPrevStart,
+              periodEnd: standardizedPrevEnd,
+              type: "cac",
+              name: "Customer Acquisition Cost",
+              value: previousValue,
+              previousValue: undefined
+            }
+          );
+        }
+      }
+      
+      // Create or update the current period KPI only if we have real data
+      if (hasRealData) {
+        const { kpi: currentKpi } = await findOrCreateKpi(
           supabase,
           supabaseAdmin,
           {
             siteId,
             userId,
             segmentId: segmentId !== 'all' ? segmentId : null,
-            periodStart: standardizedPrevStart,
-            periodEnd: standardizedPrevEnd,
+            periodStart: standardizedStart,
+            periodEnd: standardizedEnd,
             type: "cac",
             name: "Customer Acquisition Cost",
-            value: previousValue,
-            previousValue: undefined
+            value: cacValue,
+            previousValue
           }
         );
-      }
-      
-      // Create or update the current period KPI
-      const { kpi: currentKpi } = await findOrCreateKpi(
-        supabase,
-        supabaseAdmin,
-        {
-          siteId,
-          userId,
-          segmentId: segmentId !== 'all' ? segmentId : null,
-          periodStart: standardizedStart,
-          periodEnd: standardizedEnd,
-          type: "cac",
-          name: "Customer Acquisition Cost",
-          value: cacValue,
-          previousValue
+        
+        if (currentKpi) {
+          // Use the stored trend value if available
+          percentChange = currentKpi.trend;
+        } else {
+          // Calculate trend if KPI creation failed
+          percentChange = calculateTrend(cacValue, previousValue);
         }
-      );
-      
-      if (currentKpi) {
-        // Use the stored trend value if available
-        percentChange = currentKpi.trend;
-      } else {
-        // Calculate trend if KPI creation failed
-        percentChange = calculateTrend(cacValue, previousValue);
       }
-    } else {
-      // If no userId or skipping KPI creation, just calculate trend
-      previousValue = cacValue * 1.1; // Default assumption - CAC was 10% higher previously (meaning improvement)
-      percentChange = calculateTrend(cacValue, previousValue);
+    }
+    
+    // If no real data but we have campaign budget, return budget information with warning
+    if (!hasRealData && costValue > 0) {
+      return NextResponse.json({
+        actual: -1, // Special value indicating infinite CAC (budget spent but no conversions)
+        currency: "USD",
+        percentChange: 0,
+        periodType,
+        noData: true,
+        details: {
+          campaignCount: campaigns?.length || 0,
+          campaignBudget: totalCampaignBudget,
+          transactionsCost: totalTransactionCosts,
+          salesCount,
+          warning: "Cannot calculate CAC - costs exist but no conversions"
+        }
+      });
+    }
+    
+    // If no real data, return empty/zero response
+    if (!hasRealData) {
+      return NextResponse.json({
+        actual: 0,
+        currency: "USD",
+        percentChange: 0,
+        periodType,
+        noData: true,
+        details: {
+          campaignCount: campaigns?.length || 0,
+          campaignBudget: totalCampaignBudget,
+          transactionsCost: totalTransactionCosts,
+          salesCount
+        }
+      });
     }
     
     // For CAC, a negative trend is actually good (costs went down)
@@ -485,7 +701,10 @@ export async function GET(request: NextRequest) {
       details: {
         campaignCount: campaigns?.length || 0,
         campaignBudget: totalCampaignBudget,
-        convertedLeadsCount: convertedLeads?.length || 0
+        transactionsCost: totalTransactionCosts,
+        salesCount,
+        conversionCount,
+        costSource: totalTransactionCosts > 0 ? 'transactions' : 'campaign_budget'
       }
     };
     

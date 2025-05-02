@@ -60,7 +60,9 @@ export function MonthlySalesChart() {
     tooltipBorder: isDarkMode ? "#475569" : "#e5e7eb",
     tooltipText: isDarkMode ? "#F8FAFC" : "#111827",
     online: isDarkMode ? "#34D399" : "#10B981", // Green
+    onlineStart: isDarkMode ? "#6EE7B7" : "#34D399", // Lighter green for gradient
     retail: isDarkMode ? "#60A5FA" : "#3B82F6", // Blue
+    retailStart: isDarkMode ? "#93C5FD" : "#60A5FA", // Lighter blue for gradient
     barHover: isDarkMode ? "rgba(52, 211, 153, 0.2)" : "rgba(16, 185, 129, 0.1)",
   }
 
@@ -111,10 +113,23 @@ export function MonthlySalesChart() {
                 {value === 'online' ? 'Online Sales' : 'Retail Sales'}
               </span>
             )}
+            iconType="circle"
+            wrapperStyle={{ paddingTop: 10 }}
           />
+          {/* Definición de gradientes para las barras */}
+          <defs>
+            <linearGradient id="onlineSalesGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={colors.onlineStart} />
+              <stop offset="100%" stopColor={colors.online} />
+            </linearGradient>
+            <linearGradient id="retailSalesGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={colors.retailStart} />
+              <stop offset="100%" stopColor={colors.retail} />
+            </linearGradient>
+          </defs>
           <Bar 
             dataKey="online" 
-            fill={colors.online} 
+            fill="url(#onlineSalesGradient)" 
             radius={[4, 4, 0, 0]} 
             barSize={20}
             name="online"
@@ -123,7 +138,7 @@ export function MonthlySalesChart() {
           />
           <Bar 
             dataKey="retail" 
-            fill={colors.retail} 
+            fill="url(#retailSalesGradient)" 
             radius={[4, 4, 0, 0]} 
             barSize={20}
             name="retail"

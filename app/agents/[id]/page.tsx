@@ -751,7 +751,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         status,
         prompt,
         backstory,
-        role: name, // Usar el nombre en lugar del rol para evitar problemas con snake_case
+        role: agentRole, // Usar el rol real del agente, no su nombre
         conversations: 0,
         success_rate: 0,
         tools: toolsConfig,

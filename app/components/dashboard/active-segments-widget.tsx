@@ -7,7 +7,6 @@ import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 
 interface ActiveSegmentsWidgetProps {
-  segmentId?: string;
   startDate?: Date;
   endDate?: Date;
 }
@@ -31,7 +30,6 @@ const formatPeriodType = (periodType: string): string => {
 };
 
 export function ActiveSegmentsWidget({ 
-  segmentId = "all",
   startDate: propStartDate,
   endDate: propEndDate
 }: ActiveSegmentsWidgetProps) {
