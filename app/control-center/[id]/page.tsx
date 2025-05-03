@@ -8,6 +8,7 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { Button } from "@/app/components/ui/button"
+import { Badge } from "@/app/components/ui/badge"
 import { getCampaignById } from "@/app/control-center/actions/campaigns/read"
 import { createSubtask } from "@/app/control-center/actions/subtasks/create"
 import { deleteCampaign } from "@/app/control-center/actions/campaigns/delete"
@@ -81,6 +82,78 @@ const TaskDetailContext = createContext<TaskDetailContextType>({
   loadingSegments: false,
   campaignSegments: [],
 });
+
+// Campaign status component
+interface CampaignStatusBarProps {
+  currentStatus: "active" | "pending" | "completed";
+  onStatusChange: (status: "active" | "pending" | "completed") => void;
+}
+
+const CAMPAIGN_STATUSES = [
+  { id: 'pending', name: 'Pending' },
+  { id: 'active', name: 'Active' },
+  { id: 'completed', name: 'Completed' }
+];
+
+const CAMPAIGN_STATUS_STYLES = {
+  active: "bg-green-100 text-green-800 hover:bg-green-200 border-green-200",
+  pending: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200",
+  completed: "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200"
+};
+
+function CampaignStatusBar({ currentStatus, onStatusChange }: CampaignStatusBarProps) {
+  // For "completed" status, we'll show a confirmation dialog
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  
+  const handleStatusClick = (status: "active" | "pending" | "completed") => {
+    if (status === "completed" && currentStatus !== "completed") {
+      setShowCompletionDialog(true);
+    } else {
+      onStatusChange(status);
+    }
+  };
+  
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
+      <div className="flex space-x-2">
+        {CAMPAIGN_STATUSES.map((status) => (
+          <Badge 
+            key={status.id} 
+            className={`px-3 py-1 text-sm cursor-pointer transition-colors duration-200 ${
+              currentStatus === status.id 
+                ? CAMPAIGN_STATUS_STYLES[status.id as keyof typeof CAMPAIGN_STATUS_STYLES] 
+                : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border border border-transparent'
+            }`}
+            onClick={() => handleStatusClick(status.id as "active" | "pending" | "completed")}
+          >
+            {status.name}
+          </Badge>
+        ))}
+      </div>
+      
+      <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete this campaign?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the campaign as completed. All metrics and data will be final.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => onStatusChange("completed")} 
+              className="bg-success hover:bg-success/90 text-white"
+            >
+              Complete Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
 
 export default function TaskDetailPage() {
   const params = useParams();
@@ -511,9 +584,20 @@ export default function TaskDetailPage() {
     toast.success("Campaign updated successfully");
   };
   
-  const handleCompleteClick = () => {
-    handleUpdateCampaign({ status: "completed" });
-    toast.success("Campaign marked as completed");
+  const handleStatusChange = async (newStatus: "active" | "pending" | "completed") => {
+    try {
+      // Make a complete update with all required fields
+      const updatedCampaign = {
+        ...campaign,
+        status: newStatus
+      };
+      
+      handleUpdateCampaign(updatedCampaign);
+      toast.success(`Campaign marked as ${newStatus}`);
+    } catch (error) {
+      console.error("Error updating campaign status:", error);
+      toast.error("Failed to update campaign status");
+    }
   };
   
   const handleAddSubtask = async (values: SubtaskFormValues): Promise<{ data?: any; error?: string }> => {
@@ -653,7 +737,7 @@ export default function TaskDetailPage() {
     <div className="flex-1 p-0">
       <TaskDetailContext.Provider value={{ loadingSegments, campaignSegments }}>
         <Tabs defaultValue="summary">
-          <StickyHeader showAIButton={true}>
+          <StickyHeader>
             <div className="px-16 pt-0">
               <div className="flex items-center justify-between">
                 <TabsList>
@@ -661,27 +745,10 @@ export default function TaskDetailPage() {
                   <TabsTrigger value="financials">Financial Details</TabsTrigger>
                 </TabsList>
                 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                      <span className="mr-2">✓</span> Complete Campaign
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Complete this campaign?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will mark the campaign as completed. All metrics and data will be final.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleCompleteClick} className="bg-success hover:bg-success/90 text-white">
-                        Complete Campaign
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <CampaignStatusBar 
+                  currentStatus={campaign.status} 
+                  onStatusChange={handleStatusChange} 
+                />
               </div>
             </div>
           </StickyHeader>

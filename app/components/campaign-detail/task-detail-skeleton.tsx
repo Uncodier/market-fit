@@ -9,7 +9,7 @@ export function TaskDetailSkeleton() {
   return (
     <div className="flex-1 p-0 bg-background text-foreground">
       <Tabs defaultValue="summary">
-        <StickyHeader showAIButton={true}>
+        <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center justify-between">
               <TabsList>

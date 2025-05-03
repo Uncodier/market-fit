@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { getLeadById, updateLead, deleteLead } from "@/app/leads/actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/control-center/actions/campaigns/read"
-import { Lead, Segment } from "@/app/leads/types"
+import { Lead, Segment, LEAD_STATUSES, STATUS_STYLES } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { ChevronLeft } from "@/app/components/ui/icons"
@@ -20,6 +20,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/ta
 import { LeadDetailSkeleton } from "@/app/leads/components/LeadDetailSkeleton"
 import { Input } from "@/app/components/ui/input"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { Badge } from "@/app/components/ui/badge"
+import { StatusSegmentBar } from "@/app/leads/components/StatusSegmentBar"
 
 export default function LeadDetailPage() {
   const params = useParams()
@@ -154,18 +156,19 @@ export default function LeadDetailPage() {
   }
   
   const handleUpdateLead = async (id: string, data: Partial<Lead>) => {
-    if (!currentSite?.id) {
-      toast.error("No site selected")
+    if (!currentSite?.id || !lead) {
+      toast.error("No site selected or lead not found")
       return
     }
     
     try {
-      // Make sure the required fields are present
+      // Make sure the required fields are present, including company
       const updateData = {
         id,
-        name: data.name || lead?.name || "",
-        email: data.email || lead?.email || "",
-        status: data.status || lead?.status || "new",
+        name: data.name || lead.name || "",
+        email: data.email || lead.email || "",
+        status: data.status || lead.status || "new",
+        company: data.company || lead.company || { name: "" }, // Ensure company is always included
         site_id: currentSite.id,
         ...data
       }
@@ -208,6 +211,13 @@ export default function LeadDetailPage() {
     router.push("/leads")
   }
   
+  // Handler for status change
+  const handleStatusChange = (status: "new" | "contacted" | "qualified" | "converted" | "lost") => {
+    if (lead) {
+      handleUpdateLead(lead.id, { status })
+    }
+  }
+  
   if (loading) {
     // Set a default title while loading
     document.title = 'Leads | Market Fit'
@@ -217,13 +227,22 @@ export default function LeadDetailPage() {
   return (
     <div className="flex-1 p-0">
       <Tabs defaultValue="journey">
-        <StickyHeader showAIButton={true}>
-          <div className="px-16 pt-0">
-            <div className="flex items-center gap-8">
+        <StickyHeader>
+          <div className="px-16 pt-0 flex-1">
+            <div className="flex items-center justify-between w-full">
               <TabsList>
                 <TabsTrigger value="journey">Customer Journey</TabsTrigger>
                 <TabsTrigger value="summary">Journey Summary</TabsTrigger>
               </TabsList>
+              
+              {lead && (
+                <div className="flex items-center">
+                  <StatusSegmentBar 
+                    currentStatus={lead.status}
+                    onStatusChange={handleStatusChange}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </StickyHeader>
@@ -252,6 +271,7 @@ export default function LeadDetailPage() {
                       onUpdateLead={handleUpdateLead}
                       onClose={() => {}} 
                       onDeleteLead={handleDeleteLead}
+                      hideStatus={true}
                     />
                   </CardContent>
                 </Card>

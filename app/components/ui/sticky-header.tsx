@@ -3,21 +3,18 @@
 import { cn } from "@/lib/utils"
 import { ReactNode } from "react"
 import { useLayout } from "@/app/context/LayoutContext"
-import { BuildWithAIButton } from "./build-with-ai-button"
 import { usePathname } from 'next/navigation'
 
 interface StickyHeaderProps {
   children: ReactNode
   className?: string
   isLayoutCollapsed?: boolean
-  showAIButton?: boolean
 }
 
 export function StickyHeader({ 
   children, 
   className, 
-  isLayoutCollapsed: propIsLayoutCollapsed,
-  showAIButton = true 
+  isLayoutCollapsed: propIsLayoutCollapsed
 }: StickyHeaderProps) {
   const pathname = usePathname();
   const layoutContext = useLayout();
@@ -40,18 +37,12 @@ export function StickyHeader({
       className
     )}>
       <div className={cn(
-        "sticky transition-all duration-200 ease-in-out",
+        "sticky transition-all duration-200 ease-in-out w-full flex items-center",
         isCollapsed ? "left-[64px] w-[calc(100vw-64px)]" : "left-[256px] w-[calc(100vw-256px)]"
       )}>
-        {children}
-        {isLeadsDetailPage && showAIButton && (
-          <div className="absolute right-16 top-1/2 transform -translate-y-1/2">
-            <BuildWithAIButton 
-              variant="secondary" 
-              size="sm"
-            />
-          </div>
-        )}
+        <div className="flex-1">
+          {children}
+        </div>
       </div>
     </div>
   )

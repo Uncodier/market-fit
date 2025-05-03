@@ -414,7 +414,13 @@ export function SiteForm({
           )}
 
           {renderCard("channels",
-            <ChannelsSection active={true} copyTrackingCode={copyTrackingCode} codeCopied={codeCopied} />
+            <ChannelsSection 
+              active={true} 
+              copyTrackingCode={copyTrackingCode} 
+              codeCopied={codeCopied} 
+              siteName={initialData?.name || ''}
+              siteId={siteId}
+            />
           )}
 
           {renderCard("team",

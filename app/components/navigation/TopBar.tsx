@@ -19,7 +19,10 @@ import {
   ChevronDown,
   LogOut,
   User as UserIcon,
-  FlaskConical
+  FlaskConical,
+  BarChart,
+  Users,
+  FileText
 } from "@/app/components/ui/icons"
 import {
   Tooltip,
@@ -96,6 +99,16 @@ export function TopBar({
   const [customAgentName, setCustomAgentName] = useState<string | null>(null)
   const [parentInfo, setParentInfo] = useState<{title: string, path: string} | null>(null)
   
+  // States for segment detail page
+  const [segmentData, setSegmentData] = useState<{
+    id: string;
+    activeTab: string;
+    isAnalyzing: boolean;
+    isGeneratingICP: boolean;
+    isGeneratingTopics: boolean;
+    openAIModal: (type: 'analysis' | 'icp' | 'topics') => void;
+  } | null>(null);
+  
   // AI Action Modal state
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const [AIModalConfig, setAIModalConfig] = useState({
@@ -164,15 +177,38 @@ export function TopBar({
         } else {
           setParentInfo(null);
         }
+        
+        // Si se proporcionan datos del segmento para la página de detalle
+        if (event.detail.segmentData) {
+          setSegmentData(event.detail.segmentData);
+        }
+      }
+    };
+    
+    // Escuchar cambios de pestaña en la página de detalle del segmento
+    const handleSegmentTabChange = (event: any) => {
+      if (event.detail && segmentData) {
+        setSegmentData(prevData => {
+          if (!prevData) return null;
+          return {
+            ...prevData,
+            activeTab: event.detail.activeTab,
+            isAnalyzing: event.detail.isAnalyzing,
+            isGeneratingICP: event.detail.isGeneratingICP,
+            isGeneratingTopics: event.detail.isGeneratingTopics
+          };
+        });
       }
     };
     
     window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+    window.addEventListener('segment:tabchange', handleSegmentTabChange as EventListener);
     
     return () => {
       window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+      window.removeEventListener('segment:tabchange', handleSegmentTabChange as EventListener);
     };
-  }, []);
+  }, [segmentData]);
 
   // Generar breadcrumb basado en la ruta actual
   const generateBreadcrumbItems = useCallback(() => {
@@ -824,6 +860,74 @@ export function TopBar({
           )}
           {isControlCenterPage && (
             <CalendarDateRangePicker />
+          )}
+          {/* Segment Detail Page AI Buttons */}
+          {segmentData && pathname.startsWith('/segments/') && pathname !== '/segments' && (
+            <>
+              {segmentData.activeTab === "analysis" && (
+                <Button 
+                  variant="secondary" 
+                  size="default"
+                  className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+                  onClick={() => segmentData.openAIModal('analysis')}
+                  disabled={segmentData.isAnalyzing || segmentData.isGeneratingICP || segmentData.isGeneratingTopics}
+                >
+                  {segmentData.isAnalyzing ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <BarChart className="h-4 w-4" />
+                      Analyze with AI
+                    </>
+                  )}
+                </Button>
+              )}
+              {segmentData.activeTab === "icp" && (
+                <Button 
+                  variant="secondary" 
+                  size="default"
+                  className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+                  onClick={() => segmentData.openAIModal('icp')}
+                  disabled={segmentData.isAnalyzing || segmentData.isGeneratingICP || segmentData.isGeneratingTopics}
+                >
+                  {segmentData.isGeneratingICP ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="h-4 w-4" />
+                      Generate with AI
+                    </>
+                  )}
+                </Button>
+              )}
+              {segmentData.activeTab === "topics" && (
+                <Button 
+                  variant="secondary" 
+                  size="default"
+                  className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+                  onClick={() => segmentData.openAIModal('topics')}
+                  disabled={segmentData.isAnalyzing || segmentData.isGeneratingICP || segmentData.isGeneratingTopics}
+                >
+                  {segmentData.isGeneratingTopics ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                      Getting Topics...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4" />
+                      Get Topics with AI
+                    </>
+                  )}
+                </Button>
+              )}
+            </>
           )}
           {isSegmentsPage && (
             currentSite ? (

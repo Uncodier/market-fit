@@ -44,6 +44,7 @@ import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { buildSegmentsWithAI } from "@/app/services/ai-service"
 import { toast } from "sonner"
+import { SegmentStatusWidget } from "./components/SegmentStatusWidget"
 
 export type AdPlatform = "facebook" | "google" | "linkedin" | "tiktok"
 
@@ -598,7 +599,16 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
         detail: {
           title: segment.name,
           path: `/segments/${segment.id}`,
-          section: 'segments'
+          section: 'segments',
+          // Add segment data and callback functions for the TopBar buttons
+          segmentData: {
+            id: segment.id,
+            activeTab,
+            isAnalyzing,
+            isGeneratingICP,
+            isGeneratingTopics,
+            openAIModal
+          }
         }
       })
       
@@ -613,7 +623,24 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
     return () => {
       document.title = 'Segments | Market Fit'
     }
-  }, [segment])
+  }, [segment, activeTab, isAnalyzing, isGeneratingICP, isGeneratingTopics])
+
+  // Listen for tab changes to update the breadcrumb
+  useEffect(() => {
+    if (segment) {
+      // Emit a custom event to update the breadcrumb with the new active tab
+      const event = new CustomEvent('segment:tabchange', {
+        detail: {
+          activeTab,
+          isAnalyzing,
+          isGeneratingICP,
+          isGeneratingTopics
+        }
+      })
+      
+      window.dispatchEvent(event)
+    }
+  }, [activeTab, isAnalyzing, isGeneratingICP, isGeneratingTopics, segment])
 
   const toggleSegmentStatus = async () => {
     if (!segment) {
@@ -982,7 +1009,7 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
       <Tabs defaultValue="analysis" onValueChange={setActiveTab}>
         <StickyHeader>
           <div className="px-16 pt-0 w-full">
-            <div className="flex items-center gap-8">
+            <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-8">
                 <TabsList>
                   <TabsTrigger value="analysis">Analysis</TabsTrigger>
@@ -990,71 +1017,14 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
                   <TabsTrigger value="topics">Topics</TabsTrigger>
                 </TabsList>
               </div>
-              <div className="ml-auto">
-                {activeTab === "analysis" && (
-                  <Button 
-                    variant="secondary" 
-                    size="default"
-                    className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
-                    onClick={() => openAIModal('analysis')}
-                    disabled={isAnalyzing || isGeneratingICP || isGeneratingTopics}
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <BarChart className="h-4 w-4" />
-                        Analyze with AI
-                      </>
-                    )}
-                  </Button>
-                )}
-                {activeTab === "icp" && (
-                  <Button 
-                    variant="secondary" 
-                    size="default"
-                    className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
-                    onClick={() => openAIModal('icp')}
-                    disabled={isAnalyzing || isGeneratingICP || isGeneratingTopics}
-                  >
-                    {isGeneratingICP ? (
-                      <>
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Users className="h-4 w-4" />
-                        Generate with AI
-                      </>
-                    )}
-                  </Button>
-                )}
-                {activeTab === "topics" && (
-                  <Button 
-                    variant="secondary" 
-                    size="default"
-                    className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
-                    onClick={() => openAIModal('topics')}
-                    disabled={isAnalyzing || isGeneratingICP || isGeneratingTopics}
-                  >
-                    {isGeneratingTopics ? (
-                      <>
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                        Getting Topics...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4" />
-                        Get Topics with AI
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
+              {segment && (
+                <div className="flex items-center">
+                  <SegmentStatusWidget 
+                    isActive={isActive}
+                    onStatusChange={toggleSegmentStatus}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </StickyHeader>

@@ -45,9 +45,10 @@ interface LeadDetailProps {
   onUpdateLead: (id: string, data: Partial<Lead>) => Promise<void>
   onClose: () => void
   onDeleteLead?: (id: string) => Promise<void>
+  hideStatus?: boolean
 }
 
-export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead }: LeadDetailProps) {
+export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead, hideStatus = false }: LeadDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -113,91 +114,93 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
   
   return (
     <div className="w-full p-6 overflow-auto h-full">
-      <div className="pb-6">
-        {isEditing ? (
-          <div className="mt-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 rounded-md flex items-center justify-center mt-4" style={{ width: '48px', height: '48px' }}>
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Status</p>
-                <Select 
-                  value={editForm.status}
-                  onValueChange={(value: "new" | "contacted" | "qualified" | "converted" | "lost") => 
-                    setEditForm({...editForm, status: value})
-                  }
-                >
-                  <SelectTrigger className="h-12 text-sm">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="qualified">Qualified</SelectItem>
-                    <SelectItem value="converted">Converted</SelectItem>
-                    <SelectItem value="lost">Lost</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center">
-              <div className="bg-primary/10 rounded-md flex items-center justify-center mr-3" style={{ width: '48px', height: '48px' }}>
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Status</p>
-                <Select 
-                  value={lead.status}
-                  onValueChange={(value: "new" | "contacted" | "qualified" | "converted" | "lost") => 
-                    onUpdateLead(lead.id, { status: value })
-                  }
-                >
-                  <SelectTrigger className="h-8 text-sm border-none p-0 shadow-none hover:bg-transparent focus:ring-0">
-                    <Badge className={`text-xs ${STATUS_STYLES[lead.status]}`}>
-                      {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                    </Badge>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="qualified">Qualified</SelectItem>
-                    <SelectItem value="converted">Converted</SelectItem>
-                    <SelectItem value="lost">Lost</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {/* Options Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <span className="text-base leading-none">⋮</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit Lead
-                </DropdownMenuItem>
-                {onDeleteLead && (
-                  <DropdownMenuItem 
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-red-600"
+      {!hideStatus && (
+        <div className="pb-6">
+          {isEditing ? (
+            <div className="mt-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-4" style={{ width: '48px', height: '48px' }}>
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Select 
+                    value={editForm.status}
+                    onValueChange={(value: "new" | "contacted" | "qualified" | "converted" | "lost") => 
+                      setEditForm({...editForm, status: value})
+                    }
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Lead
+                    <SelectTrigger className="h-12 text-sm">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="contacted">Contacted</SelectItem>
+                      <SelectItem value="qualified">Qualified</SelectItem>
+                      <SelectItem value="converted">Converted</SelectItem>
+                      <SelectItem value="lost">Lost</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mr-3" style={{ width: '48px', height: '48px' }}>
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Status</p>
+                  <Select 
+                    value={lead.status}
+                    onValueChange={(value: "new" | "contacted" | "qualified" | "converted" | "lost") => 
+                      onUpdateLead(lead.id, { status: value })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-sm border-none p-0 shadow-none hover:bg-transparent focus:ring-0">
+                      <Badge className={`text-xs ${STATUS_STYLES[lead.status]}`}>
+                        {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                      </Badge>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="contacted">Contacted</SelectItem>
+                      <SelectItem value="qualified">Qualified</SelectItem>
+                      <SelectItem value="converted">Converted</SelectItem>
+                      <SelectItem value="lost">Lost</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {/* Options Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <span className="sr-only">Open menu</span>
+                    <span className="text-base leading-none">⋮</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Lead
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
+                  {onDeleteLead && (
+                    <DropdownMenuItem 
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Lead
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
+      )}
       
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-5">

@@ -31,6 +31,7 @@ export interface Site {
     track_actions: boolean;
     record_screen: boolean;
     enable_chat: boolean;
+    chat_accent_color?: string;
   }
   billing?: {
     plan: 'free' | 'starter' | 'professional' | 'enterprise'

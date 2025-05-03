@@ -11,7 +11,6 @@ import { Sale, SaleOrder, SaleOrderItem } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { User, Tag, ShoppingCart, Plus, Pencil, Trash2, Send, Printer, ChevronLeft, CreditCard } from "@/app/components/ui/icons"
 import { Badge } from "@/app/components/ui/badge"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -24,19 +23,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EditSaleDialog } from "../components/EditSaleDialog"
 import { CreateSaleOrderDialog } from "../components/CreateSaleOrderDialog"
 import { RegisterPaymentDialog } from "../components/RegisterPaymentDialog"
+import { StatusBar } from "../components/StatusBar"
 
 // Status colors for sales
 const STATUS_STYLES = {
-  pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
-  completed: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
-  cancelled: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
-  refunded: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200"
+  pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200",
+  completed: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200",
+  cancelled: "bg-red-50 text-red-700 hover:bg-red-100 border-red-200",
+  refunded: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200"
 }
 
 // Source colors for sales
 const SOURCE_STYLES = {
-  retail: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
-  online: "bg-indigo-50 text-indigo-700 hover:bg-indigo-50 border-indigo-200"
+  retail: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200",
+  online: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200"
 }
 
 // Updated skeleton to match new integrated invoice
@@ -735,7 +735,7 @@ export default function SaleDetailPage() {
   
   return (
     <div className="flex-1 p-0">
-      <StickyHeader showAIButton={false}>
+      <StickyHeader>
         <div className="flex flex-col w-full">
           {/* Main Title and Status Area */}
           <div className="px-16 pt-0">
@@ -827,28 +827,12 @@ export default function SaleDetailPage() {
             </div>
             
             {/* Right section - Status Tabs */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end">
               {sale && (
-                <Tabs 
-                  defaultValue={sale.status}
-                  className="w-[340px]" 
-                  onValueChange={handleStatusChange}
-                >
-                  <TabsList className="grid grid-cols-4">
-                    <TabsTrigger value="pending" className="text-xs">
-                      Pending
-                    </TabsTrigger>
-                    <TabsTrigger value="completed" className="text-xs">
-                      Completed
-                    </TabsTrigger>
-                    <TabsTrigger value="cancelled" className="text-xs">
-                      Cancelled
-                    </TabsTrigger>
-                    <TabsTrigger value="refunded" className="text-xs">
-                      Refunded
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <StatusBar 
+                  currentStatus={sale.status}
+                  onStatusChange={handleStatusChange}
+                />
               )}
             </div>
           </div>

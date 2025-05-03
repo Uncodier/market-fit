@@ -107,11 +107,11 @@ export const TASK_STATUSES = [
 ]
 
 export const STATUS_STYLES = {
-  new: "bg-blue-100 text-blue-800 hover:bg-blue-200",
-  contacted: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-  qualified: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200",
-  converted: "bg-green-100 text-green-800 hover:bg-green-200",
-  lost: "bg-gray-100 text-gray-800 hover:bg-gray-200"
+  new: "bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200",
+  contacted: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-200",
+  qualified: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200 border border-indigo-200",
+  converted: "bg-green-100 text-green-800 hover:bg-green-200 border border-green-200",
+  lost: "bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200"
 }
 
 export const LEAD_STATUSES = [

@@ -10,15 +10,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { Code, Copy, Check } from "../ui/icons"
 import { Textarea } from "../ui/textarea"
+import { ColorInput } from "../ui/color-input"
 
 export interface ChannelsSectionProps {
   active: boolean
   siteName?: string
+  siteId?: string
   codeCopied?: boolean
   copyTrackingCode?: () => Promise<void>
 }
 
-export function ChannelsSection({ active, siteName, codeCopied, copyTrackingCode }: ChannelsSectionProps) {
+export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrackingCode }: ChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const [internalCodeCopied, setInternalCodeCopied] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -32,11 +34,12 @@ export function ChannelsSection({ active, siteName, codeCopied, copyTrackingCode
   // Market Fit Tracking Code
   (function() {
     window.MarketFit = window.MarketFit || {};
-    MarketFit.siteId = "${siteName || 'YOUR_SITE_NAME'}";
+    MarketFit.siteId = "${siteId || siteName || 'YOUR_SITE_ID'}";
     MarketFit.trackVisitors = ${form.watch("tracking.track_visitors")};
     MarketFit.trackActions = ${form.watch("tracking.track_actions")};
     MarketFit.recordScreen = ${form.watch("tracking.record_screen")};
     MarketFit.enableChat = ${form.watch("tracking.enable_chat")};
+    MarketFit.chatAccentColor = "${form.watch("tracking.chat_accent_color") || "#e0ff17"}";
     
     var script = document.createElement('script');
     script.async = true;
@@ -161,6 +164,30 @@ export function ChannelsSection({ active, siteName, codeCopied, copyTrackingCode
             )}
           />
           
+          {form.watch("tracking.enable_chat") && (
+            <FormField
+              control={form.control}
+              name="tracking.chat_accent_color"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between">
+                  <div className="space-y-0.5">
+                    <FormLabel>Chat Accent Color</FormLabel>
+                    <FormDescription>
+                      Customize the color of the chat widget to match your brand
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <ColorInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      showHexValue={true}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          )}
+          
           <div className="mt-8 pt-6 border-t border-border">
             <h3 className="text-base font-medium mb-3">Chat and Tracking Code</h3>
             <p className="text-sm text-muted-foreground mb-4">
@@ -174,11 +201,12 @@ export function ChannelsSection({ active, siteName, codeCopied, copyTrackingCode
   // Market Fit Tracking Code
   (function() {
     window.MarketFit = window.MarketFit || {};
-    MarketFit.siteId = "${siteName || 'YOUR_SITE_NAME'}";
+    MarketFit.siteId = "${siteId || siteName || 'YOUR_SITE_ID'}";
     MarketFit.trackVisitors = ${form.watch("tracking.track_visitors")};
     MarketFit.trackActions = ${form.watch("tracking.track_actions")};
     MarketFit.recordScreen = ${form.watch("tracking.record_screen")};
-    MarketFit.enableChat = ${form.watch("tracking.enable_chat") || false};
+    MarketFit.enableChat = ${form.watch("tracking.enable_chat")};
+    MarketFit.chatAccentColor = "${form.watch("tracking.chat_accent_color") || "#e0ff17"}";
     
     var script = document.createElement('script');
     script.async = true;

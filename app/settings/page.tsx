@@ -260,12 +260,13 @@ export default function SettingsPage() {
       },
       marketing_channels: formatMarketingChannels(site.settings?.marketing_channels || []),
       social_media: formatSocialMedia(site.settings?.social_media || []),
-      // Add tracking info
-      tracking: site.tracking || {
-        track_visitors: false,
-        track_actions: false,
-        record_screen: false,
-        enable_chat: false
+      // Add tracking info with explicit tracking.chat_accent_color
+      tracking: {
+        track_visitors: site.tracking?.track_visitors || false,
+        track_actions: site.tracking?.track_actions || false,
+        record_screen: site.tracking?.record_screen || false,
+        enable_chat: site.tracking?.enable_chat || false,
+        chat_accent_color: site.tracking?.chat_accent_color || "#e0ff17"
       },
       analytics_provider: site.settings?.analytics_provider || "",
       analytics_id: site.settings?.analytics_id || "",
@@ -424,10 +425,11 @@ export default function SettingsPage() {
         logo_url: logo_url || null,
         resource_urls: filteredResourceUrls,
         tracking: {
-          track_visitors: tracking?.track_visitors === true,
-          track_actions: tracking?.track_actions === true,
-          record_screen: tracking?.record_screen === true,
-          enable_chat: tracking?.enable_chat === true
+          track_visitors: Boolean(tracking?.track_visitors),
+          track_actions: Boolean(tracking?.track_actions),
+          record_screen: Boolean(tracking?.record_screen),
+          enable_chat: Boolean(tracking?.enable_chat),
+          chat_accent_color: tracking?.chat_accent_color || "#e0ff17"
         }
       };
       

@@ -131,12 +131,14 @@ export const siteFormSchema = z.object({
     track_visitors: z.boolean().optional().default(false),
     track_actions: z.boolean().optional().default(false),
     record_screen: z.boolean().optional().default(false),
-    enable_chat: z.boolean().optional().default(false)
+    enable_chat: z.boolean().optional().default(false),
+    chat_accent_color: z.string().optional().default("#e0ff17")
   }).optional().default({
     track_visitors: false,
     track_actions: false,
     record_screen: false,
-    enable_chat: false
+    enable_chat: false,
+    chat_accent_color: "#e0ff17"
   }),
   // New fields for analytics
   analytics_provider: z.string().optional(),

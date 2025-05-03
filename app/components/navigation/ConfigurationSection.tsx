@@ -365,10 +365,6 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
               <div 
                 key={`child-${item.href}`}
                 className={cn("relative")}
-                onClick={(e) => {
-                  e.preventDefault();
-                  toggleTheme();
-                }}
               >
                 <MenuItem
                   href="#"
@@ -385,7 +381,12 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
                     <div className="ml-auto flex items-center">
                       <Switch
                         checked={isDarkMode}
-                        onCheckedChange={() => toggleTheme()}
+                        onCheckedChange={(checked) => {
+                          toggleTheme();
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
                         aria-label={isDarkMode ? "Disable dark mode" : "Enable dark mode"}
                         className="data-[state=checked]:bg-primary/90 focus:outline-none focus:ring-0"
                         style={{ outline: 'none' }}
