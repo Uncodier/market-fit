@@ -137,7 +137,7 @@ export function RegisterPaymentDialog({ sale, open, onOpenChange, onSuccess }: R
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground dark:text-muted-foreground">Date</div>
-                  <div className="font-medium">{sale ? format(new Date(), "MMM d, yyyy") : "N/A"}</div>
+                  <div className="font-medium">{sale ? `${format(new Date(), "MMM d")} ${format(new Date(), "yyyy")}` : "N/A"}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">

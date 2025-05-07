@@ -83,11 +83,11 @@ export function DatePickerExample() {
             {rangeStart && rangeEnd ? (
               <div className="flex gap-2 items-center">
                 <Badge variant="outline" className="text-xs py-1">
-                  {format(rangeStart, "MMM d, yyyy")}
+                  {format(rangeStart, "MMM d")} {format(rangeStart, "yyyy")}
                 </Badge>
                 <span>to</span>
                 <Badge variant="outline" className="text-xs py-1">
-                  {format(rangeEnd, "MMM d, yyyy")}
+                  {format(rangeEnd, "MMM d")} {format(rangeEnd, "yyyy")}
                 </Badge>
               </div>
             ) : (

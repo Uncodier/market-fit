@@ -14,6 +14,11 @@ const PROTECTED_ROUTES = [
 // Define las rutas de autenticación
 const AUTH_ROUTES = ['/auth']
 
+// Define API routes that need special cookie handling for authentication
+const API_AUTH_ROUTES = [
+  '/api/secure-tokens'
+]
+
 export async function middleware(req: NextRequest) {
   // Handle OPTIONS request for preflight checks (CORS)
   if (req.method === 'OPTIONS') {
@@ -30,7 +35,8 @@ export async function middleware(req: NextRequest) {
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
       "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
-      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:*; " +
+      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* " +
+      "https://tu-api-real.com https://api.market-fit.ai; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
@@ -55,12 +61,26 @@ export async function middleware(req: NextRequest) {
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
       "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
-      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:*; " +
+      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* " + 
+      "https://tu-api-real.com https://api.market-fit.ai; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
       "font-src 'self' data:;"
     );
+    
+    // Current path for route-specific handling
+    const path = req.nextUrl.pathname
+    
+    // Special handling for API auth routes
+    const isApiAuthRoute = API_AUTH_ROUTES.some(route => path.startsWith(route))
+    if (isApiAuthRoute) {
+      console.log('Middleware: API route detected:', path);
+      
+      // For secure token APIs, simply pass through the request without
+      // modifying any cookies or headers to avoid parsing issues
+      return NextResponse.next();
+    }
     
     // Solo para depuración
     console.log('Middleware: Establecidos headers CSP para permitir WebSockets');
@@ -90,8 +110,6 @@ export async function middleware(req: NextRequest) {
     } = await supabase.auth.getSession()
 
     // Obtener la ruta actual
-    const path = req.nextUrl.pathname
-
     // Si es una ruta de autenticación
     if (path.startsWith('/auth')) {
       // Si el usuario está autenticado, redirigir al dashboard o returnTo
@@ -131,7 +149,8 @@ export async function middleware(req: NextRequest) {
       "default-src 'self'; " +
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
       "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
-      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:*; " +
+      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* " +
+      "https://tu-api-real.com https://api.market-fit.ai; " +
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
@@ -153,6 +172,6 @@ export const config = {
      * - public folder
      * - api (API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 } 

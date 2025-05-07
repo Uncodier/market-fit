@@ -32,7 +32,7 @@ export function CalendarDateRangePicker({
   };
 
   // Format the range display
-  const rangeDisplay = `${format(startDate, "MMM d")} - ${format(endDate, "MMM d, yyyy")}`;
+  const rangeDisplay = `${format(startDate, "MMM d")} - ${format(endDate, "MMM d")} ${format(endDate, "yyyy")}`;
 
   return (
     <div className={cn("grid gap-2", className)}>

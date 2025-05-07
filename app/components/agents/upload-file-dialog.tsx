@@ -489,14 +489,16 @@ export function UploadFileDialog({
                 </div>
               ) : (
                 <>
-                  <UploadCloud className="h-10 w-10 text-gray-400" />
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600">
-                      {isSubmitting ? "Uploading..." : (mode === 'update' ? "Drag and drop a new file or click to select" : "Drag and drop a file or click to select")}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Only CSV, PDF, and images (JPG, PNG, WebP) up to 10MB
-                    </p>
+                  <div className="flex flex-col items-center justify-center">
+                    <UploadCloud className="h-10 w-10 text-gray-400 flex-shrink-0 mb-2" />
+                    <div className="text-center flex flex-col items-center">
+                      <p className="text-sm font-medium text-gray-600">
+                        {isSubmitting ? "Uploading..." : (mode === 'update' ? "Drag and drop a new file or click to select" : "Drag and drop a file or click to select")}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Only CSV, PDF, and images (JPG, PNG, WebP) up to 10MB
+                      </p>
+                    </div>
                   </div>
                 </>
               )}

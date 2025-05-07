@@ -14,7 +14,8 @@ import { ChevronLeft } from "@/app/components/ui/icons"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { LeadDetail } from "@/app/leads/components/LeadDetail"
 import { JourneyView } from "@/app/leads/components/JourneyView"
-import { JourneySummary } from "@/app/leads/components/JourneySummary"
+import { ConversationsView } from "@/app/leads/components/ConversationsView"
+import { SalesView } from "@/app/leads/components/SalesView"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { LeadDetailSkeleton } from "@/app/leads/components/LeadDetailSkeleton"
@@ -232,7 +233,8 @@ export default function LeadDetailPage() {
             <div className="flex items-center justify-between w-full">
               <TabsList>
                 <TabsTrigger value="journey">Customer Journey</TabsTrigger>
-                <TabsTrigger value="summary">Journey Summary</TabsTrigger>
+                <TabsTrigger value="conversations">Conversations</TabsTrigger>
+                <TabsTrigger value="sales">Sales</TabsTrigger>
               </TabsList>
               
               {lead && (
@@ -255,8 +257,11 @@ export default function LeadDetailPage() {
                 <TabsContent value="journey" className="mt-0 pt-0">
                   <JourneyView leadId={lead.id} />
                 </TabsContent>
-                <TabsContent value="summary" className="mt-0 pt-0">
-                  <JourneySummary leadId={lead.id} />
+                <TabsContent value="conversations" className="mt-0 pt-0">
+                  <ConversationsView leadId={lead.id} />
+                </TabsContent>
+                <TabsContent value="sales" className="mt-0 pt-0">
+                  <SalesView leadId={lead.id} />
                 </TabsContent>
               </div>
               

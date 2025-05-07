@@ -68,19 +68,19 @@ export function BaseKpiWidget({
                 <Button variant="outline" size="sm" className="h-8 text-xs">
                   <CalendarIcon className="h-3 w-3 mr-1" />
                   <span>
-                    {format(startDate, "MMM d")} - {format(endDate, "MMM d, yyyy")}
+                    {format(startDate, "MMM d")} - {format(endDate, "MMM d")} {format(endDate, "yyyy")}
                   </span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="p-0 w-auto" position="bottom">
+              <PopoverContent className="p-0 w-auto" align="center">
                 <div className="flex flex-col p-2">
                   <div className="flex gap-2 items-center pb-2">
                     <Badge variant="outline" className="text-xs py-1">
-                      {format(startDate, "MMM d, yyyy")}
+                      {format(startDate, "MMM d")} {format(startDate, "yyyy")}
                     </Badge>
                     <span>to</span>
                     <Badge variant="outline" className="text-xs py-1">
-                      {format(endDate, "MMM d, yyyy")}
+                      {format(endDate, "MMM d")} {format(endDate, "yyyy")}
                     </Badge>
                   </div>
                   <DatePicker 

@@ -9,16 +9,23 @@ import { Input } from "@/app/components/ui/input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { startExperiment, stopExperiment } from "./actions"
 import { useToast } from "@/app/components/ui/use-toast"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { cn } from "@/lib/utils"
+import { Switch } from "@/app/components/ui/switch"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/app/components/ui/collapsible"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/app/components/ui/sheet"
 import { Separator } from "@/app/components/ui/separator"
 import { useSite } from "@/app/context/SiteContext"
 import { Campaign } from "@/app/types"
+import { useRouter } from "next/navigation"
 
 interface Segment {
   id: string
@@ -41,61 +48,51 @@ interface Experiment {
   campaign: Campaign | null
 }
 
-function ExperimentCardSkeleton() {
+// Function to handle missing values
+function getDisplayValue(value: string | number | null | undefined, type: 'text' | 'number' = 'text'): string {
+  if (value === undefined || value === null || value === '') return 'N/A'
+  if (type === 'number' && typeof value === 'number') return value.toLocaleString()
+  return String(value)
+}
+
+// Experiment Row Skeleton component
+function ExperimentRowSkeleton() {
   return (
-    <Card className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-border bg-background/80 backdrop-blur-sm">
-      <div className="flex flex-col md:w-1/3 border-r border-border/30">
-        <CardHeader className="pb-2 px-8">
-          <div className="flex justify-between items-start gap-4">
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-7 w-3/4" />
+    <Card className="border border-border overflow-hidden">
+      <div className="flex items-center">
+        <CardContent className="flex-1 p-4 w-full overflow-x-auto">
+          <div className="flex items-start gap-4 min-w-[1000px]">
+            <div className="w-[500px] min-w-[500px] pr-2 flex-grow space-y-2">
+              <Skeleton className="h-6 w-3/4" />
               <Skeleton className="h-4 w-full" />
             </div>
-            <Skeleton className="h-6 w-24" />
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 px-8">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-5 w-3/4" />
+            <div className="w-[120px] min-w-[120px] flex-shrink-0">
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-3/4 mx-auto" />
             </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-5 w-3/4" />
+            <div className="w-[100px] min-w-[100px] flex-shrink-0">
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3 mx-auto" />
             </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-5 w-3/4" />
+            <div className="w-[120px] min-w-[120px] flex-shrink-0 hidden lg:block">
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3 mx-auto" />
             </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-5 w-3/4" />
+            <div className="w-[100px] min-w-[100px] flex-shrink-0">
+              <Skeleton className="h-4 w-full mb-2" />
+              <div className="flex items-center justify-center gap-0.5">
+                <Skeleton className="h-4 w-10" />
+                <Skeleton className="h-5 w-10 rounded-full flex-shrink-0 ml-1" />
+              </div>
             </div>
           </div>
         </CardContent>
-        <div className="px-8 pb-4">
-          <Skeleton className="h-4 w-40 mb-2" />
-          <div className="flex flex-wrap gap-2">
-            <Skeleton className="h-6 w-24" />
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-6 w-28" />
-          </div>
-        </div>
-        <CardFooter className="pt-3 px-8">
-          <div className="flex w-full space-x-3">
-            <Skeleton className="h-10 flex-1" />
-            <Skeleton className="h-10 flex-1" />
-          </div>
-        </CardFooter>
-      </div>
-      <div className="md:w-2/3 h-full p-4 bg-muted/30 rounded-r-lg">
-        <Skeleton className="w-full h-full rounded-lg" />
       </div>
     </Card>
   )
 }
 
+// Empty state component
 const ExperimentEmptyState = ({ status }: { status: "all" | "active" | "completed" | "draft" }) => {
   const emptyStateProps = {
     all: {
@@ -125,6 +122,230 @@ const ExperimentEmptyState = ({ status }: { status: "all" | "active" | "complete
   )
 }
 
+// Experiment Row component
+function ExperimentRow({
+  experiment,
+  isExpanded,
+  onToggle,
+  isLoading,
+  onStart,
+  onStop,
+  onView,
+  isActive
+}: {
+  experiment: Experiment;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  isLoading: boolean;
+  onStart: (id: string) => void;
+  onStop: (id: string) => void;
+  onView: (experiment: Experiment) => void;
+  isActive: boolean;
+}) {
+  return (
+    <Collapsible
+      key={experiment.id}
+      open={isExpanded}
+      onOpenChange={() => {}} // Disable automatic toggle
+      className="w-full"
+    >
+      {/* Wrap entire card in a clickable div that routes to experiment details */}
+      <div 
+        className="cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          onView(experiment);
+        }}
+      >
+        <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+          <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
+            <CardContent className="flex-1 p-4 w-full overflow-x-auto">
+              <div className="flex items-start gap-4 min-w-[1000px]">
+                <div className="w-[500px] min-w-[500px] pr-2 flex-grow">
+                  <h3 className="font-semibold text-lg truncate">{experiment.name}</h3>
+                  <p className="text-sm text-muted-foreground/80 truncate">
+                    {experiment.description || 'No description available'}
+                  </p>
+                </div>
+                <div className="w-[120px] min-w-[120px] flex-shrink-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Participants</p>
+                  <p className="text-sm font-medium truncate text-center">
+                    {experiment.segments.reduce((acc, segment) => acc + segment.participants, 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-[100px] min-w-[100px] flex-shrink-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Conversion</p>
+                  <p className="text-sm font-medium text-center">
+                    {experiment.conversion !== null ? `${experiment.conversion}%` : 'N/A'}
+                  </p>
+                </div>
+                <div className="w-[120px] min-w-[120px] flex-shrink-0 hidden lg:block">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Start Date</p>
+                  <p className="text-sm font-medium text-center">
+                    {experiment.start_date ? new Date(experiment.start_date).toLocaleDateString() : 'Not started'}
+                  </p>
+                </div>
+                <div className="w-[100px] min-w-[100px] flex-shrink-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Status</p>
+                  <div className="flex items-center justify-center">
+                    <Badge
+                      className={cn(
+                        "text-xs font-semibold px-3 py-1 border shadow-sm transition-colors duration-200",
+                        experiment.status === "draft" && "bg-secondary/20 text-secondary-foreground border-secondary/20 hover:bg-secondary/30 hover:border-secondary/30",
+                        experiment.status === "active" && "bg-success/20 text-success border-success/20 hover:bg-success/30 hover:border-success/30",
+                        experiment.status === "completed" && "bg-info/20 text-info border-info/20 hover:bg-info/30 hover:border-info/30"
+                      )}
+                    >
+                      {experiment.status === "draft" ? "Draft" : 
+                        experiment.status === "active" ? "Active" : "Completed"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </div>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-6 px-6 border-t" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onView(experiment);
+                      }}
+                      className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px]"
+                    >
+                      <div className="flex items-center justify-center min-w-0">
+                        <Eye className="h-3.5 w-3.5 mr-1.5" />
+                        <span className="transition-all duration-200">
+                          View Details
+                        </span>
+                      </div>
+                    </Button>
+                    {experiment.status === 'draft' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onStart(experiment.id);
+                        }}
+                        className="flex items-center justify-center hover:bg-secondary/80 transition-colors relative min-w-[160px] text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30 hover:bg-green-50 dark:hover:bg-green-900/20"
+                        disabled={isLoading}
+                      >
+                        <div className="flex items-center justify-center min-w-0">
+                          {isLoading ? (
+                            <div className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-green-200 dark:border-green-500/30 border-r-green-700 dark:border-r-green-400" />
+                          ) : (
+                            <PlayCircle className="h-3.5 w-3.5 mr-1.5 text-green-700 dark:text-green-400" />
+                          )}
+                          <span className="transition-all duration-200">
+                            {isLoading ? "Starting..." : "Start Experiment"}
+                          </span>
+                        </div>
+                      </Button>
+                    )}
+                    {experiment.status === 'active' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onStop(experiment.id);
+                        }}
+                        className="flex items-center justify-center transition-colors relative min-w-[160px] text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        disabled={isLoading}
+                      >
+                        <div className="flex items-center justify-center min-w-0">
+                          {isLoading ? (
+                            <div className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-200 dark:border-red-500/30 border-r-red-700 dark:border-r-red-400" />
+                          ) : (
+                            <StopCircle className="h-3.5 w-3.5 mr-1.5 text-red-700 dark:text-red-400" />
+                          )}
+                          <span className="transition-all duration-200">
+                            {isLoading ? "Stopping..." : "Stop Experiment"}
+                          </span>
+                        </div>
+                      </Button>
+                    )}
+                    {experiment.status === 'draft' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onView(experiment);
+                        }}
+                        className="flex items-center justify-center transition-colors relative min-w-[160px] text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/30 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                      >
+                        <div className="flex items-center justify-center min-w-0">
+                          <PenSquare className="h-3.5 w-3.5 mr-1.5 text-blue-700 dark:text-blue-400" />
+                          <span className="transition-all duration-200">
+                            Edit Experiment
+                          </span>
+                        </div>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {experiment.hypothesis && (
+                  <div className="space-y-4 mt-6 border-t pt-4">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-base">Hypothesis</h4>
+                    </div>
+                    <div className="bg-background/50 p-3 rounded-lg">
+                      <p className="text-sm">{experiment.hypothesis}</p>
+                    </div>
+                  </div>
+                )}
+                {experiment.segments.length > 0 && (
+                  <div className="space-y-4 mt-6 border-t pt-4">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-base">Target Segments</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2 bg-background/50 p-3 rounded-lg">
+                      {experiment.segments.map((segment) => (
+                        <Badge 
+                          key={segment.id}
+                          variant="secondary"
+                          className="px-3 py-1 cursor-pointer hover:bg-secondary/80 transition-colors text-xs sm:text-sm"
+                        >
+                          {segment.name} ({segment.participants.toLocaleString()})
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {experiment.preview_url && (
+                  <div className="relative mt-6 border-t pt-4">
+                    <h4 className="font-medium text-base mb-3">Preview</h4>
+                    <div className="w-full h-[300px] bg-background rounded-md border">
+                      <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+                        <iframe
+                          src={experiment.preview_url}
+                          className="absolute w-[150%] h-[150%] origin-center rounded-md"
+                          style={{ transform: 'scale(0.65)', transformOrigin: 'center' }}
+                          sandbox="allow-same-origin allow-scripts"
+                          loading="lazy"
+                          allow="fullscreen"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </div>
+    </Collapsible>
+  )
+}
+
 export default function ExperimentsPage() {
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [filteredExperiments, setFilteredExperiments] = useState<Experiment[]>([])
@@ -136,13 +357,17 @@ export default function ExperimentsPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
+  const [activeExperiments, setActiveExperiments] = useState<Record<string, boolean>>({})
   const { toast } = useToast()
   const { currentSite } = useSite()
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
-  // Inicializar el hook useCommandK
+  // Initialize the useCommandK hook
   useCommandK()
 
-  // Efecto para filtrar experimentos basado en la búsqueda
+  // Effect to filter experiments based on search
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredExperiments(experiments)
@@ -162,7 +387,7 @@ export default function ExperimentsPage() {
     setFilteredExperiments(filtered)
   }, [searchQuery, experiments])
 
-  // Memoizar fetchExperiments para evitar recreaciones en cada renderizado
+  // Memoize fetchExperiments to avoid recreations on each render
   const fetchExperiments = useCallback(async () => {
     if (initialFetchDone) return;
     
@@ -256,6 +481,18 @@ export default function ExperimentsPage() {
 
       setExperiments(transformedData)
       setFilteredExperiments(transformedData)
+      
+      // Initialize expandedRows and activeExperiments
+      const expandedRowsObj: Record<string, boolean> = {};
+      const activeExperimentsObj: Record<string, boolean> = {};
+      
+      transformedData.forEach((experiment: Experiment) => {
+        expandedRowsObj[experiment.id] = false;
+        activeExperimentsObj[experiment.id] = experiment.status === 'active';
+      });
+      
+      setExpandedRows(expandedRowsObj);
+      setActiveExperiments(activeExperimentsObj);
       setInitialFetchDone(true);
     } catch (error) {
       console.error("Error:", error)
@@ -310,7 +547,7 @@ export default function ExperimentsPage() {
     }
   }, [currentSite]);
 
-  // Efecto para la carga inicial de datos
+  // Effect for initial loading of data
   useEffect(() => {
     fetchExperiments()
   }, [fetchExperiments])
@@ -324,6 +561,26 @@ export default function ExperimentsPage() {
   useEffect(() => {
     setInitialFetchDone(false);
   }, [currentSite])
+  
+  // Effect for keyboard shortcut (Command+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  const toggleRow = (id: string) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }))
+  }
 
   const handleStartExperiment = async (experimentId: string) => {
     try {
@@ -349,6 +606,11 @@ export default function ExperimentsPage() {
             } 
           : exp
       ))
+      
+      setActiveExperiments(prev => ({
+        ...prev,
+        [experimentId]: true
+      }));
 
       toast({
         title: "Success",
@@ -389,6 +651,11 @@ export default function ExperimentsPage() {
             } 
           : exp
       ))
+      
+      setActiveExperiments(prev => ({
+        ...prev,
+        [experimentId]: false
+      }));
 
       toast({
         title: "Success",
@@ -406,70 +673,15 @@ export default function ExperimentsPage() {
   }
 
   const handleViewDetails = (experiment: Experiment) => {
-    setSelectedExperiment(experiment);
-    setIsDetailOpen(true);
+    // Navigate to experiment details page
+    router.push(`/experiments/${experiment.id}`)
   }
-
-  // Function to create a new experiment
-  const handleCreateExperiment = async (values: any) => {
-    try {
-      const supabase = createClient();
-      
-      // Create the experiment
-      const { data: experimentData, error: experimentError } = await supabase
-        .from("experiments")
-        .insert([{
-          name: values.name,
-          description: values.description,
-          hypothesis: values.hypothesis,
-          status: values.status,
-          site_id: values.site_id,
-          user_id: values.user_id,
-          start_date: values.start_date,
-          end_date: values.end_date,
-          conversion: values.conversion,
-          roi: values.roi,
-          preview_url: values.preview_url,
-          campaign_id: values.campaign_id
-        }])
-        .select()
-        .single();
-        
-      if (experimentError) {
-        return { error: experimentError.message };
-      }
-      
-      // Create experiment segments
-      if (values.segments && values.segments.length > 0) {
-        const experimentSegments = values.segments.map((segmentId: string) => ({
-          experiment_id: experimentData.id,
-          segment_id: segmentId,
-          participants: 0
-        }));
-        
-        const { error: segmentsError } = await supabase
-          .from("experiment_segments")
-          .insert(experimentSegments);
-          
-        if (segmentsError) {
-          return { error: `Experiment created but failed to add segments: ${segmentsError.message}` };
-        }
-      }
-      
-      // Refresh the experiments list
-      fetchExperiments();
-      
-      return { data: experimentData };
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : "An unexpected error occurred" };
-    }
-  };
 
   if (isLoadingData) {
     return (
       <div className="flex-1 p-0">
         <Tabs defaultValue="all" className="h-full">
-          <StickyHeader showAIButton={false}>
+          <StickyHeader>
             <div className="px-16 pt-0 w-full">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
@@ -485,7 +697,7 @@ export default function ExperimentsPage() {
                       className="w-full"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      data-command-k-input
+                      ref={searchInputRef}
                       type="text"
                       icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     />
@@ -503,12 +715,10 @@ export default function ExperimentsPage() {
           
           <div className="p-8 space-y-4">
             <div className="px-8">
-              <TabsContent value="all" className="space-y-6">
-                <div className="space-y-6">
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <ExperimentCardSkeleton key={index} />
-                  ))}
-                </div>
+              <TabsContent value="all" className="space-y-4">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <ExperimentRowSkeleton key={index} />
+                ))}
               </TabsContent>
             </div>
           </div>
@@ -567,7 +777,7 @@ export default function ExperimentsPage() {
   return (
     <div className="flex-1 p-0">
       <Tabs defaultValue="all" className="h-full">
-        <StickyHeader showAIButton={false}>
+        <StickyHeader>
           <div className="px-16 pt-0 w-full">
             <div className="flex items-center gap-8">
               <div>
@@ -584,7 +794,7 @@ export default function ExperimentsPage() {
                   className="w-full"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  data-command-k-input
+                  ref={searchInputRef}
                   type="text"
                   icon={<Search className="h-4 w-4 text-muted-foreground" />}
                 />
@@ -599,572 +809,105 @@ export default function ExperimentsPage() {
         
         <div className="p-8 space-y-4">
           <div className="px-8">
-            <TabsContent value="all" className="space-y-6">
-              <div className="space-y-6">
-                {filteredExperiments.length === 0 ? (
-                  <ExperimentEmptyState status="all" />
-                ) : (
-                  filteredExperiments.map((experiment) => (
-                    <Card 
-                      key={experiment.id} 
-                      className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-border bg-card/80 backdrop-blur-sm"
-                    >
-                      <div className="flex flex-col md:w-1/3 border-r border-border/20">
-                        <CardHeader className="pb-2 px-8">
-                          <div className="flex justify-between items-start gap-4">
-                            <CardTitle className="text-xl font-medium text-card-foreground group-hover:text-card-foreground/90 transition-colors leading-tight">
-                              {experiment.name}
-                            </CardTitle>
-                            <Badge
-                              className={cn(
-                                "text-xs font-semibold px-3 py-1 border shadow-sm transition-colors duration-200",
-                                experiment.status === "draft" && "bg-secondary/20 text-secondary-foreground border-secondary/20 hover:bg-secondary/30 hover:border-secondary/30",
-                                experiment.status === "active" && "bg-success/20 text-success border-success/20 hover:bg-success/30 hover:border-success/30",
-                                experiment.status === "completed" && "bg-info/20 text-info border-info/20 hover:bg-info/30 hover:border-info/30"
-                              )}
-                            >
-                              {experiment.status === "draft" ? "Draft" : 
-                                experiment.status === "active" ? "Active" : "Completed"}
-                            </Badge>
-                          </div>
-                          <CardDescription className="mt-2 text-sm leading-relaxed">
-                            {experiment.description || "No description available"}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 px-8">
-                          <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Participants
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.segments.reduce((acc, segment) => acc + segment.participants, 0).toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Start Date
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.start_date ? new Date(experiment.start_date).toLocaleDateString() : "Not started"}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Conversion
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.conversion !== null ? `${experiment.conversion}%` : "N/A"}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Campaign
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.campaign ? (
-                                  <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
-                                    {experiment.campaign.title}
-                                  </Badge>
-                                ) : (
-                                  "None"
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                        <div className="px-8 pb-4">
-                          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Running Segments:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {experiment.segments.map((segment) => (
-                              <Badge 
-                                key={segment.id}
-                                variant="secondary" 
-                                className="px-3 py-1 text-xs font-medium transition-colors duration-200 hover:bg-secondary/40 hover:text-secondary-foreground/90"
-                              >
-                                {segment.name} ({segment.participants.toLocaleString()})
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <CardFooter className="pt-3 px-8">
-                          <div className="flex w-full space-x-3">
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 hover:bg-accent hover:shadow-sm transition-all text-sm font-medium h-10 bg-background text-foreground border-border"
-                              onClick={() => handleViewDetails(experiment)}
-                            >
-                              <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
-                              View Details
-                            </Button>
-                            {experiment.status === "active" && (
-                              <Button 
-                                variant="outline" 
-                                className="flex-1 transition-all text-sm font-medium h-10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                onClick={() => handleStopExperiment(experiment.id)}
-                                disabled={isLoading[experiment.id]}
-                              >
-                                {isLoading[experiment.id] ? (
-                                  <>
-                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-red-200 dark:border-red-500/30 border-r-red-700 dark:border-r-red-400" />
-                                    Stopping...
-                                  </>
-                                ) : (
-                                  <>
-                                    <StopCircle className="mr-2 h-4 w-4 text-red-700 dark:text-red-400" />
-                                    Stop
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                            {experiment.status === "draft" && (
-                              <>
-                                <Button 
-                                  variant="outline" 
-                                  className="flex-1 transition-all text-sm font-medium h-10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30 hover:bg-green-50 dark:hover:bg-green-900/20"
-                                  onClick={() => handleStartExperiment(experiment.id)}
-                                  disabled={isLoading[experiment.id]}
-                                >
-                                  {isLoading[experiment.id] ? (
-                                    <>
-                                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-green-200 dark:border-green-500/30 border-r-green-700 dark:border-r-green-400" />
-                                      Starting...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <PlayCircle className="mr-2 h-4 w-4 text-green-700 dark:text-green-400" />
-                                      Start
-                                    </>
-                                  )}
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  className="flex-1 transition-all text-sm font-medium h-10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/30 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                >
-                                  <PenSquare className="mr-2 h-4 w-4 text-blue-700" />
-                                  Edit
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </CardFooter>
-                      </div>
-                      <div className="md:w-2/3 h-full p-4 bg-muted/30 rounded-r-lg">
-                        <div className="w-full h-full rounded-lg overflow-hidden border border-border/50 shadow-sm group-hover:shadow-md transition-all duration-200 bg-background">
-                          <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                            <iframe 
-                              src={experiment.preview_url || "about:blank"} 
-                              className="absolute w-[200%] h-[200%] origin-center"
-                              style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
-                              title={`Preview of ${experiment.name}`}
-                              sandbox="allow-same-origin allow-scripts"
-                              loading="lazy"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-                )}
-              </div>
+            <TabsContent value="all" className="space-y-4">
+              {filteredExperiments.length === 0 && searchQuery ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <p className="text-muted-foreground">No experiments found matching "{searchQuery}"</p>
+                </div>
+              ) : filteredExperiments.length === 0 ? (
+                <ExperimentEmptyState status="all" />
+              ) : (
+                <div className="space-y-2">
+                  {filteredExperiments.map((experiment) => (
+                    <ExperimentRow
+                      key={experiment.id}
+                      experiment={experiment}
+                      isExpanded={expandedRows[experiment.id] || false}
+                      onToggle={toggleRow}
+                      isLoading={isLoading[experiment.id] || false}
+                      onStart={handleStartExperiment}
+                      onStop={handleStopExperiment}
+                      onView={handleViewDetails}
+                      isActive={activeExperiments[experiment.id] || false}
+                    />
+                  ))}
+                </div>
+              )}
             </TabsContent>
-            <TabsContent value="active" className="space-y-6">
-              <div className="space-y-6">
-                {filteredExperiments.filter(e => e.status === "active").length === 0 ? (
-                  <ExperimentEmptyState status="active" />
-                ) : (
-                  filteredExperiments.filter(e => e.status === "active").map((experiment) => (
-                    <Card 
-                      key={experiment.id} 
-                      className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-border bg-card/80 backdrop-blur-sm"
-                    >
-                      <div className="flex flex-col md:w-1/3 border-r border-border/20">
-                        <CardHeader className="pb-2 px-8">
-                          <div className="flex justify-between items-start gap-4">
-                            <CardTitle className="text-xl font-medium text-card-foreground group-hover:text-card-foreground/90 transition-colors leading-tight">
-                              {experiment.name}
-                            </CardTitle>
-                            <Badge
-                              className={cn(
-                                "text-xs font-semibold px-3 py-1 border shadow-sm transition-colors duration-200",
-                                experiment.status === "draft" && "bg-secondary/20 text-secondary-foreground border-secondary/20 hover:bg-secondary/30 hover:border-secondary/30",
-                                experiment.status === "active" && "bg-success/20 text-success border-success/20 hover:bg-success/30 hover:border-success/30",
-                                experiment.status === "completed" && "bg-info/20 text-info border-info/20 hover:bg-info/30 hover:border-info/30"
-                              )}
-                            >
-                              {experiment.status === "draft" ? "Draft" : 
-                                experiment.status === "active" ? "Active" : "Completed"}
-                            </Badge>
-                          </div>
-                          <CardDescription className="mt-2 text-sm leading-relaxed">
-                            {experiment.description || "No description available"}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 px-8">
-                          <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Participants
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.segments.reduce((acc, segment) => acc + segment.participants, 0).toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Start Date
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.start_date ? new Date(experiment.start_date).toLocaleDateString() : "Not started"}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Conversion
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.conversion !== null ? `${experiment.conversion}%` : "N/A"}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Campaign
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.campaign ? (
-                                  <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
-                                    {experiment.campaign.title}
-                                  </Badge>
-                                ) : (
-                                  "None"
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                        <div className="px-8 pb-4">
-                          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Running Segments:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {experiment.segments.map((segment) => (
-                              <Badge 
-                                key={segment.id}
-                                variant="secondary" 
-                                className="px-3 py-1 text-xs font-medium transition-colors duration-200 hover:bg-secondary/40 hover:text-secondary-foreground/90"
-                              >
-                                {segment.name} ({segment.participants.toLocaleString()})
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <CardFooter className="pt-3 px-8">
-                          <div className="flex w-full space-x-3">
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 hover:bg-accent hover:shadow-sm transition-all text-sm font-medium h-10 bg-background text-foreground border-border"
-                              onClick={() => handleViewDetails(experiment)}
-                            >
-                              <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
-                              View Details
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 hover:bg-red-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-red-700 border-red-200"
-                              onClick={() => handleStopExperiment(experiment.id)}
-                              disabled={isLoading[experiment.id]}
-                            >
-                              {isLoading[experiment.id] ? (
-                                <>
-                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-r-red-700" />
-                                  Stopping...
-                                </>
-                              ) : (
-                                <>
-                                  <StopCircle className="mr-2 h-4 w-4 text-red-700" />
-                                  Stop
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        </CardFooter>
-                      </div>
-                      <div className="md:w-2/3 h-full p-4 bg-muted/30 rounded-r-lg">
-                        <div className="w-full h-full rounded-lg overflow-hidden border border-border/50 shadow-sm group-hover:shadow-md transition-all duration-200 bg-background">
-                          <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                            <iframe 
-                              src={experiment.preview_url || "about:blank"} 
-                              className="absolute w-[200%] h-[200%] origin-center"
-                              style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
-                              title={`Preview of ${experiment.name}`}
-                              sandbox="allow-same-origin allow-scripts"
-                              loading="lazy"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-                )}
-              </div>
+            <TabsContent value="active" className="space-y-4">
+              {filteredExperiments.filter(e => e.status === "active").length === 0 ? (
+                <ExperimentEmptyState status="active" />
+              ) : (
+                <div className="space-y-2">
+                  {filteredExperiments
+                    .filter(e => e.status === "active")
+                    .map((experiment) => (
+                      <ExperimentRow
+                        key={experiment.id}
+                        experiment={experiment}
+                        isExpanded={expandedRows[experiment.id] || false}
+                        onToggle={toggleRow}
+                        isLoading={isLoading[experiment.id] || false}
+                        onStart={handleStartExperiment}
+                        onStop={handleStopExperiment}
+                        onView={handleViewDetails}
+                        isActive={activeExperiments[experiment.id] || false}
+                      />
+                    ))}
+                </div>
+              )}
             </TabsContent>
-            <TabsContent value="completed" className="space-y-6">
-              <div className="space-y-6">
-                {filteredExperiments.filter(e => e.status === "completed").length === 0 ? (
-                  <ExperimentEmptyState status="completed" />
-                ) : (
-                  filteredExperiments.filter(e => e.status === "completed").map((experiment) => (
-                    <Card 
-                      key={experiment.id} 
-                      className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-border bg-card/80 backdrop-blur-sm"
-                    >
-                      <div className="flex flex-col md:w-1/3 border-r border-border/20">
-                        <CardHeader className="pb-2 px-8">
-                          <div className="flex justify-between items-start gap-4">
-                            <CardTitle className="text-xl font-medium text-card-foreground group-hover:text-card-foreground/90 transition-colors leading-tight">
-                              {experiment.name}
-                            </CardTitle>
-                            <Badge
-                              className={cn(
-                                "text-xs font-semibold px-3 py-1 border shadow-sm transition-colors duration-200",
-                                experiment.status === "draft" && "bg-secondary/20 text-secondary-foreground border-secondary/20 hover:bg-secondary/30 hover:border-secondary/30",
-                                experiment.status === "active" && "bg-success/20 text-success border-success/20 hover:bg-success/30 hover:border-success/30",
-                                experiment.status === "completed" && "bg-info/20 text-info border-info/20 hover:bg-info/30 hover:border-info/30"
-                              )}
-                            >
-                              {experiment.status === "draft" ? "Draft" : 
-                                experiment.status === "active" ? "Active" : "Completed"}
-                            </Badge>
-                          </div>
-                          <CardDescription className="mt-2 text-sm leading-relaxed">
-                            {experiment.description || "No description available"}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 px-8">
-                          <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Participants
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.segments.reduce((acc, segment) => acc + segment.participants, 0).toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Duration
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.start_date && experiment.end_date 
-                                  ? `${Math.ceil((new Date(experiment.end_date).getTime() - new Date(experiment.start_date).getTime()) / (1000 * 60 * 60 * 24))} days` 
-                                  : "N/A"}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Conversion
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.conversion !== null ? `${experiment.conversion}%` : "N/A"}
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Campaign
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                {experiment.campaign ? (
-                                  <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
-                                    {experiment.campaign.title}
-                                  </Badge>
-                                ) : (
-                                  "None"
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                        <div className="px-8 pb-4">
-                          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Segments:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {experiment.segments.map((segment) => (
-                              <Badge 
-                                key={segment.id}
-                                variant="secondary" 
-                                className="px-3 py-1 text-xs font-medium transition-colors duration-200 hover:bg-secondary/40 hover:text-secondary-foreground/90"
-                              >
-                                {segment.name} ({segment.participants.toLocaleString()})
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <CardFooter className="pt-3 px-8">
-                          <div className="flex w-full space-x-3">
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 hover:bg-accent hover:shadow-sm transition-all text-sm font-medium h-10 bg-background text-foreground border-border"
-                              onClick={() => handleViewDetails(experiment)}
-                            >
-                              <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
-                              View Details
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 transition-all text-sm font-medium h-10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                              <X className="mr-2 h-4 w-4" />
-                              Reject
-                            </Button>
-                          </div>
-                        </CardFooter>
-                      </div>
-                      <div className="md:w-2/3 h-full p-4 bg-muted/30 rounded-r-lg">
-                        <div className="w-full h-full rounded-lg overflow-hidden border border-border/50 shadow-sm group-hover:shadow-md transition-all duration-200 bg-background">
-                          <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                            <iframe 
-                              src={experiment.preview_url || "about:blank"} 
-                              className="absolute w-[200%] h-[200%] origin-center"
-                              style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
-                              title={`Preview of ${experiment.name}`}
-                              sandbox="allow-same-origin allow-scripts"
-                              loading="lazy"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-                )}
-              </div>
+            <TabsContent value="completed" className="space-y-4">
+              {filteredExperiments.filter(e => e.status === "completed").length === 0 ? (
+                <ExperimentEmptyState status="completed" />
+              ) : (
+                <div className="space-y-2">
+                  {filteredExperiments
+                    .filter(e => e.status === "completed")
+                    .map((experiment) => (
+                      <ExperimentRow
+                        key={experiment.id}
+                        experiment={experiment}
+                        isExpanded={expandedRows[experiment.id] || false}
+                        onToggle={toggleRow}
+                        isLoading={isLoading[experiment.id] || false}
+                        onStart={handleStartExperiment}
+                        onStop={handleStopExperiment}
+                        onView={handleViewDetails}
+                        isActive={activeExperiments[experiment.id] || false}
+                      />
+                    ))}
+                </div>
+              )}
             </TabsContent>
-            <TabsContent value="draft" className="space-y-6">
-              <div className="space-y-6">
-                {filteredExperiments.filter(e => e.status === "draft").length === 0 ? (
-                  <ExperimentEmptyState status="draft" />
-                ) : (
-                  filteredExperiments.filter(e => e.status === "draft").map((experiment) => (
-                    <Card 
-                      key={experiment.id} 
-                      className="group flex flex-col md:flex-row w-full h-[400px] hover:shadow-lg transition-all duration-200 hover:border-border bg-card/80 backdrop-blur-sm"
-                    >
-                      <div className="flex flex-col md:w-1/3 border-r border-border/20">
-                        <CardHeader className="pb-2 px-8">
-                          <div className="flex justify-between items-start gap-4">
-                            <CardTitle className="text-xl font-medium text-card-foreground group-hover:text-card-foreground/90 transition-colors leading-tight">
-                              {experiment.name}
-                            </CardTitle>
-                            <Badge
-                              className={cn(
-                                "text-xs font-semibold px-3 py-1 border shadow-sm transition-colors duration-200",
-                                experiment.status === "draft" && "bg-secondary/20 text-secondary-foreground border-secondary/20 hover:bg-secondary/30 hover:border-secondary/30",
-                                experiment.status === "active" && "bg-success/20 text-success border-success/20 hover:bg-success/30 hover:border-success/30",
-                                experiment.status === "completed" && "bg-info/20 text-info border-info/20 hover:bg-info/30 hover:border-info/30"
-                              )}
-                            >
-                              {experiment.status === "draft" ? "Draft" : 
-                                experiment.status === "active" ? "Active" : "Completed"}
-                            </Badge>
-                          </div>
-                          <CardDescription className="mt-2 text-sm leading-relaxed">
-                            {experiment.description || "No description available"}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 px-8">
-                          <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                Status
-                              </p>
-                              <p className="text-base font-semibold text-card-foreground">
-                                Not started
-                              </p>
-                            </div>
-                            {experiment.hypothesis && (
-                              <div className="space-y-2">
-                                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
-                                  Hypothesis
-                                </p>
-                                <p className="text-base font-semibold text-card-foreground">
-                                  {experiment.hypothesis}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                        <div className="px-8 pb-4">
-                          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Target Segments:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {experiment.segments.map((segment) => (
-                              <Badge 
-                                key={segment.id}
-                                variant="secondary" 
-                                className="px-3 py-1 text-xs font-medium transition-colors duration-200 hover:bg-secondary/40 hover:text-secondary-foreground/90"
-                              >
-                                {segment.name} ({segment.participants.toLocaleString()})
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <CardFooter className="pt-3 px-8">
-                          <div className="flex w-full space-x-3">
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 hover:bg-accent hover:shadow-sm transition-all text-sm font-medium h-10 bg-background text-foreground border-border"
-                              onClick={() => handleViewDetails(experiment)}
-                            >
-                              <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
-                              View Details
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 transition-all text-sm font-medium h-10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30 hover:bg-green-50 dark:hover:bg-green-900/20"
-                              onClick={() => handleStartExperiment(experiment.id)}
-                              disabled={isLoading[experiment.id]}
-                            >
-                              {isLoading[experiment.id] ? (
-                                <>
-                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-green-200 dark:border-green-500/30 border-r-green-700 dark:border-r-green-400" />
-                                  Starting...
-                                </>
-                              ) : (
-                                <>
-                                  <PlayCircle className="mr-2 h-4 w-4 text-green-700 dark:text-green-400" />
-                                  Start
-                                </>
-                              )}
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 hover:bg-blue-50 hover:shadow-sm transition-all text-sm font-medium h-10 bg-white text-blue-700 border-blue-200"
-                            >
-                              <PenSquare className="mr-2 h-4 w-4 text-blue-700" />
-                              Edit
-                            </Button>
-                          </div>
-                        </CardFooter>
-                      </div>
-                      <div className="md:w-2/3 h-full p-4 bg-muted/30 rounded-r-lg">
-                        <div className="w-full h-full rounded-lg overflow-hidden border border-border/50 shadow-sm group-hover:shadow-md transition-all duration-200 bg-background">
-                          <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                            <iframe 
-                              src={experiment.preview_url || "about:blank"} 
-                              className="absolute w-[200%] h-[200%] origin-center"
-                              style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
-                              title={`Preview of ${experiment.name}`}
-                              sandbox="allow-same-origin allow-scripts"
-                              loading="lazy"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-                )}
-              </div>
+            <TabsContent value="draft" className="space-y-4">
+              {filteredExperiments.filter(e => e.status === "draft").length === 0 ? (
+                <ExperimentEmptyState status="draft" />
+              ) : (
+                <div className="space-y-2">
+                  {filteredExperiments
+                    .filter(e => e.status === "draft")
+                    .map((experiment) => (
+                      <ExperimentRow
+                        key={experiment.id}
+                        experiment={experiment}
+                        isExpanded={expandedRows[experiment.id] || false}
+                        onToggle={toggleRow}
+                        isLoading={isLoading[experiment.id] || false}
+                        onStart={handleStartExperiment}
+                        onStop={handleStopExperiment}
+                        onView={handleViewDetails}
+                        isActive={activeExperiments[experiment.id] || false}
+                      />
+                    ))}
+                </div>
+              )}
             </TabsContent>
           </div>
         </div>
       </Tabs>
 
-      {/* Modal de detalles del experimento */}
+      {/* Experiment Details Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={(open) => {
         setIsDetailOpen(open);
         if (!open) {
@@ -1187,7 +930,7 @@ export default function ExperimentsPage() {
               </SheetHeader>
 
               <div className="space-y-6 mt-2">
-                {/* Información básica */}
+                {/* Basic Information */}
                 <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
                   <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
                     Basic Information
@@ -1256,7 +999,7 @@ export default function ExperimentsPage() {
                   </div>
                 </div>
 
-                {/* Fechas y rendimiento */}
+                {/* Dates and Performance */}
                 <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
                   <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
                     Dates and Performance
@@ -1304,22 +1047,16 @@ export default function ExperimentsPage() {
                         <Tag className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs text-muted-foreground mb-1">Campaign</p>
+                        <p className="text-xs text-muted-foreground mb-1">ROI</p>
                         <p className="text-sm font-medium">
-                          {selectedExperiment.campaign ? (
-                            <Badge variant="outline" className="bg-primary/10 text-primary hover:bg-primary/20">
-                              {selectedExperiment.campaign.title}
-                            </Badge>
-                          ) : (
-                            "None"
-                          )}
+                          {selectedExperiment.roi !== null ? `${selectedExperiment.roi}%` : "N/A"}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Segmentos */}
+                {/* Segments */}
                 <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
                   <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
                     Segments
@@ -1360,7 +1097,7 @@ export default function ExperimentsPage() {
                   </div>
                 </div>
 
-                {/* Previsualización */}
+                {/* Preview */}
                 {selectedExperiment.preview_url && (
                   <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
                     <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">

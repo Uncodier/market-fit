@@ -365,7 +365,7 @@ export function DatePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-auto" position={position}>
+        <PopoverContent className="p-0 w-auto" side={position}>
           <div className="flex flex-row">
             {/* Calendar */}
             <div className="p-4 min-w-[280px]">

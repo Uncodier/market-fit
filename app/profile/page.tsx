@@ -347,11 +347,13 @@ export default function ProfilePage() {
                               )}
                             >
                               <input {...getInputProps()} />
-                              <UploadCloud className="h-8 w-8 text-muted-foreground" />
-                              <div className="text-sm text-center">
-                                <p className="font-medium">Click to upload</p>
-                                <p className="text-muted-foreground">or drag and drop</p>
-                                <p className="text-xs text-muted-foreground/80 mt-1">Max. 3MB</p>
+                              <div className="flex flex-col items-center justify-center">
+                                <UploadCloud className="h-8 w-8 text-muted-foreground flex-shrink-0 mb-2" />
+                                <div className="text-sm text-center flex flex-col items-center">
+                                  <p className="font-medium">Click to upload</p>
+                                  <p className="text-muted-foreground">or drag and drop</p>
+                                  <p className="text-xs text-muted-foreground/80 mt-1">Max. 3MB</p>
+                                </div>
                               </div>
                             </div>
                           )}

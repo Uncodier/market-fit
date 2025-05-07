@@ -8,6 +8,17 @@ export interface Lead {
     website?: string
     industry?: string
     size?: string
+    annual_revenue?: string
+    founded?: string
+    description?: string
+    address?: {
+      street?: string
+      city?: string
+      state?: string
+      zipcode?: string
+      country?: string
+      [key: string]: string | undefined
+    }
     [key: string]: any
   } | null
   position: string | null
@@ -16,6 +27,28 @@ export interface Lead {
   status: "new" | "contacted" | "qualified" | "converted" | "lost"
   created_at: string
   origin: string | null
+  birthday: string | null
+  language: string | null
+  social_networks: {
+    linkedin?: string
+    twitter?: string
+    facebook?: string
+    instagram?: string
+    tiktok?: string
+    youtube?: string
+    whatsapp?: string
+    pinterest?: string
+    [key: string]: string | undefined
+  } | null
+  address: {
+    street?: string
+    city?: string
+    state?: string
+    zipcode?: string
+    country?: string
+    [key: string]: string | undefined
+  } | null
+  notes: string | null
 }
 
 export interface LeadFilters {

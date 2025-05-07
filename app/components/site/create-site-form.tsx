@@ -339,10 +339,12 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
                                 )}
                               >
                                 <input {...getInputProps()} />
-                                <UploadCloud className="h-8 w-8 text-gray-400" />
-                                <div className="text-sm text-center">
-                                  <p className="font-medium text-foreground">Click to upload</p>
-                                  <p className="text-muted-foreground">or drag and drop</p>
+                                <div className="flex flex-col items-center justify-center">
+                                  <UploadCloud className="h-8 w-8 text-gray-400 flex-shrink-0 mb-2" />
+                                  <div className="text-sm text-center flex flex-col items-center">
+                                    <p className="font-medium text-foreground">Click to upload</p>
+                                    <p className="text-muted-foreground">or drag and drop</p>
+                                  </div>
                                 </div>
                               </div>
                             )}

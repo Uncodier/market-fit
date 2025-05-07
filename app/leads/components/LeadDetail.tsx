@@ -17,7 +17,21 @@ import {
   ExternalLink,
   Trash2
 } from "@/app/components/ui/icons"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Target } from "@/app/components/ui/target-icon"
+import { 
+  MapPin, 
+  CalendarDays, 
+  Bookmark, 
+  Facebook, 
+  Twitter, 
+  Linkedin, 
+  Instagram,
+  TikTok,
+  YouTube,
+  WhatsApp,
+  Pinterest
+} from "./custom-icons"
 import { Lead, STATUS_STYLES, Segment } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { toast } from "sonner"
@@ -37,6 +51,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@/app/components/ui/alert-dialog"
+import { DetailsTab } from "./DetailsTab"
+import { CompanyTab } from "./CompanyTab"
+import { SocialNetworkTab } from "./SocialNetworkTab"
+import { AddressTab } from "./AddressTab"
+import { NotesTab } from "./NotesTab"
 
 interface LeadDetailProps {
   lead: Lead
@@ -57,12 +76,41 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     name: lead.name,
     email: lead.email,
     phone: lead.phone,
-    company: lead.company || { name: "", website: "", industry: "", size: "" },
+    company: lead.company || { 
+      name: "", 
+      website: "", 
+      industry: "", 
+      size: "",
+      annual_revenue: "",
+      founded: "",
+      description: "",
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        zipcode: "",
+        country: ""
+      }
+    },
     position: lead.position,
     segment_id: lead.segment_id,
     campaign_id: lead.campaign_id,
     status: lead.status,
-    origin: lead.origin
+    origin: lead.origin,
+    birthday: lead.birthday || null,
+    language: lead.language || null,
+    social_networks: lead.social_networks || { 
+      linkedin: "", 
+      twitter: "", 
+      facebook: "", 
+      instagram: "",
+      tiktok: "",
+      youtube: "",
+      whatsapp: "",
+      pinterest: ""
+    },
+    address: lead.address || { street: "", city: "", state: "", zipcode: "", country: "" },
+    notes: lead.notes || null
   })
   
   // Función para obtener el nombre del segmento
@@ -77,6 +125,25 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     if (!campaignId) return "No Campaign"
     const campaign = campaigns.find(c => c.id === campaignId)
     return campaign?.title || "Unknown Campaign"
+  }
+  
+  // Language mapping
+  const LANGUAGES = {
+    en: "English",
+    es: "Spanish",
+    fr: "French",
+    de: "German",
+    pt: "Portuguese",
+    it: "Italian",
+    ru: "Russian",
+    zh: "Chinese",
+    ja: "Japanese"
+  }
+  
+  // Función para obtener el nombre del idioma
+  const getLanguageName = (languageCode: string | null) => {
+    if (!languageCode) return null
+    return LANGUAGES[languageCode as keyof typeof LANGUAGES] || languageCode
   }
   
   // Función para guardar los cambios
@@ -204,226 +271,103 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
       
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-5">
-          {/* Contact Information */}
+          {/* Contact Information with Tabs */}
           <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-              Contact Information
-            </h3>
-            
-            <div className="grid gap-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                  <User className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-[5px]">Name</p>
-                  {isEditing ? (
-                    <Input
-                      value={editForm.name}
-                      onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                      className="h-12 text-sm"
-                      placeholder="Lead name"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{lead.name}</p>
-                  )}
-                </div>
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Contact Information
+              </h3>
               
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-[5px]">Email</p>
-                  {isEditing ? (
-                    <Input
-                      value={editForm.email}
-                      onChange={(e) => setEditForm({...editForm, email: e.target.value})}
-                      className="h-12 text-sm"
-                      placeholder="email@example.com"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{lead.email}</p>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => window.open(`mailto:${lead.email}`, '_blank')}
-                        className="h-8 ml-2"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                  <Phone className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-[5px]">Phone</p>
-                  {isEditing ? (
-                    <Input
-                      value={editForm.phone || ""}
-                      onChange={(e) => setEditForm({...editForm, phone: e.target.value || null})}
-                      className="h-12 text-sm"
-                      placeholder="Phone number"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{lead.phone || "Not specified"}</p>
-                      {lead.phone && (
-                        <div className="flex space-x-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              window.open(`tel:${lead.phone}`)
-                            }}
-                            className="h-8"
-                          >
-                            <Phone className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              window.open(`sms:${lead.phone}`)
-                            }}
-                            className="h-8"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                  <Globe className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
-                  {isEditing ? (
-                    <Input
-                      value={editForm.company?.name || ""}
-                      onChange={(e) => setEditForm({
-                        ...editForm, 
-                        company: { ...editForm.company, name: e.target.value }
-                      })}
-                      className="h-12 text-sm"
-                      placeholder="Company name"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{lead.company?.name || "Not specified"}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                  <User className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-[5px]">Position</p>
-                  {isEditing ? (
-                    <Input
-                      value={editForm.position || ""}
-                      onChange={(e) => setEditForm({...editForm, position: e.target.value || null})}
-                      className="h-12 text-sm"
-                      placeholder="Position or role"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{lead.position || "Not specified"}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                  <Tag className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-[5px]">Segment</p>
-                  {isEditing ? (
-                    <Select 
-                      value={editForm.segment_id || "none"}
-                      onValueChange={(value) => setEditForm({...editForm, segment_id: value === "none" ? null : value})}
+              {/* Options Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <span className="sr-only">Open menu</span>
+                    <span className="text-base leading-none">⋮</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Lead
+                  </DropdownMenuItem>
+                  {onDeleteLead && (
+                    <DropdownMenuItem 
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-red-600"
                     >
-                      <SelectTrigger className="h-12 text-sm">
-                        <SelectValue placeholder="Select segment" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Not specified</SelectItem>
-                        {segments.map((segment) => (
-                          <SelectItem key={segment.id} value={segment.id}>
-                            {segment.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-sm font-medium">{getSegmentName(lead.segment_id)}</p>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Lead
+                    </DropdownMenuItem>
                   )}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-[5px]">Campaign</p>
-                  {isEditing ? (
-                    <Select 
-                      value={editForm.campaign_id || "none"}
-                      onValueChange={(value) => setEditForm({...editForm, campaign_id: value === "none" ? null : value})}
-                    >
-                      <SelectTrigger className="h-12 text-sm">
-                        <SelectValue placeholder="Select campaign" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Not specified</SelectItem>
-                        {campaigns.map((campaign) => (
-                          <SelectItem key={campaign.id} value={campaign.id}>
-                            {campaign.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-sm font-medium">{getCampaignName(lead.campaign_id)}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-[5px]">Origin</p>
-                  {isEditing ? (
-                    <Input
-                      value={editForm.origin || ""}
-                      onChange={(e) => setEditForm({...editForm, origin: e.target.value || null})}
-                      className="h-12 text-sm"
-                      placeholder="Lead origin"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{lead.origin || "Not specified"}</p>
-                  )}
-                </div>
-              </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+            
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="company">Company</TabsTrigger>
+                <TabsTrigger value="social_networks">Social Networks</TabsTrigger>
+                <TabsTrigger value="address">Address</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+              </TabsList>
+              
+              {/* Details Tab */}
+              <TabsContent value="details" className="mt-0">
+                <DetailsTab 
+                  lead={lead}
+                  segments={segments}
+                  campaigns={campaigns}
+                  isEditing={isEditing}
+                  editForm={editForm}
+                  setEditForm={setEditForm}
+                  getSegmentName={getSegmentName}
+                  getCampaignName={getCampaignName}
+                  getLanguageName={getLanguageName}
+                />
+              </TabsContent>
+              
+              {/* Company Tab */}
+              <TabsContent value="company" className="mt-0">
+                <CompanyTab 
+                  lead={lead}
+                  isEditing={isEditing}
+                  editForm={editForm}
+                  setEditForm={setEditForm}
+                />
+              </TabsContent>
+              
+              {/* Social Networks Tab */}
+              <TabsContent value="social_networks" className="mt-0">
+                <SocialNetworkTab 
+                  lead={lead}
+                  isEditing={isEditing}
+                  editForm={editForm}
+                  setEditForm={setEditForm}
+                />
+              </TabsContent>
+              
+              {/* Address Tab */}
+              <TabsContent value="address" className="mt-0">
+                <AddressTab 
+                  lead={lead}
+                  isEditing={isEditing}
+                  editForm={editForm}
+                  setEditForm={setEditForm}
+                />
+              </TabsContent>
+              
+              {/* Notes Tab */}
+              <TabsContent value="notes" className="mt-0">
+                <NotesTab 
+                  lead={lead}
+                  isEditing={isEditing}
+                  editForm={editForm}
+                  setEditForm={setEditForm}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
         

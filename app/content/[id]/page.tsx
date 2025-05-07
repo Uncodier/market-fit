@@ -479,36 +479,73 @@ const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API
 
 // Ensure URL has proper protocol and use correct host
 const getFullApiUrl = (baseUrl: string) => {
+  if (!baseUrl || typeof baseUrl !== 'string') return '';
+  
+  // Trim any whitespace
+  baseUrl = baseUrl.trim();
+  
+  // If empty after trim, return empty string
   if (!baseUrl) return '';
   
-  // If already has http:// or https://, extract the host and port
-  let apiUrl = baseUrl;
-  
-  if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
-    // Extract the protocol, host, and port
-    const url = new URL(baseUrl);
-    const protocol = url.protocol;
-    const port = url.port;
+  // Check for invalid IP format (like http://192.168.87.49.64:3001)
+  // Common error - when IPs have more than 4 parts
+  const ipRegex = /^https?:\/\/(\d+\.\d+\.\d+\.\d+)\.(\d+)/;
+  const ipMatch = baseUrl.match(ipRegex);
+  if (ipMatch) {
+    // Fix the IP format by removing the extra part
+    const correctIp = ipMatch[1];
+    // Extract the port if present in the original URL
+    const portMatch = baseUrl.match(/:(\d+)(\/.*)?$/);
+    const port = portMatch ? portMatch[1] : '';
     
-    // If we're in a browser environment and the baseUrl is using localhost
-    if (typeof window !== 'undefined' && url.hostname === 'localhost') {
-      // Get the current origin
-      const origin = window.location.origin;
-      const originUrl = new URL(origin);
-      
-      // If we're accessing from an IP address instead of localhost
-      if (originUrl.hostname !== 'localhost' && /^\d+\.\d+\.\d+\.\d+$/.test(originUrl.hostname)) {
-        // Replace localhost with the same IP as the origin
-        apiUrl = `${protocol}//${originUrl.hostname}:${port}`;
-        console.log(`Replaced localhost with origin IP: ${apiUrl}`);
-      }
-    }
-    
-    return apiUrl;
+    // Reconstruct the URL with the correct IP
+    const protocol = baseUrl.startsWith('https://') ? 'https' : 'http';
+    console.warn(`Fixed invalid IP format from ${baseUrl} to ${protocol}://${correctIp}${port ? ':' + port : ''}`);
+    return `${protocol}://${correctIp}${port ? ':' + port : ''}`;
   }
   
-  // If it's just a host:port without protocol, add http://
-  return `http://${baseUrl}`;
+  try {
+    // Define apiUrl here
+    let apiUrl = baseUrl;
+    
+    if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
+      // Extract the protocol, host, and port
+      const url = new URL(baseUrl);
+      const protocol = url.protocol;
+      const port = url.port;
+      
+      // If we're in a browser environment and the baseUrl is using localhost
+      if (typeof window !== 'undefined' && url.hostname === 'localhost') {
+        // Get the current origin
+        const origin = window.location.origin;
+        const originUrl = new URL(origin);
+        
+        // If we're accessing from an IP address instead of localhost
+        if (originUrl.hostname !== 'localhost' && /^\d+\.\d+\.\d+\.\d+$/.test(originUrl.hostname)) {
+          // Replace localhost with the same IP as the origin
+          apiUrl = `${protocol}//${originUrl.hostname}:${port}`;
+          console.log(`Replaced localhost with origin IP: ${apiUrl}`);
+        }
+      }
+      
+      return apiUrl;
+    }
+    
+    // If it's just a host:port without protocol, add http://
+    // Make sure it's a valid host:port format
+    if (/^[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}(:[0-9]+)?$/.test(baseUrl) || 
+        /^localhost(:[0-9]+)?$/.test(baseUrl) ||
+        /^\d+\.\d+\.\d+\.\d+(:[0-9]+)?$/.test(baseUrl)) {
+      return `http://${baseUrl}`;
+    }
+    
+    // Invalid URL format, return empty string
+    console.error(`Invalid URL format: ${baseUrl}`);
+    return '';
+  } catch (error) {
+    console.error(`Error parsing URL ${baseUrl}:`, error);
+    return '';
+  }
 };
 
 // Full URL with protocol
@@ -1185,7 +1222,7 @@ export default function ContentDetailPage() {
                             onClick={() => generateContent("improve")}
                             disabled={isGenerating}
                           >
-                            <Sparkles className="h-4 w-4 mr-2" />
+                            <span className="text-base mr-2">✨</span>
                             Improve
                           </Button>
                           <Button
@@ -1194,7 +1231,7 @@ export default function ContentDetailPage() {
                             onClick={() => generateContent("expand")}
                             disabled={isGenerating}
                           >
-                            <PlusCircle className="h-4 w-4 mr-2" />
+                            <span className="text-base mr-2">➕</span>
                             Expand
                           </Button>
                           <Button
@@ -1203,7 +1240,7 @@ export default function ContentDetailPage() {
                             onClick={() => generateContent("style")}
                             disabled={isGenerating}
                           >
-                            <Pencil className="h-4 w-4 mr-2" />
+                            <span className="text-base mr-2">🎨</span>
                             Style
                           </Button>
                           <Button
@@ -1212,7 +1249,7 @@ export default function ContentDetailPage() {
                             onClick={() => generateContent("summarize")}
                             disabled={isGenerating}
                           >
-                            <FileText className="h-4 w-4 mr-2" />
+                            <span className="text-base mr-2">📝</span>
                             Summarize
                           </Button>
                         </div>

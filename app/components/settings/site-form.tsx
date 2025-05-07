@@ -101,6 +101,17 @@ export function SiteForm({
         total: 0,
         available: 0
       },
+      channels: initialData?.channels || {
+        email: {
+          enabled: false,
+          email: "",
+          password: "",
+          incomingServer: "",
+          incomingPort: "",
+          outgoingServer: "",
+          outgoingPort: ""
+        }
+      },
       marketing_channels: initialData?.marketing_channels || [],
       social_media: initialData?.social_media?.length 
         ? initialData.social_media 
@@ -127,7 +138,12 @@ export function SiteForm({
         track_visitors: false,
         track_actions: false,
         record_screen: false,
-        enable_chat: false
+        enable_chat: false,
+        chat_accent_color: "#e0ff17",
+        allow_anonymous_messages: false,
+        chat_position: "bottom-right",
+        welcome_message: "Welcome to our website! How can we assist you today?",
+        chat_title: "Chat with us"
       },
       analytics_provider: initialData?.analytics_provider || "",
       analytics_id: initialData?.analytics_id || "",
@@ -365,6 +381,12 @@ export function SiteForm({
     MarketFit.trackVisitors = ${form.watch("tracking.track_visitors")};
     MarketFit.trackActions = ${form.watch("tracking.track_actions")};
     MarketFit.recordScreen = ${form.watch("tracking.record_screen")};
+    MarketFit.enableChat = ${form.watch("tracking.enable_chat")};
+    MarketFit.chatAccentColor = "${form.watch("tracking.chat_accent_color") || "#e0ff17"}";
+    MarketFit.allowAnonymousMessages = ${form.watch("tracking.allow_anonymous_messages")};
+    MarketFit.chatPosition = "${form.watch("tracking.chat_position") || "bottom-right"}";
+    MarketFit.chatTitle = "${form.watch("tracking.chat_title") || "Chat with us"}";
+    MarketFit.welcomeMessage = "${form.watch("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}";
     
     var script = document.createElement('script');
     script.async = true;
@@ -424,7 +446,7 @@ export function SiteForm({
           )}
 
           {renderCard("team",
-            <TeamSection active={true} />
+            <TeamSection active={true} siteId={siteId} />
           )}
 
           {renderCard("general",

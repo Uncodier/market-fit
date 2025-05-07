@@ -27,7 +27,7 @@ import Image from "next/image"
 import { useAuth } from "@/app/hooks/use-auth"
 
 // Add Cpu icon for AI representation
-const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+const Cpu = ({ className = "", size = 18, ...props }: { className?: string, size?: number, [key: string]: any }) => (
   <div 
     className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
     style={{ 

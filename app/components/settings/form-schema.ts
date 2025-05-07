@@ -6,6 +6,17 @@ const marketingChannelSchema = z.object({
   type: z.string().optional()
 })
 
+// Define the email channel schema
+const emailChannelSchema = z.object({
+  email: z.string().email("Must be a valid email").optional(),
+  password: z.string().optional(),
+  incomingServer: z.string().optional(),
+  incomingPort: z.string().optional(),
+  outgoingServer: z.string().optional(),
+  outgoingPort: z.string().optional(),
+  enabled: z.boolean().optional().default(false)
+})
+
 export const siteFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   url: z.string().url("Must be a valid URL"),
@@ -95,6 +106,20 @@ export const siteFormSchema = z.object({
     total: 0,
     available: 0
   }),
+  // Channel settings
+  channels: z.object({
+    email: emailChannelSchema
+  }).optional().default({
+    email: {
+      enabled: false,
+      email: "",
+      password: "",
+      incomingServer: "",
+      incomingPort: "",
+      outgoingServer: "",
+      outgoingPort: ""
+    }
+  }),
   // Marketing related fields
   marketing_channels: z.array(marketingChannelSchema).optional().default([]),
   social_media: z.array(z.object({
@@ -132,13 +157,21 @@ export const siteFormSchema = z.object({
     track_actions: z.boolean().optional().default(false),
     record_screen: z.boolean().optional().default(false),
     enable_chat: z.boolean().optional().default(false),
-    chat_accent_color: z.string().optional().default("#e0ff17")
+    chat_accent_color: z.string().optional().default("#e0ff17"),
+    allow_anonymous_messages: z.boolean().optional().default(false),
+    chat_position: z.enum(["bottom-right", "bottom-left", "top-right", "top-left"]).optional().default("bottom-right"),
+    welcome_message: z.string().optional().default("Welcome to our website! How can we assist you today?"),
+    chat_title: z.string().optional().default("Chat with us")
   }).optional().default({
     track_visitors: false,
     track_actions: false,
     record_screen: false,
     enable_chat: false,
-    chat_accent_color: "#e0ff17"
+    chat_accent_color: "#e0ff17",
+    allow_anonymous_messages: false,
+    chat_position: "bottom-right",
+    welcome_message: "Welcome to our website! How can we assist you today?",
+    chat_title: "Chat with us"
   }),
   // New fields for analytics
   analytics_provider: z.string().optional(),
@@ -172,6 +205,9 @@ export const siteFormSchema = z.object({
 })
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>
+
+// Export the email channel schema type
+export type EmailChannel = z.infer<typeof emailChannelSchema>
 
 // Export types for marketing channels
 export type MarketingChannel = {

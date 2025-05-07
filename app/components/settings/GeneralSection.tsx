@@ -80,10 +80,12 @@ export function GeneralSection({ active }: GeneralSectionProps) {
                             className="w-full h-full rounded-lg border-2 border-dashed border-input bg-muted flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-input/80 hover:bg-muted/80 transition-colors"
                           >
                             <input {...getInputProps()} />
-                            <UploadCloud className="h-8 w-8 text-muted-foreground" />
-                            <div className="text-sm text-center">
-                              <p className="font-medium text-foreground">Click to upload</p>
-                              <p className="text-muted-foreground">or drag and drop</p>
+                            <div className="flex flex-col items-center justify-center">
+                              <UploadCloud className="h-8 w-8 text-muted-foreground flex-shrink-0 mb-2" />
+                              <div className="text-sm text-center flex flex-col items-center">
+                                <p className="font-medium text-foreground">Click to upload</p>
+                                <p className="text-muted-foreground">or drag and drop</p>
+                              </div>
                             </div>
                           </div>
                         )}

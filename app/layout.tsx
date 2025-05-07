@@ -67,6 +67,7 @@ export default function RootLayout({
                     'nav svg',
                     '[role="menuitem"] svg',
                     '.h-\\\\[25px\\\\].w-\\\\[25px\\\\] svg',
+                    '.h-\\\\[20px\\\\].w-\\\\[20px\\\\] svg',
                     'input + div > svg',
                     'select + div > svg',
                     'button > svg',
@@ -548,6 +549,78 @@ export default function RootLayout({
                       svg.style.margin = '0 auto';
                       svg.style.padding = '0';
                     }
+                  });
+
+                  // Fix específico para iconos del sidebar para asegurar que sean más pequeños
+                  document.querySelectorAll('.h-\\[25px\\].w-\\[25px\\] svg, .h-\\[20px\\].w-\\[20px\\] svg, nav [class*="menu-item"] svg').forEach(svg => {
+                    svg.style.width = '16px';
+                    svg.style.height = '16px';
+                    svg.style.minWidth = '16px';
+                    svg.style.minHeight = '16px';
+                    
+                    const parent = svg.parentElement;
+                    if (parent) {
+                      parent.style.width = '16px';
+                      parent.style.height = '16px';
+                      parent.style.minWidth = '16px';
+                      parent.style.minHeight = '16px';
+                    }
+                  });
+
+                  // Targets específicos para el sidebar y sus elementos de menú
+                  document.querySelectorAll('[data-collapsed] svg, [data-collapsed] [class*="menu-item"] svg').forEach(svg => {
+                    svg.style.width = '16px';
+                    svg.style.height = '16px';
+                    svg.style.minWidth = '16px';
+                    svg.style.minHeight = '16px';
+                    
+                    const parent = svg.parentElement;
+                    if (parent) {
+                      parent.style.width = '16px';
+                      parent.style.height = '16px';
+                      parent.style.minWidth = '16px';
+                      parent.style.minHeight = '16px';
+                    }
+                  });
+                  
+                  // Fix específico para el icono de Settings y su flecha
+                  document.querySelectorAll('.setting-parent-item svg, [href="/settings"] svg, a[href*="settings"] svg').forEach(svg => {
+                    svg.style.width = '16px';
+                    svg.style.height = '16px';
+                    svg.style.minWidth = '16px';
+                    svg.style.minHeight = '16px';
+                    
+                    const parent = svg.parentElement;
+                    if (parent) {
+                      parent.style.width = '16px';
+                      parent.style.height = '16px';
+                      parent.style.minWidth = '16px';
+                      parent.style.minHeight = '16px';
+                    }
+                  });
+                  
+                  // Fix específico para el icono de Notifications
+                  document.querySelectorAll('[href="/notifications"] svg, .notifications-icon-container svg').forEach(svg => {
+                    svg.style.width = '16px';
+                    svg.style.height = '16px';
+                    svg.style.minWidth = '16px';
+                    svg.style.minHeight = '16px';
+                    
+                    const parent = svg.parentElement;
+                    if (parent) {
+                      parent.style.width = '16px';
+                      parent.style.height = '16px';
+                      parent.style.minWidth = '16px';
+                      parent.style.minHeight = '16px';
+                    }
+                  });
+                  
+                  // Fix para la flecha al lado del icono Settings
+                  document.querySelectorAll('.setting-parent-item + div svg').forEach(svg => {
+                    svg.style.width = '8px';
+                    svg.style.height = '8px';
+                    svg.style.minWidth = '8px';
+                    svg.style.minHeight = '8px';
                   });
                 }
                 

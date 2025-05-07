@@ -135,7 +135,7 @@ export default function DashboardPage() {
         value={activeTab}
         onValueChange={handleTabChange}
       >
-        <StickyHeader showAIButton={false}>
+        <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
@@ -195,7 +195,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
               <p className="text-muted-foreground">
-                Welcome to your control panel - Viewing {selectedRangeType} data ({format(dateRange.startDate, "MMMM d")} to {format(dateRange.endDate, "MMMM d, yyyy")})
+                Welcome to your control panel - Viewing {selectedRangeType} data ({format(dateRange.startDate, "MMMM d")} to {format(dateRange.endDate, "MMMM d")} {format(dateRange.endDate, "yyyy")})
               </p>
             </div>
           </div>

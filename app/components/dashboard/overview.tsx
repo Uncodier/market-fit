@@ -12,6 +12,8 @@ import {
   isSameYear, isBefore, 
   subMonths, subYears, subQuarters
 } from "date-fns"
+import { IsEmpty } from "@/app/components/ui/empty-state"
+import { BarChart } from "@/app/components/ui/icons"
 
 interface ChartDataItem {
   name: string
@@ -296,6 +298,22 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
             </div>
           ))}
         </div>
+      </div>
+    )
+  }
+
+  // Check if there's no data or all values are null
+  const hasData = chartData.length > 0 && chartData.some(item => item.total !== null);
+  
+  if (!hasData) {
+    return (
+      <div className="w-full h-[350px] flex items-center justify-center">
+        <IsEmpty
+          icon={<BarChart size={36} className="text-muted-foreground/60" />}
+          title="No data available"
+          description="There is no sales data available for the selected period."
+          className="h-full flex flex-col items-center justify-center"
+        />
       </div>
     )
   }

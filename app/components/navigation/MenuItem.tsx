@@ -80,7 +80,9 @@ export function MenuItem({
         "flex items-center justify-center safari-icon-fix",
         isCollapsed ? "w-full" : "w-[25px]",
         "h-[25px]",
-        isSettingsLink ? "safari-settings-icon" : ""
+        isSettingsLink ? "safari-settings-icon" : "",
+        href === "/settings" || href.includes("settings") ? "settings-icon-container" : "",
+        href === "/notifications" ? "notifications-icon-container" : ""
       )}>
         {customIcon ? customIcon : avatarUrl ? (
           <MenuAvatar className="h-8 w-8">
@@ -90,7 +92,7 @@ export function MenuItem({
             </MenuAvatarFallback>
           </MenuAvatar>
         ) : Icon && (
-          <Icon className="h-[25px] w-[25px] shrink-0" />
+          <Icon className="h-[20px] w-[20px] shrink-0" />
         )}
       </div>
       

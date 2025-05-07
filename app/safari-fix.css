@@ -83,16 +83,16 @@
     
     /* Fix específico para los iconos del sidebar */
     .h-\[25px\].w-\[25px\] {
-      width: 25px !important;
-      height: 25px !important;
+      width: 20px !important;
+      height: 20px !important;
       display: inline-flex !important;
       align-items: center !important;
       justify-content: center !important;
     }
     
     .h-\[25px\].w-\[25px\] svg {
-      width: 25px !important;
-      height: 25px !important;
+      width: 20px !important;
+      height: 20px !important;
     }
     
     /* Safari IconWrapper fix */
@@ -227,8 +227,8 @@ html.safari .h-6 svg, html.safari .w-6 svg {
 }
 
 html.safari .h-\[25px\] svg, html.safari .w-\[25px\] svg {
-  width: 25px !important;
-  height: 25px !important;
+  width: 20px !important;
+  height: 20px !important;
 }
 
 /* Fix para elementos que contienen iconos en el menú */
@@ -1052,4 +1052,71 @@ html.safari .safari-switch[data-state="unchecked"] span {
 
 html.safari .safari-switch[data-state="checked"] span {
   transform: translateX(20px) !important;
+}
+
+/* Fix especifico para el icono de Settings y su SVG */
+html.safari .safari-settings-svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: block !important;
+  position: static !important;
+}
+
+/* Fix specifico para el icono de Settings y su flecha */
+html.safari [href="/settings"] svg,
+html.safari a[href*="settings"] svg,
+html.safari .setting-parent-item svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 !important;
+}
+
+html.safari .setting-parent-item + div svg {
+  width: 8px !important;
+  height: 8px !important;
+  min-width: 8px !important;
+  min-height: 8px !important;
+}
+
+/* Fix especificos para contenedores y SVGs en el menu de Safari */
+html.safari .settings-icon-container,
+html.safari .settings-icon-container svg,
+html.safari .setting-parent-item div,
+html.safari .setting-parent-item div svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+}
+
+/* Fix especifico para el icono de Notifications y su SVG */
+html.safari .safari-notification-svg,
+html.safari .notifications-icon-container svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: block !important;
+  position: static !important;
+}
+
+html.safari .notifications-icon-container {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
 } 

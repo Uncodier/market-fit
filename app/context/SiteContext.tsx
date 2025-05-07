@@ -32,6 +32,10 @@ export interface Site {
     record_screen: boolean;
     enable_chat: boolean;
     chat_accent_color?: string;
+    allow_anonymous_messages?: boolean;
+    chat_position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
+    welcome_message?: string;
+    chat_title?: string;
   }
   billing?: {
     plan: 'free' | 'starter' | 'professional' | 'enterprise'
@@ -85,6 +89,17 @@ export interface SiteSettings {
     yearly?: string
     fiveYear?: string
     tenYear?: string
+  } | null
+  channels?: {
+    email?: {
+      enabled: boolean
+      email: string
+      password: string
+      incomingServer?: string
+      incomingPort?: string
+      outgoingServer?: string
+      outgoingPort?: string
+    }
   } | null
 }
 
@@ -493,7 +508,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   updated_at: settingsData.updated_at,
                   competitors: parseJsonField(settingsData.competitors, []),
                   focus_mode: settingsData.focus_mode,
-                  goals: parsedGoals
+                  goals: parsedGoals,
+                  channels: parseJsonField(settingsData.channels, {
+                    email: {
+                      enabled: false,
+                      email: "",
+                      password: "",
+                      incomingServer: "",
+                      incomingPort: "",
+                      outgoingServer: "",
+                      outgoingPort: ""
+                    }
+                  })
                 }
               };
             } else {
@@ -689,7 +715,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 updated_at: settingsData.updated_at,
                 competitors: parseJsonField(settingsData.competitors, []),
                 focus_mode: settingsData.focus_mode,
-                goals: parsedGoals
+                goals: parsedGoals,
+                channels: parseJsonField(settingsData.channels, {
+                  email: {
+                    enabled: false,
+                    email: "",
+                    password: "",
+                    incomingServer: "",
+                    incomingPort: "",
+                    outgoingServer: "",
+                    outgoingPort: ""
+                  }
+                })
               }
             };
           } else {
@@ -959,6 +996,22 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       if (settings.focus_mode !== undefined) {
         formattedSettings.focus_mode = typeof settings.focus_mode === 'number' ? settings.focus_mode : 50;
+      }
+      
+      // Handle channels field
+      if (settings.channels !== undefined) {
+        console.log("UPDATE SETTINGS: Processing channels field:", settings.channels);
+        formattedSettings.channels = typeof settings.channels === 'object' ? settings.channels : {
+          email: {
+            enabled: false,
+            email: "",
+            password: "",
+            incomingServer: "",
+            incomingPort: "",
+            outgoingServer: "",
+            outgoingPort: ""
+          }
+        };
       }
       
       // Handle goals field

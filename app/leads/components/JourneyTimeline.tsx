@@ -326,7 +326,7 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                           {task.scheduled_date && (
                             <div className="inline-flex items-center">
                               <Clock className="h-3 w-3 mr-1" />
-                              {format(new Date(task.scheduled_date), "MMM d, yyyy")}
+                              {format(new Date(task.scheduled_date), "MMM d")} {format(new Date(task.scheduled_date), "yyyy")}
                             </div>
                           )}
                         </div>

@@ -215,6 +215,20 @@ export interface TeamRole {
   description?: string
 }
 
+export interface SiteMember {
+  id: string
+  site_id: string
+  user_id: string | null
+  role: 'owner' | 'admin' | 'marketing' | 'collaborator'
+  added_by: string | null
+  created_at: string
+  updated_at: string
+  email: string
+  name: string | null
+  position: string | null
+  status: 'pending' | 'active' | 'rejected'
+}
+
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
 export type TablesInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
 export type TablesUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'] 

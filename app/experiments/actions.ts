@@ -116,4 +116,25 @@ export async function stopExperiment(id: string) {
 
   revalidatePath("/experiments")
   return { data: experiment }
+}
+
+export async function setExperimentStatus(id: string, status: "draft" | "active" | "completed") {
+  const cookieStore = cookies()
+  const supabase = await createClient()
+
+  const { data: experiment, error } = await supabase
+    .from("experiments")
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) {
+    return {
+      error: error.message
+    }
+  }
+
+  revalidatePath("/experiments")
+  return { data: experiment }
 } 

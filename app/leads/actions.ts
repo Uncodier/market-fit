@@ -13,6 +13,16 @@ const LeadSchema = z.object({
       website: z.string().optional(),
       industry: z.string().optional(),
       size: z.string().optional(),
+      annual_revenue: z.string().optional(),
+      founded: z.string().optional(),
+      description: z.string().optional(),
+      address: z.object({
+        street: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zipcode: z.string().optional(),
+        country: z.string().optional(),
+      }).optional(),
     }).nullable(),
     position: z.string().nullable(),
     segment_id: z.string().nullable(),
@@ -24,7 +34,26 @@ const LeadSchema = z.object({
     updated_at: z.string(),
     last_contact: z.string().nullable(),
     site_id: z.string(),
-    user_id: z.string()
+    user_id: z.string(),
+    birthday: z.string().nullable(),
+    language: z.string().nullable(),
+    social_networks: z.object({
+      linkedin: z.string().optional(),
+      twitter: z.string().optional(),
+      facebook: z.string().optional(),
+      instagram: z.string().optional(),
+      tiktok: z.string().optional(),
+      youtube: z.string().optional(),
+      whatsapp: z.string().optional(),
+      pinterest: z.string().optional(),
+    }).nullable(),
+    address: z.object({
+      street: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipcode: z.string().optional(),
+      country: z.string().optional(),
+    }).nullable(),
   })).nullable(),
   error: z.string().optional()
 })
@@ -43,6 +72,16 @@ const SingleLeadSchema = z.object({
       website: z.string().optional(),
       industry: z.string().optional(),
       size: z.string().optional(),
+      annual_revenue: z.string().optional(),
+      founded: z.string().optional(),
+      description: z.string().optional(),
+      address: z.object({
+        street: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zipcode: z.string().optional(),
+        country: z.string().optional(),
+      }).optional(),
     }).nullable(),
     position: z.string().nullable(),
     segment_id: z.string().nullable(),
@@ -54,7 +93,26 @@ const SingleLeadSchema = z.object({
     updated_at: z.string(),
     last_contact: z.string().nullable(),
     site_id: z.string(),
-    user_id: z.string()
+    user_id: z.string(),
+    birthday: z.string().nullable(),
+    language: z.string().nullable(),
+    social_networks: z.object({
+      linkedin: z.string().optional(),
+      twitter: z.string().optional(),
+      facebook: z.string().optional(),
+      instagram: z.string().optional(),
+      tiktok: z.string().optional(),
+      youtube: z.string().optional(),
+      whatsapp: z.string().optional(),
+      pinterest: z.string().optional(),
+    }).nullable(),
+    address: z.object({
+      street: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipcode: z.string().optional(),
+      country: z.string().optional(),
+    }).nullable(),
   }).nullable(),
   error: z.string().optional()
 })
@@ -71,6 +129,16 @@ const CreateLeadSchema = z.object({
     website: z.string().optional(),
     industry: z.string().optional(),
     size: z.string().optional(),
+    annual_revenue: z.string().optional(),
+    founded: z.string().optional(),
+    description: z.string().optional(),
+    address: z.object({
+      street: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipcode: z.string().optional(),
+      country: z.string().optional(),
+    }).optional(),
   }).nullable(),
   position: z.string().optional(),
   segment_id: z.string().optional(),
@@ -78,6 +146,25 @@ const CreateLeadSchema = z.object({
   notes: z.string().optional(),
   origin: z.string().optional(),
   site_id: z.string().min(1, "Site ID is required"),
+  birthday: z.string().optional(),
+  language: z.string().optional(),
+  social_networks: z.object({
+    linkedin: z.string().optional(),
+    twitter: z.string().optional(),
+    facebook: z.string().optional(),
+    instagram: z.string().optional(),
+    tiktok: z.string().optional(),
+    youtube: z.string().optional(),
+    whatsapp: z.string().optional(),
+    pinterest: z.string().optional(),
+  }).optional(),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipcode: z.string().optional(),
+    country: z.string().optional(),
+  }).optional(),
 })
 
 export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
@@ -93,6 +180,16 @@ const UpdateLeadSchema = z.object({
     website: z.string().optional(),
     industry: z.string().optional(),
     size: z.string().optional(),
+    annual_revenue: z.string().optional(),
+    founded: z.string().optional(),
+    description: z.string().optional(),
+    address: z.object({
+      street: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipcode: z.string().optional(),
+      country: z.string().optional(),
+    }).optional(),
   }).nullable(),
   position: z.string().optional().nullable(),
   segment_id: z.string().optional().nullable(),
@@ -100,6 +197,25 @@ const UpdateLeadSchema = z.object({
   notes: z.string().optional().nullable(),
   origin: z.string().optional().nullable(),
   site_id: z.string().min(1, "Site ID is required"),
+  birthday: z.string().optional().nullable(),
+  language: z.string().optional().nullable(),
+  social_networks: z.object({
+    linkedin: z.string().optional(),
+    twitter: z.string().optional(),
+    facebook: z.string().optional(),
+    instagram: z.string().optional(),
+    tiktok: z.string().optional(),
+    youtube: z.string().optional(),
+    whatsapp: z.string().optional(),
+    pinterest: z.string().optional(),
+  }).optional().nullable(),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipcode: z.string().optional(),
+    country: z.string().optional(),
+  }).optional().nullable(),
 })
 
 export type UpdateLeadInput = z.infer<typeof UpdateLeadSchema>
@@ -126,7 +242,11 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
         updated_at,
         last_contact,
         site_id,
-        user_id
+        user_id,
+        birthday,
+        language,
+        social_networks,
+        address
       `)
       .eq('id', id)
       .eq('site_id', site_id)
@@ -168,7 +288,11 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         updated_at,
         last_contact,
         site_id,
-        user_id
+        user_id,
+        birthday,
+        language,
+        social_networks,
+        address
       `)
       .eq('site_id', site_id)
       .order("created_at", { ascending: false })
@@ -205,7 +329,11 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
         updated_at,
         last_contact,
         site_id,
-        user_id
+        user_id,
+        birthday,
+        language,
+        social_networks,
+        address
       `)
       .eq('campaign_id', campaign_id)
       .eq('site_id', site_id)

@@ -22,6 +22,7 @@ import {
 } from "../components/ui/alert-dialog"
 import { SiteForm } from "../components/settings/site-form"
 import { type SiteFormValues, type MarketingChannel } from "../components/settings/form-schema"
+import { secureTokensService } from "../services/secure-tokens-service"
 
 // Type definition for competitor URLs to match the form values
 interface CompetitorWithMaybeOptionalName {
@@ -225,6 +226,19 @@ export default function SettingsPage() {
           fiveYear: "",
           tenYear: ""
         };
+
+    // Check for secure tokens and use a placeholder for display
+    const hasEmailPassword = site.settings?.channels?.email?.password || site.settings?.channels?.email?.enabled || "";
+    const emailPassword = hasEmailPassword ? "STORED_SECURELY" : "";
+
+    const hasWhatsAppToken = site.settings?.whatsapp_token || "";
+    const whatsAppToken = hasWhatsAppToken ? "STORED_SECURELY" : "";
+    
+    // Check secure tokens status in server
+    if (site.id) {
+      // This runs asynchronously and updates the form later
+      checkSecureTokens(site.id, site.settings?.channels?.email?.email).catch(console.error);
+    }
     
     return {
       name: site.name,
@@ -253,6 +267,28 @@ export default function SettingsPage() {
         opportunities: "",
         threats: ""
       },
+      // Add channels configuration with password placeholder if secured
+      channels: site.settings?.channels ? {
+        email: {
+          enabled: site.settings.channels.email?.enabled || false,
+          email: site.settings.channels.email?.email || "",
+          password: emailPassword,
+          incomingServer: site.settings.channels.email?.incomingServer || "",
+          incomingPort: site.settings.channels.email?.incomingPort || "",
+          outgoingServer: site.settings.channels.email?.outgoingServer || "",
+          outgoingPort: site.settings.channels.email?.outgoingPort || ""
+        }
+      } : {
+        email: {
+          enabled: false,
+          email: "",
+          password: "",
+          incomingServer: "",
+          incomingPort: "",
+          outgoingServer: "",
+          outgoingPort: ""
+        }
+      },
       // Add marketing info
       marketing_budget: site.settings?.marketing_budget || {
         total: 0,
@@ -266,13 +302,17 @@ export default function SettingsPage() {
         track_actions: site.tracking?.track_actions || false,
         record_screen: site.tracking?.record_screen || false,
         enable_chat: site.tracking?.enable_chat || false,
-        chat_accent_color: site.tracking?.chat_accent_color || "#e0ff17"
+        chat_accent_color: site.tracking?.chat_accent_color || "#e0ff17",
+        allow_anonymous_messages: site.tracking?.allow_anonymous_messages || false,
+        chat_position: site.tracking?.chat_position || "bottom-right",
+        welcome_message: site.tracking?.welcome_message || "Welcome to our website! How can we assist you today?",
+        chat_title: site.tracking?.chat_title || "Chat with us"
       },
       analytics_provider: site.settings?.analytics_provider || "",
       analytics_id: site.settings?.analytics_id || "",
       tracking_code: site.settings?.tracking_code || "",
-      // Add WhatsApp Business token
-      whatsapp_token: site.settings?.whatsapp_token || "",
+      // Add WhatsApp Business token (placeholder if stored securely)
+      whatsapp_token: whatsAppToken,
       // Add team info
       team_members: site.settings?.team_members || [],
       // Billing info
@@ -290,6 +330,26 @@ export default function SettingsPage() {
       }
     }
   }
+
+  // Helper function to check secure tokens and update the form if needed
+  const checkSecureTokens = async (siteId: string, email?: string) => {
+    try {
+      // Check WhatsApp token
+      const hasWhatsApp = await secureTokensService.hasWhatsAppToken(siteId);
+      
+      // Check email credentials if email is provided
+      const hasEmail = email ? 
+        await secureTokensService.hasEmailCredentials(siteId, email) :
+        false;
+      
+      console.log(`Secure tokens check - WhatsApp: ${hasWhatsApp}, Email: ${hasEmail}`);
+      
+      // We could update form fields here if needed, but the form loads with placeholders already
+      // This is mostly for debugging purposes
+    } catch (error) {
+      console.error('Error checking secure tokens:', error);
+    }
+  };
 
   const handleSave = async (data: SiteFormValues) => {
     if (!currentSite) return;
@@ -316,7 +376,8 @@ export default function SettingsPage() {
       // Extract site-specific fields
       const { 
         name, url, description, logo_url, resource_urls, 
-        competitors, focusMode, billing, tracking, whatsapp_token, ...settingsData 
+        competitors, focusMode, billing, tracking, whatsapp_token, 
+        team_members, channels, ...settingsData 
       } = data;
       
       console.log("SAVE 3: Datos extraídos del formulario:", {
@@ -455,7 +516,19 @@ export default function SettingsPage() {
         analytics_provider: settingsData.analytics_provider || "",
         analytics_id: settingsData.analytics_id || "",
         whatsapp_token: whatsapp_token || "",
-        team_members: settingsData.team_members || [],
+        team_members: team_members || [],
+        // Include channels configuration
+        channels: channels || {
+          email: {
+            enabled: false,
+            email: "",
+            password: "",
+            incomingServer: "",
+            incomingPort: "",
+            outgoingServer: "",
+            outgoingPort: ""
+          }
+        },
         // Incluir competitors y focus_mode en settings en lugar de site
         competitors: filteredCompetitors?.length > 0 ? filteredCompetitors : [],
         focus_mode: focusMode || 50,
@@ -466,6 +539,69 @@ export default function SettingsPage() {
           tenYear: goals.tenYear || ""
         } // Use the validated goals object with correct field names
       };
+      
+      // Handle secure token storage if new values are provided
+      if (currentSite.id) {
+        console.log("SAVE SECURE: Processing secure tokens");
+        
+        // Check for WhatsApp token - Don't process 'STORED_SECURELY' as it's just a placeholder
+        if (data.whatsapp_token && 
+            data.whatsapp_token.trim() !== '' && 
+            data.whatsapp_token !== 'STORED_SECURELY') {
+          try {
+            console.log("SAVE SECURE: Storing WhatsApp token");
+            await secureTokensService.storeToken(
+              currentSite.id,
+              'whatsapp',
+              data.whatsapp_token,
+              'default'
+            );
+            // Clear the token from the form data to avoid storing in plaintext
+            data.whatsapp_token = "";
+            // Update settings object to indicate a token is stored
+            settings.whatsapp_token = "TOKEN_PRESENT";
+          } catch (tokenError) {
+            console.error("Error storing WhatsApp token:", tokenError);
+          }
+        } else if (data.whatsapp_token === 'STORED_SECURELY') {
+          // If using the stored token, make sure we keep the indicator in settings
+          settings.whatsapp_token = "TOKEN_PRESENT";
+          // Clear the placeholder from data
+          data.whatsapp_token = "";
+        }
+        
+        // Check for email credentials - Don't process 'STORED_SECURELY' as it's just a placeholder
+        if (data.channels?.email?.password && 
+            data.channels.email.password.trim() !== '' && 
+            data.channels.email.password !== 'STORED_SECURELY') {
+          try {
+            console.log("SAVE SECURE: Storing email credentials");
+            const emailIdentifier = data.channels.email.email || 'default';
+            await secureTokensService.storeToken(
+              currentSite.id,
+              'email',
+              data.channels.email.password,
+              emailIdentifier
+            );
+            // Clear the password from the form data to avoid storing in plaintext
+            data.channels.email.password = "";
+            // Ensure we keep email settings structure in settings
+            if (!settings.channels) settings.channels = { email: {} as any };
+            if (!settings.channels.email) settings.channels.email = {} as any;
+            // If password was stored, we should indicate a password is present
+            settings.channels.email.password = "PASSWORD_PRESENT";
+          } catch (tokenError) {
+            console.error("Error storing email credentials:", tokenError);
+          }
+        } else if (data.channels?.email?.password === 'STORED_SECURELY' && data.channels.email.enabled) {
+          // If using the stored password, make sure we keep the indicator in settings
+          if (!settings.channels) settings.channels = { email: {} as any };
+          if (!settings.channels.email) settings.channels.email = {} as any;
+          settings.channels.email.password = "PASSWORD_PRESENT";
+          // Clear the placeholder from data
+          data.channels.email.password = "";
+        }
+      }
       
       // Preserve existing settings ID if it exists
       if (currentSite.settings?.id) {
@@ -499,6 +635,19 @@ export default function SettingsPage() {
       } catch (settingsError) {
         console.error("SAVE ERROR en updateSettings:", settingsError);
         throw settingsError;
+      }
+
+      // Finally sync team members to site_members if we have any
+      if (team_members && team_members.length > 0) {
+        try {
+          // Import dynamically to avoid circular dependencies
+          const { siteMembersService } = await import("../services/site-members-service");
+          await siteMembersService.syncFromSettings(currentSite.id, team_members);
+          console.log("SAVE 12.5: Team members synced to site_members");
+        } catch (teamError) {
+          console.error("Warning: Error syncing team members:", teamError);
+          // Don't throw here, as we still want to save the rest of the settings
+        }
       }
       
       console.log("SAVE 13: Todo el proceso completado con éxito");
