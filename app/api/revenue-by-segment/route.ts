@@ -60,7 +60,7 @@ export async function GET(request: Request) {
   }
   
   try {
-    const supabase = createApiClient();
+    const supabase = createServiceApiClient();
     console.log(`[Revenue By Segment API] Received request for site: ${siteId}`);
     
     // Parse dates

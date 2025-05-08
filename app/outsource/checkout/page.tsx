@@ -21,6 +21,7 @@ import {
   CreditCard as CreditCardIcon
 } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { Badge } from "@/app/components/ui/badge"
 
 // Define requirement types similar to the ones used in requirements page
 type RequirementStatusType = 
@@ -269,12 +270,14 @@ export default function OutsourceCheckoutPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const taskId = searchParams.get('taskId')
+  const campaignId = searchParams.get('campaignId')
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [saveInfo, setSaveInfo] = useState(false)
   const [useSavedPayment, setUseSavedPayment] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [taskData, setTaskData] = useState<TaskDetails | null>(null)
+  const [campaignData, setCampaignData] = useState<any | null>(null)
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false)
   
   // Function to get a truncated preview of markdown instructions
@@ -338,14 +341,32 @@ export default function OutsourceCheckoutPage() {
     
     return details
   }
+
+  // Define campaign details that will be displayed in the bullet list
+  const getCampaignDetails = (campaign: any) => {
+    const details = [
+      "Complete implementation of the campaign strategy",
+      "Performance metrics and analytics dashboard",
+      "Final report with insights and recommendations",
+      "Regular status updates"
+    ]
+    
+    // Add outsource instructions if available
+    if (campaign?.outsourceInstructions) {
+      const instructionLines = campaign.outsourceInstructions
+        .split('\n')
+        .filter((line: string) => line.trim().length > 0)
+      
+      return [...instructionLines, ...details]
+    }
+    
+    return details
+  }
   
   useEffect(() => {
+    // Function to fetch a task if taskId is provided
     const fetchTaskData = async () => {
-      if (!taskId) {
-        setTaskData(fallbackTask)
-        setIsLoading(false)
-        return
-      }
+      if (!taskId) return;
       
       try {
         const supabase = createClient()
@@ -386,16 +407,70 @@ export default function OutsourceCheckoutPage() {
         setIsLoading(false)
       }
     }
+
+    // Function to fetch a campaign if campaignId is provided
+    const fetchCampaignData = async () => {
+      if (!campaignId) return;
+      
+      try {
+        const supabase = createClient()
+        
+        // Fetch the campaign data
+        const { data, error } = await supabase
+          .from('campaigns')
+          .select('*')
+          .eq('id', campaignId)
+          .single()
+          
+        if (error) {
+          console.error('Error fetching campaign data:', error)
+          setTaskData(fallbackTask) // Use fallback data
+          return
+        }
+        
+        setCampaignData(data)
+        
+        // Also set taskData with equivalent fields for consistent UI
+        const taskDetails: TaskDetails = {
+          id: data.id,
+          title: data.title,
+          description: data.description || "",
+          instructions: data.description || "",
+          outsourceInstructions: data.outsourceInstructions || "",
+          priority: data.priority || "high",
+          status: data.status || "active",
+          completionStatus: data.completionStatus || "pending",
+          budget: data.budget?.allocated || 499.00,
+          estimatedHours: 40,
+          estimatedDelivery: data.dueDate ? `Before ${new Date(data.dueDate).toLocaleDateString()}` : "2-3 weeks"
+        }
+        
+        setTaskData(taskDetails)
+      } catch (error) {
+        console.error('Error in fetchCampaignData:', error)
+        setTaskData(fallbackTask)
+      } finally {
+        setIsLoading(false)
+      }
+    }
     
-    fetchTaskData()
-  }, [taskId])
+    // Determine which data to fetch
+    if (campaignId) {
+      fetchCampaignData()
+    } else if (taskId) {
+      fetchTaskData()
+    } else {
+      setTaskData(fallbackTask)
+      setIsLoading(false)
+    }
+  }, [taskId, campaignId])
   
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
       // Simulating API call
       await new Promise(resolve => setTimeout(resolve, 2000))
-      toast.success("Payment successful! Your task has been confirmed")
+      toast.success("Payment successful! Your project has been confirmed")
       // Redirect to confirmation page
       router.push('/outsource/confirmation')
     } catch (error) {
@@ -414,15 +489,18 @@ export default function OutsourceCheckoutPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex flex-col items-center justify-center p-4">
         <Shield className="h-16 w-16 text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Task Not Found</h1>
+        <h1 className="text-2xl font-bold mb-2">Project Not Found</h1>
         <p className="text-muted-foreground text-center mb-6">
-          We couldn't find the task you're looking for. Please try again.
+          We couldn't find the project you're looking for. Please try again.
         </p>
         <Button onClick={() => router.back()}>Go Back</Button>
       </div>
     )
   }
 
+  // Determine if we're dealing with a campaign or a task
+  const isCampaign = !!campaignId;
+  
   // If we have task data (either from API or fallback), render the checkout page
   return (
     <div className="min-h-screen bg-gradient-to-b from-background/40 to-background">
@@ -442,7 +520,7 @@ export default function OutsourceCheckoutPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left Column - Task Details */}
+          {/* Left Column - Task/Campaign Details */}
           <div>
             <h1 className="text-2xl font-medium mb-4">Pay Uncodie</h1>
             <h2 className="text-4xl font-bold mb-8">${taskData?.budget?.toFixed(2) || "199.00"}</h2>
@@ -460,7 +538,7 @@ export default function OutsourceCheckoutPage() {
                   <div className="bg-muted/30 rounded-lg mb-3 overflow-hidden border border-border/30">
                     <div className="p-4">
                       <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-medium">Instructions</h4>
+                        <h4 className="font-medium">Project Instructions</h4>
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -491,16 +569,24 @@ export default function OutsourceCheckoutPage() {
                   </div>
                 )}
                 
-                {/* Task Details Section */}
+                {/* Task/Campaign Details Section */}
                 <div className="bg-muted/30 rounded-lg p-4 mb-3 border border-border/30">
-                  <h4 className="font-medium mb-2">Task Details</h4>
+                  <h4 className="font-medium mb-2">{isCampaign ? "Campaign Details" : "Task Details"}</h4>
                   <ul className="space-y-2">
-                    {getTaskDetails(taskData || fallbackTask).map((detail, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        <span>{detail}</span>
-                      </li>
-                    ))}
+                    {isCampaign 
+                      ? getCampaignDetails(campaignData).map((detail, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm">
+                            <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>{detail}</span>
+                          </li>
+                        ))
+                      : getTaskDetails(taskData || fallbackTask).map((detail, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm">
+                            <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>{detail}</span>
+                          </li>
+                        ))
+                    }
                   </ul>
                 </div>
                 
@@ -515,15 +601,54 @@ export default function OutsourceCheckoutPage() {
                   </div>
                 )}
                 
+                {/* Campaign Type & Segments - Only for campaigns */}
+                {isCampaign && campaignData && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-3 border border-blue-200 dark:border-blue-900/30">
+                    <h4 className="font-medium mb-2 text-blue-700 dark:text-blue-400">Campaign Information</h4>
+                    <div className="space-y-3">
+                      {campaignData.type && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">Type:</span> 
+                          <span>{campaignData.type.charAt(0).toUpperCase() + campaignData.type.slice(1)}</span>
+                        </div>
+                      )}
+                      {campaignData.status && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">Status:</span> 
+                          <Badge className={
+                            campaignData.status === "active" ? "bg-green-100 text-green-800 border-green-200" :
+                            campaignData.status === "pending" ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                            "bg-blue-100 text-blue-800 border-blue-200"
+                          }>
+                            {campaignData.status.charAt(0).toUpperCase() + campaignData.status.slice(1)}
+                          </Badge>
+                        </div>
+                      )}
+                      {campaignData.priority && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">Priority:</span> 
+                          <Badge className={
+                            campaignData.priority === "high" ? "bg-red-100 text-red-800 border-red-200" :
+                            campaignData.priority === "medium" ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                            "bg-green-100 text-green-800 border-green-200"
+                          }>
+                            {campaignData.priority.charAt(0).toUpperCase() + campaignData.priority.slice(1)}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
                 {/* Estimated Times */}
                 <div className="flex flex-wrap gap-4 text-sm mt-3">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>Est. {taskData?.estimatedHours || 18} hours of work</span>
+                    <span>Est. {isCampaign ? "40-60" : taskData?.estimatedHours || 18} hours of work</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>Delivery in {taskData?.estimatedDelivery || "3-5 days"}</span>
+                    <span>Delivery in {taskData?.estimatedDelivery || (isCampaign ? "2-3 weeks" : "3-5 days")}</span>
                   </div>
                 </div>
               </div>

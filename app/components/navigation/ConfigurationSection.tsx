@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Settings, Bell, Shield, HelpCircle, LogOut, Sun, Moon, CreditCard } from "@/app/components/ui/icons"
+import { Settings, Bell, Shield, LogOut, Sun, Moon, CreditCard } from "@/app/components/ui/icons"
 import { MenuItem } from "./MenuItem"
 import { usePathname } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
@@ -49,12 +49,6 @@ const configItems: ConfigItem[] = [
     title: "Security",
     href: "/security",
     icon: Shield,
-    isSettingsChild: true,
-  },
-  {
-    title: "Help",
-    href: "/help",
-    icon: HelpCircle,
     isSettingsChild: true,
   },
   {
@@ -111,12 +105,11 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
   // Check if Settings is active or if any settings child is active
   const isSettingsActive = pathname.startsWith('/settings')
   const isSecurityActive = pathname.startsWith('/security')
-  const isHelpActive = pathname.startsWith('/help')
   const isBillingActive = pathname.startsWith('/billing')
   
   // Allow manual override for the menu
   const [forceShowChildren, setForceShowChildren] = useState(false)
-  const shouldShowSettingsChildren = isSettingsActive || isSecurityActive || isHelpActive || isBillingActive || forceShowChildren
+  const shouldShowSettingsChildren = isSettingsActive || isSecurityActive || isBillingActive || forceShowChildren
   
   // For animation - defining all state upfront
   const [isEntering, setIsEntering] = useState(false)
@@ -129,9 +122,8 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
     const isLeavingSettingsArea = (
       (previousPath.startsWith('/settings') || 
        previousPath.startsWith('/security') || 
-       previousPath.startsWith('/help') ||
        previousPath.startsWith('/billing')) &&
-      !isSettingsActive && !isSecurityActive && !isHelpActive && !isBillingActive
+      !isSettingsActive && !isSecurityActive && !isBillingActive
     );
     
     // When navigating away from settings area, hide the settings children
@@ -141,7 +133,7 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
     
     // Update previous path reference
     prevPathRef.current = pathname;
-  }, [pathname, isSettingsActive, isSecurityActive, isHelpActive, isBillingActive]);
+  }, [pathname, isSettingsActive, isSecurityActive, isBillingActive]);
   
   // Handle toggling settings menu
   const toggleSettingsMenu = (e?: React.MouseEvent) => {
@@ -151,7 +143,7 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
     }
     
     // If already in settings area, don't toggle
-    if (isSettingsActive || isSecurityActive || isHelpActive || isBillingActive) return;
+    if (isSettingsActive || isSecurityActive || isBillingActive) return;
     
     // Toggle force show without triggering additional animations
     setForceShowChildren(prev => !prev);
@@ -174,10 +166,9 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
       console.log("Current path:", pathname);
       console.log("isSettingsActive:", isSettingsActive);
       console.log("isSecurityActive:", isSecurityActive);
-      console.log("isHelpActive:", isHelpActive);
       console.log("isBillingActive:", isBillingActive);
       console.log("shouldShowSettingsChildren:", shouldShowSettingsChildren);
-    }, [pathname, isSettingsActive, isSecurityActive, isHelpActive, isBillingActive, shouldShowSettingsChildren]);
+    }, [pathname, isSettingsActive, isSecurityActive, isBillingActive, shouldShowSettingsChildren]);
   }
   
   const removeFocus = () => {
@@ -286,7 +277,7 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
       {/* Notifications and Settings are always visible */}
       {configItems.slice(0, 2).map((item, idx) => {
         const isSettings = item.title === "Settings";
-        const settingsActive = isSettingsActive || isSecurityActive || isHelpActive || isBillingActive;
+        const settingsActive = isSettingsActive || isSecurityActive || isBillingActive;
         
         return (
           <div 

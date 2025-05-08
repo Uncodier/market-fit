@@ -461,4 +461,226 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
       apiUrl: FULL_API_SERVER_URL
     };
   }
+}
+
+/**
+ * Interface for build experiments parameters
+ */
+export interface BuildExperimentsParams {
+  url?: string;
+  experimentCount?: number;
+  mode?: 'create' | 'analyze' | 'update';
+  provider?: string;
+  modelId?: string;
+  includeScreenshot?: boolean;
+  user_id: string;
+  site_id: string;
+  apiKey?: string;
+  apiSecret?: string;
+}
+
+/**
+ * Service to build experiments using AI
+ */
+export async function buildExperimentsWithAI(params: BuildExperimentsParams): Promise<AISegmentResponse> {
+  // If a request is already in progress, return an error
+  if (isRequestInProgress) {
+    console.warn("A request is already in progress. Please wait for it to complete.");
+    return {
+      success: false,
+      error: "A request is already in progress. Please wait for it to complete."
+    };
+  }
+
+  // Mark that a request is in progress
+  isRequestInProgress = true;
+
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      isRequestInProgress = false; // Release the lock
+      return {
+        success: false,
+        error: "Authentication required. Please sign in to continue."
+      };
+    }
+    
+    // Use the correct path for experiments
+    const API_URL = `${FULL_API_SERVER_URL}/api/site/experiments`;
+    
+    // Prepare parameters according to the correct structure
+    const requestParams = {
+      // The URL should be the selected site URL or the one provided in the parameters
+      url: params.url,
+      experimentCount: params.experimentCount || 2, // Default to 2 experiments
+      mode: params.mode || "create",
+      provider: params.provider || "openai",
+      modelId: params.modelId || "gpt-4o",
+      includeScreenshot: params.includeScreenshot !== false,
+      // Include user_id and site_id directly in the main object
+      user_id: params.user_id,
+      site_id: params.site_id,
+      // Additional metadata if needed
+      metadata: {
+        // Any other metadata needed
+      }
+    };
+    
+    // Get API credentials (in a real environment, these would come from a secure source)
+    const apiKey = params.apiKey || process.env.NEXT_PUBLIC_API_KEY || "YOUR_API_KEY";
+    const apiSecret = params.apiSecret || process.env.NEXT_PUBLIC_API_SECRET || "YOUR_API_SECRET";
+    
+    console.log("Calling AI service for experiments with params:", requestParams);
+    console.log("Full API URL:", API_URL);
+    console.log("Target site URL:", params.url);
+    
+    try {
+      console.log("Attempting to connect to API at:", API_URL);
+      console.log("With headers:", {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'x-api-secret': '***SECRET***', // Don't show the full secret for security
+        'Accept': 'application/json'
+      });
+      
+      // Try with fetch - ONLY ONE REQUEST
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'x-api-secret': apiSecret,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestParams),
+        cache: 'no-cache'
+      });
+      
+      // Check if response is OK (status in the range 200-299)
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        
+        // If the response is HTML (error page)
+        if (contentType && contentType.includes('text/html')) {
+          const htmlContent = await response.text();
+          console.error("Server returned HTML instead of JSON:", htmlContent.substring(0, 200) + "...");
+          isRequestInProgress = false; // Release the lock
+          return {
+            success: false,
+            error: "Server returned an HTML error page instead of JSON",
+            rawResponse: htmlContent
+          };
+        }
+        
+        // Try to parse as JSON, but handle text responses too
+        try {
+          const errorData = await response.json();
+          isRequestInProgress = false; // Release the lock
+          
+          // Check if the response contains a non-empty 'errors' array
+          if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+            console.error("API returned errors:", errorData.errors);
+            return {
+              success: false,
+              error: Array.isArray(errorData.errors) 
+                ? errorData.errors.map((e: any) => e.message || e).join(', ') 
+                : "API returned errors",
+              details: errorData
+            };
+          }
+          
+          return {
+            success: false,
+            error: errorData.message || errorData.error || `Server error: ${response.status} ${response.statusText}`,
+            details: errorData
+          };
+        } catch (parseError) {
+          // If we can't parse as JSON, return the text
+          const textContent = await response.text();
+          console.error("Failed to parse error response as JSON:", textContent.substring(0, 200) + "...");
+          isRequestInProgress = false; // Release the lock
+          return {
+            success: false,
+            error: `Server error: ${response.status} ${response.statusText}`,
+            rawResponse: textContent
+          };
+        }
+      }
+      
+      // Parse successful response
+      try {
+        const data = await response.json();
+        
+        // Check if the response contains a non-empty 'errors' array
+        if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          console.error("API returned errors:", data.errors);
+          isRequestInProgress = false; // Release the lock
+          return {
+            success: false,
+            error: Array.isArray(data.errors) 
+              ? data.errors.map((e: any) => e.message || e).join(', ') 
+              : "API returned errors",
+            details: data
+          };
+        }
+        
+        isRequestInProgress = false; // Release the lock
+        return {
+          success: true,
+          data
+        };
+      } catch (parseError) {
+        const textContent = await response.text();
+        console.error("Failed to parse successful response as JSON:", textContent.substring(0, 200) + "...");
+        isRequestInProgress = false; // Release the lock
+        return {
+          success: false,
+          error: "Failed to parse successful response as JSON",
+          rawResponse: textContent
+        };
+      }
+    } catch (fetchError) {
+      console.error("Network error in buildExperimentsWithAI:", fetchError);
+      
+      // Provide more detailed information about the network error
+      let errorMessage = "Network error occurred while connecting to the server";
+      let errorDetails = {};
+      
+      if (fetchError instanceof Error) {
+        errorMessage = `Network error: ${fetchError.message}`;
+        errorDetails = {
+          name: fetchError.name,
+          message: fetchError.message,
+          stack: fetchError.stack
+        };
+        
+        // Check if it's a CORS error or connection refused
+        if (
+          fetchError.message.includes('CORS') || 
+          fetchError.message.includes('Failed to fetch') ||
+          fetchError.message.includes('Network request failed') ||
+          fetchError.message.includes('Connection refused')
+        ) {
+          errorMessage = `Cannot connect to API server at ${FULL_API_SERVER_URL}. Please check if the server is running and accessible.`;
+        }
+      }
+      
+      isRequestInProgress = false; // Release the lock
+      return {
+        success: false,
+        error: errorMessage,
+        details: errorDetails,
+        apiUrl: FULL_API_SERVER_URL // Include the API URL to help with debugging
+      };
+    }
+  } catch (error) {
+    console.error("Error in buildExperimentsWithAI:", error);
+    isRequestInProgress = false; // Release the lock
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred"
+    };
+  }
 } 

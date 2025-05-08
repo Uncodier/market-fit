@@ -15,7 +15,8 @@ import {
   FileText,
   Rocket,
   Tag,
-  CreditCard
+  CreditCard,
+  DollarSign
 } from "@/app/components/ui/icons"
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
@@ -106,7 +107,7 @@ const navigationItems = [
   {
     title: "Sales",
     href: "/sales",
-    icon: CreditCard,
+    icon: DollarSign,
   },
   {
     title: "AI Team",

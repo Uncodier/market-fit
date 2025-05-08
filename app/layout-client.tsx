@@ -160,6 +160,9 @@ export default function LayoutClient({
   const [customTitle, setCustomTitle] = useState<string | null>(null)
   const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
 
+  // Determine if we're on an experiment detail page
+  const isExperimentDetailPage = pathname ? /^\/experiments\/[a-zA-Z0-9-]+$/.test(pathname) : false;
+
   // Inicialización crítica (ejecutar inmediatamente)
   useEffect(() => {
     setIsMounted(true)
@@ -304,6 +307,7 @@ export default function LayoutClient({
                 left: isLayoutCollapsed ? '4rem' : '16rem',
               }}
               breadcrumb={customBreadcrumb}
+              isExperimentDetailPage={isExperimentDetailPage}
             />
             <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
             <main 

@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from "react"
 import { Card } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Button } from "@/app/components/ui/button"
-import { Badge } from "@/app/components/ui/badge"
-import { MessageSquare, Mail, Phone, Pencil, Trash2 } from "@/app/components/ui/icons"
+import { MessageSquare, Mail, Phone } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { getLeadConversations } from "@/app/leads/actions"
 
 // Types for conversations
 interface Conversation {
@@ -20,13 +18,8 @@ interface Conversation {
   message: string
   date: string
   status: 'sent' | 'received' | 'scheduled'
-}
-
-// Status styles for conversations
-const STATUS_STYLES = {
-  sent: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
-  received: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
-  scheduled: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
+  agentId?: string
+  agentName?: string
 }
 
 // Type icons for conversations
@@ -53,33 +46,30 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
       
       setLoading(true)
       try {
-        // Use Supabase client to fetch real conversations
-        const supabase = createClient()
+        console.log(`Loading conversations for lead ${leadId} in site ${currentSite.id}`)
         
-        // Attempt to fetch real conversations data
-        const { data, error } = await supabase
-          .from('conversations')
-          .select('*')
-          .eq('lead_id', leadId)
-          .order('date', { ascending: false })
+        // Usar la acción del servidor para obtener las conversaciones
+        const result = await getLeadConversations(currentSite.id, leadId)
         
-        if (error) {
-          console.error("Error fetching conversations:", error)
+        if (result.error) {
+          console.error("Error fetching conversations:", result.error)
+          toast.error("Failed to load conversations")
           setConversations([])
-        } else if (data && data.length > 0) {
-          // If we get real data, map it to our conversation format
-          const formattedConversations = data.map((item: any) => ({
-            id: item.id,
-            type: item.type || 'email',
-            subject: item.subject || 'No Subject',
-            message: item.message || '',
-            date: item.date,
-            status: item.status || 'sent'
-          }))
+        } else if (result.conversations && result.conversations.length > 0) {
+          console.log(`Found ${result.conversations.length} conversations for lead ${leadId}`)
           
-          setConversations(formattedConversations)
+          // La acción ya devuelve los datos en el formato correcto que necesitamos
+          setConversations(result.conversations.map(conv => ({
+            ...conv,
+            // Asegurar que los tipos se ajusten a la interfaz esperada
+            type: conv.type as 'email' | 'call' | 'chat',
+            status: conv.status as 'sent' | 'received' | 'scheduled',
+            // Guardar el agent_id y agent_name si están disponibles
+            agentId: (conv as any).agent_id || undefined,
+            agentName: (conv as any).agent_name || undefined
+          })))
         } else {
-          // No data found
+          console.log(`No conversations found for lead ${leadId}`)
           setConversations([])
         }
         
@@ -111,24 +101,17 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
     return `${text.substring(0, maxLength)}...`
   }
 
-  // View conversation handler - Navigate to conversation page
+  // View conversation handler - Navigate to conversation page with correct URL format
   const handleViewConversation = (conversation: Conversation) => {
-    router.push(`/chats/${conversation.id}`)
-  }
-
-  // Edit conversation handler
-  const handleEditConversation = (conversation: Conversation, e: React.MouseEvent) => {
-    e.stopPropagation()
-    router.push(`/chats/${conversation.id}/edit`)
-  }
-
-  // Delete conversation handler
-  const handleDeleteConversation = (conversation: Conversation, e: React.MouseEvent) => {
-    e.stopPropagation()
-    // Here we would normally call an API to delete the conversation
-    toast.success(`Conversation "${conversation.subject}" deleted`)
-    // Remove from the local state
-    setConversations(prev => prev.filter(c => c.id !== conversation.id))
+    // Usar valores de agente de la conversación o valores por defecto
+    const agentName = conversation.agentName || "Agent"; 
+    const agentId = conversation.agentId || "478d3106-7391-4d9a-a5c1-8466202b45a9"; // ID de agente por defecto
+    
+    // Construir la URL con el formato correcto
+    const url = `/chat?conversationId=${conversation.id}&agentId=${agentId}&agentName=${encodeURIComponent(agentName)}`;
+    
+    console.log(`Navigating to chat conversation: ${url}`);
+    router.push(url);
   }
 
   // Show empty state if no conversations and not loading
@@ -153,8 +136,6 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
               <TableHead className="w-[100px]">Type</TableHead>
               <TableHead className="w-[200px]">Subject</TableHead>
               <TableHead>Message</TableHead>
-              <TableHead className="w-[100px]">Status</TableHead>
-              <TableHead className="text-right w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -166,13 +147,6 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))
             ) : conversations.length > 0 ? (
@@ -198,37 +172,12 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
                   <TableCell className="text-muted-foreground">
                     {truncateText(conversation.message)}
                   </TableCell>
-                  <TableCell>
-                    <Badge className={`${STATUS_STYLES[conversation.status]}`}>
-                      {conversation.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => handleEditConversation(conversation, e)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => handleDeleteConversation(conversation, e)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))
             ) : (
               // This should never show as we use EmptyCard above, but keeping as fallback
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   No conversations found.
                 </TableCell>
               </TableRow>

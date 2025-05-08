@@ -1,7 +1,7 @@
 import { format, endOfDay } from "date-fns";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { createApiClient } from "@/lib/supabase/server-client";
+import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -20,8 +20,8 @@ export async function GET(request: Request) {
     const startDate = startDateParam ? new Date(startDateParam) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
     
-    // Create Supabase client
-    const supabase = createApiClient();
+    // Create Supabase client with service role key to bypass RLS
+    const supabase = createServiceApiClient();
     
     // Build query
     let query = supabase
@@ -39,6 +39,9 @@ export async function GET(request: Request) {
       query = query.eq("segment_id", segmentId);
     }
     
+    // Log the query execution for debugging
+    console.log(`[Sales API] Fetching sales for site ${siteId} from ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
+    
     // Execute query
     const { data, error } = await query;
     
@@ -46,6 +49,8 @@ export async function GET(request: Request) {
       console.error("[Sales API] Error fetching sales:", error);
       return NextResponse.json({ error: "Failed to fetch sales data" }, { status: 500 });
     }
+    
+    console.log(`[Sales API] Found ${data?.length || 0} sales records`);
     
     // Format and return the data
     return NextResponse.json(data);

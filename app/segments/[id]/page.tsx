@@ -482,6 +482,13 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
     estimatedTime: 30 // Valor predeterminado
   })
   
+  // Ensure that if topics tab was previously selected, we default to analysis
+  useEffect(() => {
+    if (activeTab === 'topics') {
+      setActiveTab('analysis');
+    }
+  }, [activeTab]);
+  
   // Cargar el segmento seleccionado
   useEffect(() => {
     const loadSegment = async () => {
@@ -606,7 +613,6 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
             activeTab,
             isAnalyzing,
             isGeneratingICP,
-            isGeneratingTopics,
             openAIModal
           }
         }
@@ -623,7 +629,7 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
     return () => {
       document.title = 'Segments | Market Fit'
     }
-  }, [segment, activeTab, isAnalyzing, isGeneratingICP, isGeneratingTopics])
+  }, [segment, activeTab, isAnalyzing, isGeneratingICP])
 
   // Listen for tab changes to update the breadcrumb
   useEffect(() => {
@@ -633,14 +639,13 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
         detail: {
           activeTab,
           isAnalyzing,
-          isGeneratingICP,
-          isGeneratingTopics
+          isGeneratingICP
         }
       })
       
       window.dispatchEvent(event)
     }
-  }, [activeTab, isAnalyzing, isGeneratingICP, isGeneratingTopics, segment])
+  }, [activeTab, isAnalyzing, isGeneratingICP, segment])
 
   const toggleSegmentStatus = async () => {
     if (!segment) {
@@ -953,7 +958,7 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
   };
 
   // Open AI modal with specific configuration
-  const openAIModal = (type: 'analysis' | 'icp' | 'topics') => {
+  const openAIModal = (type: 'analysis' | 'icp') => {
     // Verificar si ya hay una operación en curso
     if (isAnalyzing || isGeneratingICP || isGeneratingTopics) {
       toast.error("Another operation is already in progress. Please wait.");
@@ -975,13 +980,6 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
         actionLabel: "Generate ICP",
         action: handleGenerateICP,
         estimatedTime: 90 // 1.5 minutes
-      },
-      topics: {
-        title: "Generate Content Topics",
-        description: "Our AI will suggest relevant content topics for this audience segment, including blog post ideas and newsletter themes. This helps you create more engaging and targeted content.",
-        actionLabel: "Generate Topics",
-        action: handleGetTopics,
-        estimatedTime: 75 // 1.25 minutes
       }
     };
 
@@ -1014,7 +1012,7 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
                 <TabsList>
                   <TabsTrigger value="analysis">Analysis</TabsTrigger>
                   <TabsTrigger value="icp">ICP Profiles</TabsTrigger>
-                  <TabsTrigger value="topics">Topics</TabsTrigger>
+                  {/* Topics tab hidden temporarily */}
                 </TabsList>
               </div>
               {segment && (
@@ -1035,7 +1033,8 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
         <TabsContent value="icp" className="px-16 py-6">
           <SegmentICPTab segment={segment} />
         </TabsContent>
-        <TabsContent value="topics" className="px-16 py-6">
+        {/* Topics tab content is still loaded but won't be accessible from UI */}
+        <TabsContent value="topics" className="px-16 py-6 hidden">
           <SegmentThemesTab segment={segment} />
         </TabsContent>
       </Tabs>
