@@ -6,8 +6,9 @@ import { Skeleton } from "@/app/components/ui/skeleton";
 import { useSite } from "@/app/context/SiteContext";
 import { Badge } from "@/app/components/ui/badge";
 import { EmptyCard } from "@/app/components/ui/empty-card";
-import { ClipboardList } from "@/app/components/ui/icons";
+import { ClipboardList, Circle } from "@/app/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
+import { format } from "date-fns";
 
 interface ActivityUser {
   id: string;
@@ -30,40 +31,63 @@ interface Activity {
   segment?: string | null;
   title: string;
   status?: string;
+  campaign?: string;
+}
+
+interface RecentActivityProps {
+  limit?: number;
 }
 
 // Función auxiliar para obtener iniciales
-function getInitials(name: string): string {
+function getInitials(name: string | undefined | null): string {
+  if (!name) return 'U';
   return name
     .split(/\s+/)
-    .map(part => part[0]?.toUpperCase() || '')
-    .join('')
-    .substring(0, 2);
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
 }
 
 // Función para formatear fechas
 function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) {
-    return 'Today';
-  } else if (diffDays === 1) {
-    return 'Yesterday';
-  } else if (diffDays < 7) {
-    return `${diffDays} days ago`;
-  } else {
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    // For dates older than 24 hours but in the current year
+    if (date.getFullYear() === now.getFullYear()) {
+      return format(date, 'MMM d');
+    }
+    
+    // For dates in previous years
+    return format(date, 'MMM d, yyyy');
+  } catch (e) {
+    console.error('Error formatting date:', e);
+    return 'Unknown date';
   }
 }
 
-export function RecentActivity() {
+export function RecentActivity({ limit = 5 }: RecentActivityProps) {
   const { currentSite } = useSite();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Add loading placeholder state
+  const emptyActivities = Array(limit).fill(null).map((_, i) => ({ 
+    id: `placeholder-${i}`, 
+    user: { name: 'Loading...', email: 'loading@example.com' },
+    type: 'placeholder',
+    date: new Date().toISOString()
+  }));
 
   useEffect(() => {
     async function fetchActivities() {
@@ -86,39 +110,86 @@ export function RecentActivity() {
       setError(null);
       
       try {
+        // Validate that we're only requesting with valid data
+        if (!currentSite.id || typeof currentSite.id !== 'string') {
+          console.error('Invalid site ID for recent activities request');
+          throw new Error('Invalid site ID');
+        }
+        
+        // Ensure limit is a valid number
+        const validLimit = typeof limit === 'number' && limit > 0 ? limit : 6;
+        
         console.time("Recent Activity API Request");
         const queryParams = new URLSearchParams();
         queryParams.append('siteId', currentSite.id);
-        queryParams.append('limit', '6'); // Limitado a 6 actividades
+        queryParams.append('limit', validLimit.toString());
+        
+        // Añadir valor aleatorio para evitar caché que podría estar causando bucles
+        queryParams.append('_cache', Math.random().toString(36).substring(2, 15));
         
         const apiUrl = `/api/recent-activity?${queryParams.toString()}`;
         console.log("Requesting recent activities from:", apiUrl);
         
-        const response = await fetch(apiUrl);
-        console.log("API response status:", response.status);
+        // Usar un AbortController para poder cancelar la petición si tarda mucho
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
         
-        const responseText = await response.text();
-        console.log("Raw API response:", responseText);
-        
-        // Try to parse the response as JSON
-        let data;
         try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error("Failed to parse API response as JSON:", parseError);
-          throw new Error("Invalid response format");
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          console.log("API response status:", response.status);
+          
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+          
+          // Intentar obtener el texto de respuesta
+          const responseText = await response.text();
+          console.log("Raw API response length:", responseText.length);
+          
+          // Intentar analizar como JSON
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error("Failed to parse API response as JSON:", parseError);
+            throw new Error("Invalid response format");
+          }
+          
+          console.log("API returned activities count:", data.activities?.length || 0);
+          setActivities(data.activities || []);
+        } catch (fetchError) {
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+            console.warn("Recent activities request timed out - using fallback data");
+            // Usar datos de fallback para mostrar algo al usuario
+            setActivities([
+              {
+                id: "fallback-1",
+                user: { 
+                  id: "system", 
+                  name: "System", 
+                  email: "system@example.com",
+                  imageUrl: null 
+                },
+                date: new Date().toISOString(),
+                lead: { id: "unknown", name: "Unknown" },
+                title: "Recent activity temporarily unavailable",
+                action: "System notice"
+              }
+            ]);
+          } else {
+            throw fetchError;
+          }
         }
         
-        if (!response.ok) {
-          const errorMsg = data.error || `API error: ${response.status}`;
-          console.error("API error:", errorMsg);
-          throw new Error(errorMsg);
-        }
-        
-        console.log("API returned activities:", data.activities);
-        console.log("Activities count:", data.activities?.length || 0);
-        
-        setActivities(data.activities || []);
         console.timeEnd("Recent Activity API Request");
       } catch (error) {
         console.error('Error fetching activities:', error);
@@ -130,22 +201,21 @@ export function RecentActivity() {
     }
     
     fetchActivities();
-  }, [currentSite?.id]);
+  }, [currentSite?.id, limit]);
 
   if (isLoading) {
     return (
-      <div className="space-y-4 min-h-[200px]">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div className="flex items-start gap-2 h-[44px]" key={i}>
-            <Skeleton className="h-8 w-8 mt-0.5 rounded-full" />
-            <div className="ml-0 space-y-1 flex-1">
-              <div className="flex gap-2 items-center mb-0.5">
-                <Skeleton className="h-3.5 w-20" />
-                {Math.random() > 0.7 && <Skeleton className="h-3.5 w-12 rounded-full" />}
-              </div>
-              <Skeleton className="h-3 w-40" />
+      <div className="space-y-8">
+        {emptyActivities.map((activity) => (
+          <div key={activity.id} className="flex items-center">
+            <Skeleton className="h-9 w-9 rounded-full" />
+            <div className="ml-4 space-y-1">
+              <Skeleton className="h-4 w-[250px]" />
+              <Skeleton className="h-3 w-[200px]" />
             </div>
-            <Skeleton className="h-3 w-14 ml-auto mt-1" />
+            <div className="ml-auto text-xs text-muted-foreground">
+              <Skeleton className="h-3 w-[60px]" />
+            </div>
           </div>
         ))}
       </div>
@@ -182,52 +252,29 @@ export function RecentActivity() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {activities.map((activity) => (
-        <div className="flex items-start gap-2" key={activity.id}>
-          <Avatar className="h-8 w-8 mt-0.5">
-            {activity.user.imageUrl && (
-              <AvatarImage src={activity.user.imageUrl} alt={activity.user.name} />
-            )}
-            <AvatarFallback>
-              {getInitials(activity.user.name || activity.lead.name)}
-            </AvatarFallback>
+        <div key={activity.id} className="flex items-center">
+          <Avatar>
+            <AvatarImage src={activity.user.imageUrl ?? ""} alt={activity.user.name || ""} />
+            <AvatarFallback>{getInitials(activity.user.name || activity.lead?.name || "")}</AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 mb-0.5">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <p className="text-xs font-medium truncate max-w-[90px]">
-                      {activity.user.name}
-                    </p>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    {activity.user.name}
-                  </TooltipContent>
-                </Tooltip>
-                {activity.segment && (
-                  <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                    {activity.segment}
-                  </Badge>
-                )}
-              </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <p className="text-xs text-muted-foreground truncate">
-                    <span className="font-medium">{activity.title}</span> 
-                    <span className="text-muted-foreground/70"> • </span>
-                    <span className="text-green-500 font-medium text-[10px]">completed</span>
-                  </p>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {activity.title} - completed task
-                </TooltipContent>
-              </Tooltip>
-            </div>
+          <div className="ml-4 space-y-1">
+            <p className="text-sm font-medium leading-none">{activity.user.name}</p>
+            <p className="text-sm text-muted-foreground">
+              {activity.action || activity.title || "Performed an action"} 
+              {activity.segment && 
+                <span> on <span className="font-medium">{activity.segment}</span></span>
+              }
+              {activity.campaign && 
+                <span> in <span className="font-medium">{activity.campaign}</span></span>
+              }
+            </p>
           </div>
-          <div className="text-[10px] text-muted-foreground whitespace-nowrap">
-            {formatDate(activity.date)}
+          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+            <span title={new Date(activity.date).toLocaleString()}>
+              {formatDate(activity.date)}
+            </span>
           </div>
         </div>
       ))}
