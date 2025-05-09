@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 
 interface TotalSalesWidgetProps {
-  startDate: Date;
-  endDate: Date;
+  startDate?: Date;
+  endDate?: Date;
   onDateChange?: (start: Date, end: Date) => void;
 }
 
@@ -35,12 +35,24 @@ function formatPeriodType(periodType: string): string {
 }
 
 export function TotalSalesWidget({ 
-  startDate,
-  endDate
+  startDate: propStartDate,
+  endDate: propEndDate
 }: TotalSalesWidgetProps) {
   const { currentSite } = useSite();
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
+  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
+  
+  // Update local state when props change
+  useEffect(() => {
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
+  }, [propStartDate, propEndDate]);
 
   useEffect(() => {
     const fetchSalesData = async () => {
