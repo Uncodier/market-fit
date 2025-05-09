@@ -62,6 +62,38 @@ export async function GET(request: Request) {
     
     // Check for future dates
     const now = new Date();
+    
+    // Validate that we're not querying future data
+    if (startDate > now || endDate > now) {
+      console.warn(`[Clients By Campaign API] Future date detected in request - startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
+      return NextResponse.json({ 
+        campaigns: [],
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          campaignsCount: 0,
+          campaignsWithClientsCount: 0,
+          totalLeads: 0,
+          segmentFilter: segmentId && segmentId !== "all" ? segmentId : null,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId,
+            segmentId
+          },
+          message: "Future dates were requested - no data available"
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+    }
+    
+    // If dates are valid but in the future compared to data, adjust them
     if (startDate > now) {
       console.warn(`[Clients By Campaign API] Future start date detected: ${startDate.toISOString()}, using 30 days ago instead`);
       startDate.setTime(subDays(now, 30).getTime());
@@ -85,10 +117,10 @@ export async function GET(request: Request) {
     // First, get leads from the leads table
     let leadsQuery = supabase
       .from("leads")
-      .select("id, campaign_id")
+      .select("id, campaign_id, created_at")
       .eq("site_id", siteId)
-      .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endDate, "yyyy-MM-dd"));
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", endDate.toISOString());
     
     // If we have a segment filter, apply it if possible
     if (segmentId && segmentId !== "all") {
@@ -107,11 +139,11 @@ export async function GET(request: Request) {
           // Update query to filter by these lead IDs
           leadsQuery = supabase
             .from("leads")
-            .select("id, campaign_id")
+            .select("id, campaign_id, created_at")
             .eq("site_id", siteId)
             .in("id", leadIds)
-            .gte("created_at", format(startDate, "yyyy-MM-dd"))
-            .lte("created_at", format(endDate, "yyyy-MM-dd"));
+            .gte("created_at", startDate.toISOString())
+            .lte("created_at", endDate.toISOString());
         } else {
           console.log("[Clients By Campaign API] No leads found in segment via lead_segments");
         }
@@ -125,7 +157,19 @@ export async function GET(request: Request) {
     
     if (leadsError) {
       console.error("[Clients By Campaign API] Error fetching leads from leads table:", leadsError);
-    } else if (leadsData && leadsData.length > 0) {
+    } 
+    
+    // Diagnóstico: Mostrar las fechas de los leads encontrados
+    if (leadsData && leadsData.length > 0) {
+      console.log(`[Clients By Campaign API] Lead dates sample (first 5):`);
+      leadsData.slice(0, 5).forEach((lead, index) => {
+        console.log(`  Lead ${index+1}: ID=${lead.id}, Campaign=${lead.campaign_id}, Created=${new Date(lead.created_at).toISOString()}`);
+      });
+    }
+    
+    const hasLeadsData = leadsData && leadsData.length > 0;
+    
+    if (hasLeadsData) {
       console.log(`[Clients By Campaign API] Found ${leadsData.length} leads from leads table`);
       totalLeads += leadsData.length;
       
@@ -142,11 +186,11 @@ export async function GET(request: Request) {
     // Now also check for leads from sales table
     let salesQuery = supabase
       .from("sales")
-      .select("lead_id, campaign_id")
+      .select("lead_id, campaign_id, created_at, amount")
       .eq("site_id", siteId)
       .not("lead_id", "is", null)
-      .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endDate, "yyyy-MM-dd"));
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", endDate.toISOString());
     
     // Apply segment filter if provided
     if (segmentId && segmentId !== "all") {
@@ -158,14 +202,46 @@ export async function GET(request: Request) {
     
     if (salesError) {
       console.error("[Clients By Campaign API] Error fetching sales:", salesError);
-    } else if (salesData && salesData.length > 0) {
+    }
+    
+    // Diagnóstico: Mostrar las fechas de las ventas encontradas
+    if (salesData && salesData.length > 0) {
+      console.log(`[Clients By Campaign API] Sales dates sample (first 5):`);
+      salesData.slice(0, 5).forEach((sale, index) => {
+        console.log(`  Sale ${index+1}: Lead=${sale.lead_id}, Campaign=${sale.campaign_id}, Created=${new Date(sale.created_at).toISOString()}, Amount=${sale.amount}`);
+      });
+    }
+    
+    // Diagnóstico: Obtener TODAS las ventas sin filtro de fechas para comparar
+    try {
+      const { data: allSalesData } = await supabase
+        .from("sales")
+        .select("lead_id, campaign_id, created_at, amount")
+        .eq("site_id", siteId)
+        .not("lead_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      
+      if (allSalesData && allSalesData.length > 0) {
+        console.log(`[Clients By Campaign API] All sales sample (first 10, regardless of date range):`);
+        allSalesData.forEach((sale, index) => {
+          console.log(`  AllSale ${index+1}: Lead=${sale.lead_id}, Campaign=${sale.campaign_id}, Created=${new Date(sale.created_at).toISOString()}, Amount=${sale.amount}`);
+        });
+      }
+    } catch (error) {
+      console.error("[Clients By Campaign API] Error fetching all sales for diagnosis:", error);
+    }
+    
+    const hasSalesData = salesData && salesData.length > 0;
+    
+    if (hasSalesData) {
       console.log(`[Clients By Campaign API] Found ${salesData.length} sales with leads`);
       
       // Create a Set to track already counted leads to avoid duplicates
       const countedLeads = new Set<string>();
       
       // First, add all lead IDs we've already processed from the leads table
-      if (leadsData && leadsData.length > 0) {
+      if (hasLeadsData) {
         leadsData.forEach(lead => {
           if (lead.id) {
             countedLeads.add(lead.id);
@@ -185,6 +261,35 @@ export async function GET(request: Request) {
           } else {
             unassignedCount++;
           }
+        }
+      });
+    }
+    
+    // Check if we have any leads at all
+    if (!hasLeadsData && !hasSalesData) {
+      console.log("[Clients By Campaign API] No leads or sales found for the period");
+      return NextResponse.json({ 
+        campaigns: [],
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          campaignsCount: campaigns.length,
+          campaignsWithClientsCount: 0,
+          totalLeads: 0,
+          segmentFilter: segmentId && segmentId !== "all" ? segmentId : null,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId,
+            segmentId
+          }
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
     }
@@ -231,6 +336,42 @@ export async function GET(request: Request) {
       // Filter out campaigns with no leads and sort by value (descending)
       const finalResults = clientsByCampaign.filter(campaign => campaign.value > 0);
       finalResults.sort((a, b) => b.value - a.value);
+      
+      // Check if we only have "Sin Campaña" in the results and no sales in the date range
+      const onlyHasUnassignedCampaign = 
+        finalResults.length === 1 && 
+        finalResults[0].name === "Sin Campaña" && 
+        (salesData ?? []).length === 0;
+      
+      // Don't return data if we only have unassigned leads and no sales
+      if (onlyHasUnassignedCampaign) {
+        console.log("[Clients By Campaign API] Only unassigned leads found with no sales in date range - returning empty result");
+        return NextResponse.json({ 
+          campaigns: [],
+          debug: {
+            startDate: format(startDate, "yyyy-MM-dd"),
+            endDate: format(endDate, "yyyy-MM-dd"),
+            campaignsCount: campaigns.length,
+            campaignsWithClientsCount: 0,
+            totalLeads: totalLeads,
+            segmentFilter: segmentId && segmentId !== "all" ? segmentId : null,
+            message: "Only unassigned leads with no sales in date range",
+            originalParams: {
+              startDateParam,
+              endDateParam,
+              siteId,
+              userId,
+              segmentId
+            }
+          }
+        }, {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+      }
       
       // Return the data with debug information
       const finalResult = {

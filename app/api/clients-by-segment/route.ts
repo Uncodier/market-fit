@@ -70,6 +70,36 @@ export async function GET(request: Request) {
     
     // Check for future dates
     const now = new Date();
+    
+    // Validate that we're not querying future data
+    if (startDate > now || endDate > now) {
+      console.warn(`[Clients By Segment API] Future date detected in request - startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
+      return NextResponse.json({ 
+        segments: [],
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          segmentsCount: 0,
+          segmentsWithClientsCount: 0,
+          totalLeads: 0,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId
+          },
+          message: "Future dates were requested - no data available"
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+    }
+    
+    // If dates are valid but in the future compared to data, adjust them
     if (startDate > now) {
       console.warn(`[Clients By Segment API] Future start date detected: ${startDate.toISOString()}, using 30 days ago instead`);
       startDate.setTime(subDays(now, 30).getTime());
@@ -88,10 +118,10 @@ export async function GET(request: Request) {
     // Get leads for the period
     const { data: leadsData, error: leadsError } = await supabase
       .from("leads")
-      .select("id")
+      .select("id, created_at")
       .eq("site_id", siteId)
-      .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endDate, "yyyy-MM-dd"));
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", endDate.toISOString());
     
     if (leadsError) {
       console.error("[Clients By Segment API] Error fetching leads:", leadsError);
@@ -103,18 +133,84 @@ export async function GET(request: Request) {
     
     console.log(`[Clients By Segment API] Found ${leadsData?.length || 0} leads for the period`);
     
+    // Diagnóstico: Mostrar las fechas de los leads encontrados
+    if (leadsData && leadsData.length > 0) {
+      console.log(`[Clients By Segment API] Lead dates sample (first 5):`);
+      leadsData.slice(0, 5).forEach((lead, index) => {
+        console.log(`  Lead ${index+1}: ID=${lead.id}, Created=${new Date(lead.created_at).toISOString()}`);
+      });
+    }
+    
     // Also get leads from sales in case there are sales with leads not directly in the leads table
     const { data: salesData, error: salesError } = await supabase
       .from("sales")
-      .select("lead_id, segment_id")
+      .select("lead_id, segment_id, created_at, amount")
       .eq("site_id", siteId)
       .not("lead_id", "is", null)
-      .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endDate, "yyyy-MM-dd"));
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", endDate.toISOString());
     
     if (salesError) {
       console.error("[Clients By Segment API] Error fetching sales:", salesError);
       // Continue anyway with the leads we have
+    }
+    
+    // Diagnóstico: Mostrar las fechas de las ventas encontradas
+    if (salesData && salesData.length > 0) {
+      console.log(`[Clients By Segment API] Sales dates sample (first 5):`);
+      salesData.slice(0, 5).forEach((sale, index) => {
+        console.log(`  Sale ${index+1}: Lead=${sale.lead_id}, Segment=${sale.segment_id}, Created=${new Date(sale.created_at).toISOString()}, Amount=${sale.amount}`);
+      });
+    }
+    
+    // Diagnóstico: Obtener TODAS las ventas sin filtro de fechas para comparar
+    try {
+      const { data: allSalesData } = await supabase
+        .from("sales")
+        .select("lead_id, segment_id, created_at, amount")
+        .eq("site_id", siteId)
+        .not("lead_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      
+      if (allSalesData && allSalesData.length > 0) {
+        console.log(`[Clients By Segment API] All sales sample (first 10, regardless of date range):`);
+        allSalesData.forEach((sale, index) => {
+          console.log(`  AllSale ${index+1}: Lead=${sale.lead_id}, Segment=${sale.segment_id}, Created=${new Date(sale.created_at).toISOString()}, Amount=${sale.amount}`);
+        });
+      }
+    } catch (error) {
+      console.error("[Clients By Segment API] Error fetching all sales for diagnosis:", error);
+    }
+    
+    // Check if we have any data at all for the specified period
+    const hasLeads = leadsData && leadsData.length > 0;
+    const hasSales = salesData && salesData.length > 0;
+    
+    if (!hasLeads && !hasSales) {
+      console.log("[Clients By Segment API] No leads or sales found for the period");
+      return NextResponse.json({ 
+        segments: [],
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          segmentsCount: segments.length,
+          segmentsWithClientsCount: 0,
+          totalLeads: 0,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId
+          }
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     }
     
     // Combine leads from both sources, removing duplicates
@@ -261,6 +357,40 @@ export async function GET(request: Request) {
       // Filter out entries with zero and sort by value (descending)
       const finalResults = clientsBySegment.filter(item => item.value > 0);
       finalResults.sort((a, b) => b.value - a.value);
+      
+      // Check if we only have "Sin Segmento" in the results and no sales in the date range
+      const onlyHasUnassignedSegment = 
+        finalResults.length === 1 && 
+        finalResults[0].name === "Sin Segmento" && 
+        (salesData?? []).length === 0;
+      
+      // Don't return data if we only have unassigned leads and no sales
+      if (onlyHasUnassignedSegment) {
+        console.log("[Clients By Segment API] Only unassigned leads found with no sales in date range - returning empty result");
+        return NextResponse.json({ 
+          segments: [],
+          debug: {
+            startDate: format(startDate, "yyyy-MM-dd"),
+            endDate: format(endDate, "yyyy-MM-dd"),
+            segmentsCount: segments.length,
+            segmentsWithClientsCount: 0,
+            totalLeads: leadIdsArray.length,
+            message: "Only unassigned leads with no sales in date range",
+            originalParams: {
+              startDateParam,
+              endDateParam,
+              siteId,
+              userId
+            }
+          }
+        }, {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+      }
       
       // Return the data with debug information
       const finalResult = {

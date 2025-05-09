@@ -86,10 +86,10 @@ export async function GET(request: Request) {
       
     // Aplicar filtros de fecha si están disponibles
     if (startDateParam) {
-      salesQuery = salesQuery.gte("created_at", format(startDate, "yyyy-MM-dd"));
+      salesQuery = salesQuery.gte("created_at", startDate.toISOString());
     }
     if (endDateParam) {
-      salesQuery = salesQuery.lte("created_at", format(endDate, "yyyy-MM-dd"));
+      salesQuery = salesQuery.lte("created_at", endDate.toISOString());
     }
     
     const { data: salesData, error: salesError } = await salesQuery.limit(100);

@@ -25,6 +25,39 @@ export async function GET(request: NextRequest) {
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
     const startDate = startDateParam ? new Date(startDateParam) : subDays(endDate, 30);
 
+    // Validate against future dates
+    const now = new Date();
+    if (startDate > now || endDate > now) {
+      console.warn(`[Revenue API] Future date detected in request - startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
+      return NextResponse.json({
+        totalSales: {
+          actual: 0,
+          previous: 0,
+          percentChange: 0,
+          formattedActual: "0",
+          formattedPrevious: "0"
+        },
+        channelSales: {
+          online: { amount: 0, prevAmount: 0, percentChange: 0 },
+          retail: { amount: 0, prevAmount: 0, percentChange: 0 }
+        },
+        averageOrderValue: { actual: 0, previous: 0, percentChange: 0 },
+        salesCategories: [],
+        monthlyData: [],
+        salesDistribution: [],
+        periodType: "custom",
+        noData: true,
+        metadata: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          prevStartDate: null,
+          prevEndDate: null,
+          segmentId: segmentId || 'all',
+          message: "Future dates were requested - no data available"
+        }
+      });
+    }
+
     // Calculate previous period
     const periodLength = endDate.getTime() - startDate.getTime();
     const previousPeriodEnd = new Date(startDate.getTime() - 1);

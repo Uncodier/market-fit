@@ -41,6 +41,18 @@ export async function GET(request: Request) {
     const startDate = startDateParam ? new Date(startDateParam) : subDays(new Date(), 30);
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
     
+    // Validar contra fechas futuras
+    const now = new Date();
+    if (startDate > now || endDate > now) {
+      console.warn(`[Campaign Revenue API] Future date detected in request - startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
+      return NextResponse.json({
+        campaigns: [],
+        debug: {
+          message: "Future dates were requested - no data available"
+        }
+      });
+    }
+    
     console.log(`[Campaign Revenue API] Período: ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
     
     // Para diagnóstico consultamos sin filtro de fechas para ver si hay datos
@@ -75,8 +87,8 @@ export async function GET(request: Request) {
         .from("sales")
         .select("id, amount, campaign_id")
         .eq("site_id", siteId)
-        .gte("created_at", format(startDate, "yyyy-MM-dd"))
-        .lte("created_at", format(endDate, "yyyy-MM-dd"));
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString());
         
       salesData = result.data;
       salesError = result.error;

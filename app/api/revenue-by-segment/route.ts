@@ -70,6 +70,37 @@ export async function GET(request: Request) {
     
     // Check for future dates
     const now = new Date();
+    
+    // Validate that we're not querying future data
+    if (startDate > now || endDate > now) {
+      console.warn(`[Revenue By Segment API] Future date detected in request - startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
+      return NextResponse.json({ 
+        segments: [],
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          segmentsCount: 0,
+          segmentsWithRevenueCount: 0,
+          totalSales: 0,
+          totalRevenue: 0,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId
+          },
+          message: "Future dates were requested - no data available"
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+    }
+    
+    // If dates are valid but in the future compared to data, adjust them
     if (startDate > now) {
       console.warn(`[Revenue By Segment API] Future start date detected: ${startDate.toISOString()}, using 30 days ago instead`);
       startDate.setTime(subDays(now, 30).getTime());
@@ -90,8 +121,8 @@ export async function GET(request: Request) {
       .from("sales")
       .select("id, amount, segment_id, created_at")
       .eq("site_id", siteId)
-      .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endDate, "yyyy-MM-dd"));
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", endDate.toISOString());
     
     if (salesError) {
       console.error("[Revenue By Segment API] Error fetching sales:", salesError);

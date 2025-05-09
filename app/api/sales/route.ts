@@ -89,8 +89,8 @@ export async function GET(request: Request) {
       console.log(`[Sales API] Adjusted start date to be 30 days before end date: ${startDate.toISOString()}`);
     }
     
-    const formattedStartDate = format(startDate, "yyyy-MM-dd");
-    const formattedEndDate = format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'");
+    const formattedStartDate = startDate.toISOString();
+    const formattedEndDate = endDate.toISOString();
     
     // Create Supabase client with service role key to bypass RLS
     const supabase = createServiceApiClient();
@@ -113,7 +113,7 @@ export async function GET(request: Request) {
     }
     
     // Log the query execution for debugging
-    console.log(`[Sales API] Fetching sales for site ${siteId} from ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
+    console.log(`[Sales API] Fetching sales for site ${siteId} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
     // Execute query
     const { data, error, status } = await query;
