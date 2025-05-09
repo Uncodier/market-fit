@@ -13,11 +13,11 @@ interface SegmentInfo {
 
 async function getSegmentsForSite(supabase: any, siteId: string): Promise<SegmentInfo[]> {
   try {
-    // Usar el cliente de servicio para la consulta de segmentos
-    const serviceClient = createServiceApiClient();
+    // Use the passed service client instead of creating a new one
+    // This ensures we're using the same client with admin permissions
     
     // Buscar en la tabla de segmentos filtrando solo por site_id
-    const { data, error } = await serviceClient
+    const { data, error } = await supabase
       .from("segments")
       .select("id, name, audience, engagement, is_active, site_id")
       .eq("site_id", siteId)
@@ -60,15 +60,30 @@ export async function GET(request: Request) {
   }
   
   try {
-    const supabase = createApiClient();
+    // Always use service client with admin permissions
+    const supabase = createServiceApiClient();
+    console.log(`[Clients By Segment API] Service client created with admin permissions`);
     console.log(`[Clients By Segment API] Received request for site: ${siteId}`);
+    console.log(`[Clients By Segment API] Date parameters: startDate=${startDateParam}, endDate=${endDateParam}`);
     
     // Parse dates
     const startDate = startDateParam ? new Date(startDateParam) : subDays(new Date(), 30);
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    console.log(`[Clients By Segment API] Period: ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
     
-    // Get all segments for the site
+    // Check for future dates
+    const now = new Date();
+    if (startDate > now) {
+      console.warn(`[Clients By Segment API] Future start date detected: ${startDate.toISOString()}, using 30 days ago instead`);
+      startDate.setTime(subDays(now, 30).getTime());
+    }
+    if (endDate > now) {
+      console.warn(`[Clients By Segment API] Future end date detected: ${endDate.toISOString()}, using today instead`);
+      endDate.setTime(now.getTime());
+    }
+    
+    console.log(`[Clients By Segment API] Validated period: ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
+    
+    // Get all segments for the site using service client
     const segments = await getSegmentsForSite(supabase, siteId);
     console.log(`[Clients By Segment API] Found ${segments.length} segments`);
     
@@ -87,6 +102,8 @@ export async function GET(request: Request) {
         { status: 500 }
       );
     }
+    
+    console.log(`[Clients By Segment API] Found ${leadsData?.length || 0} leads for the period`);
     
     // Also get leads from sales in case there are sales with leads not directly in the leads table
     const { data: salesData, error: salesError } = await supabase
@@ -247,12 +264,57 @@ export async function GET(request: Request) {
       const finalResults = clientsBySegment.filter(item => item.value > 0);
       finalResults.sort((a, b) => b.value - a.value);
       
+      // Return the data with debug information
+      const finalResult = {
+        segments: finalResults,
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          segmentsCount: segments.length,
+          segmentsWithClientsCount: finalResults.length,
+          totalLeads: leadIdsArray.length,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId
+          }
+        }
+      };
+      
       console.log(`[Clients By Segment API] Returning ${finalResults.length} segments with clients`);
-      return NextResponse.json({ segments: finalResults });
+      return NextResponse.json(finalResult, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     } else {
       console.log("[Clients By Segment API] No leads found for the period");
       // Return empty array if no leads found
-      return NextResponse.json({ segments: [] });
+      return NextResponse.json({ 
+        segments: [],
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          segmentsCount: segments.length,
+          segmentsWithClientsCount: 0,
+          totalLeads: 0,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId
+          }
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     }
   } catch (error) {
     console.error("Error in clients by segment API:", error);

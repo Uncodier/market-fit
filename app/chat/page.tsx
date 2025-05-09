@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { agents } from "@/app/data/mock-agents"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
@@ -26,6 +26,14 @@ import { useChatOperations } from "@/app/hooks/useChatOperations"
 import { useApiRequestTracker } from "@/app/hooks/useApiRequestTracker"
 
 export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading chat...</div>}>
+      <ChatPageContent />
+    </Suspense>
+  )
+}
+
+function ChatPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -475,7 +483,7 @@ export default function ChatPage() {
 }
 
 // Static initial breadcrumb (will be updated with useEffect)
-ChatPage.breadcrumb = (
+ChatPageContent.breadcrumb = (
   <div className="flex justify-between items-center w-full pr-8">
     <Breadcrumb
       items={[

@@ -35,6 +35,18 @@ function cleanUUID(id: string | null): string | null {
 }
 
 /**
+ * Verifica si el código está ejecutándose en el servidor
+ */
+function isServerSide(): boolean {
+  return (
+    typeof window === 'undefined' || 
+    typeof document === 'undefined' ||
+    // Verificación adicional para entornos especiales como Next.js
+    typeof process !== 'undefined' && process.env?.NEXT_RUNTIME === 'nodejs'
+  )
+}
+
+/**
  * Crea o devuelve una instancia del cliente de Supabase
  * Con mejor manejo de errores y diagnóstico
  */
@@ -51,8 +63,8 @@ export function createClient() {
   }
 
   // No crear el cliente si estamos en el servidor
-  if (typeof window === 'undefined') {
-    console.warn('Intento de crear cliente Supabase en el lado del servidor')
+  if (isServerSide()) {
+    console.warn('Usando cliente Supabase MOCK (server-side)')
     return createMockClient('server-side')
   }
   
@@ -92,7 +104,7 @@ export function createClient() {
       {
         cookies: {
           get(name: string) {
-            if (typeof document === 'undefined') return undefined
+            if (isServerSide()) return undefined
             
             try {
               return document.cookie
@@ -105,7 +117,7 @@ export function createClient() {
             }
           },
           set(name: string, value: string, options: { maxAge?: number; path?: string; domain?: string; secure?: boolean }) {
-            if (typeof document === 'undefined') return
+            if (isServerSide()) return
             
             try {
               let cookie = `${name}=${value}`
@@ -119,7 +131,7 @@ export function createClient() {
             }
           },
           remove(name: string, options: { path?: string; domain?: string }) {
-            if (typeof document === 'undefined') return
+            if (isServerSide()) return
             
             try {
               let cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:01 GMT`
@@ -191,33 +203,64 @@ function createMockClient(reason: string) {
             } 
           } 
         }
+      },
+      signInWithPassword: async () => {
+        console.log('Mock: signInWithPassword() llamado')
+        return {
+          data: { user: null, session: null },
+          error: { message: `Cliente mock (${reason}): No se puede iniciar sesión` }
+        }
+      },
+      signInWithOAuth: async () => {
+        console.log('Mock: signInWithOAuth() llamado')
+        return {
+          data: { provider: null, url: null },
+          error: { message: `Cliente mock (${reason}): No se puede iniciar sesión con OAuth` }
+        }
+      },
+      signUp: async () => {
+        console.log('Mock: signUp() llamado')
+        return {
+          data: { user: null, session: null },
+          error: { message: `Cliente mock (${reason}): No se puede registrar` }
+        }
+      },
+      signOut: async () => {
+        console.log('Mock: signOut() llamado')
+        return {
+          error: null
+        }
       }
     },
-    from: () => ({
-      select: () => {
-        console.log('Mock: select() llamado')
+    from: (table: string) => ({
+      select: (columns?: string) => {
+        console.log(`Mock: select(${columns}) llamado para la tabla ${table}`)
         return { 
-          eq: () => ({ 
+          eq: (column: string, value: any) => ({ 
             data: null, 
             error: { message: `Cliente mock (${reason}): No se pueden obtener datos` } 
-          }), 
-          order: () => ({ 
+          }),
+          single: () => ({
+            data: null,
+            error: { message: `Cliente mock (${reason}): No se pueden obtener datos` }
+          }),
+          order: (column: string, options?: any) => ({ 
             data: null, 
             error: { message: `Cliente mock (${reason}): No se pueden obtener datos` } 
           }) 
         }
       },
-      insert: () => {
-        console.log('Mock: insert() llamado')
+      insert: (data: any) => {
+        console.log(`Mock: insert() llamado para la tabla ${table}`)
         return { 
           data: null, 
           error: { message: `Cliente mock (${reason}): No se pueden insertar datos` } 
         }
       },
-      update: () => {
-        console.log('Mock: update() llamado')
+      update: (data: any) => {
+        console.log(`Mock: update() llamado para la tabla ${table}`)
         return { 
-          eq: () => ({ 
+          eq: (column: string, value: any) => ({ 
             select: () => ({
               single: () => ({
                 data: null, 
@@ -230,18 +273,18 @@ function createMockClient(reason: string) {
         }
       },
       delete: () => {
-        console.log('Mock: delete() llamado')
+        console.log(`Mock: delete() llamado para la tabla ${table}`)
         return { 
-          eq: () => ({ 
+          eq: (column: string, value: any) => ({ 
             data: null, 
             error: { message: `Cliente mock (${reason}): No se pueden eliminar datos` } 
           }) 
         }
       }
     }),
-    channel: () => ({
-      on: () => {
-        console.log('Mock: on() llamado')
+    channel: (channel: string) => ({
+      on: (event: string, callback: any) => {
+        console.log(`Mock: on(${event}) llamado para el canal ${channel}`)
         return { 
           subscribe: () => ({ 
             unsubscribe: () => console.log('Mock: channel.unsubscribe() llamado') 

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
-import { useRequestController } from "@/app/hooks/useRequestController"
 import { 
   differenceInDays, differenceInMonths, format, 
   addDays, addMonths, addQuarters, addYears,
@@ -34,10 +33,10 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
   const { currentSite } = useSite()
   const [chartData, setChartData] = useState<ChartDataItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const { fetchWithController, cancelAllRequests } = useRequestController()
   
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
     
     const fetchSalesData = async () => {
       // Always start with loading state
@@ -51,9 +50,39 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
       }
       
       try {
+        // Ensure we're using valid dates - defensive measure
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        
+        // Create safe copies of dates
+        let safeStartDate = new Date(startDate);
+        let safeEndDate = new Date(endDate);
+        
+        // Validate and fix dates if needed
+        if (safeStartDate.getFullYear() > currentYear) {
+          console.warn(`[Overview] Future year in startDate: ${safeStartDate.toISOString()}`);
+          safeStartDate.setFullYear(currentYear - 1);
+        }
+        
+        if (safeEndDate.getFullYear() > currentYear) {
+          console.warn(`[Overview] Future year in endDate: ${safeEndDate.toISOString()}`);
+          safeEndDate = now;
+        }
+        
+        if (safeStartDate > now) {
+          console.warn(`[Overview] Future startDate: ${safeStartDate.toISOString()}`);
+          safeStartDate = new Date(now);
+          safeStartDate.setMonth(now.getMonth() - 1);
+        }
+        
+        if (safeEndDate > now) {
+          console.warn(`[Overview] Future endDate: ${safeEndDate.toISOString()}`);
+          safeEndDate = now;
+        }
+
         // Determine the interval type based on the date range
-        const daysDiff = differenceInDays(endDate, startDate)
-        const monthsDiff = differenceInMonths(endDate, startDate)
+        const daysDiff = differenceInDays(safeEndDate, safeStartDate)
+        const monthsDiff = differenceInMonths(safeEndDate, safeStartDate)
         
         let intervalType: 'day' | 'week' | 'month' | 'quarter' | 'year' = 'month'
         
@@ -74,57 +103,110 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
         // Fetch all sales data for the period
         const params = new URLSearchParams()
         params.append("siteId", currentSite.id)
-        params.append("startDate", format(startDate, "yyyy-MM-dd"))
-        params.append("endDate", format(endDate, "yyyy-MM-dd"))
+        params.append("startDate", format(safeStartDate, "yyyy-MM-dd"))
+        params.append("endDate", format(safeEndDate, "yyyy-MM-dd"))
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId)
         }
         
         console.log("[Overview] Fetching sales data with params:", Object.fromEntries(params.entries()));
         
-        const response = await fetchWithController(`/api/sales?${params.toString()}`)
-        // Check if request was aborted or component unmounted
-        if (response === null || !isMounted) {
-          console.log("[Overview] Request was cancelled or component unmounted");
-          return; // Exit early, don't update state for cancelled requests
+        // Use standard fetch instead of fetchWithController
+        const response = await fetch(`/api/sales?${params.toString()}`, {
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        // Check if component unmounted
+        if (!isMounted) {
+          console.log("[Overview] Component unmounted, ignoring response");
+          return;
         }
         
-        if (!response.ok) throw new Error("Failed to fetch sales data")
+        if (!response.ok) {
+          console.error(`[Overview] API response not OK: ${response.status} ${response.statusText}`);
+          throw new Error(`Failed to fetch sales data: ${response.status} ${response.statusText}`);
+        }
         
-        const salesData: SaleData[] = await response.json()
+        const responseJson = await response.json();
+        
+        // Handle new API response format
+        let salesData: SaleData[];
+        
+        // Check if the response has the new format with a data field and debug info
+        if (responseJson.data && Array.isArray(responseJson.data)) {
+          console.log(`[Overview] Received ${responseJson.data.length} sales records`);
+          console.log(`[Overview] Debug info from API:`, responseJson.debug);
+          salesData = responseJson.data;
+        } else if (Array.isArray(responseJson)) {
+          // Handle old format for backward compatibility
+          console.log(`[Overview] Received ${responseJson.length} sales records (old format)`);
+          salesData = responseJson;
+        } else {
+          console.error(`[Overview] Unexpected API response format:`, responseJson);
+          salesData = [];
+        }
         
         // If component unmounted during fetch, don't continue
         if (!isMounted) return;
         
+        // Log first few sales for debugging
+        if (salesData.length > 0) {
+          console.log(`[Overview] First 3 sales:`, salesData.slice(0, 3));
+        } else {
+          console.log(`[Overview] No sales data returned for the period`);
+        }
+        
         // Generate intervals based on the type
-        const intervals = generateIntervals(startDate, endDate, intervalType, TOTAL_INTERVALS)
+        console.log(`[Overview] Generating ${TOTAL_INTERVALS} intervals of type '${intervalType}'`);
+        const intervals = generateIntervals(safeStartDate, safeEndDate, intervalType, TOTAL_INTERVALS);
+        console.log(`[Overview] Generated intervals:`, intervals.map(i => ({
+          name: i.name,
+          startDate: format(i.startDate, 'yyyy-MM-dd'),
+          endDate: format(i.endDate, 'yyyy-MM-dd')
+        })));
         
         // Map sales to intervals
         const data = intervals.map(interval => {
-          const { startDate: intervalStart, endDate: intervalEnd, name } = interval
+          const { startDate: intervalStart, endDate: intervalEnd, name } = interval;
           
           // Filter sales for this interval
           const salesInInterval = salesData.filter(sale => {
-            const saleDate = new Date(sale.created_at)
-            return saleDate >= intervalStart && saleDate <= intervalEnd
-          })
+            const saleDate = new Date(sale.created_at);
+            return saleDate >= intervalStart && saleDate <= intervalEnd;
+          });
+          
+          // Log for debugging
+          if (salesInInterval.length > 0) {
+            console.log(`[Overview] Interval '${name}' has ${salesInInterval.length} sales`);
+          }
           
           // Sum amounts
           const total = salesInInterval.reduce((sum, sale) => 
-            sum + parseFloat(sale.amount.toString()), 0)
+            sum + parseFloat(sale.amount.toString()), 0);
           
           return {
             name,
             total: salesInInterval.length > 0 ? total : null,
             date: intervalStart
-          }
-        })
+          };
+        });
+        
+        // Log overview of chart data
+        console.log(`[Overview] Generated chart data:`, data.map(item => ({
+          name: item.name,
+          total: item.total
+        })));
         
         if (isMounted) {
-          setChartData(data)
+          setChartData(data);
+          console.log(`[Overview] Chart data set with ${data.length} intervals`);
         }
       } catch (error) {
-        // Ignore AbortError as it's handled in the fetchWithController
+        // Ignore AbortError as it's expected during cleanup
         if (error instanceof DOMException && error.name === 'AbortError') {
           console.log("[Overview] Request was aborted");
           return;
@@ -147,14 +229,13 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
     // Cleanup function
     return () => {
       isMounted = false;
-      cancelAllRequests();
+      controller.abort();
     };
   }, [
     startDate, 
     endDate, 
     currentSite?.id, // Only depend on site ID, not the entire object 
     segmentId
-    // Note: fetchWithController and cancelAllRequests are stable now with useCallback
   ])
 
   // Calculate intervals based on date range and type

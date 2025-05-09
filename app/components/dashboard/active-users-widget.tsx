@@ -58,8 +58,14 @@ export function ActiveUsersWidget({
       
       setIsLoading(true);
       try {
-        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
-        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
+        // Validate dates - don't allow future dates
+        const now = new Date();
+        const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
+        const validEndDate = endDate > now ? now : endDate;
+        
+        console.log("[ActiveUsersWidget] Fetching for site:", currentSite.id);
+        const start = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
+        const end = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
         params.append("segmentId", segmentId);
@@ -69,6 +75,8 @@ export function ActiveUsersWidget({
         }
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
+        
+        console.log("[ActiveUsersWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
         const response = await fetch(`/api/active-users?${params.toString()}`);
         if (!response.ok) {

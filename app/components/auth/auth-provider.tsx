@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, ReactNode } from 'react'
+import { createContext, useContext, ReactNode, Suspense } from 'react'
 import { useAuth } from '../../hooks/use-auth'
 import { User } from '@supabase/supabase-js'
 
@@ -25,6 +25,7 @@ interface AuthProviderProps {
 
 // Componente proveedor de autenticación
 export function AuthProvider({ children }: AuthProviderProps) {
+  // Solo en el cliente, usar el hook de autenticación
   const auth = useAuth()
 
   return (

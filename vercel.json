@@ -1,0 +1,14 @@
+{
+  "build": {
+    "env": {
+      "NEXT_RUNTIME": "nodejs",
+      "NEXT_PRIVATE_TARGET": "server"
+    }
+  },
+  "framework": "nextjs",
+  "regions": ["cdg1"],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api" }
+  ],
+  "buildCommand": "npm run build"
+} 

@@ -3,7 +3,16 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['rnjgeloamtszdjplmqxy.supabase.co'],
+    domains: [
+      'rnjgeloamtszdjplmqxy.supabase.co',
+      'localhost',
+      'avatars.githubusercontent.com',
+      'lh3.googleusercontent.com',
+      'googleusercontent.com',
+      's.gravatar.com',
+      'avatar.vercel.sh',
+      'github.com'
+    ],
     remotePatterns: [
       {
         protocol: 'https',
@@ -34,16 +43,6 @@ const nextConfig = {
     // ⚠️ Solución temporal para permitir la compilación
     ignoreDuringBuilds: true,
   },
-  // Forzar reconstrucción completa
-  experimental: {
-    forceSwcTransforms: true,
-  },
-  // Establecer el directorio de salida
-  distDir: '.next',
-  // Asegurar que los assets se sirven correctamente
-  assetPrefix: '',
-  // Desactivar compresión para evitar problemas
-  compress: false,
   // Configuración de webpack para resolver módulos problemáticos
   webpack: (config, { isServer }) => {
     config.resolve.alias['react-smooth'] = path.join(__dirname, 'app/lib/react-smooth-polyfill.js');
@@ -63,12 +62,16 @@ const nextConfig = {
   },
   // Configuración para manejar errores de prerender
   output: 'standalone',
-  // Ignorar errores de construcción para páginas específicas
-  onDemandEntries: {
-    // period (in ms) where the server will keep pages in the buffer
-    maxInactiveAge: 25 * 1000,
-    // number of pages that should be kept simultaneously without being disposed
-    pagesBufferLength: 2,
+  swcMinify: false,
+  // Configurar páginas estáticas vs dinámicas
+  staticPageGenerationTimeout: 120,
+  experimental: {
+    // Desactivar la reconstrucción completa forzada que puede causar problemas
+    forceSwcTransforms: false,
+    // Optimizaciones para la compilación
+    optimizeCss: true,
+    scrollRestoration: true,
+    workerThreads: true,
   },
   async headers() {
     return [

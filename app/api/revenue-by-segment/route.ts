@@ -13,11 +13,11 @@ interface SegmentInfo {
 
 async function getSegmentsForSite(supabase: any, siteId: string): Promise<SegmentInfo[]> {
   try {
-    // Usar el cliente de servicio para la consulta de segmentos
-    const serviceClient = createServiceApiClient();
+    // Use the passed service client instead of creating a new one
+    // This ensures we're using the same client with admin permissions
     
     // Buscar en la tabla de segmentos filtrando solo por site_id
-    const { data, error } = await serviceClient
+    const { data, error } = await supabase
       .from("segments")
       .select("id, name, audience, engagement, is_active, site_id")
       .eq("site_id", siteId)
@@ -60,13 +60,28 @@ export async function GET(request: Request) {
   }
   
   try {
-    const supabase = createApiClient();
+    // Always use service client with admin permissions
+    const supabase = createServiceApiClient();
+    console.log(`[Revenue By Segment API] Service client created with admin permissions`);
     console.log(`[Revenue By Segment API] Received request for site: ${siteId}`);
+    console.log(`[Revenue By Segment API] Date parameters: startDate=${startDateParam}, endDate=${endDateParam}`);
     
     // Parse dates
     const startDate = startDateParam ? new Date(startDateParam) : subDays(new Date(), 30);
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    console.log(`[Revenue By Segment API] Period: ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
+    
+    // Check for future dates
+    const now = new Date();
+    if (startDate > now) {
+      console.warn(`[Revenue By Segment API] Future start date detected: ${startDate.toISOString()}, using 30 days ago instead`);
+      startDate.setTime(subDays(now, 30).getTime());
+    }
+    if (endDate > now) {
+      console.warn(`[Revenue By Segment API] Future end date detected: ${endDate.toISOString()}, using today instead`);
+      endDate.setTime(now.getTime());
+    }
+    
+    console.log(`[Revenue By Segment API] Validated period: ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
     
     // Get all segments for the site
     const segments = await getSegmentsForSite(supabase, siteId);
@@ -176,12 +191,59 @@ export async function GET(request: Request) {
       const finalResults = revenueBySegment.filter(item => item.value > 0);
       finalResults.sort((a, b) => b.value - a.value);
       
+      // Return the data with debug information
+      const finalResult = {
+        segments: finalResults,
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          segmentsCount: segments.length,
+          segmentsWithRevenueCount: finalResults.length,
+          totalSales: salesData?.length || 0,
+          totalRevenue: Object.values(segmentRevenue).reduce((sum: number, val: number) => sum + val, 0) + unassignedRevenue,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId
+          }
+        }
+      };
+      
       console.log(`[Revenue By Segment API] Returning ${finalResults.length} segments with revenue`);
-      return NextResponse.json({ segments: finalResults });
+      return NextResponse.json(finalResult, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     } else {
       console.log("[Revenue By Segment API] No sales found for the period");
       // Return empty array if no sales found
-      return NextResponse.json({ segments: [] });
+      return NextResponse.json({ 
+        segments: [],
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          segmentsCount: segments.length,
+          segmentsWithRevenueCount: 0,
+          totalSales: 0,
+          totalRevenue: 0,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId
+          }
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     }
   } catch (error) {
     console.error("Error in revenue by segment API:", error);

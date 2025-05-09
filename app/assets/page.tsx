@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { Badge } from "@/app/components/ui/badge"
 import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash2, Download, Image, FileVideo, FileText, UploadCloud } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, Suspense } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { getAssets, deleteAsset, type Asset } from "@/app/assets/actions"
 import { useSite } from "@/app/context/SiteContext"
@@ -351,6 +351,67 @@ const AssetEmptyState = ({ type }: { type: "all" | "images" | "videos" | "docume
 }
 
 export default function AssetsPage() {
+  return (
+    <Suspense fallback={<AssetsLoadingPage />}>
+      <AssetsContent />
+    </Suspense>
+  )
+}
+
+// Loading page component that doesn't use useSearchParams
+function AssetsLoadingPage() {
+  return (
+    <div className="flex-1 p-0">
+      <Tabs defaultValue="all">
+        <StickyHeader>
+          <div className="px-16 pt-0">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-8">
+                <TabsList>
+                  <TabsTrigger value="all">All Assets</TabsTrigger>
+                  <TabsTrigger value="images">Images</TabsTrigger>
+                  <TabsTrigger value="videos">Videos</TabsTrigger>
+                  <TabsTrigger value="documents">Documents</TabsTrigger>
+                </TabsList>
+                <div className="relative w-64">
+                  <Input 
+                    placeholder="Search assets..." 
+                    className="w-full"
+                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                    disabled
+                  />
+                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </div>
+              </div>
+              <div className="ml-auto">
+                {/* Any other buttons would go here */}
+              </div>
+            </div>
+          </div>
+        </StickyHeader>
+        
+        <div className="p-8 space-y-4">
+          <div className="px-8">
+            <>
+              <TabsContent value="all" className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <AssetCardSkeleton key={index} />
+                  ))}
+                </div>
+              </TabsContent>
+            </>
+          </div>
+        </div>
+      </Tabs>
+    </div>
+  )
+}
+
+// Content component that uses useSearchParams
+function AssetsContent() {
   const { currentSite, isLoading: isSiteLoading } = useSite()
   const [assets, setAssets] = useState<AssetWithThumbnail[]>([])
   const [isLoading, setIsLoading] = useState(true)

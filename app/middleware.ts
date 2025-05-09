@@ -26,10 +26,11 @@ const EXCLUDED_PATHS = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Imprimir la ruta que se está procesando (solo en desarrollo)
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`[Middleware] Procesando ruta: ${pathname}`)
-  }
+  // Imprimir la ruta que se está procesando (solo en desarrollo y solo para debugging específico)
+  // Remover este log para evitar saturar la consola
+  // if (process.env.NODE_ENV !== 'production') {
+  //   console.log(`[Middleware] Procesando ruta: ${pathname}`)
+  // }
   
   // Handle OPTIONS request for preflight checks (CORS)
   if (request.method === 'OPTIONS') {
@@ -63,7 +64,8 @@ export async function middleware(request: NextRequest) {
   
   // Excluir rutas específicas del middleware completamente
   if (EXCLUDED_PATHS.some(path => pathname === path || pathname.startsWith(path))) {
-    console.log(`[Middleware] Ruta excluida: ${pathname}`)
+    // Remover este log para evitar saturar la consola
+    // console.log(`[Middleware] Ruta excluida: ${pathname}`)
     return NextResponse.next()
   }
   
@@ -96,6 +98,8 @@ export async function middleware(request: NextRequest) {
       "img-src 'self' data: https:; " +
       "font-src 'self' data:;"
     );
+    
+    // No logging CSP headers to avoid console saturation
     
     return res;
   }

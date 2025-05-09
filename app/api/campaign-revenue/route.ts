@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { createServiceApiClient } from "@/lib/supabase/server-client";
 import { NextResponse } from "next/server";
 import { format, subDays } from "date-fns";

@@ -3,33 +3,45 @@
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { createClient } from '@/lib/supabase/client'
-import { useSearchParams } from 'next/navigation'
 import { useTheme } from '@/app/context/ThemeContext'
 import { useEffect, useState } from 'react'
 
 interface AuthFormProps {
   mode?: 'login' | 'register'
   returnTo?: string | null
+  defaultAuthType?: string
 }
 
-export function AuthForm({ mode = 'login', returnTo }: AuthFormProps) {
+export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthFormProps) {
   const supabase = createClient()
-  const searchParams = useSearchParams()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const finalReturnTo = returnTo || searchParams.get('returnTo') || '/dashboard'
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-
+  
+  // Obtener returnTo directamente desde la URL en lugar de useSearchParams
+  const [finalReturnTo, setFinalReturnTo] = useState<string>('/dashboard')
+  
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Obtener el returnTo de la URL si no se proporcionó como prop
+    if (!returnTo && typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      const urlReturnTo = url.searchParams.get('returnTo')
+      setFinalReturnTo(urlReturnTo || '/dashboard')
+    } else {
+      setFinalReturnTo(returnTo || '/dashboard')
+    }
+  }, [returnTo])
 
   if (!mounted) return null
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const authType = defaultAuthType || (mode === 'register' ? 'sign_up' : 'sign_in')
 
   return (
     <Auth
       supabaseClient={supabase}
-      view={mode === 'register' ? 'sign_up' : 'sign_in'}
+      view={authType === 'signup' ? 'sign_up' : authType === 'signin' ? 'sign_in' : authType as any}
       appearance={{ 
         theme: ThemeSupa,
         variables: {

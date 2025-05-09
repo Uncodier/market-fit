@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -43,7 +45,6 @@ export async function middleware(req: NextRequest) {
       "font-src 'self' data:;"
     );
     
-    console.log('Middleware: Establecidos headers CSP para WebSockets en OPTIONS');
     return response;
   }
 
@@ -81,9 +82,6 @@ export async function middleware(req: NextRequest) {
       // modifying any cookies or headers to avoid parsing issues
       return NextResponse.next();
     }
-    
-    // Solo para depuración
-    console.log('Middleware: Establecidos headers CSP para permitir WebSockets');
     
     // Crear el cliente de Supabase con configuración explícita de cookies
     const supabase = createServerClient(

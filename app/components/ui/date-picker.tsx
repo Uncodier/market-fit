@@ -7,6 +7,8 @@ import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, sta
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/app/components/ui/badge"
+import { Calendar } from "@/app/components/ui/calendar"
+import { useMemo } from "react"
 
 export type DateEventType = 'day' | 'week' | 'month' | 'year' | 'custom';
 export type DateEventPeriod = 'past' | 'future' | 'current';
@@ -91,7 +93,11 @@ export function DatePicker({
           { label: "Last 30 days", value: subDays(today, 30), type: "day", period: "past" },
           { label: "This month", value: dateStartOfMonth(today), type: "month", period: "current" },
           { label: "Last month", value: startOfMonth(subMonths(today, 1)), type: "month", period: "past" },
-          { label: "Year to date", value: startOfYear(today), type: "year", period: "current" },
+          { label: "Year to date", value: (() => {
+            // Use startOfYear but explicitly with the current year to avoid any issues
+            const currentYear = today.getFullYear();
+            return new Date(currentYear, 0, 1); // January 1st of current year
+          })(), type: "year", period: "current" },
         ];
       
       case 'calendar':
@@ -110,9 +116,26 @@ export function DatePicker({
           { label: "This week", value: dateStartOfWeek(today), type: "week", period: "current" },
           { label: "This month", value: dateStartOfMonth(today), type: "month", period: "current" },
           { label: "Last month", value: startOfMonth(subMonths(today, 1)), type: "month", period: "past" },
-          { label: "This quarter", value: dateStartOfMonth(new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1)), type: "month", period: "current" },
-          { label: "Year to date", value: startOfYear(today), type: "year", period: "current" },
-          { label: "Last year", value: startOfYear(subYears(today, 1)), type: "year", period: "past" },
+          { label: "This quarter", value: (() => {
+            // Calculate current quarter's start date safely
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth();
+            const currentQuarter = Math.floor(currentMonth / 3);
+            // First month of the current quarter (0, 3, 6, or 9)
+            const quarterStartMonth = currentQuarter * 3;
+            // Return first day of the quarter
+            return new Date(currentYear, quarterStartMonth, 1);
+          })(), type: "month", period: "current" },
+          { label: "Year to date", value: (() => {
+            // Use startOfYear but explicitly with the current year to avoid any issues
+            const currentYear = today.getFullYear();
+            return new Date(currentYear, 0, 1); // January 1st of current year
+          })(), type: "year", period: "current" },
+          { label: "Last year", value: (() => {
+            // Use startOfYear but explicitly with last year to avoid any issues
+            const lastYear = today.getFullYear() - 1;
+            return new Date(lastYear, 0, 1); // January 1st of last year
+          })(), type: "year", period: "past" },
           { label: "All time", value: new Date(2000, 0, 1), type: "custom", period: "past" },
         ];
       
@@ -288,29 +311,82 @@ export function DatePicker({
     e.stopPropagation();
     
     const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    // Ensure the start date is not in the future
+    let start = new Date(event.value);
+    if (start > today) {
+      console.warn(`[DatePicker] Preset start date ${format(start, 'yyyy-MM-dd')} is in the future, using safe fallback`);
+      
+      // Different fallbacks based on event type
+      switch (event.type) {
+        case 'day':
+          start = startOfDay(today);
+          break;
+        case 'week':
+          start = startOfWeek(today);
+          break;
+        case 'month':
+          start = startOfMonth(today);
+          break;
+        case 'year':
+          start = startOfYear(today);
+          break;
+        default:
+          start = startOfDay(today);
+      }
+    }
+    
+    // Extra safety check for "This quarter" preset, which has caused issues
+    if (event.label === "This quarter" && start > today) {
+      console.warn(`[DatePicker] Quarter start date still in future after initial check: ${format(start, 'yyyy-MM-dd')}`);
+      
+      // Calculate current quarter as fallback
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth();
+      const currentQuarter = Math.floor(currentMonth / 3);
+      const quarterStartMonth = currentQuarter * 3;
+      
+      // Use first day of current quarter
+      start = new Date(currentYear, quarterStartMonth, 1);
+      console.log(`[DatePicker] Using current quarter start: ${format(start, 'yyyy-MM-dd')}`);
+    }
+    
     let end: Date;
     
     switch (event.type) {
       case 'day':
-        end = endOfDay(event.value);
+        end = endOfDay(start);
         break;
       case 'week':
-        end = endOfDay(dateEndOfWeek(event.value));
+        end = endOfDay(dateEndOfWeek(start));
+        // Cap end date at today if it's in the future
+        if (end > today) {
+          end = today;
+        }
         break;
       case 'month':
-        end = endOfDay(dateEndOfMonth(event.value));
+        end = endOfDay(dateEndOfMonth(start));
+        // Cap end date at today if it's in the future
+        if (end > today) {
+          end = today;
+        }
         break;
       case 'year':
-        end = isSameYear(event.value, today) 
+        end = isSameYear(start, today) 
           ? endOfDay(today) 
-          : endOfDay(endOfYear(event.value));
+          : endOfDay(endOfYear(start));
+        // Cap end date at today if it's in the future
+        if (end > today) {
+          end = today;
+        }
         break;
       default:
         end = today;
     }
     
     // Set the start date
-    setDate(event.value);
+    setDate(start);
     
     // Save which preset was selected
     setSelectedPresetLabel(event.label);
@@ -322,8 +398,9 @@ export function DatePicker({
       // Trigger range selection callback immediately
       if (onRangeSelect) {
         // Notificar solo si hay cambios reales
-        if (!isSameDay(event.value, date) || !endDate || !isSameDay(end, endDate)) {
-          onRangeSelect(event.value, end);
+        if (!isSameDay(start, date) || !endDate || !isSameDay(end, endDate)) {
+          console.log(`[DatePicker] Preset selected: ${event.label}, range: ${format(start, 'yyyy-MM-dd')} - ${format(end, 'yyyy-MM-dd')}`);
+          onRangeSelect(start, end);
         }
       }
       
@@ -331,10 +408,17 @@ export function DatePicker({
       setOpen(false);
     } else {
       // Normal date selection
-      selectDate(event.value, e, event.type);
+      selectDate(start, e, event.type);
     }
   };
   
+  // Add a function to disable future dates - make it more robust
+  const disableFutureDates = (date: Date) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    return date > today;
+  };
+
   return (
     <div className="w-full">
       <Popover open={open} onOpenChange={setOpen}>
@@ -423,6 +507,7 @@ export function DatePicker({
                   const isInRange = isDayInRange(day);
                   const isRangeStart = mode === 'range' && isSameDay(day, date);
                   const isRangeEnd = mode === 'range' && endDate && isSameDay(day, endDate);
+                  const isFutureDate = disableFutureDates(day);
                   
                   return (
                     <Button
@@ -434,9 +519,11 @@ export function DatePicker({
                         (mode === 'range' ? (isRangeStart || isRangeEnd) : isSameDay(day, date)) && "bg-primary text-primary-foreground",
                         isSameDay(day, new Date()) && !(isRangeStart || isRangeEnd) && "border border-primary",
                         isInRange && !isRangeStart && !isRangeEnd && "bg-primary/20",
+                        isFutureDate && "text-muted-foreground opacity-50 cursor-not-allowed",
                         "hover:bg-muted transition-colors duration-150"
                       )}
-                      onClick={(e) => selectDate(day, e, "day")}
+                      onClick={(e) => !isFutureDate && selectDate(day, e, "day")}
+                      disabled={isFutureDate}
                       type="button"
                     >
                       {format(day, "d")}

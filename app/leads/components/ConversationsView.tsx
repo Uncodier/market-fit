@@ -45,27 +45,46 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
   const [loading, setLoading] = useState(true)
   const { currentSite } = useSite()
   const router = useRouter()
+  const [hasError, setHasError] = useState(false)
 
   // Load conversations
   useEffect(() => {
+    let isMounted = true;
+    
     const loadConversations = async () => {
       if (!currentSite?.id || !leadId) return
       
       setLoading(true)
       try {
-        // Use Supabase client to fetch real conversations
+        // Only use Supabase client in the browser
+        if (typeof window === 'undefined') {
+          console.warn('Attempt to load conversations in server environment');
+          return;
+        }
+        
         const supabase = createClient()
+        
+        // Check if we got a mock client - better error handling
+        if (supabase._isMock) {
+          console.warn('Using mock client for conversations - data may not be accurate');
+          setConversations([]);
+          setLoading(false);
+          return;
+        }
         
         // Attempt to fetch real conversations data
         const { data, error } = await supabase
           .from('conversations')
           .select('*')
           .eq('lead_id', leadId)
-          .order('date', { ascending: false })
+          .order('created_at', { ascending: false })
         
         if (error) {
           console.error("Error fetching conversations:", error)
-          setConversations([])
+          if (isMounted) {
+            setHasError(true);
+            setConversations([]);
+          }
         } else if (data && data.length > 0) {
           // If we get real data, map it to our conversation format
           const formattedConversations = data.map((item: any) => ({
@@ -73,26 +92,40 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
             type: item.type || 'email',
             subject: item.subject || 'No Subject',
             message: item.message || '',
-            date: item.date,
+            date: item.created_at || item.date || new Date().toISOString(),
             status: item.status || 'sent'
           }))
           
-          setConversations(formattedConversations)
+          if (isMounted) {
+            setConversations(formattedConversations);
+            setHasError(false);
+          }
         } else {
           // No data found
-          setConversations([])
+          if (isMounted) {
+            setConversations([]);
+            setHasError(false);
+          }
         }
-        
-        setLoading(false)
       } catch (error) {
         console.error("Error loading conversations:", error)
-        toast.error("Failed to load conversations")
-        setConversations([])
-        setLoading(false)
+        if (isMounted) {
+          toast.error("Failed to load conversations");
+          setHasError(true);
+          setConversations([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
-    loadConversations()
+    loadConversations();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [leadId, currentSite?.id])
 
   // Function to format date
@@ -129,6 +162,22 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
     toast.success(`Conversation "${conversation.subject}" deleted`)
     // Remove from the local state
     setConversations(prev => prev.filter(c => c.id !== conversation.id))
+  }
+
+  // Show error state
+  if (hasError) {
+    return (
+      <div className="w-full">
+        <EmptyCard
+          title="Error Loading Conversations"
+          description="There was a problem loading conversations. Please try again later."
+          icon={<MessageSquare className="h-12 w-12 text-muted-foreground" />}
+        />
+        <div className="flex justify-center mt-4">
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    )
   }
 
   // Show empty state if no conversations and not loading

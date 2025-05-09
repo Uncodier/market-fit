@@ -59,9 +59,14 @@ export function ActiveSegmentsWidget({
       setHasError(false);
       
       try {
+        // Validate dates - don't allow future dates
+        const now = new Date();
+        const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
+        const validEndDate = endDate > now ? now : endDate;
+        
         console.log("[ActiveSegmentsWidget] Fetching for site:", currentSite.id, currentSite.name);
-        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
-        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
+        const start = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
+        const end = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
         params.append("siteId", currentSite.id);
@@ -72,6 +77,7 @@ export function ActiveSegmentsWidget({
         if (end) params.append("endDate", end);
         
         const apiUrl = `/api/active-segments?${params.toString()}`;
+        console.log("[ActiveSegmentsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
         const response = await fetch(apiUrl);
         if (!response.ok) {

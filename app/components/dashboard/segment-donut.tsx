@@ -6,7 +6,6 @@ import { format } from "date-fns"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { PieChart } from "@/app/components/ui/icons"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
-import { useRequestController } from "@/app/hooks/useRequestController"
 
 interface DataItem {
   name: string
@@ -40,7 +39,6 @@ export function SegmentDonut({
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  const { fetchWithController, cancelAllRequests } = useRequestController()
   
   // SVG dimensions - reduced for more compact layout
   const size = 320
@@ -51,6 +49,7 @@ export function SegmentDonut({
   // Fetch data
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
     
     const fetchData = async () => {
       if (!currentSite || currentSite.id === "default" || !startDate || !endDate) {
@@ -64,25 +63,70 @@ export function SegmentDonut({
       }
       
       try {
+        // Ensure we're using valid dates - defensive measure
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        
+        // Create safe copies of dates
+        let safeStartDate = new Date(startDate);
+        let safeEndDate = new Date(endDate);
+        
+        // Validate and fix dates if needed
+        if (safeStartDate.getFullYear() > currentYear) {
+          console.warn(`[SegmentDonut] Future year in startDate: ${safeStartDate.toISOString()}`);
+          safeStartDate.setFullYear(currentYear - 1);
+        }
+        
+        if (safeEndDate.getFullYear() > currentYear) {
+          console.warn(`[SegmentDonut] Future year in endDate: ${safeEndDate.toISOString()}`);
+          safeEndDate = now;
+        }
+        
+        if (safeStartDate > now) {
+          console.warn(`[SegmentDonut] Future startDate: ${safeStartDate.toISOString()}`);
+          safeStartDate = new Date(now);
+          safeStartDate.setMonth(now.getMonth() - 1);
+        }
+        
+        if (safeEndDate > now) {
+          console.warn(`[SegmentDonut] Future endDate: ${safeEndDate.toISOString()}`);
+          safeEndDate = now;
+        }
+        
+        // Create params with validated dates
         const params = new URLSearchParams();
         params.append("siteId", currentSite.id);
         if (user?.id) {
           params.append("userId", user.id);
         }
-        params.append("startDate", format(startDate, "yyyy-MM-dd"));
-        params.append("endDate", format(endDate, "yyyy-MM-dd"));
+        params.append("startDate", format(safeStartDate, "yyyy-MM-dd"));
+        params.append("endDate", format(safeEndDate, "yyyy-MM-dd"));
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId);
         }
         
+        const apiUrl = `/api/${endpoint}?${params.toString()}`;
         console.log(`[SegmentDonut:${endpoint}] Fetching data with params:`, Object.fromEntries(params.entries()));
+        console.log(`[SegmentDonut:${endpoint}] Full API URL: ${apiUrl}`);
         
-        const response = await fetchWithController(`/api/${endpoint}?${params.toString()}`);
-        // Check if request was aborted or component unmounted
-        if (response === null || !isMounted) {
-          console.log(`[SegmentDonut:${endpoint}] Request was cancelled or component unmounted`);
-          return; // Exit early, don't update state for cancelled requests
+        // Use basic fetch instead of fetchWithController
+        const response = await fetch(apiUrl, {
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        // Check if component unmounted
+        if (!isMounted) {
+          console.log(`[SegmentDonut:${endpoint}] Component unmounted, ignoring response`);
+          return;
         }
+        
+        // Log detailed response info for debugging
+        console.log(`[SegmentDonut:${endpoint}] Response status: ${response.status}`);
+        console.log(`[SegmentDonut:${endpoint}] Response headers:`, Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -90,7 +134,20 @@ export function SegmentDonut({
           throw new Error(`Error ${response.status}: ${errorText}`);
         }
         
-        const responseData = await response.json();
+        // Clone the response for debugging (in case parsing fails)
+        const responseClone = response.clone();
+        
+        let responseData;
+        try {
+          responseData = await response.json();
+        } catch (parseError: unknown) {
+          // If JSON parsing fails, try to log the raw text
+          const rawText = await responseClone.text();
+          console.error(`[SegmentDonut:${endpoint}] JSON parse error:`, parseError);
+          console.log(`[SegmentDonut:${endpoint}] Raw response text (first 200 chars):`, rawText.substring(0, 200));
+          throw new Error(`Failed to parse JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+        }
+        
         console.log(`[SegmentDonut:${endpoint}] Received data:`, responseData);
         
         // Only proceed with state updates if component is still mounted
@@ -102,9 +159,17 @@ export function SegmentDonut({
           : responseData.campaigns 
             ? 'campaigns' 
             : null;
-            
+        
+        console.log(`[SegmentDonut:${endpoint}] Data key:`, dataKey);
+        
+        // Log debug info if available
+        if (responseData.debug) {
+          console.log(`[SegmentDonut:${endpoint}] Debug info:`, responseData.debug);
+        }
+        
         if (!dataKey || !responseData[dataKey] || !Array.isArray(responseData[dataKey])) {
           console.log(`[SegmentDonut:${endpoint}] No valid data key found in response`);
+          console.log(`[SegmentDonut:${endpoint}] Response keys:`, Object.keys(responseData));
           setData([]);
           setTotalValue(0);
           
@@ -170,13 +235,13 @@ export function SegmentDonut({
           setHasError(true);
         }
       } catch (error) {
-        // Ignore AbortError as it's handled in the fetchWithController
+        // Ignore AbortError as it's expected during cleanup
         if (error instanceof DOMException && error.name === 'AbortError') {
           console.log(`[SegmentDonut:${endpoint}] Request was aborted`);
           return;
         }
         
-        console.error(`Error fetching data from ${endpoint}:`, error);
+        console.error(`[SegmentDonut:${endpoint}] Error fetching data:`, error);
         
         if (isMounted) {
           setHasError(true);
@@ -200,7 +265,7 @@ export function SegmentDonut({
     // Cleanup function
     return () => {
       isMounted = false;
-      cancelAllRequests();
+      controller.abort();
     };
   }, [
     segmentId, 
@@ -211,7 +276,6 @@ export function SegmentDonut({
     onTotalUpdate, 
     endpoint, 
     formatValues
-    // Note: fetchWithController and cancelAllRequests are stable now with useCallback
   ]);
   
   // Calculate slices for the donut

@@ -1,4 +1,4 @@
-import { createApiClient } from "@/lib/supabase/server-client";
+import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
 import { NextResponse } from "next/server";
 import { format, subDays } from "date-fns";
 
@@ -10,6 +10,7 @@ interface CampaignInfo {
 
 async function getCampaignsForSite(supabase: any, siteId: string): Promise<CampaignInfo[]> {
   try {
+    // Use the passed service client
     const { data, error } = await supabase
       .from("campaigns")
       .select("id, title, type")
@@ -46,13 +47,28 @@ export async function GET(request: Request) {
   }
   
   try {
-    const supabase = createApiClient();
+    // Always use service client with admin permissions
+    const supabase = createServiceApiClient();
+    console.log(`[Revenue By Campaign API] Service client created with admin permissions`);
     console.log(`[Revenue By Campaign API] Received request for site: ${siteId}`);
+    console.log(`[Revenue By Campaign API] Date parameters: startDate=${startDateParam}, endDate=${endDateParam}`);
     
     // Parse dates
     const startDate = startDateParam ? new Date(startDateParam) : subDays(new Date(), 30);
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    console.log(`[Revenue By Campaign API] Period: ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
+    
+    // Check for future dates
+    const now = new Date();
+    if (startDate > now) {
+      console.warn(`[Revenue By Campaign API] Future start date detected: ${startDate.toISOString()}, using 30 days ago instead`);
+      startDate.setTime(subDays(now, 30).getTime());
+    }
+    if (endDate > now) {
+      console.warn(`[Revenue By Campaign API] Future end date detected: ${endDate.toISOString()}, using today instead`);
+      endDate.setTime(now.getTime());
+    }
+    
+    console.log(`[Revenue By Campaign API] Validated period: ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
     
     // Get all campaigns for the site
     const campaigns = await getCampaignsForSite(supabase, siteId);
@@ -140,12 +156,63 @@ export async function GET(request: Request) {
       const finalResults = revenueByCampaign.filter(campaign => campaign.value > 0);
       finalResults.sort((a, b) => b.value - a.value);
       
+      // Return the data with debug information
+      const finalResult = {
+        campaigns: finalResults,
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          campaignsCount: campaigns.length,
+          campaignsWithRevenueCount: finalResults.length,
+          totalSales: salesData?.length || 0,
+          totalRevenue: Object.values(campaignRevenue).reduce((sum: number, val: number) => sum + val, 0) + unassignedRevenue,
+          segmentFilter: segmentId && segmentId !== "all" ? segmentId : null,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId,
+            segmentId
+          }
+        }
+      };
+      
       console.log(`[Revenue By Campaign API] Returning ${finalResults.length} campaigns with revenue`);
-      return NextResponse.json({ campaigns: finalResults });
+      return NextResponse.json(finalResult, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     } else {
       console.log("[Revenue By Campaign API] No sales found for the period");
       // Return empty array if no sales found
-      return NextResponse.json({ campaigns: [] });
+      return NextResponse.json({ 
+        campaigns: [],
+        debug: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          campaignsCount: campaigns.length,
+          campaignsWithRevenueCount: 0,
+          totalSales: 0,
+          totalRevenue: 0,
+          segmentFilter: segmentId && segmentId !== "all" ? segmentId : null,
+          originalParams: {
+            startDateParam,
+            endDateParam,
+            siteId,
+            userId,
+            segmentId
+          }
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     }
   } catch (error) {
     console.error("Error in revenue by campaign API:", error);

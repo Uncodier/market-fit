@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Input } from "@/app/components/ui/input"
 import { Button } from "@/app/components/ui/button"
@@ -26,6 +26,7 @@ import { Database } from "@/lib/types/database.types"
 import { createConversation } from "@/app/services/chat-service"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { toast } from "react-hot-toast"
+import { SimpleAgentCardSkeleton, GridAgentRowSkeleton } from "@/app/components/agents/skeleton-components"
 
 // Type-safe version of the example commands
 const exampleCommands: Command[] = [
@@ -96,7 +97,16 @@ const logAgent = (prefix: string, agent: ExtendedAgent) => {
   console.log(`${prefix}: ${agent.id} - ${agent.name} - isDisabled: ${agent.isDisabled} - dbData: ${agent.dbData ? 'SI' : 'NO'}`);
 };
 
-export default function AgentsPage() {
+// Wrap the export in a Suspense boundary
+const AgentsPageWrapper = () => {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading agents...</div>}>
+      <AgentsPageContent />
+    </Suspense>
+  )
+}
+
+function AgentsPageContent() {
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"hierarchy" | "grid">("hierarchy")
   const [expandedAgentIds, setExpandedAgentIds] = useState<string[]>([])
@@ -105,6 +115,7 @@ export default function AgentsPage() {
   const { isLayoutCollapsed } = useLayout()
   const [activeCommandTab, setActiveCommandTab] = useState<string>("all")
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [agents, setAgents] = useState<ExtendedAgent[]>([])
   const { currentSite } = useSite()
@@ -404,85 +415,6 @@ export default function AgentsPage() {
   
   const isAgentExpanded = (agentId: string) => expandedAgentIds.includes(agentId);
   
-  // Skeleton card components for loading states
-  const SimpleAgentCardSkeleton = ({ className }: { className?: string }) => (
-    <div className={`flex flex-col ${className}`}>
-      <div className="h-auto flex flex-col border rounded-lg shadow-sm bg-card p-4">
-        <div className="pb-4 flex-none">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start space-x-3 min-w-0">
-              <Skeleton className="h-10 w-10 rounded-full flex-none" />
-              <div className="min-w-0 space-y-2">
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-            </div>
-            <Skeleton className="h-6 w-20 rounded-full flex-none" />
-          </div>
-        </div>
-        <div className="pt-2 pb-4 flex gap-2 flex-none">
-          <Skeleton className="h-9 flex-1" />
-          <Skeleton className="h-9 flex-1" />
-        </div>
-        <div className="border-t pt-1 pb-1">
-          <Skeleton className="h-7 w-full" />
-        </div>
-      </div>
-    </div>
-  );
-  
-  const GridAgentRowSkeleton = () => (
-    <div className="rounded-lg border shadow-sm overflow-hidden mb-4">
-      <div className="flex items-center p-4 bg-background">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Skeleton className="h-10 w-10 rounded-full" />
-          <div className="flex-1 min-w-0 space-y-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 w-52" />
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-6 mx-4">
-          <Skeleton className="w-24 h-5" />
-          <Skeleton className="w-28 h-5" />
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-6 w-20 rounded-full" />
-          <Skeleton className="h-8 w-8 rounded-md" />
-          <Skeleton className="h-8 w-8 rounded-md" />
-          <Skeleton className="h-8 w-8 rounded-md" />
-        </div>
-      </div>
-    </div>
-  );
-  
-  // Lead Agent Card component
-  const LeadAgentCard = ({ agent }: { agent: ExtendedAgent }) => {
-    // Log para depuración
-    console.log(`Renderizando LeadAgentCard: ${agent.id} - ${agent.name} - isDisabled: ${agent.isDisabled}`);
-    
-    return (
-      <div className="w-[458px] mb-10 px-4">
-        {isLoading ? (
-          <SimpleAgentCardSkeleton className="border-primary/50 shadow-md" />
-        ) : (
-          <SimpleAgentCard 
-            agent={agent} 
-            onManage={handleManageAgent}
-            onChat={handleChatWithAgent}
-            onToggleActivities={handleToggleActivities}
-            showActivities={isAgentExpanded(agent.id)}
-            onExecuteActivity={handleExecuteActivity}
-            setSelectedAgent={setSelectedAgent}
-            className="border-primary/50 shadow-md"
-            forceShow={true} // Forzar mostrar incluso si isDisabled es true
-          />
-        )}
-      </div>
-    );
-  };
-  
   // Function to render grid view
   const renderGridView = (type?: "marketing" | "sales" | "support" | "product") => {
     if (isLoading) {
@@ -609,13 +541,26 @@ export default function AgentsPage() {
                               
                               {/* Lead Manager Card - Top Level */}
                               {isLoading ? (
-                                <LeadAgentCard agent={mockAgents[0]} />
+                                <div className="w-[458px] px-4">
+                                  <SimpleAgentCardSkeleton className="border-primary shadow-md" />
+                                </div>
                               ) : (
                                 leadAgent && 
                                 (!searchQuery || 
                                  leadAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                  leadAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) && 
-                                <LeadAgentCard agent={leadAgent} />
+                                <div className="w-[458px] px-4">
+                                  <SimpleAgentCard 
+                                    agent={leadAgent} 
+                                    onManage={handleManageAgent}
+                                    onChat={handleChatWithAgent}
+                                    onToggleActivities={handleToggleActivities}
+                                    showActivities={isAgentExpanded(leadAgent.id)}
+                                    onExecuteActivity={handleExecuteActivity}
+                                    setSelectedAgent={setSelectedAgent}
+                                    className="border-primary shadow-md"
+                                  />
+                                </div>
                               )}
                               
                               {/* Connecting Line - only show if both leadAgent and dataAnalystAgent are visible */}
@@ -1107,3 +1052,6 @@ export default function AgentsPage() {
     </AgentSelectionContext.Provider>
   )
 }
+
+// Export the wrapped component
+export default AgentsPageWrapper;
