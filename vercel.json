@@ -7,8 +7,5 @@
   },
   "framework": "nextjs",
   "regions": ["cdg1"],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api" }
-  ],
   "buildCommand": "npm run build"
 } 

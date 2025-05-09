@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
+import { User, AuthChangeEvent, Session, OAuthResponse, Provider } from '@supabase/supabase-js'
 import { useSupabaseClient } from './use-supabase-client'
+
+// Definimos el tipo para las opciones de OAuth extendidas
+interface ExtendedOAuthOptions {
+  redirectTo?: string;
+  queryParams?: Record<string, string>;
+  scopes?: string;
+  skipBrowserRedirect?: boolean;
+}
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -26,7 +34,16 @@ export function useAuth() {
         
         console.log('[Auth Debug] Session state:', session ? 'Active' : 'No session', 
                    session?.user?.id ? `User ID: ${session.user.id.substring(0, 8)}...` : '')
+        
         setUser(session?.user ?? null)
+        
+        // Verificar redirección inicial si hay sesión activa y estamos en la página de autenticación
+        if (session?.user && typeof window !== 'undefined' && window.location.pathname.startsWith('/auth')) {
+          const url = new URL(window.location.href)
+          const returnTo = url.searchParams.get('returnTo') || '/dashboard'
+          console.log('[Auth Debug] Initial redirect to:', returnTo)
+          router.push(returnTo)
+        }
       } catch (error) {
         console.error('[Auth] Error checking authentication:', error)
         setUser(null)
@@ -39,26 +56,47 @@ export function useAuth() {
 
     // Suscribirse a cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, session: Session | null) => {
+      async (event: AuthChangeEvent, session: Session | null) => {
         console.log('[Auth Debug] Auth state changed:', event, 
                    session?.user?.id ? `User ID: ${session.user.id.substring(0, 8)}...` : 'No user')
         
+        // Actualizar el usuario en el estado
         setUser(session?.user ?? null)
+        
+        // Obtener la ruta actual
+        if (typeof window === 'undefined') return;
         
         const currentPath = window.location.pathname
         console.log('[Auth Debug] Current path:', currentPath)
         
-        // Solo redirigir si estamos en la página de login o si no hay sesión
-        if (session?.user && currentPath.startsWith('/auth')) {
-          // Obtener el returnTo desde la URL
-          const url = new URL(window.location.href)
-          const returnTo = url.searchParams.get('returnTo') || '/dashboard'
-          console.log('[Auth Debug] Redirecting to:', returnTo)
-          router.push(returnTo)
-        } else if (!session?.user && !currentPath.startsWith('/auth') && 
-                  !currentPath.startsWith('/api')) {
-          console.log('[Auth Debug] No user session, redirecting to /auth')
-          router.push('/auth')
+        // Manejar eventos específicos de autenticación
+        if (event === 'SIGNED_IN') {
+          // Si el usuario acaba de iniciar sesión, redirigir a la página adecuada
+          if (currentPath.startsWith('/auth')) {
+            // Obtener el returnTo desde la URL
+            const url = new URL(window.location.href)
+            const returnTo = url.searchParams.get('returnTo') || '/dashboard'
+            console.log('[Auth Debug] User signed in, redirecting to:', returnTo)
+            
+            // Retrasar ligeramente la redirección para asegurar que los estados se actualicen
+            setTimeout(() => {
+              router.push(returnTo)
+            }, 100)
+          }
+        } else if (event === 'SIGNED_OUT') {
+          // Si el usuario cerró sesión y no está en la página de autenticación, redirigir a login
+          if (!currentPath.startsWith('/auth') && !currentPath.startsWith('/api')) {
+            console.log('[Auth Debug] User signed out, redirecting to auth page')
+            router.push('/auth')
+          }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Actualizar la sesión sin redirección
+          console.log('[Auth Debug] Token refreshed, updating session')
+        } else if (event === 'USER_UPDATED') {
+          // El perfil del usuario fue actualizado, actualizar la sesión
+          console.log('[Auth Debug] User updated, refreshing session')
+          const { data } = await supabase.auth.getSession()
+          setUser(data.session?.user ?? null)
         }
       }
     )
@@ -85,13 +123,34 @@ export function useAuth() {
   }, [supabase])
 
   // Función para iniciar sesión con OAuth
-  const signInWithOAuth = useCallback(async (provider: 'google' | 'github') => {
+  const signInWithOAuth = useCallback(async (provider: Provider) => {
     console.log('[Auth Debug] Attempting to sign in with OAuth provider:', provider)
+    
+    // Configuración específica para cada proveedor
+    let options: ExtendedOAuthOptions = {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+    }
+    
+    // Configuración específica para Google en Uncodie
+    if (provider === 'google') {
+      options = {
+        ...options,
+        queryParams: {
+          // Añadir el dominio de Uncodie para el login
+          hd: 'uncodie.com',
+          // Solicitar el scope de perfil y email
+          scope: 'profile email',
+          // Añadir prompt para asegurar que se muestre el selector de cuentas
+          prompt: 'select_account',
+          // Identificador de cliente para Uncodie - opcional, ya está en Supabase
+          access_type: 'offline'
+        }
+      }
+    }
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
-      }
+      options
     })
     
     if (error) {
