@@ -6,6 +6,7 @@ import { LayoutProvider } from '../context/LayoutContext';
 import { SiteProvider } from '../context/SiteContext';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { AuthProvider } from '../components/auth/auth-provider';
+import { AnalyzeProvider } from '@/app/context/AnalyzeContext';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -17,9 +18,11 @@ export default function Providers({ children }: ProvidersProps) {
       <ThemeProvider>
         <LayoutProvider>
           <SiteProvider>
-            <TooltipProvider>
-              {children}
-            </TooltipProvider>
+            <AnalyzeProvider>
+              <TooltipProvider>
+                {children}
+              </TooltipProvider>
+            </AnalyzeProvider>
           </SiteProvider>
         </LayoutProvider>
       </ThemeProvider>

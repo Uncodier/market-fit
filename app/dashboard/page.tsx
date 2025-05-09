@@ -432,7 +432,11 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="min-h-[200px]">
-                    <RecentActivity limit={5} />
+                    <RecentActivity 
+                      limit={5}
+                      startDate={dateRange.startDate}
+                      endDate={dateRange.endDate} 
+                    />
                   </div>
                 </CardContent>
               </Card>

@@ -31,6 +31,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/images/logo.png" type="image/png" sizes="32x32" />
+        <meta name="application-name" content="Market Fit" />
+        <meta name="apple-mobile-web-app-title" content="Market Fit" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/images/logo.png" />
       </head>
       <body className={inter.className}>
         <Providers>
