@@ -31,12 +31,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <Script 
-          src="/js/tracking.min.js" 
-          data-site-id="www.uncodie.com" 
-          data-debug="true"
-          data-experiments="true"
-        />
       </head>
       <body className={inter.className}>
         <Providers>
