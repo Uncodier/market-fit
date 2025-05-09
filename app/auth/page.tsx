@@ -22,33 +22,26 @@ export default function AuthPage() {
     }
   }, [])
 
+  const isDark = theme === 'dark'
+
   return (
-    <div className={`flex min-h-screen flex-col items-center justify-center ${
-      theme === 'dark' 
-        ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' 
-        : 'bg-gradient-to-br from-gray-50 via-white to-gray-50'
-    }`}>
-      <div className={`w-full max-w-md space-y-8 rounded-xl p-8 shadow-2xl backdrop-blur-sm border ${
-        theme === 'dark'
-          ? 'bg-gray-900/50 border-gray-800'
-          : 'bg-white/50 border-gray-200'
-      }`}>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background/80 to-background">
+      <div className="w-full max-w-md space-y-8 rounded-xl p-8 shadow-lg backdrop-blur-sm border border-border bg-card">
         <div className="flex flex-col items-center space-y-4">
-          <Image 
-            src="/images/logo.png"
-            alt="Market Fit Logo"
-            width={48}
-            height={48}
-            className="h-12 w-auto"
-          />
-          <h2 className={`text-center text-3xl font-bold tracking-tight ${
-            theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-          }`}>
+          <div className="p-3 rounded-full bg-muted/40 flex items-center justify-center">
+            <Image 
+              src="/images/logo.png"
+              alt="Market Fit Logo"
+              width={64}
+              height={64}
+              className="h-16 w-16 object-contain"
+              priority
+            />
+          </div>
+          <h2 className="text-center text-3xl font-bold tracking-tight text-foreground">
             {authType === "signin" ? "Sign In" : "Create Account"}
           </h2>
-          <p className={`text-center text-sm ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-          }`}>
+          <p className="text-center text-sm text-muted-foreground">
             {authType === "signin" 
               ? "Sign in to your account to continue" 
               : "Create an account to get started"}
