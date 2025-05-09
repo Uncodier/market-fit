@@ -12,6 +12,23 @@ interface AuthFormProps {
   defaultAuthType?: string
 }
 
+// Tipos para configurar Auth UI correctamente
+interface ProviderScopes {
+  google?: string;
+  github?: string;
+  bitbucket?: string;
+  azure?: string;
+  discord?: string;
+  facebook?: string;
+  linkedin?: string;
+  notion?: string;
+  twitch?: string;
+  twitter?: string;
+  spotify?: string;
+  slack?: string;
+  apple?: string;
+}
+
 export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthFormProps) {
   const supabase = createClient()
   const { theme } = useTheme()
@@ -37,6 +54,16 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const authType = defaultAuthType || (mode === 'register' ? 'sign_up' : 'sign_in')
+  
+  // Configuración avanzada para los proveedores OAuth
+  const providerScopes: ProviderScopes = {
+    google: 'profile email'
+  }
+  
+  // Configuración específica para los proveedores
+  const queryParams: { [provider: string]: string } = {
+    'google-url': 'prompt=select_account&access_type=offline'
+  }
 
   return (
     <Auth
@@ -69,7 +96,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
       }}
       theme={theme}
       showLinks={true}
-      providers={['google', 'github']}
+      providers={['google']}
+      providerScopes={providerScopes}
+      queryParams={queryParams}
       redirectTo={`${baseUrl}/auth/callback?returnTo=${finalReturnTo}`}
     />
   )
