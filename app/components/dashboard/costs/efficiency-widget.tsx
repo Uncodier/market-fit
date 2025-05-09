@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { subDays } from "date-fns";
 
 interface EfficiencyWidgetProps {
-  startDate: Date;
-  endDate: Date;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 interface CostData {
@@ -42,8 +43,8 @@ const formatPeriodType = (periodType: string): string => {
 };
 
 export function EfficiencyWidget({ 
-  startDate,
-  endDate
+  startDate: propStartDate,
+  endDate: propEndDate
 }: EfficiencyWidgetProps) {
   const { currentSite } = useSite();
   const [costData, setCostData] = useState<CostData | null>(null);
@@ -55,6 +56,18 @@ export function EfficiencyWidget({
     percentChange: 0
   });
   const [hasData, setHasData] = useState(true);
+  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
+  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
+  
+  // Update local state when props change
+  useEffect(() => {
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
+  }, [propStartDate, propEndDate]);
 
   useEffect(() => {
     const fetchData = async () => {
