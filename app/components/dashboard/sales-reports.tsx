@@ -11,7 +11,7 @@ import { SalesDistributionChart } from "@/app/components/dashboard/sales-distrib
 import { MonthlySalesEvolutionChart } from "@/app/components/dashboard/monthly-sales-evolution-chart"
 import { SalesBreakdownReport } from "@/app/components/dashboard/sales-breakdown-report"
 import { useRequestController } from "@/app/hooks/useRequestController"
-import { startOfMonth, format } from "date-fns"
+import { startOfMonth, format, subDays } from "date-fns"
 
 interface SalesData {
   totalSales: {
@@ -100,9 +100,19 @@ export function SalesReports({
   const [dataReady, setDataReady] = useState(false);
   const { fetchWithController, cancelAllRequests } = useRequestController();
   
-  // Use provided props or fallback to defaults
-  const startDate = propStartDate || defaultStartDate;
-  const endDate = propEndDate || defaultEndDate;
+  // Use state for dates with fallback values
+  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
+  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
+  
+  // Update local state when props change
+  useEffect(() => {
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
+  }, [propStartDate, propEndDate]);
   
   useEffect(() => {
     let isMounted = true;

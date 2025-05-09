@@ -61,13 +61,16 @@ export function CampaignRevenueDonut({
       setHasError(false);
       
       try {
+        const safeStartDate = startDate;
+        const safeEndDate = endDate;
+        
         const params = new URLSearchParams();
         params.append("siteId", currentSite.id);
         if (user?.id) {
           params.append("userId", user.id);
         }
-        params.append("startDate", format(startDate, "yyyy-MM-dd"));
-        params.append("endDate", format(endDate, "yyyy-MM-dd"));
+        params.append("startDate", safeStartDate.toISOString());
+        params.append("endDate", safeEndDate.toISOString());
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId);
         }

@@ -2,8 +2,8 @@ import * as React from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
-import { format } from "date-fns"
-import { useState } from "react"
+import { format, subDays } from "date-fns"
+import { useState, useEffect } from "react"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { BarChart } from "@/app/components/ui/icons"
 
@@ -43,18 +43,30 @@ const lightVariants = [
   "#60A5FA", // Blue-400
 ]
 
-export function SegmentMetrics({ segmentId = "all", startDate, endDate }: SegmentMetricsProps) {
+export function SegmentMetrics({ segmentId = "all", startDate: propStartDate, endDate: propEndDate }: SegmentMetricsProps) {
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
   const { user } = useAuth()
   const [segments, setSegments] = useState<SegmentData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
+  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30))
+  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date())
+  
+  // Update local state when props change
+  useEffect(() => {
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
+  }, [propStartDate, propEndDate]);
   
   // Fetch segment metrics data
   React.useEffect(() => {
     const fetchSegmentMetrics = async () => {
-      if (!currentSite || currentSite.id === "default" || !startDate || !endDate) {
+      if (!currentSite || currentSite.id === "default") {
         setIsLoading(false);
         return;
       }
@@ -68,8 +80,8 @@ export function SegmentMetrics({ segmentId = "all", startDate, endDate }: Segmen
         if (user?.id) {
           params.append("userId", user.id);
         }
-        params.append("startDate", format(startDate, "yyyy-MM-dd"));
-        params.append("endDate", format(endDate, "yyyy-MM-dd"));
+        params.append("startDate", startDate.toISOString());
+        params.append("endDate", endDate.toISOString());
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId);
         }

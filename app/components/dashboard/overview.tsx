@@ -9,7 +9,7 @@ import {
   startOfDay, startOfMonth, startOfQuarter, startOfYear, 
   endOfMonth, endOfQuarter, endOfYear, endOfDay,
   isSameYear, isBefore, 
-  subMonths, subYears, subQuarters
+  subMonths, subYears, subQuarters, subDays
 } from "date-fns"
 import { IsEmpty } from "@/app/components/ui/empty-state"
 import { BarChart } from "@/app/components/ui/icons"
@@ -28,11 +28,23 @@ interface SaleData {
   status: string
 }
 
-export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?: Date, endDate?: Date, segmentId?: string }) {
+export function Overview({ startDate: propStartDate, endDate: propEndDate, segmentId = "all" }: { startDate?: Date, endDate?: Date, segmentId?: string }) {
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
   const [chartData, setChartData] = useState<ChartDataItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30))
+  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date())
+  
+  // Update local state when props change
+  useEffect(() => {
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
+  }, [propStartDate, propEndDate]);
   
   useEffect(() => {
     let isMounted = true;
@@ -44,8 +56,8 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
         setIsLoading(true)
       }
       
-      if (!startDate || !endDate || !currentSite?.id || currentSite.id === "default") {
-        // No default data, just keep showing the skeleton
+      if (!currentSite?.id || currentSite.id === "default") {
+        // No site data, just keep showing the skeleton
         return
       }
       
@@ -103,8 +115,8 @@ export function Overview({ startDate, endDate, segmentId = "all" }: { startDate?
         // Fetch all sales data for the period
         const params = new URLSearchParams()
         params.append("siteId", currentSite.id)
-        params.append("startDate", format(safeStartDate, "yyyy-MM-dd"))
-        params.append("endDate", format(safeEndDate, "yyyy-MM-dd"))
+        params.append("startDate", safeStartDate.toISOString())
+        params.append("endDate", safeEndDate.toISOString())
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId)
         }

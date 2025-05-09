@@ -9,6 +9,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card";
 import { ClipboardList, Circle } from "@/app/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
 import { format } from "date-fns";
+import { useRequestController } from "@/app/hooks/useRequestController";
 
 interface ActivityUser {
   id: string;
@@ -36,6 +37,8 @@ interface Activity {
 
 interface RecentActivityProps {
   limit?: number;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 // Función auxiliar para obtener iniciales
@@ -75,8 +78,13 @@ function formatDate(dateString: string): string {
   }
 }
 
-export function RecentActivity({ limit = 5 }: RecentActivityProps) {
+export function RecentActivity({ 
+  limit = 5,
+  startDate,
+  endDate
+}: RecentActivityProps) {
   const { currentSite } = useSite();
+  const { fetchWithController, getSignalForEndpoint } = useRequestController();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +98,8 @@ export function RecentActivity({ limit = 5 }: RecentActivityProps) {
   }));
 
   useEffect(() => {
+    let isMounted = true;
+    
     async function fetchActivities() {
       // Debug logs - Current site
       console.group("Recent Activity - Debug Info");
@@ -101,13 +111,17 @@ export function RecentActivity({ limit = 5 }: RecentActivityProps) {
 
       if (!currentSite?.id || currentSite.id === "default") {
         console.warn("Recent Activity: No valid site ID available");
-        setActivities([]);
-        setIsLoading(false);
+        if (isMounted) {
+          setActivities([]);
+          setIsLoading(false);
+        }
         return;
       }
       
-      setIsLoading(true);
-      setError(null);
+      if (isMounted) {
+        setIsLoading(true);
+        setError(null);
+      }
       
       try {
         // Validate that we're only requesting with valid data
@@ -124,84 +138,83 @@ export function RecentActivity({ limit = 5 }: RecentActivityProps) {
         queryParams.append('siteId', currentSite.id);
         queryParams.append('limit', validLimit.toString());
         
-        // Añadir valor aleatorio para evitar caché que podría estar causando bucles
-        queryParams.append('_cache', Math.random().toString(36).substring(2, 15));
+        // Add date range params if provided
+        if (startDate) {
+          queryParams.append('startDate', format(startDate, 'yyyy-MM-dd'));
+        }
+        if (endDate) {
+          queryParams.append('endDate', format(endDate, 'yyyy-MM-dd'));
+        }
         
         const apiUrl = `/api/recent-activity?${queryParams.toString()}`;
         console.log("Requesting recent activities from:", apiUrl);
         
-        // Usar un AbortController para poder cancelar la petición si tarda mucho
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
+        // Use the request controller instead of a local AbortController
+        const response = await fetchWithController(apiUrl);
         
-        try {
-          const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
-            },
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          console.log("API response status:", response.status);
-          
-          if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-          }
-          
-          // Intentar obtener el texto de respuesta
-          const responseText = await response.text();
-          console.log("Raw API response length:", responseText.length);
-          
-          // Intentar analizar como JSON
-          let data;
-          try {
-            data = JSON.parse(responseText);
-          } catch (parseError) {
-            console.error("Failed to parse API response as JSON:", parseError);
-            throw new Error("Invalid response format");
-          }
-          
-          console.log("API returned activities count:", data.activities?.length || 0);
+        // If request was aborted or component unmounted
+        if (response === null || !isMounted) {
+          console.log("[RecentActivity] Request was cancelled or component unmounted");
+          return;
+        }
+        
+        console.log("API response status:", response.status);
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        // Get the response JSON
+        const data = await response.json();
+        console.log("API returned activities count:", data.activities?.length || 0);
+        
+        if (isMounted) {
           setActivities(data.activities || []);
-        } catch (fetchError) {
-          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-            console.warn("Recent activities request timed out - using fallback data");
-            // Usar datos de fallback para mostrar algo al usuario
-            setActivities([
-              {
-                id: "fallback-1",
-                user: { 
-                  id: "system", 
-                  name: "System", 
-                  email: "system@example.com",
-                  imageUrl: null 
-                },
-                date: new Date().toISOString(),
-                lead: { id: "unknown", name: "Unknown" },
-                title: "Recent activity temporarily unavailable",
-                action: "System notice"
-              }
-            ]);
-          } else {
-            throw fetchError;
-          }
         }
         
         console.timeEnd("Recent Activity API Request");
       } catch (error) {
+        // Don't handle AbortError explicitly as it's handled in fetchWithController
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log("[RecentActivity] Request was aborted");
+          return;
+        }
+        
         console.error('Error fetching activities:', error);
-        setError(error instanceof Error ? error.message : 'Unknown error occurred');
-        setActivities([]);
+        
+        if (isMounted) {
+          setError(error instanceof Error ? error.message : 'Unknown error occurred');
+          // Use fallback data when API fails after retries
+          setActivities([
+            {
+              id: "fallback-1",
+              user: { 
+                id: "system", 
+                name: "System", 
+                email: "system@example.com",
+                imageUrl: null 
+              },
+              date: new Date().toISOString(),
+              lead: { id: "unknown", name: "Unknown" },
+              title: "Recent activity temporarily unavailable",
+              action: "System notice"
+            }
+          ]);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
     
     fetchActivities();
-  }, [currentSite?.id, limit]);
+    
+    // Clean up function to handle component unmount
+    return () => {
+      isMounted = false;
+    };
+  }, [currentSite?.id, limit, startDate, endDate, fetchWithController, getSignalForEndpoint]);
 
   if (isLoading) {
     return (

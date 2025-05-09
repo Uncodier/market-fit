@@ -18,6 +18,7 @@ import {
 import { CostDistributionChart } from "@/app/components/dashboard/cost-distribution-chart"
 import { MonthlyCostEvolutionChart } from "@/app/components/dashboard/monthly-cost-evolution-chart"
 import { CostBreakdownReport } from "@/app/components/dashboard/cost-breakdown-report"
+import { subDays } from "date-fns"
 
 interface CostData {
   totalCosts: {
@@ -77,15 +78,18 @@ export function CostReports({
   const [costData, setCostData] = useState<CostData>(emptyData)
   const [dataReady, setDataReady] = useState(false)
   const [hasData, setHasData] = useState(false)
-
-  // Usar fechas proporcionadas por props o valores por defecto
-  const startDate = propStartDate || (() => {
-    const start = new Date()
-    start.setMonth(start.getMonth() - 1)
-    return start
-  })()
+  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30))
+  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date())
   
-  const endDate = propEndDate || new Date()
+  // Update local state when props change
+  useEffect(() => {
+    if (propStartDate) {
+      setStartDate(propStartDate);
+    }
+    if (propEndDate) {
+      setEndDate(propEndDate);
+    }
+  }, [propStartDate, propEndDate]);
 
   useEffect(() => {
     if (!currentSite || currentSite.id === "default") {

@@ -71,27 +71,24 @@ export function SegmentDonut({
         let safeStartDate = new Date(startDate);
         let safeEndDate = new Date(endDate);
         
+        // Log the original dates for diagnosis
+        console.log(`[SegmentDonut:${endpoint}] Original dates - startDate: ${safeStartDate.toISOString()}, endDate: ${safeEndDate.toISOString()}`);
+        console.log(`[SegmentDonut:${endpoint}] Current date for comparison: ${now.toISOString()}`);
+        
         // Validate and fix dates if needed
-        if (safeStartDate.getFullYear() > currentYear) {
-          console.warn(`[SegmentDonut] Future year in startDate: ${safeStartDate.toISOString()}`);
-          safeStartDate.setFullYear(currentYear - 1);
-        }
-        
-        if (safeEndDate.getFullYear() > currentYear) {
-          console.warn(`[SegmentDonut] Future year in endDate: ${safeEndDate.toISOString()}`);
-          safeEndDate = now;
-        }
-        
         if (safeStartDate > now) {
-          console.warn(`[SegmentDonut] Future startDate: ${safeStartDate.toISOString()}`);
+          console.warn(`[SegmentDonut:${endpoint}] Future start date detected: ${safeStartDate.toISOString()}, using 30 days ago instead`);
           safeStartDate = new Date(now);
           safeStartDate.setMonth(now.getMonth() - 1);
         }
         
         if (safeEndDate > now) {
-          console.warn(`[SegmentDonut] Future endDate: ${safeEndDate.toISOString()}`);
-          safeEndDate = now;
+          console.warn(`[SegmentDonut:${endpoint}] Future end date detected: ${safeEndDate.toISOString()}, using today instead`);
+          safeEndDate = new Date(now);
         }
+        
+        // Log the adjusted dates
+        console.log(`[SegmentDonut:${endpoint}] Adjusted dates - safeStartDate: ${safeStartDate.toISOString()}, safeEndDate: ${safeEndDate.toISOString()}`);
         
         // Create params with validated dates
         const params = new URLSearchParams();
@@ -99,8 +96,8 @@ export function SegmentDonut({
         if (user?.id) {
           params.append("userId", user.id);
         }
-        params.append("startDate", format(safeStartDate, "yyyy-MM-dd"));
-        params.append("endDate", format(safeEndDate, "yyyy-MM-dd"));
+        params.append("startDate", safeStartDate.toISOString());
+        params.append("endDate", safeEndDate.toISOString());
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId);
         }
@@ -149,6 +146,36 @@ export function SegmentDonut({
         }
         
         console.log(`[SegmentDonut:${endpoint}] Received data:`, responseData);
+        
+        // Inspeccionar debug o metadata en la respuesta para diagnóstico
+        if (responseData.debug) {
+          console.log(`[SegmentDonut:${endpoint}] Response debug info:`, responseData.debug);
+          
+          // Si hay un mensaje específico sobre leads sin asignar, considerar como datos vacíos
+          if (
+            responseData.debug.message && 
+            responseData.debug.message.includes("Only unassigned leads with no sales")
+          ) {
+            console.log(`[SegmentDonut:${endpoint}] API indicates data is not valid: ${responseData.debug.message}`);
+            setData([]);
+            setTotalValue(0);
+            if (onTotalUpdate) {
+              onTotalUpdate(formatValues ? formatCurrency(0) : '0');
+            }
+            setHasError(true);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        if (responseData.metadata) {
+          console.log(`[SegmentDonut:${endpoint}] Response metadata:`, responseData.metadata);
+        }
+        
+        // Revisar fechas en la respuesta si existen
+        if (responseData.debug && responseData.debug.startDate) {
+          console.log(`[SegmentDonut:${endpoint}] API processed dates - startDate: ${responseData.debug.startDate}, endDate: ${responseData.debug.endDate}`);
+        }
         
         // Only proceed with state updates if component is still mounted
         if (!isMounted) return;
@@ -210,6 +237,14 @@ export function SegmentDonut({
         
         console.log(`[SegmentDonut:${endpoint}] Processed ${validData.length} valid data items`);
         
+        // Diagnóstico detallado: Examinar los 3 primeros items para verificar si hay datos fuera de rango
+        if (validData.length > 0) {
+          console.log(`[SegmentDonut:${endpoint}] Sample of first 3 items for diagnosis:`);
+          validData.slice(0, 3).forEach((item: any, index: number) => {
+            console.log(`  Item ${index+1}: Name=${item.name}, Value=${item.value}, Color=${item.color}`);
+          });
+        }
+        
         // If we still have valid data
         if (validData.length > 0) {
           setData(validData);
@@ -217,6 +252,8 @@ export function SegmentDonut({
           // Calculate total value
           const total = validData.reduce((sum: number, item: DataItem) => sum + item.value, 0);
           setTotalValue(total);
+          
+          console.log(`[SegmentDonut:${endpoint}] Total value: ${total}`);
           
           // Send formatted total to parent if callback provided
           if (onTotalUpdate) {
@@ -385,13 +422,13 @@ export function SegmentDonut({
     );
   }
   
-  if (hasError || data.length === 0) {
+  if (hasError || data.length === 0 || totalValue === 0) {
     let description = "No data available for the selected period.";
     
     if (endpoint === "clients-by-segment" || endpoint === "revenue-by-segment") {
-      description = "No segment data available.";
+      description = "No segment data available for the selected period.";
     } else if (endpoint === "clients-by-campaign" || endpoint === "revenue-by-campaign") {
-      description = "No campaign data available.";
+      description = "No campaign data available for the selected period.";
     }
     
     return (
