@@ -147,17 +147,13 @@ export function Sidebar({
         <Image 
           src="/images/logo.png"
           alt="Market Fit Logo"
-          width={28}
-          height={28}
+          width={32}
+          height={32}
           className={cn(
-            "transition-all duration-200",
+            "transition-all duration-200 h-8 w-8 object-contain",
             isCollapsed ? "mr-0" : "mr-2"
           )}
-          style={{ 
-            height: '28px', 
-            width: '28px', 
-            objectFit: 'contain'
-          }}
+          priority
         />
         <span className={cn(
           "text-[1.1rem] font-bold transition-all duration-200",
