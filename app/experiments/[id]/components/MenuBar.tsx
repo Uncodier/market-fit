@@ -55,6 +55,7 @@ interface MenuBarProps {
   onStop: (id: string) => void
   onToggleEdit: () => void
   onDelete: () => void
+  hasUnsavedChanges?: boolean
 }
 
 export function MenuBar({ 
@@ -67,7 +68,8 @@ export function MenuBar({
   onStart, 
   onStop, 
   onToggleEdit, 
-  onDelete 
+  onDelete,
+  hasUnsavedChanges = false
 }: MenuBarProps) {
   if (!editor) {
     return null
@@ -82,8 +84,8 @@ export function MenuBar({
           variant="secondary" 
           size="default"
           onClick={onSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+          disabled={isSaving || !hasUnsavedChanges}
+          className={`flex items-center gap-2 transition-all duration-200 ${hasUnsavedChanges ? 'hover:bg-primary/10' : ''}`}
         >
           {isSaving ? (
             <>
@@ -93,7 +95,7 @@ export function MenuBar({
           ) : (
             <>
               <Save className="h-4 w-4" />
-              Save Instructions
+              Save Experiment {hasUnsavedChanges ? "*" : ""}
             </>
           )}
         </Button>
@@ -327,8 +329,8 @@ export function MenuBar({
           <Redo className="h-4 w-4" />
         </Button>
 
-        {/* Delete button (always visible) */}
         <div className="ml-auto">
+          {/* Delete button */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button

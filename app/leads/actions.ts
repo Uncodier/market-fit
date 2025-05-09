@@ -433,4 +433,63 @@ export async function deleteLead(id: string): Promise<{ error?: string; success?
     console.error("Error in deleteLead:", error)
     return { error: "Error deleting lead" }
   }
+}
+
+/**
+ * Get conversations for a lead
+ */
+export async function getLeadConversations(siteId: string, leadId: string) {
+  try {
+    const supabase = await createClient();
+
+    // Fetch conversations from the database with specific filters
+    const { data, error } = await supabase
+      .from("conversations")
+      .select(`
+        id,
+        title,
+        last_message_at,
+        created_at,
+        messages (
+          content,
+          created_at,
+          role
+        )
+      `)
+      .eq('site_id', siteId)
+      .eq('lead_id', leadId)
+      .eq('is_archived', false)
+      .order('last_message_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching lead conversations:", error);
+      return { error: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return { conversations: [] };
+    }
+    
+    // Transform the data to match the Conversation interface needed by the component
+    const conversations = data.map((item) => {
+      // Get the last message content if available from the nested messages
+      const lastMessageContent = item.messages && item.messages.length > 0 
+        ? item.messages[item.messages.length - 1].content 
+        : '';
+      
+      return {
+        id: item.id,
+        type: 'chat',
+        subject: item.title || 'No Subject',
+        message: lastMessageContent || '',
+        date: item.last_message_at || item.created_at,
+        status: 'sent' // Valor por defecto ya que las conversaciones no tienen status
+      };
+    });
+
+    return { conversations };
+  } catch (error) {
+    console.error("Error in getLeadConversations:", error);
+    return { error: "Failed to fetch lead conversations", conversations: [] };
+  }
 } 

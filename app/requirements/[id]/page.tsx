@@ -47,7 +47,8 @@ import {
   Globe,
   Wand2,
   AlertCircle,
-  Trash2
+  Trash2,
+  Plus
 } from "@/app/components/ui/icons"
 import {
   Select,
@@ -83,6 +84,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/app/components/ui/alert-dialog"
+import { cn } from "@/lib/utils"
 
 // Constants for status (same as in the main requirements page)
 const REQUIREMENT_STATUS = {
@@ -240,6 +242,11 @@ function RequirementDetailContent() {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [unsavedChanges, setUnsavedChanges] = useState(false)
+  const [pendingSegmentChanges, setPendingSegmentChanges] = useState<{
+    pendingSegments: Array<{id: string, name: string}>,
+    removedSegmentIds: string[]
+  } | null>(null)
   const [editForm, setEditForm] = useState({
     title: '',
     description: '',
@@ -264,6 +271,8 @@ function RequirementDetailContent() {
     segmentNames?: string[]
   }>>([])
   const [segments, setSegments] = useState<Array<{id: string, name: string}>>([])
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string>("")
+  const [showSegmentDropdown, setShowSegmentDropdown] = useState(false)
 
   // Initialize editor with TipTap
   const editor = useEditor({
@@ -329,6 +338,57 @@ function RequirementDetailContent() {
       document.title = 'Requirements | Market Fit'
     }
   }, [requirement])
+
+  // Add listener for segment changes
+  useEffect(() => {
+    const handleSegmentChanges = (event: CustomEvent) => {
+      if (event.detail) {
+        console.log("Segment changes detected:", event.detail);
+        setPendingSegmentChanges({
+          pendingSegments: event.detail.pendingSegments || [],
+          removedSegmentIds: event.detail.removedSegmentIds || []
+        });
+        setUnsavedChanges(true);
+      }
+    };
+    
+    window.addEventListener('requirement:segment-changes', handleSegmentChanges as EventListener);
+    
+    return () => {
+      window.removeEventListener('requirement:segment-changes', handleSegmentChanges as EventListener);
+    };
+  }, []);
+
+  // Check for unsaved changes when form values change
+  useEffect(() => {
+    if (requirement) {
+      const hasFormChanges = 
+        editForm.title !== (requirement.title || '') ||
+        editForm.description !== (requirement.description || '') ||
+        editForm.instructions !== (requirement.instructions || '') ||
+        editForm.priority !== (requirement.priority || 'medium') ||
+        editForm.status !== (requirement.status || 'backlog') ||
+        editForm.completionStatus !== (requirement.completionStatus || 'pending') ||
+        editForm.source !== (requirement.source || '') ||
+        editForm.budget !== requirement.budget;
+      
+      setUnsavedChanges(hasFormChanges || pendingSegmentChanges !== null);
+    }
+  }, [editForm, pendingSegmentChanges, requirement]);
+
+  // Reset unsaved changes after successful save
+  useEffect(() => {
+    const handleRequirementSaved = () => {
+      setUnsavedChanges(false);
+      setPendingSegmentChanges(null);
+    };
+    
+    window.addEventListener('requirement:saved', handleRequirementSaved);
+    
+    return () => {
+      window.removeEventListener('requirement:saved', handleRequirementSaved);
+    };
+  }, []);
 
   // Update editor when requirement is loaded
   useEffect(() => {
@@ -703,9 +763,62 @@ function RequirementDetailContent() {
       if (error) {
         throw new Error(error)
       }
+
+      // Process segment changes if any
+      if (pendingSegmentChanges) {
+        console.log("Processing segment changes:", pendingSegmentChanges);
+        const supabase = createClient();
+        
+        // 1. Remove segments that were deleted
+        if (pendingSegmentChanges.removedSegmentIds.length > 0) {
+          console.log("Removing segments:", pendingSegmentChanges.removedSegmentIds);
+          
+          const { error: removeError } = await supabase
+            .from('requirement_segments')
+            .delete()
+            .eq('requirement_id', requirement.id)
+            .in('segment_id', pendingSegmentChanges.removedSegmentIds);
+            
+          if (removeError) {
+            console.error("Error removing segments:", removeError);
+          }
+        }
+        
+        // 2. Add new segments
+        const existingSegmentIds = editForm.segments;
+        const newSegments = pendingSegmentChanges.pendingSegments
+          .filter(s => !existingSegmentIds.includes(s.id) && 
+                       !pendingSegmentChanges.removedSegmentIds.includes(s.id))
+          .map(s => s.id);
+        
+        if (newSegments.length > 0) {
+          console.log("Adding new segments:", newSegments);
+          
+          const { error: addError } = await supabase
+            .from('requirement_segments')
+            .insert(
+              newSegments.map(segmentId => ({
+                requirement_id: requirement.id,
+                segment_id: segmentId
+              }))
+            );
+            
+          if (addError) {
+            console.error("Error adding segments:", addError);
+          }
+        }
+        
+        // Reset segment changes
+        setPendingSegmentChanges(null);
+      }
       
       setIsEditing(false)
       toast.success("Requirement updated successfully")
+      
+      // Dispatch event to notify the requirement was saved successfully
+      window.dispatchEvent(new CustomEvent('requirement:saved'));
+      
+      // Refresh requirement data
       loadRequirement()
     } catch (error) {
       console.error("Error updating requirement:", error)
@@ -731,6 +844,493 @@ function RequirementDetailContent() {
       toast.error(error instanceof Error ? error.message : "Failed to delete requirement")
     }
   }
+
+  // Add these segment handler functions
+  const handleSegmentSelect = (value: string) => {
+    if (!value) return;
+    
+    // Check if segment is already added
+    const isAlreadyAdded = editForm.segments.includes(value);
+    if (isAlreadyAdded) {
+      toast.error("Segment already added to this requirement");
+      setSelectedSegmentId("");
+      return;
+    }
+    
+    // Find the segment name
+    const segment = segments.find(seg => seg.id === value);
+    if (!segment) {
+      toast.error("Selected segment not found");
+      setSelectedSegmentId("");
+      return;
+    }
+    
+    // Update the pending segments
+    const pendingSegments = [
+      ...editForm.segments.map(id => {
+        const seg = segments.find(s => s.id === id);
+        return { id, name: seg?.name || "Unknown" };
+      }),
+      { id: segment.id, name: segment.name }
+    ];
+    
+    const segmentNames = pendingSegments.map(s => s.name);
+    const segmentIds = pendingSegments.map(s => s.id);
+    
+    // Update the edit form
+    setEditForm(prev => ({
+      ...prev,
+      segments: segmentIds,
+      segmentNames: segmentNames
+    }));
+    
+    // If this segment was previously removed, remove it from removedSegmentIds
+    if (pendingSegmentChanges?.removedSegmentIds.includes(value)) {
+      setPendingSegmentChanges(prev => ({
+        ...prev!,
+        removedSegmentIds: prev!.removedSegmentIds.filter(id => id !== value)
+      }));
+    }
+    
+    // Create event for segment changes
+    const event = new CustomEvent('requirement:segment-changes', {
+      detail: {
+        pendingSegments,
+        removedSegmentIds: pendingSegmentChanges?.removedSegmentIds || [],
+        requirementId: requirement?.id
+      }
+    });
+    window.dispatchEvent(event);
+    
+    // Reset selected segment
+    setSelectedSegmentId("");
+  };
+  
+  const handleRemoveSegment = (segmentId: string) => {
+    // Check if the segment was originally from the requirement
+    const isOriginalSegment = requirement?.segments.includes(segmentId);
+    
+    // Create a copy of current pending segment changes or initialize new one
+    const currentChanges = pendingSegmentChanges || {
+      pendingSegments: editForm.segments.map(id => {
+        const seg = segments.find(s => s.id === id);
+        return { id, name: seg?.name || "Unknown" };
+      }),
+      removedSegmentIds: []
+    };
+    
+    // If it was original, add to removedSegmentIds
+    if (isOriginalSegment) {
+      currentChanges.removedSegmentIds = [...currentChanges.removedSegmentIds, segmentId];
+    }
+    
+    // Remove from pendingSegments in editForm
+    const updatedSegments = editForm.segments.filter(id => id !== segmentId);
+    const updatedSegmentNames = editForm.segmentNames.filter((_, i) => editForm.segments[i] !== segmentId);
+    
+    setEditForm(prev => ({
+      ...prev,
+      segments: updatedSegments,
+      segmentNames: updatedSegmentNames
+    }));
+    
+    // Update pendingSegmentChanges
+    setPendingSegmentChanges({
+      pendingSegments: currentChanges.pendingSegments.filter(s => s.id !== segmentId),
+      removedSegmentIds: currentChanges.removedSegmentIds
+    });
+    
+    // Create event for segment changes
+    const event = new CustomEvent('requirement:segment-changes', {
+      detail: {
+        pendingSegments: currentChanges.pendingSegments.filter(s => s.id !== segmentId),
+        removedSegmentIds: currentChanges.removedSegmentIds,
+        requirementId: requirement?.id
+      }
+    });
+    window.dispatchEvent(event);
+    
+    setUnsavedChanges(true);
+  };
+
+  // Function to render the details content that can be reused in both tabs or no-tabs mode
+  const renderDetailsContent = () => {
+    return (
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="p-5 space-y-6">
+            {/* Requirement Information */}
+            <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                Requirement Information
+              </h3>
+              
+              <div className="space-y-5">
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <Type className="h-4 w-4 text-muted-foreground" />
+                    Title
+                  </Label>
+                  <Input
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                    className="h-11"
+                    placeholder="Requirement title"
+                  />
+                </div>
+                
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <TextIcon className="h-4 w-4 text-muted-foreground" />
+                    Description
+                  </Label>
+                  <Textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                    className="min-h-[100px] resize-none"
+                    placeholder="Enter a brief description"
+                  />
+                </div>
+                
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <BarChart className="h-4 w-4 text-muted-foreground" />
+                    Budget
+                  </Label>
+                  <Input
+                    type="number"
+                    value={editForm.budget || ''}
+                    onChange={(e) => setEditForm({...editForm, budget: e.target.value ? parseFloat(e.target.value) : null})}
+                    className="h-11"
+                    placeholder="Enter budget amount"
+                  />
+                </div>
+                
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                    Status
+                  </Label>
+                  <Select
+                    value={editForm.status}
+                    onValueChange={(value: RequirementStatusType) => {
+                      handleUpdateStatus(value)
+                    }}
+                    disabled={editForm.completionStatus !== COMPLETION_STATUS.PENDING || isSaving}
+                  >
+                    <SelectTrigger className={`h-11 w-full ${getStatusColor(editForm.status)}`}>
+                      <SelectValue placeholder="Select status">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          {getStatusLabel(editForm.status)}
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={REQUIREMENT_STATUS.BACKLOG}>Backlog</SelectItem>
+                      <SelectItem value={REQUIREMENT_STATUS.IN_PROGRESS}>In Progress</SelectItem>
+                      <SelectItem value={REQUIREMENT_STATUS.ON_REVIEW}>On Review</SelectItem>
+                      <SelectItem value={REQUIREMENT_STATUS.DONE}>Done</SelectItem>
+                      <SelectItem value={REQUIREMENT_STATUS.VALIDATED}>Validated</SelectItem>
+                      <SelectItem value={REQUIREMENT_STATUS.CANCELED}>Canceled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                    Completion Status
+                  </Label>
+                  <Select
+                    value={editForm.completionStatus}
+                    onValueChange={(value: CompletionStatusType) => {
+                      handleUpdateCompletionStatus(value)
+                    }}
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger className={`h-11 w-full ${getCompletionStatusColor(editForm.completionStatus)}`}>
+                      <SelectValue placeholder="Select completion status">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" />
+                          {getCompletionStatusLabel(editForm.completionStatus)}
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={COMPLETION_STATUS.PENDING}>Pending</SelectItem>
+                      <SelectItem value={COMPLETION_STATUS.COMPLETED}>Completed</SelectItem>
+                      <SelectItem value={COMPLETION_STATUS.REJECTED}>Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <BarChart className="h-4 w-4 text-muted-foreground" />
+                    Priority
+                  </Label>
+                  <Select
+                    value={editForm.priority}
+                    onValueChange={(value: "high" | "medium" | "low") => {
+                      handleUpdatePriority(value)
+                    }}
+                    disabled={editForm.completionStatus !== COMPLETION_STATUS.PENDING || isSaving}
+                  >
+                    <SelectTrigger className={`h-11 w-full ${getPriorityColor(editForm.priority)}`}>
+                      <SelectValue placeholder="Select priority">
+                        <div className="flex items-center gap-2">
+                          <BarChart className="h-4 w-4" />
+                          {editForm.priority.charAt(0).toUpperCase() + editForm.priority.slice(1)}
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">High Priority</SelectItem>
+                      <SelectItem value="medium">Medium Priority</SelectItem>
+                      <SelectItem value="low">Low Priority</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            
+            {/* Segments and Campaigns */}
+            <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex justify-between items-center">
+                <span>Segments & Campaigns</span>
+                {pendingSegmentChanges && (
+                  <span className="text-xs text-muted-foreground font-normal">Unsaved changes *</span>
+                )}
+              </h3>
+              
+              <div className="space-y-5">
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    Segments
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {editForm.segmentNames?.length > 0 ? (
+                      editForm.segmentNames.map((segment, i) => (
+                        <Badge
+                          key={i}
+                          variant="secondary"
+                          className="px-3 py-1 text-xs font-medium bg-gray-100/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200/20 transition-colors border border-gray-300/30 group relative hover:pr-7 max-w-full"
+                        >
+                          <span className="truncate block max-w-[150px]">{segment}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-1 opacity-0 group-hover:opacity-100 h-4 w-4 p-0 hover:bg-transparent hover:text-destructive transition-opacity"
+                            onClick={() => handleRemoveSegment(editForm.segments[i])}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No segments assigned</span>
+                    )}
+                  </div>
+
+                  {/* Add segment section */}
+                  <div className="pt-2 border-t border-border/30 mt-4">
+                    <p className="text-xs text-muted-foreground mb-2">Add segment to requirement</p>
+                    
+                    {!showSegmentDropdown ? (
+                      // Solo mostrar el botón Add Segment si hay segmentos disponibles para agregar
+                      segments.filter(segment => !editForm.segments.includes(segment.id)).length > 0 ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full flex items-center justify-center"
+                          onClick={() => setShowSegmentDropdown(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Add Segment
+                        </Button>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">No more segments available to add</p>
+                      )
+                    ) : (
+                      <div className="space-y-2">
+                        {segments.filter(segment => !editForm.segments.includes(segment.id)).length > 0 ? (
+                          <>
+                            <Select 
+                              value={selectedSegmentId} 
+                              onValueChange={(value) => {
+                                handleSegmentSelect(value);
+                                // Keep the dropdown open after selection
+                              }}
+                            >
+                              <SelectTrigger className="w-full max-w-full">
+                                <SelectValue placeholder="Select segment">
+                                  <span className="truncate block max-w-[180px]">
+                                    {selectedSegmentId ? segments.find(s => s.id === selectedSegmentId)?.name || "Selected segment" : "Select segment"}
+                                  </span>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {segments
+                                  .filter(segment => !editForm.segments.includes(segment.id))
+                                  .map(segment => (
+                                    <SelectItem key={segment.id} value={segment.id}>
+                                      <span className="truncate block w-full overflow-hidden">
+                                        {segment.name}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            {/* Solo mostrar el botón Done si hay segmentos disponibles */}
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full flex items-center justify-center"
+                              onClick={() => setShowSegmentDropdown(false)}
+                            >
+                              Done
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-muted-foreground italic">No more segments available to add</p>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full flex items-center justify-center"
+                              onClick={() => setShowSegmentDropdown(false)}
+                            >
+                              Close
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                    Campaigns
+                  </Label>
+                  <Select
+                    value={editForm.campaign_id || "none"}
+                    onValueChange={(value) => {
+                      if (value !== "none") {
+                        const selectedCampaign = campaigns.find(c => c.id === value);
+                        if (selectedCampaign) {
+                          // Cargar los segmentos de la campaña seleccionada
+                          const loadCampaignSegments = async () => {
+                            try {
+                              const supabase = createClient();
+                              
+                              // Obtener segmentos de la campaña
+                              const { data: campaignSegments, error } = await supabase
+                                .from("campaign_segments")
+                                .select("segment_id")
+                                .eq("campaign_id", value);
+                                
+                              if (error) {
+                                console.error("Error loading campaign segments:", error);
+                                return;
+                              }
+                              
+                              // Extraer IDs de segmentos
+                              const segmentIds = campaignSegments.map((cs: { segment_id: string }) => cs.segment_id);
+                              
+                              // Obtener nombres de segmentos
+                              const segmentNames = segmentIds.map((id: string) => {
+                                const segment = segments.find(s => s.id === id);
+                                return segment ? segment.name : "Unknown";
+                              });
+                              
+                              // Actualizar el formulario con la nueva campaña y sus segmentos
+                              setEditForm(prev => ({ 
+                                ...prev, 
+                                campaign_id: value,
+                                campaigns: [value], // Establecer campaigns como array con solo el ID seleccionado
+                                campaignNames: [selectedCampaign.title],
+                                segments: segmentIds,
+                                segmentNames: segmentNames
+                              }));
+                              
+                              toast.success(`Campaign "${selectedCampaign.title}" assigned. Segments updated to match campaign.`);
+                            } catch (err) {
+                              console.error("Error in loadCampaignSegments:", err);
+                              toast.error("Failed to load campaign segments");
+                            }
+                          };
+                          
+                          loadCampaignSegments();
+                        }
+                      } else {
+                        // Si "none" es seleccionado, limpiar datos de campaña
+                        setEditForm(prev => ({ 
+                          ...prev, 
+                          campaign_id: "",
+                          campaigns: [],
+                          campaignNames: [],
+                          // También limpiar segmentos
+                          segments: [],
+                          segmentNames: []
+                        }));
+                        
+                        toast.info("Campaign unassigned");
+                      }
+                    }}
+                  >
+                    <SelectTrigger className={`h-11 ${editForm.campaign_id ? 'bg-blue-100/20 text-blue-700 dark:text-blue-300 border-blue-300/30' : ''}`}>
+                      <SelectValue placeholder="Select a campaign">
+                        <span className="truncate block max-w-[180px]">
+                          {editForm.campaign_id ? campaigns.find(c => c.id === editForm.campaign_id)?.title || "Selected campaign" : "Select a campaign"}
+                        </span>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No campaign</SelectItem>
+                      {campaigns.map(campaign => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          <span className="truncate block w-full overflow-hidden">
+                            {campaign.title}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            
+            {/* Dates */}
+            <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                Dates
+              </h3>
+              
+              <div className="space-y-5">
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                    Created
+                  </Label>
+                  <div className="text-sm font-medium">
+                    {requirement?.createdAt ? new Date(requirement.createdAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    }) : "Unknown"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  };
 
   // Show loading skeleton while data is being fetched
   if (isLoading) {
@@ -786,7 +1386,13 @@ function RequirementDetailContent() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none">
-          <MenuBar editor={editor} onSave={handleSaveChanges} isSaving={isSaving} onDelete={handleDeleteRequirement} />
+          <MenuBar 
+            editor={editor} 
+            onSave={handleSaveChanges} 
+            isSaving={isSaving} 
+            onDelete={handleDeleteRequirement}
+            hasUnsavedChanges={unsavedChanges}
+          />
         </div>
         <div className="flex-1 overflow-auto">
           <div className="p-4 h-full flex flex-col">
@@ -797,381 +1403,116 @@ function RequirementDetailContent() {
 
       {/* Right Panel */}
       <div className="w-80 border-l bg-muted/30 flex flex-col h-full">
-        <Tabs defaultValue="outsource" className="flex flex-col h-full">
-          <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="outsource">Outsource</TabsTrigger>
-              <TabsTrigger value="info">Details</TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <TabsContent value="outsource" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
-              <div className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <div className="p-5 space-y-6">
-                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                        Outsource Instructions
-                      </h3>
-                      
-                      <div className="space-y-4 max-w-full">
-                        {/* Budget highlighted section */}
-                        <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
-                          <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-2">
-                            <BarChart className="h-4 w-4" />
-                            Budget
-                          </Label>
-                          <div className="text-lg font-bold text-center py-1">
-                            {editForm.budget ? `$${editForm.budget.toLocaleString()}` : "No budget specified"}
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Instructions for Outsourcing</Label>
-                          <Textarea 
-                            placeholder="Provide detailed instructions for outsourcing this requirement..." 
-                            className="min-h-[150px] w-full resize-none text-sm"
-                            value={editForm.outsourceInstructions}
-                            onChange={(e) => setEditForm({...editForm, outsourceInstructions: e.target.value})}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Note: This information is for your reference only and is not saved to the database.
-                          </p>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Timeline</Label>
-                          <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
-                            Please complete this task within the next 2 weeks.
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Deliverables</Label>
-                          <div className="text-muted-foreground text-sm bg-muted/40 p-2 rounded">
-                            <ul className="list-disc pl-4 space-y-1 break-words">
-                              <li>Complete implementation of the requirement</li>
-                              <li>Documentation of the changes made</li>
-                              <li>Testing report</li>
-                            </ul>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Communication</Label>
-                          <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
-                            Please provide regular updates on progress and any questions via the project management system.
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </ScrollArea>
-              </div>
-              
-              <div className="border-t p-4 bg-background mt-auto">
-                <Button className="w-full" onClick={() => router.push(`/outsource/checkout?taskId=${params.id}`)}>
-                  <Globe className="h-4 w-4 mr-2" />
-                  Outsource Task
-                </Button>
-              </div>
-            </TabsContent>
+        {editForm.budget && editForm.budget > 0 ? (
+          <Tabs defaultValue="outsource" className="flex flex-col h-full">
+            <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
+              <TabsList className="grid grid-cols-2 w-full">
+                <TabsTrigger value="outsource">Outsource</TabsTrigger>
+                <TabsTrigger value="info">Details</TabsTrigger>
+              </TabsList>
+            </div>
             
-            <TabsContent value="info" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
-              <div className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <div className="p-5 space-y-6">
-                    {/* Requirement Information */}
-                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                        Requirement Information
-                      </h3>
-                      
-                      <div className="space-y-5">
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <Type className="h-4 w-4 text-muted-foreground" />
-                            Title
-                          </Label>
-                          <Input
-                            value={editForm.title}
-                            onChange={(e) => setEditForm({...editForm, title: e.target.value})}
-                            className="h-11"
-                            placeholder="Requirement title"
-                          />
-                        </div>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <TabsContent value="outsource" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
+                <div className="flex-1 overflow-hidden">
+                  <ScrollArea className="h-full">
+                    <div className="p-5 space-y-6">
+                      {/* Outsource Instructions */}
+                      <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                        <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                          Outsource Instructions
+                        </h3>
                         
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <TextIcon className="h-4 w-4 text-muted-foreground" />
-                            Description
-                          </Label>
-                          <Textarea
-                            value={editForm.description}
-                            onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                            className="min-h-[100px] resize-none"
-                            placeholder="Enter a brief description"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <BarChart className="h-4 w-4 text-muted-foreground" />
-                            Budget
-                          </Label>
-                          <Input
-                            type="number"
-                            value={editForm.budget || ''}
-                            onChange={(e) => setEditForm({...editForm, budget: e.target.value ? parseFloat(e.target.value) : null})}
-                            className="h-11"
-                            placeholder="Enter budget amount"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                            Status
-                          </Label>
-                          <Select
-                            value={editForm.status}
-                            onValueChange={(value: RequirementStatusType) => {
-                              handleUpdateStatus(value)
-                            }}
-                            disabled={editForm.completionStatus !== COMPLETION_STATUS.PENDING || isSaving}
-                          >
-                            <SelectTrigger className={`h-11 w-full ${getStatusColor(editForm.status)}`}>
-                              <SelectValue placeholder="Select status">
-                                <div className="flex items-center gap-2">
-                                  <FileText className="h-4 w-4" />
-                                  {getStatusLabel(editForm.status)}
-                                </div>
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={REQUIREMENT_STATUS.BACKLOG}>Backlog</SelectItem>
-                              <SelectItem value={REQUIREMENT_STATUS.IN_PROGRESS}>In Progress</SelectItem>
-                              <SelectItem value={REQUIREMENT_STATUS.ON_REVIEW}>On Review</SelectItem>
-                              <SelectItem value={REQUIREMENT_STATUS.DONE}>Done</SelectItem>
-                              <SelectItem value={REQUIREMENT_STATUS.VALIDATED}>Validated</SelectItem>
-                              <SelectItem value={REQUIREMENT_STATUS.CANCELED}>Canceled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                            Completion Status
-                          </Label>
-                          <Select
-                            value={editForm.completionStatus}
-                            onValueChange={(value: CompletionStatusType) => {
-                              handleUpdateCompletionStatus(value)
-                            }}
-                            disabled={isSaving}
-                          >
-                            <SelectTrigger className={`h-11 w-full ${getCompletionStatusColor(editForm.completionStatus)}`}>
-                              <SelectValue placeholder="Select completion status">
-                                <div className="flex items-center gap-2">
-                                  <CheckCircle2 className="h-4 w-4" />
-                                  {getCompletionStatusLabel(editForm.completionStatus)}
-                                </div>
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={COMPLETION_STATUS.PENDING}>Pending</SelectItem>
-                              <SelectItem value={COMPLETION_STATUS.COMPLETED}>Completed</SelectItem>
-                              <SelectItem value={COMPLETION_STATUS.REJECTED}>Rejected</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <BarChart className="h-4 w-4 text-muted-foreground" />
-                            Priority
-                          </Label>
-                          <Select
-                            value={editForm.priority}
-                            onValueChange={(value: "high" | "medium" | "low") => {
-                              handleUpdatePriority(value)
-                            }}
-                            disabled={editForm.completionStatus !== COMPLETION_STATUS.PENDING || isSaving}
-                          >
-                            <SelectTrigger className={`h-11 w-full ${getPriorityColor(editForm.priority)}`}>
-                              <SelectValue placeholder="Select priority">
-                                <div className="flex items-center gap-2">
-                                  <BarChart className="h-4 w-4" />
-                                  {editForm.priority.charAt(0).toUpperCase() + editForm.priority.slice(1)}
-                                </div>
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="high">High Priority</SelectItem>
-                              <SelectItem value="medium">Medium Priority</SelectItem>
-                              <SelectItem value="low">Low Priority</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Segments and Campaigns */}
-                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                        Segments & Campaigns
-                      </h3>
-                      
-                      <div className="space-y-5">
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            Segments
-                          </Label>
-                          <div className="flex flex-wrap gap-2">
-                            {editForm.segmentNames?.length > 0 ? (
-                              editForm.segmentNames.map((segment, i) => (
-                                <Badge
-                                  key={i}
-                                  variant="secondary"
-                                  className="px-3 py-1 text-xs font-medium bg-gray-100/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200/20 transition-colors border border-gray-300/30"
-                                >
-                                  {segment}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground text-sm">No segments assigned</span>
-                            )}
+                        <div className="space-y-4 max-w-full">
+                          {/* Budget highlighted section */}
+                          <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
+                            <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-2">
+                              <BarChart className="h-4 w-4" />
+                              Budget
+                            </Label>
+                            <div className="text-lg font-bold text-center py-1">
+                              {editForm.budget ? `$${editForm.budget.toLocaleString()}` : "No budget specified"}
+                            </div>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <Target className="h-4 w-4 text-muted-foreground" />
-                            Campaigns
-                          </Label>
-                          <Select
-                            value={editForm.campaign_id || "none"}
-                            onValueChange={(value) => {
-                              if (value !== "none") {
-                                const selectedCampaign = campaigns.find(c => c.id === value);
-                                if (selectedCampaign) {
-                                  // Cargar los segmentos de la campaña seleccionada
-                                  const loadCampaignSegments = async () => {
-                                    try {
-                                      const supabase = createClient();
-                                      
-                                      // Obtener segmentos de la campaña
-                                      const { data: campaignSegments, error } = await supabase
-                                        .from("campaign_segments")
-                                        .select("segment_id")
-                                        .eq("campaign_id", value);
-                                        
-                                      if (error) {
-                                        console.error("Error loading campaign segments:", error);
-                                        return;
-                                      }
-                                      
-                                      // Extraer IDs de segmentos
-                                      const segmentIds = campaignSegments.map((cs: { segment_id: string }) => cs.segment_id);
-                                      
-                                      // Obtener nombres de segmentos
-                                      const segmentNames = segmentIds.map((id: string) => {
-                                        const segment = segments.find(s => s.id === id);
-                                        return segment ? segment.name : "Unknown";
-                                      });
-                                      
-                                      // Actualizar el formulario con la nueva campaña y sus segmentos
-                                      setEditForm(prev => ({ 
-                                        ...prev, 
-                                        campaign_id: value,
-                                        campaigns: [value], // Establecer campaigns como array con solo el ID seleccionado
-                                        campaignNames: [selectedCampaign.title],
-                                        segments: segmentIds,
-                                        segmentNames: segmentNames
-                                      }));
-                                      
-                                      toast.success(`Campaign "${selectedCampaign.title}" assigned. Segments updated to match campaign.`);
-                                    } catch (err) {
-                                      console.error("Error in loadCampaignSegments:", err);
-                                      toast.error("Failed to load campaign segments");
-                                    }
-                                  };
-                                  
-                                  loadCampaignSegments();
-                                }
-                              } else {
-                                // Si "none" es seleccionado, limpiar datos de campaña
-                                setEditForm(prev => ({ 
-                                  ...prev, 
-                                  campaign_id: "",
-                                  campaigns: [],
-                                  campaignNames: [],
-                                  // También limpiar segmentos
-                                  segments: [],
-                                  segmentNames: []
-                                }));
-                                
-                                toast.info("Campaign unassigned");
-                              }
-                            }}
-                          >
-                            <SelectTrigger className={`h-11 ${editForm.campaign_id ? 'bg-blue-100/20 text-blue-700 dark:text-blue-300 border-blue-300/30' : ''}`}>
-                              <SelectValue placeholder="Select a campaign" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No campaign</SelectItem>
-                              {campaigns.map(campaign => (
-                                <SelectItem key={campaign.id} value={campaign.id}>
-                                  {campaign.title}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Dates */}
-                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                        Dates
-                      </h3>
-                      
-                      <div className="space-y-5">
-                        <div className="space-y-2.5">
-                          <Label className="flex items-center gap-2">
-                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                            Created
-                          </Label>
-                          <div className="text-sm font-medium">
-                            {requirement?.createdAt ? new Date(requirement.createdAt).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            }) : "Unknown"}
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Instructions for Outsourcing</Label>
+                            <Textarea 
+                              placeholder="Provide detailed instructions for outsourcing this requirement..." 
+                              className="min-h-[150px] w-full resize-none text-sm"
+                              value={editForm.outsourceInstructions}
+                              onChange={(e) => setEditForm({...editForm, outsourceInstructions: e.target.value})}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Note: This information is for your reference only and is not saved to the database.
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Timeline</Label>
+                            <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
+                              Please complete this task within the next 2 weeks.
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Deliverables</Label>
+                            <div className="text-muted-foreground text-sm bg-muted/40 p-2 rounded">
+                              <ul className="list-disc pl-4 space-y-1 break-words">
+                                <li>Complete implementation of the requirement</li>
+                                <li>Documentation of the changes made</li>
+                                <li>Testing report</li>
+                              </ul>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Communication</Label>
+                            <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
+                              Please provide regular updates on progress and any questions via the project management system.
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </ScrollArea>
-              </div>
-            </TabsContent>
+                  </ScrollArea>
+                </div>
+                
+                <div className="border-t p-4 bg-background mt-auto">
+                  <Button className="w-full" onClick={() => router.push(`/outsource/checkout?taskId=${params.id}`)}>
+                    <Globe className="h-4 w-4 mr-2" />
+                    Outsource Task
+                  </Button>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="info" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
+                {renderDetailsContent()}
+              </TabsContent>
+            </div>
+          </Tabs>
+        ) : (
+          <div className="flex flex-col h-full">
+            <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
+              <h3 className="text-sm font-medium">Requirement Details</h3>
+            </div>
+            
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {renderDetailsContent()}
+            </div>
           </div>
-        </Tabs>
+        )}
       </div>
     </div>
   )
 }
 
-const MenuBar = ({ editor, onSave, isSaving, onDelete }: { 
+const MenuBar = ({ editor, onSave, isSaving, onDelete, hasUnsavedChanges }: { 
   editor: any, 
   onSave: () => void, 
   isSaving: boolean,
-  onDelete: () => void
+  onDelete: () => void,
+  hasUnsavedChanges?: boolean
 }) => {
   if (!editor) {
     return null
@@ -1184,8 +1525,11 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete }: {
           variant="secondary" 
           size="default"
           onClick={onSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+          disabled={isSaving || !hasUnsavedChanges}
+          className={cn(
+            "flex items-center gap-2 hover:bg-primary/10 transition-all duration-200",
+            !hasUnsavedChanges && "opacity-50"
+          )}
         >
           {isSaving ? (
             <>

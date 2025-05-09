@@ -60,9 +60,7 @@ export async function GET(request: Request) {
   }
   
   try {
-    // Always use service client with admin permissions
     const supabase = createServiceApiClient();
-    console.log(`[Revenue By Segment API] Service client created with admin permissions`);
     console.log(`[Revenue By Segment API] Received request for site: ${siteId}`);
     console.log(`[Revenue By Segment API] Date parameters: startDate=${startDateParam}, endDate=${endDateParam}`);
     

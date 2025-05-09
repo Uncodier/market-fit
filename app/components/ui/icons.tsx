@@ -1271,6 +1271,16 @@ export const CreditCard = ({ className = "", size = 20, ...props }: IconProps) =
   </IconWrapper>
 )
 
+// DollarSign
+export const DollarSign = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"></line>
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+    </svg>
+  </IconWrapper>
+)
+
 // Info
 export const Info = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
@@ -1445,6 +1455,17 @@ export const ShieldCheck = ({ className = "", size = 20, ...props }: IconProps) 
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <path d="M9 12l2 2 4-4" />
+    </svg>
+  </IconWrapper>
+)
+
+// MoreHorizontal
+export const MoreHorizontal = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+      <circle cx="5" cy="12" r="1" />
     </svg>
   </IconWrapper>
 )

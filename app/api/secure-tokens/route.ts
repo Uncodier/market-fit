@@ -45,11 +45,23 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Función simple para encriptar con SHA-256
+    // Función para encriptar con AES (reemplaza SHA-256)
     const encryptToken = (text: string): string => {
       const salt = CryptoJS.lib.WordArray.random(128/8).toString();
-      const hashedToken = CryptoJS.SHA256(text + ENCRYPTION_KEY + salt).toString();
-      return `${salt}:${hashedToken}`;
+      const encrypted = CryptoJS.AES.encrypt(text, ENCRYPTION_KEY + salt).toString();
+      return `${salt}:${encrypted}`;
+    };
+    
+    // Función para desencriptar
+    const decryptToken = (encryptedValue: string): string | null => {
+      try {
+        const [salt, encrypted] = encryptedValue.split(':');
+        const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY + salt);
+        return decrypted.toString(CryptoJS.enc.Utf8);
+      } catch (error) {
+        console.error('Error decrypting token:', error);
+        return null;
+      }
     };
     
     // Si estamos guardando un token
@@ -155,14 +167,11 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ isValid: false });
         }
         
-        // Extraer la salt
-        const [salt] = data.encrypted_value.split(':');
+        // Desencriptar el token almacenado
+        const decryptedToken = decryptToken(data.encrypted_value);
         
-        // Crear hash con la misma salt
-        const hashedInput = CryptoJS.SHA256(tokenValue + ENCRYPTION_KEY + salt).toString();
-        
-        // Comparar
-        const isValid = `${salt}:${hashedInput}` === data.encrypted_value;
+        // Comparar con el valor proporcionado
+        const isValid = decryptedToken === tokenValue;
         
         // Actualizar last_used si es válido
         if (isValid) {
@@ -177,6 +186,62 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ isValid });
       } catch (error: any) {
         console.error('Error verifying token:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
+    
+    // Recuperar un token
+    else if (operation === 'retrieve') {
+      if (!identifier) {
+        return NextResponse.json(
+          { error: 'Missing identifier' },
+          { status: 400 }
+        );
+      }
+      
+      try {
+        // Obtener el token almacenado
+        const { data, error } = await supabase
+          .from('secure_tokens')
+          .select('encrypted_value')
+          .eq('site_id', siteId)
+          .eq('token_type', tokenType)
+          .eq('identifier', identifier)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error retrieving token:', error);
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+        
+        if (!data) {
+          return NextResponse.json(
+            { error: 'Token not found' },
+            { status: 404 }
+          );
+        }
+        
+        // Desencriptar y devolver el valor original
+        const decryptedValue = decryptToken(data.encrypted_value);
+        
+        if (!decryptedValue) {
+          return NextResponse.json(
+            { error: 'Failed to decrypt token' },
+            { status: 500 }
+          );
+        }
+        
+        // Actualizar último uso
+        await supabase
+          .from('secure_tokens')
+          .update({ last_used: new Date().toISOString() })
+          .eq('site_id', siteId)
+          .eq('token_type', tokenType)
+          .eq('identifier', identifier);
+        
+        return NextResponse.json({ tokenValue: decryptedValue });
+      } catch (error: any) {
+        console.error('Error retrieving token:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
     }

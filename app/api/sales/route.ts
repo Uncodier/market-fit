@@ -92,11 +92,8 @@ export async function GET(request: Request) {
     const formattedStartDate = format(startDate, "yyyy-MM-dd");
     const formattedEndDate = format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'");
     
-    console.log(`[Sales API] Final query date range: ${formattedStartDate} to ${formattedEndDate}`);
-    
-    // Create Supabase client with admin permissions
+    // Create Supabase client with service role key to bypass RLS
     const supabase = createServiceApiClient();
-    console.log(`[Sales API] Service client created with admin permissions`);
     
     // Build query
     let query = supabase
@@ -115,7 +112,8 @@ export async function GET(request: Request) {
       query = query.eq("segment_id", segmentId);
     }
     
-    console.log(`[Sales API] Executing query for site: ${siteId}`);
+    // Log the query execution for debugging
+    console.log(`[Sales API] Fetching sales for site ${siteId} from ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
     
     // Execute query
     const { data, error, status } = await query;
@@ -168,36 +166,10 @@ export async function GET(request: Request) {
       }
     }
     
-    // Add cache control headers to prevent caching
-    const responseHeaders = {
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    };
+    console.log(`[Sales API] Found ${data?.length || 0} sales records`);
     
-    // Format and return the data with debugging info
-    const response = {
-      data: data || [],
-      debug: {
-        requestParams: {
-          siteId,
-          startDate: startDateParam,
-          endDate: endDateParam,
-          segmentId,
-          limit
-        },
-        validatedDates: {
-          startDate: formattedStartDate,
-          endDate: formattedEndDate,
-          startDateObj: startDate.toISOString(),
-          endDateObj: endDate.toISOString()
-        },
-        resultCount: data?.length || 0
-      }
-    };
-    
-    console.log(`[Sales API] Returning response with ${data?.length || 0} records`);
-    return NextResponse.json(response, { headers: responseHeaders });
+    // Format and return the data
+    return NextResponse.json(data);
     
   } catch (error) {
     console.error("[Sales API] Unexpected error:", error);

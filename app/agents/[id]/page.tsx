@@ -26,7 +26,7 @@ import {
   PieChart,
   Trash2
 } from "@/app/components/ui/icons"
-import { Agent } from "@/app/types/agents"
+import { Agent, AgentActivity } from "@/app/types/agents"
 import { cn } from "@/lib/utils"
 import { AgentTool } from "@/app/components/agents/agent-tool"
 import { AgentIntegration } from "@/app/components/agents/agent-integration"
@@ -40,6 +40,47 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { UploadFileDialog } from "@/app/components/agents/upload-file-dialog"
 import { Skeleton } from "@/app/components/ui/skeleton"
 
+// Activity Item Component
+interface ActivityItemProps {
+  id: string
+  name: string
+  description: string
+  estimatedTime: string
+  successRate: number
+  executions: number
+  status: AgentActivity["status"]
+  onToggle: (id: string, enabled: boolean) => void
+}
+
+const ActivityItem = ({ id, name, description, estimatedTime, successRate, executions, status, onToggle }: ActivityItemProps) => {
+  // Convert status to enabled state (available = true, others = false)
+  const enabled = status === "available";
+  
+  return (
+    <div className="border rounded-lg p-3 flex items-center">
+      <div className="flex-1 flex items-center space-x-3">
+        <Check className={cn("h-4 w-4", enabled ? "text-primary" : "text-muted-foreground/30")} />
+        <div>
+          <h4 className="font-medium text-sm">{name}</h4>
+          <p className="text-muted-foreground text-xs mb-1">{description}</p>
+          <div className="flex items-center text-xs text-muted-foreground space-x-4">
+            <span>{estimatedTime}</span>
+            <span>{successRate}% success</span>
+            <span>{executions} executions</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <Switch 
+          checked={enabled} 
+          onCheckedChange={(checked) => onToggle(id, checked)}
+          aria-label={`Toggle ${name}`}
+        />
+      </div>
+    </div>
+  )
+}
+
 // Get default tools for role
 const getDefaultToolsForRole = (role: string = "") => {
   // All tools disabled by default for new agents
@@ -51,6 +92,326 @@ const getDefaultToolsForRole = (role: string = "") => {
     { id: "calendar", name: "Calendar", description: "Check and manage calendar events", enabled: false },
   ]
 }
+
+// Get default activities for role
+const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
+  // Role-specific activities with detailed attributes matching the original format
+  switch(role) {
+    case "growth_lead":
+      return [
+        {
+          id: "gl1",
+          name: "Task Monitoring",
+          description: "Track progress of assigned tasks and ensure timely completion of deliverables",
+          estimatedTime: "15-20 min",
+          successRate: 95,
+          executions: 142,
+          status: "available"
+        },
+        {
+          id: "gl2",
+          name: "Stakeholder Coordination",
+          description: "Facilitate decision-making processes with key stakeholders and project owners",
+          estimatedTime: "25-30 min",
+          successRate: 91,
+          executions: 87,
+          status: "available"
+        },
+        {
+          id: "gl3",
+          name: "Vendor Management",
+          description: "Monitor vendor relationships, deliverables and ensure alignment with project goals",
+          estimatedTime: "30-35 min",
+          successRate: 88,
+          executions: 63,
+          status: "available"
+        },
+        {
+          id: "gl4",
+          name: "Task Validation",
+          description: "Review completed tasks against requirements and provide quality assurance",
+          estimatedTime: "20-25 min",
+          successRate: 94,
+          executions: 98,
+          status: "available"
+        },
+        {
+          id: "gl5",
+          name: "Team Coordination",
+          description: "Facilitate cross-functional collaboration, resolve conflicts and align team efforts with strategic goals",
+          estimatedTime: "25-35 min",
+          successRate: 93,
+          executions: 117,
+          status: "available"
+        }
+      ];
+    case "data_analyst":
+      return [
+        {
+          id: "da1",
+          name: "User Behavior Analysis",
+          description: "Analyze user activity patterns and engagement metrics across website and mobile app",
+          estimatedTime: "25-30 min",
+          successRate: 93,
+          executions: 112,
+          status: "available"
+        },
+        {
+          id: "da2",
+          name: "Sales Trend Analysis",
+          description: "Identify and interpret sales patterns, growth opportunities and conversion metrics",
+          estimatedTime: "20-25 min",
+          successRate: 95,
+          executions: 87,
+          status: "available"
+        },
+        {
+          id: "da3",
+          name: "Cost Trend Analysis",
+          description: "Monitor expense patterns, identify cost optimization opportunities and ROI evaluation",
+          estimatedTime: "20-25 min",
+          successRate: 91,
+          executions: 74,
+          status: "available"
+        },
+        {
+          id: "da4",
+          name: "Cohort Health Monitoring",
+          description: "Track customer cohort performance, retention metrics, and lifetime value analysis",
+          estimatedTime: "30-35 min",
+          successRate: 89,
+          executions: 68,
+          status: "available"
+        },
+        {
+          id: "da5",
+          name: "Data-Driven Task Validation",
+          description: "Verify completed tasks against performance data and validate with metric-based evidence",
+          estimatedTime: "15-20 min",
+          successRate: 96,
+          executions: 94,
+          status: "available"
+        }
+      ];
+    case "growth_marketer":
+      return [
+        {
+          id: "mk1",
+          name: "Create Marketing Campaign",
+          description: "Develop a complete marketing campaign with creative, copy, and channel strategy",
+          estimatedTime: "45-60 min",
+          successRate: 90,
+          executions: 62,
+          status: "available"
+        },
+        {
+          id: "mk2",
+          name: "SEO Content Optimization",
+          description: "Analyze and optimize website content for better search performance",
+          estimatedTime: "30-35 min",
+          successRate: 88,
+          executions: 93,
+          status: "available"
+        },
+        {
+          id: "mk3",
+          name: "A/B Test Design",
+          description: "Create statistically valid A/B tests for landing pages or email campaigns",
+          estimatedTime: "20-25 min",
+          successRate: 92,
+          executions: 104,
+          status: "available"
+        },
+        {
+          id: "mk4",
+          name: "Analyze Segments",
+          description: "Identify and analyze customer segments to optimize targeting and conversion strategies",
+          estimatedTime: "25-30 min",
+          successRate: 94,
+          executions: 78,
+          status: "available"
+        },
+        {
+          id: "mk5",
+          name: "Campaign Requirements Creation",
+          description: "Develop detailed specifications and requirements documentation for marketing campaigns",
+          estimatedTime: "30-40 min",
+          successRate: 91,
+          executions: 56,
+          status: "available"
+        }
+      ];
+    case "ux_designer":
+      return [
+        {
+          id: "ux1",
+          name: "Website Analysis",
+          description: "Conduct comprehensive evaluation of website usability, information architecture and user experience",
+          estimatedTime: "30-40 min",
+          successRate: 92,
+          executions: 67,
+          status: "available"
+        },
+        {
+          id: "ux2",
+          name: "Application Analysis",
+          description: "Evaluate mobile and desktop applications for usability issues, interaction design and user flows",
+          estimatedTime: "35-45 min",
+          successRate: 90,
+          executions: 58,
+          status: "available"
+        },
+        {
+          id: "ux3",
+          name: "Product Requirements Creation",
+          description: "Develop detailed user-centered product requirements, specifications and design documentation",
+          estimatedTime: "40-50 min",
+          successRate: 88,
+          executions: 42,
+          status: "available"
+        }
+      ];
+    case "sales":
+      return [
+        {
+          id: "sl1",
+          name: "Lead Follow-up Management",
+          description: "Systematically track and engage with leads through personalized communication sequences",
+          estimatedTime: "20-25 min",
+          successRate: 87,
+          executions: 126,
+          status: "available"
+        },
+        {
+          id: "sl2",
+          name: "Appointment Generation",
+          description: "Create and schedule qualified sales meetings with prospects through effective outreach",
+          estimatedTime: "15-20 min",
+          successRate: 83,
+          executions: 98,
+          status: "available"
+        },
+        {
+          id: "sl3",
+          name: "Lead Generation",
+          description: "Identify and qualify potential customers through various channels and targeting strategies",
+          estimatedTime: "25-30 min",
+          successRate: 85,
+          executions: 112,
+          status: "available"
+        },
+        {
+          id: "sl4",
+          name: "Lead Profile Research",
+          description: "Analyze prospect backgrounds, needs, and pain points to create personalized sales approaches",
+          estimatedTime: "20-25 min",
+          successRate: 89,
+          executions: 76,
+          status: "available"
+        },
+        {
+          id: "sl5",
+          name: "Generate Sales Order",
+          description: "Create complete sales orders with product details, pricing, and customer information",
+          estimatedTime: "15-20 min",
+          successRate: 94,
+          executions: 83,
+          status: "available"
+        }
+      ];
+    case "support":
+      return [
+        {
+          id: "cs1",
+          name: "Knowledge Base Management",
+          description: "Create, update, and organize product documentation and user guides for self-service support",
+          estimatedTime: "30-35 min",
+          successRate: 94,
+          executions: 84,
+          status: "available"
+        },
+        {
+          id: "cs2",
+          name: "FAQ Development",
+          description: "Identify common customer questions and create comprehensive answers for quick resolution",
+          estimatedTime: "20-25 min",
+          successRate: 96,
+          executions: 112,
+          status: "available"
+        },
+        {
+          id: "cs3",
+          name: "Escalation Management",
+          description: "Handle complex customer issues and escalate to appropriate teams with complete context",
+          estimatedTime: "25-30 min",
+          successRate: 89,
+          executions: 73,
+          status: "available"
+        }
+      ];
+    case "content_creator":
+      return [
+        {
+          id: "ct1",
+          name: "Content Calendar Creation",
+          description: "Develop a content calendar with themes, topics, and publishing schedule",
+          estimatedTime: "30-40 min",
+          successRate: 93,
+          executions: 58,
+          status: "available"
+        },
+        {
+          id: "ct2",
+          name: "Email Sequence Copywriting",
+          description: "Write engaging email sequences for nurturing prospects through the funnel",
+          estimatedTime: "40-50 min",
+          successRate: 87,
+          executions: 72,
+          status: "available"
+        },
+        {
+          id: "ct3",
+          name: "Landing Page Copywriting",
+          description: "Create persuasive, conversion-focused copy for landing pages",
+          estimatedTime: "25-35 min",
+          successRate: 89,
+          executions: 84,
+          status: "available"
+        }
+      ];
+    default:
+      // Default activities if role not recognized
+      return [
+        {
+          id: "default1",
+          name: "General Assistance",
+          description: "Provide general assistance and information on various topics",
+          estimatedTime: "10-15 min",
+          successRate: 95,
+          executions: 120,
+          status: "available"
+        },
+        {
+          id: "default2",
+          name: "Research Requests",
+          description: "Conduct research on specific topics and provide detailed findings",
+          estimatedTime: "20-30 min",
+          successRate: 92,
+          executions: 85,
+          status: "available"
+        },
+        {
+          id: "default3",
+          name: "Recommendations",
+          description: "Provide customized recommendations based on specific requirements",
+          estimatedTime: "15-20 min",
+          successRate: 90,
+          executions: 95,
+          status: "available"
+        }
+      ];
+  }
+};
 
 // Get default integrations for role
 const getDefaultIntegrationsForRole = () => {
@@ -110,6 +471,35 @@ function ContextFilesSkeleton() {
   )
 }
 
+// Esqueleto de carga para la sección de actividades
+function ActivitiesSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between pb-3">
+        <div className="space-y-1">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+      </div>
+      
+      <div className="space-y-3">
+        {Array(6).fill(0).map((_, i) => (
+          <div key={i} className="border rounded-lg p-3 flex items-center">
+            <div className="flex-1 flex items-center space-x-3">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <div className="space-y-1 flex-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+            </div>
+            <Skeleton className="h-5 w-10 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // Añadir nuevo componente de esqueleto para toda la página
 function AgentPageSkeleton() {
   return (
@@ -120,13 +510,13 @@ function AgentPageSkeleton() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-                  {['Basic Information', 'Tools', 'Triggers', 'Integrations', 'Context Files'].map((tab, index) => (
+                  {['Basic Information', 'Tools', 'Triggers', 'Integrations', 'Context Files', 'Activities'].map((tab, index) => (
                     <div 
                       key={index} 
                       className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ${
                         index === 0 
                           ? 'bg-background text-foreground shadow-sm' 
-                          : 'text-muted-foreground'
+                          : (index === 1 || index === 2 || index === 3 ? 'hidden' : 'text-muted-foreground')
                       }`}
                     >
                       {tab}
@@ -312,6 +702,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
   const [integrations, setIntegrations] = useState(getDefaultIntegrationsForRole())
   const [contextFiles, setContextFiles] = useState<{id: string, name: string, path: string}[]>([])
   const [triggers, setTriggers] = useState(getDefaultTriggersForRole())
+  const [activities, setActivities] = useState<AgentActivity[]>(getDefaultActivitiesForRole(defaultTemplate.role))
   
   const [activeTab, setActiveTab] = useState("basic")
   const [isSaving, setIsSaving] = useState(false)
@@ -321,9 +712,13 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
   const [triggerSearch, setTriggerSearch] = useState("")
   const [integrationSearch, setIntegrationSearch] = useState("")
   const [contextSearch, setContextSearch] = useState("")
+  const [activitySearch, setActivitySearch] = useState("")
   
   // Estado para el loading de archivos de contexto
   const [isContextFilesLoading, setIsContextFilesLoading] = useState(false)
+  
+  // Estado para el loading de actividades
+  const [isActivitiesLoading, setIsActivitiesLoading] = useState(false)
   
   // Load agent data and related assets
   useEffect(() => {
@@ -505,6 +900,38 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
             console.log("No triggers configuration found, using defaults")
             setTriggers(defaultEmptyTriggers)
           }
+          
+          // Parse and set activities
+          const defaultEmptyActivities = getDefaultActivitiesForRole(agentId)
+          if (agentData.activities && typeof agentData.activities === 'object') {
+            try {
+              const activitiesArr = Object.entries(agentData.activities).map(([id, data]: [string, any]) => ({
+                id,
+                name: data.name || id,
+                description: data.description || "",
+                estimatedTime: data.estimatedTime || "10-15 min",
+                successRate: data.successRate || 90,
+                executions: data.executions || 0,
+                status: (data.status === "available" || data.status === "in_progress" || data.status === "deprecated") 
+                  ? (data.status as AgentActivity["status"])
+                  : (data.enabled ? "available" : "deprecated") as AgentActivity["status"]
+              }))
+              
+              if (activitiesArr.length > 0) {
+                console.log("Setting activities from database:", activitiesArr)
+                setActivities(activitiesArr)
+              } else {
+                console.log("No activities found in database, using defaults")
+                setActivities(defaultEmptyActivities)
+              }
+            } catch (err) {
+              console.error("Error parsing activities:", err)
+              setActivities(defaultEmptyActivities)
+            }
+          } else {
+            console.log("No activities object found, using defaults")
+            setActivities(defaultEmptyActivities)
+          }
         } else {
           // Non-UUID ID - treat as new agent with defaults
           console.log("Invalid UUID format, treating as new agent with template ID:", agentId)
@@ -523,10 +950,14 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
             
             // Set tools based on the specific role
             setTools(getDefaultToolsForRole(agentId));
+            
+            // Set activities based on the specific role
+            setActivities(getDefaultActivitiesForRole(agentId));
           } else {
             // If no template found, use defaults
             console.log("No template found for ID:", agentId, "using defaults");
             setTools(getDefaultToolsForRole());
+            setActivities(getDefaultActivitiesForRole());
           }
           
           // Set other default empty values
@@ -621,6 +1052,16 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
     ))
   }
   
+  // Handle activity toggle
+  const handleActivityToggle = (activityId: string, enabled: boolean) => {
+    setActivities(activities.map(activity => 
+      activity.id === activityId ? { 
+        ...activity, 
+        status: enabled ? "available" : "deprecated" as AgentActivity["status"]
+      } : activity
+    ))
+  }
+  
   // Handle tab change
   const handleTabChange = (value: string) => {
     setActiveTab(value)
@@ -693,6 +1134,20 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         return config
       }, {} as Record<string, any>)
       
+      // Convert activities array to configuration format
+      const activitiesConfig = activities.reduce((config, activity) => {
+        config[activity.id] = { 
+          name: activity.name,
+          description: activity.description,
+          estimatedTime: activity.estimatedTime,
+          successRate: activity.successRate,
+          executions: activity.executions,
+          status: activity.status,
+          enabled: activity.status === "available" // For backwards compatibility
+        }
+        return config
+      }, {} as Record<string, any>)
+      
       // Legacy configuration format for context files
       // Note: We're now using agent_assets table but keep this for backward compatibility
       const filesConfig = contextFiles.map(file => ({
@@ -755,7 +1210,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         conversations: 0,
         success_rate: 0,
         tools: toolsConfig,
-        activities: {},
+        activities: activitiesConfig,
         integrations: integrationsConfig,
         configuration: {
           contextFiles: filesConfig,
@@ -869,10 +1324,11 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
               <div className="flex items-center gap-8">
                 <TabsList>
                   <TabsTrigger value="basic">Basic Information</TabsTrigger>
-                  <TabsTrigger value="tools">Tools</TabsTrigger>
-                  <TabsTrigger value="triggers">Triggers</TabsTrigger>
-                  <TabsTrigger value="integrations">Integrations</TabsTrigger>
+                  <TabsTrigger value="tools" className="hidden">Tools</TabsTrigger>
+                  <TabsTrigger value="triggers" className="hidden">Triggers</TabsTrigger>
+                  <TabsTrigger value="integrations" className="hidden">Integrations</TabsTrigger>
                   <TabsTrigger value="context">Context Files</TabsTrigger>
+                  <TabsTrigger value="activities">Activities</TabsTrigger>
                 </TabsList>
                 {activeTab === "tools" && (
                   <SearchInput
@@ -900,6 +1356,13 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
                     placeholder="Search context files..."
                     value={contextSearch}
                     onSearch={setContextSearch}
+                  />
+                )}
+                {activeTab === "activities" && (
+                  <SearchInput
+                    placeholder="Search activities..."
+                    value={activitySearch}
+                    onSearch={setActivitySearch}
                   />
                 )}
               </div>
@@ -1205,6 +1668,51 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
                     contentClassName="mb-4"
                     title="No context files added" 
                     description="Add files to provide additional context for your agent" 
+                    className="flex flex-col items-center justify-center py-8"
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="activities" className="space-y-4">
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Activities</CardTitle>
+                <CardDescription>
+                  Configure the activities this agent can perform
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isActivitiesLoading ? (
+                  <ActivitiesSkeleton />
+                ) : activities.length > 0 ? (
+                  <div className="space-y-3">
+                    {activities
+                      .filter(activity => 
+                        activity.name.toLowerCase().includes(activitySearch.toLowerCase()) ||
+                        activity.description.toLowerCase().includes(activitySearch.toLowerCase())
+                      )
+                      .map(activity => (
+                        <ActivityItem 
+                          key={activity.id}
+                          id={activity.id}
+                          name={activity.name}
+                          description={activity.description}
+                          estimatedTime={activity.estimatedTime}
+                          successRate={activity.successRate}
+                          executions={activity.executions}
+                          status={activity.status}
+                          onToggle={handleActivityToggle}
+                        />
+                      ))}
+                  </div>
+                ) : (
+                  <EmptyCard 
+                    icon={<Tag className="h-10 w-10 text-muted-foreground" />}
+                    contentClassName="mb-4"
+                    title="No activities configured" 
+                    description="Add activities to specify what this agent can do" 
                     className="flex flex-col items-center justify-center py-8"
                   />
                 )}

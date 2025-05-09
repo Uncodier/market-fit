@@ -182,12 +182,17 @@ export default function ExperimentDetailPage() {
   const [isActionLoading, setIsActionLoading] = useState(false)
   const [editedInstructions, setEditedInstructions] = useState('')
   const [isEditingDetails, setIsEditingDetails] = useState(false)
+  const [unsavedChanges, setUnsavedChanges] = useState(false)
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
     hypothesis: '',
     validations: ''
   })
+  const [pendingSegmentChanges, setPendingSegmentChanges] = useState<{
+    pendingSegments: Array<{id: string, name: string, participants: number}>,
+    removedSegmentIds: string[]
+  } | null>(null)
 
   const editor = useEditor({
     extensions: [
@@ -214,6 +219,7 @@ export default function ExperimentDetailPage() {
     onUpdate: ({ editor }) => {
       const content = editor.getText()
       setEditedInstructions(content)
+      setUnsavedChanges(true)
       console.log('Content updated:', content)
     }
   })
@@ -275,6 +281,92 @@ export default function ExperimentDetailPage() {
       })
     }
   }, [experiment])
+
+  // Add event listener for experiment:refresh
+  useEffect(() => {
+    const handleExperimentRefresh = () => {
+      if (currentSite && params.id) {
+        loadExperiment();
+      }
+    };
+
+    window.addEventListener('experiment:refresh', handleExperimentRefresh);
+    
+    return () => {
+      window.removeEventListener('experiment:refresh', handleExperimentRefresh);
+    };
+  }, [currentSite, params.id]);
+
+  // Add event listener for AI-generated content
+  useEffect(() => {
+    const handleAIGenerated = (event: CustomEvent) => {
+      if (editor && event.detail && event.detail.content) {
+        // First, update the editor content with the AI-generated content
+        const formattedHTML = markdownToHTML(event.detail.content);
+        editor.commands.setContent(formattedHTML);
+        
+        // Also update the editedInstructions state to track the new content
+        setEditedInstructions(event.detail.content);
+        
+        // Save the changes to the database
+        handleSaveChanges();
+      }
+    };
+
+    window.addEventListener('experiment:ai-generated', handleAIGenerated as EventListener);
+    
+    return () => {
+      window.removeEventListener('experiment:ai-generated', handleAIGenerated as EventListener);
+    };
+  }, [editor]);
+
+  // Add listener for segment changes
+  useEffect(() => {
+    const handleSegmentChanges = (event: CustomEvent) => {
+      if (event.detail) {
+        console.log("Segment changes detected:", event.detail);
+        setPendingSegmentChanges({
+          pendingSegments: event.detail.pendingSegments || [],
+          removedSegmentIds: event.detail.removedSegmentIds || []
+        });
+        setUnsavedChanges(true);
+      }
+    };
+    
+    window.addEventListener('experiment:segment-changes', handleSegmentChanges as EventListener);
+    
+    return () => {
+      window.removeEventListener('experiment:segment-changes', handleSegmentChanges as EventListener);
+    };
+  }, []);
+
+  // Check for unsaved changes when form values change
+  useEffect(() => {
+    if (experiment) {
+      const hasFormChanges = 
+        editForm.name !== (experiment.name || '') ||
+        editForm.description !== (experiment.description || '') ||
+        editForm.hypothesis !== (experiment.hypothesis || '') ||
+        editForm.validations !== (experiment.validations || '');
+      
+      const hasContentChanges = editedInstructions !== (experiment.instructions || '');
+      
+      setUnsavedChanges(hasFormChanges || hasContentChanges);
+    }
+  }, [editForm, editedInstructions, experiment]);
+
+  // Reset unsaved changes after successful save
+  useEffect(() => {
+    const handleExperimentSaved = () => {
+      setUnsavedChanges(false);
+    };
+    
+    window.addEventListener('experiment:saved', handleExperimentSaved);
+    
+    return () => {
+      window.removeEventListener('experiment:saved', handleExperimentSaved);
+    };
+  }, []);
 
   const loadExperiment = async () => {
     if (!currentSite || !params.id) return
@@ -367,15 +459,25 @@ export default function ExperimentDetailPage() {
     
     setIsSaving(true)
     try {
+      console.log("Saving experiment changes...");
+
       // Get the edited content from the editor
       const plainText = editor?.getText() || ''
+
+      // Get preview URL from the experiment state
+      const preview_url = experiment.preview_url
 
       // Update experiment in Supabase
       const supabase = createClient()
       const { error } = await supabase
         .from('experiments')
         .update({
-          instructions: plainText
+          instructions: plainText,
+          name: editForm.name,
+          description: editForm.description,
+          hypothesis: editForm.hypothesis,
+          validations: editForm.validations,
+          preview_url
         })
         .eq('id', experiment.id)
         .eq('site_id', currentSite.id)
@@ -384,13 +486,85 @@ export default function ExperimentDetailPage() {
         throw new Error(error.message)
       }
 
+      // Process segment changes if any
+      if (pendingSegmentChanges) {
+        console.log("Processing segment changes:", pendingSegmentChanges);
+        
+        // 1. Remove segments that were deleted
+        if (pendingSegmentChanges.removedSegmentIds.length > 0) {
+          console.log("Removing segments:", pendingSegmentChanges.removedSegmentIds);
+          
+          const { error: removeError } = await supabase
+            .from('experiment_segments')
+            .delete()
+            .eq('experiment_id', experiment.id)
+            .in('segment_id', pendingSegmentChanges.removedSegmentIds);
+            
+          if (removeError) {
+            console.error("Error removing segments:", removeError);
+          }
+        }
+        
+        // 2. Add new segments
+        const existingSegmentIds = experiment.segments.map(s => s.id);
+        const newSegments = pendingSegmentChanges.pendingSegments.filter(
+          s => !existingSegmentIds.includes(s.id) && !pendingSegmentChanges.removedSegmentIds.includes(s.id)
+        );
+        
+        if (newSegments.length > 0) {
+          console.log("Adding new segments:", newSegments);
+          
+          const { error: addError } = await supabase
+            .from('experiment_segments')
+            .insert(
+              newSegments.map(segment => ({
+                experiment_id: experiment.id,
+                segment_id: segment.id,
+                participants: 0
+              }))
+            );
+            
+          if (addError) {
+            console.error("Error adding segments:", addError);
+          }
+        }
+        
+        // Reset segment changes
+        setPendingSegmentChanges(null);
+      }
+
       // Update local state
       setExperiment(prev => 
         prev ? { 
           ...prev, 
-          instructions: plainText 
+          instructions: plainText,
+          name: editForm.name,
+          description: editForm.description,
+          hypothesis: editForm.hypothesis,
+          validations: editForm.validations,
+          preview_url
         } : null
       )
+      
+      // Update document title and breadcrumb
+      document.title = `${editForm.name} | Experiments`
+      const event = new CustomEvent('breadcrumb:update', {
+        detail: {
+          title: editForm.name,
+          path: `/experiments/${experiment.id}`,
+          section: 'experiments'
+        }
+      })
+      window.dispatchEvent(event)
+      
+      // Reset unsaved changes
+      setUnsavedChanges(false)
+      
+      // Dispatch event to notify the experiment was saved successfully
+      window.dispatchEvent(new CustomEvent('experiment:saved'));
+      
+      // Refresh experiment data
+      await loadExperiment();
       
       toast.success("Experiment updated successfully")
     } catch (error) {
@@ -538,62 +712,6 @@ export default function ExperimentDetailPage() {
     setIsEditingDetails(!isEditingDetails)
   }
 
-  const handleSaveDetails = async () => {
-    if (!experiment || !currentSite) return
-    
-    setIsSaving(true)
-    try {
-      // Update experiment details in Supabase
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('experiments')
-        .update({
-          name: editForm.name,
-          description: editForm.description,
-          hypothesis: editForm.hypothesis,
-          validations: editForm.validations
-        })
-        .eq('id', experiment.id)
-        .eq('site_id', currentSite.id)
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      // Update local state
-      setExperiment(prev => 
-        prev ? { 
-          ...prev, 
-          name: editForm.name,
-          description: editForm.description,
-          hypothesis: editForm.hypothesis,
-          validations: editForm.validations
-        } : null
-      )
-      
-      toast.success("Experiment details updated successfully")
-      
-      // Update document title and breadcrumb
-      document.title = `${editForm.name} | Experiments`
-      const event = new CustomEvent('breadcrumb:update', {
-        detail: {
-          title: editForm.name,
-          path: `/experiments/${experiment.id}`,
-          section: 'experiments'
-        }
-      })
-      setTimeout(() => {
-        window.dispatchEvent(event)
-      }, 0)
-      
-    } catch (error) {
-      console.error("Error updating experiment details:", error)
-      toast.error("Failed to update experiment details")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   if (isLoading || !experiment) {
     return <ExperimentSkeleton />
   }
@@ -614,6 +732,7 @@ export default function ExperimentDetailPage() {
             onStop={handleStopExperiment}
             onToggleEdit={handleToggleEdit}
             onDelete={handleDeleteExperiment}
+            hasUnsavedChanges={unsavedChanges}
           />
         </div>
         <div className="flex-1 overflow-auto">
@@ -646,7 +765,10 @@ export default function ExperimentDetailPage() {
                 <ExperimentDetails 
                   experiment={experiment}
                   editForm={editForm}
-                  onFormChange={(field, value) => setEditForm(prev => ({ ...prev, [field]: value }))}
+                  onFormChange={(field, value) => {
+                    setEditForm(prev => ({ ...prev, [field]: value }));
+                    setUnsavedChanges(true);
+                  }}
                 />
               </div>
             </ScrollArea>
