@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 
 // Indicar a Next.js que esta ruta es dinámica
 export const dynamic = 'force-dynamic'
@@ -24,10 +25,25 @@ const SUPABASE_COOKIES = [
   '__Host-next-auth.csrf-token'
 ]
 
+// Función para obtener la URL base dinámica
+function getBaseUrl(request: Request) {
+  const headersList = headers()
+  const host = headersList.get('host') || 'localhost:3000'
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+  
+  // Si tenemos la URL de la app configurada, usamos esa
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  
+  // Si no, construimos la URL basada en el host de la solicitud
+  return `${protocol}://${host}`
+}
+
 export async function GET(request: Request) {
   try {
-    // Determinar la URL base de la aplicación
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    // Determinar la URL base de la aplicación dinámicamente
+    const appUrl = getBaseUrl(request)
     
     // Obtener parámetros de la URL
     const url = new URL(request.url)
@@ -79,7 +95,7 @@ export async function GET(request: Request) {
     
     // En caso de error, intentar redirigir a la página de login
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const appUrl = getBaseUrl(request)
       const timestamp = Date.now()
       const response = NextResponse.redirect(`${appUrl}/auth?logout=true&error=true&t=${timestamp}`)
       
