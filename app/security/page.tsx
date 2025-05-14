@@ -92,6 +92,7 @@ export default function SecurityPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [setupStep, setSetupStep] = useState<'initial' | 'setup' | 'verify'>('initial');
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
   
   // Password form
   const passwordForm = useForm<PasswordFormValues>({
@@ -146,6 +147,7 @@ export default function SecurityPage() {
   const handleUpdatePassword = async (data: PasswordFormValues) => {
     try {
       setIsSaving(true);
+      setPasswordUpdated(false);
       const supabase = createClient();
       
       // Update the user's password
@@ -157,8 +159,21 @@ export default function SecurityPage() {
         throw error;
       }
       
+      // Show success toast and reset form
       toast.success("Password updated successfully");
+      setPasswordUpdated(true);
       passwordForm.reset(defaultPasswordValues);
+      
+      // Reset password visibility states
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+      
+      // Automatically clear success message after some time
+      setTimeout(() => {
+        setPasswordUpdated(false);
+      }, 5000);
+      
     } catch (error) {
       console.error("Error updating password:", error);
       toast.error(error instanceof Error ? error.message : "Error updating password");
@@ -273,7 +288,14 @@ export default function SecurityPage() {
     <div className="flex-1">
       <StickyHeader>
         <div className="flex items-center justify-between px-16 w-full">
-          <div className="flex-1" />
+          <div className="flex-1">
+            {passwordUpdated && (
+              <div className="flex items-center text-green-500">
+                <Check className="h-4 w-4 mr-2" />
+                <span>Password successfully updated</span>
+              </div>
+            )}
+          </div>
           <Button 
             disabled={isSaving}
             type="submit"
