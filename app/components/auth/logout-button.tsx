@@ -15,6 +15,7 @@ export function LogoutButton({
   className = '',
 }: LogoutButtonProps) {
   const handleLogout = () => {
+    // Redirección simple a la API de logout
     window.location.href = '/api/auth/logout'
   }
 

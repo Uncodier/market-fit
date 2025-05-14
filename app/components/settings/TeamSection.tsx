@@ -1,7 +1,7 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
@@ -63,10 +63,20 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     form.getValues("team_members") || []
   )
   const [isLoading, setIsLoading] = useState(false)
+  const dataFetchedRef = useRef(false)
+  
+  // Update the form values whenever teamList changes
+  const updateFormValues = useCallback((newTeamList: FormTeamMember[]) => {
+    form.setValue("team_members", newTeamList, { 
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true 
+    })
+  }, [form])
   
   // Fetch site members from the site_members table when available
   useEffect(() => {
-    if (!active || !siteId) return;
+    if (!active || !siteId || dataFetchedRef.current) return;
     
     const fetchSiteMembers = async () => {
       try {
@@ -79,9 +89,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           .map(siteMemberToFormMember)
         
         setTeamList(formattedMembers)
-        
-        // Also update the form values to keep them in sync
-        form.setValue("team_members", formattedMembers)
+        updateFormValues(formattedMembers)
+        dataFetchedRef.current = true
       } catch (error) {
         console.error("Error fetching site members:", error)
         // We'll fall back to the values from team_members in settings
@@ -91,34 +100,50 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     }
     
     fetchSiteMembers()
-  }, [active, siteId, form])
+  }, [active, siteId, updateFormValues])
 
   // Add team member
   const addTeamMember = () => {
+    if (isLoading) return
     const newTeamList = [...teamList, { email: "", role: "view" as TeamRole, name: "", position: "" }]
     setTeamList(newTeamList)
-    form.setValue("team_members", newTeamList)
+    updateFormValues(newTeamList)
   }
 
   // Remove team member
   const removeTeamMember = async (index: number) => {
+    if (isLoading) return
     const memberToRemove = teamList[index]
     
     // If this is an actual site member with an ID, remove it from the database
     if (siteId && memberToRemove.id) {
       try {
+        setIsLoading(true)
         await siteMembersService.removeMember(memberToRemove.id)
         toast.success(`${memberToRemove.name || memberToRemove.email} removed from team`)
       } catch (error) {
         console.error("Error removing team member:", error)
         toast.error("Failed to remove team member")
         return
+      } finally {
+        setIsLoading(false)
       }
     }
     
     const newTeamList = teamList.filter((_, i) => i !== index)
     setTeamList(newTeamList)
-    form.setValue("team_members", newTeamList)
+    updateFormValues(newTeamList)
+  }
+
+  // Update a specific field of a team member
+  const updateTeamMember = (index: number, field: keyof FormTeamMember, value: any) => {
+    const newTeamList = [...teamList]
+    newTeamList[index] = {
+      ...newTeamList[index],
+      [field]: value
+    }
+    setTeamList(newTeamList)
+    updateFormValues(newTeamList)
   }
 
   if (!active) return null
@@ -158,6 +183,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                 <FormField
                   control={form.control}
                   name={`team_members.${index}.name`}
+                  defaultValue={member.name || ""}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium">Name</FormLabel>
@@ -171,12 +197,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             value={field.value || ""}
                             onChange={(e) => {
                               field.onChange(e)
-                              const newTeamList = [...teamList]
-                              newTeamList[index] = {
-                                ...newTeamList[index],
-                                name: e.target.value
-                              }
-                              setTeamList(newTeamList)
+                              updateTeamMember(index, 'name', e.target.value)
                             }}
                           />
                         </div>
@@ -188,6 +209,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                 <FormField
                   control={form.control}
                   name={`team_members.${index}.email`}
+                  defaultValue={member.email}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium">Email</FormLabel>
@@ -202,12 +224,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             disabled={!!member.id} // If it's an existing site member, don't allow email change
                             onChange={(e) => {
                               field.onChange(e)
-                              const newTeamList = [...teamList]
-                              newTeamList[index] = {
-                                ...newTeamList[index],
-                                email: e.target.value
-                              }
-                              setTeamList(newTeamList)
+                              updateTeamMember(index, 'email', e.target.value)
                             }}
                           />
                         </div>
@@ -221,6 +238,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                 <FormField
                   control={form.control}
                   name={`team_members.${index}.position`}
+                  defaultValue={member.position || ""}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium">Position</FormLabel>
@@ -234,12 +252,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             value={field.value || ""}
                             onChange={(e) => {
                               field.onChange(e)
-                              const newTeamList = [...teamList]
-                              newTeamList[index] = {
-                                ...newTeamList[index],
-                                position: e.target.value
-                              }
-                              setTeamList(newTeamList)
+                              updateTeamMember(index, 'position', e.target.value)
                             }}
                           />
                         </div>
@@ -252,6 +265,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                   <FormField
                     control={form.control}
                     name={`team_members.${index}.role`}
+                    defaultValue={member.role}
                     render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormLabel className="text-sm font-medium">Role</FormLabel>
@@ -259,12 +273,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                           value={field.value}
                           onValueChange={(value) => {
                             field.onChange(value)
-                            const newTeamList = [...teamList]
-                            newTeamList[index] = {
-                              ...newTeamList[index],
-                              role: value as TeamRole
-                            }
-                            setTeamList(newTeamList)
+                            updateTeamMember(index, 'role', value as TeamRole)
                           }}
                         >
                           <FormControl>
@@ -290,6 +299,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                     type="button"
                     onClick={() => removeTeamMember(index)}
                     className="h-12 w-12 mt-2"
+                    disabled={isLoading}
                   >
                     <Trash2 className="h-5 w-5" />
                   </Button>

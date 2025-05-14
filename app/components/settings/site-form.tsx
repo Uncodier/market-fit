@@ -374,34 +374,77 @@ export function SiteForm({
 
   const copyTrackingCode = async () => {
     const trackingCode = `<script>
-  // Market Fit Tracking Code
   (function() {
     window.MarketFit = window.MarketFit || {};
-    MarketFit.siteId = "${initialData ? initialData.name : 'YOUR_SITE_NAME'}";
-    MarketFit.trackVisitors = ${form.watch("tracking.track_visitors")};
-    MarketFit.trackActions = ${form.watch("tracking.track_actions")};
-    MarketFit.recordScreen = ${form.watch("tracking.record_screen")};
-    MarketFit.enableChat = ${form.watch("tracking.enable_chat")};
-    MarketFit.chatAccentColor = "${form.watch("tracking.chat_accent_color") || "#e0ff17"}";
-    MarketFit.allowAnonymousMessages = ${form.watch("tracking.allow_anonymous_messages")};
-    MarketFit.chatPosition = "${form.watch("tracking.chat_position") || "bottom-right"}";
-    MarketFit.chatTitle = "${form.watch("tracking.chat_title") || "Chat with us"}";
-    MarketFit.welcomeMessage = "${form.watch("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}";
+    
+    MarketFit.siteId = "${siteId || (initialData ? initialData.name : 'YOUR_SITE_ID')}";
     
     var script = document.createElement('script');
     script.async = true;
-    script.src = 'https://api.market-fit.ai/tracking.js';
+    script.src = 'https://files.uncodie.com/tracking.min.js';
+    
+    script.onload = function() {
+      if (window.MarketFit && typeof window.MarketFit.init === 'function') {
+        window.MarketFit.init({
+          siteId: "${siteId || (initialData ? initialData.name : 'YOUR_SITE_ID')}",
+          trackVisitors: ${form.watch("tracking.track_visitors")},
+          trackActions: ${form.watch("tracking.track_actions")},
+          recordScreen: ${form.watch("tracking.record_screen")},
+          debug: false,
+          chat: {
+            enabled: ${form.watch("tracking.enable_chat")},
+            accentColor: "${form.watch("tracking.chat_accent_color") || "#e0ff17"}",
+            allowAnonymousMessages: ${form.watch("tracking.allow_anonymous_messages")},
+            position: "${form.watch("tracking.chat_position") || "bottom-right"}",
+            title: "${form.watch("tracking.chat_title") || "Chat with us"}",
+            welcomeMessage: "${form.watch("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}"
+          }
+        });
+      }
+    };
+    
     var firstScript = document.getElementsByTagName('script')[0];
     firstScript.parentNode.insertBefore(script, firstScript);
   })();
 </script>`
 
     try {
-      await navigator.clipboard.writeText(trackingCode)
-      setCodeCopied(true)
-      setTimeout(() => setCodeCopied(false), 2000)
+      // Try to use the modern Clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(trackingCode);
+        setCodeCopied(true);
+        toast.success("Tracking code copied to clipboard");
+        setTimeout(() => setCodeCopied(false), 2000);
+        return;
+      }
+      
+      // Fallback to older document.execCommand method
+      const textArea = document.createElement('textarea');
+      textArea.value = trackingCode;
+      
+      // Make the textarea out of viewport
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      
+      // Select and copy
+      textArea.focus();
+      textArea.select();
+      
+      const success = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (success) {
+        setCodeCopied(true);
+        toast.success("Tracking code copied to clipboard");
+        setTimeout(() => setCodeCopied(false), 2000);
+      } else {
+        throw new Error("Copy command failed");
+      }
     } catch (err) {
-      console.error("Error copying tracking code:", err)
+      console.error("Error copying tracking code:", err);
+      toast.error("Failed to copy tracking code. Please try selecting and copying manually.");
     }
   }
 

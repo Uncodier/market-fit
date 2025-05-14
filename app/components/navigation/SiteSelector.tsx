@@ -5,13 +5,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
 } from "../ui/dropdown-menu"
 import { MenuAvatar, MenuAvatarFallback, MenuAvatarImage } from "../ui/menu-avatar"
 import { cn } from "@/lib/utils"
-import { Check } from "@/app/components/ui/icons"
+import { Check, Users, PlusCircle } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { Site } from "@/app/context/SiteContext"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Button } from "../ui/button"
 
 interface SiteSelectorProps {
   isCollapsed?: boolean
@@ -21,6 +27,18 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   const { sites, currentSite, setCurrentSite, isLoading, refreshSites } = useSite()
   const router = useRouter()
   const [isMounted, setIsMounted] = useState(false)
+  const [filter, setFilter] = useState<'all' | 'owned' | 'shared'>('all')
+  
+  // Separate sites into owned and shared
+  const ownedSites = sites.filter(site => site.user_id === currentSite?.user_id)
+  const sharedSites = sites.filter(site => site.user_id !== currentSite?.user_id)
+  
+  // Filtered sites based on selection
+  const filteredSites = filter === 'all' 
+    ? sites 
+    : filter === 'owned' 
+      ? ownedSites 
+      : sharedSites
   
   useEffect(() => {
     setIsMounted(true)
@@ -103,7 +121,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
             </svg>
           </div>
           {!isCollapsed && (
-            <span className="text-sm font-medium flex-1">Create your first site</span>
+            <span className="text-sm font-medium flex-1">Create your first project</span>
           )}
         </div>
       </div>
@@ -139,56 +157,99 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                 isCollapsed ? "w-[240px]" : "w-[232px]"
               )}
             >
-              {sites.map((site) => {
-                const isSelected = site.id === currentSite?.id
-                return (
-                  <DropdownMenuItem
-                    key={site.id}
-                    className={cn(
-                      "flex items-center gap-2 p-2 w-full",
-                      isSelected && "bg-accent"
-                    )}
-                    onClick={() => {
-                      setCurrentSite(site)
-                      // Opcional: redirigir al dashboard cuando se cambia de sitio
-                      if (window.location.pathname !== "/dashboard") {
-                        router.push("/dashboard")
-                      }
-                    }}
-                  >
-                    <MenuAvatar className="h-6 w-6 flex-shrink-0">
-                      {site.logo_url ? (
-                        <MenuAvatarImage src={site.logo_url} alt={site.name} />
-                      ) : (
-                        <MenuAvatarFallback className="text-xs">
-                          {getInitials(site.name)}
-                        </MenuAvatarFallback>
-                      )}
-                    </MenuAvatar>
-                    <div className="flex flex-col flex-1 min-w-0">
-                      <span className="text-sm font-medium truncate">{site.name}</span>
-                      <span className="text-xs text-muted-foreground truncate">{site.url || "No URL"}</span>
+              {/* Project filters */}
+              <div className="px-2 py-1.5 mb-1">
+                <Tabs 
+                  defaultValue="all" 
+                  value={filter}
+                  onValueChange={(value) => setFilter(value as 'all' | 'owned' | 'shared')}
+                >
+                  <TabsList className="w-full">
+                    <TabsTrigger value="all" className="flex-1 text-xs">
+                      All
+                    </TabsTrigger>
+                    <TabsTrigger value="owned" className="flex-1 text-xs">
+                      My Projects
+                    </TabsTrigger>
+                    <TabsTrigger value="shared" className="flex-1 text-xs">
+                      Shared
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              
+              <DropdownMenuSeparator />
+              
+              {filteredSites.length === 0 ? (
+                <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+                  {filter === 'shared' ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Users className="h-5 w-5 text-muted-foreground/70" />
+                      <p>No shared projects</p>
                     </div>
-                    {isSelected && (
-                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                    )}
-                  </DropdownMenuItem>
-                )
-              })}
+                  ) : (
+                    <p>No projects found</p>
+                  )}
+                </div>
+              ) : (
+                filteredSites.map((site) => {
+                  const isSelected = site.id === currentSite?.id
+                  const isShared = site.user_id !== currentSite?.user_id
+                  
+                  return (
+                    <DropdownMenuItem
+                      key={site.id}
+                      className={cn(
+                        "flex items-center gap-2 p-2 w-full relative",
+                        isSelected && "bg-accent"
+                      )}
+                      onClick={() => {
+                        setCurrentSite(site)
+                        // Opcional: redirigir al dashboard cuando se cambia de sitio
+                        if (window.location.pathname !== "/dashboard") {
+                          router.push("/dashboard")
+                        }
+                      }}
+                    >
+                      <MenuAvatar className="h-6 w-6 flex-shrink-0">
+                        {site.logo_url ? (
+                          <MenuAvatarImage src={site.logo_url} alt={site.name} />
+                        ) : (
+                          <MenuAvatarFallback className="text-xs">
+                            {getInitials(site.name)}
+                          </MenuAvatarFallback>
+                        )}
+                      </MenuAvatar>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-sm font-medium truncate">{site.name}</span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {site.url || "No URL"}
+                          {isShared && (
+                            <span className="ml-1 text-xs text-blue-500">(Shared)</span>
+                          )}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                      )}
+                    </DropdownMenuItem>
+                  )
+                })
+              )}
               
               <div className="h-px bg-border my-1" />
               
-              <DropdownMenuItem
-                className="flex items-center gap-2 p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 w-full"
-                onClick={() => router.push("/site/create")}
-              >
-                <div className="h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </div>
-                <span className="text-sm font-medium flex-1">Add new site</span>
-              </DropdownMenuItem>
+              <div className="p-2 flex justify-center">
+                <Button
+                  variant="default"
+                  size="default"
+                  className="w-full"
+                  onClick={() => router.push("/site/create")}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add New Project
+                </Button>
+              </div>
             </DropdownMenuContent>
           )}
         </DropdownMenu>

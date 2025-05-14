@@ -249,34 +249,77 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
     }
     
     const trackingCode = `<script>
-  // Market Fit Tracking Code
   (function() {
     window.MarketFit = window.MarketFit || {};
+    
     MarketFit.siteId = "${siteId || siteName || 'YOUR_SITE_ID'}";
-    MarketFit.trackVisitors = ${form.getValues("tracking.track_visitors")};
-    MarketFit.trackActions = ${form.getValues("tracking.track_actions")};
-    MarketFit.recordScreen = ${form.getValues("tracking.record_screen")};
-    MarketFit.enableChat = ${form.getValues("tracking.enable_chat")};
-    MarketFit.chatAccentColor = "${form.getValues("tracking.chat_accent_color") || "#e0ff17"}";
-    MarketFit.chatPosition = "${form.getValues("tracking.chat_position") || "bottom-right"}";
-    MarketFit.chatTitle = "${form.getValues("tracking.chat_title") || "Chat with us"}";
-    MarketFit.welcomeMessage = "${form.getValues("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}";
-    MarketFit.allowAnonymousMessages = ${form.getValues("tracking.allow_anonymous_messages") || false};
     
     var script = document.createElement('script');
     script.async = true;
-    script.src = 'https://api.market-fit.ai/tracking.js';
+    script.src = 'https://files.uncodie.com/tracking.min.js';
+    
+    script.onload = function() {
+      if (window.MarketFit && typeof window.MarketFit.init === 'function') {
+        window.MarketFit.init({
+          siteId: "${siteId || siteName || 'YOUR_SITE_ID'}",
+          trackVisitors: ${form.getValues("tracking.track_visitors")},
+          trackActions: ${form.getValues("tracking.track_actions")},
+          recordScreen: ${form.getValues("tracking.record_screen")},
+          debug: false,
+          chat: {
+            enabled: ${form.getValues("tracking.enable_chat")},
+            accentColor: "${form.getValues("tracking.chat_accent_color") || "#e0ff17"}",
+            allowAnonymousMessages: ${form.getValues("tracking.allow_anonymous_messages") || false},
+            position: "${form.getValues("tracking.chat_position") || "bottom-right"}",
+            title: "${form.getValues("tracking.chat_title") || "Chat with us"}",
+            welcomeMessage: "${form.getValues("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}"
+          }
+        });
+      }
+    };
+    
     var firstScript = document.getElementsByTagName('script')[0];
     firstScript.parentNode.insertBefore(script, firstScript);
   })();
 </script>`
 
     try {
-      await navigator.clipboard.writeText(trackingCode)
-      setInternalCodeCopied(true)
-      setTimeout(() => setInternalCodeCopied(false), 2000)
+      // Try to use the modern Clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(trackingCode);
+        setInternalCodeCopied(true);
+        toast.success("Tracking code copied to clipboard");
+        setTimeout(() => setInternalCodeCopied(false), 2000);
+        return;
+      }
+      
+      // Fallback to older document.execCommand method
+      const textArea = document.createElement('textarea');
+      textArea.value = trackingCode;
+      
+      // Make the textarea out of viewport
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      
+      // Select and copy
+      textArea.focus();
+      textArea.select();
+      
+      const success = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (success) {
+        setInternalCodeCopied(true);
+        toast.success("Tracking code copied to clipboard");
+        setTimeout(() => setInternalCodeCopied(false), 2000);
+      } else {
+        throw new Error("Copy command failed");
+      }
     } catch (err) {
-      console.error("Error copying tracking code:", err)
+      console.error("Error copying tracking code:", err);
+      toast.error("Failed to copy tracking code. Please try selecting and copying manually.");
     }
   }
 
@@ -780,23 +823,35 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                   <div className="rounded-md bg-gray-900 p-4 overflow-x-auto">
                     <pre className="text-sm text-white">
                       <code>{`<script>
-  // Market Fit Tracking Code
   (function() {
     window.MarketFit = window.MarketFit || {};
+    
     MarketFit.siteId = "${siteId || siteName || 'YOUR_SITE_ID'}";
-    MarketFit.trackVisitors = ${form.getValues("tracking.track_visitors")};
-    MarketFit.trackActions = ${form.getValues("tracking.track_actions")};
-    MarketFit.recordScreen = ${form.getValues("tracking.record_screen")};
-    MarketFit.enableChat = ${form.getValues("tracking.enable_chat")};
-    MarketFit.chatAccentColor = "${form.getValues("tracking.chat_accent_color") || "#e0ff17"}";
-    MarketFit.chatPosition = "${form.getValues("tracking.chat_position") || "bottom-right"}";
-    MarketFit.chatTitle = "${form.getValues("tracking.chat_title") || "Chat with us"}";
-    MarketFit.welcomeMessage = "${form.getValues("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}";
-    MarketFit.allowAnonymousMessages = ${form.getValues("tracking.allow_anonymous_messages") || false};
     
     var script = document.createElement('script');
     script.async = true;
-    script.src = 'https://api.market-fit.ai/tracking.js';
+    script.src = 'https://files.uncodie.com/tracking.min.js';
+    
+    script.onload = function() {
+      if (window.MarketFit && typeof window.MarketFit.init === 'function') {
+        window.MarketFit.init({
+          siteId: "${siteId || siteName || 'YOUR_SITE_ID'}",
+          trackVisitors: ${form.getValues("tracking.track_visitors")},
+          trackActions: ${form.getValues("tracking.track_actions")},
+          recordScreen: ${form.getValues("tracking.record_screen")},
+          debug: false,
+          chat: {
+            enabled: ${form.getValues("tracking.enable_chat")},
+            accentColor: "${form.getValues("tracking.chat_accent_color") || "#e0ff17"}",
+            allowAnonymousMessages: ${form.getValues("tracking.allow_anonymous_messages") || false},
+            position: "${form.getValues("tracking.chat_position") || "bottom-right"}",
+            title: "${form.getValues("tracking.chat_title") || "Chat with us"}",
+            welcomeMessage: "${form.getValues("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}"
+          }
+        });
+      }
+    };
+    
     var firstScript = document.getElementsByTagName('script')[0];
     firstScript.parentNode.insertBefore(script, firstScript);
   })();

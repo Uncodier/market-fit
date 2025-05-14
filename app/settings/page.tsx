@@ -515,7 +515,6 @@ export default function SettingsPage() {
         tracking_code: settingsData.tracking_code || "",
         analytics_provider: settingsData.analytics_provider || "",
         analytics_id: settingsData.analytics_id || "",
-        whatsapp_token: whatsapp_token || "",
         team_members: team_members || [],
         // Include channels configuration
         channels: channels || {
@@ -558,18 +557,11 @@ export default function SettingsPage() {
             );
             // Clear the token from the form data to avoid storing in plaintext
             data.whatsapp_token = "";
-            // Update settings object to indicate a token is stored
-            settings.whatsapp_token = "TOKEN_PRESENT";
           } catch (tokenError) {
             console.error("Error storing WhatsApp token:", tokenError);
           }
-        } else if (data.whatsapp_token === 'STORED_SECURELY') {
-          // If using the stored token, make sure we keep the indicator in settings
-          settings.whatsapp_token = "TOKEN_PRESENT";
-          // Clear the placeholder from data
-          data.whatsapp_token = "";
         }
-        
+
         // Check for email credentials - Don't process 'STORED_SECURELY' as it's just a placeholder
         if (data.channels?.email?.password && 
             data.channels.email.password.trim() !== '' && 
@@ -774,24 +766,6 @@ export default function SettingsPage() {
             </TabsList>
           </Tabs>
           <div className="flex items-center gap-2">
-            {theme === "system" && (
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  // Simulate the media query change event to test system theme handling
-                  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-                  const event = new MediaQueryListEvent('change', {
-                    media: mediaQuery.media,
-                    matches: !mediaQuery.matches
-                  });
-                  mediaQuery.dispatchEvent(event);
-                  toast.success(`Simulated system theme change to ${mediaQuery.matches ? 'dark' : 'light'}`);
-                }}
-                size="sm"
-              >
-                Test System Theme Change
-              </Button>
-            )}
             <Button 
               type="button"
               onClick={handleManualSave}

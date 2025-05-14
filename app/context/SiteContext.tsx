@@ -381,27 +381,59 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       console.log("Fetching sites for user:", session.user.id)
-      const { data: sitesData, error: sitesError } = await supabaseRef.current
+      
+      // Fetch user's own sites
+      const { data: ownedSitesData, error: ownedSitesError } = await supabaseRef.current
         .from('sites')
         .select('*')
         .eq('user_id', session.user.id)
       
-      if (sitesError) {
-        console.error("Error fetching sites:", sitesError)
-        console.error("Error details:", {
-          code: sitesError.code,
-          message: sitesError.message,
-          details: sitesError.details,
-          hint: sitesError.hint
-        })
-        throw sitesError
+      if (ownedSitesError) {
+        console.error("Error fetching owned sites:", ownedSitesError)
+        throw ownedSitesError
       }
       
-      console.log("Raw sites data:", sitesData)
-      console.log("Sites fetched successfully:", sitesData?.length || 0, "sites found")
+      // Fetch sites where the user is a member (shared with the user)
+      const { data: sharedSiteIds, error: sharedSitesError } = await supabaseRef.current
+        .from('site_members')
+        .select('site_id')
+        .eq('user_id', session.user.id)
+        .eq('status', 'active')
+        .neq('role', 'owner') // Exclude own sites where user is explicitly marked as owner
+      
+      if (sharedSitesError) {
+        console.error("Error fetching shared site IDs:", sharedSitesError)
+        throw sharedSitesError
+      }
+      
+      // Extract the site IDs from the site_members result
+      const sharedIds = sharedSiteIds.map((item: { site_id: string }) => item.site_id)
+      let sharedSitesData: any[] = []
+      
+      // If there are shared sites, fetch their details
+      if (sharedIds.length > 0) {
+        const { data: sharedSites, error: fetchSharedError } = await supabaseRef.current
+          .from('sites')
+          .select('*')
+          .in('id', sharedIds)
+        
+        if (fetchSharedError) {
+          console.error("Error fetching shared sites data:", fetchSharedError)
+          throw fetchSharedError
+        }
+        
+        sharedSitesData = sharedSites || []
+      }
+      
+      // Combine owned and shared sites
+      const allSitesData = [...(ownedSitesData || []), ...sharedSitesData]
+      
+      console.log("Sites fetched successfully:", allSitesData.length, "sites found")
+      console.log("- Owned sites:", ownedSitesData?.length || 0)
+      console.log("- Shared sites:", sharedSitesData.length)
       
       // Cargar focusMode desde localStorage o usar focus_mode de la base de datos
-      const sitesWithData = (sitesData || []).map((site: Tables<'sites'>) => {
+      const sitesWithData = allSitesData.map((site: Tables<'sites'>) => {
         return {
           ...site,
           focus_mode: getLocalStorage(`site_${site.id}_focus_mode`, site.focus_mode || 50),
