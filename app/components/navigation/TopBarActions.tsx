@@ -17,7 +17,7 @@ import { CalendarDateRangePicker } from "../ui/date-range-picker"
 import { AIActionModal } from "@/app/components/ui/ai-action-modal"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter, usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { 
@@ -28,6 +28,7 @@ import {
   Users, 
   FileText
 } from "@/app/components/ui/icons"
+import { subMonths, format } from "date-fns"
 
 // Cpu icon para representación de AI
 const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
@@ -69,6 +70,7 @@ interface TopBarActionsProps {
   isAssetsPage: boolean
   isContentPage: boolean
   isControlCenterPage: boolean
+  isSalesPage: boolean
   isExperimentDetailPage?: boolean
   segmentData: {
     id: string
@@ -82,6 +84,7 @@ interface TopBarActionsProps {
   propSegments?: Array<{ id: string; name: string; description: string }>
   requirements: Array<{ id: string; title: string; description: string }>
   campaigns: Array<{ id: string; title: string; description: string }>
+  onCreateSale?: () => void
 }
 
 export function TopBarActions({
@@ -96,16 +99,23 @@ export function TopBarActions({
   isAssetsPage,
   isContentPage,
   isControlCenterPage,
+  isSalesPage,
   isExperimentDetailPage = false,
   segmentData,
   segments,
   propSegments,
   requirements,
-  campaigns
+  campaigns,
+  onCreateSale
 }: TopBarActionsProps) {
   const { currentSite } = useSite()
   const router = useRouter()
   const pathname = usePathname()
+  const [dateRange, setDateRange] = useState<{ startDate: Date; endDate: Date }>({
+    startDate: subMonths(new Date(), 1),
+    endDate: new Date()
+  })
+  const [selectedSegment, setSelectedSegment] = useState<string>("all")
   
   // AI Action Modal state
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
@@ -117,6 +127,20 @@ export function TopBarActions({
     estimatedTime: 0,
     action: async (): Promise<any> => {}
   })
+
+  // Get current user
+  const supabase = createClient()
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function getUserId() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserId(user.id)
+      }
+    }
+    getUserId()
+  }, [])
 
   const handleCreateSegment = async ({ 
     name, 
@@ -518,12 +542,55 @@ The success of this experiment will be measured by:
   return (
     <div className="flex items-center gap-4">
       {isDashboardPage && (
-        <>
-          <Button>Download</Button>
-        </>
-      )}
-      {isControlCenterPage && (
-        <CalendarDateRangePicker />
+        currentSite ? (
+          <>
+            <Button 
+              onClick={async () => {
+                if (!userId) {
+                  toast.error('User not authenticated')
+                  return
+                }
+
+                try {
+                  const response = await fetch(
+                    `/api/dashboard/export?siteId=${currentSite.id}&segmentId=${selectedSegment}&userId=${userId}&startDate=${format(dateRange.startDate, 'yyyy-MM-dd')}&endDate=${format(dateRange.endDate, 'yyyy-MM-dd')}`,
+                    {
+                      method: 'GET',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    }
+                  )
+                  
+                  if (!response.ok) throw new Error('Export failed')
+                  
+                  const blob = await response.blob()
+                  const url = window.URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `dashboard-report-${format(new Date(), 'yyyy-MM-dd')}.csv`
+                  document.body.appendChild(a)
+                  a.click()
+                  window.URL.revokeObjectURL(url)
+                  document.body.removeChild(a)
+                  
+                  toast.success('Report exported successfully')
+                } catch (error) {
+                  console.error('Error exporting dashboard data:', error)
+                  toast.error('Failed to export report')
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" disabled>
+            <Download className="mr-2 h-4 w-4" />
+            Select a site
+          </Button>
+        )
       )}
       {/* Experiment Detail Page AI Button */}
       {isExperimentDetailPage && currentSite && (
@@ -706,7 +773,34 @@ The success of this experiment will be measured by:
       {isLeadsPage && (
         currentSite ? (
           <>
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/leads/export?siteId=${currentSite.id}`, {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                  
+                  if (!response.ok) throw new Error('Export failed');
+                  
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `leads-${new Date().toISOString().split('T')[0]}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                } catch (error) {
+                  console.error('Error exporting leads:', error);
+                  toast.error('Failed to export leads');
+                }
+              }}
+            >
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
@@ -789,6 +883,52 @@ The success of this experiment will be measured by:
               </Button>
             }
           />
+        ) : (
+          <Button variant="outline" disabled>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Select a site
+          </Button>
+        )
+      )}
+      {isSalesPage && (
+        currentSite ? (
+          <>
+            <Button 
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/sales/export?siteId=${currentSite.id}`, {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                  
+                  if (!response.ok) throw new Error('Export failed');
+                  
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `sales-${new Date().toISOString().split('T')[0]}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                } catch (error) {
+                  console.error('Error exporting sales:', error);
+                  toast.error('Failed to export sales');
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            <Button onClick={onCreateSale}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Sale
+            </Button>
+          </>
         ) : (
           <Button variant="outline" disabled>
             <PlusCircle className="mr-2 h-4 w-4" />

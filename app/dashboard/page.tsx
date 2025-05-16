@@ -30,7 +30,6 @@ import { CPLWidget } from "@/app/components/dashboard/cpl-widget"
 import { format, subMonths, isAfter, isFuture } from "date-fns"
 import { startOfMonth } from "date-fns"
 import { isSameDay, isSameMonth } from "date-fns"
-import { useState as useFormatState } from "react"
 import { useRequestController } from "@/app/hooks/useRequestController"
 
 export default function DashboardPage() {
@@ -50,7 +49,7 @@ export default function DashboardPage() {
     startDate: oneMonthAgo,
     endDate: today
   })
-  const [formattedTotal, setFormattedTotal] = useFormatState("");
+  const [formattedTotal, setFormattedTotal] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
   const [isInitialized, setIsInitialized] = useState(false)
 
@@ -281,13 +280,18 @@ export default function DashboardPage() {
     setSelectedSegment(newSegmentId);
   }
 
-  // Handle tab changes - cancel all pending requests
+  // Update formattedTotal when revenue data changes
+  const handleTotalUpdate = useCallback((total: string) => {
+    setFormattedTotal(total);
+  }, []);
+
+  // Reset states when tab changes
   const handleTabChange = (newTab: string) => {
-    // If tab actually changed, cancel all pending requests
     if (newTab !== activeTab) {
       console.log(`[Dashboard] Changing tab from ${activeTab} to ${newTab}, cancelling all requests`);
       cancelAllRequests();
       setActiveTab(newTab);
+      setFormattedTotal(""); // Reset formatted total when changing tabs
     }
   }
 
@@ -507,7 +511,7 @@ export default function DashboardPage() {
                     endDate={dateRange.endDate}
                     endpoint="revenue-by-campaign"
                     formatValues={true}
-                    onTotalUpdate={(total) => setFormattedTotal(total)}
+                    onTotalUpdate={handleTotalUpdate}
                   />
                 </CardContent>
               </Card>

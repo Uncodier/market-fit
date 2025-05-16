@@ -453,123 +453,17 @@ export function SiteProvider({ children }: SiteProviderProps) {
         const savedSite = savedSiteId ? sitesWithData.find((site: any) => site.id === savedSiteId) : null
         console.log("Found saved site:", savedSite ? "yes" : "no")
         
-        let siteToUse = null;
-        
         // Si el sitio guardado existe en los datos actuales, lo usamos
         if (savedSite) {
           console.log("Using saved site as current:", savedSite.name)
-          siteToUse = savedSite;
+          setCurrentSite(savedSite)
         } 
-        // Si no hay sitio guardado o no se encuentra, usamos el primero
-        else {
-          console.log("No saved site found, using first site:", sitesWithData[0].name)
-          siteToUse = sitesWithData[0];
+        // Si no hay sitio guardado o no se encuentra, usamos el primero solo si no hay sitio actual
+        else if (!currentSite) {
+          console.log("No saved site found and no current site, using first site:", sitesWithData[0].name)
+          setCurrentSite(sitesWithData[0])
           setLocalStorage("currentSiteId", sitesWithData[0].id)
         }
-        
-        // Ahora cargamos los settings específicamente para este sitio
-        if (siteToUse) {
-          try {
-            console.log(`Loading settings specifically for site: ${siteToUse.id}`);
-            const { data: settingsData, error: settingsError } = await supabaseRef.current
-              .from('settings')
-              .select('*')
-              .eq('site_id', siteToUse.id)
-              .single();
-            
-            if (settingsError && settingsError.code !== 'PGRST116') {
-              // PGRST116 significa que no se encontraron registros (es normal para un sitio nuevo)
-              console.error(`Error loading settings for site ${siteToUse.id}:`, settingsError);
-            }
-            
-            // Si tenemos settings, los agregamos al sitio
-            if (settingsData) {
-              console.log(`Settings found for site ${siteToUse.id}:`, settingsData);
-              console.log("Raw goals data from DB:", settingsData.goals);
-              
-              let parsedGoals = {
-                quarterly: '',
-                yearly: '',
-                fiveYear: '',
-                tenYear: ''
-              };
-              
-              try {
-                parsedGoals = parseJsonField(settingsData.goals, {
-                  quarterly: '',
-                  yearly: '',
-                  fiveYear: '',
-                  tenYear: ''
-                });
-                console.log("Goals after parsing:", parsedGoals);
-              } catch (goalsError) {
-                console.error("Error parsing goals:", goalsError);
-              }
-              
-              siteToUse = {
-                ...siteToUse,
-                settings: {
-                  id: settingsData.id,
-                  site_id: settingsData.site_id,
-                  about: settingsData.about,
-                  company_size: settingsData.company_size,
-                  industry: settingsData.industry,
-                  products: parseJsonField(settingsData.products, []),
-                  services: parseJsonField(settingsData.services, []),
-                  swot: parseJsonField(settingsData.swot, {
-                    strengths: '',
-                    weaknesses: '',
-                    opportunities: '',
-                    threats: ''
-                  }),
-                  locations: parseJsonField(settingsData.locations, []),
-                  marketing_budget: parseJsonField(settingsData.marketing_budget, {
-                    total: 0,
-                    available: 0
-                  }),
-                  marketing_channels: parseJsonField(settingsData.marketing_channels, []),
-                  social_media: parseJsonField(settingsData.social_media, []),
-                  tracking_code: settingsData.tracking_code,
-                  analytics_provider: settingsData.analytics_provider,
-                  analytics_id: settingsData.analytics_id,
-                  whatsapp_token: settingsData.whatsapp_token,
-                  team_members: parseJsonField(settingsData.team_members, []),
-                  team_roles: parseJsonField(settingsData.team_roles, []),
-                  org_structure: parseJsonField(settingsData.org_structure, {}),
-                  created_at: settingsData.created_at,
-                  updated_at: settingsData.updated_at,
-                  competitors: parseJsonField(settingsData.competitors, []),
-                  focus_mode: settingsData.focus_mode,
-                  goals: parsedGoals,
-                  channels: parseJsonField(settingsData.channels, {
-                    email: {
-                      enabled: false,
-                      email: "",
-                      password: "",
-                      incomingServer: "",
-                      incomingPort: "",
-                      outgoingServer: "",
-                      outgoingPort: ""
-                    }
-                  })
-                }
-              };
-            } else {
-              console.log(`No settings found for site ${siteToUse.id}, using defaults`);
-            }
-          } catch (settingsErr) {
-            console.error(`Error handling settings for site ${siteToUse.id}:`, settingsErr);
-            // Continuamos con el sitio sin settings
-          }
-          
-          // Establecer el sitio actual con sus settings (si existen)
-          handleSetCurrentSite(siteToUse as Site).catch(err => {
-            console.error("Error setting current site:", err);
-          });
-        }
-      } else {
-        console.log("No sites found for this user")
-        setCurrentSite(null)
       }
 
       if (!isInitialized) {

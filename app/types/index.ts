@@ -97,7 +97,7 @@ export interface Sale {
   amount: number;
   amount_due: number;
   currency?: string;
-  status: 'pending' | 'completed' | 'cancelled' | 'refunded';
+  status: 'draft' | 'pending' | 'completed' | 'cancelled' | 'refunded';
   leadId: string | null;
   leadName: string | null;
   campaignId: string;
@@ -231,7 +231,7 @@ export interface SaleData {
   product_type: string | null;
   amount: number;
   amount_due: number;
-  status: 'pending' | 'completed' | 'cancelled' | 'refunded';
+  status: 'draft' | 'pending' | 'completed' | 'cancelled' | 'refunded';
   lead_id: string | null;
   lead_name?: string | null; // Para cuando se carga con joins
   campaign_id: string;

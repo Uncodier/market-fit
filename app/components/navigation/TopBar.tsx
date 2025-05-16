@@ -20,6 +20,7 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   }>
   breadcrumb?: React.ReactNode
   isExperimentDetailPage?: boolean
+  onCreateSale?: () => void
 }
 
 export function TopBar({ 
@@ -31,6 +32,7 @@ export function TopBar({
   segments: propSegments,
   breadcrumb,
   isExperimentDetailPage = false,
+  onCreateSale,
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
@@ -49,6 +51,12 @@ export function TopBar({
     isGeneratingTopics: boolean;
     openAIModal: (type: 'analysis' | 'icp' | 'topics') => void;
   } | null>(null);
+
+  // Reset states when pathname changes
+  useEffect(() => {
+    setIsProcessing(false);
+    setSegmentData(null);
+  }, [pathname]);
 
   // Escuchar eventos de actualización del segmento
   useEffect(() => {
@@ -168,12 +176,14 @@ export function TopBar({
           isAssetsPage={pathname === "/assets"}
           isContentPage={pathname === "/content"}
           isControlCenterPage={pathname === "/control-center"}
+          isSalesPage={pathname === "/sales"}
           isExperimentDetailPage={isExperimentDetailPage}
           segmentData={segmentData}
           segments={segments}
           propSegments={propSegments}
           requirements={requirements}
           campaigns={campaigns}
+          onCreateSale={onCreateSale}
         />
       </div>
       

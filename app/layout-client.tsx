@@ -42,6 +42,10 @@ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
     title: "Leads",
     helpText: "Manage and track potential customers"
   },
+  "/sales": {
+    title: "Sales",
+    helpText: "Manage and track your sales and orders"
+  },
   "/billing": {
     title: "Billing",
     helpText: "Manage your subscription plans and payment methods"
@@ -159,6 +163,7 @@ export default function LayoutClient({
   const [breadcrumbFromEvent, setBreadcrumbFromEvent] = useState<React.ReactNode>(null)
   const [customTitle, setCustomTitle] = useState<string | null>(null)
   const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
+  const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
 
   // Determine if we're on an experiment detail page
   const isExperimentDetailPage = pathname ? /^\/experiments\/[a-zA-Z0-9-]+$/.test(pathname) : false;
@@ -260,6 +265,11 @@ export default function LayoutClient({
   // Determinar si estamos en la página de login
   const isLoginPage = pathname === '/auth/login'
 
+  // Handle create sale button click
+  const handleCreateSaleClick = () => {
+    window.dispatchEvent(new CustomEvent('sales:create'))
+  }
+
   // Renderizar un estado de carga simple hasta que la aplicación esté hidratada
   if (!isMounted) {
     return (
@@ -308,6 +318,7 @@ export default function LayoutClient({
               }}
               breadcrumb={customBreadcrumb}
               isExperimentDetailPage={isExperimentDetailPage}
+              onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
             />
             <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
             <main 

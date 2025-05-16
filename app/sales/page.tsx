@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Input } from "@/app/components/ui/input"
@@ -25,12 +25,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/app/components/ui/label"
 import { useRouter } from "next/navigation"
 import { RegisterPaymentDialog } from "./components/RegisterPaymentDialog"
+import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { KanbanView } from "./components/KanbanView"
+import { CreateSaleDialog } from "./components/CreateSaleDialog"
+import { useCommandK } from "@/app/hooks/use-command-k"
 
 // Constants
 const NO_SEGMENT = "no_segment"
 
 // Status colors for sales
 const STATUS_STYLES = {
+  draft: "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200",
   pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
   completed: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
   cancelled: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
@@ -514,6 +519,7 @@ function SendSaleDialog({ sale, open, onOpenChange, onSave }: SendSaleDialogProp
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -628,8 +634,13 @@ export default function SalesPage() {
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string }>>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [viewType, setViewType] = useState<ViewType>("table")
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const { currentSite } = useSite()
   const router = useRouter()
+  
+  // Use the command+k hook
+  useCommandK()
   
   // States for dialog controls
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
@@ -701,6 +712,29 @@ export default function SalesPage() {
     loadCampaigns()
   }, [currentSite])
   
+  // Search query change handler
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1)
+  }
+
+  // Create sale success handler
+  const handleCreateSuccess = () => {
+    loadSales()
+  }
+
+  // Effect to handle create dialog state from TopBar
+  useEffect(() => {
+    const handleCreateSale = () => {
+      setIsCreateDialogOpen(true)
+    }
+
+    window.addEventListener('sales:create', handleCreateSale)
+    return () => {
+      window.removeEventListener('sales:create', handleCreateSale)
+    }
+  }, [])
+
   // Filter sales based on status and search query
   const getFilteredSales = (status: string) => {
     if (!sales) return []
@@ -715,11 +749,12 @@ export default function SalesPage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       filtered = filtered.filter(sale => 
-        sale.title.toLowerCase().includes(query) || 
-        (sale.productName && sale.productName.toLowerCase().includes(query)) ||
-        (sale.leadName && sale.leadName.toLowerCase().includes(query)) ||
+        sale.title?.toLowerCase().includes(query) || 
+        sale.productName?.toLowerCase().includes(query) ||
+        sale.leadName?.toLowerCase().includes(query) ||
         formatCurrency(sale.amount).includes(query) ||
-        sale.source.toLowerCase().includes(query)
+        sale.source.toLowerCase().includes(query) ||
+        sale.status.toLowerCase().includes(query)
       )
     }
     
@@ -750,12 +785,6 @@ export default function SalesPage() {
     setCurrentPage(1)
   }
   
-  // Search query change handler
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1)
-  }
-
   // Sale click handler (for future details view)
   const handleSaleClick = (sale: Sale) => {
     router.push(`/sales/${sale.id}`);
@@ -821,154 +850,278 @@ export default function SalesPage() {
     toast.success("Sale sent to printer")
     setPrintDialogOpen(false)
   }
-  
+
+  // Function to update sale status (for Kanban view)
+  const handleUpdateSaleStatus = async (saleId: string, newStatus: string) => {
+    const sale = sales.find(s => s.id === saleId)
+    if (!sale || !currentSite?.id) return
+    
+    try {
+      const result = await updateSale(currentSite.id, {
+        ...sale,
+        status: newStatus as any
+      })
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      // Update local state
+      setSales(prevSales => 
+        prevSales.map(s => 
+          s.id === saleId ? { ...s, status: newStatus as any } : s
+        )
+      )
+      
+      toast.success("Sale status updated successfully")
+    } catch (error) {
+      console.error("Error updating sale status:", error)
+      toast.error("Error updating sale status")
+    }
+  }
+
   return (
     <SalesContext.Provider value={{ segments, campaigns }}>
-    <div className="flex-1 p-0">
-      <Tabs defaultValue={activeTab} className="h-full space-y-6">
-        <StickyHeader showAIButton={false}>
-          <div className="px-16 pt-0">
-            <div className="flex items-center gap-8">
+      <div className="flex-1 p-0">
+        <Tabs defaultValue={activeTab} className="h-full space-y-6">
+          <StickyHeader>
+            <div className="px-16 pt-0">
               <div className="flex items-center gap-8">
-                <TabsList>
-                  <TabsTrigger value="all" className="text-sm font-medium">All Sales</TabsTrigger>
-                  <TabsTrigger value="pending" className="text-sm font-medium">Pending</TabsTrigger>
-                  <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
-                  <TabsTrigger value="cancelled" className="text-sm font-medium">Cancelled</TabsTrigger>
-                  <TabsTrigger value="refunded" className="text-sm font-medium">Refunded</TabsTrigger>
-                </TabsList>
-                <div className="relative w-64">
-                  <Input 
-                    placeholder="Search sales..." 
-                    className="w-full" 
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                  />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
+                <div className="flex items-center gap-8">
+                  <TabsList>
+                    <TabsTrigger value="all" className="text-sm font-medium">All Sales</TabsTrigger>
+                    <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
+                    <TabsTrigger value="pending" className="text-sm font-medium">Pending</TabsTrigger>
+                    <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
+                    <TabsTrigger value="cancelled" className="text-sm font-medium">Cancelled</TabsTrigger>
+                    <TabsTrigger value="refunded" className="text-sm font-medium">Refunded</TabsTrigger>
+                  </TabsList>
+                  <div className="relative w-64">
+                    <Input 
+                      data-command-k-input
+                      placeholder="Search sales..." 
+                      className="w-full" 
+                      icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                    />
+                    <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                      <span className="text-xs">⌘</span>K
+                    </kbd>
+                  </div>
+                </div>
+                <div className="ml-auto flex items-center gap-4">
+                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
               </div>
-              <div className="ml-auto flex items-center gap-4">
-                <Button variant="default">
-                  Add Sale
-                </Button>
-              </div>
+            </div>
+          </StickyHeader>
+          
+          <div className="p-8 space-y-4">
+            <div className="px-8">
+              {loading ? (
+                <SalesTableSkeleton />
+              ) : (
+                <>
+                  <TabsContent value="all" className="space-y-4">
+                    {viewType === "table" ? (
+                      <SalesTable
+                        sales={currentSales}
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalSales={filteredSales.length}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    ) : (
+                      <KanbanView 
+                        sales={filteredSales}
+                        onUpdateSaleStatus={handleUpdateSaleStatus}
+                        segments={segments}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="draft" className="space-y-4">
+                    {viewType === "table" ? (
+                      <SalesTable
+                        sales={currentSales}
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalSales={filteredSales.length}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    ) : (
+                      <KanbanView 
+                        sales={filteredSales}
+                        onUpdateSaleStatus={handleUpdateSaleStatus}
+                        segments={segments}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="pending" className="space-y-4">
+                    {viewType === "table" ? (
+                      <SalesTable
+                        sales={currentSales}
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalSales={filteredSales.length}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    ) : (
+                      <KanbanView 
+                        sales={filteredSales}
+                        onUpdateSaleStatus={handleUpdateSaleStatus}
+                        segments={segments}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="completed" className="space-y-4">
+                    {viewType === "table" ? (
+                      <SalesTable
+                        sales={currentSales}
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalSales={filteredSales.length}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    ) : (
+                      <KanbanView 
+                        sales={filteredSales}
+                        onUpdateSaleStatus={handleUpdateSaleStatus}
+                        segments={segments}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="cancelled" className="space-y-4">
+                    {viewType === "table" ? (
+                      <SalesTable
+                        sales={currentSales}
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalSales={filteredSales.length}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    ) : (
+                      <KanbanView 
+                        sales={filteredSales}
+                        onUpdateSaleStatus={handleUpdateSaleStatus}
+                        segments={segments}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="refunded" className="space-y-4">
+                    {viewType === "table" ? (
+                      <SalesTable
+                        sales={currentSales}
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalSales={filteredSales.length}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    ) : (
+                      <KanbanView 
+                        sales={filteredSales}
+                        onUpdateSaleStatus={handleUpdateSaleStatus}
+                        segments={segments}
+                        onSaleClick={handleSaleClick}
+                        onSendSale={handleSendSale}
+                        onPrintSale={handlePrintSale}
+                        onRegisterPayment={handleRegisterPayment}
+                      />
+                    )}
+                  </TabsContent>
+                </>
+              )}
             </div>
           </div>
-        </StickyHeader>
+        </Tabs>
         
-        <div className="p-8 space-y-4">
-          <div className="px-8">
-            {loading ? (
-              <SalesTableSkeleton />
-            ) : (
-              <>
-                <TabsContent value="all" className="space-y-4">
-                  <SalesTable
-                    sales={currentSales}
-                    currentPage={currentPage}
-                    itemsPerPage={itemsPerPage}
-                    totalSales={filteredSales.length}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    onSaleClick={handleSaleClick}
-                    onSendSale={handleSendSale}
-                    onPrintSale={handlePrintSale}
-                    onRegisterPayment={handleRegisterPayment}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="pending" className="space-y-4">
-                  <SalesTable
-                    sales={currentSales}
-                    currentPage={currentPage}
-                    itemsPerPage={itemsPerPage}
-                    totalSales={filteredSales.length}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    onSaleClick={handleSaleClick}
-                    onSendSale={handleSendSale}
-                    onPrintSale={handlePrintSale}
-                    onRegisterPayment={handleRegisterPayment}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="completed" className="space-y-4">
-                  <SalesTable
-                    sales={currentSales}
-                    currentPage={currentPage}
-                    itemsPerPage={itemsPerPage}
-                    totalSales={filteredSales.length}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    onSaleClick={handleSaleClick}
-                    onSendSale={handleSendSale}
-                    onPrintSale={handlePrintSale}
-                    onRegisterPayment={handleRegisterPayment}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="cancelled" className="space-y-4">
-                  <SalesTable
-                    sales={currentSales}
-                    currentPage={currentPage}
-                    itemsPerPage={itemsPerPage}
-                    totalSales={filteredSales.length}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    onSaleClick={handleSaleClick}
-                    onSendSale={handleSendSale}
-                    onPrintSale={handlePrintSale}
-                    onRegisterPayment={handleRegisterPayment}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="refunded" className="space-y-4">
-                  <SalesTable
-                    sales={currentSales}
-                    currentPage={currentPage}
-                    itemsPerPage={itemsPerPage}
-                    totalSales={filteredSales.length}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    onSaleClick={handleSaleClick}
-                    onSendSale={handleSendSale}
-                    onPrintSale={handlePrintSale}
-                    onRegisterPayment={handleRegisterPayment}
-                  />
-                </TabsContent>
-              </>
-            )}
-          </div>
-        </div>
-      </Tabs>
-      
-      {/* Send Sale Dialog */}
-      <SendSaleDialog
-        sale={selectedSale}
-        open={sendDialogOpen}
-        onOpenChange={setSendDialogOpen}
-        onSave={handleSaveSale}
-      />
-      
-      {/* Print Sale Dialog */}
-      <PrintSaleDialog
-        sale={selectedSale}
-        open={printDialogOpen}
-        onOpenChange={setPrintDialogOpen}
-        onConfirm={handleConfirmPrint}
-      />
+        {/* Send Sale Dialog */}
+        <SendSaleDialog
+          sale={selectedSale}
+          open={sendDialogOpen}
+          onOpenChange={setSendDialogOpen}
+          onSave={handleSaveSale}
+        />
+        
+        {/* Print Sale Dialog */}
+        <PrintSaleDialog
+          sale={selectedSale}
+          open={printDialogOpen}
+          onOpenChange={setPrintDialogOpen}
+          onConfirm={handleConfirmPrint}
+        />
 
-      {/* Register Payment Dialog */}
-      <RegisterPaymentDialog
-        sale={selectedSale}
-        open={registerPaymentOpen}
-        onOpenChange={setRegisterPaymentOpen}
-        onSuccess={handlePaymentSuccess}
-      />
-    </div>
+        {/* Register Payment Dialog */}
+        <RegisterPaymentDialog
+          sale={selectedSale}
+          open={registerPaymentOpen}
+          onOpenChange={setRegisterPaymentOpen}
+          onSuccess={handlePaymentSuccess}
+        />
+
+        {/* Create Sale Dialog */}
+        <CreateSaleDialog
+          open={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+          onSuccess={handleCreateSuccess}
+        />
+      </div>
     </SalesContext.Provider>
   )
 } 

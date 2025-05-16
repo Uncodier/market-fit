@@ -43,8 +43,8 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   useEffect(() => {
     setIsMounted(true)
     
-    // Si no hay sitio actual pero hay sitios disponibles, seleccionar el primero
-    if (sites.length > 0 && (!currentSite || currentSite.id === "default")) {
+    // Only set first site if there's no current site and sites are available
+    if (sites.length > 0 && !currentSite) {
       console.log("No current site but sites available. Setting first site:", sites[0].name)
       setCurrentSite(sites[0])
     }
@@ -205,11 +205,15 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                       )}
                       onClick={() => {
                         setCurrentSite(site)
-                        // Solo redirigir al dashboard si estamos en una ruta base
+                        // Solo redirigir al dashboard si estamos en una ruta anidada que lo requiera
                         const currentPath = window.location.pathname
                         const pathSegments = currentPath.split('/').filter(Boolean)
-                        const isDetailRoute = pathSegments.length >= 2 && !['settings', 'billing', 'dashboard'].includes(pathSegments[0])
-                        if (!isDetailRoute) {
+                        
+                        // Rutas que no requieren redirección al cambiar de sitio
+                        const safeRoutes = ['settings', 'billing', 'dashboard', 'content', 'sales', 'marketing']
+                        
+                        // Si estamos en una ruta anidada que no es segura, redirigir al dashboard
+                        if (pathSegments.length >= 2 && !safeRoutes.includes(pathSegments[0])) {
                           router.push("/dashboard")
                         }
                       }}

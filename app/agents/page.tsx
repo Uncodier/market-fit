@@ -27,6 +27,7 @@ import { createConversation } from "@/app/services/chat-service"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { toast } from "react-hot-toast"
 import { SimpleAgentCardSkeleton, GridAgentRowSkeleton } from "@/app/components/agents/skeleton-components"
+import { useCommandK } from "@/app/hooks/use-command-k"
 
 // Type-safe version of the example commands
 const exampleCommands: Command[] = [
@@ -131,6 +132,9 @@ function AgentsPageContent() {
   const leadAgent = agents.find(agent => agent.id === "1");
   const dataAnalystAgent = agents.find(agent => agent.id === "4");
   const executionAgents = agents.filter(agent => !["1", "4"].includes(agent.id));
+  
+  // Initialize command+k hook
+  useCommandK()
   
   // Fetch agents from API
   useEffect(() => {
@@ -494,6 +498,7 @@ function AgentsPageContent() {
                     
                     <div className="relative w-64">
                       <Input 
+                        data-command-k-input
                         placeholder="Search agents..." 
                         className="w-full"
                         value={searchQuery}

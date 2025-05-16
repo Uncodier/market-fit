@@ -52,6 +52,7 @@ import { useRouter } from "next/navigation"
 import { CreateContentDialog } from "./components"
 import { getContentTypeName, getSegmentName, getContentTypeIconClass } from "./utils"
 import { StarRating } from "@/app/components/ui/rating"
+import { useCommandK } from "@/app/hooks/use-command-k"
 
 // Definimos los tipos de estado del contenido
 const CONTENT_STATUSES = [
@@ -1516,6 +1517,9 @@ export default function ContentPage() {
   const [totalContent, setTotalContent] = useState(0)
   const [campaigns, setCampaigns] = useState<Array<{id: string, title: string, description?: string}>>([])
 
+  // Initialize command+k hook
+  useCommandK()
+
   useEffect(() => {
     if (currentSite?.id) {
       refreshContentList()
@@ -1786,6 +1790,7 @@ export default function ContentPage() {
                 </TabsList>
                 <div className="relative w-64">
                   <Input
+                    data-command-k-input
                     type="text"
                     placeholder="Search content..."
                     className="w-full pl-8 pr-12"

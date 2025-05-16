@@ -28,6 +28,7 @@ import { Lead } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { getTasksByLeadId } from "@/app/leads/tasks/actions"
 import { JOURNEY_STAGES } from "@/app/leads/types"
+import { useCommandK } from "@/app/hooks/use-command-k"
 
 // Cache de etapas para cada lead
 const leadJourneyStagesCache: Record<string, string> = {};
@@ -424,6 +425,9 @@ export default function LeadsPage() {
   })
   const { currentSite } = useSite()
   
+  // Initialize command+k hook
+  useCommandK()
+  
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return "No Segment"
@@ -695,7 +699,7 @@ export default function LeadsPage() {
       />
       
       <Tabs defaultValue={activeTab} className="h-full space-y-6">
-        <StickyHeader showAIButton={false}>
+        <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
@@ -709,6 +713,7 @@ export default function LeadsPage() {
                 </TabsList>
                 <div className="relative w-64">
                   <Input 
+                    data-command-k-input
                     placeholder="Search leads..." 
                     className="w-full" 
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}

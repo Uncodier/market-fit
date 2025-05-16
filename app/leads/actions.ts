@@ -471,7 +471,17 @@ export async function getLeadConversations(siteId: string, leadId: string) {
     }
     
     // Transform the data to match the Conversation interface needed by the component
-    const conversations = data.map((item) => {
+    const conversations = data.map((item: {
+      id: string
+      title: string | null
+      last_message_at: string | null
+      created_at: string
+      messages?: Array<{
+        content: string
+        created_at: string
+        role: string
+      }> | null
+    }) => {
       // Get the last message content if available from the nested messages
       const lastMessageContent = item.messages && item.messages.length > 0 
         ? item.messages[item.messages.length - 1].content 
@@ -491,5 +501,57 @@ export async function getLeadConversations(siteId: string, leadId: string) {
   } catch (error) {
     console.error("Error in getLeadConversations:", error);
     return { error: "Failed to fetch lead conversations", conversations: [] };
+  }
+}
+
+export async function exportLeads(siteId: string) {
+  try {
+    const supabase = await createClient()
+    
+    // Get all leads for the site with segment name
+    const { data: leads, error } = await supabase
+      .from('leads')
+      .select(`
+        *,
+        segments:segment_id (
+          name
+        )
+      `)
+      .eq('site_id', siteId)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      return { error: error.message }
+    }
+
+    // Transform leads data for CSV
+    const csvData = leads.map((lead: {
+      name: string
+      email: string
+      phone: string | null
+      company: { name?: string } | null
+      position: string | null
+      status: string
+      segments: { name: string } | null
+      origin: string | null
+      created_at: string
+      notes: string | null
+    }) => ({
+      Name: lead.name,
+      Email: lead.email,
+      Phone: lead.phone || '',
+      Company: lead.company?.name || '',
+      Position: lead.position || '',
+      Status: lead.status,
+      Segment: lead.segments?.name || 'No Segment',
+      Origin: lead.origin || '',
+      Created: new Date(lead.created_at).toLocaleDateString(),
+      Notes: lead.notes || ''
+    }))
+
+    return { data: csvData }
+  } catch (error) {
+    console.error('Error exporting leads:', error)
+    return { error: 'Failed to export leads' }
   }
 } 

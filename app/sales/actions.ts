@@ -73,7 +73,7 @@ export async function createSale(data: {
   productType?: string;
   amount: number;
   amount_due?: number;
-  status: 'pending' | 'completed' | 'cancelled' | 'refunded';
+  status: 'draft' | 'pending' | 'completed' | 'cancelled' | 'refunded';
   leadId?: string;
   campaignId: string;
   segmentId?: string;

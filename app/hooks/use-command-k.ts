@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect } from 'react';
 
 /**
  * Hook para manejar el atajo de teclado Command/Ctrl + K

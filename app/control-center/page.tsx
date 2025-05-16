@@ -570,8 +570,8 @@ export default function ControlCenterPage() {
   }>>([]);
   const { currentSite } = useSite();
   
-  // Initialize the hook useCommandK
-  useCommandK();
+  // Initialize command+k hook
+  useCommandK()
 
   // Group campaigns by type
   const campaignsByType: { [key: string]: Campaign[] } = {};
@@ -658,7 +658,7 @@ export default function ControlCenterPage() {
   return (
     <div className="flex-1 p-0 h-auto overflow-visible">
       <StickyHeader>
-        <div className="flex items-center px-16 w-full">
+        <div className="flex items-center justify-between px-16 w-full">
           <div className="flex items-center gap-4">
             <Tabs defaultValue="active" className="w-auto">
               <TabsList>
@@ -668,6 +668,7 @@ export default function ControlCenterPage() {
               </TabsList>
             </Tabs>
             <SearchInput
+              data-command-k-input
               placeholder="Search campaigns..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -719,6 +720,9 @@ export default function ControlCenterPage() {
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+          <div className="flex items-center">
+            <CalendarDateRangePicker />
           </div>
         </div>
       </StickyHeader>
