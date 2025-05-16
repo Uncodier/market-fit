@@ -277,7 +277,7 @@ export const DemographicsComponent: React.FC<DemographicsComponentProps> = ({
     (hasLinkedInEducationData || hasJobExperienceData);
   
   return (
-    <Card className="border-none shadow-sm">
+    <Card className="shadow-sm">
       <CardHeader className="px-6 pt-6 pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

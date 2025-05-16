@@ -24,7 +24,7 @@ export const SectionTitle = ({ children, icon }: { children: React.ReactNode, ic
 
 export const AttributeCard = ({ title, value, className }: AttributeCardProps) => {
   return (
-    <div className={cn("bg-muted/20 p-4 rounded-lg", className)}>
+    <div className={cn("bg-muted/20 p-4 rounded-md overflow-hidden", className)}>
       <h4 className="text-sm font-medium text-muted-foreground mb-3">{title}</h4>
       <div>{value}</div>
     </div>
@@ -33,7 +33,7 @@ export const AttributeCard = ({ title, value, className }: AttributeCardProps) =
 
 export const SectionCard = ({ title, icon, children, className }: SectionCardProps) => {
   return (
-    <Card className={cn("overflow-hidden shadow-sm", className)}>
+    <Card className={cn("shadow-sm overflow-hidden", className)}>
       <CardHeader className="bg-background py-4 px-5 flex flex-row items-center justify-between space-y-0">
         <div className="flex items-center gap-2">
           {icon && <span className="text-primary">{icon}</span>}

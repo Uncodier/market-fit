@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, RefObject, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import React from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -22,7 +22,8 @@ import {
   Trash2,
   ExternalLink,
   HelpCircle,
-  Pencil
+  Pencil,
+  User as UserIcon
 } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { useSite } from "@/app/context/SiteContext"
@@ -40,11 +41,12 @@ import dynamic from 'next/dynamic'
 import { LoadingState } from "./components/LoadingState"
 import { ErrorState } from "./components/ErrorState"
 import { AIActionModal, AIActionIcon } from "@/app/components/ui/ai-action-modal"
-import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { buildSegmentsWithAI } from "@/app/services/ai-service"
 import { toast } from "sonner"
 import { SegmentStatusWidget } from "./components/SegmentStatusWidget"
+import { NewAdPlatformType } from "./components/analysisComponents"
+import SegmentDetailsTab from "./components/SegmentDetailsTab"
 
 export type AdPlatform = "facebook" | "google" | "linkedin" | "tiktok"
 
@@ -115,42 +117,25 @@ interface AudienceProfileData {
   [key: string]: any; // Para otros campos planos
 }
 
+// Define Segment type locally
 export interface Segment {
-  id: string
-  name: string
-  description: string | null
-  audience: string | null
-  language: string | null
-  size: string | null
-  engagement: number | null
-  created_at: string
-  url: string | null
-  analysis: {
-    data: AudienceProfileData | Record<string, any>;
-    type?: string;
-  } | Array<{
-    type: string;
-    data: AudienceProfileData | Record<string, any>;
-  }> | null
+  id: string;
+  name: string;
+  description: string | null;
+  audience: string | null;
+  language: string | null;
+  size: string | null;
+  engagement: number | null;
+  created_at: string;
+  url: string | null;
+  analysis: any;
   topics: {
-    blog: string[]
-    newsletter: string[]
-  } | null
-  is_active: boolean
-  estimated_value: number | null
-  icp: {
-    role?: string
-    company_size?: string
-    industry?: string
-    age_range?: string
-    pain_points?: string[]
-    goals?: string[]
-    budget?: string
-    decision_maker?: boolean
-    location?: string
-    experience?: string
-    profile?: any // Using any to avoid TypeScript errors with the complex profile structure
-  } | null
+    blog: string[];
+    newsletter: string[];
+  } | null;
+  is_active: boolean;
+  estimated_value: number | null;
+  icp: any;
 }
 
 // Dummy data for the chart
@@ -221,218 +206,211 @@ export function getHotTopics(segment: Segment, type: 'blog' | 'newsletter'): str
   return segment.topics?.[type] || []
 }
 
-// Skeleton components for lazy loading
-const ICPProfileSkeleton = () => (
-  <div className="animate-pulse">
-    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-      <div className="w-full">
-        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-1/3 mb-2"></div>
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-2/3 mt-1"></div>
-      </div>
-      <div className="flex items-center gap-4 mt-1">
-        <div className="w-[180px] h-9 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
-      </div>
-    </div>
-    
-    {/* Summary Card skeleton */}
-    <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
-      {[...Array(5)].map((_, index) => (
-        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-24"></div>
-            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-          </div>
-          <div className="space-y-2">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-28"></div>
-              </div>
-            ))}
+// Skeleton for the sticky header actions
+const StickyHeaderSkeleton = () => (
+  <StickyHeader>
+    <div className="px-16 pt-0 w-full">
+      <div className="flex items-center justify-between w-full">
+        <div className="flex items-center gap-8">
+          <div className="bg-background rounded-lg p-1">
+            <div className="flex gap-1">
+              <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+              <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+              <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+            </div>
           </div>
         </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+            <div className="h-9 w-[180px] bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </StickyHeader>
+);
+
+// Skeleton for Analysis tab
+const AnalysisSkeleton = () => (
+  <div className="animate-pulse space-y-6">
+    {/* Performance Metrics Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {[...Array(4)].map((_, i) => (
+        <Card key={i}>
+          <CardContent className="p-6">
+            <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+            <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded-md mb-1" />
+            <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </CardContent>
+        </Card>
       ))}
     </div>
-    
-    {/* Tab content skeleton */}
-    <div className="mt-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(6)].map((_, index) => (
-          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-1/3 mb-4"></div>
+
+    {/* Market Penetration and Behavior Cards */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {[...Array(2)].map((_, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+            <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px] bg-gray-200 dark:bg-gray-700 rounded-md mb-4" />
             <div className="space-y-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-full"></div>
+              {[...Array(3)].map((_, j) => (
+                <div key={j} className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded-md" />
               ))}
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-const TopicsSkeleton = () => (
-  <div className="animate-pulse">
-    <div className="flex justify-between items-center mb-6">
-      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-48"></div>
-      <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
-    </div>
-    
-    {/* Kanban Board Skeleton */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {/* Blog Topics Column */}
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
-          <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-        </div>
-        {/* Cards */}
-        {[...Array(4)].map((_, index) => (
-          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-3">
-            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-2"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4"></div>
-            <div className="flex justify-between items-center mt-3">
-              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-20"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      {/* Newsletter Topics Column */}
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
-          <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-        </div>
-        {/* Cards */}
-        {[...Array(3)].map((_, index) => (
-          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-3">
-            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-2"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4"></div>
-            <div className="flex justify-between items-center mt-3">
-              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-20"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      {/* Other Topics Column */}
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
-          <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-        </div>
-        {/* Cards */}
-        {[...Array(2)].map((_, index) => (
-          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-3">
-            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-2"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4"></div>
-            <div className="flex justify-between items-center mt-3">
-              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-20"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-// Skeleton components for lazy loading
-const AnalysisSkeleton = () => (
-  <div className="animate-pulse">
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-48"></div>
-      <div className="flex items-center gap-4">
-        <div className="w-[180px] h-9 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
-      </div>
-    </div>
-    
-    {/* Performance Metrics Cards */}
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-      {[...Array(4)].map((_, index) => (
-        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-1/2 mb-2"></div>
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-1/3 mb-1"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4"></div>
-        </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
-    
-    {/* Market Penetration and Behavior Cards */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      {[...Array(2)].map((_, index) => (
-        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-32"></div>
-            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-          </div>
-          <div className="h-[200px] bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-4"></div>
-          <div className="space-y-2">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-full"></div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-    
+
     {/* Demographics and Regional Distribution Cards */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {[...Array(2)].map((_, index) => (
-        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-md w-36"></div>
-            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-          </div>
-          <div className="h-[200px] bg-gray-200 dark:bg-gray-700 rounded-md w-full mb-4"></div>
-          <div className="space-y-2">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded-md w-full"></div>
-            ))}
-          </div>
-        </div>
+      {[...Array(2)].map((_, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+            <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px] bg-gray-200 dark:bg-gray-700 rounded-md mb-4" />
+            <div className="space-y-2">
+              {[...Array(3)].map((_, j) => (
+                <div key={j} className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded-md" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   </div>
 );
 
-// Lazy load components with error boundaries and suspense
-const SegmentAnalysisTab = dynamic(
-  () => import('./components/SegmentAnalysisTab').catch(() => {
-    return () => <div className="p-4 text-center">Error loading analysis tab. Please try refreshing the page.</div>;
-  }),
-  { 
-    loading: () => <AnalysisSkeleton />,
-    ssr: false,
-    suspense: true
-  }
+// Skeleton for ICP tab
+const ICPProfileSkeleton = () => (
+  <div className="animate-pulse space-y-6">
+    {/* Header */}
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+      <div>
+        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+        <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded-md" />
+      </div>
+    </div>
+
+    {/* ICP Content */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Left Column */}
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+            <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+                    <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+            <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+                    <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right Column */}
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+            <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] bg-gray-200 dark:bg-gray-700 rounded-md mb-4" />
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded-md" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+            <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+                    <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
 );
 
-const SegmentThemesTab = dynamic(
-  () => import('./components/SegmentThemesTab').catch(() => {
-    return () => <div className="p-4 text-center">Error loading themes tab. Please try refreshing the page.</div>;
-  }),
-  { 
-    loading: () => <TopicsSkeleton />,
-    ssr: false,
-    suspense: true
-  }
-);
+interface DetailsTabProps {
+  segment: Segment;
+  onSave: (segment: Segment) => void;
+  formRef: RefObject<HTMLFormElement>;
+}
 
-const SegmentICPTab = dynamic(
-  () => import('./components/SegmentICPTab').catch(() => {
-    return () => <div className="p-4 text-center">Error loading ICP tab. Please try refreshing the page.</div>;
-  }),
-  { 
-    loading: () => <ICPProfileSkeleton />,
-    ssr: false,
-    suspense: true
-  }
-);
+// Lazy load the analysis tab
+const AnalysisTab = dynamic<{
+  segment: Segment;
+  selectedAdPlatform: NewAdPlatformType;
+}>(() => import('./components/SegmentAnalysisTab'), {
+  loading: () => <AnalysisSkeleton />,
+  ssr: false,
+  suspense: true
+});
+
+// Lazy load the ICP tab
+const ICPTab = dynamic<{
+  segment: Segment;
+  activeSection: string;
+}>(() => import('./components/SegmentICPTab'), {
+  loading: () => <ICPProfileSkeleton />,
+  ssr: false,
+  suspense: true
+});
 
 const SegmentUrlModal = dynamic(
   () => import('./components/SegmentUrlModal').catch(() => {
@@ -443,6 +421,85 @@ const SegmentUrlModal = dynamic(
     suspense: true
   }
 );
+
+// Skeleton component for lazy loading
+const SegmentDetailsSkeleton = () => (
+  <div className="mx-auto max-w-2xl animate-pulse">
+    <div className="space-y-6">
+      {/* Basic Information Card */}
+      <Card>
+        <CardHeader>
+          <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+          <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded-md" />
+              <div className="h-3 w-40 bg-gray-200 dark:bg-gray-700 rounded-md mt-1" />
+            </div>
+            <div className="h-6 w-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded-md" />
+            <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </div>
+          
+          <div className="space-y-2">
+            <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded-md" />
+            <div className="h-24 w-full bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Audience Details Card */}
+      <Card>
+        <CardHeader>
+          <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded-md mb-2" />
+          <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded-md" />
+            <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </div>
+          
+          <div className="space-y-2">
+            <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded-md" />
+            <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded-md" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone Card */}
+      <Card>
+        <CardHeader>
+          <div className="h-6 w-24 bg-red-200 dark:bg-red-800 rounded-md mb-2" />
+          <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded-md" />
+        </CardHeader>
+        <CardContent>
+          <div className="border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-5 w-32 bg-red-200 dark:bg-red-800 rounded-md" />
+                <div className="h-4 w-56 bg-gray-200 dark:bg-gray-700 rounded-md" />
+              </div>
+              <div className="h-9 w-20 bg-red-200 dark:bg-red-800 rounded-md" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+);
+
+// Lazy load the details tab
+const DetailsTab = dynamic<DetailsTabProps>(() => import('./components/SegmentDetailsTab'), {
+  loading: () => <SegmentDetailsSkeleton />,
+  ssr: false,
+  suspense: true
+});
 
 // Wrap the component with Suspense
 export default function SegmentDetailPage({ params }: { params: { id: string } }) {
@@ -467,6 +524,9 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
   const [urlInput, setUrlInput] = useState("")
   const [activeTab, setActiveTab] = useState("analysis")
   
+  // Form reference for submitting the form
+  const formRef = React.useRef<HTMLFormElement>(null)
+  
   // Estados para controlar las solicitudes en proceso
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isGeneratingICP, setIsGeneratingICP] = useState(false)
@@ -481,6 +541,12 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
     action: async (): Promise<any> => {},
     estimatedTime: 30 // Valor predeterminado
   })
+  
+  // Estado para el dropdown de análisis
+  const [analysisType, setAnalysisType] = useState("overview")
+  // Estado para el dropdown de ICP
+  const [icpSection, setIcpSection] = useState("demographics")
+  const [selectedAdPlatform, setSelectedAdPlatform] = useState<NewAdPlatformType>("googleAds")
   
   // Ensure that if topics tab was previously selected, we default to analysis
   useEffect(() => {
@@ -628,6 +694,15 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
     // Limpiar al desmontar
     return () => {
       document.title = 'Segments | Market Fit'
+      // Reset breadcrumb state
+      window.dispatchEvent(new CustomEvent('breadcrumb:update', {
+        detail: {
+          title: 'Segments',
+          path: '/segments',
+          section: 'segments',
+          segmentData: null
+        }
+      }))
     }
   }, [segment, activeTab, isAnalyzing, isGeneratingICP])
 
@@ -673,8 +748,8 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
         return
       }
       
-      // Actualizar el segmento local
-      setSegment(prev => prev ? { ...prev, is_active: newStatus } : null)
+      // Actualizar el segmento local usando el helper
+      setSegment((prev: Segment | null) => handleSegmentUpdate(prev, { is_active: newStatus }))
     } catch (error) {
       console.error('Error updating segment status:', error)
       setIsActive(!newStatus) // Revertir en caso de error
@@ -694,8 +769,8 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
         return
       }
 
-      // Actualizar el segmento local
-      setSegment(prev => prev ? { ...prev, url: urlInput } : null)
+      // Actualizar el segmento local usando el helper
+      setSegment((prev: Segment | null) => handleSegmentUpdate(prev, { url: urlInput }))
       
       setIsUrlModalOpen(false)
     } catch (err) {
@@ -992,18 +1067,32 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
     }, 0);
   };
 
+  const handleSegmentUpdate = (prev: Segment | null, updates: Partial<Segment>): Segment | null => {
+    if (!prev) return null;
+    return { ...prev, ...updates };
+  };
+
+  const handleAdPlatformChange = (value: NewAdPlatformType) => {
+    setSelectedAdPlatform(value);
+  };
+
   if (isLoading) {
-    return <LoadingState />
+    return (
+      <div className="flex-1 p-0">
+        <StickyHeaderSkeleton />
+        <div className="px-16 py-6">
+          <AnalysisSkeleton />
+        </div>
+      </div>
+    );
   }
 
   if (error || !segment) {
-    return <ErrorState error={error} onBack={() => router.push('/segments')} />
+    return <ErrorState error={error} onBack={() => router.push('/segments')} />;
   }
 
   return (
     <div className="flex-1 p-0">
-      {/* Removing the TestMap component */}
-      
       <Tabs defaultValue="analysis" onValueChange={setActiveTab}>
         <StickyHeader>
           <div className="px-16 pt-0 w-full">
@@ -1012,30 +1101,115 @@ function SegmentDetailPageContent({ params }: { params: { id: string } }) {
                 <TabsList>
                   <TabsTrigger value="analysis">Analysis</TabsTrigger>
                   <TabsTrigger value="icp">ICP Profiles</TabsTrigger>
-                  {/* Topics tab hidden temporarily */}
+                  <TabsTrigger value="details">Details</TabsTrigger>
                 </TabsList>
               </div>
               {segment && (
-                <div className="flex items-center">
-                  <SegmentStatusWidget 
-                    isActive={isActive}
-                    onStatusChange={toggleSegmentStatus}
-                  />
+                <div className="flex items-center gap-4">
+                  {/* Analysis Tab Actions */}
+                  {activeTab === "analysis" && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Ad Platform</span>
+                      <Select
+                        value={selectedAdPlatform}
+                        onValueChange={handleAdPlatformChange}
+                      >
+                        <SelectTrigger className="w-[180px] h-9">
+                          <SelectValue placeholder="Select platform" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="facebookAds">Facebook Ads</SelectItem>
+                          <SelectItem value="googleAds">Google Ads</SelectItem>
+                          <SelectItem value="linkedInAds">LinkedIn Ads</SelectItem>
+                          <SelectItem value="tiktokAds">TikTok Ads</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* ICP Tab Actions */}
+                  {activeTab === "icp" && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Ideal Customer Profile</span>
+                      <Select
+                        value={icpSection}
+                        onValueChange={setIcpSection}
+                      >
+                        <SelectTrigger className="w-[180px] h-9">
+                          <SelectValue placeholder="Select section" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="demographics" className="flex items-center">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 mr-2" />
+                              <span>Demographics</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="psychographics" className="flex items-center">
+                            <div className="flex items-center gap-2">
+                              <PieChart className="h-4 w-4 mr-2" />
+                              <span>Psychographics</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="behavioral" className="flex items-center">
+                            <div className="flex items-center gap-2">
+                              <BarChart className="h-4 w-4 mr-2" />
+                              <span>Behavioral</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="professional" className="flex items-center">
+                            <div className="flex items-center gap-2">
+                              <UserIcon className="h-4 w-4 mr-2" />
+                              <span>Professional</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="custom" className="flex items-center">
+                            <div className="flex items-center gap-2">
+                              <Settings className="h-4 w-4 mr-2" />
+                              <span>Custom</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Details Tab Actions */}
+                  {activeTab === "details" && (
+                    <Button 
+                      onClick={() => formRef.current?.requestSubmit()}
+                      className="gap-2"
+                    >
+                      <SaveIcon className="h-4 w-4" />
+                      Save Changes
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </StickyHeader>
-        {/* Removing the overview tab */}
         <TabsContent value="analysis" className="px-16 py-6">
-          <SegmentAnalysisTab segment={segment} />
+          <Suspense fallback={<AnalysisSkeleton />}>
+            <AnalysisTab segment={segment} selectedAdPlatform={selectedAdPlatform} />
+          </Suspense>
         </TabsContent>
         <TabsContent value="icp" className="px-16 py-6">
-          <SegmentICPTab segment={segment} />
+          <Suspense fallback={<ICPProfileSkeleton />}>
+            <ICPTab segment={segment} activeSection={icpSection} />
+          </Suspense>
         </TabsContent>
-        {/* Topics tab content is still loaded but won't be accessible from UI */}
-        <TabsContent value="topics" className="px-16 py-6 hidden">
-          <SegmentThemesTab segment={segment} />
+        <TabsContent value="details" className="px-16 py-6">
+          <Suspense fallback={<SegmentDetailsSkeleton />}>
+            {segment && (
+              <DetailsTab 
+                key={segment.id}
+                segment={segment} 
+                onSave={(updatedSegment: Segment) => setSegment(updatedSegment)} 
+                formRef={formRef as RefObject<HTMLFormElement>} 
+              />
+            )}
+          </Suspense>
         </TabsContent>
       </Tabs>
       

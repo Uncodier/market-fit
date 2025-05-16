@@ -57,30 +57,51 @@ const siteMemberToFormMember = (member: SiteMember): FormTeamMember => {
   };
 };
 
+// Simple debounce function
+function debounce<F extends (...args: any[]) => any>(fn: F, delay: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return function(this: any, ...args: Parameters<F>) {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 export function TeamSection({ active, siteId }: TeamSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const [teamList, setTeamList] = useState<FormTeamMember[]>(
     form.getValues("team_members") || []
   )
   const [isLoading, setIsLoading] = useState(false)
-  const dataFetchedRef = useRef(false)
+  const debouncedUpdateRef = useRef<any>(null)
   
-  // Update the form values whenever teamList changes
+  // Create a debounced version of updateFormValues
   const updateFormValues = useCallback((newTeamList: FormTeamMember[]) => {
     form.setValue("team_members", newTeamList, { 
       shouldDirty: true,
       shouldTouch: true,
-      shouldValidate: true 
+      // Only validate on final submission to avoid constant validation
+      shouldValidate: false 
     })
   }, [form])
   
+  // Initialize debounced function only once
+  useEffect(() => {
+    debouncedUpdateRef.current = debounce((newTeamList: FormTeamMember[]) => {
+      updateFormValues(newTeamList);
+    }, 300);
+  }, [updateFormValues]);
+  
   // Fetch site members from the site_members table when available
   useEffect(() => {
-    if (!active || !siteId || dataFetchedRef.current) return;
+    // Ensure we fetch when the team tab becomes active or siteId changes
+    if (!active || !siteId) return;
     
     const fetchSiteMembers = async () => {
       try {
+        console.log("Fetching team members for site:", siteId);
         setIsLoading(true)
+        
+        // Try to get members from site_members table first
         const members = await siteMembersService.getMembers(siteId)
         
         // Filter out the owner for display in the form
@@ -88,26 +109,43 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           .filter(member => member.role !== 'owner')
           .map(siteMemberToFormMember)
         
-        setTeamList(formattedMembers)
-        updateFormValues(formattedMembers)
-        dataFetchedRef.current = true
+        console.log("Found site members:", formattedMembers);
+        
+        if (formattedMembers.length > 0) {
+          // Use members from site_members table if available
+          setTeamList(formattedMembers)
+          updateFormValues(formattedMembers)
+        } else {
+          // If no members in site_members table, use settings.team_members
+          const currentTeamMembers = form.getValues("team_members") || [];
+          console.log("Using team members from settings:", currentTeamMembers);
+          
+          if (currentTeamMembers.length > 0) {
+            setTeamList(currentTeamMembers)
+          }
+        }
       } catch (error) {
         console.error("Error fetching site members:", error)
         // We'll fall back to the values from team_members in settings
+        const currentTeamMembers = form.getValues("team_members") || [];
+        if (currentTeamMembers.length > 0) {
+          console.log("Using fallback team members from settings:", currentTeamMembers);
+          setTeamList(currentTeamMembers)
+        }
       } finally {
         setIsLoading(false)
       }
     }
     
     fetchSiteMembers()
-  }, [active, siteId, updateFormValues])
+  }, [active, siteId, updateFormValues, form])
 
   // Add team member
   const addTeamMember = () => {
     if (isLoading) return
     const newTeamList = [...teamList, { email: "", role: "view" as TeamRole, name: "", position: "" }]
     setTeamList(newTeamList)
-    updateFormValues(newTeamList)
+    debouncedUpdateRef.current(newTeamList)
   }
 
   // Remove team member
@@ -132,18 +170,18 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     
     const newTeamList = teamList.filter((_, i) => i !== index)
     setTeamList(newTeamList)
-    updateFormValues(newTeamList)
+    debouncedUpdateRef.current(newTeamList)
   }
 
-  // Update a specific field of a team member
-  const updateTeamMember = (index: number, field: keyof FormTeamMember, value: any) => {
+  // Update a specific field of a team member - using local state only
+  const updateLocalTeamMember = (index: number, field: keyof FormTeamMember, value: any) => {
     const newTeamList = [...teamList]
     newTeamList[index] = {
       ...newTeamList[index],
       [field]: value
     }
     setTeamList(newTeamList)
-    updateFormValues(newTeamList)
+    debouncedUpdateRef.current(newTeamList)
   }
 
   if (!active) return null
@@ -194,10 +232,12 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             className="pl-12 h-12 text-base"
                             placeholder="Full name"
                             {...field}
-                            value={field.value || ""}
+                            value={teamList[index].name || ""}
                             onChange={(e) => {
-                              field.onChange(e)
-                              updateTeamMember(index, 'name', e.target.value)
+                              // Update only the field itself without validation
+                              field.onChange(e);
+                              // Update local state and debounce form update
+                              updateLocalTeamMember(index, 'name', e.target.value);
                             }}
                           />
                         </div>
@@ -222,9 +262,12 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             type="email"
                             {...field}
                             disabled={!!member.id} // If it's an existing site member, don't allow email change
+                            value={teamList[index].email}
                             onChange={(e) => {
-                              field.onChange(e)
-                              updateTeamMember(index, 'email', e.target.value)
+                              // Update only the field itself without validation
+                              field.onChange(e);
+                              // Update local state and debounce form update
+                              updateLocalTeamMember(index, 'email', e.target.value);
                             }}
                           />
                         </div>
@@ -249,10 +292,12 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             className="pl-12 h-12 text-base"
                             placeholder="Job title"
                             {...field}
-                            value={field.value || ""}
+                            value={teamList[index].position || ""}
                             onChange={(e) => {
-                              field.onChange(e)
-                              updateTeamMember(index, 'position', e.target.value)
+                              // Update only the field itself without validation
+                              field.onChange(e);
+                              // Update local state and debounce form update
+                              updateLocalTeamMember(index, 'position', e.target.value);
                             }}
                           />
                         </div>
@@ -270,10 +315,12 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                       <FormItem className="flex-1">
                         <FormLabel className="text-sm font-medium">Role</FormLabel>
                         <Select
-                          value={field.value}
+                          value={teamList[index].role}
                           onValueChange={(value) => {
-                            field.onChange(value)
-                            updateTeamMember(index, 'role', value as TeamRole)
+                            // Update the field directly
+                            field.onChange(value);
+                            // Update local state and debounce form update
+                            updateLocalTeamMember(index, 'role', value as TeamRole);
                           }}
                         >
                           <FormControl>

@@ -134,7 +134,7 @@ function SegmentCard({
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Engagement</p>
                   <p className="text-sm font-medium text-center">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
                 </div>
-                <div className="w-[100px] min-w-[100px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="w-[120px] min-w-[120px] flex-shrink-0 pl-4" onClick={(e) => e.stopPropagation()}>
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Status</p>
                   <div className="flex items-center justify-center gap-0.5">
                     <span className={`text-xs font-medium text-center truncate ${activeSegments[segment.id] ? 'text-green-500' : 'text-yellow-500'}`}>
@@ -354,7 +354,7 @@ function SegmentRowSkeleton() {
               <Skeleton className="h-4 w-full mb-2" />
               <Skeleton className="h-4 w-1/2 mx-auto" />
             </div>
-            <div className="w-[100px] min-w-[100px] flex-shrink-0">
+            <div className="w-[120px] min-w-[120px] flex-shrink-0 pl-4">
               <Skeleton className="h-4 w-full mb-2" />
               <div className="flex items-center justify-center gap-0.5">
                 <Skeleton className="h-4 w-10" />
@@ -730,7 +730,7 @@ export default function SegmentsPage() {
     return (
       <div className="flex-1 p-0">
         <Tabs defaultValue="all">
-          <StickyHeader showAIButton={false}>
+          <StickyHeader>
             <div className="px-16 pt-0">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
@@ -801,7 +801,7 @@ export default function SegmentsPage() {
   return (
     <div className="flex-1 p-0">
       <Tabs defaultValue="all">
-        <StickyHeader showAIButton={false}>
+        <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">

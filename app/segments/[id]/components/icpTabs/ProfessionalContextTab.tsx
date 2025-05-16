@@ -99,10 +99,10 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {/* Industries Section with Donut Chart */}
-      <SectionCard title="Industries" icon={<Globe className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Industries" icon={<Globe className="h-5 w-5" />}>
         {industriesData.length > 0 ? (
           <div className="space-y-4">
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3 text-center">Industry Distribution</h4>
               <div className="flex justify-center">
                 <PieChart 
@@ -115,7 +115,7 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
                 />
               </div>
             </div>
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Target Industries</h4>
               <div className="flex flex-wrap gap-2">
                 {professionalContext.industries.map((industry: string, index: number) => (
@@ -127,19 +127,19 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
             </div>
           </div>
         ) : (
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <p className="text-sm text-muted-foreground">No industry data available</p>
           </div>
         )}
       </SectionCard>
       
       {/* Roles Section with Decision Maker subsection for each role */}
-      <SectionCard title="Professional Roles" icon={<Briefcase className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Professional Roles" icon={<Briefcase className="h-5 w-5" />}>
         <div className="space-y-3">
           {professionalContext.roles && professionalContext.roles.length > 0 ? (
             <>
               {professionalContext.roles.map((role: {title: string; relevance: string}, index: number) => (
-                <div key={index} className="bg-muted/20 p-4 rounded-lg">
+                <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium">{role.title}</h4>
                     <Badge variant={getBadgeVariant(role.relevance)}>
@@ -165,7 +165,7 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
               ))}
             </>
           ) : (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <p className="text-sm text-muted-foreground">No role data available</p>
             </div>
           )}
@@ -173,10 +173,10 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
       </SectionCard>
       
       {/* Company Size Section */}
-      <SectionCard title="Company Size" icon={<Building className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Company Size" icon={<Building className="h-5 w-5" />}>
         <div className="space-y-4">
           {/* Company Size Distribution - Visualización principal */}
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-medium">Company Size</h4>
               <Badge variant="indigo" className="hover:bg-[rgb(99,102,241)]/80">
@@ -245,7 +245,7 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
           
           {/* Secondary Targets */}
           {professionalContext.companySize?.secondary && professionalContext.companySize.secondary.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex items-center justify-between mb-2">
                 <h5 className="text-xs font-medium text-muted-foreground">Secondary Targets</h5>
               </div>
@@ -270,10 +270,10 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
       </SectionCard>
       
       {/* Pain Points */}
-      <SectionCard title="Pain Points" icon={<HelpCircle className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Pain Points" icon={<HelpCircle className="h-5 w-5" />}>
         <div className="space-y-4">
           {painPointItems.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex justify-center mb-4">
                 <SpiderChart 
                   values={painPointItems} 
@@ -289,7 +289,7 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
           <div className="space-y-3">
             {professionalContext.painPoints && professionalContext.painPoints.length > 0 ? (
               professionalContext.painPoints.map((point: {name: string; severity: string; description: string}, index: number) => (
-                <div key={index} className="bg-muted/20 p-4 rounded-lg">
+                <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium">{point.name}</h4>
                     <Badge variant={getBadgeVariant(point.severity)}>
@@ -300,7 +300,7 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
                 </div>
               ))
             ) : (
-              <div className="bg-muted/20 p-4 rounded-lg">
+              <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <p className="text-sm text-muted-foreground">No pain points data available</p>
               </div>
             )}
@@ -309,10 +309,10 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
       </SectionCard>
       
       {/* Tools with Donut Chart */}
-      <SectionCard title="Tools & Software" icon={<Tool className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Tools & Software" icon={<Tool className="h-5 w-5" />}>
         {toolsData.length > 0 ? (
           <div className="space-y-4">
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3 text-center">Tools Usage Distribution</h4>
               <div className="flex justify-center">
                 <PieChart 
@@ -328,7 +328,7 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
             
             {/* Current Tools */}
             {professionalContext.tools?.current && professionalContext.tools.current.length > 0 && (
-              <div className="bg-muted/20 p-4 rounded-lg">
+              <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <h4 className="text-sm font-medium mb-3">Currently Using</h4>
                 <div className="flex flex-wrap gap-2">
                   {professionalContext.tools.current.map((tool: string, index: number) => (
@@ -340,7 +340,7 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
             
             {/* Desired Tools */}
             {professionalContext.tools?.desired && professionalContext.tools.desired.length > 0 && (
-              <div className="bg-muted/20 p-4 rounded-lg">
+              <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <h4 className="text-sm font-medium mb-3">Looking For</h4>
                 <div className="flex flex-wrap gap-2">
                   {professionalContext.tools.desired.map((tool: string, index: number) => (
@@ -351,7 +351,7 @@ export const ProfessionalContextTab = ({ icpProfile }: ProfessionalContextTabPro
             )}
           </div>
         ) : (
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <p className="text-sm text-muted-foreground">No tools data available</p>
           </div>
         )}

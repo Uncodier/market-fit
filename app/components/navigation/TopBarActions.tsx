@@ -15,9 +15,8 @@ import { CreateContentDialog } from "@/app/content/components"
 import { CreateCampaignDialog } from "../create-campaign-dialog"
 import { CalendarDateRangePicker } from "../ui/date-range-picker"
 import { AIActionModal } from "@/app/components/ui/ai-action-modal"
-import { AnalyzeButton } from "@/app/components/ui/analyze-button"
 import { useSite } from "@/app/context/SiteContext"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -106,6 +105,7 @@ export function TopBarActions({
 }: TopBarActionsProps) {
   const { currentSite } = useSite()
   const router = useRouter()
+  const pathname = usePathname()
   
   // AI Action Modal state
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
@@ -517,14 +517,6 @@ The success of this experiment will be measured by:
 
   return (
     <div className="flex items-center gap-4">
-      {/* AnalyzeWithAI Button - Hidden by default, controlled by context */}
-      <AnalyzeButton onAnalyze={async () => {
-        toast.info("Analyzing with AI...");
-        // Simulate API call to analyze content
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        toast.success("Analysis completed successfully");
-      }} />
-      
       {isDashboardPage && (
         <>
           <Button>Download</Button>

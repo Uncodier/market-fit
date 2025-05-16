@@ -101,7 +101,7 @@ export const MarketPenetrationComponent: React.FC<MarketPenetrationComponentProp
     : "bg-slate-200/50 text-slate-600 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700 px-2 py-0.5 text-xs";
 
   return (
-    <Card className="border-none shadow-sm">
+    <Card>
       <CardHeader className="px-6 pt-6 pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <CardTitle className="text-lg">Market Penetration</CardTitle>

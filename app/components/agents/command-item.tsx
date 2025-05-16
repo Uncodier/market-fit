@@ -81,7 +81,8 @@ export const CommandItem = memo(function CommandItem({ command, onNavigate, agen
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        hour12: false
       }).format(date);
     } catch (error) {
       console.error("Invalid date format:", dateString);
@@ -130,10 +131,16 @@ export const CommandItem = memo(function CommandItem({ command, onNavigate, agen
             <p className="text-xs text-muted-foreground/70 mb-1.5 truncate">
               {command.description || "No description"}
             </p>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground/60">
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
               {command.duration && <span>{command.duration}</span>}
+              {command.originalCommand?.created_at && (
+                <span>{formatDate(command.originalCommand.created_at)}</span>
+              )}
               {command.originalCommand?.completion_date && (
-                <span>{formatDate(command.originalCommand.completion_date)}</span>
+                <span className="flex items-center gap-1">
+                  <span>Completed:</span>
+                  <span>{formatDate(command.originalCommand.completion_date)}</span>
+                </span>
               )}
             </div>
             {command.status === "failed" && renderErrorMessage()}

@@ -205,8 +205,11 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                       )}
                       onClick={() => {
                         setCurrentSite(site)
-                        // Opcional: redirigir al dashboard cuando se cambia de sitio
-                        if (window.location.pathname !== "/dashboard") {
+                        // Solo redirigir al dashboard si estamos en una ruta base
+                        const currentPath = window.location.pathname
+                        const pathSegments = currentPath.split('/').filter(Boolean)
+                        const isDetailRoute = pathSegments.length >= 2 && !['settings', 'billing', 'dashboard'].includes(pathSegments[0])
+                        if (!isDetailRoute) {
                           router.push("/dashboard")
                         }
                       }}
@@ -241,7 +244,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
               
               <div className="p-2 flex justify-center">
                 <Button
-                  variant="default"
+                  variant="secondary"
                   size="default"
                   className="w-full"
                   onClick={() => router.push("/site/create")}

@@ -302,14 +302,16 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
                     !isCollapsed ? "ml-6" : "",
                     "flex items-center"
                   )}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleTheme();
+                  }}
                 >
                   {!isCollapsed && (
                     <div className="ml-auto flex items-center">
                       <Switch
                         checked={isDarkMode}
-                        onCheckedChange={(checked) => {
-                          toggleTheme();
-                        }}
+                        onCheckedChange={toggleTheme}
                         onClick={(e) => {
                           e.stopPropagation();
                         }}

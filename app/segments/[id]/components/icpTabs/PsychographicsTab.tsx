@@ -71,10 +71,10 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {/* Values Section */}
-      <SectionCard title="Core Values" icon={<Heart className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Core Values" icon={<Heart className="h-5 w-5" />}>
         <div className="space-y-4">
           {valueItems.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex justify-center mb-4">
                 <SpiderChart 
                   values={valueItems} 
@@ -89,7 +89,7 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
           
           <div className="space-y-3">
             {values.map((value: {name: string; importance: string; description: string}, index: number) => (
-              <div key={index} className="bg-muted/20 p-4 rounded-lg">
+              <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium">{value.name}</h4>
                   <Badge variant={getBadgeVariant(value.importance)}>
@@ -104,9 +104,9 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
       </SectionCard>
       
       {/* Interests Section */}
-      <SectionCard title="Interests" icon={<Puzzle className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Interests" icon={<Puzzle className="h-5 w-5" />}>
         <div className="space-y-4">
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <h4 className="text-sm font-medium mb-3">Key Interests</h4>
             <div className="overflow-hidden rounded-md border">
               <table className="w-full">
@@ -146,10 +146,10 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
       </SectionCard>
       
       {/* Goals Section */}
-      <SectionCard title="Goals" icon={<Target className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Goals" icon={<Target className="h-5 w-5" />}>
         <div className="space-y-4">
           {goalItems.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex justify-center mb-4">
                 <SpiderChart 
                   values={goalItems} 
@@ -164,7 +164,7 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
           
           <div className="space-y-3">
             {goals.map((goal: {name: string; priority: string; description: string}, index: number) => (
-              <div key={index} className="bg-muted/20 p-4 rounded-lg">
+              <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium">{goal.name}</h4>
                   <Badge variant={getBadgeVariant(goal.priority)}>
@@ -179,10 +179,10 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
       </SectionCard>
       
       {/* Challenges Section */}
-      <SectionCard title="Challenges" icon={<Lightbulb className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Challenges" icon={<Lightbulb className="h-5 w-5" />}>
         <div className="space-y-4">
           {challengeItems.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex justify-center mb-4">
                 <SpiderChart 
                   values={challengeItems} 
@@ -197,7 +197,7 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
           
           <div className="space-y-3">
             {challenges.map((challenge: {name: string; severity: string; description: string}, index: number) => (
-              <div key={index} className="bg-muted/20 p-4 rounded-lg">
+              <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium">{challenge.name}</h4>
                   <Badge variant={getBadgeVariant(challenge.severity)}>
@@ -212,10 +212,10 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
       </SectionCard>
       
       {/* Motivations Section */}
-      <SectionCard title="Motivations" icon={<Box className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Motivations" icon={<Box className="h-5 w-5" />}>
         <div className="space-y-4">
           {motivationItems.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex justify-center mb-4">
                 <SpiderChart 
                   values={motivationItems} 
@@ -230,7 +230,7 @@ export const PsychographicsTab = ({ icpProfile }: PsychographicsTabProps) => {
           
           <div className="space-y-3">
             {motivations.map((motivation: {name: string; strength: string; description: string}, index: number) => (
-              <div key={index} className="bg-muted/20 p-4 rounded-lg">
+              <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium">{motivation.name}</h4>
                   <Badge variant={getBadgeVariant(motivation.strength)}>

@@ -3,7 +3,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { 
   Settings, PlusCircle as Zap, MessageSquare, User, Tag, Settings as Sliders
 } from "@/app/components/ui/icons";
-import { SectionCard } from "../common/Cards";
+import { SectionCard, SummaryCard } from "../common/Cards";
 import { ImportanceIndicator } from "../common/Indicators";
 import { ICPProfileData } from "../types";
 
@@ -35,11 +35,11 @@ export const CustomAttributesTab = ({ icpProfile }: CustomAttributesTabProps) =>
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      <SectionCard title="Custom Attributes" icon={<Settings className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Custom Attributes" icon={<Settings className="h-5 w-5" />}>
         <div className="space-y-3">
           {customAttributes.length > 0 ? (
             customAttributes.map((attribute: {name: string; value: string; description: string}, index: number) => (
-              <div key={index} className="bg-muted/20 p-4 rounded-lg">
+              <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium">{attribute.name}</h4>
                   <Badge variant="indigo">{attribute.value}</Badge>
@@ -48,7 +48,7 @@ export const CustomAttributesTab = ({ icpProfile }: CustomAttributesTabProps) =>
               </div>
             ))
           ) : (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <p className="text-sm text-muted-foreground">No custom attributes available</p>
             </div>
           )}

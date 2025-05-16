@@ -64,11 +64,11 @@ const SingleCommandSchema = z.object({
 
 export type SingleCommandResponse = z.infer<typeof SingleCommandSchema>
 
-export async function getCommands(site_id: string): Promise<CommandsResponse> {
+export async function getCommands(site_id: string, page: number = 1, pageSize: number = 40): Promise<CommandsResponse> {
   try {
     const supabase = await createClient()
     
-    console.log("Iniciando consulta a Supabase en getCommands() para site_id:", site_id)
+    console.log("Iniciando consulta a Supabase en getCommands() para site_id:", site_id, "page:", page)
     
     // First, get agent IDs for this site
     const { data: agentData, error: agentError } = await supabase
@@ -90,33 +90,25 @@ export async function getCommands(site_id: string): Promise<CommandsResponse> {
       return { commands: [] }
     }
     
-    // Get commands for these agents
+    // Calculate pagination
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    
+    // Get commands for these agents with pagination
     const { data, error } = await supabase
       .from("commands")
       .select(`
         id,
         task,
         status,
-        user_id,
         description,
-        results,
-        targets,
-        tools,
-        functions,
         context,
-        supervisor,
         created_at,
-        updated_at,
-        completion_date,
-        duration,
-        model,
-        agent_id,
-        output_tokens,
-        input_tokens,
-        agent_background
+        duration
       `)
       .in('agent_id', agentIds)
       .order("created_at", { ascending: false })
+      .range(from, to)
 
     if (error) {
       console.error("Error en la consulta de Supabase:", error)

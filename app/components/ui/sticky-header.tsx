@@ -32,10 +32,11 @@ export function StickyHeader({
     <div className={cn(
       "sticky flex items-center p-0",
       "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-      "border-b border-border/40 z-10",
+      "border-b border-border z-10",
       isAgentsPage ? "top-[64px] min-h-[71px]" : "top-[64px] min-h-[71px]",
       className
-    )}>
+    )}
+    >
       <div className={cn(
         "sticky transition-all duration-200 ease-in-out w-full flex items-center",
         isCollapsed ? "left-[64px] w-[calc(100vw-64px)]" : "left-[256px] w-[calc(100vw-256px)]"

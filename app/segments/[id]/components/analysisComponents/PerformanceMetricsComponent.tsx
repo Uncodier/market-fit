@@ -1,7 +1,7 @@
 import React from "react";
-import { Card, CardContent } from "@/app/components/ui/card";
 import { AnalysisComponentProps } from "./types";
 import { Users, CheckCircle2, MessageSquare, TrendingUp } from "@/app/components/ui/icons";
+import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 
 interface PerformanceMetricsComponentProps extends Pick<AnalysisComponentProps, 'isDarkMode'> {}
 
@@ -11,6 +11,7 @@ interface PlaceholderMetric {
   value: number | string;
   change: number;
   icon: React.ReactNode;
+  tooltipText: string;
 }
 
 export const PerformanceMetricsComponent: React.FC<PerformanceMetricsComponentProps> = ({ isDarkMode }) => {
@@ -20,51 +21,46 @@ export const PerformanceMetricsComponent: React.FC<PerformanceMetricsComponentPr
       name: "Visitors", 
       value: 0, 
       change: 0, 
-      icon: <Users className="h-4 w-4" /> 
+      icon: <Users className="h-4 w-4" />,
+      tooltipText: "Number of unique visitors to your segment's content"
     },
     { 
       name: "Clicks", 
       value: 0, 
       change: 0, 
-      icon: <CheckCircle2 className="h-4 w-4" /> 
+      icon: <CheckCircle2 className="h-4 w-4" />,
+      tooltipText: "Number of clicks on your segment's content"
     },
     { 
       name: "Conversions", 
       value: 0, 
       change: 0, 
-      icon: <MessageSquare className="h-4 w-4" /> 
+      icon: <MessageSquare className="h-4 w-4" />,
+      tooltipText: "Number of conversions from your segment" 
     },
     { 
       name: "CTR", 
-      value: 0, 
+      value: "0%", 
       change: 0, 
-      icon: <TrendingUp className="h-4 w-4" /> 
+      icon: <TrendingUp className="h-4 w-4" />,
+      tooltipText: "Click-through rate for your segment's content"
     }
   ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {placeholderMetrics.map((metric, index) => (
-        <Card key={index} className="border-none shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{metric.name}</p>
-                <h3 className="text-2xl font-bold mt-1 text-muted-foreground">
-                  {typeof metric.value === 'number' && metric.name === 'CTR' 
-                    ? `${metric.value}%` 
-                    : metric.value}
-                </h3>
-              </div>
-              <div className={`p-2 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                {metric.icon}
-              </div>
-            </div>
-            <div className="mt-2 flex items-center">
-              <span className="text-xs text-muted-foreground">No data available yet</span>
-            </div>
-          </CardContent>
-        </Card>
+        <BaseKpiWidget
+          key={index}
+          title={metric.name}
+          value={typeof metric.value === 'number' && metric.name === 'CTR' ? `${metric.value}%` : metric.value}
+          changeText="No data available yet"
+          tooltipText={metric.tooltipText}
+          isLoading={false}
+          customStatus={
+            <p className="text-xs text-muted-foreground mt-1">No data available yet</p>
+          }
+        />
       ))}
     </div>
   );

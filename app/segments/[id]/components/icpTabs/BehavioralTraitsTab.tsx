@@ -88,9 +88,9 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {/* Device Usage Section - Improved visualization */}
-      <SectionCard title="Device Usage" icon={<User className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Device Usage" icon={<User className="h-5 w-5" />}>
         <div className="space-y-4">
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <h4 className="text-sm font-medium mb-4">Device Preference</h4>
             
             {/* Primary Device */}
@@ -145,10 +145,10 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
       </SectionCard>
       
       {/* Social Platforms Section with Spider Chart */}
-      <SectionCard title="Social Platforms" icon={<Globe className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Social Platforms" icon={<Globe className="h-5 w-5" />}>
         <div className="space-y-4">
           {socialPlatformItems.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex justify-center mb-4">
                 <SpiderChart 
                   values={socialPlatformItems} 
@@ -164,7 +164,7 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
           <div className="space-y-3">
             {onlineBehavior.socialPlatforms && onlineBehavior.socialPlatforms.length > 0 ? (
               onlineBehavior.socialPlatforms.map((platform: {name: string; usageFrequency: string; engagementLevel: string; relevance: string}, index: number) => (
-                <div key={index} className="bg-muted/20 p-4 rounded-lg">
+                <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium">{platform.name}</h4>
                     <Badge variant={getBadgeVariant(platform.relevance)}>
@@ -178,7 +178,7 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
                 </div>
               ))
             ) : (
-              <div className="bg-muted/20 p-4 rounded-lg">
+              <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <p className="text-sm text-muted-foreground">No social platform data available</p>
               </div>
             )}
@@ -187,10 +187,10 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
       </SectionCard>
       
       {/* Browsing Habits Section */}
-      <SectionCard title="Browsing Habits" icon={<BarChart className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Browsing Habits" icon={<BarChart className="h-5 w-5" />}>
         <div className="space-y-4">
           {onlineBehavior.browsingHabits?.peakHours && onlineBehavior.browsingHabits.peakHours.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Peak Hours</h4>
               <div className="grid grid-cols-1 gap-4">
                 {/* Clock-like visualization for peak hours - Improved implementation */}
@@ -359,7 +359,7 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
           )}
           
           {onlineBehavior.browsingHabits?.contentPreferences && onlineBehavior.browsingHabits.contentPreferences.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Content Preferences</h4>
               <div className="flex flex-wrap gap-2">
                 {onlineBehavior.browsingHabits.contentPreferences.map((preference: string, index: number) => (
@@ -372,10 +372,10 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
       </SectionCard>
       
       {/* Decision Factors Section with Spider Chart */}
-      <SectionCard title="Decision Factors" icon={<CheckCircle2 className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Decision Factors" icon={<CheckCircle2 className="h-5 w-5" />}>
         <div className="space-y-4">
           {decisionFactorItems.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex justify-center mb-4">
                 <SpiderChart 
                   values={decisionFactorItems} 
@@ -391,7 +391,7 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
           <div className="space-y-3">
             {purchasingBehavior.decisionFactors && purchasingBehavior.decisionFactors.length > 0 ? (
               purchasingBehavior.decisionFactors.map((factor: {name: string; importance: string; description: string}, index: number) => (
-                <div key={index} className="bg-muted/20 p-4 rounded-lg">
+                <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium">{factor.name}</h4>
                     <Badge variant={getBadgeVariant(factor.importance)}>
@@ -402,7 +402,7 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
                 </div>
               ))
             ) : (
-              <div className="bg-muted/20 p-4 rounded-lg">
+              <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <p className="text-sm text-muted-foreground">No decision factors data available</p>
               </div>
             )}
@@ -411,11 +411,11 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
       </SectionCard>
       
       {/* Price Range Section */}
-      <SectionCard title="Price Range" icon={<ShoppingCart className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Price Range" icon={<ShoppingCart className="h-5 w-5" />}>
         <div className="space-y-4">
           {/* Subscription pricing */}
           {purchasingBehavior.priceRange?.subscription && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Subscription Pricing</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-muted/30 rounded-lg">
@@ -450,7 +450,7 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
           
           {/* One-time pricing */}
           {purchasingBehavior.priceRange?.oneTime && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">One-Time Purchase</h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -468,11 +468,11 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
       </SectionCard>
       
       {/* Purchase Frequency Section */}
-      <SectionCard title="Purchase Frequency" icon={<CalendarIcon className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Purchase Frequency" icon={<CalendarIcon className="h-5 w-5" />}>
         {purchasingBehavior.purchaseFrequency && (
           <div className="space-y-3">
             {Object.entries(purchasingBehavior.purchaseFrequency).map(([key, value], index) => (
-              <div key={index} className="bg-muted/20 p-4 rounded-lg">
+              <div key={index} className="bg-muted/20 p-4 rounded-md overflow-hidden">
                 <div className="flex justify-between items-center">
                   <h4 className="text-sm font-medium capitalize">{key}</h4>
                   <Badge variant="outline">{value}</Badge>
@@ -484,11 +484,11 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
       </SectionCard>
       
       {/* Content Consumption Section with Spider Chart */}
-      <SectionCard title="Content Preferences" icon={<MessageSquare className="h-5 w-5" />}>
+      <SectionCard variant="plain" title="Content Preferences" icon={<MessageSquare className="h-5 w-5" />}>
         <div className="space-y-4">
           {/* Spider Chart for Content Preferences */}
           {contentPreferenceItems.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <div className="flex justify-center mb-4">
                 <SpiderChart 
                   values={contentPreferenceItems} 
@@ -503,7 +503,7 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
           
           {/* Preferred Formats */}
           {contentConsumption.preferredFormats && contentConsumption.preferredFormats.length > 0 && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Preferred Formats</h4>
               <div className="space-y-3">
                 {contentConsumption.preferredFormats.map((format: {type: string; preference: string; idealDuration?: string; idealLength?: string}, index: number) => (
@@ -526,7 +526,7 @@ export const BehavioralTraitsTab = ({ icpProfile }: BehavioralTraitsTabProps) =>
           
           {/* Research Habits */}
           {contentConsumption.researchHabits && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Research Habits</h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">

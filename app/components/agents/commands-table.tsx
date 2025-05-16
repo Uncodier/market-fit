@@ -5,16 +5,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/app/components/ui/badge"
 import { Check, AlertCircle, Clock } from "@/app/components/ui/icons"
 import { Command } from "@/app/agents/types"
+import { Button } from "@/app/components/ui/button"
 
 // Maximum number of commands to display at once
 const MAX_DISPLAY_COMMANDS = 20;
 
 interface CommandsTableProps {
   commands: Command[]
+  onLoadMore: () => void
+  hasMore: boolean
+  isLoading?: boolean
 }
 
 // Memoized table component to prevent excessive re-renders
-export const CommandsTable = memo(function CommandsTable({ commands }: CommandsTableProps) {
+export const CommandsTable = memo(function CommandsTable({ 
+  commands, 
+  onLoadMore, 
+  hasMore, 
+  isLoading = false 
+}: CommandsTableProps) {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
   
   const toggleRow = (id: string) => {
@@ -97,11 +106,7 @@ export const CommandsTable = memo(function CommandsTable({ commands }: CommandsT
   const processedCommands = useMemo(() => {
     try {
       if (!commands || !Array.isArray(commands)) return [];
-      
-      // Only process a limited number of commands to prevent UI freezing
-      return commands
-        .slice(0, MAX_DISPLAY_COMMANDS)
-        .filter(cmd => cmd != null); // Filter out null/undefined commands
+      return commands.filter(cmd => cmd != null); // Filter out null/undefined commands
     } catch (error) {
       console.error("Error processing commands for table:", error);
       return [];
@@ -166,9 +171,16 @@ export const CommandsTable = memo(function CommandsTable({ commands }: CommandsT
         </TableBody>
       </Table>
       
-      {commands.length > MAX_DISPLAY_COMMANDS && (
-        <div className="text-xs text-muted-foreground text-center py-2 border-t border-border/50">
-          Showing {MAX_DISPLAY_COMMANDS} of {commands.length} commands. Use filters to narrow results.
+      {hasMore && (
+        <div className="flex justify-center mt-4 mb-6">
+          <Button
+            variant="outline"
+            onClick={onLoadMore}
+            disabled={isLoading}
+            className="w-full max-w-xs"
+          >
+            {isLoading ? "Loading..." : "Load More"}
+          </Button>
         </div>
       )}
     </div>

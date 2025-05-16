@@ -65,16 +65,24 @@ export const siteMembersService = {
     const supabase = createClient()
     const { data: userData } = await supabase.auth.getUser()
     
+    // Check if the user already exists in auth.users
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', member.email)
+      .single();
+    
     const { data, error } = await supabase
       .from('site_members')
       .insert({
         site_id: siteId,
+        user_id: existingUser?.id || null, // NULL for users that don't exist yet
         email: member.email,
         role: member.role,
         name: member.name || null,
         position: member.position || null,
         added_by: userData.user?.id,
-        status: 'pending'
+        status: existingUser?.id ? 'active' : 'pending' // 'active' if user exists, 'pending' otherwise
       })
       .select()
       .single()
@@ -190,21 +198,37 @@ export const siteMembersService = {
       const siteMemberRole = mapTeamRoleToSiteMemberRole(member.role)
       
       if (!existingMember) {
+        // Check if the user exists in auth.users
+        const { data: existingUser } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', member.email)
+          .single();
+        
+        console.log(`Creating member for ${member.email}, exists in auth: ${!!existingUser}`);
+        
         // It's a new member, insert it
         const { error } = await supabase
           .from('site_members')
           .insert({
             site_id: siteId,
+            user_id: existingUser?.id || null, // Explicitly NULL for pending users
             email: member.email,
             role: siteMemberRole,
             name: member.name || null,
             position: member.position || null,
             added_by: userData.user.id,
-            status: 'pending' // All new members start as pending
+            status: existingUser?.id ? 'active' : 'pending' // Active if user exists, pending otherwise
           })
         
-        if (error && error.code !== '23505') { // Ignore unique constraint violation
-          console.error('Error adding new site member during sync:', error)
+        if (error) {
+          console.error(`Error adding new site member during sync for ${member.email}:`, error)
+          // Log more details about the error
+          if (error.code === '23505') {
+            console.log('Duplicate entry detected');
+          } else if (error.code === '23503') {
+            console.log('Foreign key constraint violation - check user_id');
+          }
         }
       } else {
         // Update existing member if needed

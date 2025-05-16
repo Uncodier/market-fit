@@ -290,6 +290,9 @@ export function CommandsPanel() {
   const [activeTab, setActiveTab] = useState<string>("completed");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const router = useRouter();
   const { currentSite } = useSite();
   
@@ -304,88 +307,76 @@ export function CommandsPanel() {
   }, [router, currentSite?.id]);
   
   // Function to load commands
-  const loadCommands = async () => {
-    // Prevent loading when the component is already in a loading state
-    if (loading && !isInitialLoad) {
-      console.log("Skipping load while already loading...");
-      return;
-    }
-    
-    // Si no hay un sitio seleccionado, no podemos cargar comandos
+  const loadCommands = async (page: number = 1, append: boolean = false) => {
     if (!currentSite?.id) {
-      console.log("No hay un sitio seleccionado, no se pueden cargar comandos");
-      setError("No site selected");
-      setLoading(false);
-      if (isInitialLoad) {
-        setIsInitialLoad(false);
-      }
+      console.log("No site ID available");
       return;
     }
-    
+
     try {
-      setLoading(true);
-      console.log("Loading commands for site:", currentSite.id);
-      
-      // Use a timeout to prevent UI freezing from network requests
-      const result = await Promise.race([
-        getCommands(currentSite.id),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Command loading timed out")), 10000)
-        )
-      ]) as {commands?: Command[], error?: string};
-      
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      const result = await getCommands(currentSite.id, page);
+
       if (result.error) {
         console.error("Error:", result.error);
-        setError(safelyHandleError(result.error, "Failed to load commands"));
-        
-        // Show toast only if it's not the initial load
+        setError(result.error);
         if (!isInitialLoad) {
           toast.error("Error loading commands.");
         }
       } else {
-        console.log(`Fetched ${result.commands?.length || 0} commands`);
-        
-        // Only update state if there are actual commands to avoid unnecessary renders
         if (result.commands && result.commands.length > 0) {
-          // Sanitize commands before state update to avoid freezing the UI
-          const sanitizedCommands = sanitizeCommands(result.commands || []);
-          setCommands(sanitizedCommands);
+          setCommands(prev => append ? [...prev, ...result.commands!] : result.commands!);
+          setHasMore(result.commands.length === 40); // If we got less than 40 items, we've reached the end
           setError(null);
         } else {
-          // Set empty array but don't clear error if already set
-          setCommands([]);
+          if (!append) {
+            setCommands([]);
+          }
+          setHasMore(false);
         }
       }
     } catch (err) {
       console.error("Error loading commands:", err);
-      setError(safelyHandleError(err, "Failed to load commands"));
-      
-      // Show toast only if it's not the initial load
+      setError("Failed to load commands");
       if (!isInitialLoad) {
         toast.error("Error loading commands.");
       }
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
       if (isInitialLoad) {
         setIsInitialLoad(false);
       }
     }
   };
+
+  // Load more commands
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    await loadCommands(nextPage, true);
+  };
   
   // Load commands when component mounts or currentSite changes
   useEffect(() => {
-    loadCommands();
+    setCurrentPage(1);
+    loadCommands(1, false);
     
     // Set up polling for real-time updates with a higher interval to reduce load
-    const intervalId = setInterval(loadCommands, 60000); // Update every minute (increased from 30s)
+    const intervalId = setInterval(() => loadCommands(1, false), 60000); // Update every minute
     
     // Clear interval when unmounting
     return () => clearInterval(intervalId);
   }, [currentSite?.id]);
   
-  // Handle tab change without triggering loadCommands
+  // Handle tab change
   const handleTabChange = (value: string) => {
-    // Just update the active tab, don't load commands again
     setActiveTab(value);
   };
   
@@ -395,85 +386,56 @@ export function CommandsPanel() {
     return command.status === status;
   };
   
-  // Memoized filtered commands with better dependency tracking and error handling
+  // Memoized filtered commands
   const filteredCommands = useMemo(() => {
     try {
-      // Return empty array immediately if no commands or empty array to prevent processing
       if (!commands || !Array.isArray(commands) || commands.length === 0) {
         return [];
       }
       
-      // Create a stable reference to the commands we need to process
-      // Limited to MAX_ITEMS to prevent UI freezing with extremely large datasets
-      const commandsToProcess = commands.slice(0, MAX_ITEMS);
-      
-      // Separate logic into simple stable constants for better optimization
       const isCompletedTab = activeTab === "completed";
       const isRunningTab = activeTab === "running";
       const isFailedTab = activeTab === "failed";
       
-      // Use simple for loop instead of multiple filters for better performance
-      const filtered = [];
-      for (let i = 0; i < commandsToProcess.length; i++) {
-        const command = commandsToProcess[i];
-        if (!command) continue;
+      return commands.filter(command => {
+        if (!command) return false;
         
         try {
           const status = command.status;
-          // Early return conditions
-          if (isCompletedTab && status === "completed") {
-            filtered.push(command);
-          } else if (isRunningTab && (status === "running" || status === "pending")) {
-            filtered.push(command);
-          } else if (isFailedTab && (status === "failed" || status === "cancelled")) {
-            filtered.push(command);
-          }
+          if (isCompletedTab && status === "completed") return true;
+          if (isRunningTab && (status === "running" || status === "pending")) return true;
+          if (isFailedTab && (status === "failed" || status === "cancelled")) return true;
+          return false;
         } catch (err) {
           console.error("Error filtering command:", err);
-          // Skip problematic command
+          return false;
         }
-      }
-      
-      return filtered;
+      });
     } catch (err) {
       console.error("Critical error in command filtering:", err);
-      return []; // Return empty array if there's an error during filtering
+      return [];
     }
   }, [commands, activeTab]);
   
-  // Count commands by status with improved performance
+  // Count commands by status
   const { completedCount, runningCount, failedCount } = useMemo(() => {
-    // Default values to prevent rendering errors
     const defaultCounts = { completedCount: 0, runningCount: 0, failedCount: 0 };
     
-    // Early return if no commands to avoid unnecessary work
     if (!commands || !Array.isArray(commands) || commands.length === 0) {
       return defaultCounts;
     }
     
     try {
-      // Use a single pass through the array instead of multiple filters
-      let completed = 0, running = 0, failed = 0;
-      
-      // Limit to MAX_ITEMS to prevent performance issues
-      const itemsToCount = Math.min(commands.length, MAX_ITEMS);
-      
-      for (let i = 0; i < itemsToCount; i++) {
-        const command = commands[i];
-        if (!command) continue;
+      return commands.reduce((acc, command) => {
+        if (!command) return acc;
         
-        // Use string comparison for more stability
         const status = String(command.status || "");
-        if (status === "completed") {
-          completed++;
-        } else if (status === "running" || status === "pending") {
-          running++;
-        } else if (status === "failed" || status === "cancelled") {
-          failed++;
-        }
-      }
-      
-      return { completedCount: completed, runningCount: running, failedCount: failed };
+        if (status === "completed") acc.completedCount++;
+        else if (status === "running" || status === "pending") acc.runningCount++;
+        else if (status === "failed" || status === "cancelled") acc.failedCount++;
+        
+        return acc;
+      }, { ...defaultCounts });
     } catch (err) {
       console.error("Error counting commands:", err);
       return defaultCounts;
@@ -558,12 +520,26 @@ export function CommandsPanel() {
             />
           </div>
         ) : (
-          <CommandList 
-            commands={filteredCommands} 
-            hasError={!!error} 
-            onNavigateToCommand={handleNavigateToCommand}
-            agentId={currentSite?.id || 'default'}
-          />
+          <>
+            <CommandList 
+              commands={filteredCommands} 
+              hasError={!!error} 
+              onNavigateToCommand={handleNavigateToCommand}
+              agentId={currentSite?.id || 'default'}
+            />
+            {hasMore && (
+              <div className="flex justify-center py-4">
+                <Button
+                  variant="outline"
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="w-full max-w-xs mx-4"
+                >
+                  {isLoadingMore ? "Loading..." : "Load More"}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

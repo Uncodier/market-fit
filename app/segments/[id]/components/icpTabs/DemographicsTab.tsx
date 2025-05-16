@@ -408,7 +408,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
       {/* Age Range Section - IMPROVED */}
       <SectionCard title="Age Range" icon={<CalendarIcon className="h-5 w-5" />}>
         <div className="space-y-4">
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <h4 className="text-sm font-medium mb-3">Age Distribution</h4>
             
             {/* Age Slider Visualization - Improved */}
@@ -488,7 +488,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
           </div>
           
           {demographics.ageRange?.secondary && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-2">Secondary Age Range</h4>
               <p className="text-md font-medium">{demographics.ageRange.secondary}</p>
             </div>
@@ -498,7 +498,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
       
       {/* Gender Distribution - IMPROVED WITH CHART */}
       <SectionCard title="Gender Distribution" icon={<User className="h-5 w-5" />} className="md:col-span-2 xl:col-span-1">
-        <div className="bg-muted/20 p-4 rounded-lg">
+        <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
           <h4 className="text-sm font-medium mb-3">Distribution</h4>
           
           {/* Gender Distribution Visualization - Improved with Pie Chart */}
@@ -626,7 +626,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
       <SectionCard title="Locations" icon={<Globe className="h-5 w-5" />}>
         <div className="space-y-4">
           {demographics.locations && demographics.locations.length > 0 ? (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Geographic Distribution</h4>
               
               {/* Reemplazar el mapa de react-simple-maps con nuestro nuevo componente */}
@@ -649,7 +649,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
       {/* Education Level - IMPROVED */}
       <SectionCard title="Education Level" icon={<GraduationCap className="h-5 w-5" />}>
         <div className="space-y-4">
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <h4 className="text-sm font-medium mb-3">Education Progression</h4>
             
             {/* Education Level Visualization - Improved */}
@@ -713,7 +713,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
           </div>
           
           {demographics.education?.secondary && (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Secondary Education</h4>
               <div className="flex flex-wrap gap-2">
                 {(() => {
@@ -772,7 +772,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
       {/* Income Level */}
       <SectionCard title="Income Level" icon={<DollarSign className="h-5 w-5" />}>
         <div className="space-y-4">
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <h4 className="text-sm font-medium mb-3">Income Range</h4>
             
             {/* Income Slider Visualization */}
@@ -807,7 +807,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
             <p className="text-md font-medium">{demographics.income?.level || 'N/A'}</p>
           </div>
           
-          <div className="bg-muted/20 p-4 rounded-lg">
+          <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
             <h4 className="text-sm font-medium mb-2">Range</h4>
             <p className="text-md font-medium">
               {demographics.income?.range || 'N/A'}
@@ -821,7 +821,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
       <SectionCard title="Languages" icon={<Languages className="h-5 w-5" />}>
         <div className="space-y-4">
           {demographics.languages && demographics.languages.length > 0 ? (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <h4 className="text-sm font-medium mb-3">Language Proficiency</h4>
               <div className="space-y-6">
                 {demographics.languages.map((language, index) => {
@@ -867,7 +867,7 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
               </div>
             </div>
           ) : (
-            <div className="bg-muted/20 p-4 rounded-lg">
+            <div className="bg-muted/20 p-4 rounded-md overflow-hidden">
               <p className="text-muted-foreground">No language data available</p>
             </div>
           )}

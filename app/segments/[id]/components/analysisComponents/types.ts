@@ -1,7 +1,7 @@
-import { Segment, AdPlatform } from "../../page";
+import { Segment } from "../../page";
 
 // Define our new platform type
-export type NewAdPlatformType = "googleAds" | "facebookAds" | "linkedInAds" | "tiktokAds";
+export type NewAdPlatformType = "facebookAds" | "googleAds" | "linkedInAds" | "tiktokAds";
 
 // Copy states for the UI
 export interface CopyStates {
@@ -132,9 +132,19 @@ export interface TikTokBehavior {
 }
 
 // Common props for all components
-export interface AnalysisComponentProps {
+export interface BaseAnalysisComponentProps {
+  segment: Segment;
   selectedAdPlatform: NewAdPlatformType;
-  copyStates: CopyStates;
-  copyToClipboard: (text: string, id: keyof CopyStates) => Promise<void>;
-  isDarkMode: boolean;
-} 
+  copyStates?: CopyStates;
+  copyToClipboard?: (text: string, id: keyof CopyStates) => Promise<void>;
+  isDarkMode?: boolean;
+}
+
+export interface PerformanceMetricsProps {
+  isDarkMode?: boolean;
+}
+
+export interface MarketPenetrationProps extends BaseAnalysisComponentProps {}
+export interface BehaviorProps extends BaseAnalysisComponentProps {}
+export interface DemographicsProps extends BaseAnalysisComponentProps {}
+export interface RegionalDistributionProps extends BaseAnalysisComponentProps {} 

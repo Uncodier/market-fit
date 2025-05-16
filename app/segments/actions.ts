@@ -268,7 +268,7 @@ export async function updateSegmentStatus({ segmentId, isActive }: UpdateSegment
 export async function getSegmentById(segmentId: string): Promise<{ error?: string, segment?: any }> {
   try {
     const supabase = createClient()
-
+    
     // Validar que el segmentId sea un UUID válido
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segmentId)) {
       return { error: "ID de segmento inválido" }
@@ -306,5 +306,86 @@ export async function getSegmentById(segmentId: string): Promise<{ error?: strin
   } catch (error) {
     console.error("Error getting segment by ID:", error)
     return { error: "Error al obtener el segmento" }
+  }
+}
+
+interface UpdateSegmentData {
+  name?: string;
+  description?: string | null;
+  audience?: string | null;
+  language?: string | null;
+  size?: string | null;
+  url?: string | null;
+}
+
+export async function updateSegment({ segmentId, data }: { segmentId: string, data: UpdateSegmentData }): Promise<{ error?: string, segment?: any }> {
+  try {
+    const supabase = createClient()
+    
+    // Validar que el segmentId sea un UUID válido
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segmentId)) {
+      return { error: "ID de segmento inválido" }
+    }
+    
+    // Validar que el nombre no esté vacío
+    if (data.name !== undefined && data.name.trim() === '') {
+      return { error: "El nombre del segmento no puede estar vacío" }
+    }
+    
+    // Validar URL si está presente
+    if (data.url) {
+      try {
+        new URL(data.url)
+      } catch (e) {
+        return { error: "URL inválida" }
+      }
+    }
+    
+    const { data: segment, error } = await supabase
+      .from("segments")
+      .update(data)
+      .eq('id', segmentId)
+      .select()
+      .single()
+      
+    if (error) {
+      if (error.code === "42501") {
+        return { error: "No tienes permisos para actualizar este segmento" }
+      }
+      throw error
+    }
+    
+    return { segment }
+  } catch (error) {
+    console.error("Error updating segment:", error)
+    return { error: "Error al actualizar el segmento" }
+  }
+}
+
+export async function deleteSegment(segmentId: string): Promise<{ error?: string, success?: boolean }> {
+  try {
+    const supabase = createClient()
+    
+    // Validar que el segmentId sea un UUID válido
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segmentId)) {
+      return { error: "ID de segmento inválido" }
+    }
+    
+    const { error } = await supabase
+      .from("segments")
+      .delete()
+      .eq('id', segmentId)
+      
+    if (error) {
+      if (error.code === "42501") {
+        return { error: "No tienes permisos para eliminar este segmento" }
+      }
+      throw error
+    }
+    
+    return { success: true }
+  } catch (error) {
+    console.error("Error deleting segment:", error)
+    return { error: "Error al eliminar el segmento" }
   }
 } 

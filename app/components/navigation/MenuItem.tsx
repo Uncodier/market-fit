@@ -24,6 +24,7 @@ interface MenuItemProps {
   isCollapsed?: boolean
   children?: React.ReactNode
   className?: string
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void
 }
 
 export function MenuItem({ 
@@ -36,7 +37,8 @@ export function MenuItem({
   isActive, 
   isCollapsed,
   children,
-  className
+  className,
+  onClick
 }: MenuItemProps) {
   const linkRef = useRef<HTMLAnchorElement>(null);
   const [isSafari, setIsSafari] = useState(false);
@@ -132,6 +134,7 @@ export function MenuItem({
         isCollapsed ? "justify-center h-[39px]" : "justify-start h-[39px]",
         isSettingsLink ? "safari-settings-link" : ""
       )}
+      onClick={onClick}
     >
       {isCollapsed ? (
         <TooltipProvider delayDuration={100}>

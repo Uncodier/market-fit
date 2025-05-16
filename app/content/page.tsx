@@ -772,9 +772,9 @@ function ContentKanban({
   }
 
   return (
-    <div className="h-[calc(100vh-16rem)] overflow-hidden">
+    <div className="overflow-x-auto pb-4">
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 h-full overflow-x-auto pb-4">
+        <div className="flex gap-4 min-w-fit">
           {CONTENT_STATUSES.map(status => (
             <div key={status.id} className="flex-shrink-0 w-80">
               <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
@@ -790,35 +790,33 @@ function ContentKanban({
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="bg-muted/30 rounded-b-md h-[calc(100%-2.5rem)] border-b border-x"
+                    className="bg-muted/30 rounded-b-md p-2 border-b border-x"
                   >
-                    <ScrollArea className="h-full p-2">
-                      {items[status.id]?.length > 0 ? (
-                        items[status.id].map((item, index) => (
-                          <Draggable key={item.id} draggableId={item.id} index={index}>
-                            {(provided) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                              >
-                                <ContentCard 
-                                  content={item} 
-                                  segments={segments}
-                                  onClick={onContentClick}
-                                  onRatingChange={handleRatingChange}
-                                />
-                              </div>
-                            )}
-                          </Draggable>
-                        ))
-                      ) : (
-                        <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-                          No content items
-                        </div>
-                      )}
-                      {provided.placeholder}
-                    </ScrollArea>
+                    {items[status.id]?.length > 0 ? (
+                      items[status.id].map((item, index) => (
+                        <Draggable key={item.id} draggableId={item.id} index={index}>
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                            >
+                              <ContentCard 
+                                content={item} 
+                                segments={segments}
+                                onClick={onContentClick}
+                                onRatingChange={handleRatingChange}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))
+                    ) : (
+                      <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
+                        No content items
+                      </div>
+                    )}
+                    {provided.placeholder}
                   </div>
                 )}
               </Droppable>
@@ -1460,8 +1458,8 @@ function ContentFiltersDialog({
 
 function ContentSkeleton() {
   return (
-    <div className="h-[calc(100vh-12rem)] overflow-hidden">
-      <div className="flex gap-4 h-full overflow-x-auto pb-4">
+    <div className="overflow-x-auto pb-4">
+      <div className="flex gap-4 min-w-fit">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex-shrink-0 w-80">
             <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
@@ -1470,7 +1468,7 @@ function ContentSkeleton() {
                 <Skeleton className="h-5 w-8" />
               </div>
             </div>
-            <div className="bg-muted/30 rounded-b-md h-[calc(100%-2.5rem)] border-b border-x p-2">
+            <div className="bg-muted/30 rounded-b-md border-b border-x p-2">
               {Array.from({ length: 3 }).map((_, j) => (
                 <Card key={j} className="mb-2">
                   <CardContent className="p-3">
@@ -1750,7 +1748,7 @@ export default function ContentPage() {
   return (
     <div className="h-full flex flex-col">
       <Tabs defaultValue="all">
-        <StickyHeader showAIButton={false}>
+        <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">

@@ -240,6 +240,29 @@ export default function SettingsPage() {
       checkSecureTokens(site.id, site.settings?.channels?.email?.email).catch(console.error);
     }
     
+    // Process team members data
+    const teamMembers = site.settings?.team_members || [];
+    console.log("Processing team members:", teamMembers);
+    
+    // Make sure each team member has the required fields
+    const processedTeamMembers = teamMembers.map(member => {
+      if (!member) return null;
+      
+      return {
+        email: member.email || "",
+        role: member.role || "view",
+        name: member.name || "",
+        position: member.position || ""
+      };
+    }).filter(Boolean) as {
+      email: string;
+      role: "view" | "create" | "delete" | "admin";
+      name?: string;
+      position?: string;
+    }[]; // Type assertion and remove null entries
+    
+    console.log("Processed team members:", processedTeamMembers);
+    
     return {
       name: site.name,
       url: site.url || "",
@@ -314,7 +337,7 @@ export default function SettingsPage() {
       // Add WhatsApp Business token (placeholder if stored securely)
       whatsapp_token: whatsAppToken,
       // Add team info
-      team_members: site.settings?.team_members || [],
+      team_members: processedTeamMembers,
       // Billing info
       billing: site.billing || {
         plan: "free",

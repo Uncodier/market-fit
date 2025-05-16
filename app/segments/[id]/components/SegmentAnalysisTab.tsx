@@ -1,19 +1,23 @@
+"use client"
+
 import React, { useState, useEffect } from "react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Segment } from "../page"
 import { useTheme } from '@/app/context/ThemeContext'
-import { CopyStates, NewAdPlatformType } from "./analysisComponents/types"
-import { PerformanceMetricsComponent } from "./analysisComponents/PerformanceMetricsComponent"
-import { DemographicsComponent } from "./analysisComponents/DemographicsComponent"
-import { BehaviorComponent } from "./analysisComponents/BehaviorComponent"
-import { MarketPenetrationComponent } from "./analysisComponents/MarketPenetrationComponent"
-import { RegionalDistributionComponent } from "./analysisComponents/RegionalDistributionComponent"
+import { 
+  NewAdPlatformType,
+  PerformanceMetricsComponent,
+  DemographicsComponent,
+  BehaviorComponent,
+  MarketPenetrationComponent,
+  RegionalDistributionComponent
+} from "./analysisComponents/index"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { Button } from "@/app/components/ui/button"
 import { BarChart } from "@/app/components/ui/icons"
 
 interface SegmentAnalysisTabProps {
-  segment: Segment
+  segment: Segment;
+  selectedAdPlatform: NewAdPlatformType;
 }
 
 // Helper function to find the audienceProfile in the segment data
@@ -264,111 +268,23 @@ const hasAnalysisData = (segment: Segment): boolean => {
   return false;
 };
 
-export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
-  const [selectedAdPlatform, setSelectedAdPlatform] = useState<NewAdPlatformType>("googleAds")
-  const [copyStates, setCopyStates] = useState<CopyStates>({
-    interests: false,
-    demographics: false,
-    behavior: false,
-    regional: false
-  })
+export default function SegmentAnalysisTab({ segment, selectedAdPlatform }: SegmentAnalysisTabProps) {
   const { isDarkMode } = useTheme()
   const [parsedSegment, setParsedSegment] = useState<Segment | null>(null)
-  const [hasAnalysis, setHasAnalysis] = useState<boolean>(false)
 
-  // Debug log for behavior data
   useEffect(() => {
     if (segment) {
-      try {
-        // Procesar el segmento de manera segura
-        const processedSegment = safelyProcessSegment(segment);
-        
-        // Find the audienceProfile in the segment data
-        const audienceProfile = findAudienceProfile(processedSegment);
-        
-        // Verificar si el audienceProfile tiene datos de TikTok
-        if (audienceProfile?.data?.adPlatforms) {
-          if (!audienceProfile.data.adPlatforms.tiktokAds) {
-            // Verificar si hay datos de TikTok en el segmento procesado
-            if (processedSegment.analysis) {
-              // Buscar datos de TikTok en diferentes estructuras posibles
-              let tiktokData = null;
-              
-              if (Array.isArray(processedSegment.analysis)) {
-                // Buscar en cada elemento del array
-                for (const item of processedSegment.analysis) {
-                  if (item?.data?.adPlatforms?.tiktokAds) {
-                    tiktokData = item.data.adPlatforms.tiktokAds;
-                    break;
-                  }
-                }
-              } else if (typeof processedSegment.analysis === 'object') {
-                // Buscar en el objeto analysis
-                if (processedSegment.analysis?.data?.adPlatforms?.tiktokAds) {
-                  tiktokData = processedSegment.analysis.data.adPlatforms.tiktokAds;
-                } else if ((processedSegment.analysis as any)?.adPlatforms?.tiktokAds) {
-                  tiktokData = (processedSegment.analysis as any).adPlatforms.tiktokAds;
-                }
-              }
-              
-              // Si encontramos datos de TikTok, añadirlos al audienceProfile
-              if (tiktokData && audienceProfile) {
-                audienceProfile.data.adPlatforms.tiktokAds = tiktokData;
-              }
-            }
-          }
-        }
-        
-        if (audienceProfile) {
-          // Actualizar el segmento procesado
-          setParsedSegment({
-            ...processedSegment,
-            analysis: audienceProfile
-          });
-        } else {
-          setParsedSegment(processedSegment);
-        }
-        
-        // Check if the segment has analysis data
-        setHasAnalysis(hasAnalysisData(processedSegment));
-      } catch (error) {
-        console.error("Error processing segment:", error);
-        setParsedSegment(segment);
-        setHasAnalysis(hasAnalysisData(segment));
-      }
+      setParsedSegment(segment)
     }
   }, [segment]);
 
-  const handlePlatformChange = (platform: NewAdPlatformType) => {
-    setSelectedAdPlatform(platform)
-  }
-
-  const copyToClipboard = async (text: string, id: keyof CopyStates) => {
-    try {
-      // Make sure we have valid text to copy
-      const textToCopy = typeof text === 'string' ? text : 
-                         typeof text === 'object' ? JSON.stringify(text, null, 2) : 
-                         String(text);
-                         
-      await navigator.clipboard.writeText(textToCopy)
-      setCopyStates(prev => ({ ...prev, [id]: true }))
-      setTimeout(() => {
-        setCopyStates(prev => ({ ...prev, [id]: false }))
-      }, 2000)
-    } catch (err) {
-      console.error('Error copying to clipboard:', err)
-      // Show error state briefly
-      setCopyStates(prev => ({ ...prev, [id]: false }))
-    }
-  }
-
   // If there's no analysis data, show an empty state
-  if (!hasAnalysis) {
+  if (!segment?.analysis) {
     return (
       <EmptyState
         icon={<BarChart className="h-12 w-12 text-primary/60" />}
-        title="No Audience Analysis Available"
-        description="There's no audience analysis data for this segment yet. Run an analysis to understand your audience's demographics, behaviors, and preferences."
+        title="No Analysis Available"
+        description="There's no analysis data for this segment yet. Run an analysis to understand your audience better."
         action={
           <Button 
             variant="default" 
@@ -382,70 +298,47 @@ export function SegmentAnalysisTab({ segment }: SegmentAnalysisTabProps) {
     );
   }
 
+  const currentSegment = parsedSegment || segment;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-        <h2 className="text-2xl font-semibold">Audience Analysis</h2>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Ad Platform</span>
-            <Select
-              value={selectedAdPlatform}
-              onValueChange={(value: NewAdPlatformType) => handlePlatformChange(value)}
-            >
-              <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder="Select platform" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="facebookAds">Facebook Ads</SelectItem>
-                <SelectItem value="googleAds">Google Ads</SelectItem>
-                <SelectItem value="linkedInAds">LinkedIn Ads</SelectItem>
-                <SelectItem value="tiktokAds">TikTok Ads</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
       {/* Performance Metrics Cards */}
       <PerformanceMetricsComponent isDarkMode={isDarkMode} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Market Penetration Card (formerly KeywordAnalysis) */}
+        {/* Market Penetration Card */}
         <MarketPenetrationComponent 
-          segment={parsedSegment || segment}
+          segment={currentSegment}
           selectedAdPlatform={selectedAdPlatform}
         />
 
         {/* Behavior Card */}
         <BehaviorComponent 
-          segment={parsedSegment || segment}
+          segment={currentSegment}
           selectedAdPlatform={selectedAdPlatform}
-          copyStates={copyStates}
-          copyToClipboard={copyToClipboard}
+          copyStates={{ interests: false, demographics: false, behavior: false, regional: false }}
+          copyToClipboard={async () => {}}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Demographics Card - Moved down */}
+        {/* Demographics Card */}
         <DemographicsComponent 
-          segment={parsedSegment || segment}
+          segment={currentSegment}
           selectedAdPlatform={selectedAdPlatform}
-          copyStates={copyStates}
-          copyToClipboard={copyToClipboard}
+          copyStates={{ interests: false, demographics: false, behavior: false, regional: false }}
+          copyToClipboard={async () => {}}
           isDarkMode={isDarkMode}
         />
         
         {/* Regional Distribution Card */}
         <RegionalDistributionComponent 
-          segment={parsedSegment || segment}
+          segment={currentSegment}
           selectedAdPlatform={selectedAdPlatform}
-          copyStates={copyStates}
-          copyToClipboard={copyToClipboard}
+          copyStates={{ interests: false, demographics: false, behavior: false, regional: false }}
+          copyToClipboard={async () => {}}
         />
       </div>
     </div>
-  )
-}
-
-export default SegmentAnalysisTab; 
+  );
+} 
