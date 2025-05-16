@@ -69,7 +69,7 @@ export function TopBarTitle({
       'profile': 'Profile',
       'help': 'Help',
       'chat': 'Chat',
-      'control-center': 'Control Center'
+      'campaigns': 'Campaigns'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
@@ -167,15 +167,19 @@ export function TopBarTitle({
     
     // Mapeo de rutas a títulos
     const routeTitles: Record<string, string> = {
+      'dashboard': 'Dashboard',
       'agents': 'Agents',
       'segments': 'Segments',
       'experiments': 'Experiments',
       'requirements': 'Requirements',
       'leads': 'Leads',
       'assets': 'Assets',
+      'content': 'Content',
+      'settings': 'Settings',
+      'profile': 'Profile',
+      'help': 'Help',
       'chat': 'Chat',
-      'dashboard': 'Dashboard',
-      'control-center': 'Control Center'
+      'campaigns': 'Campaigns'
     };
     
     // Manejar casos especiales como chat con parámetros de consulta

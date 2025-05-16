@@ -38,7 +38,7 @@ import {
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Switch } from "@/app/components/ui/switch"
 import { cn } from "@/lib/utils"
-import { campaignFormSchema, type CampaignFormValues } from "../control-center/schema"
+import { campaignFormSchema, type CampaignFormValues } from "../campaigns/schema"
 import * as z from "zod"
 
 interface Segment {

@@ -3,7 +3,7 @@ import { createExperiment, type ExperimentFormValues } from "@/app/experiments/a
 import { createAsset } from "@/app/assets/actions"
 import { createRequirement } from "@/app/requirements/actions"
 import { createLead } from "@/app/leads/actions"
-import { createCampaign } from "@/app/control-center/actions/campaigns/create"
+import { createCampaign } from "@/app/campaigns/actions/campaigns/create"
 import { buildSegmentsWithAI, buildExperimentsWithAI } from "@/app/services/ai-service"
 import { Button } from "../ui/button"
 import { CreateSegmentDialog } from "../create-segment-dialog"

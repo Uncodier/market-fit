@@ -5,8 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { Settings, Filter } from "@/app/components/ui/icons"
-import { KanbanColumn } from "@/app/components/control-center/kanban-column"
+import { Target, Filter } from "@/app/components/ui/icons"
+import { KanbanColumn } from "@/app/components/campaigns/kanban-column"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
@@ -19,7 +19,7 @@ import {
 import { SearchInput } from "@/app/components/ui/search-input"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { useSite } from "@/app/context/SiteContext"
-import { getCampaigns } from "@/app/control-center/actions/campaigns/read"
+import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import type { Campaign } from "@/app/types"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -553,7 +553,7 @@ function ControlCenterSkeleton() {
   );
 }
 
-export default function ControlCenterPage() {
+export default function CampaignsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -728,69 +728,7 @@ export default function ControlCenterPage() {
       </StickyHeader>
 
       {isLoading ? (
-        <div className="px-8 pb-8">
-          <div className="w-full overflow-x-auto">
-            <div className="flex gap-6 p-6 min-w-max bg-muted/5 rounded-lg shadow-sm">
-              {/* Kanban columns - create 5 columns to represent different campaign types */}
-              {[1, 2, 3, 4, 5].map((columnIndex) => (
-                <div key={columnIndex} className="w-[300px] flex-shrink-0 bg-card rounded-lg shadow-sm border p-4">
-                  {/* Column header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <Skeleton className="h-5 w-32" />
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-5 w-10 rounded-full" />
-                      <Skeleton className="h-5 w-10 rounded-full" />
-                    </div>
-                  </div>
-                  
-                  {/* Cards in each column - 3 cards per column */}
-                  {[1, 2, 3].map((cardIndex) => (
-                    <div key={cardIndex} className="mb-3 bg-card rounded-md border shadow-sm">
-                      {/* Card header */}
-                      <div className="p-3 pb-2">
-                        <div className="flex justify-between items-start gap-3 mb-2">
-                          <Skeleton className="h-5 w-[70%]" />
-                          <Skeleton className="h-5 w-[15%] rounded-full" />
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <Skeleton className="h-3.5 w-3.5 rounded-full" />
-                          <Skeleton className="h-3.5 w-16" />
-                        </div>
-                      </div>
-                      
-                      {/* Card content */}
-                      <div className="p-3 pt-1 space-y-3">
-                        {/* Description */}
-                        <Skeleton className="h-4 w-[90%]" />
-                        
-                        {/* Expandable summary row */}
-                        <div className="flex items-center justify-between bg-muted/30 p-2.5 rounded-md">
-                          <div className="flex gap-3">
-                            <div className="flex items-center gap-1.5">
-                              <Skeleton className="h-3.5 w-3.5 rounded-full" />
-                              <Skeleton className="h-3.5 w-3.5" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <Skeleton className="h-3.5 w-3.5 rounded-full" />
-                              <Skeleton className="h-3.5 w-3.5" />
-                            </div>
-                            <div className="flex items-center">
-                              <Skeleton className="h-3.5 w-3.5 rounded-full mr-1.5" />
-                              <Skeleton className="h-3.5 w-10" />
-                            </div>
-                          </div>
-                          <Skeleton className="h-4 w-4 rounded-full" />
-                        </div>
-                        
-                        {/* Expanded content is not shown in skeleton */}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <ControlCenterSkeleton />
       ) : (
         <div className="px-8 pb-8">
           <Tabs defaultValue="active" className="h-auto">
@@ -860,7 +798,7 @@ export default function ControlCenterPage() {
                 </div>
               ) : (
                 <EmptyState
-                  icon={<Settings className="h-12 w-12 text-muted-foreground" />}
+                  icon={<Target className="h-12 w-12 text-muted-foreground" />}
                   title="No Active Campaigns"
                   description="You don't have any active campaigns yet. Create your first campaign to get started."
                   features={[
@@ -879,7 +817,7 @@ export default function ControlCenterPage() {
 
             <TabsContent value="pending">
               <EmptyState
-                icon={<Settings className="h-12 w-12 text-muted-foreground" />}
+                icon={<Target className="h-12 w-12 text-muted-foreground" />}
                 title="No Pending Campaigns"
                 description="You don't have any pending campaigns at the moment."
                 features={[
@@ -897,7 +835,7 @@ export default function ControlCenterPage() {
 
             <TabsContent value="completed">
               <EmptyState
-                icon={<Settings className="h-12 w-12 text-muted-foreground" />}
+                icon={<Target className="h-12 w-12 text-muted-foreground" />}
                 title="No Completed Campaigns"
                 description="You don't have any completed campaigns yet."
                 features={[

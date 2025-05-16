@@ -5,6 +5,7 @@ import { KanbanCard } from "./kanban-card"
 import { ChevronDown, ChevronRight } from "@/app/components/ui/icons"
 import "./kanban.css"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 
 interface KanbanColumnProps {
   title: string
@@ -51,6 +52,7 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const router = useRouter()
 
   const filteredTasks = tasks.filter(task => {
     if (!searchQuery) return true
@@ -69,6 +71,10 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
   const requirementsCount = filteredTasks.reduce((total, task) => 
     total + (task.requirements?.length || 0), 0
   )
+
+  const handleCardClick = (id: string) => {
+    router.push(`/campaigns/${id}`)
+  }
 
   return (
     <div 
@@ -113,18 +119,8 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
           {filteredTasks.map((task) => (
             <KanbanCard
               key={task.id}
-              id={task.id}
-              title={task.title}
-              description={task.description}
-              priority={task.priority}
-              dueDate={task.dueDate}
-              assignees={task.assignees}
-              issues={task.issues}
-              revenue={task.revenue}
-              budget={task.budget}
-              costs={task.costs}
-              subtasks={task.subtasks}
-              requirements={task.requirements}
+              {...task}
+              onCardClick={handleCardClick}
             />
           ))}
           {filteredTasks.length === 0 && (

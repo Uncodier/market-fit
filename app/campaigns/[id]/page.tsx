@@ -9,9 +9,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/ta
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
-import { getCampaignById } from "@/app/control-center/actions/campaigns/read"
-import { createSubtask } from "@/app/control-center/actions/subtasks/create"
-import { deleteCampaign } from "@/app/control-center/actions/campaigns/delete"
+import { getCampaignById } from "@/app/campaigns/actions/campaigns/read"
+import { createSubtask } from "@/app/campaigns/actions/subtasks/create"
+import { deleteCampaign } from "@/app/campaigns/actions/campaigns/delete"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -400,8 +400,8 @@ export default function TaskDetailPage() {
       const resetEvent = new CustomEvent('breadcrumb:update', {
         detail: {
           title: 'Campaign Details',
-          path: `/control-center/${params.id}`,
-          section: 'control-center'
+          path: `/campaigns/${params.id}`,
+          section: 'campaigns'
         }
       });
       window.dispatchEvent(resetEvent);
@@ -459,8 +459,8 @@ export default function TaskDetailPage() {
             const event = new CustomEvent('breadcrumb:update', {
               detail: {
                 title: response.data.title,
-                path: `/control-center/${params.id}`,
-                section: 'control-center'
+                path: `/campaigns/${params.id}`,
+                section: 'campaigns'
               }
             });
             
@@ -469,12 +469,12 @@ export default function TaskDetailPage() {
             }, 0);
           } else {
             toast.error("Campaign not found");
-            router.push("/control-center");
+            router.push("/campaigns");
           }
         } catch (error) {
           console.error("Error fetching campaign:", error);
           toast.error("Failed to load campaign");
-          router.push("/control-center");
+          router.push("/campaigns");
         } finally {
           setLoading(false);
         }
@@ -496,7 +496,7 @@ export default function TaskDetailPage() {
         detail: {
           title: null,
           path: null,
-          section: 'control-center'
+          section: 'campaigns'
         }
       });
       window.dispatchEvent(resetEvent);
@@ -632,7 +632,7 @@ export default function TaskDetailPage() {
   
   const handleEditCampaign = () => {
     // Redirect to edit page
-    router.push(`/control-center/edit/${params.id}`);
+    router.push(`/campaigns/edit/${params.id}`);
   };
   
   const handleDeleteCampaign = async () => {
@@ -647,7 +647,7 @@ export default function TaskDetailPage() {
       }
       
       toast.success("Campaign deleted successfully");
-      router.push("/control-center");
+      router.push("/campaigns");
     } catch (error) {
       console.error("Error deleting campaign:", error);
       toast.error("Failed to delete campaign");

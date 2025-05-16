@@ -53,6 +53,7 @@ interface KanbanCardProps {
     total?: number
     currency?: string
   }
+  onCardClick?: (id: string) => void
 }
 
 export function KanbanCard({ 
@@ -67,7 +68,8 @@ export function KanbanCard({
   requirements = [],
   revenue,
   budget,
-  costs
+  costs,
+  onCardClick
 }: KanbanCardProps) {
   const [expanded, setExpanded] = useState(false)
   const router = useRouter()
@@ -110,8 +112,12 @@ export function KanbanCard({
   }, [expanded, requirements, id, title, hasRequirements]);
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Navigate to the detail page when card is clicked
-    router.push(`/control-center/${id}`);
+    // Use the onCardClick prop if provided, otherwise use router navigation
+    if (onCardClick) {
+      onCardClick(id);
+    } else {
+      router.push(`/campaigns/${id}`);
+    }
   };
 
   const handleToggleExpand = (e: React.MouseEvent) => {

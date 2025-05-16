@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { type Sale, type SaleData } from "@/app/types"
-import { transformSaleData } from "@/app/control-center/actions/utils/transformers"
+import { transformSaleData } from "@/app/campaigns/actions/utils/transformers"
 
 // Get sales for a campaign
 export async function getCampaignSales(campaignId: string) {

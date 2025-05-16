@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Badge } from "@/app/components/ui/badge"
 import { useSite } from "@/app/context/SiteContext"
-import { getCampaignSales, createSale, updateSale, deleteSale } from "@/app/control-center/actions/sales"
+import { getCampaignSales, createSale, updateSale, deleteSale } from "@/app/campaigns/actions/sales"
 import {
   AlertDialog,
   AlertDialogAction,

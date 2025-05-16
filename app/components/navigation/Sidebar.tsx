@@ -13,7 +13,7 @@ import {
   FolderOpen,
   Bell,
   FileText,
-  Rocket,
+  Target,
   Tag,
   CreditCard,
   DollarSign
@@ -70,9 +70,9 @@ const navigationItems = [
     icon: Home,
   },
   {
-    title: "Control Center",
-    href: "/control-center",
-    icon: Rocket,
+    title: "Campaigns",
+    href: "/campaigns",
+    icon: Target,
   },
   {
     title: "Segments",

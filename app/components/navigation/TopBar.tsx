@@ -97,7 +97,7 @@ export function TopBar({
       if (!currentSite?.id) return
       
       // Only load segments for these pages
-      if (pathname === "/leads" || pathname === "/content" || pathname === "/control-center" || pathname === "/requirements" || pathname === "/experiments") {
+      if (pathname === "/leads" || pathname === "/content" || pathname === "/campaigns" || pathname === "/requirements" || pathname === "/experiments") {
         try {
           const response = await getSegments(currentSite.id)
           if (response.error) {
@@ -115,7 +115,7 @@ export function TopBar({
       }
       
       // Load requirements only for Control Center
-      if (pathname === "/control-center") {
+      if (pathname === "/campaigns") {
         try {
           const reqResponse = await fetch(`/api/requirements?siteId=${currentSite.id}`);
           if (reqResponse.ok) {
@@ -175,7 +175,7 @@ export function TopBar({
           isAgentsPage={pathname === "/agents"}
           isAssetsPage={pathname === "/assets"}
           isContentPage={pathname === "/content"}
-          isControlCenterPage={pathname === "/control-center"}
+          isControlCenterPage={pathname === "/campaigns"}
           isSalesPage={pathname === "/sales"}
           isExperimentDetailPage={isExperimentDetailPage}
           segmentData={segmentData}

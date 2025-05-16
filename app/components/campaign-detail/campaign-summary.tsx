@@ -11,8 +11,8 @@ import { AddCampaignLeadDialog } from "@/app/components/add-campaign-lead-dialog
 import { Lead } from "@/app/leads/types"
 import ReactMarkdown from 'react-markdown'
 import { createRequirement } from "@/app/requirements/actions"
-import { createSubtask } from "@/app/control-center/actions/subtasks/create"
-import { updateCampaign } from "@/app/control-center/actions/campaigns/update"
+import { createSubtask } from "@/app/campaigns/actions/subtasks/create"
+import { updateCampaign } from "@/app/campaigns/actions/campaigns/update"
 import type { SubtaskFormValues } from "@/app/components/add-subtask-dialog"
 import type { CampaignRequirementFormValues } from "@/app/components/create-requirement-dialog-for-campaign"
 import {
@@ -43,7 +43,7 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Switch } from "@/app/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { Campaign } from "@/app/types"
-import { type CampaignFormValues } from "@/app/control-center/schema"
+import { type CampaignFormValues } from "@/app/campaigns/schema"
 import Link from "next/link"
 import {
   Dialog,
