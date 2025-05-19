@@ -523,7 +523,7 @@ export function ChatList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={cn(
-              "pl-9 h-10 w-full rounded-md",
+              "pl-9 h-12 w-full rounded-md",
               isDarkMode ? "bg-background border-input" : "bg-white"
             )}
             data-command-k-input="true"

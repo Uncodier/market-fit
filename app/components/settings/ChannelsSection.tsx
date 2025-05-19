@@ -1202,14 +1202,24 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             )}
 
             <div className="flex justify-between pt-2">
-              <Button 
-                variant="outline" 
-                type="button" 
-                onClick={() => window.open("https://business.whatsapp.com/products/business-platform", "_blank")}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Learn More
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  type="button" 
+                  onClick={() => window.open("https://business.whatsapp.com/products/business-platform", "_blank")}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Learn More
+                </Button>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => window.open("https://business.facebook.com/settings/system-users/add", "_blank")}
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  Generate Token
+                </Button>
+              </div>
               
               {!hasWhatsAppToken && (
                 <Button 

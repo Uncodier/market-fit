@@ -9,8 +9,9 @@ import { Button } from "@/app/components/ui/button"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Eye, EyeOff, Lock, Mail, User } from "@/app/components/ui/icons"
+import { Eye, EyeOff, Lock, Mail, User, AlertCircle } from "@/app/components/ui/icons"
 import { Separator } from "@/app/components/ui/separator"
+import { Alert, AlertDescription } from "@/app/components/ui/alert"
 
 interface AuthFormProps {
   mode?: 'login' | 'register'
@@ -33,6 +34,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [authMode, setAuthMode] = useState<'sign_in' | 'sign_up'>(
     defaultAuthType === 'signup' ? 'sign_up' : 'sign_in'
   )
@@ -78,6 +80,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
   // Handle form submission
   const onSubmit = async (values: AuthFormValues) => {
     setLoading(true)
+    setErrorMessage(null)
     
     try {
       if (authMode === 'sign_up') {
@@ -90,18 +93,29 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
         })
         
         if (error) throw error
+
+        // Show success message for sign up
+        setErrorMessage("Check your email for the confirmation link.")
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: values.email,
           password: values.password
         })
         
-        if (error) throw error
+        if (error) {
+          // Map Supabase error messages to more user-friendly messages
+          const errorMessages: { [key: string]: string } = {
+            'Invalid login credentials': 'Incorrect email or password. Please try again.',
+            'Email not confirmed': 'Please check your email and confirm your account first.',
+            'Invalid email': 'Please enter a valid email address.',
+            'User not found': 'No account found with this email. Please sign up first.',
+          }
+          
+          throw new Error(errorMessages[error.message] || error.message)
+        }
       }
     } catch (error: any) {
-      form.setError("root", {
-        message: error.message || "Authentication failed. Please try again."
-      })
+      setErrorMessage(error.message)
     } finally {
       setLoading(false)
     }
@@ -109,6 +123,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
+    setErrorMessage(null)
     
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -120,9 +135,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
       
       if (error) throw error
     } catch (error: any) {
-      form.setError("root", {
-        message: error.message || "Authentication with Google failed. Please try again."
-      })
+      setErrorMessage('Failed to sign in with Google. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -132,6 +145,14 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
 
   return (
     <div className="space-y-6">
+      {errorMessage && (
+        <Alert variant={errorMessage.includes('Check your email') ? 'default' : 'destructive'}>
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <AlertDescription className="m-0">{errorMessage}</AlertDescription>
+          </div>
+        </Alert>
+      )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {/* Name field - only shown for sign up */}
@@ -210,13 +231,6 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType }: AuthForm
               </FormItem>
             )}
           />
-          
-          {/* Error message */}
-          {form.formState.errors.root && (
-            <div className="text-sm font-medium text-destructive">
-              {form.formState.errors.root.message}
-            </div>
-          )}
           
           {/* Submit button */}
           <Button 
