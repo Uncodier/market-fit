@@ -41,6 +41,11 @@ interface Task {
   scheduled_date: string
   lead_id?: string
   assignee?: string
+  type?: string
+  leads?: {
+    id: string
+    name: string
+  }
   leadName?: string
   assigneeName?: string
 }
@@ -182,13 +187,28 @@ export default function ControlCenterPage() {
       }
 
       // Format tasks
-      const formattedTasks = tasks?.map(task => ({
-        ...task,
-        leadId: task.lead_id,
-        assigneeId: task.assignee,
-        leadName: task.leads?.name,
-        assigneeName: task.assignee || 'Unassigned'
-      })) || []
+      const formattedTasks: Task[] = tasks?.map(task => {
+        // Ensure leads is properly typed
+        const taskLeads = Array.isArray(task.leads) ? task.leads[0] : task.leads
+
+        return {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          stage: task.stage,
+          scheduled_date: task.scheduled_date,
+          lead_id: task.lead_id,
+          assignee: task.assignee,
+          type: task.type,
+          leads: taskLeads ? {
+            id: taskLeads.id,
+            name: taskLeads.name
+          } : undefined,
+          leadName: taskLeads?.name,
+          assigneeName: task.assignee || 'Unassigned'
+        }
+      }) || []
 
       setTasks(formattedTasks)
       setIsLoading(false)
@@ -226,6 +246,28 @@ export default function ControlCenterPage() {
 
     fetchCategories()
   }, [currentSite])
+
+  // Calculate task counts
+  useEffect(() => {
+    const newTaskCounts = {
+      byCategory: {} as Record<string, number>,
+      byType: {} as Record<string, number>
+    }
+
+    tasks.forEach(task => {
+      // Count by type
+      if (task.type) {
+        newTaskCounts.byType[task.type] = (newTaskCounts.byType[task.type] || 0) + 1
+      }
+
+      // Count by category
+      if (task.lead_id) {
+        newTaskCounts.byCategory[task.lead_id] = (newTaskCounts.byCategory[task.lead_id] || 0) + 1
+      }
+    })
+
+    setTaskCounts(newTaskCounts)
+  }, [tasks])
 
   // Handle task status update
   const handleUpdateTaskStatus = async (taskId: string, newStatus: string) => {
