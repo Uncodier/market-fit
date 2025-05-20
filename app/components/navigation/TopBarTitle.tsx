@@ -1,3 +1,5 @@
+"use client"
+
 import { usePathname } from "next/navigation"
 import { Button } from "../ui/button"
 import Link from "next/link"
@@ -69,7 +71,8 @@ export function TopBarTitle({
       'profile': 'Profile',
       'help': 'Help',
       'chat': 'Chat',
-      'campaigns': 'Campaigns'
+      'campaigns': 'Campaigns',
+      'control-center': 'Control Center'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
@@ -179,7 +182,8 @@ export function TopBarTitle({
       'profile': 'Profile',
       'help': 'Help',
       'chat': 'Chat',
-      'campaigns': 'Campaigns'
+      'campaigns': 'Campaigns',
+      'control-center': 'Control Center'
     };
     
     // Manejar casos especiales como chat con parámetros de consulta

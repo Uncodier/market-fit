@@ -264,4 +264,61 @@ export interface CampaignSegmentData {
 export interface CampaignRequirementData {
   campaign_id: string;
   requirement_id: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  is_active: boolean;
+  site_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskCategory {
+  task_id: string;
+  category_id: string;
+}
+
+export interface TaskComment {
+  id: string
+  task_id: string
+  user_id: string
+  content: string
+  attachments: any[]
+  created_at: string
+  updated_at: string
+  user?: {
+    id: string
+    name: string
+    avatar_url?: string
+  }
+}
+
+export interface Task {
+  id: string
+  title: string
+  description: string | null
+  status: 'completed' | 'in_progress' | 'pending' | 'failed' | 'canceled'
+  stage?: 'awareness' | 'consideration' | 'decision' | 'purchase' | 'retention' | 'referral'
+  scheduled_date: string
+  lead_id?: string
+  assignee?: string
+  type?: string
+  site_id: string
+  created_at: string
+  updated_at: string
+  leads?: {
+    id: string
+    name: string
+  }
+  assignee_details?: {
+    id: string
+    name: string
+  }
+  comments?: TaskComment[]
 } 

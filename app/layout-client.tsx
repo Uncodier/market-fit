@@ -14,6 +14,10 @@ import { ThemeProvider } from "./context/ThemeContext"
 import { LayoutProvider, useLayout } from "./context/LayoutContext"
 
 const navigationTitles: Record<string, { title: string, helpText?: string }> = {
+  "/control-center": {
+    title: "Control Center",
+    helpText: "Manage and track all your tasks across different categories and types"
+  },
   "/segments": {
     title: "Segments",
     helpText: "Create and manage user segments based on behavior and attributes"

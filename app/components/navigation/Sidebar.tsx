@@ -16,7 +16,8 @@ import {
   Target,
   Tag,
   CreditCard,
-  DollarSign
+  DollarSign,
+  Rocket
 } from "@/app/components/ui/icons"
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
@@ -70,6 +71,11 @@ const navigationItems = [
     icon: Home,
   },
   {
+    title: "Control Center",
+    href: "/control-center",
+    icon: Rocket,
+  },
+  {
     title: "Campaigns",
     href: "/campaigns",
     icon: Target,
@@ -90,7 +96,7 @@ const navigationItems = [
     icon: FlaskConical,
   },
   {
-    title: "Tasks",
+    title: "Requirements",
     href: "/requirements",
     icon: ClipboardList,
   },

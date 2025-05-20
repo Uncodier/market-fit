@@ -1,8 +1,8 @@
 import React from 'react'
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
-import { LayoutGrid, TableRows } from "@/app/components/ui/icons"
+import { LayoutGrid, TableRows, CalendarIcon } from "@/app/components/ui/icons"
 
-export type ViewType = 'table' | 'kanban'
+export type ViewType = 'table' | 'kanban' | 'calendar'
 
 interface ViewSelectorProps {
   currentView: ViewType
@@ -17,6 +17,9 @@ export function ViewSelector({ currentView, onViewChange }: ViewSelectorProps) {
       </ToggleGroupItem>
       <ToggleGroupItem value="kanban" aria-label="Toggle kanban view" className="px-2">
         <LayoutGrid className="h-4 w-4" />
+      </ToggleGroupItem>
+      <ToggleGroupItem value="calendar" aria-label="Toggle calendar view" className="px-2">
+        <CalendarIcon className="h-4 w-4" />
       </ToggleGroupItem>
     </ToggleGroup>
   )
