@@ -7,7 +7,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
-import { Clock, PlayCircle, CheckCircle2, XCircle, Ban } from "@/app/components/ui/icons"
+import { Clock, PlayCircle, CheckCircle2, XCircle, Ban, MessageSquare } from "@/app/components/ui/icons"
 
 interface Task {
   id: string
@@ -20,6 +20,7 @@ interface Task {
   assignee?: string
   leadName?: string
   assigneeName?: string
+  comments_count?: number
 }
 
 interface TaskKanbanProps {
@@ -175,6 +176,12 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                         {getStageDisplayName(task.stage)}
                                       </Badge>
                                     )}
+                                    {task.comments_count ? (
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <MessageSquare className="h-3.5 w-3.5" />
+                                        <span>{task.comments_count}</span>
+                                      </div>
+                                    ) : null}
                                   </div>
                                 </CardContent>
                               </Card>

@@ -6,7 +6,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, MessageSquare } from "@/app/components/ui/icons"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 
 interface Task {
@@ -20,6 +20,7 @@ interface Task {
   assignee_id?: string
   leadName?: string
   assigneeName?: string
+  comments_count?: number
 }
 
 interface TasksTableProps {
@@ -156,16 +157,12 @@ export function TasksTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        // Add task-specific actions here
-                      }}
-                    >
-                      {/* Add task-specific action icons here */}
-                    </Button>
+                    {task.comments_count ? (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        <span>{task.comments_count}</span>
+                      </div>
+                    ) : null}
                   </div>
                 </TableCell>
               </TableRow>

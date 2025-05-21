@@ -63,7 +63,9 @@ export function TaskSidebar({
         onSearchChange={onSearchChange}
       />
       <div className="h-[calc(100vh-64px)] overflow-hidden pt-[71px]">
-        <ScrollArea className="h-full">
+        <ScrollArea className={cn(
+          "h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        )}>
           <div className={cn(
             "w-[319px] transition-all duration-300 ease-in-out",
             isCollapsed ? "opacity-0" : "opacity-100"

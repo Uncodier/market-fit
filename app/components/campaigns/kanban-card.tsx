@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { Clock, Users, AlertCircle, ChevronDown, ChevronUp, ClipboardList } from "@/app/components/ui/icons"
+import { Clock, ChevronDown, ChevronUp, ClipboardList } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { FinancialStats } from "./financial-stats"
@@ -98,6 +98,8 @@ export function KanbanCard({
   }
 
   const hasRequirements = requirements.length > 0
+  const pendingRequirements = requirements.filter(req => req.completion_status === "pending")
+  const hasPendingRequirements = pendingRequirements.length > 0
   const hasFinancialData = (
     revenue || budget || costs
   )
@@ -173,24 +175,11 @@ export function KanbanCard({
           title={expanded ? "Click to hide details" : "Click to show details"}
         >
           <div className="flex gap-3">
-            {assignees !== undefined && (
-              <div className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{assignees}</span>
-              </div>
-            )}
-            {issues !== undefined && (
-              <div className="flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{issues}</span>
-              </div>
-            )}
-            
             {hasRequirements && (
               <div className="flex items-center">
                 <ClipboardList className="h-3.5 w-3.5 text-primary mr-1.5" />
-                <span className="text-xs font-medium text-primary mr-1">{requirements.length}</span>
-                <span className="text-xs text-muted-foreground truncate max-w-[60px]">req.</span>
+                <span className="text-xs font-medium text-primary mr-1">{pendingRequirements.length}</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[60px]">pending</span>
               </div>
             )}
           </div>
@@ -221,20 +210,19 @@ export function KanbanCard({
             )}
             
             {/* Requirements section - Only shown in expanded view */}
-            {hasRequirements && (
+            {hasPendingRequirements && (
               <div className="pt-2 border-t w-full">
-                <h4 className="text-xs font-medium mb-2">Req. ({requirements.length})</h4>
+                <h4 className="text-xs font-medium mb-2">Pending Requirements ({pendingRequirements.length})</h4>
                 <div className="w-full text-xs overflow-visible">
                   <div className="w-full border rounded-md overflow-hidden">
                     <table className="w-full">
                       <thead className="bg-muted/30 h-8">
                         <tr>
-                          <th className="h-7 text-xs font-medium w-[70%] text-left px-2">Title</th>
-                          <th className="h-7 text-xs font-medium w-[30%] text-left px-2">Status</th>
+                          <th className="h-7 text-xs font-medium w-full text-left px-2">Title</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {requirements.map((req, index) => (
+                        {pendingRequirements.map((req, index) => (
                           <tr 
                             key={req.id}
                             className={cn(
@@ -245,11 +233,6 @@ export function KanbanCard({
                           >
                             <td className="py-1.5 px-3 align-middle">
                               <div className="truncate font-medium">{req.title}</div>
-                            </td>
-                            <td className="py-1.5 px-3 align-middle text-right">
-                              <Badge className={cn("text-xs px-1.5 py-0.5 whitespace-nowrap", statusColor[req.status])}>
-                                {req.status.replace('-', ' ')}
-                              </Badge>
                             </td>
                           </tr>
                         ))}

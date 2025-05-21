@@ -15,15 +15,15 @@ const TASK_STATUSES = [
 ]
 
 const STATUS_COLORS: Record<string, string> = {
-  TODO: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  IN_PROGRESS: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-  DONE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  TODO: "bg-blue-100/20 text-blue-800 dark:bg-blue-900/10 dark:text-blue-300",
+  IN_PROGRESS: "bg-yellow-100/20 text-yellow-800 dark:bg-yellow-900/10 dark:text-yellow-300",
+  DONE: "bg-green-100/20 text-green-800 dark:bg-green-900/10 dark:text-green-300",
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
-  LOW: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  MEDIUM: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-  HIGH: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  LOW: "bg-blue-100/80 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
+  MEDIUM: "bg-yellow-100/80 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
+  HIGH: "bg-red-100/80 text-red-800 dark:bg-red-900/50 dark:text-red-300",
 }
 
 interface TaskKanbanViewProps {
@@ -127,7 +127,10 @@ export function TaskKanbanView({
                             {...provided.dragHandleProps}
                           >
                             <Card 
-                              className="mb-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px]"
+                              className={cn(
+                                "mb-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px]",
+                                STATUS_COLORS[task.status]
+                              )}
                               onClick={() => onTaskClick(task)}
                             >
                               <CardContent className="p-3">
@@ -144,7 +147,7 @@ export function TaskKanbanView({
                                 )}
                                 {task.dueDate && (
                                   <div className="flex items-center justify-end mt-2">
-                                    <Badge variant="secondary" className="text-xs">
+                                    <Badge variant="secondary" className="text-xs bg-muted/80 dark:bg-muted/50">
                                       Due: {new Date(task.dueDate).toLocaleDateString()}
                                     </Badge>
                                   </div>

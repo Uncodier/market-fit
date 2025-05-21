@@ -24,7 +24,7 @@ export function CategoriesHeader({
       "fixed z-[999]",
       isCollapsed ? "w-0 opacity-0" : "w-[319px]"
     )} style={{ 
-      background: isDarkMode ? 'var(--background)' : '#ffffffed', 
+      background: isDarkMode ? 'var(--background)' : 'rgba(255, 255, 255, 0.8)', 
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)'
     }}>

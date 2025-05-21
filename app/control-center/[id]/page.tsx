@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, MutableRefObject } from "react"
 import { useRouter } from "next/navigation"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -14,50 +14,115 @@ import { TaskStatusBar } from "../components/TaskStatusBar"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { Suspense } from "react"
 
 // Lazy load the tabs
-const UpdatesTab = dynamic(() => import('./components/UpdatesTab'), {
-  loading: () => <UpdatesSkeleton />,
-  ssr: false,
-  suspense: true
-})
+const TimelineTab = dynamic(
+  () => import('./components/TimelineTab'),
+  { 
+    loading: () => <UpdatesSkeleton />,
+    ssr: false 
+  }
+)
 
-const DetailsTab = dynamic(() => import('./components/DetailsTab'), {
-  loading: () => <DetailsSkeleton />,
-  ssr: false,
-  suspense: true
-})
+const DetailsTab = dynamic(
+  () => import('./components/DetailsTab'),
+  { 
+    loading: () => <DetailsSkeleton />,
+    ssr: false 
+  }
+)
 
 // Loading states
 const UpdatesSkeleton = () => (
-  <div className="space-y-4 max-w-3xl mx-auto">
+  <div className="space-y-6">
     {/* Comment input skeleton */}
     <Card>
       <CardContent className="p-6">
         <div className="space-y-4">
-          <Skeleton className="h-[100px] w-full" />
-          <div className="flex justify-end">
-            <Skeleton className="h-10 w-[120px]" />
+          <div className="h-[100px] w-full bg-muted animate-pulse rounded-md" />
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-32 bg-muted animate-pulse rounded-md" />
+            <div className="flex items-center gap-4">
+              <div className="h-9 w-32 bg-muted animate-pulse rounded-md" />
+              <div className="h-9 w-32 bg-muted animate-pulse rounded-md" />
+            </div>
           </div>
         </div>
       </CardContent>
     </Card>
 
     {/* Comments list skeleton */}
-    {[1, 2, 3].map((i) => (
-      <Card key={i}>
+    <div className="space-y-4">
+      {/* Comment with image */}
+      <Card>
         <CardContent className="p-6">
-          <div className="flex items-start space-x-4">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-4 w-[120px]" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-3 w-[100px] mt-2" />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                </div>
+              </div>
+              <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+            <div className="h-48 w-full bg-muted animate-pulse rounded-md" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Comment with text only */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+                <div className="h-8 w-8 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-muted animate-pulse rounded" />
+              <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
             </div>
           </div>
         </CardContent>
       </Card>
-    ))}
+
+      {/* Task description skeleton */}
+      <Card className="mt-8 bg-muted/50">
+        <CardContent className="p-6">
+          <div className="flex items-start space-x-4">
+            <div className="flex -space-x-2">
+              <div className="h-10 w-10 rounded-full bg-muted animate-pulse ring-2 ring-background" />
+              <div className="h-10 w-10 rounded-full bg-muted animate-pulse ring-2 ring-background" />
+            </div>
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-4 bg-muted animate-pulse rounded-full" />
+                <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-muted animate-pulse rounded" />
+                <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+              </div>
+              <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   </div>
 )
 
@@ -145,7 +210,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const [task, setTask] = useState<Task | null>(null)
   const [activeTab, setActiveTab] = useState("updates")
   const [isLoading, setIsLoading] = useState(true)
-  const formRef = useRef<HTMLFormElement>(null)
+  const formRef = useRef<HTMLFormElement>(null) as MutableRefObject<HTMLFormElement>
 
   // Fetch task data
   useEffect(() => {
@@ -239,20 +304,19 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             <div className="px-16 pt-0 w-full">
               <div className="flex items-center justify-between w-full">
                 <TabsList>
-                  <TabsTrigger value="updates">Updates</TabsTrigger>
+                  <TabsTrigger value="updates">Timeline</TabsTrigger>
                   <TabsTrigger value="details">Details</TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-4">
-                  <Button disabled>
-                    <SaveIcon className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </Button>
+                  <div className="h-10 w-[200px] bg-muted animate-pulse rounded-md" />
                 </div>
               </div>
             </div>
           </StickyHeader>
-          <div className="px-16 py-6">
-            <DetailsSkeleton />
+          <div className="max-w-3xl mx-auto">
+            <div className="px-16 py-6">
+              <UpdatesSkeleton />
+            </div>
           </div>
         </Tabs>
       </div>
@@ -266,7 +330,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           <div className="px-16 pt-0 w-full">
             <div className="flex items-center justify-between w-full">
               <TabsList>
-                <TabsTrigger value="updates">Updates</TabsTrigger>
+                <TabsTrigger value="updates">Timeline</TabsTrigger>
                 <TabsTrigger value="details">Details</TabsTrigger>
               </TabsList>
               <div className="flex items-center gap-8">
@@ -291,17 +355,20 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         </StickyHeader>
         <div className="max-w-3xl mx-auto">
           <TabsContent value="updates" className="px-16 py-6">
-            <UpdatesTab task={task} />
+            <Suspense fallback={<UpdatesSkeleton />}>
+              {task && <TimelineTab task={task} />}
+            </Suspense>
           </TabsContent>
           <TabsContent value="details" className="px-16 py-6">
-            {task && (
-              <DetailsTab 
-                key={task.id}
-                task={task} 
-                onSave={(updatedTask: Task) => setTask(updatedTask)} 
-                formRef={formRef} 
-              />
-            )}
+            <Suspense fallback={<DetailsSkeleton />}>
+              {task && (
+                <DetailsTab 
+                  task={task} 
+                  onSave={(updatedTask: Task) => setTask(updatedTask)} 
+                  formRef={formRef} 
+                />
+              )}
+            </Suspense>
           </TabsContent>
         </div>
       </Tabs>

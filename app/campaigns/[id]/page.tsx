@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, createContext } from "react"
+import React, { useState, useEffect, createContext, useRef, MutableRefObject } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/app/components/ui/card"
@@ -39,7 +39,8 @@ import {
   TaskDetailContextType
 } from "@/app/components/campaign-detail"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Settings } from "@/app/components/ui/icons"
+import { Settings, SaveIcon } from "@/app/components/ui/icons"
+import { CampaignDetails } from "@/app/components/campaign-detail/campaign-details"
 
 // Mock long description with markdown
 const longDescription = `
@@ -186,6 +187,8 @@ export default function TaskDetailPage() {
     costs: { fixed: 0, variable: 0, total: 0, currency: "USD" }
   });
   const [transactions, setTransactions] = useState(costBreakdown);
+  const [activeTab, setActiveTab] = useState("summary");
+  const formRef = useRef<HTMLFormElement>(null) as MutableRefObject<HTMLFormElement>;
   
   // Function to convert segment IDs to full segment objects
   const getSegmentObjectsFromIds = (segmentIds: string[]): Array<{ id: string; name: string; description: string | null }> => {
@@ -736,19 +739,32 @@ export default function TaskDetailPage() {
   return (
     <div className="flex-1 p-0">
       <TaskDetailContext.Provider value={{ loadingSegments, campaignSegments }}>
-        <Tabs defaultValue="summary">
+        <Tabs defaultValue="summary" onValueChange={setActiveTab}>
           <StickyHeader>
             <div className="px-16 pt-0">
               <div className="flex items-center justify-between">
                 <TabsList>
                   <TabsTrigger value="summary">Campaign Summary</TabsTrigger>
-                  <TabsTrigger value="financials">Financial Details</TabsTrigger>
+                  <TabsTrigger value="financials">Finances</TabsTrigger>
+                  <TabsTrigger value="details">Details</TabsTrigger>
                 </TabsList>
-                
-                <CampaignStatusBar 
-                  currentStatus={campaign.status} 
-                  onStatusChange={handleStatusChange} 
-                />
+                <div className="flex items-center gap-8">
+                  {campaign && activeTab !== "details" && (
+                    <CampaignStatusBar 
+                      currentStatus={campaign.status}
+                      onStatusChange={handleStatusChange}
+                    />
+                  )}
+                  {campaign && activeTab === "details" && (
+                    <Button 
+                      onClick={() => formRef.current?.requestSubmit()}
+                      className="gap-2"
+                    >
+                      <SaveIcon className="h-4 w-4" />
+                      Save Changes
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </StickyHeader>
@@ -778,6 +794,18 @@ export default function TaskDetailPage() {
                 campaign={campaign} 
                 onUpdateCampaign={handleUpdateCampaign} 
               />
+            </TabsContent>
+            
+            <TabsContent value="details" className="mt-0 p-0">
+              <div className="px-16 py-8">
+                <CampaignDetails 
+                  campaign={campaign}
+                  onUpdateCampaign={handleUpdateCampaign}
+                  onDeleteCampaign={handleDeleteCampaign}
+                  formRef={formRef}
+                  segments={siteSegments}
+                />
+              </div>
             </TabsContent>
           </div>
         </Tabs>

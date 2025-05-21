@@ -7,6 +7,7 @@ interface SectionCardProps {
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
+  variant?: "plain" | "default";
 }
 
 interface AttributeCardProps {
@@ -31,10 +32,12 @@ export const AttributeCard = ({ title, value, className }: AttributeCardProps) =
   );
 };
 
-export const SectionCard = ({ title, icon, children, className }: SectionCardProps) => {
+export const SectionCard = ({ title, icon, children, className, variant = "default" }: SectionCardProps) => {
   return (
     <Card className={cn("shadow-sm overflow-hidden", className)}>
-      <CardHeader className="bg-background py-4 px-5 flex flex-row items-center justify-between space-y-0">
+      <CardHeader className={cn("py-4 px-5 flex flex-row items-center justify-between space-y-0", {
+        "bg-background": variant === "plain"
+      })}>
         <div className="flex items-center gap-2">
           {icon && <span className="text-primary">{icon}</span>}
           <CardTitle className="text-md font-medium">{title}</CardTitle>

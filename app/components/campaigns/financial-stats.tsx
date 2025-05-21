@@ -51,7 +51,7 @@ export function FinancialStats({
   return (
     <div className={cn("space-y-6", className)}>
       {/* Revenue Section - Always shown */}
-      <div className="bg-gradient-to-r from-emerald-50/30 to-emerald-100/20 dark:from-emerald-900/5 dark:to-emerald-900/5 rounded-lg p-4 border-none">
+      <div className="bg-emerald-100/20 dark:bg-emerald-900/10 rounded-lg p-4 border-none">
         <div className="flex items-center mb-3">
           <Star className="h-4 w-4 text-emerald-500 mr-2" />
           <span className="font-medium text-emerald-800 dark:text-emerald-400">Revenue</span>
@@ -70,21 +70,21 @@ export function FinancialStats({
         </div>
         
         <div className="grid grid-cols-3 gap-3 mt-3">
-          <div className="bg-white/80 dark:bg-black/10 p-3 rounded-md shadow-sm">
+          <div className="bg-emerald-100/80 dark:bg-emerald-900/50 p-3 rounded-md">
             <div className="text-xs text-muted-foreground mb-1.5">Actual</div>
             <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
               {formatCurrency(revenue?.actual || 0, revenue?.currency)}
             </div>
           </div>
           
-          <div className="bg-white/80 dark:bg-black/10 p-3 rounded-md shadow-sm">
+          <div className="bg-emerald-100/80 dark:bg-emerald-900/50 p-3 rounded-md">
             <div className="text-xs text-muted-foreground mb-1.5">Projected</div>
             <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
               {formatCurrency(revenue?.projected || 0, revenue?.currency)}
             </div>
           </div>
           
-          <div className="bg-white/80 dark:bg-black/10 p-3 rounded-md shadow-sm">
+          <div className="bg-emerald-100/80 dark:bg-emerald-900/50 p-3 rounded-md">
             <div className="text-xs text-muted-foreground mb-1.5">Estimated</div>
             <div className="text-sm font-medium text-amber-600 dark:text-amber-400">
               {formatCurrency(revenue?.estimated || 0, revenue?.currency)}
@@ -94,7 +94,7 @@ export function FinancialStats({
       </div>
       
       {/* Budget Section - Always shown */}
-      <div className="bg-gradient-to-r from-blue-50/30 to-blue-100/20 dark:from-blue-900/5 dark:to-blue-900/5 rounded-lg p-4 border-none">
+      <div className="bg-blue-100/20 dark:bg-blue-900/10 rounded-lg p-4 border-none">
         <div className="flex items-center mb-3">
           <BarChart className="h-4 w-4 text-blue-500 mr-2" />
           <span className="font-medium text-blue-800 dark:text-blue-400">Budget</span>
@@ -111,14 +111,14 @@ export function FinancialStats({
         </div>
         
         <div className="grid grid-cols-2 gap-3 mt-3">
-          <div className="bg-white/80 dark:bg-black/10 p-3 rounded-md shadow-sm">
+          <div className="bg-blue-100/80 dark:bg-blue-900/50 p-3 rounded-md">
             <div className="text-xs text-muted-foreground mb-1.5">Allocated</div>
             <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
               {formatCurrency(budget?.allocated || 0, budget?.currency)}
             </div>
           </div>
           
-          <div className="bg-white/80 dark:bg-black/10 p-3 rounded-md shadow-sm">
+          <div className="bg-blue-100/80 dark:bg-blue-900/50 p-3 rounded-md">
             <div className="text-xs text-muted-foreground mb-1.5">Remaining</div>
             <div className={cn(
               "text-sm font-medium", 
@@ -133,7 +133,7 @@ export function FinancialStats({
       </div>
       
       {/* Costs Section - Always shown */}
-      <div className="bg-gradient-to-r from-red-50/30 to-red-100/20 dark:from-red-900/5 dark:to-red-900/5 rounded-lg p-4 border-none">
+      <div className="bg-red-100/20 dark:bg-red-900/10 rounded-lg p-4 border-none">
         <div className="flex items-center mb-3">
           <PieChart className="h-4 w-4 text-red-500 mr-2" />
           <span className="font-medium text-red-800 dark:text-red-400">Costs</span>
@@ -145,21 +145,21 @@ export function FinancialStats({
         </div>
         
         <div className="grid grid-cols-3 gap-3 mt-3">
-          <div className="bg-white/80 dark:bg-black/10 p-3 rounded-md shadow-sm">
+          <div className="bg-red-100/80 dark:bg-red-900/50 p-3 rounded-md">
             <div className="text-xs text-muted-foreground mb-1.5">Fixed</div>
             <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
               {formatCurrency(costs?.fixed || 0, costs?.currency)}
             </div>
           </div>
           
-          <div className="bg-white/80 dark:bg-black/10 p-3 rounded-md shadow-sm">
+          <div className="bg-red-100/80 dark:bg-red-900/50 p-3 rounded-md">
             <div className="text-xs text-muted-foreground mb-1.5">Variable</div>
             <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
               {formatCurrency(costs?.variable || 0, costs?.currency)}
             </div>
           </div>
           
-          <div className="bg-white/80 dark:bg-black/10 p-3 rounded-md shadow-sm">
+          <div className="bg-red-100/80 dark:bg-red-900/50 p-3 rounded-md">
             <div className="text-xs text-muted-foreground mb-1.5">Total</div>
             <div className="text-sm font-medium text-red-600 dark:text-red-400">
               {formatCurrency(costs?.total || 0, costs?.currency)}

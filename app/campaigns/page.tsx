@@ -485,72 +485,73 @@ const mockTasks: {
 function ControlCenterSkeleton() {
   return (
     <div className="flex-1 p-0">
-      {/* Kanban board skeleton */}
       <div className="px-8 pb-8">
-        <div className="w-full overflow-x-auto">
-          <div className="flex gap-6 p-6 min-w-max bg-muted/5 rounded-lg shadow-sm">
-            {/* Kanban columns - create 5 columns to represent different campaign types */}
+        <div className="w-full overflow-x-auto overflow-y-visible">
+          <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+            {/* Kanban columns - create columns to represent different campaign types */}
             {[1, 2, 3, 4, 5].map((columnIndex) => (
-              <div key={columnIndex} className="w-[300px] flex-shrink-0 bg-card rounded-lg shadow-sm border p-4">
+              <div key={columnIndex} className="flex flex-col h-full w-[280px]">
                 {/* Column header */}
-                <div className="flex items-center justify-between mb-4">
-                  <Skeleton className="h-5 w-32" />
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-5 w-10 rounded-full" />
-                    <Skeleton className="h-5 w-10 rounded-full" />
+                <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-5 w-6 rounded-full" />
+                    </div>
                   </div>
                 </div>
                 
-                {/* Cards in each column - 3 cards per column */}
-                {[1, 2, 3].map((cardIndex) => (
-                  <div key={cardIndex} className="mb-3 bg-card rounded-md border shadow-sm">
-                    {/* Card header */}
-                    <div className="p-3 pb-2">
-                      <div className="flex justify-between items-start gap-3 mb-2">
-                        <Skeleton className="h-5 w-[70%]" />
-                        <Skeleton className="h-5 w-[15%] rounded-full" />
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <Skeleton className="h-3.5 w-3.5 rounded-full" />
-                        <Skeleton className="h-3.5 w-16" />
-                      </div>
-                    </div>
-                    
-                    {/* Card content */}
-                    <div className="p-3 pt-1 space-y-3">
-                      {/* Description */}
-                      <Skeleton className="h-4 w-[90%]" />
-                      
-                      {/* Expandable summary row */}
-                      <div className="flex items-center justify-between bg-muted/30 p-2.5 rounded-md">
-                        <div className="flex gap-3">
-                          <div className="flex items-center gap-1.5">
-                            <Skeleton className="h-3.5 w-3.5 rounded-full" />
-                            <Skeleton className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Skeleton className="h-3.5 w-3.5 rounded-full" />
-                            <Skeleton className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="flex items-center">
-                            <Skeleton className="h-3.5 w-3.5 rounded-full mr-1.5" />
-                            <Skeleton className="h-3.5 w-10" />
-                          </div>
+                {/* Cards container */}
+                <div className="bg-muted/30 rounded-b-md h-[calc(100%-2.5rem)] border-b border-x p-2 space-y-3">
+                  {[1, 2, 3].map((cardIndex) => (
+                    <Card 
+                      key={cardIndex} 
+                      className="mb-3 transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer"
+                    >
+                      <div className="p-3 pb-0">
+                        <div className="text-sm font-medium flex items-center justify-between">
+                          <Skeleton className="h-4 w-[60%]" />
+                          <Skeleton className="h-5 w-20 rounded-full" />
                         </div>
-                        <Skeleton className="h-4 w-4 rounded-full" />
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <Skeleton className="h-3.5 w-3.5 rounded-full" />
+                          <Skeleton className="h-3.5 w-16" />
+                        </div>
                       </div>
                       
-                      {/* Expanded content is not shown in skeleton */}
-                    </div>
-                  </div>
-                ))}
+                      <div className="p-3 space-y-3">
+                        <Skeleton className="h-3 w-[90%]" />
+                        
+                        {/* Stats row */}
+                        <div className="flex items-center justify-between bg-muted/30 p-2 rounded-md">
+                          <div className="flex gap-3">
+                            <div className="flex items-center gap-1.5">
+                              <Skeleton className="h-3.5 w-3.5 rounded-full" />
+                              <Skeleton className="h-3.5 w-4" />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Skeleton className="h-3.5 w-3.5 rounded-full" />
+                              <Skeleton className="h-3.5 w-4" />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Skeleton className="h-3.5 w-3.5 rounded-full" />
+                              <Skeleton className="h-3.5 w-8" />
+                              <Skeleton className="h-3.5 w-6" />
+                            </div>
+                          </div>
+                          <Skeleton className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default function CampaignsPage() {

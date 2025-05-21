@@ -670,129 +670,13 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 md:mb-6">
                 <h3 className="text-lg font-medium">Financial Overview</h3>
-                {!isEditing ? (
-                  <Button variant="outline" onClick={() => setIsEditing(true)}>
-                    <span className="mr-2">✏️</span> Edit 
-                  </Button>
-                ) : (
-                  <div className="space-x-2">
-                    <Button variant="outline" onClick={() => setIsEditing(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                      <span className="mr-2">💾</span> Save
-                    </Button>
-                  </div>
-                )}
               </div>
 
-              {!isEditing ? (
-                <FinancialStats 
-                  revenue={campaign.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" }}
-                  budget={campaign.budget || { allocated: 0, remaining: 0, currency: "USD" }}
-                  costs={calculatedCosts}
-                />
-              ) : (
-                <div className="space-y-6">
-                  {/* Revenue Editing */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Revenue</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="actual-revenue">Actual Revenue</Label>
-                        <Input 
-                          id="actual-revenue" 
-                          type="number" 
-                          value={financialData.revenue.actual || ''} 
-                          onChange={(e) => handleChange('revenue', 'actual', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="projected-revenue">Projected Revenue</Label>
-                        <Input 
-                          id="projected-revenue" 
-                          type="number" 
-                          value={financialData.revenue.projected || ''} 
-                          disabled
-                        />
-                        <p className="text-xs text-muted-foreground">Automatically calculated</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="estimated-revenue">Estimated Revenue</Label>
-                        <Input 
-                          id="estimated-revenue" 
-                          type="number" 
-                          value={financialData.revenue.estimated || ''} 
-                          onChange={(e) => handleChange('revenue', 'estimated', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Budget Editing */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Budget</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="allocated-budget">Allocated Budget</Label>
-                        <Input 
-                          id="allocated-budget" 
-                          type="number" 
-                          value={financialData.budget.allocated || ''} 
-                          onChange={(e) => handleChange('budget', 'allocated', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="remaining-budget">Remaining Budget</Label>
-                        <Input 
-                          id="remaining-budget" 
-                          type="number" 
-                          value={financialData.budget.remaining || ''} 
-                          disabled
-                        />
-                        <p className="text-xs text-muted-foreground">Automatically calculated from allocated budget minus total costs</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Costs Editing */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Costs</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="fixed-costs">Fixed Costs</Label>
-                        <Input 
-                          id="fixed-costs" 
-                          type="number" 
-                          value={financialData.costs.fixed || ''} 
-                          disabled
-                        />
-                        <p className="text-xs text-muted-foreground">Based on fixed transaction costs</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="variable-costs">Variable Costs</Label>
-                        <Input 
-                          id="variable-costs" 
-                          type="number" 
-                          value={financialData.costs.variable || ''} 
-                          disabled
-                        />
-                        <p className="text-xs text-muted-foreground">Based on variable transaction costs</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="total-costs">Total Costs</Label>
-                        <Input 
-                          id="total-costs" 
-                          type="number" 
-                          value={(financialData.costs.fixed || 0) + (financialData.costs.variable || 0)} 
-                          disabled
-                        />
-                        <p className="text-xs text-muted-foreground">Sum of fixed and variable costs</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <FinancialStats 
+                revenue={campaign.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" }}
+                budget={campaign.budget || { allocated: 0, remaining: 0, currency: "USD" }}
+                costs={calculatedCosts}
+              />
             </CardContent>
           </Card>
         </div>

@@ -292,7 +292,14 @@ export interface TaskComment {
   attachments: any[]
   created_at: string
   updated_at: string
-  user?: {
+  is_private: boolean
+  files: Array<{
+    name: string
+    url: string
+    size: number
+    type: string
+  }>
+  profiles?: {
     id: string
     name: string
     avatar_url?: string

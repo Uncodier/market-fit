@@ -17,6 +17,8 @@ import { TaskFilterModal, TaskFilters } from "./components/TaskFilterModal"
 import { ControlCenterSkeleton } from "./components/ControlCenterSkeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ClipboardList } from "@/app/components/ui/icons"
+import { toast } from "react-hot-toast"
+import { getUserData } from "@/app/services/user-service"
 
 // Task types
 const TASK_TYPES = [
@@ -48,6 +50,7 @@ interface Task {
   }
   leadName?: string
   assigneeName?: string
+  comments_count?: number
 }
 
 type TaskStatusFilter = Task['status'] | 'all'
@@ -150,7 +153,7 @@ export default function ControlCenterPage() {
     fetchUsers()
   }, [currentSite])
 
-  // Fetch tasks
+  // Fetch tasks with user data and comments count
   useEffect(() => {
     const fetchTasks = async () => {
       if (!currentSite) return
@@ -158,60 +161,48 @@ export default function ControlCenterPage() {
       setIsLoading(true)
       const supabase = createClient()
 
-      console.log('Fetching tasks for site:', currentSite.id)
-      
-      // First fetch tasks
-      const { data: tasks, error } = await supabase
-        .from('tasks')
-        .select(`
-          id,
-          title,
-          description,
-          status,
-          stage,
-          scheduled_date,
-          lead_id,
-          assignee,
-          type,
-          leads:lead_id (
-            id,
-            name
-          )
-        `)
-        .eq('site_id', currentSite.id)
+      try {
+        // Get tasks with comments count
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            leads:lead_id (
+              id,
+              name
+            ),
+            comments_count:task_comments(count)
+          `)
+          .eq('site_id', currentSite.id)
+          .order('scheduled_date', { ascending: true })
 
-      if (error) {
+        if (tasksError) throw tasksError
+
+        // Enrich tasks with user data
+        const enrichedTasks = await Promise.all(
+          tasksData.map(async (task) => {
+            let assigneeName = undefined
+            if (task.assignee) {
+              const userData = await getUserData(task.assignee)
+              assigneeName = userData?.name
+            }
+
+            return {
+              ...task,
+              leadName: task.leads?.name,
+              assigneeName,
+              comments_count: task.comments_count?.[0]?.count || 0
+            }
+          })
+        )
+
+        setTasks(enrichedTasks)
+      } catch (error) {
         console.error('Error fetching tasks:', error)
+        toast.error("Failed to load tasks")
+      } finally {
         setIsLoading(false)
-        return
       }
-
-      // Format tasks
-      const formattedTasks: Task[] = tasks?.map(task => {
-        // Ensure leads is properly typed
-        const taskLeads = Array.isArray(task.leads) ? task.leads[0] : task.leads
-
-        return {
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          status: task.status,
-          stage: task.stage,
-          scheduled_date: task.scheduled_date,
-          lead_id: task.lead_id,
-          assignee: task.assignee,
-          type: task.type,
-          leads: taskLeads ? {
-            id: taskLeads.id,
-            name: taskLeads.name
-          } : undefined,
-          leadName: taskLeads?.name,
-          assigneeName: task.assignee || 'Unassigned'
-        }
-      }) || []
-
-      setTasks(formattedTasks)
-      setIsLoading(false)
     }
 
     fetchTasks()
@@ -317,6 +308,19 @@ export default function ControlCenterPage() {
     // Apply assignee filters
     if (filters.assigneeId.length > 0 && !filters.assigneeId.includes(task.assignee || '')) return false
 
+    // Apply category/type filter based on selectedItem
+    if (selectedItem !== "all") {
+      if (selectedItem.startsWith('type-')) {
+        // Remove 'type-' prefix and check task type
+        const type = selectedItem.replace('type-', '')
+        if (task.type !== type) return false
+      } else if (selectedItem.startsWith('category-')) {
+        // Remove 'category-' prefix and check lead_id
+        const categoryId = selectedItem.replace('category-', '')
+        if (task.lead_id !== categoryId) return false
+      }
+    }
+
     return true
   })
 
@@ -344,7 +348,7 @@ export default function ControlCenterPage() {
     <div className="flex h-full relative overflow-hidden">
       {/* Sidebar */}
       <div className={cn(
-        "fixed h-[calc(100vh-64px)] transition-all duration-300 ease-in-out bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[9999]",
+        "fixed h-[calc(100vh-64px)] transition-all duration-300 ease-in-out z-[9999]",
         isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px]",
         !isSidebarCollapsed && (isLayoutCollapsed ? "left-[64px]" : "left-[256px]")
       )} style={{ top: "64px" }}>

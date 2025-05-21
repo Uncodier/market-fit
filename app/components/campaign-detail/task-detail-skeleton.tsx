@@ -14,7 +14,8 @@ export function TaskDetailSkeleton() {
             <div className="flex items-center justify-between">
               <TabsList>
                 <TabsTrigger value="summary">Campaign Summary</TabsTrigger>
-                <TabsTrigger value="financials">Financial Details</TabsTrigger>
+                <TabsTrigger value="financials">Finances</TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
               </TabsList>
               <Skeleton className="h-9 w-32 rounded-md" />
             </div>
@@ -22,9 +23,9 @@ export function TaskDetailSkeleton() {
         </StickyHeader>
         
         <div className="px-16 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-10 gap-6">
+          <div className="grid grid-cols-5 gap-8">
             {/* Left side: Requirements, Leads, Clients - 60% */}
-            <div className="md:col-span-6 order-2 md:order-1">
+            <div className="col-span-3 space-y-8">
               {/* Requirements Card */}
               <SkeletonCard 
                 className="mb-6"
@@ -54,14 +55,67 @@ export function TaskDetailSkeleton() {
             </div>
             
             {/* Right side: Campaign Overview - 40% */}
-            <div className="md:col-span-4 order-1 md:order-2">
-              {/* Campaign Overview Card */}
-              <SkeletonCard 
-                headerClassName="flex justify-between items-center mb-4"
-                titleSize="lg"
-                contentClassName="space-y-4"
-                contentLines={5}
-              />
+            <div className="col-span-2">
+              <Card>
+                <CardContent className="p-6">
+                  {/* Title and Priority */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-6 w-48" />
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                    </div>
+                  </div>
+
+                  {/* Campaign Type */}
+                  <div className="mt-2">
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+
+                  {/* Description */}
+                  <div className="mt-6">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  </div>
+
+                  {/* Target Segments */}
+                  <div className="mt-6">
+                    <Skeleton className="h-4 w-32 mb-2" />
+                    <div className="flex flex-wrap gap-2">
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                      <Skeleton className="h-6 w-28 rounded-full" />
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </div>
+                  </div>
+
+                  {/* Outsource Section */}
+                  <div className="mt-8">
+                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                      <Skeleton className="h-4 w-40 mb-4" />
+                      <div className="space-y-4">
+                        <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
+                          <Skeleton className="h-4 w-24 mb-2" />
+                          <Skeleton className="h-6 w-32 mx-auto" />
+                        </div>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-[150px] w-full rounded-md" />
+                        </div>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-16 w-full rounded-md" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <Skeleton className="h-9 w-full rounded-md" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
