@@ -8,12 +8,12 @@ import { Button } from "@/app/components/ui/button"
 
 // Define task statuses
 const TASK_STATUSES = [
-  { id: "all", name: "All", icon: null },
-  { id: "pending", name: "Pending", icon: <Clock className="h-4 w-4" /> },
-  { id: "in_progress", name: "In Progress", icon: <PlayCircle className="h-4 w-4" /> },
-  { id: "completed", name: "Completed", icon: <CheckCircle2 className="h-4 w-4" /> },
-  { id: "failed", name: "Failed", icon: <XCircle className="h-4 w-4" /> },
-  { id: "canceled", name: "Canceled", icon: <Ban className="h-4 w-4" /> }
+  { id: "all", name: "All" },
+  { id: "pending", name: "Pending" },
+  { id: "in_progress", name: "In Progress" },
+  { id: "completed", name: "Completed" },
+  { id: "failed", name: "Failed" },
+  { id: "canceled", name: "Canceled" }
 ] as const
 
 type TaskStatusFilter = "all" | "pending" | "in_progress" | "completed" | "failed" | "canceled"
@@ -47,7 +47,7 @@ export function ControlCenterHeader({
       />
       
       <div className={cn(
-        "max-w-[calc(100%-240px)] mx-auto w-full flex items-center justify-between transition-all duration-300 ease-in-out"
+        "w-full flex items-center justify-between transition-all duration-300 ease-in-out ml-[120px] mr-16"
       )}>
         <div className="flex items-center gap-8">
           <Tabs value={currentStatus} onValueChange={(value) => onStatusChange(value as TaskStatusFilter)}>
@@ -56,10 +56,10 @@ export function ControlCenterHeader({
                 <TabsTrigger 
                   key={status.id} 
                   value={status.id} 
-                  className="text-sm font-medium"
+                  className="text-sm font-medium flex items-center gap-2"
                   title={status.name}
                 >
-                  {status.icon || status.name}
+                  <span>{status.name}</span>
                 </TabsTrigger>
               ))}
             </TabsList>

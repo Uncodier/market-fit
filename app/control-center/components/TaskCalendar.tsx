@@ -679,7 +679,7 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
           }
         `}</style>
         {/* Calendar Header */}
-        <div className="flex items-center justify-between py-6 border-b pl-8 pr-[88px]">
+        <div className="flex items-center justify-between py-6 border-b pl-8 pr-[33px]">
           <div className="flex-1 flex items-center gap-2">
             <Button 
               variant="outline" 

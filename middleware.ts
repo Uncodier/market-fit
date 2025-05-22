@@ -1,3 +1,38 @@
+// CSP Base configuration
+const getCSPDirectives = () => {
+  const localUrls = [
+    "http://localhost:3001",
+    "http://192.168.87.79:3001",
+    "http://192.168.87.25:3001",
+    "http://192.168.87.34:*",
+    "http://192.168.87.34",
+    "https://192.168.87.34:*",
+    "http://192.168.87.49/*",
+    "http://192.168.87.49:*",
+    "https://192.168.87.49/*",
+    "https://192.168.87.49:*"
+  ];
+
+  const productionUrls = [
+    "https://*.supabase.co",
+    "wss://*.supabase.co",
+    "https://*.supabase.in",
+    "https://tu-api-real.com",
+    "https://api.market-fit.ai"
+  ];
+
+  const allUrls = ["'self'", ...localUrls, ...productionUrls];
+
+  return [
+    `default-src ${allUrls.join(" ")};`,
+    `connect-src ${allUrls.join(" ")};`,
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline';",
+    "style-src 'self' 'unsafe-inline';",
+    "img-src 'self' data: https:;",
+    "font-src 'self' data:;"
+  ].join(" ");
+};
+
 export const dynamic = 'force-dynamic';
 
 import { createServerClient } from '@supabase/ssr'
@@ -33,17 +68,7 @@ export async function middleware(req: NextRequest) {
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     
     // Establecer CSP headers para WebSockets
-    response.headers.set('Content-Security-Policy', 
-      "default-src 'self'; " +
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
-      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* " +
-      "https://tu-api-real.com https://api.market-fit.ai; " +
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: https:; " +
-      "font-src 'self' data:;"
-    );
+    response.headers.set('Content-Security-Policy', getCSPDirectives());
     
     return response;
   }
@@ -58,17 +83,7 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Access-Control-Allow-Credentials', 'true');
     
     // Añadir CSP header para permitir WebSockets
-    res.headers.set('Content-Security-Policy', 
-      "default-src 'self'; " +
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
-      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* " + 
-      "https://tu-api-real.com https://api.market-fit.ai; " +
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: https:; " +
-      "font-src 'self' data:;"
-    );
+    res.headers.set('Content-Security-Policy', getCSPDirectives());
     
     // Current path for route-specific handling
     const path = req.nextUrl.pathname
@@ -143,17 +158,7 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Access-Control-Allow-Credentials', 'true');
     
     // Asegurar que el CSP header esté configurado incluso en caso de error
-    res.headers.set('Content-Security-Policy', 
-      "default-src 'self'; " +
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in " +
-      "http://localhost:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* " +
-      "http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* " +
-      "https://tu-api-real.com https://api.market-fit.ai; " +
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: https:; " +
-      "font-src 'self' data:;"
-    );
+    res.headers.set('Content-Security-Policy', getCSPDirectives());
     
     return res
   }

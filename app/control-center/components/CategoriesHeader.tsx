@@ -20,14 +20,9 @@ export function CategoriesHeader({
   return (
     <div className={cn(
       "flex items-center justify-center h-[71px] border-b transition-all duration-300 flex-shrink-0",
-      isDarkMode ? "bg-background" : "bg-white",
-      "fixed z-[999]",
+      "fixed z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
       isCollapsed ? "w-0 opacity-0" : "w-[319px]"
-    )} style={{ 
-      background: isDarkMode ? 'var(--background)' : 'rgba(255, 255, 255, 0.8)', 
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)'
-    }}>
+    )}>
       <div className="w-[240px] relative">
         <Input 
           data-command-k-input

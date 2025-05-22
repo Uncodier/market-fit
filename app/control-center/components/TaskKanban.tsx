@@ -74,13 +74,19 @@ const getLeadInitials = (name: string | undefined) => {
 
 export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanbanProps) {
   // Group tasks by status
+  const [localTasks, setLocalTasks] = React.useState(tasks)
+
+  React.useEffect(() => {
+    setLocalTasks(tasks)
+  }, [tasks])
+
   const tasksByStatus = TASK_STATUSES.reduce((acc, status) => {
-    acc[status.id] = tasks.filter(task => task.status === status.id)
+    acc[status.id] = localTasks.filter(task => task.status === status.id)
     return acc
   }, {} as Record<string, Task[]>)
 
   // Handle drag end
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = async (result: any) => {
     const { destination, source, draggableId } = result
 
     if (!destination) return
@@ -93,7 +99,24 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
     }
 
     const newStatus = destination.droppableId
-    onUpdateTaskStatus(draggableId, newStatus)
+    
+    // Update local state immediately
+    setLocalTasks(prevTasks => 
+      prevTasks.map(task => 
+        task.id === draggableId 
+          ? { ...task, status: newStatus }
+          : task
+      )
+    )
+
+    // Then update server state
+    try {
+      await onUpdateTaskStatus(draggableId, newStatus)
+    } catch (error) {
+      // If server update fails, revert local state
+      setLocalTasks(tasks)
+      console.error('Failed to update task status:', error)
+    }
   }
 
   return (

@@ -7,6 +7,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescripti
 import { Input } from "../ui/input"
 import { Switch } from "../ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Code, Copy, Check, Key, KeyRound, ShieldCheck, ExternalLink, ChevronDown, ChevronUp } from "../ui/icons"
 import { Textarea } from "../ui/textarea"
@@ -887,7 +888,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             Configure email settings to send and receive messages
           </p>
         </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        <CardContent className="space-y-6 px-8">
           <FormField
             control={form.control}
             name="channels.email.enabled"
@@ -1105,43 +1106,42 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                   </>
                 )}
               </div>
-
-              {!hasEmailToken && (
-                <div className="flex justify-between">
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    className="mt-2"
-                    onClick={() => {
-                      form.setValue("channels.email", {
-                        enabled: true,
-                        email: form.getValues("channels.email.email"),
-                        password: form.getValues("channels.email.password"),
-                        incomingServer: "",
-                        incomingPort: "",
-                        outgoingServer: "",
-                        outgoingPort: ""
-                      });
-                    }}
-                  >
-                    Reset Advanced Settings
-                  </Button>
-                  
-                  <Button
-                    type="button"
-                    variant="default"
-                    className="mt-2"
-                    onClick={handleSaveEmailCredentials}
-                    disabled={isConnecting || !form.getValues("channels.email.email") || !form.getValues("channels.email.password")}
-                  >
-                    <KeyRound className="w-4 h-4 mr-2" />
-                    {isConnecting ? "Saving..." : "Save Credentials Securely"}
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
+        {form.watch("channels.email.enabled") && (
+          <ActionFooter>
+            <Button 
+              type="button"
+              variant="outline"
+              onClick={() => {
+                form.setValue("channels.email", {
+                  enabled: true,
+                  email: form.getValues("channels.email.email"),
+                  password: form.getValues("channels.email.password"),
+                  incomingServer: "",
+                  incomingPort: "",
+                  outgoingServer: "",
+                  outgoingPort: ""
+                });
+              }}
+            >
+              Reset Advanced Settings
+            </Button>
+            
+            {!hasEmailToken && (
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleSaveEmailCredentials}
+                disabled={isConnecting || !form.getValues("channels.email.email") || !form.getValues("channels.email.password")}
+              >
+                <KeyRound className="w-4 h-4 mr-2" />
+                {isConnecting ? "Saving..." : "Save Credentials Securely"}
+              </Button>
+            )}
+          </ActionFooter>
+        )}
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">

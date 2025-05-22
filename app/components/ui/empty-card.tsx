@@ -44,6 +44,7 @@ export function EmptyCard({
   return (
     <Card className={cn(
       showShadow ? "border-dashed bg-card/50" : "border-0 bg-transparent shadow-none", 
+      "w-full",
       className
     )}>
       {(title || description) && (

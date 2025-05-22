@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/app/components/ui/form"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/app/components/ui/card"
 import { cn } from "@/lib/utils"
 import { 
   Shield, 
@@ -25,11 +25,22 @@ import {
   Settings,
   LogOut,
   Check,
-  X
+  X,
+  Key,
+  Globe,
+  Trash2
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { useAuth } from "@/app/hooks/use-auth"
 import { createClient } from "@/lib/supabase/client"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { useAllowedDomains } from "@/app/hooks/use-allowed-domains"
+import { AddDomainDialog } from "@/app/components/domains/add-domain-dialog"
+import { EmptyCard } from "@/app/components/ui/empty-card"
+import { Skeleton } from "@/app/components/ui/skeleton"
+import { useSite } from "@/app/context/SiteContext"
+import { ActionFooter } from "@/app/components/ui/card-footer"
+import { ApiKeysList } from "@/app/components/api-keys/api-keys-list"
 
 // Define MFA factor interface
 interface MfaFactor {
@@ -93,6 +104,8 @@ export default function SecurityPage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [setupStep, setSetupStep] = useState<'initial' | 'setup' | 'verify'>('initial');
   const [passwordUpdated, setPasswordUpdated] = useState(false);
+  const [activeTab, setActiveTab] = useState("authentication");
+  const [hasPasswordChanges, setHasPasswordChanges] = useState(false);
   
   // Password form
   const passwordForm = useForm<PasswordFormValues>({
@@ -105,6 +118,14 @@ export default function SecurityPage() {
     resolver: zodResolver(mfaSchema),
     defaultValues: defaultMfaValues,
   });
+
+  // Watch for password form changes
+  useEffect(() => {
+    const subscription = passwordForm.watch(() => {
+      setHasPasswordChanges(true);
+    });
+    return () => subscription.unsubscribe();
+  }, [passwordForm.watch]);
 
   // Check if MFA is enabled
   useEffect(() => {
@@ -185,61 +206,126 @@ export default function SecurityPage() {
   // Handle MFA setup
   const handleMfaSetup = async () => {
     try {
-      setIsLoading(true);
-      const supabase = createClient();
+      setIsLoading(true)
+      const supabase = createClient()
+
+      // Primero verificamos si hay un factor existente
+      const { data: existingFactors, error: listError } = await supabase.auth.mfa.listFactors()
       
-      // Start MFA setup
+      if (listError) throw listError
+
+      // Buscar un factor TOTP no verificado
+      const existingFactor = existingFactors.totp.find((factor: MfaFactor) => !factor.verified)
+
+      if (existingFactor) {
+        // Si existe un factor no verificado, lo usamos
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+          factorId: existingFactor.id
+        })
+
+        if (challengeError) throw challengeError
+
+        setQrCodeUrl(challengeData.totp.qr_code)
+        setFactorId(existingFactor.id)
+        setSetupStep('setup')
+        return
+      }
+
+      // Si no hay factor existente, creamos uno nuevo
       const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: 'totp'
-      });
+        factorType: 'totp',
+        issuer: 'Market Fit',
+        friendlyName: `MFA-${new Date().getTime()}`
+      })
       
       if (error) {
-        throw error;
+        // Si el error es de factor duplicado, intentamos obtener el existente
+        if (error.message?.includes("already exists")) {
+          const { data: factors } = await supabase.auth.mfa.listFactors()
+          const unverifiedFactor = factors.totp.find((factor: MfaFactor) => !factor.verified)
+          
+          if (unverifiedFactor) {
+            const { data: challenge } = await supabase.auth.mfa.challenge({
+              factorId: unverifiedFactor.id
+            })
+            
+            setQrCodeUrl(challenge.totp.qr_code)
+            setFactorId(unverifiedFactor.id)
+            setSetupStep('setup')
+            return
+          }
+        }
+        throw error
       }
-      
-      setQrCodeUrl(data.totp.qr_code);
-      setFactorId(data.id);
-      setSetupStep('setup');
+
+      setQrCodeUrl(data.totp.qr_code)
+      setFactorId(data.id)
+      setSetupStep('setup')
     } catch (error) {
-      console.error("Error setting up MFA:", error);
-      toast.error(error instanceof Error ? error.message : "Error setting up MFA");
+      console.error("Error setting up MFA:", error)
+      toast.error(error instanceof Error ? error.message : "Error setting up MFA")
+      // Si hay un error, reseteamos el switch
+      mfaForm.setValue("enabled", false)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
+
+  // Handle MFA cancel
+  const handleMfaCancel = async () => {
+    try {
+      setIsLoading(true)
+      const supabase = createClient()
+      
+      if (factorId) {
+        await supabase.auth.mfa.unenroll({
+          factorId
+        })
+      }
+
+      setFactorId(null)
+      setQrCodeUrl(null)
+      setVerificationCode("")
+      setSetupStep('initial')
+      mfaForm.setValue("enabled", false)
+    } catch (error) {
+      console.error("Error canceling MFA setup:", error)
+      toast.error("Failed to cancel MFA setup")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   // Handle MFA verification
   const handleVerifyMfa = async () => {
     if (!factorId || !verificationCode) {
-      toast.error("Verification code is required");
-      return;
+      toast.error("Verification code is required")
+      return
     }
     
     try {
-      setIsLoading(true);
-      const supabase = createClient();
+      setIsLoading(true)
+      const supabase = createClient()
       
-      // Verify the factor with the provided code
-      const { error } = await supabase.auth.mfa.challengeAndVerify({
+      const { error } = await supabase.auth.mfa.verify({
         factorId,
         code: verificationCode
-      });
+      })
       
-      if (error) {
-        throw error;
-      }
-      
-      setIsMfaSetup(true);
-      mfaForm.setValue("enabled", true);
-      setSetupStep('initial');
-      toast.success("MFA setup successfully");
+      if (error) throw error
+
+      setIsMfaSetup(true)
+      mfaForm.setValue("enabled", true)
+      setSetupStep('initial')
+      toast.success("MFA setup successfully")
     } catch (error) {
-      console.error("Error verifying MFA:", error);
-      toast.error(error instanceof Error ? error.message : "Invalid verification code");
+      console.error("Error verifying MFA:", error)
+      toast.error(error instanceof Error ? error.message : "Invalid verification code")
+      // Si hay un error en la verificación, no reseteamos el switch aún
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Handle MFA disable
   const handleDisableMfa = async () => {
@@ -286,254 +372,376 @@ export default function SecurityPage() {
 
   return (
     <div className="flex-1">
-      <StickyHeader>
-        <div className="flex items-center justify-between px-16 w-full">
-          <div className="flex-1">
-            {passwordUpdated && (
-              <div className="flex items-center text-green-500">
-                <Check className="h-4 w-4 mr-2" />
-                <span>Password successfully updated</span>
-              </div>
-            )}
-          </div>
-          <Button 
-            disabled={isSaving}
-            type="submit"
-            form="password-form"
-          >
-            {isSaving ? "Saving..." : "Save changes"}
-          </Button>
-        </div>
-      </StickyHeader>
-      
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <Form {...passwordForm}>
-          <form
-            onSubmit={passwordForm.handleSubmit(handleUpdatePassword)}
-            id="password-form"
-            className="space-y-12"
-          >
-            <div className="space-y-12">
-              <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="px-8 py-6">
-                  <CardTitle className="text-xl font-semibold">Change Password</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-8 px-8 pb-8">
-                  <FormField
-                    control={passwordForm.control}
-                    name="currentPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">Current Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Settings className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              className="pl-12 h-12 text-base transition-colors duration-200 pr-12" 
-                              placeholder="Enter your current password" 
-                              type={showCurrentPassword ? "text" : "password"}
-                              {...field} 
-                            />
-                            <button
-                              type="button"
-                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
-                              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                              aria-label="Toggle password visibility"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-xs mt-2" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={passwordForm.control}
-                    name="newPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">New Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <LogOut className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              className="pl-12 h-12 text-base transition-colors duration-200 pr-12" 
-                              placeholder="Enter your new password"
-                              type={showNewPassword ? "text" : "password"}
-                              {...field} 
-                            />
-                            <button
-                              type="button"
-                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
-                              onClick={() => setShowNewPassword(!showNewPassword)}
-                              aria-label="Toggle password visibility"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </FormControl>
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                          <div className="flex items-center text-xs space-x-1">
-                            {/[A-Z]/.test(field.value || '') ? 
-                              <Check className="h-3 w-3 text-green-500" /> : 
-                              <X className="h-3 w-3 text-muted-foreground" />
-                            }
-                            <span className={cn(
-                              /[A-Z]/.test(field.value || '') ? 'text-green-500' : 'text-muted-foreground'
-                            )}>Uppercase letter</span>
-                          </div>
-                          <div className="flex items-center text-xs space-x-1">
-                            {/[a-z]/.test(field.value || '') ? 
-                              <Check className="h-3 w-3 text-green-500" /> : 
-                              <X className="h-3 w-3 text-muted-foreground" />
-                            }
-                            <span className={cn(
-                              /[a-z]/.test(field.value || '') ? 'text-green-500' : 'text-muted-foreground'
-                            )}>Lowercase letter</span>
-                          </div>
-                          <div className="flex items-center text-xs space-x-1">
-                            {/[0-9]/.test(field.value || '') ? 
-                              <Check className="h-3 w-3 text-green-500" /> : 
-                              <X className="h-3 w-3 text-muted-foreground" />
-                            }
-                            <span className={cn(
-                              /[0-9]/.test(field.value || '') ? 'text-green-500' : 'text-muted-foreground'
-                            )}>Number</span>
-                          </div>
-                          <div className="flex items-center text-xs space-x-1">
-                            {/[^A-Za-z0-9]/.test(field.value || '') ? 
-                              <Check className="h-3 w-3 text-green-500" /> : 
-                              <X className="h-3 w-3 text-muted-foreground" />
-                            }
-                            <span className={cn(
-                              /[^A-Za-z0-9]/.test(field.value || '') ? 'text-green-500' : 'text-muted-foreground'
-                            )}>Special character</span>
-                          </div>
-                          <div className="flex items-center text-xs space-x-1">
-                            {(field.value?.length || 0) >= 8 ? 
-                              <Check className="h-3 w-3 text-green-500" /> : 
-                              <X className="h-3 w-3 text-muted-foreground" />
-                            }
-                            <span className={cn(
-                              (field.value?.length || 0) >= 8 ? 'text-green-500' : 'text-muted-foreground'
-                            )}>8+ characters</span>
-                          </div>
-                        </div>
-                        <FormMessage className="text-xs mt-2" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={passwordForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">Confirm Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <LogOut className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              className="pl-12 h-12 text-base transition-colors duration-200 pr-12" 
-                              placeholder="Confirm your new password"
-                              type={showConfirmPassword ? "text" : "password"}
-                              {...field} 
-                            />
-                            <button
-                              type="button"
-                              className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
-                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                              aria-label="Toggle password visibility"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-xs mt-2" />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="px-8 py-6">
-                  <CardTitle className="text-xl font-semibold">Two-Factor Authentication</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-8 px-8 pb-8">
-                  <Form {...mfaForm}>
-                    <div className="flex flex-row items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors duration-200">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          Two-Factor Authentication (2FA)
-                        </FormLabel>
-                        <FormDescription>
-                          Add an extra layer of security to your account
-                        </FormDescription>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Switch
-                          checked={mfaForm.watch("enabled")}
-                          onCheckedChange={handleMfaToggle}
-                          disabled={isLoading || setupStep !== 'initial'}
-                          className="safari-switch"
-                        />
-                      </div>
-                    </div>
-                  </Form>
-
-                  {setupStep === 'setup' && qrCodeUrl && (
-                    <div className="mt-6 space-y-4 p-4 border border-border rounded-lg">
-                      <h3 className="font-medium">Scan QR Code</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
-                      </p>
-                      <div className="flex justify-center py-4">
-                        <div className="border border-border p-2 rounded-lg bg-white">
-                          <img src={qrCodeUrl} alt="QR Code for 2FA" className="h-48 w-48" />
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div>
-                          <FormLabel className="text-sm font-medium">Verification Code</FormLabel>
-                          <div className="relative mt-1">
-                            <Shield className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              className="pl-12 h-12 text-base transition-colors duration-200" 
-                              placeholder="Enter 6-digit code from your app"
-                              value={verificationCode}
-                              onChange={(e) => setVerificationCode(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-4">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setSetupStep('initial')}
-                            disabled={isLoading}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={handleVerifyMfa}
-                            disabled={isLoading || verificationCode.length !== 6}
-                          >
-                            {isLoading ? "Verifying..." : "Verify"}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <StickyHeader>
+          <div className="flex items-center justify-between px-16 w-full">
+            <TabsList className="w-auto">
+              <TabsTrigger value="authentication" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Authentication
+              </TabsTrigger>
+              <TabsTrigger value="api_keys" className="flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                API Keys
+              </TabsTrigger>
+              <TabsTrigger value="allowed_domains" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Allowed Domains
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex-1">
+              {passwordUpdated && (
+                <div className="flex items-center text-green-500">
+                  <Check className="h-4 w-4 mr-2" />
+                  <span>Password successfully updated</span>
+                </div>
+              )}
             </div>
-          </form>
-        </Form>
+          </div>
+        </StickyHeader>
+        
+        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
+          <TabsContent value="authentication">
+            <Form {...passwordForm}>
+              <form
+                onSubmit={passwordForm.handleSubmit(handleUpdatePassword)}
+                id="password-form"
+                className="space-y-12"
+              >
+                <div className="space-y-12">
+                  <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <CardHeader className="px-8 py-6">
+                      <CardTitle className="text-xl font-semibold">Change Password</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-8 px-8">
+                      <FormField
+                        control={passwordForm.control}
+                        name="currentPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Current Password</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Settings className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  className="pl-12 h-12 text-base transition-colors duration-200 pr-12" 
+                                  placeholder="Enter your current password" 
+                                  type={showCurrentPassword ? "text" : "password"}
+                                  {...field} 
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
+                                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                  aria-label="Toggle password visibility"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </FormControl>
+                            <FormMessage className="text-xs mt-2" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={passwordForm.control}
+                        name="newPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">New Password</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <LogOut className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  className="pl-12 h-12 text-base transition-colors duration-200 pr-12" 
+                                  placeholder="Enter your new password"
+                                  type={showNewPassword ? "text" : "password"}
+                                  {...field} 
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
+                                  onClick={() => setShowNewPassword(!showNewPassword)}
+                                  aria-label="Toggle password visibility"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </FormControl>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div className="flex items-center text-xs space-x-1">
+                                {/[A-Z]/.test(field.value || '') ? 
+                                  <Check className="h-3 w-3 text-green-500" /> : 
+                                  <X className="h-3 w-3 text-muted-foreground" />
+                                }
+                                <span className={cn(
+                                  /[A-Z]/.test(field.value || '') ? 'text-green-500' : 'text-muted-foreground'
+                                )}>Uppercase letter</span>
+                              </div>
+                              <div className="flex items-center text-xs space-x-1">
+                                {/[a-z]/.test(field.value || '') ? 
+                                  <Check className="h-3 w-3 text-green-500" /> : 
+                                  <X className="h-3 w-3 text-muted-foreground" />
+                                }
+                                <span className={cn(
+                                  /[a-z]/.test(field.value || '') ? 'text-green-500' : 'text-muted-foreground'
+                                )}>Lowercase letter</span>
+                              </div>
+                              <div className="flex items-center text-xs space-x-1">
+                                {/[0-9]/.test(field.value || '') ? 
+                                  <Check className="h-3 w-3 text-green-500" /> : 
+                                  <X className="h-3 w-3 text-muted-foreground" />
+                                }
+                                <span className={cn(
+                                  /[0-9]/.test(field.value || '') ? 'text-green-500' : 'text-muted-foreground'
+                                )}>Number</span>
+                              </div>
+                              <div className="flex items-center text-xs space-x-1">
+                                {/[^A-Za-z0-9]/.test(field.value || '') ? 
+                                  <Check className="h-3 w-3 text-green-500" /> : 
+                                  <X className="h-3 w-3 text-muted-foreground" />
+                                }
+                                <span className={cn(
+                                  /[^A-Za-z0-9]/.test(field.value || '') ? 'text-green-500' : 'text-muted-foreground'
+                                )}>Special character</span>
+                              </div>
+                              <div className="flex items-center text-xs space-x-1">
+                                {(field.value?.length || 0) >= 8 ? 
+                                  <Check className="h-3 w-3 text-green-500" /> : 
+                                  <X className="h-3 w-3 text-muted-foreground" />
+                                }
+                                <span className={cn(
+                                  (field.value?.length || 0) >= 8 ? 'text-green-500' : 'text-muted-foreground'
+                                )}>8+ characters</span>
+                              </div>
+                            </div>
+                            <FormMessage className="text-xs mt-2" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={passwordForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Confirm Password</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <LogOut className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  className="pl-12 h-12 text-base transition-colors duration-200 pr-12" 
+                                  placeholder="Confirm your new password"
+                                  type={showConfirmPassword ? "text" : "password"}
+                                  {...field} 
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground safari-eye-button"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  aria-label="Toggle password visibility"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </FormControl>
+                            <FormMessage className="text-xs mt-2" />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                    <ActionFooter>
+                      <Button
+                        type="submit"
+                        disabled={!hasPasswordChanges || isSaving}
+                      >
+                        {isSaving ? "Saving..." : "Save Password"}
+                      </Button>
+                    </ActionFooter>
+                  </Card>
+
+                  <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <CardHeader className="px-8 py-6">
+                      <CardTitle className="text-xl font-semibold">Two-Factor Authentication</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-8 px-8">
+                      <Form {...mfaForm}>
+                        <div className="flex flex-row items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors duration-200">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">
+                              Two-Factor Authentication (2FA)
+                            </FormLabel>
+                            <FormDescription>
+                              Add an extra layer of security to your account
+                            </FormDescription>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <Switch
+                              checked={mfaForm.watch("enabled")}
+                              onCheckedChange={handleMfaToggle}
+                              disabled={isLoading || setupStep !== 'initial'}
+                              className="safari-switch"
+                            />
+                          </div>
+                        </div>
+                      </Form>
+
+                      {setupStep === 'setup' && qrCodeUrl && (
+                        <div className="mt-6 space-y-4 p-4 border border-border rounded-lg">
+                          <h3 className="font-medium">Scan QR Code</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                          </p>
+                          <div className="flex justify-center py-4">
+                            <div className="border border-border p-2 rounded-lg bg-white">
+                              <img src={qrCodeUrl} alt="QR Code for 2FA" className="h-48 w-48" />
+                            </div>
+                          </div>
+                          <div>
+                            <FormLabel className="text-sm font-medium">Verification Code</FormLabel>
+                            <div className="relative mt-1">
+                              <Shield className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                className="pl-12 h-12 text-base transition-colors duration-200" 
+                                placeholder="Enter 6-digit code from your app"
+                                value={verificationCode}
+                                onChange={(e) => setVerificationCode(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                    {setupStep === 'setup' && qrCodeUrl && (
+                      <ActionFooter>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleMfaCancel}
+                          disabled={isLoading}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={handleVerifyMfa}
+                          disabled={isLoading || verificationCode.length !== 6}
+                        >
+                          {isLoading ? "Verifying..." : "Verify"}
+                        </Button>
+                      </ActionFooter>
+                    )}
+                  </Card>
+                </div>
+              </form>
+            </Form>
+          </TabsContent>
+
+          <TabsContent value="api_keys">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">API Keys</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                <div className="text-sm text-muted-foreground">
+                  Manage your API keys to interact with our services programmatically. API keys are used to authenticate requests to the API.
+                </div>
+                <ApiKeysList />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="allowed_domains">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Allowed Domains</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                <div className="text-sm text-muted-foreground">
+                  Configure which domains are allowed to make requests to your API. This helps secure your application by preventing unauthorized access.
+                </div>
+                
+                <AllowedDomainsList />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </div>
+      </Tabs>
+    </div>
+  )
+}
+
+function AllowedDomainsList() {
+  const { domains, isLoading, isSubmitting, addDomain, deleteDomain } = useAllowedDomains()
+  const { currentSite } = useSite()
+
+  if (!currentSite) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] w-full">
+        <EmptyCard
+          icon={<Globe className="h-10 w-10 text-muted-foreground" />}
+          title="Select a site"
+          description="Please select a site to manage allowed domains"
+        />
       </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {domains.length > 0 ? (
+        <div className="space-y-4">
+          <div className="rounded-md border">
+            {domains.map((domain, index) => (
+              <div
+                key={domain.id}
+                className={cn(
+                  "flex items-center justify-between p-4",
+                  index !== domains.length - 1 && "border-b"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{domain.domain}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => deleteDomain(domain.id)}
+                  disabled={isSubmitting || domain.domain === 'localhost'}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="sr-only">Delete domain</span>
+                </Button>
+              </div>
+            ))}
+          </div>
+          <AddDomainDialog onAddDomain={addDomain} />
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center min-h-[400px] w-full">
+          <EmptyCard
+            icon={<Globe className="h-10 w-10 text-muted-foreground" />}
+            title="No domains added"
+            description="Add domains that are allowed to make requests to your API"
+          />
+          <div className="mt-6 w-full">
+            <AddDomainDialog onAddDomain={addDomain} />
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

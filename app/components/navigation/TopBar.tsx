@@ -175,7 +175,8 @@ export function TopBar({
           isAgentsPage={pathname === "/agents"}
           isAssetsPage={pathname === "/assets"}
           isContentPage={pathname === "/content"}
-          isControlCenterPage={pathname === "/campaigns"}
+          isControlCenterPage={pathname === "/control-center"}
+          isCampaignsPage={pathname === "/campaigns"}
           isSalesPage={pathname === "/sales"}
           isExperimentDetailPage={isExperimentDetailPage}
           segmentData={segmentData}

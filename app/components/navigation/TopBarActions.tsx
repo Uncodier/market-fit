@@ -13,6 +13,7 @@ import { CreateRequirementDialog } from "../create-requirement-dialog"
 import { CreateLeadDialog } from "../create-lead-dialog"
 import { CreateContentDialog } from "@/app/content/components"
 import { CreateCampaignDialog } from "../create-campaign-dialog"
+import { CreateTaskDialog } from "../create-task-dialog"
 import { CalendarDateRangePicker } from "../ui/date-range-picker"
 import { AIActionModal } from "@/app/components/ui/ai-action-modal"
 import { useSite } from "@/app/context/SiteContext"
@@ -70,6 +71,7 @@ interface TopBarActionsProps {
   isAssetsPage: boolean
   isContentPage: boolean
   isControlCenterPage: boolean
+  isCampaignsPage: boolean
   isSalesPage: boolean
   isExperimentDetailPage?: boolean
   segmentData: {
@@ -99,6 +101,7 @@ export function TopBarActions({
   isAssetsPage,
   isContentPage,
   isControlCenterPage,
+  isCampaignsPage,
   isSalesPage,
   isExperimentDetailPage = false,
   segmentData,
@@ -541,9 +544,12 @@ The success of this experiment will be measured by:
 
   return (
     <div className="flex items-center gap-4">
-      {isDashboardPage && (
-        currentSite ? (
-          <>
+      {isControlCenterPage && currentSite ? (
+        <CreateTaskDialog />
+      ) : null}
+      {currentSite ? (
+        <>
+          {isDashboardPage && (
             <Button 
               onClick={async () => {
                 if (!userId) {
@@ -584,14 +590,9 @@ The success of this experiment will be measured by:
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-          </>
-        ) : (
-          <Button variant="outline" disabled>
-            <Download className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
-      )}
+          )}
+        </>
+      ) : null}
       {/* Experiment Detail Page AI Button */}
       {isExperimentDetailPage && currentSite && (
         <Button 
@@ -706,12 +707,7 @@ The success of this experiment will be measured by:
             </Button>
             <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
           </div>
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
       {isExperimentsPage && (
         currentSite ? (
@@ -741,12 +737,7 @@ The success of this experiment will be measured by:
               onCreateExperiment={handleCreateExperiment}
             />
           </div>
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
       {isRequirementsPage && (
         currentSite ? (
@@ -763,12 +754,7 @@ The success of this experiment will be measured by:
               }
             />
           </>
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
       {isLeadsPage && (
         currentSite ? (
@@ -816,32 +802,17 @@ The success of this experiment will be measured by:
               }
             />
           </>
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
       {isAgentsPage && (
         currentSite ? (
           <></>
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
       {isAssetsPage && (
         currentSite ? (
           <UploadAssetDialog onUploadAsset={handleCreateAsset} />
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
       {isContentPage && (
         currentSite ? (
@@ -863,14 +834,9 @@ The success of this experiment will be measured by:
               </Button>
             }
           />
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
-      {isControlCenterPage && (
+      {isCampaignsPage && (
         currentSite ? (
           <CreateCampaignDialog
             segments={segments.length > 0 ? segments : propSegments || []}
@@ -883,12 +849,7 @@ The success of this experiment will be measured by:
               </Button>
             }
           />
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
       {isSalesPage && (
         currentSite ? (
@@ -929,12 +890,7 @@ The success of this experiment will be measured by:
               Add Sale
             </Button>
           </>
-        ) : (
-          <Button variant="outline" disabled>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Select a site
-          </Button>
-        )
+        ) : null
       )}
 
       {/* AI Action Modal */}
