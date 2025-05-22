@@ -1175,24 +1175,25 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         agentRole = existingAgentData?.role || "";
         console.log("Using existing role:", agentRole);
       } else {
-        // Para agentes nuevos, usar el rol de la plantilla, no el nombre
+        // Para agentes nuevos, usar el nombre completo de la plantilla
         // Buscar si el agentId coincide con algún rol de plantilla
         const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
         
         if (templateMatch) {
-          // Si hay coincidencia directa con un ID de plantilla, usar ese rol
-          agentRole = templateMatch.role;
+          // Si hay coincidencia directa con un ID de plantilla, usar el nombre completo
+          agentRole = templateMatch.name;
         } else {
           // Si no, verificar si se especificó un rol en los parámetros de URL
           const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
           const roleParam = urlParams ? urlParams.get('role') : null;
           
           if (roleParam && defaultAgentTemplates.some(t => t.role === roleParam)) {
-            // Si hay un parámetro de rol válido, usarlo
-            agentRole = roleParam;
+            // Si hay un parámetro de rol válido, usar el nombre completo de la plantilla
+            const roleTemplate = defaultAgentTemplates.find(t => t.role === roleParam);
+            agentRole = roleTemplate?.name || roleParam;
           } else {
-            // De lo contrario, usar el rol del template por defecto
-            agentRole = defaultTemplate.role;
+            // De lo contrario, usar el nombre completo del template por defecto
+            agentRole = defaultTemplate.name;
           }
         }
         console.log("Setting new agent role from template:", agentRole);
@@ -1246,11 +1247,11 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         savedAgentId = agentId;
       } else {
         // For new agents, check if there's already an agent with the same role, user_id, and site_id
-        console.log("Checking for existing agent with same name, user_id, and site_id");
+        console.log("Checking for existing agent with same role, user_id, and site_id");
         const { data: existingAgent } = await supabase
           .from('agents')
           .select('id')
-          .eq('role', name)
+          .eq('role', agentRole)
           .eq('user_id', session.user.id)
           .eq('site_id', currentSite.id)
           .maybeSingle();
