@@ -97,7 +97,7 @@ const getDefaultToolsForRole = (role: string = "") => {
 const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
   // Role-specific activities with detailed attributes matching the original format
   switch(role) {
-    case "growth_lead":
+    case "Growth Lead/Manager":
       return [
         {
           id: "gl1",
@@ -145,7 +145,7 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
           status: "available"
         }
       ];
-    case "data_analyst":
+    case "Data Analyst":
       return [
         {
           id: "da1",
@@ -193,7 +193,7 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
           status: "available"
         }
       ];
-    case "growth_marketer":
+    case "Growth Marketer":
       return [
         {
           id: "mk1",
@@ -241,7 +241,7 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
           status: "available"
         }
       ];
-    case "ux_designer":
+    case "UX Designer":
       return [
         {
           id: "ux1",
@@ -271,7 +271,7 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
           status: "available"
         }
       ];
-    case "sales":
+    case "Sales/CRM Specialist":
       return [
         {
           id: "sl1",
@@ -319,7 +319,7 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
           status: "available"
         }
       ];
-    case "support":
+    case "Customer Support":
       return [
         {
           id: "cs1",
@@ -349,7 +349,7 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
           status: "available"
         }
       ];
-    case "content_creator":
+    case "Content Creator & Copywriter":
       return [
         {
           id: "ct1",
@@ -600,7 +600,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
   // Default agent names and descriptions based on organizational roles
   const defaultAgentTemplates = [
     { 
-      role: "growth_lead",
+      role: "Growth Lead/Manager",
       name: "Growth Lead/Manager", 
       description: "Strategy integration, team coordination, budget management, KPI tracking",
       type: "marketing",
@@ -608,7 +608,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       backstory: "As a former Growth Lead at several successful startups, I've managed marketing teams that achieved 3x user growth in under a year. I specialize in connecting marketing strategies with business goals and excel at coordinating cross-functional teams to execute growth initiatives efficiently."
     },
     { 
-      role: "data_analyst",
+      role: "Data Analyst",
       name: "Data Analyst", 
       description: "Data analysis, lead qualification, segmentation, performance metrics, optimization",
       type: "marketing",
@@ -616,7 +616,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       backstory: "With 8+ years of experience in marketing analytics, I've helped companies transform raw data into actionable insights. I specialize in customer segmentation, attribution modeling, and performance tracking that drives measurable business results. I've implemented data-driven strategies that increased conversion rates by up to 40%."
     },
     { 
-      role: "growth_marketer",
+      role: "Growth Marketer",
       name: "Growth Marketer", 
       description: "Marketing strategy, omnichannel campaigns, A/B testing, SEO techniques",
       type: "marketing",
@@ -624,7 +624,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       backstory: "I've worked with over 50 SaaS companies to develop and execute growth strategies across multiple channels. My expertise includes SEO optimization that's driven 200%+ organic traffic growth, designing conversion-focused marketing funnels, and implementing rigorous A/B testing frameworks that continuously improve campaign performance."
     },
     { 
-      role: "ux_designer",
+      role: "UX Designer",
       name: "UX Designer", 
       description: "Conversion optimization, UX/UI design for funnel, onboarding experience",
       type: "marketing",
@@ -632,7 +632,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       backstory: "I've led UX design teams at both startups and enterprise companies, creating intuitive user experiences that drive engagement and retention. I specialize in user research, journey mapping, and conversion-focused design that transforms complex processes into simple, delightful interactions. My redesigns have improved conversion rates by an average of 35%."
     },
     { 
-      role: "sales",
+      role: "Sales/CRM Specialist",
       name: "Sales/CRM Specialist", 
       description: "Lead management, demos, systematic follow-up, sales cycle",
       type: "sales",
@@ -640,7 +640,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       backstory: "With over a decade in SaaS sales, I've built and optimized sales processes from scratch that generated millions in ARR. I excel at implementing CRM systems that improve lead management efficiency by 50%+ and designing sales playbooks that shorten sales cycles while increasing close rates. I've trained dozens of sales reps who consistently exceed their targets."
     },
     { 
-      role: "support",
+      role: "Customer Support",
       name: "Customer Support", 
       description: "Knowledge base management, FAQ development, customer issue escalation",
       type: "support",
@@ -648,7 +648,7 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       backstory: "I've built support teams from the ground up at several high-growth companies, achieving 98%+ customer satisfaction ratings. I specialize in creating comprehensive knowledge bases that reduce ticket volume by 40% and implementing efficient ticket management systems. I'm particularly skilled at turning customer feedback into actionable product improvements."
     },
     { 
-      role: "content_creator",
+      role: "Content Creator & Copywriter",
       name: "Content Creator & Copywriter", 
       description: "Persuasive copywriting, site content, blog posts, email sequences",
       type: "marketing",
@@ -657,14 +657,35 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
     }
   ]
   
+  // Mapping from old role keys to new human-readable roles
+  const roleKeyMapping: Record<string, string> = {
+    "growth_lead": "Growth Lead/Manager",
+    "data_analyst": "Data Analyst",
+    "growth_marketer": "Growth Marketer",
+    "ux_designer": "UX Designer",
+    "sales": "Sales/CRM Specialist",
+    "support": "Customer Support",
+    "content_creator": "Content Creator & Copywriter"
+  };
+
   // Find default template to use
   const getDefaultTemplate = () => {
-    // First, check if agentId corresponds directly to a template role
+    // First, check if agentId corresponds directly to a template role (new format)
     if (!isNewAgent) {
       const templateByRole = defaultAgentTemplates.find(t => t.role === agentId);
       if (templateByRole) {
         console.log("Found template by direct role match:", agentId);
         return templateByRole;
+      }
+      
+      // Then check if agentId is an old role key that needs mapping
+      const mappedRole = roleKeyMapping[agentId];
+      if (mappedRole) {
+        const templateByMappedRole = defaultAgentTemplates.find(t => t.role === mappedRole);
+        if (templateByMappedRole) {
+          console.log("Found template by mapped role:", agentId, "->", mappedRole);
+          return templateByMappedRole;
+        }
       }
     }
     
@@ -674,13 +695,21 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       const roleParam = urlParams.get('role');
       
       if (roleParam) {
+        // First try direct match
         const template = defaultAgentTemplates.find(t => t.role === roleParam);
         if (template) return template;
+        
+        // Then try mapped role
+        const mappedRole = roleKeyMapping[roleParam];
+        if (mappedRole) {
+          const templateByMappedRole = defaultAgentTemplates.find(t => t.role === mappedRole);
+          if (templateByMappedRole) return templateByMappedRole;
+        }
       }
     }
     
     // Default to Customer Support if no parameter is found
-    const supportTemplate = defaultAgentTemplates.find(t => t.role === "support");
+    const supportTemplate = defaultAgentTemplates.find(t => t.role === "Customer Support");
     if (supportTemplate) return supportTemplate;
     
     // Fallback if support template somehow not found
@@ -939,8 +968,19 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
           setDataSource("new")
           
           // Try to load template details based on role
-          // Role is in format of growth_lead, support, etc.
-          const template = defaultAgentTemplates.find(t => t.role === agentId);
+          // Role is in format of growth_lead, support, etc. or new human-readable format
+          let template = defaultAgentTemplates.find(t => t.role === agentId);
+          let roleForDefaults = agentId;
+          
+          // If not found, try mapping from old role key
+          if (!template) {
+            const mappedRole = roleKeyMapping[agentId];
+            if (mappedRole) {
+              template = defaultAgentTemplates.find(t => t.role === mappedRole);
+              roleForDefaults = mappedRole;
+            }
+          }
+          
           if (template) {
             console.log("Found matching template:", template);
             setName(template.name);
@@ -949,10 +989,10 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
             setType(template.type as "sales" | "support" | "marketing");
             
             // Set tools based on the specific role
-            setTools(getDefaultToolsForRole(agentId));
+            setTools(getDefaultToolsForRole(roleForDefaults));
             
             // Set activities based on the specific role
-            setActivities(getDefaultActivitiesForRole(agentId));
+            setActivities(getDefaultActivitiesForRole(roleForDefaults));
           } else {
             // If no template found, use defaults
             console.log("No template found for ID:", agentId, "using defaults");
@@ -1175,25 +1215,41 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
         agentRole = existingAgentData?.role || "";
         console.log("Using existing role:", agentRole);
       } else {
-        // Para agentes nuevos, usar el nombre completo de la plantilla
+        // Para agentes nuevos, usar el rol de la plantilla
         // Buscar si el agentId coincide con algún rol de plantilla
         const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
         
         if (templateMatch) {
-          // Si hay coincidencia directa con un ID de plantilla, usar el nombre completo
-          agentRole = templateMatch.name;
+          // Si hay coincidencia directa con un ID de plantilla, usar ese rol
+          agentRole = templateMatch.role;
         } else {
-          // Si no, verificar si se especificó un rol en los parámetros de URL
-          const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-          const roleParam = urlParams ? urlParams.get('role') : null;
-          
-          if (roleParam && defaultAgentTemplates.some(t => t.role === roleParam)) {
-            // Si hay un parámetro de rol válido, usar el nombre completo de la plantilla
-            const roleTemplate = defaultAgentTemplates.find(t => t.role === roleParam);
-            agentRole = roleTemplate?.name || roleParam;
+          // Check if agentId is an old role key that needs mapping
+          const mappedRole = roleKeyMapping[agentId];
+          if (mappedRole) {
+            agentRole = mappedRole;
           } else {
-            // De lo contrario, usar el nombre completo del template por defecto
-            agentRole = defaultTemplate.name;
+            // Si no, verificar si se especificó un rol en los parámetros de URL
+            const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+            const roleParam = urlParams ? urlParams.get('role') : null;
+            
+            if (roleParam) {
+              // First try direct match
+              if (defaultAgentTemplates.some(t => t.role === roleParam)) {
+                agentRole = roleParam;
+              } else {
+                // Then try mapped role
+                const mappedRoleParam = roleKeyMapping[roleParam];
+                if (mappedRoleParam && defaultAgentTemplates.some(t => t.role === mappedRoleParam)) {
+                  agentRole = mappedRoleParam;
+                } else {
+                  // De lo contrario, usar el rol del template por defecto
+                  agentRole = defaultTemplate.role;
+                }
+              }
+            } else {
+              // De lo contrario, usar el rol del template por defecto
+              agentRole = defaultTemplate.role;
+            }
           }
         }
         console.log("Setting new agent role from template:", agentRole);
