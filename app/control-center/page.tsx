@@ -19,6 +19,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ClipboardList } from "@/app/components/ui/icons"
 import { toast } from "react-hot-toast"
 import { getUserData } from "@/app/services/user-service"
+import { useCommandK } from "@/app/hooks/use-command-k"
 
 // Task types
 const TASK_TYPES = [
@@ -83,6 +84,9 @@ export default function ControlCenterPage() {
   const [currentStatus, setCurrentStatus] = useState<TaskStatusFilter>("all")
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
+
+  // Initialize command+k hook
+  useCommandK()
 
   // Update breadcrumb when component mounts
   useEffect(() => {
@@ -341,7 +345,10 @@ export default function ControlCenterPage() {
   }
 
   if (isLoading) {
-    return <ControlCenterSkeleton />
+    return <ControlCenterSkeleton 
+      isLayoutCollapsed={isLayoutCollapsed}
+      isSidebarCollapsed={isSidebarCollapsed}
+    />
   }
 
   return (
@@ -383,6 +390,7 @@ export default function ControlCenterPage() {
               <ViewSelector
                 currentView={viewType}
                 onViewChange={(view) => setViewType(view)}
+                showCalendar={true}
               />
             }
             currentStatus={currentStatus}
