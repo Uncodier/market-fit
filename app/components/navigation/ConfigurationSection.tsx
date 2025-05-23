@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Settings, Bell, Shield, LogOut, Sun, Moon, CreditCard } from "@/app/components/ui/icons"
 import { MenuItem } from "./MenuItem"
+import { NotificationBadge } from "./NotificationBadge"
 import { usePathname } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
@@ -231,7 +232,11 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
               isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
               isCollapsed={isCollapsed}
               className={isSettings ? "setting-parent-item" : ""}
-            />
+            >
+              {item.title === "Notifications" && (
+                <NotificationBadge />
+              )}
+            </MenuItem>
             
             {/* Indicator for Settings that it has children */}
             {isSettings && !isCollapsed && (

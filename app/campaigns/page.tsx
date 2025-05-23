@@ -559,6 +559,7 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>(["high", "medium", "low"]);
+  const [activeTab, setActiveTab] = useState("active");
   const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([]);
   const [requirements, setRequirements] = useState<Array<{ 
     id: string; 
@@ -574,9 +575,15 @@ export default function CampaignsPage() {
   // Initialize command+k hook
   useCommandK()
 
-  // Group campaigns by type
+  // Group campaigns by type and filter by status
   const campaignsByType: { [key: string]: Campaign[] } = {};
   campaigns.forEach(campaign => {
+    // Filter campaigns by tab status
+    const campaignStatus = campaign.status || "active";
+    if (campaignStatus !== activeTab) {
+      return;
+    }
+    
     if (!campaignsByType[campaign.type]) {
       campaignsByType[campaign.type] = [];
     }
@@ -661,7 +668,7 @@ export default function CampaignsPage() {
       <StickyHeader>
         <div className="flex items-center justify-between px-16 w-full">
           <div className="flex items-center gap-4">
-            <Tabs defaultValue="active" className="w-auto">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
               <TabsList>
                 <TabsTrigger value="active">Active</TabsTrigger>
                 <TabsTrigger value="pending">Pending</TabsTrigger>
@@ -732,9 +739,9 @@ export default function CampaignsPage() {
         <ControlCenterSkeleton />
       ) : (
         <div className="px-8 pb-8">
-          <Tabs defaultValue="active" className="h-auto">
+          <Tabs value={activeTab} className="h-auto">
             <TabsContent value="active" className="w-full h-auto overflow-visible">
-              {campaigns.length > 0 ? (
+              {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
                   <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
@@ -817,39 +824,143 @@ export default function CampaignsPage() {
             </TabsContent>
 
             <TabsContent value="pending">
-              <EmptyState
-                icon={<Target className="h-12 w-12 text-muted-foreground" />}
-                title="No Pending Campaigns"
-                description="You don't have any pending campaigns at the moment."
-                features={[
-                  {
-                    title: "Create New Campaign",
-                    items: [
-                      "Set up campaign details",
-                      "Assign team members",
-                      "Schedule launch date"
-                    ]
-                  }
-                ]}
-              />
+              {Object.keys(campaignsByType).length > 0 ? (
+                <div className="w-full overflow-x-auto overflow-y-visible">
+                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+                    {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
+                      <KanbanColumn
+                        key={type}
+                        title={type.charAt(0).toUpperCase() + type.slice(1)}
+                        tasks={typeCampaigns.map(campaign => {
+                          // Get requirements associated with this campaign
+                          const campaignRequirements = requirements
+                            ? requirements
+                                .filter(req => {
+                                  const campaignReqs = req.campaign_requirements || [];
+                                  return campaignReqs.some(cr => cr.campaign_id === campaign.id);
+                                })
+                                .map(req => ({
+                                  id: req.id,
+                                  title: req.title,
+                                  description: req.description || "",
+                                  status: req.status || "backlog",
+                                  priority: req.priority || "medium",
+                                  completion_status: req.completion_status || "pending"
+                                }))
+                            : [];
+                            
+                          return {
+                            id: campaign.id,
+                            title: campaign.title,
+                            description: campaign.description,
+                            priority: campaign.priority,
+                            dueDate: new Date(campaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                            assignees: campaign.assignees,
+                            issues: campaign.issues,
+                            revenue: campaign.revenue,
+                            budget: campaign.budget,
+                            costs: {
+                              fixed: 0,
+                              variable: 0,
+                              total: campaign.budget?.allocated && campaign.budget?.remaining ? 
+                                campaign.budget.allocated - campaign.budget.remaining : 0,
+                              currency: campaign.budget?.currency || "USD"
+                            },
+                            requirements: campaignRequirements
+                          };
+                        })}
+                        searchQuery={searchQuery}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<Target className="h-12 w-12 text-muted-foreground" />}
+                  title="No Pending Campaigns"
+                  description="You don't have any pending campaigns at the moment."
+                  features={[
+                    {
+                      title: "Create New Campaign",
+                      items: [
+                        "Set up campaign details",
+                        "Assign team members",
+                        "Schedule launch date"
+                      ]
+                    }
+                  ]}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="completed">
-              <EmptyState
-                icon={<Target className="h-12 w-12 text-muted-foreground" />}
-                title="No Completed Campaigns"
-                description="You don't have any completed campaigns yet."
-                features={[
-                  {
-                    title: "Campaign Archives",
-                    items: [
-                      "View past performance",
-                      "Review campaign metrics",
-                      "Export reports"
-                    ]
-                  }
-                ]}
-              />
+              {Object.keys(campaignsByType).length > 0 ? (
+                <div className="w-full overflow-x-auto overflow-y-visible">
+                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+                    {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
+                      <KanbanColumn
+                        key={type}
+                        title={type.charAt(0).toUpperCase() + type.slice(1)}
+                        tasks={typeCampaigns.map(campaign => {
+                          // Get requirements associated with this campaign
+                          const campaignRequirements = requirements
+                            ? requirements
+                                .filter(req => {
+                                  const campaignReqs = req.campaign_requirements || [];
+                                  return campaignReqs.some(cr => cr.campaign_id === campaign.id);
+                                })
+                                .map(req => ({
+                                  id: req.id,
+                                  title: req.title,
+                                  description: req.description || "",
+                                  status: req.status || "backlog",
+                                  priority: req.priority || "medium",
+                                  completion_status: req.completion_status || "pending"
+                                }))
+                            : [];
+                            
+                          return {
+                            id: campaign.id,
+                            title: campaign.title,
+                            description: campaign.description,
+                            priority: campaign.priority,
+                            dueDate: new Date(campaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                            assignees: campaign.assignees,
+                            issues: campaign.issues,
+                            revenue: campaign.revenue,
+                            budget: campaign.budget,
+                            costs: {
+                              fixed: 0,
+                              variable: 0,
+                              total: campaign.budget?.allocated && campaign.budget?.remaining ? 
+                                campaign.budget.allocated - campaign.budget.remaining : 0,
+                              currency: campaign.budget?.currency || "USD"
+                            },
+                            requirements: campaignRequirements
+                          };
+                        })}
+                        searchQuery={searchQuery}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<Target className="h-12 w-12 text-muted-foreground" />}
+                  title="No Completed Campaigns"
+                  description="You don't have any completed campaigns yet."
+                  features={[
+                    {
+                      title: "Campaign Archives",
+                      items: [
+                        "View past performance",
+                        "Review campaign metrics",
+                        "Export reports"
+                      ]
+                    }
+                  ]}
+                />
+              )}
             </TabsContent>
           </Tabs>
         </div>

@@ -30,12 +30,12 @@ export default function NotificationsPage() {
   const handleTabChange = useCallback((value: string) => {
     const tab = value as "all" | "unread"
     setActiveTab(tab)
-    updateFilters({ read: tab === "unread" ? false : undefined })
+    updateFilters({ is_read: tab === "unread" ? false : undefined })
   }, [updateFilters])
 
   // Filter and search notifications
   const filteredNotifications = notifications
-    .filter(notification => activeTab === "all" || !notification.read)
+    .filter(notification => activeTab === "all" || !notification.is_read)
     .filter(notification => 
       notification.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
       notification.message.toLowerCase().includes(searchQuery.toLowerCase())
@@ -79,7 +79,7 @@ export default function NotificationsPage() {
                   variant="outline" 
                   size="sm"
                   onClick={() => markAllNotificationsAsRead()}
-                  disabled={!notifications.some(n => !n.read)}
+                  disabled={!notifications.some(n => !n.is_read)}
                 >
                   Mark all as read
                 </Button>

@@ -137,22 +137,27 @@ export function MenuItem({
       onClick={onClick}
     >
       {isCollapsed ? (
-        <TooltipProvider delayDuration={100}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>{content}</div>
-            </TooltipTrigger>
-            <TooltipContent 
-              side="right" 
-              align="start" 
-              className="flex flex-col gap-1 bg-popover text-popover-foreground border-border shadow-lg"
-              sideOffset={5}
-            >
-              <p className="font-medium">{title}</p>
-              {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>{content}</div>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="right" 
+                align="start" 
+                className="flex flex-col gap-1 bg-popover text-popover-foreground border-border shadow-lg"
+                sideOffset={5}
+              >
+                <p className="font-medium">{title}</p>
+                {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {children && (
+            <div className="absolute -top-1 -right-1 z-10">{children}</div>
+          )}
+        </>
       ) : (
         content
       )}

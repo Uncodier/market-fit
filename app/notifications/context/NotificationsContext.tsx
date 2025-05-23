@@ -122,7 +122,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
     }
     
     try {
-      const result = await updateNotification({ id, read: true })
+      const result = await updateNotification({ id, is_read: true })
       
       if (result.error) {
         toast.error(result.error)
@@ -132,7 +132,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       // Update notification in local state
       setNotifications(prevNotifications =>
         prevNotifications.map(n =>
-          n.id === id ? { ...n, read: true } : n
+          n.id === id ? { ...n, is_read: true } : n
         )
       )
       
@@ -160,7 +160,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       
       // Update all notifications in local state
       setNotifications(prevNotifications =>
-        prevNotifications.map(n => ({ ...n, read: true }))
+        prevNotifications.map(n => ({ ...n, is_read: true }))
       )
       
       toast.success("All notifications marked as read")

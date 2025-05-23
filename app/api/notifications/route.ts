@@ -6,9 +6,16 @@ import { createClient } from "@/utils/supabase/server"
 const CreateNotificationSchema = z.object({
   title: z.string().min(1, "Title is required"),
   message: z.string().min(1, "Message is required"),
-  type: z.enum(["info", "success", "warning", "error"]).default("info"),
+  type: z.string().default("info"),
+  is_read: z.boolean().default(false),
+  action_url: z.string().optional(),
+  related_entity_type: z.string().optional(),
+  related_entity_id: z.string().optional(),
   site_id: z.string().min(1, "Site ID is required"),
-  user_id: z.string().min(1, "User ID is required")
+  user_id: z.string().min(1, "User ID is required"),
+  event_type: z.string().optional(),
+  severity: z.number().optional(),
+  command_id: z.string().optional()
 })
 
 export async function POST(request: NextRequest) {
@@ -31,7 +38,7 @@ export async function POST(request: NextRequest) {
       // Validate input data
       const validatedData = CreateNotificationSchema.parse({
         ...body,
-        read: false // Always set new notifications as unread
+        is_read: false // Always set new notifications as unread
       })
       
       // Insert the notification
@@ -151,10 +158,10 @@ export async function PATCH(request: NextRequest) {
       
       const { error } = await supabase
         .from("notifications")
-        .update({ read: true })
+        .update({ is_read: true })
         .eq("site_id", site_id)
         .eq("user_id", user_id)
-        .eq("read", false)
+        .eq("is_read", false)
       
       if (error) {
         console.error("Error marking all notifications as read:", error)
@@ -170,7 +177,7 @@ export async function PATCH(request: NextRequest) {
     else if (body.id) {
       const { error } = await supabase
         .from("notifications")
-        .update({ read: body.read })
+        .update({ is_read: body.is_read })
         .eq("id", body.id)
       
       if (error) {

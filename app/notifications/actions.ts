@@ -8,12 +8,18 @@ const NotificationsSchema = z.object({
     id: z.string(),
     title: z.string(),
     message: z.string(),
-    type: z.enum(["info", "success", "warning", "error"]),
-    read: z.boolean(),
+    type: z.string(),
+    is_read: z.boolean(),
+    action_url: z.string().optional(),
+    related_entity_type: z.string().optional(),
+    related_entity_id: z.string().optional(),
+    site_id: z.string(),
+    user_id: z.string(),
     created_at: z.string(),
     updated_at: z.string(),
-    site_id: z.string(),
-    user_id: z.string()
+    event_type: z.string().optional(),
+    severity: z.number().optional(),
+    command_id: z.string().optional()
   })).nullable(),
   error: z.string().optional()
 })
@@ -24,10 +30,16 @@ export type NotificationsResponse = z.infer<typeof NotificationsSchema>
 const CreateNotificationSchema = z.object({
   title: z.string().min(1, "Title is required"),
   message: z.string().min(1, "Message is required"),
-  type: z.enum(["info", "success", "warning", "error"]).default("info"),
-  read: z.boolean().default(false),
+  type: z.string().default("info"),
+  is_read: z.boolean().default(false),
+  action_url: z.string().optional(),
+  related_entity_type: z.string().optional(),
+  related_entity_id: z.string().optional(),
   site_id: z.string().min(1, "Site ID is required"),
-  user_id: z.string().min(1, "User ID is required")
+  user_id: z.string().min(1, "User ID is required"),
+  event_type: z.string().optional(),
+  severity: z.number().optional(),
+  command_id: z.string().optional()
 })
 
 export type CreateNotificationInput = z.infer<typeof CreateNotificationSchema>
@@ -35,10 +47,10 @@ export type CreateNotificationInput = z.infer<typeof CreateNotificationSchema>
 // Schema for update notification
 const UpdateNotificationSchema = z.object({
   id: z.string().min(1, "ID is required"),
-  read: z.boolean().optional(),
+  is_read: z.boolean().optional(),
   title: z.string().optional(),
   message: z.string().optional(),
-  type: z.enum(["info", "success", "warning", "error"]).optional()
+  type: z.string().optional()
 })
 
 export type UpdateNotificationInput = z.infer<typeof UpdateNotificationSchema>
