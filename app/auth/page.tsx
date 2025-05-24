@@ -62,6 +62,11 @@ export default function AuthPage() {
     return "Get started with AI-powered sales automation"
   }
 
+  // Handle auth type changes from AuthForm
+  const handleAuthTypeChange = (newAuthType: string) => {
+    setAuthType(newAuthType)
+  }
+
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left side - Branding and Info */}
@@ -350,7 +355,12 @@ export default function AuthPage() {
             </p>
           </div>
 
-          <AuthForm defaultAuthType={authType} returnTo={returnTo} signupData={signupData} />
+          <AuthForm 
+            defaultAuthType={authType} 
+            returnTo={returnTo} 
+            signupData={signupData}
+            onAuthTypeChange={handleAuthTypeChange}
+          />
         </div>
       </div>
     </div>

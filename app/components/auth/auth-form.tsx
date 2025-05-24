@@ -22,6 +22,7 @@ interface AuthFormProps {
     name?: string
     referralCode?: string
   }
+  onAuthTypeChange?: (authType: string) => void
 }
 
 // Create schema with conditional validation for referral code
@@ -34,7 +35,7 @@ const authFormSchema = z.object({
 
 type AuthFormValues = z.infer<typeof authFormSchema>
 
-export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData }: AuthFormProps) {
+export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData, onAuthTypeChange }: AuthFormProps) {
   const supabase = createClient()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -84,7 +85,13 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
 
   // Handle auth type change (sign in or sign up)
   const toggleAuthMode = () => {
-    setAuthMode(authMode === 'sign_in' ? 'sign_up' : 'sign_in')
+    const newMode = authMode === 'sign_in' ? 'sign_up' : 'sign_in'
+    setAuthMode(newMode)
+    
+    // Notify parent component of the change
+    if (onAuthTypeChange) {
+      onAuthTypeChange(newMode === 'sign_up' ? 'signup' : 'signin')
+    }
   }
 
   // Toggle password visibility
