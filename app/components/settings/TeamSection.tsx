@@ -8,10 +8,23 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/
 import { Input } from "../ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
-import { PlusCircle, Trash2, User, Mail, FileText, CheckCircle2, Clock } from "../ui/icons"
+import { PlusCircle, Trash2, User, Mail, FileText, CheckCircle2, Clock, Save } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Badge } from "../ui/badge"
 import { siteMembersService, type SiteMember } from "@/app/services/site-members-service"
+import { ActionFooter } from "../ui/card-footer"
+import { useTeamMemberValidation } from "@/app/hooks/useTeamMemberValidation"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog"
 
 interface TeamSectionProps {
   active: boolean
@@ -34,6 +47,7 @@ interface FormTeamMember {
   position?: string;
   id?: string;
   status?: 'pending' | 'active' | 'rejected';
+  originalRole?: 'owner' | 'admin' | 'marketing' | 'collaborator'; // Track original DB role
 }
 
 // Helper to convert SiteMember to FormTeamMember
@@ -53,7 +67,8 @@ const siteMemberToFormMember = (member: SiteMember): FormTeamMember => {
     email: member.email,
     role: formRole,
     position: member.position || undefined,
-    status: member.status
+    status: member.status,
+    originalRole: member.role // Keep track of original DB role
   };
 };
 
@@ -72,7 +87,12 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     form.getValues("team_members") || []
   )
   const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const debouncedUpdateRef = useRef<any>(null)
+  
+  // Use our validation hook
+  const validation = useTeamMemberValidation(teamList)
   
   // Create a debounced version of updateFormValues
   const updateFormValues = useCallback((newTeamList: FormTeamMember[]) => {
@@ -96,6 +116,9 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     // Ensure we fetch when the team tab becomes active or siteId changes
     if (!active || !siteId) return;
     
+    // Don't overwrite local state if there are unsaved changes
+    if (hasUnsavedChanges) return;
+    
     const fetchSiteMembers = async () => {
       try {
         console.log("Fetching team members for site:", siteId);
@@ -104,10 +127,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         // Try to get members from site_members table first
         const members = await siteMembersService.getMembers(siteId)
         
-        // Filter out the owner for display in the form
-        const formattedMembers = members
-          .filter(member => member.role !== 'owner')
-          .map(siteMemberToFormMember)
+        // Convert ALL members (including owner/admin) to form format for display
+        const formattedMembers = members.map(siteMemberToFormMember)
         
         console.log("Found site members:", formattedMembers);
         
@@ -116,7 +137,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           setTeamList(formattedMembers)
           updateFormValues(formattedMembers)
         } else {
-          // If no members in site_members table, use settings.team_members
+          // If no members in site_members table, use settings.team_members as fallback
           const currentTeamMembers = form.getValues("team_members") || [];
           console.log("Using team members from settings:", currentTeamMembers);
           
@@ -138,13 +159,20 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     }
     
     fetchSiteMembers()
-  }, [active, siteId, updateFormValues, form])
+  }, [active, siteId, hasUnsavedChanges, updateFormValues, form])
 
   // Add team member
   const addTeamMember = () => {
     if (isLoading) return
-    const newTeamList = [...teamList, { email: "", role: "view" as TeamRole, name: "", position: "" }]
+    const newTeamList = [...teamList, { 
+      email: "", 
+      role: "view" as TeamRole, 
+      name: "", 
+      position: "",
+      // New members don't have originalRole since they're not in DB yet
+    }]
     setTeamList(newTeamList)
+    setHasUnsavedChanges(true)
     debouncedUpdateRef.current(newTeamList)
   }
 
@@ -159,17 +187,34 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         setIsLoading(true)
         await siteMembersService.removeMember(memberToRemove.id)
         toast.success(`${memberToRemove.name || memberToRemove.email} removed from team`)
+        
+        // Reload the team list after successful deletion
+        const members = await siteMembersService.getMembers(siteId)
+        const formattedMembers = members.map(siteMemberToFormMember)
+        setTeamList(formattedMembers)
+        updateFormValues(formattedMembers)
+        setHasUnsavedChanges(false)
+        return
       } catch (error) {
         console.error("Error removing team member:", error)
-        toast.error("Failed to remove team member")
+        
+        // Check if it's the database trigger preventing deletion of last admin
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('Cannot delete the last admin or owner')) {
+          toast.error("Cannot remove the last site admin. At least one admin must remain.");
+        } else {
+          toast.error("Failed to remove team member");
+        }
         return
       } finally {
         setIsLoading(false)
       }
     }
     
+    // For local-only members (no ID), just remove from local state
     const newTeamList = teamList.filter((_, i) => i !== index)
     setTeamList(newTeamList)
+    setHasUnsavedChanges(newTeamList.some(member => !member.id && member.email.trim() !== ''))
     debouncedUpdateRef.current(newTeamList)
   }
 
@@ -181,8 +226,74 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
       [field]: value
     }
     setTeamList(newTeamList)
+    setHasUnsavedChanges(true)
     debouncedUpdateRef.current(newTeamList)
   }
+
+  // Save team members function - direct Supabase operations
+  const handleSaveTeamMembers = async () => {
+    if (!siteId) {
+      toast.error("Site ID is required");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Filter team members that need to be saved (have email and are new)
+      const newMembers = teamList.filter(member => 
+        member.email && 
+        member.email.trim() !== '' && 
+        !member.id // No ID means it's a new member
+      );
+
+      if (newMembers.length === 0) {
+        toast.info("No new members to save");
+        setHasUnsavedChanges(false);
+        return;
+      }
+
+      // Save each new member directly to site_members table
+      const savedMembers = [];
+      for (const member of newMembers) {
+        try {
+          // Use siteMembersService.addMember directly
+          const savedMember = await siteMembersService.addMember(siteId, {
+            email: member.email,
+            role: member.role === 'admin' ? 'admin' : 
+                  member.role === 'create' || member.role === 'delete' ? 'marketing' : 
+                  'collaborator',
+            name: member.name,
+            position: member.position
+          });
+          
+          savedMembers.push(savedMember);
+          
+        } catch (memberError) {
+          console.error(`Failed to save ${member.email}:`, memberError);
+          const errorMessage = memberError instanceof Error ? memberError.message : 'Unknown error';
+          toast.error(`Failed to save ${member.email}: ${errorMessage}`);
+        }
+      }
+
+      if (savedMembers.length > 0) {
+        toast.success(`Successfully added ${savedMembers.length} team member(s)!`);
+        
+        // Reload the team list to show the new members with their IDs and status
+        const members = await siteMembersService.getMembers(siteId);
+        const formattedMembers = members.map(siteMemberToFormMember);
+        setTeamList(formattedMembers);
+        updateFormValues(formattedMembers);
+        setHasUnsavedChanges(false);
+      }
+      
+    } catch (error) {
+      console.error("Error saving team members:", error);
+      toast.error("Failed to save team members");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!active) return null
 
@@ -317,14 +428,20 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                         <Select
                           value={teamList[index].role}
                           onValueChange={(value) => {
-                            // Update the field directly
-                            field.onChange(value);
-                            // Update local state and debounce form update
-                            updateLocalTeamMember(index, 'role', value as TeamRole);
+                            // Use validation hook
+                            if (validation.canChangeRole(member)) {
+                              // Update the field directly
+                              field.onChange(value);
+                              // Update local state and debounce form update
+                              updateLocalTeamMember(index, 'role', value as TeamRole);
+                            } else {
+                              toast.error(validation.getRoleChangeMessage(member));
+                            }
                           }}
+                          disabled={!validation.canChangeRole(member)}
                         >
                           <FormControl>
-                            <SelectTrigger className="h-12">
+                            <SelectTrigger className={`h-12 ${!validation.canChangeRole(member) ? 'opacity-50 cursor-not-allowed' : ''}`}>
                               <SelectValue placeholder="Select role" />
                             </SelectTrigger>
                           </FormControl>
@@ -336,20 +453,48 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             ))}
                           </SelectContent>
                         </Select>
+                        {!validation.canChangeRole(member) && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            ⚠️ {validation.getRoleChangeMessage(member)}
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    type="button"
-                    onClick={() => removeTeamMember(index)}
-                    className="h-12 w-12 mt-2"
-                    disabled={isLoading}
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        className="h-12 w-12 mt-2"
+                        disabled={isLoading || !validation.canDelete(member)}
+                        title={validation.getDeleteTooltip(member)}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {validation.getDeleteMessage(member)}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        {validation.canDelete(member) && (
+                          <AlertDialogAction
+                            onClick={() => removeTeamMember(index)}
+                            className="bg-red-500 hover:bg-red-600 text-white"
+                          >
+                            Remove Member
+                          </AlertDialogAction>
+                        )}
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </div>
@@ -370,6 +515,19 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           <p className="mt-1">Site owners and admins can manage access and permissions.</p>
         </div>
       </CardContent>
+      
+      {hasUnsavedChanges && (
+        <ActionFooter>
+          <Button
+            type="button"
+            onClick={handleSaveTeamMembers}
+            disabled={isSaving || isLoading}
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {isSaving ? "Saving..." : "Save Team Members"}
+          </Button>
+        </ActionFooter>
+      )}
     </Card>
   )
 } 

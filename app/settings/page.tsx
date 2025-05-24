@@ -242,18 +242,21 @@ export default function SettingsPage() {
     
     // Process team members data
     const teamMembers = site.settings?.team_members || [];
-    console.log("Processing team members:", teamMembers);
+    console.log("🔍 ADAPT: Raw team_members from site.settings:", teamMembers);
+    console.log("🔍 ADAPT: site.settings:", site.settings);
     
     // Make sure each team member has the required fields
     const processedTeamMembers = teamMembers.map(member => {
       if (!member) return null;
       
-      return {
+      const processed = {
         email: member.email || "",
         role: member.role || "view",
         name: member.name || "",
         position: member.position || ""
       };
+      console.log("🔍 ADAPT: Processing member:", member, "→", processed);
+      return processed;
     }).filter(Boolean) as {
       email: string;
       role: "view" | "create" | "delete" | "admin";
@@ -261,7 +264,7 @@ export default function SettingsPage() {
       position?: string;
     }[]; // Type assertion and remove null entries
     
-    console.log("Processed team members:", processedTeamMembers);
+    console.log("🔍 ADAPT: Final processed team members:", processedTeamMembers);
     
     return {
       name: site.name,
@@ -396,7 +399,7 @@ export default function SettingsPage() {
       
       console.log("SAVE 2: Validaciones básicas completadas");
       
-      // Extract site-specific fields
+      // Extract site-specific fields (exclude team_members from general save)
       const { 
         name, url, description, logo_url, resource_urls, 
         competitors, focusMode, billing, tracking, whatsapp_token, 
@@ -520,6 +523,7 @@ export default function SettingsPage() {
       console.log("SAVE 7: Site update preparado:", siteUpdate);
       
       // Create settings object with direct field access to prevent undefined values
+      // NOTE: team_members is now excluded from general save - handled in TeamSection
       const settings = {
         site_id: currentSite.id, // Explicitly set the site_id to ensure it's always correct
         about: settingsData.about || "",
@@ -538,7 +542,6 @@ export default function SettingsPage() {
         tracking_code: settingsData.tracking_code || "",
         analytics_provider: settingsData.analytics_provider || "",
         analytics_id: settingsData.analytics_id || "",
-        team_members: team_members || [],
         // Include channels configuration
         channels: channels || {
           email: {
@@ -652,18 +655,7 @@ export default function SettingsPage() {
         throw settingsError;
       }
 
-      // Finally sync team members to site_members if we have any
-      if (team_members && team_members.length > 0) {
-        try {
-          // Import dynamically to avoid circular dependencies
-          const { siteMembersService } = await import("../services/site-members-service");
-          await siteMembersService.syncFromSettings(currentSite.id, team_members);
-          console.log("SAVE 12.5: Team members synced to site_members");
-        } catch (teamError) {
-          console.error("Warning: Error syncing team members:", teamError);
-          // Don't throw here, as we still want to save the rest of the settings
-        }
-      }
+      // NOTE: team_members sync is now handled in TeamSection specifically
       
       console.log("SAVE 13: Todo el proceso completado con éxito");
       toast.success("Settings saved successfully");
