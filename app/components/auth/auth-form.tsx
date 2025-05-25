@@ -356,7 +356,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                          className="pl-10 h-11 text-sm bg-background border-input" 
+                          className="pl-10 h-12 text-sm bg-background border-input" 
                           placeholder="Your name"
                           {...field} 
                         />
@@ -383,7 +383,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                       <div className="relative">
                         <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                          className={`pl-10 pr-10 h-11 text-sm bg-background border-input ${
+                          className={`pl-10 pr-10 h-12 text-sm bg-background border-input ${
                             referralCodeStatus === 'valid' 
                               ? 'border-green-300 focus:border-green-500' 
                               : referralCodeStatus === 'invalid' 
@@ -430,7 +430,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                      className="pl-10 h-11 text-sm bg-background border-input" 
+                      className="pl-10 h-12 text-sm bg-background border-input" 
                       placeholder="name@example.com"
                       type="email"
                       {...field} 
@@ -454,7 +454,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        className="pl-10 pr-10 h-11 text-sm bg-background border-input" 
+                        className="pl-10 pr-10 h-12 text-sm bg-background border-input" 
                         type={showPassword ? "text" : "password"}
                         placeholder={authMode === 'sign_up' ? "Create a password" : "Enter your password"}
                         {...field} 
@@ -478,7 +478,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           {/* Submit button */}
           <Button 
             type="submit" 
-            className="w-full h-11 mt-6 font-medium" 
+            className="w-full mt-6 font-medium" 
             disabled={loading || waitlistSuccess}
           >
             {loading 
@@ -514,7 +514,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         <Button 
           type="button" 
           variant="outline" 
-          className={`w-full h-11 font-medium ${!isGoogleButtonEnabled() ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`w-full font-medium ${!isGoogleButtonEnabled() ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleGoogleSignIn}
           disabled={loading || !isGoogleButtonEnabled()}
         >

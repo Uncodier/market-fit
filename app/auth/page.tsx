@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { AuthForm } from "@/app/components/auth/auth-form"
 import Image from "next/image"
 import { useTheme } from "@/app/context/ThemeContext"
+import { FileText, Target, Send } from "@/app/components/ui/icons"
 
 export default function AuthPage() {
   const { theme } = useTheme()
@@ -74,41 +75,39 @@ export default function AuthPage() {
         {/* Animated background elements */}
         <div className="absolute inset-0">
           {/* Base gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 via-purple-600/10 to-indigo-600/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 via-purple-600/15 to-indigo-600/20"></div>
           
-          {/* Animated gradient mesh */}
-          <div className="absolute inset-0 opacity-30">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-500/10 to-transparent animate-pulse"></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-500/5 to-transparent animate-pulse" style={{ animationDelay: '1s' }}></div>
-            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 via-transparent to-cyan-500/10 animate-pulse" style={{ animationDelay: '2s' }}></div>
-          </div>
+          {/* Main floating orbs - larger and more visible */}
+          <div className="absolute top-20 left-16 w-96 h-96 bg-violet-500/40 rounded-full blur-xl animate-float-slow"></div>
+          <div className="absolute bottom-32 right-20 w-80 h-80 bg-indigo-500/35 rounded-full blur-xl animate-float-medium" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-40 right-1/3 w-72 h-72 bg-pink-500/35 rounded-full blur-xl animate-float-fast" style={{ animationDelay: '4s' }}></div>
+          <div className="absolute bottom-20 left-1/4 w-80 h-80 bg-emerald-500/30 rounded-full blur-xl animate-float-reverse" style={{ animationDelay: '6s' }}></div>
           
-          {/* Floating orbs with enhanced gradients */}
-          <div className="absolute top-16 left-16 w-80 h-80 bg-gradient-to-r from-violet-500/30 via-purple-500/20 to-indigo-500/30 rounded-full blur-3xl animate-float-slow"></div>
-          <div className="absolute top-32 right-16 w-64 h-64 bg-gradient-to-r from-indigo-500/25 via-cyan-500/15 to-blue-500/25 rounded-full blur-3xl animate-float-medium" style={{ animationDelay: '1.5s' }}></div>
-          <div className="absolute bottom-16 left-1/4 w-48 h-48 bg-gradient-to-r from-pink-500/20 via-rose-500/15 to-purple-500/25 rounded-full blur-3xl animate-float-fast" style={{ animationDelay: '3s' }}></div>
-          <div className="absolute bottom-32 right-1/3 w-56 h-56 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-cyan-500/20 rounded-full blur-3xl animate-float-reverse" style={{ animationDelay: '2.5s' }}></div>
+          {/* Secondary floating elements - more visible */}
+          <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-purple-400/25 rounded-full blur-lg animate-bubble-1" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-1/3 left-1/3 w-56 h-56 bg-cyan-400/25 rounded-full blur-lg animate-bubble-2" style={{ animationDelay: '3s' }}></div>
+          <div className="absolute top-2/3 right-1/2 w-48 h-48 bg-rose-400/25 rounded-full blur-lg animate-bubble-3" style={{ animationDelay: '5s' }}></div>
+          <div className="absolute bottom-1/4 left-1/2 w-60 h-60 bg-teal-400/25 rounded-full blur-lg animate-bubble-4" style={{ animationDelay: '7s' }}></div>
           
-          {/* Additional floating bubbles for more movement */}
-          <div className="absolute top-1/2 left-8 w-32 h-32 bg-gradient-to-r from-purple-400/20 to-violet-400/15 rounded-full blur-2xl animate-bubble-1"></div>
-          <div className="absolute top-2/3 right-12 w-40 h-40 bg-gradient-to-r from-cyan-400/15 to-indigo-400/20 rounded-full blur-2xl animate-bubble-2" style={{ animationDelay: '4s' }}></div>
-          <div className="absolute top-1/4 left-1/3 w-24 h-24 bg-gradient-to-r from-rose-400/15 to-pink-400/10 rounded-full blur-xl animate-bubble-3" style={{ animationDelay: '6s' }}></div>
-          <div className="absolute bottom-1/2 right-1/4 w-36 h-36 bg-gradient-to-r from-teal-400/15 to-emerald-400/20 rounded-full blur-2xl animate-bubble-4" style={{ animationDelay: '8s' }}></div>
-          <div className="absolute top-3/4 left-1/2 w-28 h-28 bg-gradient-to-r from-indigo-400/20 to-purple-400/15 rounded-full blur-xl animate-bubble-5" style={{ animationDelay: '2s' }}></div>
+          {/* Colorful accent orbs */}
+          <div className="absolute top-1/3 right-2/3 w-52 h-52 bg-yellow-400/30 rounded-full blur-lg animate-bubble-1" style={{ animationDelay: '9s' }}></div>
+          <div className="absolute bottom-2/5 left-1/5 w-44 h-44 bg-orange-400/25 rounded-full blur-lg animate-bubble-2" style={{ animationDelay: '11s' }}></div>
+          <div className="absolute top-3/5 right-1/5 w-36 h-36 bg-blue-400/25 rounded-full blur-md animate-micro-float-1" style={{ animationDelay: '13s' }}></div>
           
-          {/* Micro bubbles for ambient effect */}
-          <div className="absolute top-20 right-1/3 w-16 h-16 bg-gradient-to-r from-violet-300/25 to-purple-300/20 rounded-full blur-lg animate-micro-float-1"></div>
-          <div className="absolute bottom-20 left-1/2 w-20 h-20 bg-gradient-to-r from-cyan-300/20 to-blue-300/15 rounded-full blur-lg animate-micro-float-2" style={{ animationDelay: '3s' }}></div>
-          <div className="absolute top-1/3 right-20 w-12 h-12 bg-gradient-to-r from-emerald-300/25 to-teal-300/20 rounded-full blur-lg animate-micro-float-3" style={{ animationDelay: '5s' }}></div>
-          <div className="absolute bottom-1/3 left-20 w-18 h-18 bg-gradient-to-r from-pink-300/20 to-rose-300/15 rounded-full blur-lg animate-micro-float-4" style={{ animationDelay: '7s' }}></div>
-
-          {/* Subtle geometric light beams */}
-          <div className="absolute top-1/3 left-0 w-1 h-32 bg-gradient-to-b from-transparent via-violet-400/40 to-transparent rotate-12 animate-pulse"></div>
-          <div className="absolute bottom-1/3 right-0 w-1 h-24 bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
+          {/* Medium bubbles layer */}
+          <div className="absolute top-12 left-1/2 w-48 h-48 bg-red-400/20 rounded-full blur-lg animate-float-slow" style={{ animationDelay: '17s' }}></div>
+          <div className="absolute bottom-1/6 right-1/3 w-44 h-44 bg-green-400/25 rounded-full blur-lg animate-float-medium" style={{ animationDelay: '19s' }}></div>
+          <div className="absolute top-1/2 left-1/6 w-40 h-40 bg-sky-400/20 rounded-full blur-md animate-bubble-3" style={{ animationDelay: '21s' }}></div>
+          <div className="absolute bottom-3/5 right-2/5 w-52 h-52 bg-purple-300/25 rounded-full blur-lg animate-bubble-4" style={{ animationDelay: '23s' }}></div>
           
-          {/* Radial gradients for depth */}
-          <div className="absolute top-1/4 right-1/4 w-32 h-32 bg-gradient-radial from-violet-400/20 to-transparent rounded-full animate-pulse"></div>
-          <div className="absolute bottom-1/4 left-1/4 w-24 h-24 bg-gradient-radial from-indigo-400/15 to-transparent rounded-full animate-pulse" style={{ animationDelay: '2s' }}></div>
+          {/* Small accent bubbles */}
+          <div className="absolute top-2/5 left-3/4 w-32 h-32 bg-pink-300/20 rounded-full blur-md animate-micro-float-1" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-1/3 right-1/2 w-36 h-36 bg-indigo-300/25 rounded-full blur-md animate-micro-float-2" style={{ animationDelay: '3s' }}></div>
+          <div className="absolute top-4/5 left-1/4 w-40 h-40 bg-cyan-300/20 rounded-full blur-md animate-bubble-1" style={{ animationDelay: '5s' }}></div>
+          
+          {/* Tiny accent bubbles */}
+          <div className="absolute top-16 right-1/6 w-24 h-24 bg-rose-300/20 rounded-full blur-sm animate-micro-float-1" style={{ animationDelay: '11s' }}></div>
+          <div className="absolute bottom-2/3 left-1/3 w-24 h-24 bg-violet-400/25 rounded-full blur-sm animate-micro-float-2" style={{ animationDelay: '13s' }}></div>
         </div>
         
         <div className="relative z-10 max-w-md">
@@ -132,39 +131,74 @@ export default function AuthPage() {
           </h2>
           
           <p className="text-xl text-white/80 mb-10 leading-relaxed">
-            Our AI sales team evolves continuously to collaborate seamlessly with your business, adapting strategies and techniques to drive growth and take your company to new levels of success.
+            Experience seamless collaboration between AI agents and your team, with performance-based pricing that unleashes intelligent automation across every aspect of your sales process.
           </p>
           
           <div className="space-y-6">
-            <div className="flex items-center gap-4 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-violet-500/20 to-purple-500/20 backdrop-blur-sm border border-violet-400/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-gradient-to-r group-hover:from-violet-500/30 group-hover:to-purple-500/30 transition-all duration-300 shadow-lg">
-                <div className="w-2 h-2 rounded-full bg-gradient-to-r from-violet-400 to-violet-300"></div>
+            <div className="flex items-start gap-4 group">
+              <div 
+                className="flex-shrink-0 rounded-xl bg-violet-500/20 backdrop-blur-sm border-2 border-violet-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-violet-500/30 transition-all duration-300 shadow-lg"
+                style={{ 
+                  width: '40px', 
+                  height: '40px',
+                  minWidth: '40px',
+                  minHeight: '40px'
+                }}
+              >
+                <FileText className="text-violet-300" size={18} />
               </div>
-              <span className="text-white/90 text-lg">AI-powered lead qualification</span>
+              <div>
+                <h3 className="text-white text-lg font-semibold mb-1">Know</h3>
+                <p className="text-white/80 text-sm leading-relaxed">Pre-trained AI agents with deep industry knowledge and proven sales strategies, ready to deploy immediately</p>
+              </div>
             </div>
-            <div className="flex items-center gap-4 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 backdrop-blur-sm border border-indigo-400/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-gradient-to-r group-hover:from-indigo-500/30 group-hover:to-cyan-500/30 transition-all duration-300 shadow-lg">
-                <div className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-400 to-cyan-400"></div>
+            <div className="flex items-start gap-4 group">
+              <div 
+                className="flex-shrink-0 rounded-xl bg-indigo-500/20 backdrop-blur-sm border-2 border-indigo-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500/30 transition-all duration-300 shadow-lg"
+                style={{ 
+                  width: '40px', 
+                  height: '40px',
+                  minWidth: '40px',
+                  minHeight: '40px'
+                }}
+              >
+                <Target className="text-indigo-300" size={18} />
               </div>
-              <span className="text-white/90 text-lg">Automated prospect outreach</span>
+              <div>
+                <h3 className="text-white text-lg font-semibold mb-1">Think</h3>
+                <p className="text-white/80 text-sm leading-relaxed">Strategic analysis that transforms complex market data into actionable revenue opportunities within minutes</p>
+              </div>
             </div>
-            <div className="flex items-center gap-4 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-emerald-500/20 to-teal-500/20 backdrop-blur-sm border border-emerald-400/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-gradient-to-r group-hover:from-emerald-500/30 group-hover:to-teal-500/30 transition-all duration-300 shadow-lg">
-                <div className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400"></div>
+            <div className="flex items-start gap-4 group">
+              <div 
+                className="flex-shrink-0 rounded-xl bg-emerald-500/20 backdrop-blur-sm border-2 border-emerald-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/30 transition-all duration-300 shadow-lg"
+                style={{ 
+                  width: '40px', 
+                  height: '40px',
+                  minWidth: '40px',
+                  minHeight: '40px'
+                }}
+              >
+                <Send className="text-emerald-300" size={18} />
               </div>
-              <span className="text-white/90 text-lg">Real-time sales analytics</span>
+              <div>
+                <h3 className="text-white text-lg font-semibold mb-1">Do</h3>
+                <p className="text-white/80 text-sm leading-relaxed">Execute personalized multi-channel campaigns across email, social media, and direct messaging automatically</p>
+              </div>
             </div>
           </div>
 
           {/* Stats showcase */}
           <div className="grid grid-cols-2 gap-6 mt-12 pt-8 border-t border-white/10">
             <div className="text-center group">
-              <div className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent mb-1 group-hover:from-violet-300 group-hover:to-purple-300 transition-all duration-300">300%</div>
-              <div className="text-sm text-white/60">Revenue Increase</div>
+              <div className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent mb-1 group-hover:from-violet-300 group-hover:to-purple-300 transition-all duration-300">
+                <span className="text-sm text-white/60 font-normal">up to </span>300%
+              </div>
+              <div className="text-sm text-white/60">Revenue Growth</div>
             </div>
             <div className="text-center group">
               <div className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-1 group-hover:from-emerald-300 group-hover:to-teal-300 transition-all duration-300">24/7</div>
-              <div className="text-sm text-white/60">Sales Coverage</div>
+              <div className="text-sm text-white/60">AI Operations</div>
             </div>
           </div>
         </div>
@@ -177,154 +211,131 @@ export default function AuthPage() {
           
           @keyframes float-slow {
             0% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(10px, -15px) scale(1.05); }
-            50% { transform: translate(-5px, -25px) scale(0.95); }
-            75% { transform: translate(-15px, -10px) scale(1.02); }
+            25% { transform: translate(60px, -80px) scale(1.1); }
+            50% { transform: translate(-40px, -120px) scale(0.9); }
+            75% { transform: translate(-80px, -40px) scale(1.05); }
             100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes float-medium {
-            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
-            33% { transform: translate(15px, -20px) scale(1.1) rotate(120deg); }
-            66% { transform: translate(-10px, -30px) scale(0.9) rotate(240deg); }
-            100% { transform: translate(0, 0) scale(1) rotate(360deg); }
+            0% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-70px, 100px) scale(1.15); }
+            66% { transform: translate(50px, -60px) scale(0.85); }
+            100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes float-fast {
             0% { transform: translate(0, 0) scale(1); }
-            20% { transform: translate(-20px, -15px) scale(1.15); }
-            40% { transform: translate(10px, -30px) scale(0.85); }
-            60% { transform: translate(25px, -10px) scale(1.05); }
-            80% { transform: translate(-5px, -35px) scale(0.95); }
+            20% { transform: translate(-60px, -50px) scale(1.2); }
+            40% { transform: translate(80px, -100px) scale(0.8); }
+            60% { transform: translate(100px, 30px) scale(1.1); }
+            80% { transform: translate(-20px, -140px) scale(0.9); }
             100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes float-reverse {
-            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
-            25% { transform: translate(-12px, 20px) scale(0.9) rotate(-90deg); }
-            50% { transform: translate(8px, 35px) scale(1.1) rotate(-180deg); }
-            75% { transform: translate(18px, 15px) scale(0.95) rotate(-270deg); }
-            100% { transform: translate(0, 0) scale(1) rotate(-360deg); }
+            0% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(-90px, 70px) scale(0.85); }
+            50% { transform: translate(60px, 130px) scale(1.2); }
+            75% { transform: translate(120px, 40px) scale(0.95); }
+            100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes bubble-1 {
             0% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(30px, -40px) scale(1.3); }
-            50% { transform: translate(-20px, -80px) scale(0.7); }
-            75% { transform: translate(-40px, -20px) scale(1.1); }
+            25% { transform: translate(150px, -100px) scale(1.4); }
+            50% { transform: translate(-80px, -200px) scale(0.6); }
+            75% { transform: translate(-120px, -60px) scale(1.2); }
             100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes bubble-2 {
             0% { transform: translate(0, 0) scale(1); }
-            30% { transform: translate(-35px, -25px) scale(0.8); }
-            60% { transform: translate(15px, -50px) scale(1.2); }
-            90% { transform: translate(25px, -10px) scale(0.9); }
+            30% { transform: translate(-140px, -80px) scale(0.7); }
+            60% { transform: translate(90px, -150px) scale(1.3); }
+            90% { transform: translate(110px, -30px) scale(0.8); }
             100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes bubble-3 {
-            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
-            20% { transform: translate(50px, -30px) scale(1.4) rotate(72deg); }
-            40% { transform: translate(-10px, -60px) scale(0.6) rotate(144deg); }
-            60% { transform: translate(-30px, -20px) scale(1.2) rotate(216deg); }
-            80% { transform: translate(20px, -45px) scale(0.8) rotate(288deg); }
-            100% { transform: translate(0, 0) scale(1) rotate(360deg); }
+            0% { transform: translate(0, 0) scale(1); }
+            20% { transform: translate(180px, -90px) scale(1.5); }
+            40% { transform: translate(-60px, -180px) scale(0.5); }
+            60% { transform: translate(-100px, -50px) scale(1.3); }
+            80% { transform: translate(80px, -130px) scale(0.7); }
+            100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes bubble-4 {
             0% { transform: translate(0, 0) scale(1); }
-            40% { transform: translate(-25px, 30px) scale(1.1); }
-            80% { transform: translate(35px, -15px) scale(0.9); }
-            100% { transform: translate(0, 0) scale(1); }
-          }
-          
-          @keyframes bubble-5 {
-            0% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(-40px, 25px) scale(1.3); }
+            40% { transform: translate(-100px, 120px) scale(1.2); }
+            80% { transform: translate(140px, -80px) scale(0.8); }
             100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes micro-float-1 {
             0% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(15px, -25px) scale(1.5); }
-            50% { transform: translate(-10px, -50px) scale(0.5); }
-            75% { transform: translate(-20px, -15px) scale(1.2); }
+            25% { transform: translate(80px, -120px) scale(1.6); }
+            50% { transform: translate(-50px, -200px) scale(0.4); }
+            75% { transform: translate(-90px, -70px) scale(1.3); }
             100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes micro-float-2 {
             0% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(25px, -35px) scale(0.7); }
-            66% { transform: translate(-15px, -20px) scale(1.3); }
+            33% { transform: translate(120px, -140px) scale(0.6); }
+            66% { transform: translate(-70px, -90px) scale(1.4); }
             100% { transform: translate(0, 0) scale(1); }
           }
           
           @keyframes micro-float-3 {
-            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
-            50% { transform: translate(30px, -40px) scale(1.8) rotate(180deg); }
-            100% { transform: translate(0, 0) scale(1) rotate(360deg); }
-          }
-          
-          @keyframes micro-float-4 {
             0% { transform: translate(0, 0) scale(1); }
-            20% { transform: translate(-30px, -20px) scale(1.4); }
-            40% { transform: translate(10px, -45px) scale(0.6); }
-            60% { transform: translate(35px, -10px) scale(1.1); }
-            80% { transform: translate(-5px, -30px) scale(0.9); }
+            50% { transform: translate(160px, -180px) scale(1.8); }
             100% { transform: translate(0, 0) scale(1); }
           }
           
           .animate-float-slow {
-            animation: float-slow 8s ease-in-out infinite;
+            animation: float-slow 20s ease-in-out infinite;
           }
           
           .animate-float-medium {
-            animation: float-medium 6s ease-in-out infinite;
+            animation: float-medium 18s ease-in-out infinite;
           }
           
           .animate-float-fast {
-            animation: float-fast 4s ease-in-out infinite;
+            animation: float-fast 16s ease-in-out infinite;
           }
           
           .animate-float-reverse {
-            animation: float-reverse 7s ease-in-out infinite;
+            animation: float-reverse 22s ease-in-out infinite;
           }
           
           .animate-bubble-1 {
-            animation: bubble-1 12s ease-in-out infinite;
+            animation: bubble-1 25s ease-in-out infinite;
           }
           
           .animate-bubble-2 {
-            animation: bubble-2 10s ease-in-out infinite;
+            animation: bubble-2 21s ease-in-out infinite;
           }
           
           .animate-bubble-3 {
-            animation: bubble-3 15s linear infinite;
+            animation: bubble-3 28s ease-in-out infinite;
           }
           
           .animate-bubble-4 {
-            animation: bubble-4 9s ease-in-out infinite;
-          }
-          
-          .animate-bubble-5 {
-            animation: bubble-5 11s ease-in-out infinite;
+            animation: bubble-4 19s ease-in-out infinite;
           }
           
           .animate-micro-float-1 {
-            animation: micro-float-1 6s ease-in-out infinite;
+            animation: micro-float-1 15s ease-in-out infinite;
           }
           
           .animate-micro-float-2 {
-            animation: micro-float-2 8s ease-in-out infinite;
+            animation: micro-float-2 17s ease-in-out infinite;
           }
           
           .animate-micro-float-3 {
-            animation: micro-float-3 5s linear infinite;
-          }
-          
-          .animate-micro-float-4 {
-            animation: micro-float-4 7s ease-in-out infinite;
+            animation: micro-float-3 14s ease-in-out infinite;
           }
         `}</style>
       </div>

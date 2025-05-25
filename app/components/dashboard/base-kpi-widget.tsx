@@ -53,7 +53,7 @@ export function BaseKpiWidget({
   };
 
   return (
-    <Card className={className}>
+    <Card className={`${className} h-[116.5px]`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pt-3 pb-0">
         <CardTitle className="text-sm font-medium">
           {title}
@@ -108,18 +108,18 @@ export function BaseKpiWidget({
       <CardContent className="pt-2 pb-3">
         {isLoading ? (
           <div className="flex flex-col">
-            <div className="h-[31px] flex items-center pt-1">
-              <Skeleton className="h-[27px] w-[120px]" />
+            <div className="h-8 flex items-center pt-1">
+              <Skeleton className="h-7 w-[120px]" />
             </div>
             <div className="h-[18px] flex items-center mt-1">
-              <Skeleton className="h-[14px] w-[100px]" />
+              <Skeleton className="h-4 w-[100px]" />
             </div>
           </div>
         ) : (
           <div className="flex flex-col">
-            <div className="text-2xl font-bold pt-1">{value}</div>
+            <div className="text-2xl font-bold pt-1 h-8 flex items-center">{value}</div>
             {customStatus || (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 h-[18px] flex items-center">
                 {isPositiveChange !== undefined && (
                   <span className={isPositiveChange ? "text-green-500" : "text-red-500"}>
                     {isPositiveChange ? '+' : ''}{changeText.split(' ')[0]}

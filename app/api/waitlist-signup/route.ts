@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       stage: 'awareness' as const,
       scheduled_date: new Date().toISOString(),
       lead_id: lead.id,
-      type: 'email',
+      type: 'demo',
       site_id: siteId,
       user_id: systemUserId
     }
@@ -95,11 +95,49 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
+    // 3. Create a completed website visit task for the same lead
+    const websiteVisitTaskData = {
+      title: `Website visit: ${validatedData.name}`,
+      description: `User ${validatedData.name} (${validatedData.email}) visited the website and signed up for waitlist.`,
+      status: 'completed' as const,
+      stage: 'awareness' as const,
+      scheduled_date: new Date().toISOString(),
+      lead_id: lead.id,
+      type: 'website_visit',
+      site_id: siteId,
+      user_id: systemUserId
+    }
+
+    const { data: websiteVisitTask, error: websiteVisitTaskError } = await supabase
+      .from('tasks')
+      .insert([websiteVisitTaskData])
+      .select()
+      .single()
+
+    if (websiteVisitTaskError) {
+      console.error('Error creating website visit task:', websiteVisitTaskError)
+      // Try to clean up the lead and first task if website visit task creation failed
+      await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', task.id)
+      await supabase
+        .from('leads')
+        .delete()
+        .eq('id', lead.id)
+      
+      return NextResponse.json({
+        error: 'Failed to create website visit task',
+        details: websiteVisitTaskError.message
+      }, { status: 500 })
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Successfully added to waitlist',
       data: {
         task_id: task.id,
+        website_visit_task_id: websiteVisitTask.id,
         lead_id: lead.id,
         site_id: siteId
       }

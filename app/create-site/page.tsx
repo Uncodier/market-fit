@@ -3,12 +3,9 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { useSite } from "../context/SiteContext"
-import { type SiteFormValues } from "@/lib/schemas/site"
-import { SiteForm } from "../components/settings/site-form"
+import { SiteOnboarding } from "../components/onboarding/site-onboarding"
 import { useAuth } from "../hooks/use-auth"
-import { Button } from "../components/ui/button"
 import { useRouter } from "next/navigation"
-import { StickyHeader } from "../components/ui/sticky-header"
 
 export default function CreateSitePage() {
   const [isSaving, setIsSaving] = useState(false)
@@ -16,7 +13,7 @@ export default function CreateSitePage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  const handleSubmit = async (data: SiteFormValues) => {
+  const handleComplete = async (data: any) => {
     try {
       setIsSaving(true)
       await createSite({
@@ -25,40 +22,50 @@ export default function CreateSitePage() {
         description: data.description || null,
         logo_url: data.logo_url || null,
         resource_urls: data.resource_urls || [],
-        user_id: user?.sub as string
+        user_id: user?.id as string,
+        settings: {
+          competitors: data.competitors || [],
+          focus_mode: data.focusMode,
+          about: data.about || "",
+          company_size: data.company_size || "",
+          industry: data.industry || "",
+          goals: {
+            quarterly: data.goals?.quarterly || "",
+            yearly: data.goals?.yearly || "",
+            fiveYear: data.goals?.fiveYear || "",
+            tenYear: data.goals?.tenYear || ""
+          },
+          marketing_budget: {
+            total: data.marketing_budget?.total || 0,
+            available: data.marketing_budget?.available || 0
+          },
+          marketing_channels: data.marketing_channels || [],
+          products: data.products || [],
+          services: data.services || []
+        }
       })
-      toast.success("Site created successfully")
+      toast.success("Project created successfully")
+      
+      // Show integration suggestion after a short delay
+      setTimeout(() => {
+        toast.info("💡 For better results, consider integrating your communication channels (WhatsApp, Email) in Settings", {
+          duration: 8000
+        })
+      }, 2000)
+      
       router.push("/dashboard")
     } catch (error) {
       console.error(error)
-      toast.error("Error creating site")
+      toast.error("Error creating project")
     } finally {
       setIsSaving(false)
     }
   }
 
   return (
-    <div className="flex-1">
-      <StickyHeader className="border-t">
-        <div className="flex items-center justify-end px-16 w-full">
-          <Button 
-            type="submit"
-            form="create-site-form"
-            disabled={isSaving}
-          >
-            {isSaving ? "Creating..." : "Create Site"}
-          </Button>
-        </div>
-      </StickyHeader>
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <SiteForm
-          onSubmit={handleSubmit}
-          isSaving={isSaving}
-          activeSegment="all"
-          showOnlyCreateCards={true}
-          id="create-site-form"
-        />
-      </div>
-    </div>
+    <SiteOnboarding 
+      onComplete={handleComplete}
+      isLoading={isSaving}
+    />
   )
 } 
