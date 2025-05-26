@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useCurrentTime } from "@/app/hooks/useCurrentTime"
 import { CurrentTimeIndicator } from "./CurrentTimeIndicator"
+import { Task } from "@/app/types"
 
 type CalendarViewMode = 'year' | 'month' | 'week' | 'day'
 
@@ -18,21 +19,13 @@ interface Lead {
   name: string
 }
 
-interface Task {
-  id: string
-  title: string
-  description: string | null
-  status: 'completed' | 'in_progress' | 'pending' | 'failed' | 'canceled'
-  stage?: 'awareness' | 'consideration' | 'decision' | 'purchase' | 'retention' | 'referral'
-  scheduled_date: string
-  lead_id?: string
-  assignee_id?: string
+interface ExtendedTask extends Task {
   leadName?: string
   assigneeName?: string
 }
 
 // Componente para el estado de la tarea
-function TaskStatusDot({ status }: { status: Task['status'] }) {
+function TaskStatusDot({ status }: { status: ExtendedTask['status'] }) {
   return (
     <div className={cn(
       "w-2 h-2 rounded-full",
@@ -53,12 +46,24 @@ function getLeadInitials(name: string | undefined) {
     .join('')
 }
 
+// Extract numeric part from serial_id
+function getSerialNumber(serialId: string) {
+  if (!serialId) return ""
+  // Extract number after the dash and remove leading zeros
+  const match = serialId.match(/-(\d+)$/)
+  if (match) {
+    return parseInt(match[1], 10).toString()
+  }
+  return serialId
+}
+
 // Componente para la tarea
-function TaskItem({ task, onClick, showDay, showTime }: { 
-  task: Task
-  onClick: (task: Task) => void 
+function TaskItem({ task, onClick, showDay, showTime, showSerialId }: { 
+  task: ExtendedTask
+  onClick: (task: ExtendedTask) => void 
   showDay?: boolean
   showTime?: boolean
+  showSerialId?: boolean
 }) {
   const taskDate = new Date(task.scheduled_date)
   const timeStr = taskDate.toLocaleTimeString('en-US', { 
@@ -89,6 +94,11 @@ function TaskItem({ task, onClick, showDay, showTime }: {
           </AvatarFallback>
         </Avatar>
         <span className="flex-1 truncate">{task.title}</span>
+        {showSerialId && task.serial_id && (
+          <span className="font-mono text-xs text-muted-foreground bg-background px-1 py-0.5 rounded">
+            {getSerialNumber(task.serial_id)}
+          </span>
+        )}
         {(showDay || showTime) && (
           <span className="text-muted-foreground mr-2">
             {showDay && dayStr}
@@ -102,8 +112,8 @@ function TaskItem({ task, onClick, showDay, showTime }: {
 }
 
 interface TaskCalendarProps {
-  tasks: Task[]
-  onTaskClick: (task: Task) => void
+  tasks: ExtendedTask[]
+  onTaskClick: (task: ExtendedTask) => void
 }
 
 export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
@@ -220,7 +230,7 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
     }
     acc[dateStr].push(task)
     return acc
-  }, {} as Record<string, Task[]>)
+  }, {} as Record<string, ExtendedTask[]>)
 
   // Get days in month
   const getDaysInMonth = (year: number, month: number) => {
@@ -415,6 +425,7 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
                     task={task} 
                     onClick={onTaskClick}
                     showTime={true}
+                    showSerialId={true}
                   />
                 ))}
               </div>
@@ -485,6 +496,7 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
                       task={task} 
                       onClick={onTaskClick}
                       showTime={true}
+                      showSerialId={true}
                     />
                   </div>
                 ))}
@@ -519,7 +531,7 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
         return taskDate.getHours() === hour
       })
       return acc
-    }, {} as Record<number, Task[]>)
+    }, {} as Record<number, ExtendedTask[]>)
 
     // Function to check if an hour has passed
     const isHourPassed = (hour: number) => {
@@ -582,6 +594,7 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
                     task={task} 
                     onClick={onTaskClick}
                     showTime={true}
+                    showSerialId={true}
                   />
                 ))}
               </div>
@@ -642,6 +655,7 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
                           task={task} 
                           onClick={onTaskClick}
                           showDay={true}
+                          showSerialId={true}
                         />
                       ))}
                     </div>

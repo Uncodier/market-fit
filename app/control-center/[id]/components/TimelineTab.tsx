@@ -8,7 +8,7 @@ import { createClient } from "@/utils/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { Button } from "@/app/components/ui/button"
 import { Textarea } from "@/app/components/ui/textarea"
-import { Send, User, FileText, Lock, UnlockKeyhole, Image as ImageIcon, File, Code, MoreHorizontal, Pencil, Trash2 } from "@/app/components/ui/icons"
+import { Send, User, FileText, Lock, UnlockKeyhole, Image as ImageIcon, File, Code, MoreHorizontal, Pencil, Trash2, MessageSquare } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { useAuth } from "@/app/hooks/use-auth"
 import { Switch } from "@/app/components/ui/switch"
@@ -38,6 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/app/components/ui/tooltip"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 
 interface TimelineTabProps {
   task: Task | null
@@ -529,11 +530,12 @@ export default function TimelineTab({ task }: TimelineTabProps) {
       {/* Comments list */}
       <div className="space-y-4">
         {comments.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              No comments yet
-            </CardContent>
-          </Card>
+          <EmptyCard
+            icon={<MessageSquare />}
+            title="No updates yet"
+            description="Start the conversation by adding your first update or comment about this task."
+            variant="fancy"
+          />
         ) : (
           comments.map((comment) => (
             <Card key={comment.id} className="overflow-hidden">
@@ -759,7 +761,14 @@ export default function TimelineTab({ task }: TimelineTabProps) {
                 )}
               </div>
               <div className="flex-1 space-y-1">
-                <h3 className="text-base font-semibold mb-2">{task?.title}</h3>
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-base font-semibold">{task?.title}</h3>
+                  {task?.serial_id && (
+                    <div className="font-mono text-xs text-muted-foreground bg-background px-2 py-1 rounded border">
+                      {task.serial_id}
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium leading-none">
                     {task?.leads?.name || 'Lead'}

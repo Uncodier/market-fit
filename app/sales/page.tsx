@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { Search, Filter, ChevronLeft, ChevronRight, ExternalLink, Pencil, Trash2, Send, Printer, CreditCard } from "@/app/components/ui/icons"
+import { DollarSign, ShoppingCart, Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Send, Printer, CreditCard, Eye } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -29,6 +29,7 @@ import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { KanbanView } from "./components/KanbanView"
 import { CreateSaleDialog } from "./components/CreateSaleDialog"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 
 // Constants
 const NO_SEGMENT = "no_segment"
@@ -211,7 +212,11 @@ function SalesTable({
             ) : (
               <TableRow>
                 <TableCell colSpan={9} className="h-24 text-center">
-                  No sales found.
+                  <EmptyCard
+                    icon={<ShoppingCart className="h-16 w-16 text-muted-foreground" />}
+                    title="No sales found"
+                    description="It seems like you haven't made any sales yet."
+                  />
                 </TableCell>
               </TableRow>
             )}

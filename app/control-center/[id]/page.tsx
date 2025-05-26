@@ -249,12 +249,21 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   // Update breadcrumb when component mounts
   useEffect(() => {
     // Update the page title for the browser tab
-    document.title = task?.title ? `${task.title} | Market Fit` : "Task | Market Fit"
+    const pageTitle = task?.serial_id && task?.title 
+      ? `${task.serial_id} - ${task.title} | Market Fit` 
+      : task?.title 
+        ? `${task.title} | Market Fit` 
+        : "Task | Market Fit"
+    document.title = pageTitle
     
     // Emit a custom event to update the breadcrumb
+    const breadcrumbTitle = task?.serial_id && task?.title 
+      ? `${task.serial_id} - ${task.title}` 
+      : task?.title || "Task"
+      
     const event = new CustomEvent('breadcrumb:update', {
       detail: {
-        title: task?.title || "Task",
+        title: breadcrumbTitle,
         path: `/control-center/${params.id}`,
         section: 'Control Center',
         parent: {

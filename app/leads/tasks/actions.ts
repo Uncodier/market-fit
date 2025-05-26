@@ -52,6 +52,7 @@ export type CreateTaskInput = z.infer<typeof TaskSchema>
 export interface TaskResponse {
   task?: {
     id: string
+    serial_id: string
     lead_id: string
     title: string
     description: string | null
@@ -63,6 +64,8 @@ export interface TaskResponse {
     amount: number | null
     assignee: string | null
     notes: string | null
+    priority: number
+    address: any | null
     site_id: string
     user_id: string
     created_at: string
@@ -75,6 +78,7 @@ export interface TaskResponse {
 export interface TasksResponse {
   tasks: Array<{
     id: string
+    serial_id: string
     lead_id: string
     title: string
     description: string | null
@@ -86,6 +90,8 @@ export interface TasksResponse {
     amount: number | null
     assignee: string | null
     notes: string | null
+    priority: number
+    address: any | null
     site_id: string
     user_id: string
     created_at: string

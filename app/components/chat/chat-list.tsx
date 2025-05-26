@@ -23,6 +23,7 @@ import {
 } from "@/app/components/ui/dropdown-menu"
 import { RenameConversationModal } from "./RenameConversationModal"
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
@@ -34,21 +35,6 @@ function ConversationSkeleton() {
       </div>
       <Skeleton className="h-3 w-[90%] mt-2" />
       <Skeleton className="h-3 w-[40%] mt-2" />
-    </div>
-  )
-}
-
-// Componente personalizado para estado vacío 
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center max-w-[260px] text-center">
-      <div className="mb-6">
-        <MessageSquare className="h-12 w-12 text-muted-foreground" />
-      </div>
-      <h3 className="text-lg font-medium mb-2">No conversations</h3>
-      <p className="text-sm text-muted-foreground">
-        Start a new conversation with an agent
-      </p>
     </div>
   )
 }
@@ -545,8 +531,17 @@ export function ChatList({
             </div>
           </div>
         ) : showEmptyState ? (
-          <div className="flex items-center justify-center h-full pt-[71px]">
-            <EmptyState />
+          <div className="flex items-center justify-center h-full">
+            <div className="w-full max-w-[280px] px-4">
+              <EmptyCard
+                icon={<MessageSquare className="h-10 w-10 text-muted-foreground" />}
+                title="No conversations"
+                description="Start a new conversation with an agent to see it here."
+                variant="fancy"
+                showShadow={false}
+                contentClassName="py-8"
+              />
+            </div>
           </div>
         ) : (
           <div className="h-full overflow-auto pt-[71px]">

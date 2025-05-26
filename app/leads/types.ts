@@ -86,6 +86,7 @@ export function hasAmount(event: JourneyEvent): event is JourneyEventWithAmount 
 // Task collection for customer journey - replacing the mock journey events
 export interface Task {
   id: string
+  serial_id: string
   lead_id: string
   title: string
   description: string
@@ -98,6 +99,8 @@ export interface Task {
   amount?: number
   assignee?: string
   notes?: string
+  priority: number
+  address?: any
 }
 
 export interface TaskFilters {

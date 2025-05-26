@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search, User, MessageSquare, Globe, FileText, RotateCcw, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, RotateCcw, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -29,6 +29,9 @@ import { Campaign } from "@/app/types"
 import { getTasksByLeadId } from "@/app/leads/tasks/actions"
 import { JOURNEY_STAGES } from "@/app/leads/types"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { EmptyCard } from "@/app/components/ui/empty-card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
 
 // Cache de etapas para cada lead
 const leadJourneyStagesCache: Record<string, string> = {};
@@ -249,7 +252,11 @@ function LeadsTable({
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
-                  No leads found.
+                  <EmptyCard
+                    icon={<Users className="h-16 w-16 text-muted-foreground" />}
+                    title="No leads found"
+                    description="There are no leads to display."
+                  />
                 </TableCell>
               </TableRow>
             )}

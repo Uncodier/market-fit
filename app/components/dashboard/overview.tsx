@@ -11,7 +11,7 @@ import {
   isSameYear, isBefore, 
   subMonths, subYears, subQuarters, subDays
 } from "date-fns"
-import { IsEmpty } from "@/app/components/ui/empty-state"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 import { BarChart } from "@/app/components/ui/icons"
 
 interface ChartDataItem {
@@ -401,11 +401,12 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   if (!hasData) {
     return (
       <div className="w-full h-[350px] flex items-center justify-center">
-        <IsEmpty
-          icon={<BarChart size={36} className="text-muted-foreground/60" />}
+        <EmptyCard
+          icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
           title="No data available"
           description="There is no sales data available for the selected period."
-          className="h-full flex flex-col items-center justify-center"
+          showShadow={false}
+          contentClassName="py-12"
         />
       </div>
     )

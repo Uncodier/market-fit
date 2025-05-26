@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { createClient } from "@/utils/supabase/client"
-import { Category } from "@/app/types"
+import { Category, Task } from "@/app/types"
 import { TaskSidebar } from "./components/TaskSidebar"
 import { TaskKanban } from "./components/TaskKanban"
 import { TasksTable } from "./components/TasksTable"
@@ -15,7 +15,7 @@ import { ViewSelector } from "@/app/components/view-selector"
 import { TaskCalendar } from "@/app/control-center/components/TaskCalendar"
 import { TaskFilterModal, TaskFilters } from "./components/TaskFilterModal"
 import { ControlCenterSkeleton } from "./components/ControlCenterSkeleton"
-import { EmptyCard } from "@/app/components/ui/empty-card"
+import { EmptyState } from "@/app/components/ui/empty-state"
 import { ClipboardList } from "@/app/components/ui/icons"
 import { toast } from "react-hot-toast"
 import { getUserData } from "@/app/services/user-service"
@@ -35,20 +35,7 @@ const TASK_TYPES = [
   'feedback'
 ]
 
-interface Task {
-  id: string
-  title: string
-  description: string | null
-  status: 'completed' | 'in_progress' | 'pending' | 'failed' | 'canceled'
-  stage?: 'awareness' | 'consideration' | 'decision' | 'purchase' | 'retention' | 'referral'
-  scheduled_date: string
-  lead_id?: string
-  assignee?: string
-  type?: string
-  leads?: {
-    id: string
-    name: string
-  }
+interface ExtendedTask extends Task {
   leadName?: string
   assigneeName?: string
   comments_count?: number
@@ -68,7 +55,7 @@ export default function ControlCenterPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [selectedItem, setSelectedItem] = useState<string>("all")
   const [categories, setCategories] = useState<Category[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
+  const [tasks, setTasks] = useState<ExtendedTask[]>([])
   const [taskCounts, setTaskCounts] = useState<TaskCounts>({ byCategory: {}, byType: {} })
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -178,6 +165,7 @@ export default function ControlCenterPage() {
             comments_count:task_comments(count)
           `)
           .eq('site_id', currentSite.id)
+          .order('priority', { ascending: false })
           .order('scheduled_date', { ascending: true })
 
         if (tasksError) throw tasksError
@@ -265,29 +253,87 @@ export default function ControlCenterPage() {
   }, [tasks])
 
   // Handle task status update
-  const handleUpdateTaskStatus = async (taskId: string, newStatus: string) => {
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: string, newPriority?: number) => {
     if (!currentSite) return
 
     const supabase = createClient()
-    const { error } = await supabase
-      .from('tasks')
-      .update({ status: newStatus })
-      .eq('id', taskId)
-      .eq('site_id', currentSite.id)
+    
+    if (newPriority !== undefined) {
+      // Use the reorder function when priority is provided
+      const { error } = await supabase.rpc('reorder_task_priorities', {
+        p_task_id: taskId,
+        p_new_priority: newPriority,
+        p_status: newStatus,
+        p_site_id: currentSite.id
+      })
 
-    if (error) {
-      console.error('Error updating task status:', error)
-      return
+      if (error) {
+        console.error('Error reordering task:', error)
+        toast.error("Failed to reorder task")
+        return
+      }
+    } else {
+      // Simple status update without priority change
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId)
+        .eq('site_id', currentSite.id)
+
+      if (error) {
+        console.error('Error updating task status:', error)
+        toast.error("Failed to update task status")
+        return
+      }
     }
 
-    // Update local state
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, status: newStatus as any } : task
-    ))
+    // Refresh tasks after update
+    const fetchTasksAgain = async () => {
+      try {
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            leads:lead_id (
+              id,
+              name
+            ),
+            comments_count:task_comments(count)
+          `)
+          .eq('site_id', currentSite.id)
+          .order('priority', { ascending: false })
+          .order('scheduled_date', { ascending: true })
+
+        if (tasksError) throw tasksError
+
+        const enrichedTasks = await Promise.all(
+          tasksData.map(async (task) => {
+            let assigneeName = undefined
+            if (task.assignee) {
+              const userData = await getUserData(task.assignee)
+              assigneeName = userData?.name
+            }
+
+            return {
+              ...task,
+              leadName: task.leads?.name,
+              assigneeName,
+              comments_count: task.comments_count?.[0]?.count || 0
+            }
+          })
+        )
+
+        setTasks(enrichedTasks)
+      } catch (error) {
+        console.error('Error fetching tasks:', error)
+      }
+    }
+
+    await fetchTasksAgain()
   }
 
   // Handle task click
-  const handleTaskClick = (task: Task) => {
+  const handleTaskClick = (task: ExtendedTask) => {
     router.push(`/control-center/${task.id}`)
   }
 
@@ -402,42 +448,40 @@ export default function ControlCenterPage() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
-          <div className="p-8 h-full">
-            {filteredTasks.length === 0 ? (
-              <div className="h-[calc(100%-2rem)] flex items-center justify-center">
-                <EmptyCard 
-                  icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
-                  title="No tasks found"
-                  description={searchQuery ? "Try adjusting your search or filters to find what you're looking for." : "There are no tasks to display at this time."}
-                  showShadow={false}
-                  contentClassName="py-12"
-                  className="max-w-md"
+          {filteredTasks.length === 0 ? (
+            <EmptyState 
+              icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
+              title="No tasks found"
+              description={searchQuery ? "Try adjusting your search or filters to find what you're looking for." : "There are no tasks to display at this time."}
+              variant="fancy"
+            />
+          ) : (
+            <div className="p-8 h-full">
+              {viewType === "kanban" ? (
+                <TaskKanban
+                  tasks={filteredTasks}
+                  onUpdateTaskStatus={handleUpdateTaskStatus}
+                  onTaskClick={handleTaskClick}
                 />
-              </div>
-            ) : viewType === "kanban" ? (
-              <TaskKanban
-                tasks={filteredTasks}
-                onUpdateTaskStatus={handleUpdateTaskStatus}
-                onTaskClick={handleTaskClick}
-              />
-            ) : viewType === "calendar" ? (
-              <TaskCalendar
-                tasks={filteredTasks}
-                onTaskClick={handleTaskClick}
-              />
-            ) : (
-              <TasksTable
-                tasks={filteredTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalTasks={filteredTasks.length}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                onTaskClick={handleTaskClick}
-                categories={categories}
-              />
-            )}
-          </div>
+              ) : viewType === "calendar" ? (
+                <TaskCalendar
+                  tasks={filteredTasks}
+                  onTaskClick={handleTaskClick}
+                />
+              ) : (
+                <TasksTable
+                  tasks={filteredTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalTasks={filteredTasks.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onTaskClick={handleTaskClick}
+                  categories={categories}
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -8,29 +8,22 @@ import { Card } from "@/app/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { ChevronLeft, ChevronRight, MessageSquare } from "@/app/components/ui/icons"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
+import { Task } from "@/app/types"
 
-interface Task {
-  id: string
-  title: string
-  description: string | null
-  status: 'completed' | 'in_progress' | 'pending' | 'failed' | 'canceled'
-  stage?: 'awareness' | 'consideration' | 'decision' | 'purchase' | 'retention' | 'referral'
-  scheduled_date: string
-  lead_id?: string
-  assignee_id?: string
+interface ExtendedTask extends Task {
   leadName?: string
   assigneeName?: string
   comments_count?: number
 }
 
 interface TasksTableProps {
-  tasks: Task[]
+  tasks: ExtendedTask[]
   currentPage: number
   itemsPerPage: number
   totalTasks: number
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
-  onTaskClick: (task: Task) => void
+  onTaskClick: (task: ExtendedTask) => void
   categories: Array<{ id: string; name: string }>
 }
 
@@ -69,6 +62,17 @@ const getStageDisplayName = (stage?: string) => {
   return stage.charAt(0).toUpperCase() + stage.slice(1)
 }
 
+// Extract numeric part from serial_id
+const getSerialNumber = (serialId: string) => {
+  if (!serialId) return ""
+  // Extract number after the dash and remove leading zeros
+  const match = serialId.match(/-(\d+)$/)
+  if (match) {
+    return parseInt(match[1], 10).toString()
+  }
+  return serialId
+}
+
 export function TasksTable({ 
   tasks,
   currentPage,
@@ -87,6 +91,7 @@ export function TasksTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[100px]">ID</TableHead>
             <TableHead className="w-[250px]">Title</TableHead>
             <TableHead>Stage</TableHead>
             <TableHead>Lead</TableHead>
@@ -105,6 +110,11 @@ export function TasksTable({
                 onClick={() => onTaskClick(task)}
               >
                 <TableCell>
+                  <div className="font-mono text-xs text-muted-foreground">
+                    {getSerialNumber(task.serial_id)}
+                  </div>
+                </TableCell>
+                <TableCell>
                   <div className="space-y-0.5">
                     <p className="font-medium text-sm">{task.title}</p>
                     <p className="text-xs text-muted-foreground">{task.description}</p>
@@ -121,14 +131,7 @@ export function TasksTable({
                 </TableCell>
                 <TableCell>
                   {task.leadName ? (
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback>
-                          {task.leadName.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">{task.leadName}</span>
-                    </div>
+                    <span className="text-sm">{task.leadName}</span>
                   ) : (
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
@@ -169,7 +172,7 @@ export function TasksTable({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
+              <TableCell colSpan={8} className="h-24 text-center">
                 No tasks found.
               </TableCell>
             </TableRow>

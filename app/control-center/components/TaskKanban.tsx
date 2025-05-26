@@ -8,25 +8,21 @@ import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 import { Clock, PlayCircle, CheckCircle2, XCircle, Ban, MessageSquare } from "@/app/components/ui/icons"
+import { Task } from "@/app/types"
+import { createClient } from "@/utils/supabase/client"
+import { useSite } from "@/app/context/SiteContext"
+import { toast } from "sonner"
 
-interface Task {
-  id: string
-  title: string
-  description: string | null
-  status: 'completed' | 'in_progress' | 'pending' | 'failed' | 'canceled'
-  stage?: 'awareness' | 'consideration' | 'decision' | 'purchase' | 'retention' | 'referral'
-  scheduled_date: string
-  lead_id?: string
-  assignee?: string
+interface ExtendedTask extends Task {
   leadName?: string
   assigneeName?: string
   comments_count?: number
 }
 
 interface TaskKanbanProps {
-  tasks: Task[]
+  tasks: ExtendedTask[]
   onUpdateTaskStatus: (taskId: string, newStatus: string) => Promise<void>
-  onTaskClick: (task: Task) => void
+  onTaskClick: (task: ExtendedTask) => void
 }
 
 // Define task statuses
@@ -72,8 +68,19 @@ const getLeadInitials = (name: string | undefined) => {
     .join('')
 }
 
+// Extract numeric part from serial_id
+const getSerialNumber = (serialId: string) => {
+  if (!serialId) return ""
+  // Extract number after the dash and remove leading zeros
+  const match = serialId.match(/-(\d+)$/)
+  if (match) {
+    return parseInt(match[1], 10).toString()
+  }
+  return serialId
+}
+
 export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanbanProps) {
-  // Group tasks by status
+  const { currentSite } = useSite()
   const [localTasks, setLocalTasks] = React.useState(tasks)
 
   React.useEffect(() => {
@@ -81,9 +88,11 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
   }, [tasks])
 
   const tasksByStatus = TASK_STATUSES.reduce((acc, status) => {
-    acc[status.id] = localTasks.filter(task => task.status === status.id)
+    acc[status.id] = localTasks
+      .filter(task => task.status === status.id)
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0)) // Sort by priority descending
     return acc
-  }, {} as Record<string, Task[]>)
+  }, {} as Record<string, ExtendedTask[]>)
 
   // Handle drag end
   const handleDragEnd = async (result: any) => {
@@ -99,23 +108,100 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
     }
 
     const newStatus = destination.droppableId
+    const sourceStatus = source.droppableId
+    const destinationTasks = tasksByStatus[newStatus]
+    const draggedTask = localTasks.find(t => t.id === draggableId)
     
-    // Update local state immediately
-    setLocalTasks(prevTasks => 
-      prevTasks.map(task => 
+    if (!draggedTask || !currentSite) return
+
+    // Calculate new priority based on position
+    let newPriority: number
+    
+    // Check if moving within same column or to different column
+    const isMovingWithinColumn = sourceStatus === newStatus
+    const sourceIndex = source.index
+    const destIndex = destination.index
+    
+    if (destinationTasks.length === 0) {
+      // Empty column, start with a high number
+      newPriority = 1000
+    } else if (destIndex === 0) {
+      // Moving to first position
+      newPriority = (destinationTasks[0].priority || 0) + 1
+    } else if (destIndex >= destinationTasks.length) {
+      // Moving to last position
+      newPriority = (destinationTasks[destinationTasks.length - 1].priority || 0) - 1
+    } else {
+      // Moving between two cards
+      if (isMovingWithinColumn) {
+        // Within same column: check direction
+        if (sourceIndex < destIndex) {
+          // Moving down: take priority of the card that will be below (current destIndex)
+          newPriority = destinationTasks[destIndex].priority || 0
+        } else {
+          // Moving up: take priority of the card that will be above (current destIndex - 1)
+          newPriority = destinationTasks[destIndex - 1].priority || 0
+        }
+      } else {
+        // Moving to different column: take priority of the card above (destIndex - 1)
+        newPriority = destinationTasks[destIndex - 1].priority || 0
+      }
+    }
+
+    console.log('Moving task:', {
+      taskId: draggableId,
+      from: source.droppableId,
+      to: newStatus,
+      sourceIndex,
+      destIndex,
+      isMovingWithinColumn,
+      direction: isMovingWithinColumn ? (sourceIndex < destIndex ? 'down' : 'up') : 'cross-column',
+      newPriority
+    })
+
+    // Update local state immediately for responsiveness
+    setLocalTasks(prevTasks => {
+      const updatedTasks = prevTasks.map(task => 
         task.id === draggableId 
-          ? { ...task, status: newStatus }
+          ? { ...task, status: newStatus, priority: newPriority }
           : task
       )
-    )
+      return updatedTasks
+    })
 
-    // Then update server state
+    // Call the database function to reorder priorities
     try {
+      const supabase = createClient()
+      
+      // Call the reorder function
+      const { data, error } = await supabase.rpc('reorder_task_priorities', {
+        p_task_id: draggableId,
+        p_new_position: destIndex + 1, // Convert to 1-based position
+        p_status: newStatus,
+        p_site_id: currentSite.id
+      })
+
+      if (error) {
+        console.error('Database error:', error)
+        throw error
+      }
+
+      console.log('Database response:', data)
+
+      // Show success toast
+      toast.success(
+        source.droppableId !== newStatus 
+          ? `Task moved to ${TASK_STATUSES.find(s => s.id === newStatus)?.name}`
+          : "Task reordered successfully"
+      )
+
+      // Notify parent to refresh
       await onUpdateTaskStatus(draggableId, newStatus)
     } catch (error) {
       // If server update fails, revert local state
       setLocalTasks(tasks)
-      console.error('Failed to update task status:', error)
+      console.error('Failed to update task:', error)
+      toast.error("Failed to update task position")
     }
   }
 
@@ -170,8 +256,8 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                         </Avatar>
                                       )}
                                       <div className="flex flex-col">
-                                        <h3 className="text-sm font-medium line-clamp-1 mt-0.5">{task.title}</h3>
-                                        <div className="flex items-center gap-2 mt-1">
+                                        <h3 className="text-sm font-medium line-clamp-1 mb-1">{task.title}</h3>
+                                        <div className="flex items-center gap-2">
                                           {task.assigneeName && (
                                             <>
                                               <span className="text-xs text-muted-foreground">{task.assigneeName}</span>
@@ -184,6 +270,11 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                         </div>
                                       </div>
                                     </div>
+                                    {task.serial_id && (
+                                      <div className="font-mono text-xs text-muted-foreground">
+                                        {getSerialNumber(task.serial_id)}
+                                      </div>
+                                    )}
                                   </div>
 
                                   {task.description && (

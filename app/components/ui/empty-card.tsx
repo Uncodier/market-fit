@@ -1,7 +1,7 @@
 'use client';
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
+import { Card, CardContent } from "@/app/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface EmptyCardProps {
@@ -11,9 +11,55 @@ interface EmptyCardProps {
   actionButton?: React.ReactNode;
   className?: string;
   contentClassName?: string;
-  headerClassName?: string;
   showShadow?: boolean;
+  variant?: "simple" | "fancy";
+  showHint?: boolean;
 }
+
+// Generate random positions for bubbles
+const generateRandomBubbles = () => {
+  const bubbles = [];
+  const positions = [
+    { 
+      top: Math.random() * 70 + 5, 
+      left: Math.random() * 70 + 5,
+      size: Math.random() * 16 + 16, // 16-32
+      delay: Math.random() * 3
+    },
+    { 
+      top: Math.random() * 70 + 10, 
+      left: Math.random() * 70 + 10,
+      size: Math.random() * 12 + 20, // 20-32
+      delay: Math.random() * 3
+    },
+    { 
+      top: Math.random() * 70 + 15, 
+      left: Math.random() * 70 + 15,
+      size: Math.random() * 8 + 16, // 16-24
+      delay: Math.random() * 3
+    },
+    { 
+      top: Math.random() * 70 + 8, 
+      left: Math.random() * 70 + 8,
+      size: Math.random() * 10 + 12, // 12-22
+      delay: Math.random() * 3
+    },
+    { 
+      top: Math.random() * 70 + 20, 
+      left: Math.random() * 70 + 20,
+      size: Math.random() * 6 + 10, // 10-16
+      delay: Math.random() * 3
+    },
+    { 
+      top: Math.random() * 70 + 25, 
+      left: Math.random() * 70 + 25,
+      size: Math.random() * 8 + 14, // 14-22
+      delay: Math.random() * 3
+    },
+  ];
+  
+  return positions;
+};
 
 /**
  * EmptyCard component
@@ -28,6 +74,7 @@ interface EmptyCardProps {
  *   title="No documents found"
  *   description="There are no documents in this section yet."
  *   actionButton={<Button size="sm">Add Document</Button>}
+ *   showHint={true}
  * />
  * ```
  */
@@ -38,29 +85,166 @@ export function EmptyCard({
   actionButton,
   className,
   contentClassName,
-  headerClassName,
-  showShadow = true
+  showShadow = true,
+  variant = "fancy",
+  showHint = false
 }: EmptyCardProps) {
+  const isSimple = variant === "simple"
+  
+  // Generate random bubble positions on component mount
+  const [bubblePositions] = React.useState(() => generateRandomBubbles());
+  
   return (
-    <Card className={cn(
-      showShadow ? "border-dashed bg-card/50" : "border-0 bg-transparent shadow-none", 
-      "w-full",
-      className
-    )}>
-      {(title || description) && (
-        <CardHeader className={cn("space-y-1 text-center", headerClassName)}>
-          {title && <CardTitle className="text-base font-medium text-muted-foreground">{title}</CardTitle>}
-          {description && <CardDescription>{description}</CardDescription>}
-        </CardHeader>
+    <div className="relative">
+      {/* Floating background orbs - outside card for visibility */}
+      {!isSimple && (
+        <div className="absolute inset-0 pointer-events-none z-0">
+          {/* Randomized bubbles */}
+          <div 
+            className="absolute bg-violet-500/25 rounded-full blur-2xl animate-pulse"
+            style={{ 
+              top: `${bubblePositions[0].top}%`, 
+              left: `${bubblePositions[0].left}%`,
+              width: `${bubblePositions[0].size * 4}px`,
+              height: `${bubblePositions[0].size * 4}px`,
+              animationDelay: `${bubblePositions[0].delay}s`
+            }}
+          ></div>
+          <div 
+            className="absolute bg-indigo-500/20 rounded-full blur-2xl animate-pulse"
+            style={{ 
+              top: `${bubblePositions[1].top}%`, 
+              left: `${bubblePositions[1].left}%`,
+              width: `${bubblePositions[1].size * 4}px`,
+              height: `${bubblePositions[1].size * 4}px`,
+              animationDelay: `${bubblePositions[1].delay}s`
+            }}
+          ></div>
+          <div 
+            className="absolute bg-purple-500/22 rounded-full blur-2xl animate-pulse"
+            style={{ 
+              top: `${bubblePositions[2].top}%`, 
+              left: `${bubblePositions[2].left}%`,
+              width: `${bubblePositions[2].size * 4}px`,
+              height: `${bubblePositions[2].size * 4}px`,
+              animationDelay: `${bubblePositions[2].delay}s`
+            }}
+          ></div>
+          <div 
+            className="absolute bg-pink-500/24 rounded-full blur-xl animate-pulse"
+            style={{ 
+              top: `${bubblePositions[3].top}%`, 
+              left: `${bubblePositions[3].left}%`,
+              width: `${bubblePositions[3].size * 4}px`,
+              height: `${bubblePositions[3].size * 4}px`,
+              animationDelay: `${bubblePositions[3].delay}s`
+            }}
+          ></div>
+          <div 
+            className="absolute bg-emerald-500/18 rounded-full blur-xl animate-pulse"
+            style={{ 
+              top: `${bubblePositions[4].top}%`, 
+              left: `${bubblePositions[4].left}%`,
+              width: `${bubblePositions[4].size * 4}px`,
+              height: `${bubblePositions[4].size * 4}px`,
+              animationDelay: `${bubblePositions[4].delay}s`
+            }}
+          ></div>
+          <div 
+            className="absolute bg-cyan-500/19 rounded-full blur-xl animate-pulse"
+            style={{ 
+              top: `${bubblePositions[5].top}%`, 
+              left: `${bubblePositions[5].left}%`,
+              width: `${bubblePositions[5].size * 4}px`,
+              height: `${bubblePositions[5].size * 4}px`,
+              animationDelay: `${bubblePositions[5].delay}s`
+            }}
+          ></div>
+        </div>
       )}
-      <CardContent className={cn("flex flex-col items-center justify-center py-6", contentClassName)}>
-        {icon && (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted/30 mb-4">
-            {icon}
-          </div>
-        )}
-        {actionButton && <div className="mt-4">{actionButton}</div>}
-      </CardContent>
-    </Card>
+      
+      <Card className={cn(
+        showShadow ? "border-dashed bg-card/50" : "border-0 bg-transparent shadow-none", 
+        "w-full relative z-10",
+        className
+      )}>
+        <CardContent className={cn(
+          "flex flex-col items-center justify-center px-6 pb-0 relative z-20 min-h-[300px]", 
+          contentClassName
+        )}>
+          {isSimple ? (
+            // Simple version: more subtle styling
+            <div className="flex flex-col items-center justify-center space-y-3">
+              {icon && (
+                <div className="flex justify-center items-center">
+                  <div className="w-16 h-16 flex items-center justify-center text-muted-foreground/60">
+                    <div className="[&>*]:!w-16 [&>*]:!h-16 [&_svg]:!stroke-current [&_svg]:!fill-current [&_svg_*]:!stroke-current [&_svg_*]:!fill-none flex items-center justify-center">
+                      {icon}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {title && (
+                <h3 className="text-sm font-medium text-muted-foreground text-center">{title}</h3>
+              )}
+              
+              {description && (
+                <p className="text-xs text-muted-foreground/70 leading-relaxed max-w-sm mx-auto text-center">
+                  {description}
+                </p>
+              )}
+              
+              {actionButton && (
+                <div className="pt-1">
+                  {actionButton}
+                </div>
+              )}
+            </div>
+          ) : (
+            // Fancy version: more subtle text styling
+            <div className="flex flex-col items-center justify-center space-y-4">
+              {/* Hero section with icon */}
+              <div className="flex flex-col items-center space-y-3">
+                <div className="relative z-30">
+                  {/* Main icon container - smaller and more subtle */}
+                  <div className="w-16 h-16 mx-auto rounded-lg bg-primary/8 backdrop-blur-sm border border-primary/15 flex items-center justify-center shadow-sm">
+                    <div className="text-primary/70 flex items-center justify-center [&>*]:!w-6 [&>*]:!h-6 [&_svg]:!stroke-primary/70 [&_svg]:!fill-primary/70 [&_svg_*]:!stroke-primary/70 [&_svg_*]:!fill-none">
+                      {icon}
+                    </div>
+                  </div>
+                </div>
+                
+                {title && (
+                  <h3 className="text-sm font-medium text-muted-foreground relative z-30 text-center">{title}</h3>
+                )}
+                
+                {description && (
+                  <p className="text-xs text-muted-foreground/70 leading-relaxed max-w-md mx-auto relative z-30 text-center">
+                    {description}
+                  </p>
+                )}
+              </div>
+
+              {/* Action button */}
+              {actionButton && (
+                <div className="relative z-30 pt-1">
+                  {actionButton}
+                </div>
+              )}
+              
+              {/* Optional automatic operation hint */}
+              {showHint && (
+                <div className="pt-3 border-t border-border/20 relative z-30">
+                  <p className="text-xs text-muted-foreground/50 max-w-sm mx-auto leading-relaxed text-center">
+                    💡 <span className="font-medium">Most operations run automatically.</span> Your AI agents work in the background without manual direction. Feel free to return later if you prefer not to actively manage them right now.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 } 

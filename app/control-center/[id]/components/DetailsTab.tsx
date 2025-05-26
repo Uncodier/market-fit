@@ -151,6 +151,32 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+      {/* Task ID Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Task Identification</CardTitle>
+          <CardDescription>
+            Unique identifiers for this task
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Serial ID</Label>
+              <div className="font-mono text-sm bg-muted px-3 py-2 rounded-md border">
+                {task.serial_id}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Internal ID</Label>
+              <div className="font-mono text-xs text-muted-foreground bg-muted px-3 py-2 rounded-md border">
+                {task.id}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Basic Information */}
       <Card>
         <CardHeader>

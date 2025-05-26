@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
+import { EmptyState } from "@/app/components/ui/empty-state"
+import { MessageSquare } from "@/app/components/ui/icons"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -352,15 +354,12 @@ export function ChatMessages({
   if (!hasSelectedConversation) {
     return (
       <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-[200px]">
-        <div className="max-w-[calc(100%-240px)] mx-auto flex items-center justify-center h-full">
-          <div className="text-center p-8 rounded-lg">
-            <Icons.MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/60" />
-            <h3 className="text-lg font-medium mb-2">No conversation selected</h3>
-            <p className="text-muted-foreground max-w-md">
-              Select a conversation from the list or start a new one to begin chatting.
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          icon={<MessageSquare className="h-12 w-12" />}
+          title="No conversation selected"
+          description="Select a conversation from the list or start a new one to begin chatting."
+          className="min-h-0 h-full flex items-center justify-center"
+        />
       </div>
     );
   }

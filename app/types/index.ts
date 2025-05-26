@@ -308,6 +308,7 @@ export interface TaskComment {
 
 export interface Task {
   id: string
+  serial_id: string
   title: string
   description: string | null
   status: 'completed' | 'in_progress' | 'pending' | 'failed' | 'canceled'
@@ -316,6 +317,8 @@ export interface Task {
   lead_id?: string
   assignee?: string
   type?: string
+  priority: number
+  address?: any
   site_id: string
   created_at: string
   updated_at: string
