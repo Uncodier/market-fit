@@ -21,14 +21,21 @@ export default function CreateSitePage() {
         url: data.url || null,
         description: data.description || null,
         logo_url: data.logo_url || null,
-        resource_urls: data.resource_urls || [],
+        resource_urls: [],
         user_id: user?.id as string,
         settings: {
-          competitors: data.competitors || [],
           focus_mode: data.focusMode,
           about: data.about || "",
           company_size: data.company_size || "",
           industry: data.industry || "",
+          business_hours: data.business_hours || [],
+          locations: data.locations || [],
+          swot: data.swot || {
+            strengths: "",
+            weaknesses: "",
+            opportunities: "",
+            threats: ""
+          },
           goals: {
             quarterly: data.goals?.quarterly || "",
             yearly: data.goals?.yearly || "",

@@ -208,6 +208,72 @@ export default function SettingsPage() {
     });
   }
 
+  // Convert products data to the new format with name, description, and pricing fields
+  const formatProducts = (products: any[]): any[] => {
+    if (!products || !Array.isArray(products)) return [];
+    
+    return products.map(product => {
+      // Handle migration from string to object format
+      if (typeof product === 'string') {
+        return {
+          name: product,
+          description: '',
+          cost: 0,
+          lowest_sale_price: 0,
+          target_sale_price: 0
+        };
+      } else if (typeof product === 'object' && product !== null) {
+        return {
+          name: product.name || '',
+          description: product.description || '',
+          cost: typeof product.cost === 'number' ? product.cost : 0,
+          lowest_sale_price: typeof product.lowest_sale_price === 'number' ? product.lowest_sale_price : 0,
+          target_sale_price: typeof product.target_sale_price === 'number' ? product.target_sale_price : 0
+        };
+      }
+      return {
+        name: '',
+        description: '',
+        cost: 0,
+        lowest_sale_price: 0,
+        target_sale_price: 0
+      };
+    });
+  }
+
+  // Convert services data to the new format with name, description, and pricing fields
+  const formatServices = (services: any[]): any[] => {
+    if (!services || !Array.isArray(services)) return [];
+    
+    return services.map(service => {
+      // Handle migration from string to object format
+      if (typeof service === 'string') {
+        return {
+          name: service,
+          description: '',
+          cost: 0,
+          lowest_sale_price: 0,
+          target_sale_price: 0
+        };
+      } else if (typeof service === 'object' && service !== null) {
+        return {
+          name: service.name || '',
+          description: service.description || '',
+          cost: typeof service.cost === 'number' ? service.cost : 0,
+          lowest_sale_price: typeof service.lowest_sale_price === 'number' ? service.lowest_sale_price : 0,
+          target_sale_price: typeof service.target_sale_price === 'number' ? service.target_sale_price : 0
+        };
+      }
+      return {
+        name: '',
+        description: '',
+        cost: 0,
+        lowest_sale_price: 0,
+        target_sale_price: 0
+      };
+    });
+  }
+
   // Adaptar Site a SiteFormValues para el formulario
   const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     console.log("Adapting site to form:", site);
@@ -266,7 +332,16 @@ export default function SettingsPage() {
     
     console.log("🔍 ADAPT: Final processed team members:", processedTeamMembers);
     
-    return {
+    // Add business_hours
+    const business_hours = site.settings?.business_hours?.map(bh => ({
+      ...bh,
+      respectHolidays: bh.respectHolidays ?? true // Ensure it's always boolean, default to true
+    })) || [];
+    
+    console.log("🔍 ADAPT: site.settings?.business_hours:", site.settings?.business_hours)
+    console.log("🔍 ADAPT: Final adapted data business_hours:", business_hours)
+    
+    const result = {
       name: site.name,
       url: site.url || "",
       description: site.description || "",
@@ -282,8 +357,8 @@ export default function SettingsPage() {
       about: site.settings?.about || "",
       company_size: site.settings?.company_size || "",
       industry: site.settings?.industry || "",
-      products: Array.isArray(site.settings?.products) ? site.settings.products : [],
-      services: Array.isArray(site.settings?.services) ? site.settings.services : [],
+      products: formatProducts(site.settings?.products || []),
+      services: formatServices(site.settings?.services || []),
       locations: site.settings?.locations || [],
       // Add goals with converted field names
       goals: goalsData,
@@ -332,11 +407,11 @@ export default function SettingsPage() {
         allow_anonymous_messages: site.tracking?.allow_anonymous_messages || false,
         chat_position: site.tracking?.chat_position || "bottom-right",
         welcome_message: site.tracking?.welcome_message || "Welcome to our website! How can we assist you today?",
-        chat_title: site.tracking?.chat_title || "Chat with us"
+        chat_title: site.tracking?.chat_title || "Chat with us",
+        analytics_provider: site.tracking?.analytics_provider || "",
+        analytics_id: site.tracking?.analytics_id || "",
+        tracking_code: site.tracking?.tracking_code || ""
       },
-      analytics_provider: site.settings?.analytics_provider || "",
-      analytics_id: site.settings?.analytics_id || "",
-      tracking_code: site.settings?.tracking_code || "",
       // Add WhatsApp Business token (placeholder if stored securely)
       whatsapp_token: whatsAppToken,
       // Add team info
@@ -353,8 +428,13 @@ export default function SettingsPage() {
         mission: "",
         values: "",
         differentiators: ""
-      }
+      },
+      // Add business_hours
+      business_hours: business_hours
     }
+    
+    console.log("🔍 ADAPT: Final adapted data:", result);
+    return result
   }
 
   // Helper function to check secure tokens and update the form if needed
@@ -403,12 +483,23 @@ export default function SettingsPage() {
       const { 
         name, url, description, logo_url, resource_urls, 
         competitors, focusMode, billing, tracking, whatsapp_token, 
-        team_members, channels, ...settingsData 
+        team_members, channels, 
+        // Extract all the settings fields explicitly to avoid any tracking contamination
+        about, company_size, industry, products, services, locations, 
+        business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels, 
+        social_media, company
       } = data;
+      
+      // Create settingsData object explicitly without any tracking fields
+      const settingsData = {
+        about, company_size, industry, products, services, locations,
+        business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels,
+        social_media, company
+      };
       
       console.log("SAVE 3: Datos extraídos del formulario:", {
         site: { name, url, description },
-        settings: { goals: settingsData.goals, about: settingsData.about }
+        settings: { goals: rawGoals, about: settingsData.about }
       });
       
       // Guardar inmediatamente el focusMode en localStorage para asegurar que persista
@@ -487,19 +578,19 @@ export default function SettingsPage() {
       
       // Ensure SWOT and goals have the correct structure
       const swot = {
-        strengths: settingsData.swot?.strengths || "",
-        weaknesses: settingsData.swot?.weaknesses || "",
-        opportunities: settingsData.swot?.opportunities || "",
-        threats: settingsData.swot?.threats || ""
+        strengths: rawSwot?.strengths || "",
+        weaknesses: rawSwot?.weaknesses || "",
+        opportunities: rawSwot?.opportunities || "",
+        threats: rawSwot?.threats || ""
       };
       
-      console.log("SAVE 5: Goals data original:", settingsData.goals);
+      console.log("SAVE 5: Goals data original:", rawGoals);
       
       const goals = {
-        quarterly: settingsData.goals?.quarterly || "",
-        yearly: settingsData.goals?.yearly || "",
-        fiveYear: settingsData.goals?.fiveYear || "",
-        tenYear: settingsData.goals?.tenYear || ""
+        quarterly: rawGoals?.quarterly || "",
+        yearly: rawGoals?.yearly || "",
+        fiveYear: rawGoals?.fiveYear || "",
+        tenYear: rawGoals?.tenYear || ""
       };
       
       console.log("SAVE 6: Goals data procesado:", goals);
@@ -516,7 +607,14 @@ export default function SettingsPage() {
           track_actions: Boolean(tracking?.track_actions),
           record_screen: Boolean(tracking?.record_screen),
           enable_chat: Boolean(tracking?.enable_chat),
-          chat_accent_color: tracking?.chat_accent_color || "#e0ff17"
+          chat_accent_color: tracking?.chat_accent_color || "#e0ff17",
+          allow_anonymous_messages: Boolean(tracking?.allow_anonymous_messages),
+          chat_position: tracking?.chat_position || "bottom-right",
+          welcome_message: tracking?.welcome_message || "Welcome to our website! How can we assist you today?",
+          chat_title: tracking?.chat_title || "Chat with us",
+          analytics_provider: tracking?.analytics_provider || "",
+          analytics_id: tracking?.analytics_id || "",
+          tracking_code: tracking?.tracking_code || ""
         }
       };
       
@@ -533,15 +631,13 @@ export default function SettingsPage() {
         services: Array.isArray(settingsData.services) ? settingsData.services : [],
         swot, // Use the validated swot object
         locations: settingsData.locations || [],
+        business_hours: settingsData.business_hours || [],
         marketing_budget: {
           total: settingsData.marketing_budget?.total || 0,
           available: settingsData.marketing_budget?.available || 0
         },
         marketing_channels: settingsData.marketing_channels || [],
         social_media: filteredSocialMedia,
-        tracking_code: settingsData.tracking_code || "",
-        analytics_provider: settingsData.analytics_provider || "",
-        analytics_id: settingsData.analytics_id || "",
         // Include channels configuration
         channels: channels || {
           email: {

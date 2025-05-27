@@ -128,13 +128,13 @@ export async function GET(request: Request) {
       try {
         // Get leads that belong to the specified segment
         const { data: segmentLeads, error: segmentLeadsError } = await supabase
-          .from("lead_segments")
-          .select("lead_id")
+          .from("leads")
+          .select("id")
           .eq("segment_id", segmentId);
         
         if (!segmentLeadsError && segmentLeads && segmentLeads.length > 0) {
-          const leadIds = segmentLeads.map(item => item.lead_id);
-          console.log(`[Clients By Campaign API] Found ${leadIds.length} leads in segment from lead_segments`);
+          const leadIds = segmentLeads.map(item => item.id);
+          console.log(`[Clients By Campaign API] Found ${leadIds.length} leads in segment from leads table`);
           
           // Update query to filter by these lead IDs
           leadsQuery = supabase
@@ -145,10 +145,10 @@ export async function GET(request: Request) {
             .gte("created_at", startDate.toISOString())
             .lte("created_at", endDate.toISOString());
         } else {
-          console.log("[Clients By Campaign API] No leads found in segment via lead_segments");
+          console.log("[Clients By Campaign API] No leads found in segment via leads table");
         }
       } catch (error) {
-        console.error("[Clients By Campaign API] Error with segment filtering via lead_segments:", error);
+        console.error("[Clients By Campaign API] Error with segment filtering via leads table:", error);
       }
     }
     

@@ -267,40 +267,41 @@ export async function GET(request: Request) {
         unassignedCount--; // One less unassigned
       });
       
-      // Then try to get lead-segment associations from lead_segments table for remaining leads
+      // Then try to get segment information from leads table for remaining leads
       try {
         // Filter out leads that already have segments from sales
         const remainingLeadIds = leadIdsArray.filter(id => !leadToSegmentMap[id]);
         
         if (remainingLeadIds.length > 0) {
           const { data: leadSegmentsData, error: leadSegmentsError } = await supabase
-            .from("lead_segments")
-            .select("lead_id, segment_id")
-            .in("lead_id", remainingLeadIds);
+            .from("leads")
+            .select("id, segment_id")
+            .in("id", remainingLeadIds)
+            .not("segment_id", "is", null);
           
           if (!leadSegmentsError && leadSegmentsData && leadSegmentsData.length > 0) {
-            console.log(`[Clients By Segment API] Found ${leadSegmentsData.length} lead-segment associations`);
+            console.log(`[Clients By Segment API] Found ${leadSegmentsData.length} leads with segments`);
             
             // Count leads per segment
-            leadSegmentsData.forEach(leadSegment => {
-              if (leadSegment.segment_id && leadSegment.lead_id) {
-                if (!segmentCounts[leadSegment.segment_id]) {
-                  segmentCounts[leadSegment.segment_id] = 0;
+            leadSegmentsData.forEach(lead => {
+              if (lead.segment_id && lead.id) {
+                if (!segmentCounts[lead.segment_id]) {
+                  segmentCounts[lead.segment_id] = 0;
                   
                   // Check if this segment exists in our segment list
-                  const segmentExists = segments.some(segment => segment.id === leadSegment.segment_id);
+                  const segmentExists = segments.some(segment => segment.id === lead.segment_id);
                   if (!segmentExists) {
-                    unknownSegmentIds.add(leadSegment.segment_id);
+                    unknownSegmentIds.add(lead.segment_id);
                   }
                 }
-                segmentCounts[leadSegment.segment_id]++;
+                segmentCounts[lead.segment_id]++;
                 unassignedCount--; // One less unassigned
               }
             });
           }
         }
       } catch (error) {
-        console.log("[Clients By Segment API] Error fetching lead_segments:", error);
+        console.log("[Clients By Segment API] Error fetching leads with segments:", error);
         // Continue with what we have
       }
       

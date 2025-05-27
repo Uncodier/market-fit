@@ -10,6 +10,7 @@ import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
 import { SalesDistributionChart } from "@/app/components/dashboard/sales-distribution-chart"
 import { MonthlySalesEvolutionChart } from "@/app/components/dashboard/monthly-sales-evolution-chart"
 import { SalesBreakdownReport } from "@/app/components/dashboard/sales-breakdown-report"
+import { RevenueProjectionsChart } from "@/app/components/dashboard/revenue-projections-chart"
 import { useRequestController } from "@/app/hooks/useRequestController"
 import { startOfMonth, format, subDays } from "date-fns"
 
@@ -260,6 +261,14 @@ export function SalesReports({
           data={salesData?.monthlyData || []}
           isLoading={isLoading}
           dataReady={dataReady}
+        />
+      </div>
+      
+      {/* Revenue Projections Section */}
+      <div className="grid gap-4 grid-cols-1">
+        <RevenueProjectionsChart 
+          startYear={2025}
+          endYear={2028}
         />
       </div>
       

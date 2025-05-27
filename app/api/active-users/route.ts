@@ -600,11 +600,11 @@ async function fetchPreviousPeriodActiveUsers(
       
       const leadIdsArray = Array.from(uniqueLeadIds);
       
-      // Consultar qué leads están en el segmento especificado
+      // Consultar qué leads están en el segmento especificado usando la columna segment_id en leads
       const { data: leadSegmentData, error: leadSegmentError } = await supabase
-        .from("lead_segments")
-        .select("lead_id")
-        .in("lead_id", leadIdsArray)
+        .from("leads")
+        .select("id")
+        .in("id", leadIdsArray)
         .eq("segment_id", segmentId);
       
       if (leadSegmentError) {
@@ -614,9 +614,9 @@ async function fetchPreviousPeriodActiveUsers(
       
       // Contar solo los leads que están en el segmento
       const segmentLeadIds = new Set<string>();
-      leadSegmentData?.forEach((item: { lead_id: string }) => {
-        if (item.lead_id) {
-          segmentLeadIds.add(item.lead_id);
+      leadSegmentData?.forEach((item: { id: string }) => {
+        if (item.id) {
+          segmentLeadIds.add(item.id);
         }
       });
       
@@ -754,11 +754,11 @@ async function fetchCurrentPeriodActiveUsers(
       
       const leadIdsArray = Array.from(uniqueLeadIds);
       
-      // Consultar qué leads están en el segmento especificado
+      // Consultar qué leads están en el segmento especificado usando la columna segment_id en leads
       const { data: leadSegmentData, error: leadSegmentError } = await supabase
-        .from("lead_segments")
-        .select("lead_id")
-        .in("lead_id", leadIdsArray)
+        .from("leads")
+        .select("id")
+        .in("id", leadIdsArray)
         .eq("segment_id", segmentId);
       
       if (leadSegmentError) {
@@ -768,9 +768,9 @@ async function fetchCurrentPeriodActiveUsers(
       
       // Contar solo los leads que están en el segmento
       const segmentLeadIds = new Set<string>();
-      leadSegmentData?.forEach((item: { lead_id: string }) => {
-        if (item.lead_id) {
-          segmentLeadIds.add(item.lead_id);
+      leadSegmentData?.forEach((item: { id: string }) => {
+        if (item.id) {
+          segmentLeadIds.add(item.id);
         }
       });
       

@@ -91,6 +91,13 @@ export function SiteForm({
       products: Array.isArray(initialData?.products) ? [...initialData.products] : [],
       services: Array.isArray(initialData?.services) ? [...initialData.services] : [],
       locations: initialData?.locations || [],
+      business_hours: initialData?.business_hours || [],
+      goals: initialData?.goals || {
+        quarterly: "",
+        yearly: "",
+        fiveYear: "",
+        tenYear: ""
+      },
       swot: initialData?.swot || {
         strengths: "",
         weaknesses: "",
@@ -145,9 +152,6 @@ export function SiteForm({
         welcome_message: "Welcome to our website! How can we assist you today?",
         chat_title: "Chat with us"
       },
-      analytics_provider: initialData?.analytics_provider || "",
-      analytics_id: initialData?.analytics_id || "",
-      tracking_code: initialData?.tracking_code || "",
       whatsapp_token: initialData?.whatsapp_token || "",
       billing: initialData?.billing || {
         plan: "free",

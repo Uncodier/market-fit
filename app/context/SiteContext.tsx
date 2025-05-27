@@ -4,13 +4,12 @@ import { createContext, useContext, useState, useEffect, ReactNode, useRef } fro
 import { createClient } from "@/lib/supabase/client"
 import type { Tables } from "@/lib/types/database.types"
 import type { 
-  SwotAnalysis, 
   Location, 
-  MarketingBudget, 
-  TrackingSettings, 
+  SwotAnalysis, 
   TeamMember, 
   MarketingChannel, 
-  SocialMedia
+  SocialMedia,
+  MarketingBudget
 } from "@/lib/types/database.types"
 import { billingService, BillingData } from "../services/billing-service"
 import { toast } from "react-hot-toast"
@@ -36,6 +35,9 @@ export interface Site {
     chat_position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
     welcome_message?: string;
     chat_title?: string;
+    analytics_provider?: string;
+    analytics_id?: string;
+    tracking_code?: string;
   }
   billing?: {
     plan: 'free' | 'starter' | 'professional' | 'enterprise'
@@ -66,16 +68,14 @@ export interface SiteSettings {
   about?: string | null
   company_size?: string | null
   industry?: string | null
-  products?: string[] | null
-  services?: string[] | null
+  products?: Product[] | null
+  services?: Service[] | null
   swot?: SwotAnalysis | null
   locations?: Location[] | null
+  business_hours?: BusinessHours[] | null
   marketing_budget?: MarketingBudget | null
   marketing_channels?: MarketingChannel[] | null
   social_media?: SocialMedia[] | null
-  tracking_code?: string | null
-  analytics_provider?: string | null
-  analytics_id?: string | null
   whatsapp_token?: string | null
   team_members?: TeamMember[] | null
   team_roles?: { name: string; permissions: string[]; description?: string }[] | null
@@ -108,9 +108,40 @@ export interface ResourceUrl {
   url: string
 }
 
+export interface BusinessHours {
+  name: string
+  timezone: string
+  respectHolidays?: boolean
+  days: {
+    monday: { enabled: boolean; start?: string; end?: string }
+    tuesday: { enabled: boolean; start?: string; end?: string }
+    wednesday: { enabled: boolean; start?: string; end?: string }
+    thursday: { enabled: boolean; start?: string; end?: string }
+    friday: { enabled: boolean; start?: string; end?: string }
+    saturday: { enabled: boolean; start?: string; end?: string }
+    sunday: { enabled: boolean; start?: string; end?: string }
+  }
+}
+
 export interface CompetitorUrl {
   url: string
   name?: string
+}
+
+export interface Product {
+  name: string
+  description?: string
+  cost?: number
+  lowest_sale_price?: number
+  target_sale_price?: number
+}
+
+export interface Service {
+  name: string
+  description?: string
+  cost?: number
+  lowest_sale_price?: number
+  target_sale_price?: number
 }
 
 // Interfaz del contexto
@@ -456,12 +487,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
         // Si el sitio guardado existe en los datos actuales, lo usamos
         if (savedSite) {
           console.log("Using saved site as current:", savedSite.name)
-          setCurrentSite(savedSite)
+          await handleSetCurrentSite(savedSite)
         } 
         // Si no hay sitio guardado o no se encuentra, usamos el primero solo si no hay sitio actual
         else if (!currentSite) {
           console.log("No saved site found and no current site, using first site:", sitesWithData[0].name)
-          setCurrentSite(sitesWithData[0])
+          await handleSetCurrentSite(sitesWithData[0])
           setLocalStorage("currentSiteId", sitesWithData[0].id)
         }
       }
@@ -607,6 +638,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
               console.error("Error parsing goals:", goalsError);
             }
             
+            // Parse business_hours specifically
+            const parsedBusinessHours = parseJsonField(settingsData.business_hours, []);
+            
             site = {
               ...site,
               settings: {
@@ -624,15 +658,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   threats: ''
                 }),
                 locations: parseJsonField(settingsData.locations, []),
+                business_hours: parsedBusinessHours,
                 marketing_budget: parseJsonField(settingsData.marketing_budget, {
                   total: 0,
                   available: 0
                 }),
                 marketing_channels: parseJsonField(settingsData.marketing_channels, []),
                 social_media: parseJsonField(settingsData.social_media, []),
-                tracking_code: settingsData.tracking_code,
-                analytics_provider: settingsData.analytics_provider,
-                analytics_id: settingsData.analytics_id,
                 whatsapp_token: settingsData.whatsapp_token,
                 team_members: parseJsonField(settingsData.team_members, []),
                 team_roles: parseJsonField(settingsData.team_roles, []),
@@ -658,6 +690,11 @@ export function SiteProvider({ children }: SiteProviderProps) {
           } else {
             console.log(`No settings found for site ${site.id}, using defaults`);
           }
+        } else {
+          console.log("Skipping settings load because:", {
+            hasSettings: !!site.settings,
+            hasSupabase: !!supabaseRef.current
+          });
         }
       } catch (err) {
         console.error(`Error handling settings for site ${site.id}:`, err);
@@ -895,16 +932,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
         formattedSettings.social_media = Array.isArray(settings.social_media) ? settings.social_media : [];
       }
       
-      if (settings.tracking_code !== undefined) {
-        formattedSettings.tracking_code = typeof settings.tracking_code === 'string' ? settings.tracking_code : null;
-      }
-      
-      if (settings.analytics_provider !== undefined) {
-        formattedSettings.analytics_provider = typeof settings.analytics_provider === 'string' ? settings.analytics_provider : null;
-      }
-      
-      if (settings.analytics_id !== undefined) {
-        formattedSettings.analytics_id = typeof settings.analytics_id === 'string' ? settings.analytics_id : null;
+      if (settings.whatsapp_token !== undefined) {
+        formattedSettings.whatsapp_token = typeof settings.whatsapp_token === 'string' ? settings.whatsapp_token : null;
       }
       
       if (settings.team_members !== undefined) {

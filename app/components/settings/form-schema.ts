@@ -68,13 +68,68 @@ export const siteFormSchema = z.object({
   focusMode: z.number().min(0).max(100),
   about: z.string().optional(),
   company_size: z.string().optional(),
-  products: z.array(z.string()).optional().default([]),
-  services: z.array(z.string()).optional().default([]),
+  products: z.array(z.object({
+    name: z.string().min(1, "Product name is required"),
+    description: z.string().optional(),
+    cost: z.number().min(0, "Cost must be positive").optional(),
+    lowest_sale_price: z.number().min(0, "Lowest sale price must be positive").optional(),
+    target_sale_price: z.number().min(0, "Target sale price must be positive").optional()
+  })).optional().default([]),
+  services: z.array(z.object({
+    name: z.string().min(1, "Service name is required"),
+    description: z.string().optional(),
+    cost: z.number().min(0, "Cost must be positive").optional(),
+    lowest_sale_price: z.number().min(0, "Lowest sale price must be positive").optional(),
+    target_sale_price: z.number().min(0, "Target sale price must be positive").optional()
+  })).optional().default([]),
   industry: z.string().optional(),
   locations: z.array(z.object({
     name: z.string().min(1, "Name is required"),
     address: z.string().optional(),
     country: z.string().optional()
+  })).optional().default([]),
+  // Add business hours field
+  business_hours: z.array(z.object({
+    name: z.string().min(1, "Name is required"),
+    timezone: z.string().min(1, "Timezone is required"),
+    respectHolidays: z.boolean().optional().default(true),
+    days: z.object({
+      monday: z.object({
+        enabled: z.boolean(),
+        start: z.string().optional(),
+        end: z.string().optional()
+      }),
+      tuesday: z.object({
+        enabled: z.boolean(),
+        start: z.string().optional(),
+        end: z.string().optional()
+      }),
+      wednesday: z.object({
+        enabled: z.boolean(),
+        start: z.string().optional(),
+        end: z.string().optional()
+      }),
+      thursday: z.object({
+        enabled: z.boolean(),
+        start: z.string().optional(),
+        end: z.string().optional()
+      }),
+      friday: z.object({
+        enabled: z.boolean(),
+        start: z.string().optional(),
+        end: z.string().optional()
+      }),
+      saturday: z.object({
+        enabled: z.boolean(),
+        start: z.string().optional(),
+        end: z.string().optional()
+      }),
+      sunday: z.object({
+        enabled: z.boolean(),
+        start: z.string().optional(),
+        end: z.string().optional()
+      })
+    })
   })).optional().default([]),
   // Add goals fields
   goals: z.object({
@@ -161,7 +216,10 @@ export const siteFormSchema = z.object({
     allow_anonymous_messages: z.boolean().optional().default(false),
     chat_position: z.enum(["bottom-right", "bottom-left", "top-right", "top-left"]).optional().default("bottom-right"),
     welcome_message: z.string().optional().default("Welcome to our website! How can we assist you today?"),
-    chat_title: z.string().optional().default("Chat with us")
+    chat_title: z.string().optional().default("Chat with us"),
+    analytics_provider: z.string().optional(),
+    analytics_id: z.string().optional(),
+    tracking_code: z.string().optional()
   }).optional().default({
     track_visitors: false,
     track_actions: false,
@@ -171,12 +229,11 @@ export const siteFormSchema = z.object({
     allow_anonymous_messages: false,
     chat_position: "bottom-right",
     welcome_message: "Welcome to our website! How can we assist you today?",
-    chat_title: "Chat with us"
+    chat_title: "Chat with us",
+    analytics_provider: "",
+    analytics_id: "",
+    tracking_code: ""
   }),
-  // New fields for analytics
-  analytics_provider: z.string().optional(),
-  analytics_id: z.string().optional(),
-  tracking_code: z.string().optional(),
   // WhatsApp Business API token
   whatsapp_token: z.string().optional(),
   // Billing fields

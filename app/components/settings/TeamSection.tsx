@@ -453,11 +453,11 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                     {member.status && (
                       <>
                         {member.status === 'active' ? (
-                          <Badge className="bg-green-600 hover:bg-green-700 text-xs">
+                          <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200 text-xs">
                             <CheckCircle2 className="h-3 w-3 mr-1" /> Active
                           </Badge>
                         ) : member.status === 'pending' ? (
-                          <Badge variant="outline" className="border-amber-400 text-amber-500 text-xs">
+                          <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200 text-xs">
                             <Clock className="h-3 w-3 mr-1" /> Pending
                           </Badge>
                         ) : null}
