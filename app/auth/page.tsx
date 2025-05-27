@@ -71,7 +71,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left side - Branding and Info */}
-      <div className="hidden lg:flex lg:flex-col lg:justify-center lg:px-12 xl:px-16 relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="hidden lg:flex lg:flex-col lg:justify-center lg:px-12 xl:px-16 relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 lg:overflow-y-auto lg:min-h-screen">
         {/* Animated background elements */}
         <div className="absolute inset-0">
           {/* Base gradient overlay */}
@@ -110,95 +110,100 @@ export default function AuthPage() {
           <div className="absolute bottom-2/3 left-1/3 w-24 h-24 bg-violet-400/25 rounded-full blur-sm animate-micro-float-2" style={{ animationDelay: '13s' }}></div>
         </div>
         
-        <div className="relative z-10 max-w-md">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl">
+        <div className="relative z-10 max-w-md py-8 lg:py-12 xl:py-16 flex flex-col gap-8 lg:gap-10 xl:gap-12">
+          {/* Logo and Brand */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 lg:p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl">
               <Image 
                 src="/images/logo.png"
                 alt="Market Fit Logo"
                 width={28}
                 height={28}
-                className="h-7 w-7 object-contain"
+                className="h-6 w-6 lg:h-7 lg:w-7 object-contain"
                 priority
               />
             </div>
-            <h1 className="text-2xl font-bold text-white">Market Fit</h1>
+            <h1 className="text-xl lg:text-2xl font-bold text-white">Market Fit</h1>
           </div>
           
-          <h2 className="text-4xl font-bold mb-6 leading-tight">
-            <span className="text-white/80">Your </span>
-            <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">AI Powered Sales Team</span>
-          </h2>
+          {/* Main Content Section */}
+          <div className="flex flex-col gap-6 lg:gap-8">
+            <h2 className="text-3xl lg:text-4xl font-bold leading-tight">
+              <span className="text-white/80">Your </span>
+              <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">AI Powered Sales Team</span>
+            </h2>
+            
+            <p className="text-lg lg:text-xl text-white/80 leading-relaxed">
+              Experience seamless collaboration between AI agents and your team, with performance-based pricing that unleashes intelligent automation across every aspect of your sales process.
+            </p>
+          </div>
           
-          <p className="text-xl text-white/80 mb-10 leading-relaxed">
-            Experience seamless collaboration between AI agents and your team, with performance-based pricing that unleashes intelligent automation across every aspect of your sales process.
-          </p>
-          
-          <div className="space-y-6">
-            <div className="flex items-start gap-4 group">
+          {/* Features Section */}
+          <div className="space-y-4 lg:space-y-6">
+            <div className="flex items-start gap-3 lg:gap-4 group">
               <div 
                 className="flex-shrink-0 rounded-xl bg-violet-500/20 backdrop-blur-sm border-2 border-violet-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-violet-500/30 transition-all duration-300 shadow-lg"
                 style={{ 
-                  width: '40px', 
-                  height: '40px',
-                  minWidth: '40px',
-                  minHeight: '40px'
+                  width: '36px', 
+                  height: '36px',
+                  minWidth: '36px',
+                  minHeight: '36px'
                 }}
               >
-                <FileText className="text-violet-300" size={18} />
+                <FileText className="text-violet-300" size={16} />
               </div>
               <div>
-                <h3 className="text-white text-lg font-semibold mb-1">Know</h3>
+                <h3 className="text-white text-base lg:text-lg font-semibold mb-1">Know</h3>
                 <p className="text-white/80 text-sm leading-relaxed">Pre-trained AI agents with deep industry knowledge and proven sales strategies, ready to deploy immediately</p>
               </div>
             </div>
-            <div className="flex items-start gap-4 group">
+            <div className="flex items-start gap-3 lg:gap-4 group">
               <div 
                 className="flex-shrink-0 rounded-xl bg-indigo-500/20 backdrop-blur-sm border-2 border-indigo-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500/30 transition-all duration-300 shadow-lg"
                 style={{ 
-                  width: '40px', 
-                  height: '40px',
-                  minWidth: '40px',
-                  minHeight: '40px'
+                  width: '36px', 
+                  height: '36px',
+                  minWidth: '36px',
+                  minHeight: '36px'
                 }}
               >
-                <Target className="text-indigo-300" size={18} />
+                <Target className="text-indigo-300" size={16} />
               </div>
               <div>
-                <h3 className="text-white text-lg font-semibold mb-1">Think</h3>
+                <h3 className="text-white text-base lg:text-lg font-semibold mb-1">Think</h3>
                 <p className="text-white/80 text-sm leading-relaxed">Strategic analysis that transforms complex market data into actionable revenue opportunities within minutes</p>
               </div>
             </div>
-            <div className="flex items-start gap-4 group">
+            <div className="flex items-start gap-3 lg:gap-4 group">
               <div 
                 className="flex-shrink-0 rounded-xl bg-emerald-500/20 backdrop-blur-sm border-2 border-emerald-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/30 transition-all duration-300 shadow-lg"
                 style={{ 
-                  width: '40px', 
-                  height: '40px',
-                  minWidth: '40px',
-                  minHeight: '40px'
+                  width: '36px', 
+                  height: '36px',
+                  minWidth: '36px',
+                  minHeight: '36px'
                 }}
               >
-                <Send className="text-emerald-300" size={18} />
+                <Send className="text-emerald-300" size={16} />
               </div>
               <div>
-                <h3 className="text-white text-lg font-semibold mb-1">Do</h3>
+                <h3 className="text-white text-base lg:text-lg font-semibold mb-1">Do</h3>
                 <p className="text-white/80 text-sm leading-relaxed">Execute personalized multi-channel campaigns across email, social media, and direct messaging automatically</p>
               </div>
             </div>
           </div>
 
           {/* Stats showcase */}
-          <div className="grid grid-cols-2 gap-6 mt-12 pt-8 border-t border-white/10">
+          <div className="grid grid-cols-2 gap-4 lg:gap-6 pt-6 lg:pt-8 border-t border-white/10">
             <div className="text-center group">
-              <div className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent mb-1 group-hover:from-violet-300 group-hover:to-purple-300 transition-all duration-300">
-                <span className="text-sm text-white/60 font-normal">up to </span>300%
+              <div className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent mb-1 group-hover:from-violet-300 group-hover:to-purple-300 transition-all duration-300">
+                <span className="text-xs lg:text-sm text-white/60 font-normal">up to </span>300%
               </div>
-              <div className="text-sm text-white/60">Revenue Growth</div>
+              <div className="text-xs lg:text-sm text-white/60">Revenue Growth</div>
             </div>
             <div className="text-center group">
-              <div className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-1 group-hover:from-emerald-300 group-hover:to-teal-300 transition-all duration-300">24/7</div>
-              <div className="text-sm text-white/60">AI Operations</div>
+              <div className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-1 group-hover:from-emerald-300 group-hover:to-teal-300 transition-all duration-300">24/7</div>
+              <div className="text-xs lg:text-sm text-white/60">AI Operations</div>
             </div>
           </div>
         </div>
