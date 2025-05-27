@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
-import { Eye, PlayCircle, PenSquare, StopCircle, XCircle, Search, Beaker, ExternalLink, X, CalendarIcon, FileText, Tag, Users, User, HelpCircle, Link } from "@/app/components/ui/icons"
+import { Eye, PlayCircle, PenSquare, StopCircle, XCircle, Search, FlaskConical, ExternalLink, X, CalendarIcon, FileText, Tag, Users, User, HelpCircle, Link } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { startExperiment, stopExperiment } from "./actions"
@@ -96,7 +96,7 @@ function ExperimentRowSkeleton() {
 const ExperimentEmptyState = ({ status }: { status: "all" | "active" | "completed" | "draft" }) => {
   const emptyStateProps = {
     all: {
-      icon: <Beaker className="w-24 h-24 text-primary/40" />,
+      icon: <FlaskConical className="w-24 h-24 text-primary/40" />,
       title: "No experiments yet",
       description: "Start creating experiments to test your hypotheses and improve your product.",
     },
@@ -761,7 +761,7 @@ export default function ExperimentsPage() {
           <div className="p-8 space-y-4">
             <div className="px-8">
               <div className="flex flex-col items-center justify-center p-12 text-center">
-                <Beaker className="w-24 h-24 text-primary/40 mb-4" />
+                <FlaskConical className="w-24 h-24 text-primary/40 mb-4" />
                 <h2 className="text-2xl font-semibold mb-2">No site selected</h2>
                 <p className="text-muted-foreground max-w-md">
                   Please select a site from the dropdown in the header to view experiments for that site.
@@ -920,7 +920,7 @@ export default function ExperimentsPage() {
               <SheetHeader className="pb-4">
                 <div className="flex gap-3 items-center">
                   <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
-                    <Beaker className="h-5 w-5 text-primary" />
+                    <FlaskConical className="h-5 w-5 text-primary" />
                   </div>
                   <SheetTitle className="text-2xl">{selectedExperiment.name}</SheetTitle>
                 </div>

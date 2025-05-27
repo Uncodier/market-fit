@@ -265,14 +265,14 @@ export function CampaignSummary({
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="p-4 text-center">
-                        <div className="py-6">
-                          <User className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                          <h3 className="text-sm font-medium mb-1">No leads yet</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Add your first lead to start tracking potential customers for this campaign.
-                          </p>
-                        </div>
+                      <td colSpan={6} className="p-0">
+                        <EmptyCard
+                          icon={<User className="h-8 w-8 text-muted-foreground" />}
+                          title="No leads yet"
+                          description="Add your first lead to start tracking potential customers for this campaign."
+                          className="border-none shadow-none py-10"
+                          contentClassName="flex flex-col items-center justify-center"
+                        />
                       </td>
                     </tr>
                   )}
@@ -346,14 +346,14 @@ export function CampaignSummary({
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="p-4 text-center">
-                        <div className="py-6">
-                          <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                          <h3 className="text-sm font-medium mb-1">No clients yet</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Update leads to "Converted" status when they become clients.
-                          </p>
-                        </div>
+                      <td colSpan={6} className="p-0">
+                        <EmptyCard
+                          icon={<Users className="h-8 w-8 text-muted-foreground" />}
+                          title="No clients yet"
+                          description="Update leads to 'Converted' status when they become clients."
+                          className="border-none shadow-none py-10"
+                          contentClassName="flex flex-col items-center justify-center"
+                        />
                       </td>
                     </tr>
                   )}

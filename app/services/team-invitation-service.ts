@@ -140,4 +140,14 @@ export async function sendTeamInvitation(params: TeamInvitationParams): Promise<
       error: error instanceof Error ? error.message : 'Unknown error occurred'
     };
   }
+}
+
+/**
+ * Resend team member invitation
+ * @param params - Invitation parameters
+ * @returns Promise with invitation result
+ */
+export async function resendTeamInvitation(params: TeamInvitationParams): Promise<TeamInvitationResponse> {
+  // Reuse the same logic as sendTeamInvitation
+  return sendTeamInvitation(params);
 } 

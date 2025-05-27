@@ -8,7 +8,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/
 import { Input } from "../ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
-import { PlusCircle, Trash2, User, Mail, FileText, CheckCircle2, Clock, Save } from "../ui/icons"
+import { PlusCircle, Trash2, User, Mail, FileText, CheckCircle2, Clock, Save, RotateCcw, Loader, ChevronDown, ChevronUp } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Badge } from "../ui/badge"
 import { siteMembersService, type SiteMember } from "@/app/services/site-members-service"
@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../ui/alert-dialog"
+import { resendTeamInvitation } from "@/app/services/team-invitation-service"
 
 interface TeamSectionProps {
   active: boolean
@@ -89,6 +90,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isResending, setIsResending] = useState<string | null>(null) // Track which member is being resent
+  const [expandedMembers, setExpandedMembers] = useState<Set<number>>(new Set()) // Track which members are expanded
   const debouncedUpdateRef = useRef<any>(null)
   
   // Use our validation hook
@@ -164,6 +167,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
   // Add team member
   const addTeamMember = () => {
     if (isLoading) return
+    const newIndex = teamList.length
     const newTeamList = [...teamList, { 
       email: "", 
       role: "view" as TeamRole, 
@@ -173,6 +177,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     }]
     setTeamList(newTeamList)
     setHasUnsavedChanges(true)
+    // Automatically expand the new member
+    setExpandedMembers(prev => new Set([...Array.from(prev), newIndex]))
     debouncedUpdateRef.current(newTeamList)
   }
 
@@ -295,15 +301,111 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     }
   };
 
+  // Resend invitation function
+  const handleResendInvitation = async (member: FormTeamMember, index: number) => {
+    if (!siteId || !member.email || !member.id) {
+      toast.error("Cannot resend invitation: missing required information");
+      return;
+    }
+
+    try {
+      setIsResending(member.id);
+      
+      // Get current site info for the invitation
+      const currentSite = form.getValues(); // Get site info from form context
+      const siteName = currentSite.name || "Your Site";
+      
+      // Map form role to invitation role (same logic as in site-members-service.ts addMember)
+      let invitationRole: string = 'view';
+      switch (member.role) {
+        case 'admin': invitationRole = 'admin'; break;
+        case 'create': 
+        case 'delete': 
+          invitationRole = 'create'; break;
+        case 'view': 
+        default: 
+          invitationRole = 'view'; break;
+      }
+      
+      const result = await resendTeamInvitation({
+        email: member.email,
+        role: invitationRole,
+        name: member.name,
+        position: member.position,
+        siteId: siteId,
+        siteName: siteName
+      });
+
+      if (result.success) {
+        toast.success(`Invitation resent to ${member.name || member.email}`);
+      } else {
+        toast.error(result.error || "Failed to resend invitation");
+      }
+    } catch (error) {
+      console.error("Error resending invitation:", error);
+      toast.error("Failed to resend invitation");
+    } finally {
+      setIsResending(null);
+    }
+  };
+
+  // Get pending members for footer actions
+  const pendingMembers = teamList.filter(member => member.status === 'pending' && member.id);
+
+  // Toggle member expansion
+  const toggleMemberExpansion = (index: number) => {
+    const newExpanded = new Set(expandedMembers)
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index)
+    } else {
+      newExpanded.add(index)
+    }
+    setExpandedMembers(newExpanded)
+  }
+
+  // Helper function to expand all members
+  const expandAllMembers = () => {
+    setExpandedMembers(new Set(teamList.map((_, index) => index)))
+  }
+
+  // Helper function to collapse all members
+  const collapseAllMembers = () => {
+    setExpandedMembers(new Set())
+  }
+
   if (!active) return null
 
   return (
     <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold">Team Members</CardTitle>
-        <p className="text-sm text-muted-foreground mt-1">
-          Invite team members to collaborate on your site
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-xl font-semibold">Team Members</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Invite team members to collaborate on your site
+            </p>
+          </div>
+          {teamList.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={expandAllMembers}
+                className="text-xs"
+              >
+                Expand All
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={collapseAllMembers}
+                className="text-xs"
+              >
+                Collapse All
+              </Button>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6 px-8 pb-8">
         {isLoading ? (
@@ -313,192 +415,232 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
             ))}
           </div>
         ) : (
-          teamList.map((member, index) => (
-            <div key={index} className="space-y-4 p-4 border border-border rounded-lg relative">
-              {member.status && (
-                <div className="absolute top-3 right-3">
-                  {member.status === 'active' ? (
-                    <Badge className="bg-green-600 hover:bg-green-700">
-                      <CheckCircle2 className="h-3 w-3 mr-1" /> Active
-                    </Badge>
-                  ) : member.status === 'pending' ? (
-                    <Badge variant="outline" className="border-amber-400 text-amber-500">
-                      <Clock className="h-3 w-3 mr-1" /> Pending
-                    </Badge>
-                  ) : null}
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name={`team_members.${index}.name`}
-                  defaultValue={member.name || ""}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            className="pl-12 h-12 text-base"
-                            placeholder="Full name"
-                            {...field}
-                            value={teamList[index].name || ""}
-                            onChange={(e) => {
-                              // Update only the field itself without validation
-                              field.onChange(e);
-                              // Update local state and debounce form update
-                              updateLocalTeamMember(index, 'name', e.target.value);
-                            }}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`team_members.${index}.email`}
-                  defaultValue={member.email}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            className="pl-12 h-12 text-base"
-                            placeholder="Email address"
-                            type="email"
-                            {...field}
-                            disabled={!!member.id} // If it's an existing site member, don't allow email change
-                            value={teamList[index].email}
-                            onChange={(e) => {
-                              // Update only the field itself without validation
-                              field.onChange(e);
-                              // Update local state and debounce form update
-                              updateLocalTeamMember(index, 'email', e.target.value);
-                            }}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name={`team_members.${index}.position`}
-                  defaultValue={member.position || ""}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Position</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            className="pl-12 h-12 text-base"
-                            placeholder="Job title"
-                            {...field}
-                            value={teamList[index].position || ""}
-                            onChange={(e) => {
-                              // Update only the field itself without validation
-                              field.onChange(e);
-                              // Update local state and debounce form update
-                              updateLocalTeamMember(index, 'position', e.target.value);
-                            }}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex items-end space-x-4">
-                  <FormField
-                    control={form.control}
-                    name={`team_members.${index}.role`}
-                    defaultValue={member.role}
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel className="text-sm font-medium">Role</FormLabel>
-                        <Select
-                          value={teamList[index].role}
-                          onValueChange={(value) => {
-                            // Use validation hook
-                            if (validation.canChangeRole(member)) {
-                              // Update the field directly
-                              field.onChange(value);
-                              // Update local state and debounce form update
-                              updateLocalTeamMember(index, 'role', value as TeamRole);
-                            } else {
-                              toast.error(validation.getRoleChangeMessage(member));
-                            }
-                          }}
-                          disabled={!validation.canChangeRole(member)}
-                        >
-                          <FormControl>
-                            <SelectTrigger className={`h-12 ${!validation.canChangeRole(member) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {TEAM_ROLES.map((role) => (
-                              <SelectItem key={role.value} value={role.value}>
-                                {role.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {!validation.canChangeRole(member) && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            ⚠️ {validation.getRoleChangeMessage(member)}
-                          </p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
+          teamList.map((member, index) => {
+            const isExpanded = expandedMembers.has(index)
+            return (
+              <div key={index} className="border border-border rounded-lg overflow-hidden">
+                {/* Compact Header Row */}
+                <div 
+                  className="flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/30 cursor-pointer transition-colors"
+                  onClick={() => toggleMemberExpansion(index)}
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">
+                        {member.name || member.email || "New Member"}
+                      </span>
+                    </div>
+                    {member.email && member.email !== member.name && (
+                      <span className="text-sm text-muted-foreground">
+                        {member.email}
+                      </span>
                     )}
-                  />
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        type="button"
-                        className="h-12 w-12 mt-2"
-                        disabled={isLoading || !validation.canDelete(member)}
-                        title={validation.getDeleteTooltip(member)}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {validation.getDeleteMessage(member)}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        {validation.canDelete(member) && (
-                          <AlertDialogAction
-                            onClick={() => removeTeamMember(index)}
-                            className="bg-red-500 hover:bg-red-600 text-white"
-                          >
-                            Remove Member
-                          </AlertDialogAction>
-                        )}
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    {member.position && (
+                      <span className="text-sm text-muted-foreground">
+                        • {member.position}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {/* Role Badge */}
+                    <Badge variant="secondary" className="text-xs">
+                      {TEAM_ROLES.find(role => role.value === member.role)?.label.split(' ')[0] || member.role}
+                    </Badge>
+                    
+                    {/* Status Badge */}
+                    {member.status && (
+                      <>
+                        {member.status === 'active' ? (
+                          <Badge className="bg-green-600 hover:bg-green-700 text-xs">
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Active
+                          </Badge>
+                        ) : member.status === 'pending' ? (
+                          <Badge variant="outline" className="border-amber-400 text-amber-500 text-xs">
+                            <Clock className="h-3 w-3 mr-1" /> Pending
+                          </Badge>
+                        ) : null}
+                      </>
+                    )}
+                    
+                    {/* Expand/Collapse Icon */}
+                    {isExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
+
+                {/* Expanded Content */}
+                {isExpanded && (
+                  <div className="p-4 space-y-4 border-t border-border">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`team_members.${index}.name`}
+                        defaultValue={member.name || ""}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Name</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  className="pl-12 h-12 text-base"
+                                  placeholder="Full name"
+                                  {...field}
+                                  value={teamList[index].name || ""}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    updateLocalTeamMember(index, 'name', e.target.value);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`team_members.${index}.email`}
+                        defaultValue={member.email}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Email</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  className="pl-12 h-12 text-base"
+                                  placeholder="Email address"
+                                  type="email"
+                                  {...field}
+                                  disabled={!!member.id}
+                                  value={teamList[index].email}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    updateLocalTeamMember(index, 'email', e.target.value);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`team_members.${index}.position`}
+                        defaultValue={member.position || ""}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Position</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  className="pl-12 h-12 text-base"
+                                  placeholder="Job title"
+                                  {...field}
+                                  value={teamList[index].position || ""}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    updateLocalTeamMember(index, 'position', e.target.value);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex items-end space-x-4">
+                        <FormField
+                          control={form.control}
+                          name={`team_members.${index}.role`}
+                          defaultValue={member.role}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel className="text-sm font-medium">Role</FormLabel>
+                              <Select
+                                value={teamList[index].role}
+                                onValueChange={(value) => {
+                                  if (validation.canChangeRole(member)) {
+                                    field.onChange(value);
+                                    updateLocalTeamMember(index, 'role', value as TeamRole);
+                                  } else {
+                                    toast.error(validation.getRoleChangeMessage(member));
+                                  }
+                                }}
+                                disabled={!validation.canChangeRole(member)}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className={`h-12 ${!validation.canChangeRole(member) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                    <SelectValue placeholder="Select role" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {TEAM_ROLES.map((role) => (
+                                    <SelectItem key={role.value} value={role.value}>
+                                      {role.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {!validation.canChangeRole(member) && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  ⚠️ {validation.getRoleChangeMessage(member)}
+                                </p>
+                              )}
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              type="button"
+                              className="h-12 w-12 mt-2"
+                              disabled={isLoading || !validation.canDelete(member)}
+                              title={validation.getDeleteTooltip(member)}
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {validation.getDeleteMessage(member)}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              {validation.canDelete(member) && (
+                                <AlertDialogAction
+                                  onClick={() => removeTeamMember(index)}
+                                  className="bg-red-500 hover:bg-red-600 text-white"
+                                >
+                                  Remove Member
+                                </AlertDialogAction>
+                              )}
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            )
+          })
         )}
         <Button
           variant="outline"
@@ -516,16 +658,40 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         </div>
       </CardContent>
       
-      {hasUnsavedChanges && (
+      {(hasUnsavedChanges || pendingMembers.length > 0) && (
         <ActionFooter>
-          <Button
-            type="button"
-            onClick={handleSaveTeamMembers}
-            disabled={isSaving || isLoading}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {isSaving ? "Saving..." : "Save Team Members"}
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {hasUnsavedChanges && (
+              <Button
+                type="button"
+                onClick={handleSaveTeamMembers}
+                disabled={isSaving || isLoading}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {isSaving ? "Saving..." : "Save Team Members"}
+              </Button>
+            )}
+            {pendingMembers.map((member, originalIndex) => {
+              const memberIndex = teamList.findIndex(m => m.id === member.id);
+              return (
+                <Button
+                  key={member.id}
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleResendInvitation(member, memberIndex)}
+                  disabled={isLoading || isResending === member.id}
+                  className="text-sm"
+                >
+                  {isResending === member.id ? (
+                    <Loader className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-2" />
+                  )}
+                  Resend to {member.name || member.email}
+                </Button>
+              );
+            })}
+          </div>
         </ActionFooter>
       )}
     </Card>

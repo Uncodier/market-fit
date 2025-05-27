@@ -65,10 +65,12 @@ const getStageDisplayName = (stage?: string) => {
 // Extract numeric part from serial_id
 const getSerialNumber = (serialId: string) => {
   if (!serialId) return ""
-  // Extract number after the dash and remove leading zeros
-  const match = serialId.match(/-(\d+)$/)
+  // Extract prefix and number parts
+  const match = serialId.match(/^([A-Z]+)-(\d+)$/)
   if (match) {
-    return parseInt(match[1], 10).toString()
+    const prefix = match[1]
+    const number = parseInt(match[2], 10).toString()
+    return `${prefix}-${number}`
   }
   return serialId
 }

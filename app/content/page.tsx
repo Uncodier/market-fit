@@ -1724,6 +1724,7 @@ export default function ContentPage() {
 
   const emptyState = (
     <EmptyState
+      icon={<FileText className="h-12 w-12 text-primary/60" />}
       title="No content yet"
       description="Create and manage your content for different segments and channels."
       features={[
