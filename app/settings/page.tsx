@@ -699,19 +699,33 @@ export default function SettingsPage() {
             );
             // Clear the password from the form data to avoid storing in plaintext
             data.channels.email.password = "";
-            // Ensure we keep email settings structure in settings
+            // Ensure we keep email settings structure in settings with ALL fields
             if (!settings.channels) settings.channels = { email: {} as any };
-            if (!settings.channels.email) settings.channels.email = {} as any;
-            // If password was stored, we should indicate a password is present
-            settings.channels.email.password = "PASSWORD_PRESENT";
+            // Copy all email configuration fields from the form data
+            settings.channels.email = {
+              enabled: data.channels.email.enabled || false,
+              email: data.channels.email.email || "",
+              password: "PASSWORD_PRESENT", // Indicate password is stored securely
+              incomingServer: data.channels.email.incomingServer || "",
+              incomingPort: data.channels.email.incomingPort || "",
+              outgoingServer: data.channels.email.outgoingServer || "",
+              outgoingPort: data.channels.email.outgoingPort || ""
+            };
           } catch (tokenError) {
             console.error("Error storing email credentials:", tokenError);
           }
         } else if (data.channels?.email?.password === 'STORED_SECURELY' && data.channels.email.enabled) {
-          // If using the stored password, make sure we keep the indicator in settings
+          // If using the stored password, make sure we keep ALL email configuration fields
           if (!settings.channels) settings.channels = { email: {} as any };
-          if (!settings.channels.email) settings.channels.email = {} as any;
-          settings.channels.email.password = "PASSWORD_PRESENT";
+          settings.channels.email = {
+            enabled: data.channels.email.enabled || false,
+            email: data.channels.email.email || "",
+            password: "PASSWORD_PRESENT", // Keep the indicator
+            incomingServer: data.channels.email.incomingServer || "",
+            incomingPort: data.channels.email.incomingPort || "",
+            outgoingServer: data.channels.email.outgoingServer || "",
+            outgoingPort: data.channels.email.outgoingPort || ""
+          };
           // Clear the placeholder from data
           data.channels.email.password = "";
         }
