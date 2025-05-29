@@ -38,56 +38,88 @@ const EMAIL_PROVIDERS = [
     incomingServer: "imap.gmail.com",
     incomingPort: "993",
     outgoingServer: "smtp.gmail.com",
-    outgoingPort: "587"
+    outgoingPort: "587",
+    passwordHint: "Use an App Password instead of your regular password. Go to Google Account Settings > Security > 2-Step Verification > App passwords to generate one.",
+    advancedHint: "Gmail requires 'Less secure app access' or App Passwords for IMAP/SMTP access.",
+    helpUrl: "https://myaccount.google.com/apppasswords",
+    helpText: "Generate App Password"
   },
   {
     name: "Outlook/Hotmail",
     incomingServer: "outlook.office365.com",
     incomingPort: "993",
     outgoingServer: "smtp.office365.com",
-    outgoingPort: "587"
+    outgoingPort: "587",
+    passwordHint: "Use your Microsoft account password. If you have 2FA enabled, you may need to create an app password.",
+    advancedHint: "Ensure IMAP is enabled in your Outlook settings.",
+    helpUrl: "https://account.microsoft.com/security/",
+    helpText: "Security Settings"
   },
   {
     name: "Yahoo",
     incomingServer: "imap.mail.yahoo.com",
     incomingPort: "993",
     outgoingServer: "smtp.mail.yahoo.com",
-    outgoingPort: "587"
+    outgoingPort: "587",
+    passwordHint: "Generate an app password in Yahoo Account Security settings. Do not use your regular Yahoo password.",
+    advancedHint: "Yahoo requires app-specific passwords for third-party email clients.",
+    helpUrl: "https://login.yahoo.com/account/security",
+    helpText: "Generate App Password"
   },
   {
     name: "Zoho",
     incomingServer: "imap.zoho.com",
     incomingPort: "993",
     outgoingServer: "smtp.zoho.com",
-    outgoingPort: "587"
+    outgoingPort: "587",
+    passwordHint: "Use your Zoho password. For enhanced security, consider using application-specific passwords.",
+    advancedHint: "Enable IMAP access in Zoho Mail settings first.",
+    helpUrl: "https://accounts.zoho.com/home#security/",
+    helpText: "Security Settings"
   },
   {
     name: "AOL",
     incomingServer: "imap.aol.com",
     incomingPort: "993",
     outgoingServer: "smtp.aol.com",
-    outgoingPort: "587"
+    outgoingPort: "587",
+    passwordHint: "Generate an app password from AOL Account Security page. Regular passwords won't work.",
+    advancedHint: "AOL requires app passwords for third-party access.",
+    helpUrl: "https://login.aol.com/account/security",
+    helpText: "Generate App Password"
   },
   {
     name: "iCloud",
     incomingServer: "imap.mail.me.com",
     incomingPort: "993",
     outgoingServer: "smtp.mail.me.com",
-    outgoingPort: "587"
+    outgoingPort: "587",
+    passwordHint: "Create an app-specific password at appleid.apple.com. Your iCloud password won't work directly.",
+    advancedHint: "Apple requires app-specific passwords when 2FA is enabled.",
+    helpUrl: "https://appleid.apple.com/account/manage",
+    helpText: "Generate App Password"
   },
   {
     name: "ProtonMail",
     incomingServer: "imap.protonmail.ch",
     incomingPort: "993",
     outgoingServer: "smtp.protonmail.ch",
-    outgoingPort: "587"
+    outgoingPort: "587",
+    passwordHint: "ProtonMail requires the Bridge application for IMAP/SMTP access. Install ProtonMail Bridge first.",
+    advancedHint: "Download ProtonMail Bridge from protonmail.com/bridge to enable IMAP/SMTP.",
+    helpUrl: "https://protonmail.com/bridge",
+    helpText: "Download Bridge"
   },
   {
     name: "Custom",
     incomingServer: "",
     incomingPort: "",
     outgoingServer: "",
-    outgoingPort: ""
+    outgoingPort: "",
+    passwordHint: "Use the password provided by your email service provider.",
+    advancedHint: "Contact your email administrator for the correct server settings.",
+    helpUrl: "",
+    helpText: ""
   }
 ];
 
@@ -955,33 +987,57 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                 <FormField
                   control={form.control}
                   name="channels.email.password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="••••••••••••"
-                            {...field}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? "Hide" : "Show"}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        Your password is encrypted and stored securely
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    // Obtener el hint del proveedor actual
+                    const currentProvider = EMAIL_PROVIDERS.find(p => p.name === selectedProvider);
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="••••••••••••"
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? "Hide" : "Show"}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Your password is encrypted and stored securely
+                        </FormDescription>
+                        {currentProvider && (!field.value || field.value === 'STORED_SECURELY') && (
+                          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-900">
+                            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                              <strong>Important:</strong> {currentProvider.passwordHint}
+                            </p>
+                            {currentProvider.helpUrl && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => window.open(currentProvider.helpUrl, '_blank')}
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                {currentProvider.helpText}
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               ) : (
                 <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
@@ -1028,6 +1084,29 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                 
                 {showAdvancedSettings && (
                   <>
+                    {(() => {
+                      const currentProvider = EMAIL_PROVIDERS.find(p => p.name === selectedProvider);
+                      return currentProvider && currentProvider.advancedHint ? (
+                        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-900">
+                          <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
+                            <strong>Note:</strong> {currentProvider.advancedHint}
+                          </p>
+                          {currentProvider.helpUrl && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => window.open(currentProvider.helpUrl, '_blank')}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              {currentProvider.helpText}
+                            </Button>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <FormField
                         control={form.control}
