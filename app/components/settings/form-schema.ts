@@ -14,7 +14,8 @@ const emailChannelSchema = z.object({
   incomingPort: z.string().optional(),
   outgoingServer: z.string().optional(),
   outgoingPort: z.string().optional(),
-  enabled: z.boolean().optional().default(false)
+  enabled: z.boolean().optional().default(false),
+  status: z.enum(["not_configured", "password_required", "pending_sync", "synced"]).default("not_configured")
 })
 
 export const siteFormSchema = z.object({
@@ -172,7 +173,8 @@ export const siteFormSchema = z.object({
       incomingServer: "",
       incomingPort: "",
       outgoingServer: "",
-      outgoingPort: ""
+      outgoingPort: "",
+      status: "not_configured" as const
     }
   }),
   // Marketing related fields

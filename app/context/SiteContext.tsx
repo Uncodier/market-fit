@@ -99,6 +99,7 @@ export interface SiteSettings {
       incomingPort?: string
       outgoingServer?: string
       outgoingPort?: string
+      status?: "not_configured" | "password_required" | "pending_sync" | "synced"
     }
   } | null
 }
@@ -682,7 +683,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
                     incomingServer: "",
                     incomingPort: "",
                     outgoingServer: "",
-                    outgoingPort: ""
+                    outgoingPort: "",
+                    status: "not_configured"
                   }
                 })
               }
@@ -964,7 +966,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
             incomingServer: "",
             incomingPort: "",
             outgoingServer: "",
-            outgoingPort: ""
+            outgoingPort: "",
+            status: "not_configured"
           }
         };
       }

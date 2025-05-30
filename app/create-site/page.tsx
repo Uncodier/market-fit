@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation"
 
 export default function CreateSitePage() {
   const [isSaving, setIsSaving] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [createdSiteId, setCreatedSiteId] = useState<string>("")
   const { createSite } = useSite()
   const { user } = useAuth()
   const router = useRouter()
@@ -16,7 +18,7 @@ export default function CreateSitePage() {
   const handleComplete = async (data: any) => {
     try {
       setIsSaving(true)
-      await createSite({
+      const newSite = await createSite({
         name: data.name,
         url: data.url || null,
         description: data.description || null,
@@ -51,16 +53,9 @@ export default function CreateSitePage() {
           services: data.services || []
         }
       })
-      toast.success("Project created successfully")
       
-      // Show integration suggestion after a short delay
-      setTimeout(() => {
-        toast.info("💡 For better results, consider integrating your communication channels (WhatsApp, Email) in Settings", {
-          duration: 8000
-        })
-      }, 2000)
-      
-      router.push("/dashboard")
+      setCreatedSiteId(newSite.id)
+      setIsSuccess(true)
     } catch (error) {
       console.error(error)
       toast.error("Error creating project")
@@ -69,10 +64,20 @@ export default function CreateSitePage() {
     }
   }
 
+  const handleGoToDashboard = () => {
+    router.push("/dashboard")
+  }
+
+  const handleGoToSettings = () => {
+    router.push("/settings")
+  }
+
   return (
     <SiteOnboarding 
       onComplete={handleComplete}
       isLoading={isSaving}
+      isSuccess={isSuccess}
+      createdSiteId={createdSiteId}
     />
   )
 } 

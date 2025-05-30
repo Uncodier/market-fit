@@ -16,8 +16,9 @@ import { useRouter } from "next/navigation"
 import { Lead } from "@/app/leads/types"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { getTasksByLeadId } from "@/app/leads/tasks/actions"
 import { JOURNEY_STAGES } from "@/app/leads/types"
+import { Skeleton } from "@/app/components/ui/skeleton"
+import { createClient } from "@/utils/supabase/client"
 
 // Definimos los tipos de estado de los leads
 const LEAD_STATUSES = [
@@ -126,43 +127,72 @@ export function KanbanView({
       setIsLoadingJourneyStages(true)
       const stages: Record<string, string> = {}
       
-      // Usar promesas en paralelo para mejorar el rendimiento
-      const promises = leads.map(async (lead) => {
-        // Si ya tenemos la etapa en el cache, no hacemos una nueva petición
-        if (leadJourneyStagesCache[lead.id]) {
-          stages[lead.id] = leadJourneyStagesCache[lead.id]
-          return
-        }
+      try {
+        // ✅ UNA SOLA QUERY optimizada en lugar de N queries
+        const supabase = createClient()
+        const leadIds = leads.map(lead => lead.id)
         
-        try {
-          const result = await getTasksByLeadId(lead.id)
-          
-          if (result.error || !result.tasks) {
-            stages[lead.id] = "not_contacted"
-            return
-          }
-          
-          // Ordenar las etapas del journey por prioridad
+        // Obtener todas las tasks completadas de todos los leads de una vez
+        const { data: allTasks, error } = await supabase
+          .from('tasks')
+          .select('lead_id, stage, status')
+          .in('lead_id', leadIds)
+          .eq('status', 'completed')
+          .eq('site_id', currentSite.id)
+        
+        if (error) {
+          console.error('Error fetching tasks:', error)
+          // Set default stage for all leads
+          leads.forEach(lead => {
+            stages[lead.id] = leadJourneyStagesCache[lead.id] || "not_contacted"
+          })
+        } else {
+          // Procesar las tasks para encontrar la etapa más alta por lead
           const stageOrder = ["referral", "retention", "purchase", "decision", "consideration", "awareness"]
           
-          // Encontrar la etapa más alta
-          const highestStage = result.tasks
-            .filter(task => task.status === "completed")
-            .sort((a, b) => {
-              const aIndex = stageOrder.indexOf(a.stage)
-              const bIndex = stageOrder.indexOf(b.stage)
-              return aIndex - bIndex
-            })[0]?.stage || "not_contacted"
+          // Agrupar tasks por lead_id
+          const tasksByLead = allTasks?.reduce((acc, task) => {
+            if (!acc[task.lead_id]) acc[task.lead_id] = []
+            acc[task.lead_id].push(task)
+            return acc
+          }, {} as Record<string, any[]>) || {}
           
-          stages[lead.id] = highestStage
-          leadJourneyStagesCache[lead.id] = highestStage
-        } catch (error) {
-          console.error(`Error fetching tasks for lead ${lead.id}:`, error)
-          stages[lead.id] = "not_contacted"
+          // Procesar cada lead
+          leads.forEach(lead => {
+            // Usar cache si está disponible
+            if (leadJourneyStagesCache[lead.id]) {
+              stages[lead.id] = leadJourneyStagesCache[lead.id]
+              return
+            }
+            
+            const leadTasks = tasksByLead[lead.id] || []
+            
+            if (leadTasks.length === 0) {
+              stages[lead.id] = "not_contacted"
+            } else {
+              // Encontrar la etapa más alta
+              const highestStage = leadTasks
+                .sort((a, b) => {
+                  const aIndex = stageOrder.indexOf(a.stage)
+                  const bIndex = stageOrder.indexOf(b.stage)
+                  return aIndex - bIndex
+                })[0]?.stage || "not_contacted"
+              
+              stages[lead.id] = highestStage
+            }
+            
+            // Cachear el resultado
+            leadJourneyStagesCache[lead.id] = stages[lead.id]
+          })
         }
-      })
+      } catch (error) {
+        console.error('Error in fetchJourneyStagesForLeads:', error)
+        // Set default stage for all leads
+        leads.forEach(lead => {
+          stages[lead.id] = leadJourneyStagesCache[lead.id] || "not_contacted"
+        })
+      }
       
-      await Promise.all(promises)
       setLeadJourneyStages(stages)
       setIsLoadingJourneyStages(false)
     }
@@ -288,11 +318,15 @@ export function KanbanView({
                                   <CardHeader className="p-3 pb-0">
                                     <CardTitle className="text-sm font-medium flex items-center justify-between">
                                       {lead.name}
-                                      <Badge className={`text-xs ${
-                                        JOURNEY_STAGE_COLORS[leadJourneyStages[lead.id] || 'not_contacted']
-                                      }`}>
-                                        {getJourneyStageName(leadJourneyStages[lead.id] || 'not_contacted')}
-                                      </Badge>
+                                      {isLoadingJourneyStages ? (
+                                        <Skeleton className="h-5 w-16 rounded-full" />
+                                      ) : (
+                                        <Badge className={`text-xs ${
+                                          JOURNEY_STAGE_COLORS[leadJourneyStages[lead.id] || 'not_contacted']
+                                        }`}>
+                                          {getJourneyStageName(leadJourneyStages[lead.id] || 'not_contacted')}
+                                        </Badge>
+                                      )}
                                     </CardTitle>
                                   </CardHeader>
                                   <CardContent className="p-3 pt-2">

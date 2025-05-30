@@ -1,0 +1,360 @@
+import { createClient } from "@/lib/supabase/client";
+
+// Get API server URL from environment variables
+const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || '';
+
+// Ensure URL has proper protocol
+const getFullApiUrl = (baseUrl: string) => {
+  if (!baseUrl) return '';
+  
+  if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
+    return baseUrl;
+  }
+  
+  return `http://${baseUrl}`;
+};
+
+// Full URL with protocol
+const FULL_API_SERVER_URL = getFullApiUrl(API_SERVER_URL);
+
+// Log the API server URL in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('API Server URL:', FULL_API_SERVER_URL);
+}
+
+interface ApiClientOptions {
+  headers?: Record<string, string>;
+  includeAuth?: boolean;
+  timeout?: number;
+  cache?: RequestCache;
+}
+
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: {
+    message: string;
+    code?: string;
+    details?: any;
+  };
+  status?: number;
+}
+
+export class ApiClientService {
+  private static instance: ApiClientService;
+  private apiServerUrl: string;
+
+  private constructor() {
+    this.apiServerUrl = FULL_API_SERVER_URL;
+  }
+
+  static getInstance(): ApiClientService {
+    if (!ApiClientService.instance) {
+      ApiClientService.instance = new ApiClientService();
+    }
+    return ApiClientService.instance;
+  }
+
+  getApiUrl(): string {
+    return this.apiServerUrl;
+  }
+
+  private async getAuthToken(): Promise<string | null> {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  }
+
+  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+    const contentType = response.headers.get('content-type');
+
+    if (!response.ok) {
+      // If the response is HTML (error page)
+      if (contentType && contentType.includes('text/html')) {
+        const htmlContent = await response.text();
+        console.error('Server returned HTML:', htmlContent);
+        return {
+          success: false,
+          error: {
+            message: 'Server returned an HTML error page instead of JSON',
+            details: { htmlContent: htmlContent.substring(0, 500) }
+          },
+          status: response.status
+        };
+      }
+
+      // Try to parse as JSON, but handle text responses too
+      try {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: {
+            message: errorData.message || errorData.error || `Server error: ${response.status} ${response.statusText}`,
+            code: errorData.code,
+            details: errorData
+          },
+          status: response.status
+        };
+      } catch (parseError) {
+        const textContent = await response.text();
+        console.error('Server returned:', textContent);
+        return {
+          success: false,
+          error: {
+            message: `Server error: ${response.status} ${response.statusText}`,
+            details: { textContent: textContent.substring(0, 500) }
+          },
+          status: response.status
+        };
+      }
+    }
+
+    // Success response
+    try {
+      const data = await response.json();
+      
+      // Check if the response has a success field
+      if (typeof data.success === 'boolean' && !data.success) {
+        return {
+          success: false,
+          error: {
+            message: data.error?.message || 'Unknown error',
+            code: data.error?.code,
+            details: data.error
+          },
+          status: response.status
+        };
+      }
+
+      // Return successful response
+      return {
+        success: true,
+        data: data.data || data,
+        status: response.status
+      };
+    } catch (parseError) {
+      // If can't parse as JSON, return as text
+      const textContent = await response.text();
+      return {
+        success: true,
+        data: textContent as T,
+        status: response.status
+      };
+    }
+  }
+
+  async get<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    if (!this.apiServerUrl) {
+      return {
+        success: false,
+        error: { message: 'API server URL is not configured' }
+      };
+    }
+
+    const url = `${this.apiServerUrl}${endpoint}`;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('GET request to:', url);
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        ...options.headers
+      };
+
+      if (options.includeAuth !== false) {
+        const token = await this.getAuthToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        cache: options.cache || 'no-cache',
+        ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error('Error in GET request:', error);
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Network error',
+          details: error
+        }
+      };
+    }
+  }
+
+  async post<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    if (!this.apiServerUrl) {
+      return {
+        success: false,
+        error: { message: 'API server URL is not configured' }
+      };
+    }
+
+    const url = `${this.apiServerUrl}${endpoint}`;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('POST request to:', url);
+      console.log('Request body:', body);
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...options.headers
+      };
+
+      if (options.includeAuth !== false) {
+        const token = await this.getAuthToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        cache: options.cache || 'no-cache',
+        ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error('Error in POST request:', error);
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Network error',
+          details: error
+        }
+      };
+    }
+  }
+
+  async put<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    if (!this.apiServerUrl) {
+      return {
+        success: false,
+        error: { message: 'API server URL is not configured' }
+      };
+    }
+
+    const url = `${this.apiServerUrl}${endpoint}`;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('PUT request to:', url);
+      console.log('Request body:', body);
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...options.headers
+      };
+
+      if (options.includeAuth !== false) {
+        const token = await this.getAuthToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(body),
+        cache: options.cache || 'no-cache',
+        ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error('Error in PUT request:', error);
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Network error',
+          details: error
+        }
+      };
+    }
+  }
+
+  async delete<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    if (!this.apiServerUrl) {
+      return {
+        success: false,
+        error: { message: 'API server URL is not configured' }
+      };
+    }
+
+    const url = `${this.apiServerUrl}${endpoint}`;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('DELETE request to:', url);
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        ...options.headers
+      };
+
+      if (options.includeAuth !== false) {
+        const token = await this.getAuthToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers,
+        cache: options.cache || 'no-cache',
+        ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error('Error in DELETE request:', error);
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Network error',
+          details: error
+        }
+      };
+    }
+  }
+
+  // Method for special cases with custom headers like API keys
+  async postWithApiKeys<T = any>(
+    endpoint: string, 
+    body: any, 
+    apiKey: string, 
+    apiSecret: string, 
+    options: ApiClientOptions = {}
+  ): Promise<ApiResponse<T>> {
+    return this.post<T>(endpoint, body, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'x-api-key': apiKey,
+        'x-api-secret': apiSecret
+      }
+    });
+  }
+}
+
+// Export singleton instance
+export const apiClient = ApiClientService.getInstance(); 

@@ -296,15 +296,10 @@ export default function SettingsPage() {
     // Check for secure tokens and use a placeholder for display
     const hasEmailPassword = site.settings?.channels?.email?.password || site.settings?.channels?.email?.enabled || "";
     const emailPassword = hasEmailPassword ? "STORED_SECURELY" : "";
+    const emailStatus = (site.settings?.channels?.email?.status || (hasEmailPassword ? "synced" : "not_configured")) as "not_configured" | "password_required" | "pending_sync" | "synced";
 
     const hasWhatsAppToken = site.settings?.whatsapp_token || "";
     const whatsAppToken = hasWhatsAppToken ? "STORED_SECURELY" : "";
-    
-    // Check secure tokens status in server
-    if (site.id) {
-      // This runs asynchronously and updates the form later
-      checkSecureTokens(site.id, site.settings?.channels?.email?.email).catch(console.error);
-    }
     
     // Process team members data
     const teamMembers = site.settings?.team_members || [];
@@ -377,7 +372,8 @@ export default function SettingsPage() {
           incomingServer: site.settings.channels.email?.incomingServer || "",
           incomingPort: site.settings.channels.email?.incomingPort || "",
           outgoingServer: site.settings.channels.email?.outgoingServer || "",
-          outgoingPort: site.settings.channels.email?.outgoingPort || ""
+          outgoingPort: site.settings.channels.email?.outgoingPort || "",
+          status: emailStatus
         }
       } : {
         email: {
@@ -387,7 +383,8 @@ export default function SettingsPage() {
           incomingServer: "",
           incomingPort: "",
           outgoingServer: "",
-          outgoingPort: ""
+          outgoingPort: "",
+          status: "not_configured" as const
         }
       },
       // Add marketing info
@@ -436,26 +433,6 @@ export default function SettingsPage() {
     console.log("🔍 ADAPT: Final adapted data:", result);
     return result
   }
-
-  // Helper function to check secure tokens and update the form if needed
-  const checkSecureTokens = async (siteId: string, email?: string) => {
-    try {
-      // Check WhatsApp token
-      const hasWhatsApp = await secureTokensService.hasWhatsAppToken(siteId);
-      
-      // Check email credentials if email is provided
-      const hasEmail = email ? 
-        await secureTokensService.hasEmailCredentials(siteId, email) :
-        false;
-      
-      console.log(`Secure tokens check - WhatsApp: ${hasWhatsApp}, Email: ${hasEmail}`);
-      
-      // We could update form fields here if needed, but the form loads with placeholders already
-      // This is mostly for debugging purposes
-    } catch (error) {
-      console.error('Error checking secure tokens:', error);
-    }
-  };
 
   const handleSave = async (data: SiteFormValues) => {
     if (!currentSite) return;
@@ -647,7 +624,8 @@ export default function SettingsPage() {
             incomingServer: "",
             incomingPort: "",
             outgoingServer: "",
-            outgoingPort: ""
+            outgoingPort: "",
+            status: "not_configured" as const
           }
         },
         // Incluir competitors y focus_mode en settings en lugar de site
@@ -709,7 +687,8 @@ export default function SettingsPage() {
               incomingServer: data.channels.email.incomingServer || "",
               incomingPort: data.channels.email.incomingPort || "",
               outgoingServer: data.channels.email.outgoingServer || "",
-              outgoingPort: data.channels.email.outgoingPort || ""
+              outgoingPort: data.channels.email.outgoingPort || "",
+              status: (data.channels.email.status || "not_configured") as "not_configured" | "password_required" | "pending_sync" | "synced"
             };
           } catch (tokenError) {
             console.error("Error storing email credentials:", tokenError);
@@ -724,7 +703,8 @@ export default function SettingsPage() {
             incomingServer: data.channels.email.incomingServer || "",
             incomingPort: data.channels.email.incomingPort || "",
             outgoingServer: data.channels.email.outgoingServer || "",
-            outgoingPort: data.channels.email.outgoingPort || ""
+            outgoingPort: data.channels.email.outgoingPort || "",
+            status: (data.channels.email.status || "not_configured") as "not_configured" | "password_required" | "pending_sync" | "synced"
           };
           // Clear the placeholder from data
           data.channels.email.password = "";

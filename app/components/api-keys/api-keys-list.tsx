@@ -3,21 +3,15 @@ import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { Key, Trash2, Clock } from "@/app/components/ui/icons"
+import { Key, Trash2, Clock, ChevronDown, ChevronRight, Shield, Globe, Lock, AlertCircle, BarChart } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { ApiKey, listApiKeys, revokeApiKey } from "@/lib/api-keys"
 import { CreateKeyDialog } from "./create-key-dialog"
 import { Badge } from "@/app/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/app/components/ui/table"
+import { Card, CardContent } from "@/app/components/ui/card"
+import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
 
 function formatDate(date: string) {
   return format(new Date(date), 'MMM d, yyyy')
@@ -27,10 +21,209 @@ function formatDateTime(date: string) {
   return format(new Date(date), 'MMM d, yyyy HH:mm')
 }
 
+// Component for individual API key row
+function ApiKeyRow({
+  apiKey,
+  isExpanded,
+  onToggle,
+  onRevoke,
+  isSubmitting
+}: {
+  apiKey: ApiKey;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  onRevoke: (id: string) => void;
+  isSubmitting: boolean;
+}) {
+  return (
+    <Collapsible
+      key={apiKey.id}
+      open={isExpanded}
+      onOpenChange={() => {}} // Disable automatic toggle
+      className="w-full"
+    >
+      <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+        <div 
+          className="flex items-center hover:bg-muted/50 transition-colors w-full cursor-pointer"
+          onClick={() => onToggle(apiKey.id)}
+        >
+          <CardContent className="flex-1 p-4 w-full">
+            <div className="flex items-center gap-4">
+              {/* Expand/Collapse Icon at the beginning */}
+              <div className="flex-shrink-0">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggle(apiKey.id);
+                  }}
+                >
+                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </Button>
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-lg truncate">{apiKey.name}</h3>
+                <p className="text-sm text-muted-foreground/80 truncate">
+                  <span className="font-mono">{apiKey.prefix}***</span> • Created {formatDate(apiKey.created_at)}
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Status</p>
+                  <Badge variant={apiKey.status === 'active' ? 'default' : 'secondary'}>
+                    {apiKey.status}
+                  </Badge>
+                </div>
+                
+                <div className="flex flex-col items-center">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Permissions</p>
+                  <p className="text-sm font-medium">{apiKey.scopes.length} scope{apiKey.scopes.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </div>
+
+        <CollapsibleContent>
+          <CardContent className="pt-0 pb-6 px-6 border-t bg-muted/30" onClick={(e) => e.stopPropagation()}>
+            <div className="grid gap-6 pt-6">
+              {/* API Key Info */}
+              <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/50 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Keep your API key secure
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      This API key provides programmatic access to your site. Do not share it publicly or commit it to version control.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Permissions Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="text-sm font-medium">Permissions</h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {apiKey.scopes.map(scope => (
+                      <Badge key={scope} variant="secondary" className="text-xs">
+                        {scope === 'read' && '👁️ '}
+                        {scope === 'write' && '✏️ '}
+                        {scope === 'delete' && '🗑️ '}
+                        {scope}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rate Limits Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <BarChart className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="text-sm font-medium">Rate Limits</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Requests per minute</span>
+                      <span className="font-mono font-medium">{apiKey.metadata?.rate_limits?.requests_per_minute || '60'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Concurrent requests</span>
+                      <span className="font-mono font-medium">{apiKey.metadata?.rate_limits?.concurrent_requests || '5'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* IP Restrictions */}
+              {apiKey.metadata?.allowed_ips && apiKey.metadata.allowed_ips.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="text-sm font-medium">IP Restrictions</h4>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {apiKey.metadata.allowed_ips.map((ip, index) => (
+                      <div key={index} className="bg-background border rounded-md px-3 py-1.5">
+                        <code className="text-xs font-mono">{ip}</code>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Usage Timeline */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <h4 className="text-sm font-medium">Timeline</h4>
+                </div>
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Created</span>
+                      <span className="text-sm font-medium">{formatDateTime(apiKey.created_at)}</span>
+                    </div>
+                  </div>
+                  {apiKey.last_used_at && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <div className="flex-1 flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Last used</span>
+                        <span className="text-sm font-medium">{formatDateTime(apiKey.last_used_at)}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Expires</span>
+                      <span className="text-sm font-medium">{formatDateTime(apiKey.expires_at)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-between items-center pt-4 border-t">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="text-[10px]">#</span>
+                  <span className="font-mono">{apiKey.id}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onRevoke(apiKey.id)}
+                  disabled={isSubmitting || apiKey.status !== 'active'}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Revoke Key
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  )
+}
+
 export function ApiKeysList() {
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
   const { currentSite } = useSite()
 
   const loadKeys = async () => {
@@ -68,6 +261,13 @@ export function ApiKeysList() {
     }
   }
 
+  const toggleRow = (keyId: string) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [keyId]: !prev[keyId]
+    }))
+  }
+
   if (!currentSite) {
     return (
       <EmptyCard
@@ -81,9 +281,9 @@ export function ApiKeysList() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
       </div>
     )
   }
@@ -92,120 +292,17 @@ export function ApiKeysList() {
     <div className="space-y-4">
       {keys.length > 0 ? (
         <div className="space-y-4">
-          <div className="rounded-md border">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="hidden md:table-header-group">
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Prefix</TableHead>
-                    <TableHead>Scopes</TableHead>
-                    <TableHead>Rate Limits</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead>Last Used</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {keys.map((key) => (
-                    <TableRow key={key.id} className="block md:table-row border-b last:border-0 md:border-0">
-                      <TableCell className="block md:table-cell py-4 md:py-2">
-                        <div className="flex items-center justify-between md:justify-start gap-2">
-                          <span className="font-medium">{key.name}</span>
-                          <div className="flex items-center gap-2 md:hidden">
-                            <Badge variant={key.status === 'active' ? 'default' : 'secondary'}>
-                              {key.status}
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-                              onClick={() => handleRevoke(key.id)}
-                              disabled={isSubmitting || key.status !== 'active'}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Revoke key</span>
-                            </Button>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant={key.status === 'active' ? 'default' : 'secondary'}>
-                          {key.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="block md:table-cell py-2">
-                        <div className="grid grid-cols-2 md:block gap-2">
-                          <span className="text-sm text-muted-foreground md:hidden">Prefix</span>
-                          <span className="font-mono text-sm">{key.prefix}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="block md:table-cell py-2">
-                        <div className="grid grid-cols-2 md:block gap-2">
-                          <span className="text-sm text-muted-foreground md:hidden">Scopes</span>
-                          <div className="flex flex-wrap gap-1">
-                            {key.scopes.map(scope => (
-                              <Badge key={scope} variant="outline">
-                                {scope}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="block md:table-cell py-2">
-                        <div className="grid grid-cols-2 md:block gap-2">
-                          <span className="text-sm text-muted-foreground md:hidden">Rate Limits</span>
-                          {key.metadata?.rate_limits && (
-                            <span className="text-sm text-muted-foreground">
-                              {key.metadata.rate_limits.requests_per_minute}/min
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="block md:table-cell py-2">
-                        <div className="grid grid-cols-2 md:block gap-2">
-                          <span className="text-sm text-muted-foreground md:hidden">Created</span>
-                          <span>{formatDate(key.created_at)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="block md:table-cell py-2">
-                        <div className="grid grid-cols-2 md:block gap-2">
-                          <span className="text-sm text-muted-foreground md:hidden">Expires</span>
-                          <span>{formatDate(key.expires_at)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="block md:table-cell py-2">
-                        <div className="grid grid-cols-2 md:block gap-2">
-                          <span className="text-sm text-muted-foreground md:hidden">Last Used</span>
-                          {key.last_used_at ? (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {formatDateTime(key.last_used_at)}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">Never</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRevoke(key.id)}
-                          disabled={isSubmitting || key.status !== 'active'}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Revoke key</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <div className="space-y-2">
+            {keys.map((key) => (
+              <ApiKeyRow
+                key={key.id}
+                apiKey={key}
+                isExpanded={expandedRows[key.id] || false}
+                onToggle={toggleRow}
+                onRevoke={handleRevoke}
+                isSubmitting={isSubmitting}
+              />
+            ))}
           </div>
           <CreateKeyDialog onSuccess={loadKeys} />
         </div>
@@ -216,7 +313,7 @@ export function ApiKeysList() {
             title="No API keys"
             description="Create an API key to start making requests to the API"
           />
-          <div className="mt-6 w-full">
+          <div className="mt-6 w-full max-w-sm">
             <CreateKeyDialog onSuccess={loadKeys} />
           </div>
         </div>

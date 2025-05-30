@@ -12,7 +12,7 @@ import { Button } from "../ui/button"
 import { Code, Copy, Check, Key, KeyRound, ShieldCheck, ExternalLink, ChevronDown, ChevronUp } from "../ui/icons"
 import { Textarea } from "../ui/textarea"
 import { ColorInput } from "../ui/color-input"
-import { secureTokensService, type TokenType } from "../../services/secure-tokens-service"
+import { secureTokensService } from "../../services/secure-tokens-service"
 import { toast } from "sonner"
 import { useSite } from "../../context/SiteContext"
 import { 
@@ -129,72 +129,17 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
   const [internalCodeCopied, setInternalCodeCopied] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [loadingTokens, setLoadingTokens] = useState(false)
-  const [hasEmailToken, setHasEmailToken] = useState(false)
-  const [hasWhatsAppToken, setHasWhatsAppToken] = useState(false)
   const [showTrackingCode, setShowTrackingCode] = useState(false)
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("Gmail")
 
-  // Load token status on initial render
-  useEffect(() => {
-    const loadTokenStatus = async () => {
-      if (!siteId) return;
-      
-      // Skip loading if we're already loading
-      if (loadingTokens) return;
-      
-      setLoadingTokens(true);
-      
-      // Track failed attempts for debugging
-      let failures = 0;
-      
-      try {
-        // Only check for email token if we have an email address in the form
-        const email = form.getValues('channels.email.email');
-        if (email) {
-          try {
-            const hasEmail = await secureTokensService.hasToken(
-              siteId, 
-              'email',
-              email || 'default'
-            );
-            setHasEmailToken(hasEmail);
-          } catch (error) {
-            console.error(`Error checking email credentials:`, error);
-            failures++;
-          }
-        }
-        
-        // Check for WhatsApp token
-        try {
-          const hasWhatsApp = await secureTokensService.hasToken(
-            siteId,
-            'whatsapp',
-            'default'
-          );
-          setHasWhatsAppToken(hasWhatsApp);
-        } catch (error) {
-          console.error(`Error checking WhatsApp token:`, error);
-          failures++;
-        }
-      } catch (error) {
-        console.error(`General error in loadTokenStatus:`, error);
-      } finally {
-        setLoadingTokens(false);
-        
-        // If all attempts failed but we're not catching the error, log it
-        if (failures > 1) {
-          console.error(`All token status checks failed`);
-        }
-      }
-    };
-    
-    loadTokenStatus();
-    
-    // No need to add form as a dependency as we only want to check on initial load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteId]);
+  // Get the email channel status from form
+  const emailStatus = form.watch("channels.email.status") || "not_configured";
+  const hasEmailToken = emailStatus === "synced";
+  
+  // Get WhatsApp status from form 
+  const whatsappTokenValue = form.watch("whatsapp_token");
+  const hasWhatsAppToken = whatsappTokenValue === "STORED_SECURELY";
 
   // Función para detectar proveedor basado en el email
   const detectProviderFromEmail = (email: string) => {
@@ -428,6 +373,9 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
     try {
       setIsConnecting(true);
       
+      // Set status to pending_sync while saving
+      form.setValue("channels.email.status", "pending_sync");
+      
       // Enable the email channel automatically
       form.setValue("channels.email.enabled", true);
       
@@ -441,7 +389,8 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
         incomingPort: form.getValues("channels.email.incomingPort"),
         outgoingServer: form.getValues("channels.email.outgoingServer"),
         outgoingPort: form.getValues("channels.email.outgoingPort"),
-        provider: selectedProvider // Guardar también el proveedor seleccionado
+        provider: selectedProvider, // Guardar también el proveedor seleccionado
+        status: "synced" as "not_configured" | "password_required" | "pending_sync" | "synced" // This will be saved to the database
       };
       
       // Guardar la configuración de correo electrónico directamente en settings
@@ -467,6 +416,8 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
           console.log("Configuración del canal guardada correctamente en settings");
         } catch (settingsError) {
           console.error("Error guardando configuración del canal en settings:", settingsError);
+          // Revert status on error
+          form.setValue("channels.email.status", "password_required");
           toast.error("Error saving channel configuration");
           throw settingsError;
         }
@@ -480,16 +431,21 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       );
       
       if (success) {
-        setHasEmailToken(true);
+        // Update the status in the form to synced
+        form.setValue("channels.email.status", "synced");
         toast.success("Email configuration saved successfully");
         
         // Clear the password field in the form and replace with placeholder
         form.setValue("channels.email.password", "");
       } else {
+        // Revert status on error
+        form.setValue("channels.email.status", "password_required");
         toast.error("Failed to save email credentials. Please ensure you're logged in.");
       }
     } catch (error) {
       console.error("Error saving email credentials:", error);
+      // Revert status on error
+      form.setValue("channels.email.status", "password_required");
       toast.error("An error occurred while saving credentials");
     } finally {
       setIsConnecting(false);
@@ -537,11 +493,10 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       );
       
       if (success) {
-        setHasWhatsAppToken(true);
         toast.success("WhatsApp configuration saved successfully");
         
-        // Clear the token field in the form
-        form.setValue("whatsapp_token", "");
+        // Update the token field in the form with the secure placeholder
+        form.setValue("whatsapp_token", "STORED_SECURELY");
       } else {
         toast.error("Failed to save WhatsApp token. Please ensure you're logged in.");
       }
@@ -566,7 +521,8 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       );
       
       if (success) {
-        setHasEmailToken(false);
+        // Update the status in the form
+        form.setValue("channels.email.status", "password_required");
         toast.success("Email credentials removed");
       } else {
         toast.error("Failed to remove email credentials. Please ensure you're logged in.");
@@ -592,7 +548,8 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       );
       
       if (success) {
-        setHasWhatsAppToken(false);
+        // Update the WhatsApp token in the form
+        form.setValue("whatsapp_token", "");
         toast.success("WhatsApp token removed");
       } else {
         toast.error("Failed to remove WhatsApp token. Please ensure you're logged in.");
@@ -935,7 +892,19 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                 <FormControl>
                   <Switch
                     checked={field.value}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      // If enabling and no password is synced, set status to password_required
+                      if (checked) {
+                        const currentStatus = form.getValues("channels.email.status");
+                        if (currentStatus === "not_configured") {
+                          form.setValue("channels.email.status", "password_required");
+                        }
+                      } else {
+                        // If disabling, reset to not_configured
+                        form.setValue("channels.email.status", "not_configured");
+                      }
+                    }}
                   />
                 </FormControl>
               </FormItem>
@@ -1201,7 +1170,8 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                   incomingServer: "",
                   incomingPort: "",
                   outgoingServer: "",
-                  outgoingPort: ""
+                  outgoingPort: "",
+                  status: form.getValues("channels.email.status") || "not_configured"
                 });
               }}
             >

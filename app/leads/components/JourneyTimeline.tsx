@@ -1,7 +1,9 @@
 import React, { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent } from "@/app/components/ui/card"
+import { Skeleton } from "@/app/components/ui/skeleton"
 import { 
   Check, 
   Clock, 
@@ -49,19 +51,31 @@ interface JourneyTimelineProps {
   leadId: string
 }
 
-// Helper function for getting badge style based on status
-function getBadgeStyleForStatus(status: "completed" | "in_progress" | "pending" | "failed") {
+// Extract numeric part from serial_id
+const getSerialNumber = (serialId: string) => {
+  if (!serialId) return ""
+  // Extract prefix and number parts
+  const match = serialId.match(/^([A-Z]+)-(\d+)$/)
+  if (match) {
+    const prefix = match[1]
+    const number = parseInt(match[2], 10).toString()
+    return `${prefix}-${number}`
+  }
+  return serialId
+}
+
+// Get badge style for status
+function getBadgeStyleForStatus(status: string) {
   switch (status) {
     case "completed":
-      return "bg-green-100 text-green-700 hover:bg-green-100";
+      return "bg-green-100 text-green-800 hover:bg-green-200 border border-green-200"
     case "in_progress":
-      return "bg-blue-100 text-blue-700 hover:bg-blue-100";
-    case "pending":
-      return "bg-yellow-100 text-yellow-700 hover:bg-yellow-100";
+      return "bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200"
     case "failed":
-      return "bg-red-100 text-red-700 hover:bg-red-100";
+      return "bg-red-100 text-red-800 hover:bg-red-200 border border-red-200"
+    case "pending":
     default:
-      return "bg-gray-100 text-gray-700 hover:bg-gray-100";
+      return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-200"
   }
 }
 
@@ -94,7 +108,42 @@ function getStatusContent(task: Task) {
   }
 }
 
+// Task Skeleton Component
+function TaskSkeleton() {
+  return (
+    <div className="relative pl-8">
+      {/* Status indicator skeleton */}
+      <div className="absolute left-[-10px] top-3 bg-background rounded-full p-[2px]">
+        <Skeleton className="h-5 w-5 rounded-full" />
+      </div>
+      
+      {/* Task content skeleton */}
+      <div className="bg-muted/40 rounded-lg p-3 border border-border/30">
+        <div className="flex justify-between items-start mb-1">
+          <div className="flex items-center gap-2 flex-1">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-3 w-2" />
+            <Skeleton className="h-6 w-14" />
+            <Skeleton className="h-6 w-6" />
+          </div>
+        </div>
+        <Skeleton className="h-3 w-full mb-2" />
+        <div className="mt-3 flex items-center gap-4">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-8" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
+  const router = useRouter()
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false)
@@ -102,7 +151,8 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [expandedStages, setExpandedStages] = useState<Record<string, boolean>>({})
-  const { getTasksGroupedByStage, updateTask, deleteTask } = useTasks()
+  const [taskCommentsCount, setTaskCommentsCount] = useState<Record<string, number>>({})
+  const { getTasksGroupedByStage, updateTask, deleteTask, loading } = useTasks()
   
   // Get tasks grouped by stage
   const stageGroups = getTasksGroupedByStage(leadId)
@@ -115,6 +165,41 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
     });
     setExpandedStages(initialExpandedState);
   }, [stageGroups.length]);
+
+  // Load comments count for tasks
+  React.useEffect(() => {
+    const loadCommentsCount = async () => {
+      const { createClient } = await import("@/utils/supabase/client")
+      const supabase = createClient()
+      
+      // Get all task IDs
+      const allTasks = stageGroups.flatMap(group => group.tasks)
+      const taskIds = allTasks.map(task => task.id)
+      
+      if (taskIds.length === 0) return
+      
+      try {
+        const { data, error } = await supabase
+          .from('task_comments')
+          .select('task_id')
+          .in('task_id', taskIds)
+        
+        if (error) throw error
+        
+        // Count comments per task
+        const counts: Record<string, number> = {}
+        data?.forEach(comment => {
+          counts[comment.task_id] = (counts[comment.task_id] || 0) + 1
+        })
+        
+        setTaskCommentsCount(counts)
+      } catch (error) {
+        console.error('Error loading comments count:', error)
+      }
+    }
+    
+    loadCommentsCount()
+  }, [stageGroups])
   
   // Toggle expanded/collapsed state for a stage
   const toggleStageExpanded = (stageId: string) => {
@@ -177,7 +262,10 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
   };
   
   // Handle marking a task as complete
-  const handleMarkComplete = async (taskId: string) => {
+  const handleMarkComplete = async (taskId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation()
+    }
     await updateTask(taskId, { 
       status: "completed", 
       completed_date: new Date().toISOString() 
@@ -185,7 +273,10 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
   }
   
   // Handle task deletion dialog
-  const handleDeleteDialogOpen = (taskId: string) => {
+  const handleDeleteDialogOpen = (taskId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation()
+    }
     setTaskToDelete(taskId)
     setShowDeleteDialog(true)
   }
@@ -207,9 +298,17 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
   }
   
   // Handle editing a task
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = (task: Task, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation()
+    }
     setEditingTask(task)
     setIsEditTaskOpen(true)
+  }
+
+  // Handle task click to navigate to control center
+  const handleTaskClick = (task: Task) => {
+    router.push(`/control-center/${task.id}`)
   }
 
   return (
@@ -262,7 +361,14 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
               {/* Timeline vertical connecting line */}
               <div className="absolute left-[0px] top-0 bottom-0 w-[2px] bg-border/40"></div>
               
-              {group.tasks.length > 0 ? (
+              {loading ? (
+                // Show loading skeletons while tasks are loading
+                <>
+                  {Array.from({ length: 2 }).map((_, index) => (
+                    <TaskSkeleton key={index} />
+                  ))}
+                </>
+              ) : group.tasks.length > 0 ? (
                 group.tasks.map((task) => (
                   <div key={task.id} className="relative pl-8">
                     {/* Status indicator */}
@@ -270,12 +376,15 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                       {getStatusContent(task)}
                     </div>
                     
-                    {/* Task content */}
-                    <div className={`bg-muted/40 rounded-lg p-3 border ${
-                      task.status === "in_progress" ? "border-blue-200" : "border-border/30"
-                    }`}>
+                    {/* Task content - Now clickable and with hover effects */}
+                    <div 
+                      className={`bg-muted/40 rounded-lg p-3 border cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] hover:bg-muted/60 ${
+                        task.status === "in_progress" ? "border-blue-200" : "border-border/30"
+                      }`}
+                      onClick={() => handleTaskClick(task)}
+                    >
                       <div className="flex justify-between items-start mb-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-1">
                           <h4 className="text-sm font-medium">{task.title}</h4>
                           {task.amount && ["quote", "contract", "payment"].includes(task.type) && (
                             <div className="bg-green-50 text-green-700 px-2 py-0.5 rounded text-xs font-medium inline-flex items-center">
@@ -284,15 +393,37 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
+                          {/* Serial ID */}
+                          {task.serial_id && (
+                            <div className="font-mono text-xs text-muted-foreground">
+                              {getSerialNumber(task.serial_id)}
+                            </div>
+                          )}
+                          
                           <Badge className={getBadgeStyleForStatus(task.status)}>
                             {task.status.replace("_", " ")}
                           </Badge>
                           
+                          {/* Completion chip after status with & */}
+                          {task.status === "completed" && (
+                            <>
+                              <span className="text-xs text-muted-foreground">&</span>
+                              <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-200">
+                                Closed
+                              </Badge>
+                            </>
+                          )}
+                          
                           {/* Task options menu */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <span className="sr-only">Open menu</span>
                                 {/* Use a Unicode ellipsis character as an icon */}
                                 <span className="text-base leading-none">⋮</span>
@@ -300,17 +431,26 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               {task.status !== "completed" && (
-                                <DropdownMenuItem onClick={() => handleMarkComplete(task.id)}>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleMarkComplete(task.id)
+                                }}>
                                   <Check className="mr-2 h-4 w-4" />
                                   Mark Complete
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => handleEditTask(task)}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation()
+                                handleEditTask(task)
+                              }}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => handleDeleteDialogOpen(task.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteDialogOpen(task.id)
+                                }}
                                 className="text-red-600"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -321,7 +461,8 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground mb-2">{task.description}</p>
-                      <div className="mt-3 flex justify-between items-center">
+                      <div className="mt-3 flex items-center gap-4">
+                        {/* Date */}
                         <div className="text-xs text-muted-foreground">
                           {task.scheduled_date && (
                             <div className="inline-flex items-center">
@@ -331,18 +472,13 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                           )}
                         </div>
                         
-                        {/* Complete button for pending tasks */}
-                        {(task.status === "pending" || task.status === "in_progress") && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="h-7 text-xs bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200"
-                            onClick={() => handleMarkComplete(task.id)}
-                          >
-                            <Check className="h-3 w-3 mr-1" />
-                            Complete
-                          </Button>
-                        )}
+                        {/* Comments count */}
+                        {taskCommentsCount[task.id] ? (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span>{taskCommentsCount[task.id]}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>

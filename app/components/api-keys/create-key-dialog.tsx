@@ -4,14 +4,13 @@ import { Button } from "@/app/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Key } from "@/app/components/ui/icons"
+import { Key, Copy, CheckCircle2, AlertCircle } from "@/app/components/ui/icons"
 import { createApiKey, CreateApiKeyParams } from "@/lib/api-keys"
 import { useSite } from "@/app/context/SiteContext"
 import { Switch } from "@/app/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/app/components/ui/separator"
 import { useAuth } from "@/app/hooks/use-auth"
-import { ApiKeyModal } from "./api-key-modal"
 
 interface CreateKeyDialogProps {
   onSuccess: () => void;
@@ -19,9 +18,11 @@ interface CreateKeyDialogProps {
 
 export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
   const [open, setOpen] = useState(false)
-  const [showApiKey, setShowApiKey] = useState(false)
+  const [showResult, setShowResult] = useState(false)
   const [newApiKey, setNewApiKey] = useState("")
+  const [copied, setCopied] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [keyCreated, setKeyCreated] = useState(false)
   const [name, setName] = useState("")
   const [prefix, setPrefix] = useState("")
   const [expirationDays, setExpirationDays] = useState("90")
@@ -77,24 +78,60 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
 
       const result = await createApiKey(params)
       
-      // Show the API key in the modal
-      setNewApiKey(result.apiKey)
-      setShowApiKey(true)
-      onSuccess()
+      // The API client returns data property, so result is already the inner data object
+      if (!result.apiKey) {
+        console.error('Invalid API response:', result)
+        throw new Error('API key not found in response')
+      }
       
-      // Reset form
-      setName("")
-      setPrefix("")
-      setExpirationDays("90")
-      setScopes([])
-      setRequestsPerMinute("60")
-      setConcurrentRequests("5")
-      setAllowedIps("")
-      setOpen(false)
+      setNewApiKey(result.apiKey)
+      setShowResult(true)
+      setKeyCreated(true)
+      // Don't call onSuccess() here - wait until user closes the modal
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create API key")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(newApiKey)
+      setCopied(true)
+      toast.success("API key copied to clipboard")
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      toast.error("Failed to copy API key")
+    }
+  }
+
+  const handleClose = () => {
+    if (showResult && keyCreated) {
+      // Call onSuccess only when closing after successfully creating a key
+      onSuccess()
+    }
+    
+    // Reset everything
+    setShowResult(false)
+    setNewApiKey("")
+    setName("")
+    setPrefix("")
+    setExpirationDays("90")
+    setScopes([])
+    setRequestsPerMinute("60")
+    setConcurrentRequests("5")
+    setAllowedIps("")
+    setCopied(false)
+    setKeyCreated(false)
+    setOpen(false)
+  }
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      setOpen(true)
+    } else {
+      handleClose()
     }
   }
 
@@ -107,18 +144,74 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
   }
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="w-full">
-            <Key className="mr-2 h-4 w-4" />
-            Generate New API Key
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create API Key</DialogTitle>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="w-full">
+          <Key className="mr-2 h-4 w-4" />
+          Generate New API Key
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {showResult ? "Your API Key" : "Create API Key"}
+          </DialogTitle>
+        </DialogHeader>
+        
+        {showResult ? (
+          <div className="space-y-6 pt-4">
+            <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Save this API key now
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    For security reasons, you won't be able to see this key again after closing this dialog.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Your API Key</Label>
+              <div className="relative">
+                <div className="p-4 bg-muted rounded-lg font-mono text-sm break-all pr-12">
+                  {newApiKey}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <h4 className="text-sm font-medium">Quick Start</h4>
+              <p className="text-xs text-muted-foreground">
+                Use this API key in your requests by including it in the Authorization header:
+              </p>
+              <code className="block text-xs bg-background px-3 py-2 rounded border">
+                Authorization: Bearer {newApiKey.substring(0, 20)}...
+              </code>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button onClick={handleClose}>
+                I've Saved My Key
+              </Button>
+            </div>
+          </div>
+        ) : (
           <form onSubmit={handleSubmit} className="space-y-6 pt-4">
             <div className="space-y-2">
               <Label htmlFor="name">Key Name</Label>
@@ -264,20 +357,17 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "Creating..." : "Create Key"}
               </Button>
             </div>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      <ApiKeyModal
-        open={showApiKey}
-        onOpenChange={setShowApiKey}
-        apiKey={newApiKey}
-      />
-    </>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 } 

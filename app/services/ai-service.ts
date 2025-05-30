@@ -1,24 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-
-// Obtener la URL del servidor API desde las variables de entorno
-// Buscar primero NEXT_PUBLIC_API_SERVER_URL y luego API_SERVER_URL como fallback
-const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || '';
-
-// Asegurarse de que la URL tenga el protocolo adecuado
-const getFullApiUrl = (baseUrl: string) => {
-  if (!baseUrl) return '';
-  
-  // Si ya tiene http:// o https://, devolver tal cual
-  if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
-    return baseUrl;
-  }
-  
-  // De lo contrario, agregar http:// (asumiendo desarrollo local)
-  return `http://${baseUrl}`;
-};
-
-// URL completa con protocolo
-const FULL_API_SERVER_URL = getFullApiUrl(API_SERVER_URL);
+import { apiClient } from "@/app/services/api-client-service";
 
 // Interfaz para la respuesta de la API
 export interface AISegmentResponse {
@@ -79,9 +60,6 @@ export async function buildSegmentsWithAI(params: BuildSegmentsParams): Promise<
       };
     }
     
-    // Usar la ruta correcta según la implementación proporcionada
-    const API_URL = `${FULL_API_SERVER_URL}/api/site/segments`;
-    
     // Preparar los parámetros según la estructura correcta
     const requestParams = {
       // La URL debe ser la del sitio seleccionado o la proporcionada en los parámetros
@@ -106,114 +84,45 @@ export async function buildSegmentsWithAI(params: BuildSegmentsParams): Promise<
     const apiSecret = params.apiSecret || process.env.NEXT_PUBLIC_API_SECRET || "YOUR_API_SECRET";
     
     console.log("Calling AI service with params:", requestParams);
-    console.log("Full API URL:", API_URL);
     console.log("Target site URL:", params.url);
     
     try {
-      console.log("Attempting to connect to API at:", API_URL);
-      console.log("With headers:", {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'x-api-secret': '***SECRET***', // No mostrar el secreto completo por seguridad
-        'Accept': 'application/json'
-      });
+      const response = await apiClient.postWithApiKeys(
+        '/api/site/segments',
+        requestParams,
+        apiKey,
+        apiSecret
+      );
       
-      // Intentar con fetch - SOLO UNA PETICIÓN
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'x-api-secret': apiSecret,
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestParams),
-        cache: 'no-cache'
-      });
-      
-      // Check if response is OK (status in the range 200-299)
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        
-        // If the response is HTML (error page)
-        if (contentType && contentType.includes('text/html')) {
-          const htmlContent = await response.text();
-          console.error("Server returned HTML instead of JSON:", htmlContent.substring(0, 200) + "...");
-          isRequestInProgress = false; // Liberar el bloqueo
-          return {
-            success: false,
-            error: "Server returned an HTML error page instead of JSON",
-            rawResponse: htmlContent
-          };
-        }
-        
-        // Try to parse as JSON, but handle text responses too
-        try {
-          const errorData = await response.json();
-          isRequestInProgress = false; // Liberar el bloqueo
-          
-          // Verificar si la respuesta contiene un arreglo 'errors' no vacío
-          if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
-            console.error("API returned errors:", errorData.errors);
-            return {
-              success: false,
-              error: Array.isArray(errorData.errors) 
-                ? errorData.errors.map((e: any) => e.message || e).join(', ') 
-                : "API returned errors",
-              details: errorData
-            };
-          }
-          
-          return {
-            success: false,
-            error: errorData.message || errorData.error || `Server error: ${response.status} ${response.statusText}`,
-            details: errorData
-          };
-        } catch (parseError) {
-          // If we can't parse as JSON, return the text
-          const textContent = await response.text();
-          console.error("Failed to parse error response as JSON:", textContent.substring(0, 200) + "...");
-          isRequestInProgress = false; // Liberar el bloqueo
-          return {
-            success: false,
-            error: `Server error: ${response.status} ${response.statusText}`,
-            rawResponse: textContent
-          };
-        }
-      }
-      
-      // Parse successful response
-      try {
-        const data = await response.json();
-        
-        // Verificar si la respuesta contiene un arreglo 'errors' no vacío
-        if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
-          console.error("API returned errors:", data.errors);
-          isRequestInProgress = false; // Liberar el bloqueo
-          return {
-            success: false,
-            error: Array.isArray(data.errors) 
-              ? data.errors.map((e: any) => e.message || e).join(', ') 
-              : "API returned errors",
-            details: data
-          };
-        }
-        
-        isRequestInProgress = false; // Liberar el bloqueo
-        return {
-          success: true,
-          data
-        };
-      } catch (parseError) {
-        const textContent = await response.text();
-        console.error("Failed to parse successful response as JSON:", textContent.substring(0, 200) + "...");
+      // Verificar si la respuesta contiene un arreglo 'errors' no vacío
+      if (response.data?.errors && Array.isArray(response.data.errors) && response.data.errors.length > 0) {
+        console.error("API returned errors:", response.data.errors);
         isRequestInProgress = false; // Liberar el bloqueo
         return {
           success: false,
-          error: "Failed to parse successful response as JSON",
-          rawResponse: textContent
+          error: Array.isArray(response.data.errors) 
+            ? response.data.errors.map((e: any) => e.message || e).join(', ') 
+            : "API returned errors",
+          details: response.data
         };
       }
+      
+      isRequestInProgress = false; // Liberar el bloqueo
+      
+      if (!response.success) {
+        return {
+          success: false,
+          error: response.error?.message || "Unknown error occurred",
+          details: response.error?.details,
+          rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
+          apiUrl: apiClient.getApiUrl()
+        };
+      }
+      
+      return {
+        success: true,
+        data: response.data
+      };
     } catch (fetchError) {
       console.error("Network error in buildSegmentsWithAI:", fetchError);
       
@@ -236,7 +145,7 @@ export async function buildSegmentsWithAI(params: BuildSegmentsParams): Promise<
           fetchError.message.includes('Network request failed') ||
           fetchError.message.includes('Connection refused')
         ) {
-          errorMessage = `Cannot connect to API server at ${FULL_API_SERVER_URL}. Please check if the server is running and accessible.`;
+          errorMessage = `Cannot connect to API server at ${apiClient.getApiUrl()}. Please check if the server is running and accessible.`;
         }
       }
       
@@ -245,7 +154,7 @@ export async function buildSegmentsWithAI(params: BuildSegmentsParams): Promise<
         success: false,
         error: errorMessage,
         details: errorDetails,
-        apiUrl: FULL_API_SERVER_URL // Incluir la URL de la API para ayudar en la depuración
+        apiUrl: apiClient.getApiUrl() // Incluir la URL de la API para ayudar en la depuración
       };
     }
   } catch (error) {
@@ -277,31 +186,24 @@ export async function checkApiConnection(): Promise<AISegmentResponse> {
     const apiKey = process.env.NEXT_PUBLIC_API_KEY || "YOUR_API_KEY";
     const apiSecret = process.env.NEXT_PUBLIC_API_SECRET || "YOUR_API_SECRET";
     
-    // Construir una URL para verificar la conexión (endpoint de health check o similar)
-    // Si no existe un endpoint específico, podemos usar cualquier endpoint conocido
-    const API_URL = FULL_API_SERVER_URL;
-    
-    console.log("Checking API connection at:", API_URL);
+    console.log("Checking API connection at:", apiClient.getApiUrl());
     
     try {
-      const response = await fetch(API_URL, {
-        method: 'GET',
+      const response = await apiClient.get('/', {
         headers: {
           'x-api-key': apiKey,
-          'x-api-secret': apiSecret,
-          'Accept': 'application/json'
+          'x-api-secret': apiSecret
         },
-        // Timeout corto para la verificación
-        signal: AbortSignal.timeout(5000),
-        cache: 'no-cache'
+        timeout: 5000,
+        includeAuth: false // No incluir auth token para este endpoint
       });
       
       // Si la respuesta es OK, la conexión está funcionando
-      if (response.ok) {
+      if (response.success || response.status === 200) {
         return {
           success: true,
           message: "API connection successful",
-          apiUrl: FULL_API_SERVER_URL
+          apiUrl: apiClient.getApiUrl()
         };
       }
       
@@ -309,20 +211,20 @@ export async function checkApiConnection(): Promise<AISegmentResponse> {
       // pero puede haber problemas con la autenticación o permisos
       return {
         success: false,
-        error: `API server is reachable but returned status: ${response.status} ${response.statusText}`,
-        apiUrl: FULL_API_SERVER_URL
+        error: `API server is reachable but returned status: ${response.status}`,
+        apiUrl: apiClient.getApiUrl()
       };
     } catch (fetchError) {
       console.error("API connection check failed:", fetchError);
       
       return {
         success: false,
-        error: `Cannot connect to API server at ${FULL_API_SERVER_URL}. Please check if the server is running and accessible.`,
+        error: `Cannot connect to API server at ${apiClient.getApiUrl()}. Please check if the server is running and accessible.`,
         details: {
           message: fetchError instanceof Error ? fetchError.message : String(fetchError),
           name: fetchError instanceof Error ? fetchError.name : 'Unknown Error'
         },
-        apiUrl: FULL_API_SERVER_URL
+        apiUrl: apiClient.getApiUrl()
       };
     }
   } catch (error) {
@@ -347,12 +249,13 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
     console.log("Starting API connection diagnosis...");
     
     // 1. Verificar que tenemos una URL de API válida
-    if (!FULL_API_SERVER_URL) {
+    const apiUrl = apiClient.getApiUrl();
+    if (!apiUrl) {
       return {
         success: false,
         error: "API server URL is not configured. Please check your environment variables.",
         details: {
-          apiUrl: FULL_API_SERVER_URL,
+          apiUrl: apiUrl,
           envVars: {
             NEXT_PUBLIC_API_SERVER_URL: process.env.NEXT_PUBLIC_API_SERVER_URL,
             API_SERVER_URL: process.env.API_SERVER_URL
@@ -361,7 +264,7 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
       };
     }
     
-    console.log("API URL configured as:", FULL_API_SERVER_URL);
+    console.log("API URL configured as:", apiUrl);
     
     // 2. Verificar la sesión de autenticación
     const supabase = createClient();
@@ -371,7 +274,7 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
       return {
         success: false,
         error: "Authentication required. No active session found.",
-        apiUrl: FULL_API_SERVER_URL
+        apiUrl: apiUrl
       };
     }
     
@@ -385,47 +288,29 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
     try {
       console.log("Testing API connection with simple request...");
       
-      // Usar la raíz del servidor
-      const testUrl = FULL_API_SERVER_URL;
-      
-      const response = await fetch(testUrl, {
-        method: 'GET',
+      const response = await apiClient.get('/', {
         headers: {
           'x-api-key': apiKey,
-          'x-api-secret': apiSecret,
-          'Accept': 'application/json'
+          'x-api-secret': apiSecret
         },
-        signal: AbortSignal.timeout(5000),
-        cache: 'no-cache'
+        timeout: 5000,
+        includeAuth: false
       });
       
       console.log("GET request response status:", response.status);
       
       // Si recibimos cualquier respuesta, el servidor está activo
       if (response.status) {
-        let responseBody = "";
-        try {
-          responseBody = await response.text();
-          console.log("Response body preview:", responseBody.substring(0, 200) + (responseBody.length > 200 ? "..." : ""));
-        } catch (textError) {
-          console.error("Error reading response body:", textError);
-        }
-        
         return {
-          success: response.ok,
-          message: response.ok 
+          success: response.success,
+          message: response.success
             ? "API server is reachable and responding correctly" 
-            : `API server is reachable but returned status: ${response.status} ${response.statusText}`,
+            : `API server is reachable but returned status: ${response.status}`,
           details: {
             status: response.status,
-            statusText: response.statusText,
-            headers: Array.from(response.headers).reduce((obj, [key, value]) => {
-              obj[key] = value;
-              return obj;
-            }, {} as Record<string, string>),
-            bodyPreview: responseBody.substring(0, 200) + (responseBody.length > 200 ? "..." : "")
+            ...(response.error?.details || {})
           },
-          apiUrl: FULL_API_SERVER_URL
+          apiUrl: apiUrl
         };
       }
     } catch (requestError) {
@@ -438,7 +323,7 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
           message: requestError instanceof Error ? requestError.message : String(requestError),
           name: requestError instanceof Error ? requestError.name : 'Unknown Error'
         },
-        apiUrl: FULL_API_SERVER_URL
+        apiUrl: apiUrl
       };
     }
     
@@ -446,7 +331,7 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
     return {
       success: false,
       error: "API connection diagnosis completed with unexpected result",
-      apiUrl: FULL_API_SERVER_URL
+      apiUrl: apiUrl
     };
   } catch (error) {
     console.error("Error in diagnoseApiConnection:", error);
@@ -458,7 +343,7 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
         message: error instanceof Error ? error.message : String(error),
         name: error instanceof Error ? error.name : 'Unknown Error'
       },
-      apiUrl: FULL_API_SERVER_URL
+      apiUrl: apiClient.getApiUrl()
     };
   }
 }
@@ -507,9 +392,6 @@ export async function buildExperimentsWithAI(params: BuildExperimentsParams): Pr
       };
     }
     
-    // Use the correct path for experiments
-    const API_URL = `${FULL_API_SERVER_URL}/api/site/experiments`;
-    
     // Prepare parameters according to the correct structure
     const requestParams = {
       // The URL should be the selected site URL or the one provided in the parameters
@@ -533,114 +415,45 @@ export async function buildExperimentsWithAI(params: BuildExperimentsParams): Pr
     const apiSecret = params.apiSecret || process.env.NEXT_PUBLIC_API_SECRET || "YOUR_API_SECRET";
     
     console.log("Calling AI service for experiments with params:", requestParams);
-    console.log("Full API URL:", API_URL);
     console.log("Target site URL:", params.url);
     
     try {
-      console.log("Attempting to connect to API at:", API_URL);
-      console.log("With headers:", {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'x-api-secret': '***SECRET***', // Don't show the full secret for security
-        'Accept': 'application/json'
-      });
+      const response = await apiClient.postWithApiKeys(
+        '/api/site/experiments',
+        requestParams,
+        apiKey,
+        apiSecret
+      );
       
-      // Try with fetch - ONLY ONE REQUEST
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'x-api-secret': apiSecret,
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestParams),
-        cache: 'no-cache'
-      });
-      
-      // Check if response is OK (status in the range 200-299)
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        
-        // If the response is HTML (error page)
-        if (contentType && contentType.includes('text/html')) {
-          const htmlContent = await response.text();
-          console.error("Server returned HTML instead of JSON:", htmlContent.substring(0, 200) + "...");
-          isRequestInProgress = false; // Release the lock
-          return {
-            success: false,
-            error: "Server returned an HTML error page instead of JSON",
-            rawResponse: htmlContent
-          };
-        }
-        
-        // Try to parse as JSON, but handle text responses too
-        try {
-          const errorData = await response.json();
-          isRequestInProgress = false; // Release the lock
-          
-          // Check if the response contains a non-empty 'errors' array
-          if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
-            console.error("API returned errors:", errorData.errors);
-            return {
-              success: false,
-              error: Array.isArray(errorData.errors) 
-                ? errorData.errors.map((e: any) => e.message || e).join(', ') 
-                : "API returned errors",
-              details: errorData
-            };
-          }
-          
-          return {
-            success: false,
-            error: errorData.message || errorData.error || `Server error: ${response.status} ${response.statusText}`,
-            details: errorData
-          };
-        } catch (parseError) {
-          // If we can't parse as JSON, return the text
-          const textContent = await response.text();
-          console.error("Failed to parse error response as JSON:", textContent.substring(0, 200) + "...");
-          isRequestInProgress = false; // Release the lock
-          return {
-            success: false,
-            error: `Server error: ${response.status} ${response.statusText}`,
-            rawResponse: textContent
-          };
-        }
-      }
-      
-      // Parse successful response
-      try {
-        const data = await response.json();
-        
-        // Check if the response contains a non-empty 'errors' array
-        if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
-          console.error("API returned errors:", data.errors);
-          isRequestInProgress = false; // Release the lock
-          return {
-            success: false,
-            error: Array.isArray(data.errors) 
-              ? data.errors.map((e: any) => e.message || e).join(', ') 
-              : "API returned errors",
-            details: data
-          };
-        }
-        
-        isRequestInProgress = false; // Release the lock
-        return {
-          success: true,
-          data
-        };
-      } catch (parseError) {
-        const textContent = await response.text();
-        console.error("Failed to parse successful response as JSON:", textContent.substring(0, 200) + "...");
+      // Check if the response contains a non-empty 'errors' array
+      if (response.data?.errors && Array.isArray(response.data.errors) && response.data.errors.length > 0) {
+        console.error("API returned errors:", response.data.errors);
         isRequestInProgress = false; // Release the lock
         return {
           success: false,
-          error: "Failed to parse successful response as JSON",
-          rawResponse: textContent
+          error: Array.isArray(response.data.errors) 
+            ? response.data.errors.map((e: any) => e.message || e).join(', ') 
+            : "API returned errors",
+          details: response.data
         };
       }
+      
+      isRequestInProgress = false; // Release the lock
+      
+      if (!response.success) {
+        return {
+          success: false,
+          error: response.error?.message || "Unknown error occurred",
+          details: response.error?.details,
+          rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
+          apiUrl: apiClient.getApiUrl()
+        };
+      }
+      
+      return {
+        success: true,
+        data: response.data
+      };
     } catch (fetchError) {
       console.error("Network error in buildExperimentsWithAI:", fetchError);
       
@@ -663,7 +476,7 @@ export async function buildExperimentsWithAI(params: BuildExperimentsParams): Pr
           fetchError.message.includes('Network request failed') ||
           fetchError.message.includes('Connection refused')
         ) {
-          errorMessage = `Cannot connect to API server at ${FULL_API_SERVER_URL}. Please check if the server is running and accessible.`;
+          errorMessage = `Cannot connect to API server at ${apiClient.getApiUrl()}. Please check if the server is running and accessible.`;
         }
       }
       
@@ -672,7 +485,7 @@ export async function buildExperimentsWithAI(params: BuildExperimentsParams): Pr
         success: false,
         error: errorMessage,
         details: errorDetails,
-        apiUrl: FULL_API_SERVER_URL // Include the API URL to help with debugging
+        apiUrl: apiClient.getApiUrl() // Include the API URL to help with debugging
       };
     }
   } catch (error) {

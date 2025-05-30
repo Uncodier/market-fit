@@ -259,6 +259,60 @@ export function MarketingSection({ active }: MarketingSectionProps) {
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
+          <CardTitle className="text-xl font-semibold">Marketing Budget (in USD)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6 px-8 pb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="marketing_budget.total"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Total Budget</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="0.00 USD"
+                      type="number"
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      value={field.value || 0}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Total marketing budget for this site
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="marketing_budget.available"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Available Budget</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="0.00 USD"
+                      type="number"
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      value={field.value || 0}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Remaining budget available to spend
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Products</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Add your company's products with pricing information
@@ -594,60 +648,6 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Service
           </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Marketing Budget (in USD)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              control={form.control}
-              name="marketing_budget.total"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Total Budget</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="0.00 USD"
-                      type="number"
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                      value={field.value || 0}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Total marketing budget for this site
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="marketing_budget.available"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Available Budget</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="0.00 USD"
-                      type="number"
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                      value={field.value || 0}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Remaining budget available to spend
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
         </CardContent>
       </Card>
 
