@@ -1,8 +1,11 @@
+import { Company } from "@/app/companies/types"
+
 export interface Lead {
   id: string
   name: string
   email: string
   phone: string | null
+  company_id: string | null
   company: {
     name?: string
     website?: string
@@ -156,4 +159,9 @@ export const LEAD_STATUSES = [
   { id: 'qualified', name: 'Qualified' },
   { id: 'converted', name: 'Converted' },
   { id: 'lost', name: 'Lost' }
-] 
+]
+
+// Nuevo tipo para Lead con Company expandida
+export interface LeadWithCompany extends Omit<Lead, 'company'> {
+  company_data: Company | null
+} 

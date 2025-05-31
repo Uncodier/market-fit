@@ -1,10 +1,17 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { Input } from "@/app/components/ui/input"
 import { Button } from "@/app/components/ui/button"
 import { Globe, Tag, User, ExternalLink } from "@/app/components/ui/icons"
 import { MapPin } from "./custom-icons"
 import { Lead } from "@/app/leads/types"
+import { Company, COMPANY_INDUSTRIES, COMPANY_SIZES, COMPANY_ANNUAL_REVENUES } from "@/app/companies/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { CompanySelector } from "./CompanySelector"
+import { CompanyLegalTab } from "./CompanyLegalTab"
+import { CompanyCard } from "./CompanyCard"
+import { getCompanyById, updateCompany } from "@/app/companies/actions"
+import { toast } from "sonner"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 
 interface CompanyTabProps {
   lead: Lead
@@ -19,366 +26,517 @@ export function CompanyTab({
   editForm, 
   setEditForm 
 }: CompanyTabProps) {
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  // Load company data when component mounts or company_id changes
+  useEffect(() => {
+    const loadCompanyData = async () => {
+      const companyId = isEditing ? editForm.company_id : lead.company_id
+      
+      if (companyId) {
+        setLoading(true)
+        try {
+          const { company, error } = await getCompanyById(companyId)
+          if (error) {
+            console.error("Error loading company:", error)
+            return
+          }
+          setSelectedCompany(company)
+        } catch (error) {
+          console.error("Error loading company:", error)
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        setSelectedCompany(null)
+      }
+    }
+
+    loadCompanyData()
+  }, [lead.company_id, editForm.company_id, isEditing])
+
+  const handleCompanyChange = (company: Company | null) => {
+    setSelectedCompany(company)
+    setEditForm(prev => ({
+      ...prev,
+      company_id: company?.id || null
+    }))
+  }
+
+  const handleCompanyFieldUpdate = async (field: keyof Company, value: any) => {
+    if (!selectedCompany) return
+
+    try {
+      // Include required fields when updating
+      const updateData = { 
+        id: selectedCompany.id,
+        name: selectedCompany.name, // Include required name field
+        [field]: value 
+      }
+      const { company: updatedCompany, error } = await updateCompany(updateData)
+      
+      if (error) {
+        toast.error("Error updating company")
+        console.error(error)
+        return
+      }
+
+      if (updatedCompany) {
+        setSelectedCompany(updatedCompany)
+        toast.success("Company updated successfully")
+      }
+    } catch (error) {
+      console.error("Error updating company:", error)
+      toast.error("Error updating company")
+    }
+  }
+
+  // If not editing, always show read-only view with individual fields
+  if (!isEditing) {
+    return (
+      <div className="grid gap-4">
+        {/* Company Name with View Profile Button */}
+        {selectedCompany ? (
+          <div 
+            className="flex items-center gap-3 p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors cursor-pointer group"
+            onClick={() => window.open(`/companies/${selectedCompany.id}`, '_blank')}
+          >
+            <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+              <Globe className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
+              <p className="text-sm font-medium text-primary group-hover:underline">
+                {selectedCompany.name}
+              </p>
+            </div>
+            <div 
+              className="flex items-center gap-1 text-primary hover:underline cursor-pointer shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(`/companies/${selectedCompany.id}`, '_blank');
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+              <span className="text-sm font-medium">View Profile</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+              <Globe className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
+              <p className="text-sm font-medium text-muted-foreground">Not specified</p>
+            </div>
+          </div>
+        )}
+
+        {/* Website */}
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <Globe className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-[5px]">Website</p>
+            {selectedCompany?.website ? (
+              <div className="flex items-center gap-2">
+                <a 
+                  href={selectedCompany.website} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {selectedCompany.website.replace(/^https?:\/\//, '')}
+                </a>
+                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+              </div>
+            ) : (
+              <p className="text-sm font-medium text-muted-foreground">Not specified</p>
+            )}
+          </div>
+        </div>
+
+        {/* Industry */}
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <Tag className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-[5px]">Industry</p>
+            <p className="text-sm font-medium">
+              {selectedCompany?.industry ? 
+                COMPANY_INDUSTRIES.find(i => i.id === selectedCompany.industry)?.name || selectedCompany.industry 
+                : "Not specified"
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Company Size */}
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <User className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-[5px]">Company Size</p>
+            <p className="text-sm font-medium">
+              {selectedCompany?.size ? 
+                COMPANY_SIZES.find(s => s.id === selectedCompany.size)?.name || selectedCompany.size 
+                : "Not specified"
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <Globe className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-[5px]">Description</p>
+            <p className="text-sm font-medium whitespace-pre-wrap">
+              {selectedCompany?.description || "Not specified"}
+            </p>
+          </div>
+        </div>
+
+        {/* Address */}
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <MapPin className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-[5px]">Address</p>
+            <p className="text-sm font-medium">
+              {selectedCompany?.address ? 
+                [
+                  selectedCompany.address.street,
+                  selectedCompany.address.city,
+                  selectedCompany.address.state,
+                  selectedCompany.address.zipcode,
+                  selectedCompany.address.country
+                ].filter(Boolean).join(', ') || "Not specified"
+                : "Not specified"
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Annual Revenue */}
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <Globe className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-[5px]">Annual Revenue</p>
+            <p className="text-sm font-medium">
+              {selectedCompany?.annual_revenue ? 
+                COMPANY_ANNUAL_REVENUES.find(r => r.id === selectedCompany.annual_revenue)?.name || selectedCompany.annual_revenue 
+                : "Not specified"
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Founded */}
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <Globe className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-[5px]">Founded</p>
+            <p className="text-sm font-medium">
+              {selectedCompany?.founded || "Not specified"}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show company details if a company is selected and we're editing
+  if (selectedCompany && isEditing) {
+    return (
+      <div className="grid gap-4">
+        {/* Company Selection */}
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <Globe className="h-5 w-5 text-primary" />
+          </div>
+          <CompanySelector
+            selectedCompanyId={editForm.company_id}
+            onCompanyChange={handleCompanyChange}
+            isEditing={isEditing}
+          />
+        </div>
+
+        {/* Company Information Tabs */}
+        <div className="mt-4">
+          <Tabs defaultValue="general" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="address">Address</TabsTrigger>
+              <TabsTrigger value="legal">Legal & Tax</TabsTrigger>
+            </TabsList>
+
+            {/* General Tab */}
+            <TabsContent value="general" className="mt-4 space-y-4">
+              {/* Website */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <Globe className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Website</p>
+                  <Input
+                    value={selectedCompany.website || ""}
+                    onChange={(e) => handleCompanyFieldUpdate('website', e.target.value)}
+                    className="h-12 text-sm"
+                    placeholder="Company website"
+                  />
+                </div>
+              </div>
+              
+              {/* Description */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <Globe className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Description</p>
+                  <textarea
+                    value={selectedCompany.description || ""}
+                    onChange={(e) => handleCompanyFieldUpdate('description', e.target.value)}
+                    className="h-24 text-sm w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="Company description"
+                  />
+                </div>
+              </div>
+              
+              {/* Industry */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <Tag className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Industry</p>
+                  <Select
+                    value={selectedCompany.industry || "none"}
+                    onValueChange={(value) => handleCompanyFieldUpdate('industry', value === "none" ? undefined : value)}
+                  >
+                    <SelectTrigger className="h-12 text-sm">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      {COMPANY_INDUSTRIES.map(industry => (
+                        <SelectItem key={industry.id} value={industry.id}>
+                          {industry.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Company Size */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Company Size</p>
+                  <Select
+                    value={selectedCompany.size || "none"}
+                    onValueChange={(value) => handleCompanyFieldUpdate('size', value === "none" ? undefined : value)}
+                  >
+                    <SelectTrigger className="h-12 text-sm">
+                      <SelectValue placeholder="Select company size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      {COMPANY_SIZES.map(size => (
+                        <SelectItem key={size.id} value={size.id}>
+                          {size.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Annual Revenue */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <Globe className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Annual Revenue</p>
+                  <Select
+                    value={selectedCompany.annual_revenue || "none"}
+                    onValueChange={(value) => handleCompanyFieldUpdate('annual_revenue', value === "none" ? undefined : value)}
+                  >
+                    <SelectTrigger className="h-12 text-sm">
+                      <SelectValue placeholder="Select annual revenue" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      {COMPANY_ANNUAL_REVENUES.map(revenue => (
+                        <SelectItem key={revenue.id} value={revenue.id}>
+                          {revenue.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Founded */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <Globe className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Founded</p>
+                  <Input
+                    value={selectedCompany.founded || ""}
+                    onChange={(e) => handleCompanyFieldUpdate('founded', e.target.value)}
+                    className="h-12 text-sm"
+                    placeholder="Year founded"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Address Tab */}
+            <TabsContent value="address" className="mt-4 space-y-4">
+              {/* Street */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Street</p>
+                  <Input
+                    value={selectedCompany.address?.street || ""}
+                    onChange={(e) => handleCompanyFieldUpdate('address', { 
+                      ...selectedCompany.address || {}, 
+                      street: e.target.value 
+                    })}
+                    className="h-12 text-sm"
+                    placeholder="Street address"
+                  />
+                </div>
+              </div>
+              
+              {/* City */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">City</p>
+                  <Input
+                    value={selectedCompany.address?.city || ""}
+                    onChange={(e) => handleCompanyFieldUpdate('address', { 
+                      ...selectedCompany.address || {}, 
+                      city: e.target.value 
+                    })}
+                    className="h-12 text-sm"
+                    placeholder="City"
+                  />
+                </div>
+              </div>
+              
+              {/* State */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">State/Province</p>
+                  <Input
+                    value={selectedCompany.address?.state || ""}
+                    onChange={(e) => handleCompanyFieldUpdate('address', { 
+                      ...selectedCompany.address || {}, 
+                      state: e.target.value 
+                    })}
+                    className="h-12 text-sm"
+                    placeholder="State/Province"
+                  />
+                </div>
+              </div>
+              
+              {/* ZIP Code */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">ZIP/Postal Code</p>
+                  <Input
+                    value={selectedCompany.address?.zipcode || ""}
+                    onChange={(e) => handleCompanyFieldUpdate('address', { 
+                      ...selectedCompany.address || {}, 
+                      zipcode: e.target.value 
+                    })}
+                    className="h-12 text-sm"
+                    placeholder="ZIP/Postal Code"
+                  />
+                </div>
+              </div>
+              
+              {/* Country */}
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-[5px]">Country</p>
+                  <Input
+                    value={selectedCompany.address?.country || ""}
+                    onChange={(e) => handleCompanyFieldUpdate('address', { 
+                      ...selectedCompany.address || {}, 
+                      country: e.target.value 
+                    })}
+                    className="h-12 text-sm"
+                    placeholder="Country"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Legal & Tax Tab */}
+            <TabsContent value="legal" className="mt-4">
+              <CompanyLegalTab
+                company={selectedCompany}
+                isEditing={isEditing}
+                onFieldUpdate={handleCompanyFieldUpdate}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    )
+  }
+
+  // Show company selector if no company is selected or if we're editing and no company
   return (
     <div className="grid gap-4">
+      {/* Company Selection */}
       <div className="flex items-center gap-3">
         <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
           <Globe className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Company Name</p>
-          {isEditing ? (
-            <Input
-              value={editForm.company?.name || ""}
-              onChange={(e) => setEditForm({
-                ...editForm, 
-                company: { ...editForm.company, name: e.target.value }
-              })}
-              className="h-12 text-sm"
-              placeholder="Company name"
-            />
-          ) : (
-            <p className="text-sm font-medium">{lead.company?.name || "Not specified"}</p>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-          <Globe className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Description</p>
-          {isEditing ? (
-            <textarea
-              value={editForm.company?.description || ""}
-              onChange={(e) => setEditForm({
-                ...editForm, 
-                company: { ...editForm.company, description: e.target.value }
-              })}
-              className="h-24 text-sm w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Company description"
-            />
-          ) : (
-            <p className="text-sm font-medium whitespace-pre-wrap">{lead.company?.description || "Not specified"}</p>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-          <Globe className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Website</p>
-          {isEditing ? (
-            <Input
-              value={editForm.company?.website || ""}
-              onChange={(e) => setEditForm({
-                ...editForm, 
-                company: { ...editForm.company, website: e.target.value }
-              })}
-              className="h-12 text-sm"
-              placeholder="https://example.com"
-            />
-          ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.company?.website || "Not specified"}</p>
-              {lead.company?.website && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => window.open(lead.company?.website as string, '_blank')}
-                  className="h-8 ml-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-          <Tag className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Industry</p>
-          {isEditing ? (
-            <Select
-              value={editForm.company?.industry || "none"}
-              onValueChange={(value) => setEditForm({
-                ...editForm,
-                company: { ...editForm.company, industry: value === "none" ? "" : value }
-              })}
-            >
-              <SelectTrigger className="h-12 text-sm">
-                <SelectValue placeholder="Select industry" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
-                <SelectItem value="technology">Technology</SelectItem>
-                <SelectItem value="finance">Finance & Banking</SelectItem>
-                <SelectItem value="health">Healthcare</SelectItem>
-                <SelectItem value="education">Education</SelectItem>
-                <SelectItem value="retail">Retail</SelectItem>
-                <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                <SelectItem value="services">Professional Services</SelectItem>
-                <SelectItem value="hospitality">Hospitality</SelectItem>
-                <SelectItem value="media">Media & Entertainment</SelectItem>
-                <SelectItem value="real_estate">Real Estate</SelectItem>
-                <SelectItem value="logistics">Logistics & Transportation</SelectItem>
-                <SelectItem value="nonprofit">Nonprofit</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="text-sm font-medium capitalize">
-              {lead.company?.industry?.replace('_', ' ') || "Not specified"}
-            </p>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-          <User className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Company Size</p>
-          {isEditing ? (
-            <Select
-              value={editForm.company?.size || "none"}
-              onValueChange={(value) => setEditForm({
-                ...editForm,
-                company: { ...editForm.company, size: value === "none" ? "" : value }
-              })}
-            >
-              <SelectTrigger className="h-12 text-sm">
-                <SelectValue placeholder="Select company size" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
-                <SelectItem value="1-10">1-10 employees</SelectItem>
-                <SelectItem value="11-50">11-50 employees</SelectItem>
-                <SelectItem value="51-200">51-200 employees</SelectItem>
-                <SelectItem value="201-500">201-500 employees</SelectItem>
-                <SelectItem value="501-1000">501-1000 employees</SelectItem>
-                <SelectItem value="1001-5000">1001-5000 employees</SelectItem>
-                <SelectItem value="5001-10000">5001-10000 employees</SelectItem>
-                <SelectItem value="10001+">10001+ employees</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="text-sm font-medium">
-              {lead.company?.size ? `${lead.company.size} employees` : "Not specified"}
-            </p>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-          <Globe className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Annual Revenue</p>
-          {isEditing ? (
-            <Select
-              value={editForm.company?.annual_revenue || "none"}
-              onValueChange={(value) => setEditForm({
-                ...editForm,
-                company: { ...editForm.company, annual_revenue: value === "none" ? undefined : value }
-              })}
-            >
-              <SelectTrigger className="h-12 text-sm">
-                <SelectValue placeholder="Select annual revenue" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
-                <SelectItem value="<1M">Less than $1M</SelectItem>
-                <SelectItem value="1M-10M">$1M - $10M</SelectItem>
-                <SelectItem value="10M-50M">$10M - $50M</SelectItem>
-                <SelectItem value="50M-100M">$50M - $100M</SelectItem>
-                <SelectItem value="100M-500M">$100M - $500M</SelectItem>
-                <SelectItem value="500M-1B">$500M - $1B</SelectItem>
-                <SelectItem value=">1B">More than $1B</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="text-sm font-medium">
-              {lead.company?.annual_revenue || "Not specified"}
-            </p>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-          <Globe className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Founded</p>
-          {isEditing ? (
-            <Input
-              value={editForm.company?.founded || ""}
-              onChange={(e) => setEditForm({
-                ...editForm, 
-                company: { ...editForm.company, founded: e.target.value }
-              })}
-              className="h-12 text-sm"
-              placeholder="Year founded"
-            />
-          ) : (
-            <p className="text-sm font-medium">{lead.company?.founded || "Not specified"}</p>
-          )}
-        </div>
-      </div>
-      
-      {/* Company Address Section */}
-      <div className="mt-4 pt-4 border-t border-border/30">
-        <h4 className="text-sm font-medium text-muted-foreground mb-3">Company Address</h4>
-        
-        <div className="flex items-center gap-3 mt-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-            <MapPin className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Street</p>
-            {isEditing ? (
-              <Input
-                value={editForm.company?.address?.street || ""}
-                onChange={(e) => setEditForm({
-                  ...editForm, 
-                  company: { 
-                    ...editForm.company, 
-                    address: { 
-                      ...editForm.company?.address || {}, 
-                      street: e.target.value 
-                    } 
-                  }
-                })}
-                className="h-12 text-sm"
-                placeholder="Street address"
-              />
-            ) : (
-              <p className="text-sm font-medium">{lead.company?.address?.street || "Not specified"}</p>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3 mt-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-            <MapPin className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">City</p>
-            {isEditing ? (
-              <Input
-                value={editForm.company?.address?.city || ""}
-                onChange={(e) => setEditForm({
-                  ...editForm, 
-                  company: { 
-                    ...editForm.company, 
-                    address: { 
-                      ...editForm.company?.address || {}, 
-                      city: e.target.value 
-                    } 
-                  }
-                })}
-                className="h-12 text-sm"
-                placeholder="City"
-              />
-            ) : (
-              <p className="text-sm font-medium">{lead.company?.address?.city || "Not specified"}</p>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3 mt-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-            <MapPin className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">State/Province</p>
-            {isEditing ? (
-              <Input
-                value={editForm.company?.address?.state || ""}
-                onChange={(e) => setEditForm({
-                  ...editForm, 
-                  company: { 
-                    ...editForm.company, 
-                    address: { 
-                      ...editForm.company?.address || {}, 
-                      state: e.target.value 
-                    } 
-                  }
-                })}
-                className="h-12 text-sm"
-                placeholder="State/Province"
-              />
-            ) : (
-              <p className="text-sm font-medium">{lead.company?.address?.state || "Not specified"}</p>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3 mt-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-            <MapPin className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">ZIP/Postal Code</p>
-            {isEditing ? (
-              <Input
-                value={editForm.company?.address?.zipcode || ""}
-                onChange={(e) => setEditForm({
-                  ...editForm, 
-                  company: { 
-                    ...editForm.company, 
-                    address: { 
-                      ...editForm.company?.address || {}, 
-                      zipcode: e.target.value 
-                    } 
-                  }
-                })}
-                className="h-12 text-sm"
-                placeholder="ZIP/Postal Code"
-              />
-            ) : (
-              <p className="text-sm font-medium">{lead.company?.address?.zipcode || "Not specified"}</p>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3 mt-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-            <MapPin className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Country</p>
-            {isEditing ? (
-              <Input
-                value={editForm.company?.address?.country || ""}
-                onChange={(e) => setEditForm({
-                  ...editForm, 
-                  company: { 
-                    ...editForm.company, 
-                    address: { 
-                      ...editForm.company?.address || {}, 
-                      country: e.target.value 
-                    } 
-                  }
-                })}
-                className="h-12 text-sm"
-                placeholder="Country"
-              />
-            ) : (
-              <p className="text-sm font-medium">{lead.company?.address?.country || "Not specified"}</p>
-            )}
-          </div>
-        </div>
+        <CompanySelector
+          selectedCompanyId={isEditing ? editForm.company_id : lead.company_id}
+          onCompanyChange={handleCompanyChange}
+          isEditing={isEditing}
+        />
       </div>
     </div>
   )

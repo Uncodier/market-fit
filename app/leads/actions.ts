@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client"
 import { z } from "zod"
+import { findOrCreateCompany } from "@/app/companies/actions"
 
 // Definir el schema de respuesta
 const LeadSchema = z.object({
@@ -24,6 +25,7 @@ const LeadSchema = z.object({
         country: z.string().optional(),
       }).optional(),
     }).nullable(),
+    company_id: z.string().nullable(),
     position: z.string().nullable(),
     segment_id: z.string().nullable(),
     campaign_id: z.string().nullable(),
@@ -83,6 +85,7 @@ const SingleLeadSchema = z.object({
         country: z.string().optional(),
       }).optional(),
     }).nullable(),
+    company_id: z.string().nullable(),
     position: z.string().nullable(),
     segment_id: z.string().nullable(),
     campaign_id: z.string().nullable(),
@@ -140,6 +143,7 @@ const CreateLeadSchema = z.object({
       country: z.string().optional(),
     }).optional(),
   }).nullable(),
+  company_id: z.string().optional(),
   position: z.string().optional(),
   segment_id: z.string().optional(),
   status: z.enum(["new", "contacted", "qualified", "converted", "lost"]).default("new"),
@@ -191,6 +195,7 @@ const UpdateLeadSchema = z.object({
       country: z.string().optional(),
     }).optional(),
   }).nullable(),
+  company_id: z.string().optional().nullable(),
   position: z.string().optional().nullable(),
   segment_id: z.string().optional().nullable(),
   status: z.enum(["new", "contacted", "qualified", "converted", "lost"]),
@@ -232,6 +237,7 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
         email,
         phone,
         company,
+        company_id,
         position,
         segment_id,
         campaign_id,
@@ -278,6 +284,7 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         email,
         phone,
         company,
+        company_id,
         position,
         segment_id,
         campaign_id,
@@ -319,6 +326,7 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
         email,
         phone,
         company,
+        company_id,
         position,
         segment_id,
         campaign_id,
@@ -349,6 +357,23 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
   }
 }
 
+// Nueva función auxiliar para manejar la creación/búsqueda de company
+async function handleCompanyForLead(data: CreateLeadInput | Partial<UpdateLeadInput>) {
+  let company_id = data.company_id
+
+  // Si no hay company_id pero hay company.name, intentar crear/encontrar la company
+  if (!company_id && data.company?.name) {
+    const { company, error } = await findOrCreateCompany(data.company.name)
+    if (error) {
+      console.error("Error handling company:", error)
+      return { company_id: null, error }
+    }
+    company_id = company?.id || null
+  }
+
+  return { company_id, error: null }
+}
+
 export async function createLead(data: CreateLeadInput): Promise<{ error?: string; lead?: any }> {
   try {
     const supabase = await createClient()
@@ -356,10 +381,22 @@ export async function createLead(data: CreateLeadInput): Promise<{ error?: strin
     // Validate input data
     const validatedData = CreateLeadSchema.parse(data)
     
+    // Handle company creation/lookup
+    const { company_id, error: companyError } = await handleCompanyForLead(validatedData)
+    if (companyError) {
+      return { error: companyError }
+    }
+    
+    // Prepare data for insertion
+    const insertData = {
+      ...validatedData,
+      company_id
+    }
+    
     // Insert the lead
     const { data: lead, error } = await supabase
       .from("leads")
-      .insert([validatedData])
+      .insert([insertData])
       .select()
       .single()
     
@@ -387,8 +424,19 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
     // Validate input data (we use partial to allow for partial updates)
     UpdateLeadSchema.parse(data) // This should throw if validation fails
     
+    // Handle company creation/lookup if needed
+    const { company_id, error: companyError } = await handleCompanyForLead(data)
+    if (companyError) {
+      return { error: companyError }
+    }
+    
     // Extract ID for the condition
     const { id, ...updateData } = data
+    
+    // Add company_id to update data if it was determined
+    if (company_id !== undefined) {
+      updateData.company_id = company_id
+    }
     
     // Update the lead
     const { error } = await supabase
