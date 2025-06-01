@@ -298,7 +298,7 @@ export default function SettingsPage() {
     const emailPassword = hasEmailPassword ? "STORED_SECURELY" : "";
     const emailStatus = (site.settings?.channels?.email?.status || (hasEmailPassword ? "synced" : "not_configured")) as "not_configured" | "password_required" | "pending_sync" | "synced";
 
-    const hasWhatsAppToken = site.settings?.whatsapp?.apiToken || "";
+    const hasWhatsAppToken = site.settings?.channels?.whatsapp?.apiToken || "";
     const whatsAppToken = hasWhatsAppToken ? "STORED_SECURELY" : "";
     
     // Process team members data
@@ -374,6 +374,16 @@ export default function SettingsPage() {
           outgoingServer: site.settings.channels.email?.outgoingServer || "",
           outgoingPort: site.settings.channels.email?.outgoingPort || "",
           status: emailStatus
+        },
+        whatsapp: {
+          enabled: Boolean(site.settings.channels.whatsapp?.enabled) || Boolean(site.settings.channels.whatsapp?.apiToken),
+          setupType: site.settings.channels.whatsapp?.setupType,
+          country: site.settings.channels.whatsapp?.country,
+          region: site.settings.channels.whatsapp?.region,
+          existingNumber: site.settings.channels.whatsapp?.existingNumber,
+          setupRequested: site.settings.channels.whatsapp?.setupRequested || false,
+          apiToken: whatsAppToken,
+          status: site.settings.channels.whatsapp?.status || "not_configured"
         }
       } : {
         email: {
@@ -384,6 +394,16 @@ export default function SettingsPage() {
           incomingPort: "",
           outgoingServer: "",
           outgoingPort: "",
+          status: "not_configured" as const
+        },
+        whatsapp: {
+          enabled: false,
+          setupType: undefined,
+          country: undefined,
+          region: undefined,
+          existingNumber: undefined,
+          setupRequested: false,
+          apiToken: undefined,
           status: "not_configured" as const
         }
       },
@@ -408,16 +428,6 @@ export default function SettingsPage() {
         analytics_provider: site.tracking?.analytics_provider || "",
         analytics_id: site.tracking?.analytics_id || "",
         tracking_code: site.tracking?.tracking_code || ""
-      },
-      // Add WhatsApp Business configuration
-      whatsapp: {
-        enabled: Boolean(site.settings?.whatsapp?.enabled) || Boolean(site.settings?.whatsapp?.apiToken),
-        setupType: site.settings?.whatsapp?.setupType,
-        country: site.settings?.whatsapp?.country,
-        region: site.settings?.whatsapp?.region,
-        existingNumber: site.settings?.whatsapp?.existingNumber,
-        setupRequested: site.settings?.whatsapp?.setupRequested || false,
-        apiToken: hasWhatsAppToken ? "STORED_SECURELY" : (site.settings?.whatsapp?.apiToken || "")
       },
       // Add team info
       team_members: processedTeamMembers,
@@ -467,7 +477,7 @@ export default function SettingsPage() {
       // Extract site-specific fields (exclude team_members from general save)
       const { 
         name, url, description, logo_url, resource_urls, 
-        competitors, focusMode, billing, tracking, whatsapp, 
+        competitors, focusMode, billing, tracking, 
         team_members, channels, 
         // Extract all the settings fields explicitly to avoid any tracking contamination
         about, company_size, industry, products, services, locations, 
@@ -634,6 +644,16 @@ export default function SettingsPage() {
             outgoingServer: "",
             outgoingPort: "",
             status: "not_configured" as const
+          },
+          whatsapp: {
+            enabled: false,
+            setupType: undefined,
+            country: undefined,
+            region: undefined,
+            existingNumber: undefined,
+            setupRequested: false,
+            apiToken: undefined,
+            status: "not_configured" as const
           }
         },
         // Incluir competitors y focus_mode en settings en lugar de site
@@ -652,19 +672,19 @@ export default function SettingsPage() {
         console.log("SAVE SECURE: Processing secure tokens");
         
         // Check for WhatsApp token - Don't process 'STORED_SECURELY' as it's just a placeholder
-        if (data.whatsapp?.apiToken && 
-            data.whatsapp.apiToken.trim() !== '' && 
-            data.whatsapp.apiToken !== 'STORED_SECURELY') {
+        if (data.channels?.whatsapp?.apiToken && 
+            data.channels.whatsapp.apiToken.trim() !== '' && 
+            data.channels.whatsapp.apiToken !== 'STORED_SECURELY') {
           try {
             console.log("SAVE SECURE: Storing WhatsApp token");
             await secureTokensService.storeToken(
               currentSite.id,
               'whatsapp',
-              data.whatsapp.apiToken,
+              data.channels.whatsapp.apiToken,
               'default'
             );
             // Clear the token from the form data to avoid storing in plaintext
-            data.whatsapp.apiToken = "";
+            data.channels.whatsapp.apiToken = "";
           } catch (tokenError) {
             console.error("Error storing WhatsApp token:", tokenError);
           }
@@ -686,7 +706,19 @@ export default function SettingsPage() {
             // Clear the password from the form data to avoid storing in plaintext
             data.channels.email.password = "";
             // Ensure we keep email settings structure in settings with ALL fields
-            if (!settings.channels) settings.channels = { email: {} as any };
+            if (!settings.channels) settings.channels = { 
+              email: {} as any,
+              whatsapp: {
+                enabled: false,
+                setupType: undefined,
+                country: undefined,
+                region: undefined,
+                existingNumber: undefined,
+                setupRequested: false,
+                apiToken: undefined,
+                status: "not_configured" as const
+              }
+            };
             // Copy all email configuration fields from the form data
             settings.channels.email = {
               enabled: data.channels.email.enabled || false,
@@ -703,7 +735,19 @@ export default function SettingsPage() {
           }
         } else if (data.channels?.email?.password === 'STORED_SECURELY' && data.channels.email.enabled) {
           // If using the stored password, make sure we keep ALL email configuration fields
-          if (!settings.channels) settings.channels = { email: {} as any };
+          if (!settings.channels) settings.channels = { 
+            email: {} as any,
+            whatsapp: {
+              enabled: false,
+              setupType: undefined,
+              country: undefined,
+              region: undefined,
+              existingNumber: undefined,
+              setupRequested: false,
+              apiToken: undefined,
+              status: "not_configured" as const
+            }
+          };
           settings.channels.email = {
             enabled: data.channels.email.enabled || false,
             email: data.channels.email.email || "",

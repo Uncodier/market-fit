@@ -164,7 +164,32 @@ export const siteFormSchema = z.object({
   }),
   // Channel settings
   channels: z.object({
-    email: emailChannelSchema
+    email: emailChannelSchema,
+    whatsapp: z.object({
+      enabled: z.boolean().default(false),
+      setupType: z.enum(["new_number", "use_own_account"]).optional(),
+      country: z.string().optional(),
+      region: z.string().optional(), // For new_number: city code
+      apiToken: z.string().optional(), // For use_own_account setup type
+      existingNumber: z.string().optional(), // For use_own_account setup type
+      setupRequested: z.boolean().default(false),
+      status: z.enum(["not_configured", "pending", "active"]).optional().default("not_configured")
+    }).optional().default({
+      enabled: false,
+      setupRequested: false,
+      status: "not_configured"
+    }).refine((data) => {
+      if (!data) return true;
+      // If use_own_account setup, both apiToken and existingNumber are required
+      if (data.setupType === "use_own_account") {
+        if (!data.apiToken || data.apiToken.trim() === '') return false;
+        if (!data.existingNumber || data.existingNumber.trim() === '') return false;
+      }
+      return true;
+    }, {
+      message: "API Token and Phone Number are required for using your own Twilio account",
+      path: ["setupType"]
+    })
   }).optional().default({
     email: {
       enabled: false,
@@ -174,6 +199,11 @@ export const siteFormSchema = z.object({
       incomingPort: "",
       outgoingServer: "",
       outgoingPort: "",
+      status: "not_configured" as const
+    },
+    whatsapp: {
+      enabled: false,
+      setupRequested: false,
       status: "not_configured" as const
     }
   }),
@@ -235,34 +265,6 @@ export const siteFormSchema = z.object({
     analytics_provider: "",
     analytics_id: "",
     tracking_code: ""
-  }),
-  // WhatsApp Business configuration
-  whatsapp: z.object({
-    enabled: z.boolean().default(false),
-    setupType: z.enum(["new_number", "port_existing", "api_key"]).optional(),
-    country: z.string().optional(),
-    region: z.string().optional(), // For port_existing: state/region, for new_number: city code
-    existingNumber: z.string().optional(),
-    setupRequested: z.boolean().default(false),
-    apiToken: z.string().optional() // For backward compatibility and when setup is complete, or for api_key setup
-  }).optional().default({
-    enabled: false,
-    setupRequested: false
-  }).refine((data) => {
-    if (!data) return true;
-    // If api_key setup, both apiToken and existingNumber are required
-    if (data.setupType === "api_key") {
-      if (!data.apiToken || data.apiToken.trim() === '') return false;
-      if (!data.existingNumber || data.existingNumber.trim() === '') return false;
-    }
-    // If port_existing setup, existingNumber is required
-    if (data.setupType === "port_existing") {
-      if (!data.existingNumber || data.existingNumber.trim() === '') return false;
-    }
-    return true;
-  }, {
-    message: "Missing required fields for the selected setup type",
-    path: ["setupType"]
   }),
   // Billing fields
   billing: z.object({

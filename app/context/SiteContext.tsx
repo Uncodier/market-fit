@@ -76,16 +76,6 @@ export interface SiteSettings {
   marketing_budget?: MarketingBudget | null
   marketing_channels?: MarketingChannel[] | null
   social_media?: SocialMedia[] | null
-  whatsapp?: {
-    enabled?: boolean
-    setupType?: "new_number" | "port_existing" | "api_key"
-    country?: string
-    region?: string
-    existingNumber?: string
-    setupRequested?: boolean
-    apiToken?: string
-    status?: "not_configured" | "pending" | "connected"
-  } | null
   team_members?: TeamMember[] | null
   team_roles?: { name: string; permissions: string[]; description?: string }[] | null
   org_structure?: Record<string, any> | null
@@ -109,6 +99,16 @@ export interface SiteSettings {
       outgoingServer?: string
       outgoingPort?: string
       status?: "not_configured" | "password_required" | "pending_sync" | "synced"
+    }
+    whatsapp?: {
+      enabled?: boolean
+      setupType?: "new_number" | "use_own_account"
+      country?: string
+      region?: string
+      existingNumber?: string
+      setupRequested?: boolean
+      apiToken?: string
+      status?: "not_configured" | "pending" | "active"
     }
   } | null
 }
@@ -675,7 +675,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 }),
                 marketing_channels: parseJsonField(settingsData.marketing_channels, []),
                 social_media: parseJsonField(settingsData.social_media, []),
-                whatsapp: settingsData.whatsapp,
                 team_members: parseJsonField(settingsData.team_members, []),
                 team_roles: parseJsonField(settingsData.team_roles, []),
                 org_structure: parseJsonField(settingsData.org_structure, {}),
@@ -693,6 +692,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
                     incomingPort: "",
                     outgoingServer: "",
                     outgoingPort: "",
+                    status: "not_configured"
+                  },
+                  whatsapp: {
+                    enabled: false,
+                    setupType: "new_number",
+                    country: "",
+                    region: "",
+                    existingNumber: "",
+                    setupRequested: false,
+                    apiToken: "",
                     status: "not_configured"
                   }
                 })
@@ -943,10 +952,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         formattedSettings.social_media = Array.isArray(settings.social_media) ? settings.social_media : [];
       }
       
-      if (settings.whatsapp !== undefined) {
-        formattedSettings.whatsapp = typeof settings.whatsapp === 'object' ? settings.whatsapp : null;
-      }
-      
       if (settings.team_members !== undefined) {
         formattedSettings.team_members = Array.isArray(settings.team_members) ? settings.team_members : [];
       }
@@ -976,6 +981,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
             incomingPort: "",
             outgoingServer: "",
             outgoingPort: "",
+            status: "not_configured"
+          },
+          whatsapp: {
+            enabled: false,
+            setupType: "new_number",
+            country: "",
+            region: "",
+            existingNumber: "",
+            setupRequested: false,
+            apiToken: "",
             status: "not_configured"
           }
         };

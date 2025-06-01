@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
 import { Label } from "../ui/label"
@@ -15,6 +16,13 @@ import {
   SelectValue,
 } from "../ui/select"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog"
+import {
   FormControl,
   FormField,
   FormItem,
@@ -22,7 +30,7 @@ import {
   FormMessage,
 } from "../ui/form"
 import { Input } from "../ui/input"
-import { MessageSquare, CheckCircle2, Globe, Loader } from "../ui/icons"
+import { MessageSquare, CheckCircle2, Globe, Copy } from "../ui/icons"
 import { type SiteFormValues } from "./form-schema"
 import { useSite } from "../../context/SiteContext"
 
@@ -350,147 +358,162 @@ interface WhatsAppSectionProps {
 
 export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSectionProps) {
   const [isRequesting, setIsRequesting] = useState(false)
-  const [isLoadingWidget, setIsLoadingWidget] = useState(false)
-  const [twilioAuthToken, setTwilioAuthToken] = useState<string | null>(null)
-  const [showTwilioWidget, setShowTwilioWidget] = useState(false)
+  const [isTogglingEnabled, setIsTogglingEnabled] = useState(false)
   const { currentSite, updateSettings } = useSite()
 
   if (!active) return null
 
-  const whatsappConfig = form.watch("whatsapp")
+  const whatsappConfig = form.watch("channels.whatsapp")
   const isEnabled = whatsappConfig?.enabled || false
   const setupType = whatsappConfig?.setupType
   const selectedCountry = whatsappConfig?.country
   const selectedRegion = whatsappConfig?.region
   const existingNumber = whatsappConfig?.existingNumber
   const setupRequested = whatsappConfig?.setupRequested || false
-  const hasApiToken = whatsappConfig?.apiToken === "STORED_SECURELY"
+  const hasApiToken = whatsappConfig?.apiToken && whatsappConfig.apiToken.trim() !== ''
 
   const selectedCountryConfig = TWILIO_COUNTRIES.find(c => c.code === selectedCountry)
-  const availableRegions = selectedCountryConfig?.hasRegions ? getRegionsForCountry(selectedCountry || "") : []
-  const availableCities = selectedCountryConfig?.hasCities ? getCitiesForCountry(selectedCountry || "") : []
+  const availableCities = selectedCountryConfig ? getCitiesForCountry(selectedCountry!) : []
 
-  const canRequestSetup = isEnabled && setupType && 
-    (setupType === "port_existing" ? true : true) && // Port existing will use Twilio widget
-    (setupType === "api_key" ? (whatsappConfig?.apiToken && whatsappConfig.apiToken.trim() !== '' && existingNumber && existingNumber.trim() !== '') : true) &&
-    (setupType === "new_number" 
-      ? (selectedCountry && (selectedCountryConfig?.hasCities ? selectedRegion : true))
-      : (setupType === "port_existing" ? true : true)
-    )
+  // Check if setup can be requested
+  const canRequestSetup = setupType === "new_number" 
+    ? selectedCountry && (!selectedCountryConfig?.hasCities || selectedRegion)
+    : setupType === "use_own_account"
+    ? whatsappConfig?.apiToken && whatsappConfig?.apiToken.trim() !== '' && existingNumber && existingNumber.trim() !== ''
+    : false
 
-  const handleToggleEnabled = (enabled: boolean) => {
-    form.setValue("whatsapp.enabled", enabled)
-    if (!enabled) {
-      // Reset all other fields when disabled
-      form.setValue("whatsapp.setupType", undefined)
-      form.setValue("whatsapp.country", undefined)
-      form.setValue("whatsapp.region", undefined)
-      form.setValue("whatsapp.existingNumber", undefined)
-      form.setValue("whatsapp.setupRequested", false)
-      setShowTwilioWidget(false)
-      setTwilioAuthToken(null)
+  const handleToggleEnabled = async (enabled: boolean) => {
+    setIsTogglingEnabled(true)
+    try {
+      form.setValue("channels.whatsapp.enabled", enabled)
+      
+      if (enabled) {
+        toast.success("WhatsApp Business enabled. Configure your setup below.")
+      } else {
+        // Clear form values when disabling
+        form.setValue("channels.whatsapp.setupType", undefined)
+        form.setValue("channels.whatsapp.country", undefined)
+        form.setValue("channels.whatsapp.region", undefined)
+        form.setValue("channels.whatsapp.existingNumber", undefined)
+        form.setValue("channels.whatsapp.apiToken", undefined)
+        form.setValue("channels.whatsapp.setupRequested", false)
+        toast.success("WhatsApp Business disabled")
+      }
+    } catch (error) {
+      console.error("Error toggling WhatsApp enabled state:", error)
+      toast.error("Failed to update WhatsApp settings")
+      // Revert the form value on error
+      form.setValue("channels.whatsapp.enabled", !enabled)
+    } finally {
+      setIsTogglingEnabled(false)
     }
   }
 
-  const handleInitializeTwilioWidget = async () => {
-    if (!siteId || !siteName) {
-      toast.error("Missing required information for authorization")
-      return
-    }
-
-    setIsLoadingWidget(true)
+  const handleResetConfiguration = async () => {
     try {
-      const response = await fetch("/api/twilio-auth", {
+      // Clear form values
+      form.setValue("channels.whatsapp.enabled", false)
+      form.setValue("channels.whatsapp.setupType", undefined)
+      form.setValue("channels.whatsapp.country", undefined)
+      form.setValue("channels.whatsapp.region", undefined)
+      form.setValue("channels.whatsapp.existingNumber", undefined)
+      form.setValue("channels.whatsapp.apiToken", undefined)
+      form.setValue("channels.whatsapp.setupRequested", false)
+      
+      // Save the reset state to database
+      if (currentSite) {
+        await updateSettings(currentSite.id, { 
+          channels: { 
+            email: currentSite.settings?.channels?.email || {
+              enabled: false,
+              email: "",
+              password: "",
+              incomingServer: "",
+              incomingPort: "",
+              outgoingServer: "",
+              outgoingPort: "",
+              status: "not_configured"
+            },
+            whatsapp: { 
+              enabled: false,
+              setupType: undefined,
+              country: undefined,
+              region: undefined,
+              existingNumber: undefined,
+              setupRequested: false,
+              apiToken: undefined,
+              status: "not_configured"
+            } 
+          } 
+        })
+      }
+      
+      toast.success("WhatsApp configuration reset")
+    } catch (error) {
+      console.error("Error resetting WhatsApp configuration:", error)
+      toast.error("Failed to reset configuration")
+    }
+  }
+
+  const handleRequestSetup = async () => {
+    if (!siteId || !canRequestSetup) return
+
+    setIsRequesting(true)
+    try {
+      const response = await fetch("/api/whatsapp-setup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           siteId,
-          siteName
+          setupType,
+          country: selectedCountry,
+          region: selectedRegion,
+          existingNumber,
+          apiToken: whatsappConfig?.apiToken
         })
       })
 
-      const result = await response.json()
-
       if (!response.ok) {
-        throw new Error(result.error || "Failed to initialize Twilio authorization")
+        const error = await response.json()
+        throw new Error(error.error || "Failed to submit setup request")
       }
-
-      setTwilioAuthToken(result.data.token)
-      setShowTwilioWidget(true)
-      
-      toast.success("Authorization widget loaded successfully")
-    } catch (error) {
-      console.error("Error initializing Twilio widget:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to initialize authorization")
-    } finally {
-      setIsLoadingWidget(false)
-    }
-  }
-
-  const handleRequestSetup = async () => {
-    if (!siteId || !siteName || !canRequestSetup) {
-      toast.error("Missing required information for setup request")
-      return
-    }
-
-    setIsRequesting(true)
-    try {
-      const setupData = {
-        siteId,
-        siteName,
-        setupType: setupType!,
-        country: setupType === "new_number" ? selectedCountry : undefined,
-        region: setupType === "new_number" ? selectedRegion : undefined,
-        existingNumber: (setupType === "port_existing" || setupType === "api_key") ? existingNumber : undefined,
-        apiToken: setupType === "api_key" ? whatsappConfig?.apiToken : undefined
-      }
-
-      const response = await fetch("/api/whatsapp-setup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(setupData)
-      })
 
       const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to submit setup request")
-      }
-
-      // Mark setup as requested
-      form.setValue("whatsapp.setupRequested", true)
       
-      // Save WhatsApp configuration object similar to email
-      if (currentSite && updateSettings && siteId) {
-        try {
-          const currentSettings = currentSite.settings || {};
-          const whatsappConfig = {
-            enabled: true,
-            setupType: setupType!,
-            country: setupType === "new_number" ? selectedCountry : undefined,
-            region: setupType === "new_number" ? selectedRegion : undefined,
-            existingNumber: setupType === "port_existing" ? existingNumber : undefined,
-            setupRequested: true,
-            status: "pending" as const
-          };
-
-          await updateSettings(siteId, {
-            ...currentSettings,
-            whatsapp: whatsappConfig
-          });
-          
-          console.log("WhatsApp configuration saved with pending status");
-        } catch (settingsError) {
-          console.error("Error saving WhatsApp configuration:", settingsError);
-          // Don't throw error, just log it as the main request was successful
-        }
+      // Mark as requested and save enabled state
+      form.setValue("channels.whatsapp.setupRequested", true)
+      
+      // Save the configuration including enabled state
+      if (currentSite) {
+        await updateSettings(currentSite.id, { 
+          channels: { 
+            email: currentSite.settings?.channels?.email || {
+              enabled: false,
+              email: "",
+              password: "",
+              incomingServer: "",
+              incomingPort: "",
+              outgoingServer: "",
+              outgoingPort: "",
+              status: "not_configured"
+            },
+            whatsapp: { 
+              enabled: true,
+              setupType: setupType,
+              country: selectedCountry,
+              region: selectedRegion,
+              existingNumber: existingNumber,
+              setupRequested: true,
+              apiToken: whatsappConfig?.apiToken,
+              status: "pending"
+            } 
+          } 
+        })
       }
       
-      const successMessage = setupType === "api_key" 
+      const successMessage = setupType === "use_own_account" 
         ? "Twilio API key submitted for validation! We'll verify and integrate it soon."
         : "WhatsApp setup request submitted successfully! Our team will contact you soon."
       
@@ -505,438 +528,393 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
     }
   }
 
+  const handleCopyWebhook = () => {
+    const webhookUrl = `${process.env.NEXT_PUBLIC_API_SERVER_URL || 'https://your-domain.com'}/api/agents/whatsapp`
+    navigator.clipboard.writeText(webhookUrl)
+    toast.success("Webhook URL copied to clipboard!")
+  }
+
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          WhatsApp Business Channel
-        </CardTitle>
-        <p className="text-sm text-muted-foreground mt-1">
-          Connect with WhatsApp Business API to enable messaging with your customers
-        </p>
-      </CardHeader>
-      <CardContent className="px-8 pb-4 space-y-6">
-        {/* Enable/Disable Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="whatsapp-enabled" className="text-base font-medium">
-              Enable WhatsApp Business
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Allow customers to contact you via WhatsApp
-            </p>
+    <>
+      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-8 py-6">
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            WhatsApp Business Channel
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Connect with WhatsApp Business API to enable messaging with your customers
+          </p>
+        </CardHeader>
+        <CardContent className="px-8 pb-4 space-y-6">
+          {/* Enable/Disable Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="whatsapp-enabled" className="text-base font-medium">
+                Enable WhatsApp Business
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Allow customers to contact you via WhatsApp
+              </p>
+            </div>
+            <Switch
+              id="whatsapp-enabled"
+              checked={isEnabled}
+              onCheckedChange={handleToggleEnabled}
+              disabled={isTogglingEnabled}
+            />
           </div>
-          <Switch
-            id="whatsapp-enabled"
-            checked={isEnabled}
-            onCheckedChange={handleToggleEnabled}
-          />
-        </div>
 
-        {isEnabled && !setupRequested && !hasApiToken && (
-          <>
-            {/* Setup Type Selection */}
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Choose Setup Option</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    setupType === "new_number"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                  onClick={() => {
-                    form.setValue("whatsapp.setupType", "new_number")
-                    form.setValue("whatsapp.existingNumber", undefined)
-                    form.setValue("whatsapp.apiToken", undefined)
-                    setShowTwilioWidget(false)
-                    setTwilioAuthToken(null)
-                  }}
-                >
-                  <div>
-                    <h4 className="font-medium">Get New Number</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Recommended
-                    </p>
-                  </div>
-                </div>
-
-                <div
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    setupType === "port_existing"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                  onClick={() => {
-                    form.setValue("whatsapp.setupType", "port_existing")
-                    form.setValue("whatsapp.apiToken", undefined)
-                    form.setValue("whatsapp.country", undefined)
-                    form.setValue("whatsapp.region", undefined)
-                  }}
-                >
-                  <div>
-                    <h4 className="font-medium">Port Existing Number</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Keep your current number
-                    </p>
-                  </div>
-                </div>
-
-                {/* Temporarily hidden for deployment */}
-                {false && (
+          {isEnabled && !setupRequested && !hasApiToken && (
+            <>
+              {/* Setup Type Selection */}
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Choose Setup Option</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div
                     className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      setupType === "api_key"
+                      setupType === "new_number"
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
                     }`}
                     onClick={() => {
-                      form.setValue("whatsapp.setupType", "api_key")
-                      form.setValue("whatsapp.existingNumber", undefined)
-                      form.setValue("whatsapp.country", undefined)
-                      form.setValue("whatsapp.region", undefined)
-                      setShowTwilioWidget(false)
-                      setTwilioAuthToken(null)
+                      form.setValue("channels.whatsapp.setupType", "new_number")
+                      form.setValue("channels.whatsapp.existingNumber", undefined)
+                      form.setValue("channels.whatsapp.apiToken", undefined)
                     }}
                   >
                     <div>
-                      <h4 className="font-medium">Use Twilio API Key</h4>
+                      <h4 className="font-medium">Get New Number</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Recommended
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      setupType === "use_own_account"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                    onClick={() => {
+                      form.setValue("channels.whatsapp.setupType", "use_own_account")
+                      form.setValue("channels.whatsapp.country", undefined)
+                      form.setValue("channels.whatsapp.region", undefined)
+                    }}
+                  >
+                    <div>
+                      <h4 className="font-medium">Use Your Own Twilio Account</h4>
                       <p className="text-sm text-muted-foreground">
                         Connect existing account
                       </p>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Setup Type Explanations */}
-            {setupType === "new_number" && (
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900">
-                <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Get New Number - Features Enabled:</h4>
-                <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
-                  <li>• WhatsApp Business API messaging</li>
-                  <li>• SMS messaging capabilities</li>
-                  <li>• Professional business number</li>
-                  <li>• City-based number selection</li>
-                  <li>• Quick 1-2 day setup process</li>
-                  <li>• Full Twilio integration support</li>
-                </ul>
-              </div>
-            )}
-
-            {setupType === "port_existing" && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900">
-                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Port Existing Number - Features Enabled:</h4>
-                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 mb-3">
-                  <li>• Keep your existing business number</li>
-                  <li>• WhatsApp Business API messaging</li>
-                  <li>• SMS messaging capabilities</li>
-                  <li>• Maintain customer recognition</li>
-                  <li>• Professional number porting process</li>
-                  <li>• Secure authorization via Twilio & Meta</li>
-                </ul>
-                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
-                    ⚠️ Important: Your number must be enabled for WhatsApp Business API in your current provider before porting.
-                  </p>
                 </div>
               </div>
-            )}
 
-            {setupType === "api_key" && (
-              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-900">
-                <h4 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Twilio API Integration - Features Enabled:</h4>
-                <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1">
-                  <li>• Use your existing Twilio account</li>
-                  <li>• WhatsApp Business API messaging</li>
-                  <li>• SMS messaging capabilities</li>
-                  <li>• Keep existing phone numbers</li>
-                  <li>• Immediate integration (same day)</li>
-                  <li>• Full control over your Twilio resources</li>
-                </ul>
-              </div>
-            )}
+              {/* Setup Type Explanations */}
+              {setupType === "new_number" && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900">
+                  <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Get New Number - Features Enabled:</h4>
+                  <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                    <li>• WhatsApp Business API messaging</li>
+                    <li>• SMS messaging capabilities</li>
+                    <li>• Professional business number</li>
+                    <li>• City-based number selection</li>
+                    <li>• Quick 1-2 day setup process</li>
+                    <li>• Full Twilio integration support</li>
+                  </ul>
+                </div>
+              )}
 
-            {setupType && (
-              <>
-                {/* Country Selection (only for new_number) */}
-                {setupType === "new_number" && (
-                  <FormField
-                    control={form.control}
-                    name="whatsapp.country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value)
-                            // Reset region when country changes
-                            form.setValue("whatsapp.region", undefined)
-                          }}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="h-10">
-                              <SelectValue placeholder="Select country" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {TWILIO_COUNTRIES.map((country) => (
-                              <SelectItem key={country.code} value={country.code}>
-                                <div className="flex items-center gap-2">
-                                  <Globe className="h-4 w-4 text-muted-foreground" />
-                                  {country.name}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+              {setupType === "use_own_account" && (
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-900">
+                  <h4 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Twilio API Integration - Features Enabled:</h4>
+                  <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1">
+                    <li>• Use your existing Twilio account</li>
+                    <li>• WhatsApp Business API messaging</li>
+                    <li>• SMS messaging capabilities</li>
+                    <li>• Keep existing phone numbers</li>
+                    <li>• Immediate integration (same day)</li>
+                    <li>• Full control over your Twilio resources</li>
+                  </ul>
+                </div>
+              )}
 
-                {/* Region/City Selection (different based on setup type) */}
-                {selectedCountryConfig && setupType === "new_number" && selectedCountryConfig.hasCities && availableCities.length > 0 && (
-                  <FormField
-                    control={form.control}
-                    name="whatsapp.region"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Preferred City</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-10">
-                              <SelectValue placeholder="Select preferred city for your number" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {availableCities.map((city) => (
-                              <SelectItem key={city.code} value={city.code}>
-                                <div className="flex items-center gap-2">
-                                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                                  {city.name}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-sm text-muted-foreground">
-                          Choose the city where you'd like your new WhatsApp & SMS number to be based
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {/* WhatsApp Embedded Signup for Port Existing */}
-                {setupType === "port_existing" && (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900">
-                      <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">WhatsApp Business Authorization</h4>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                        To port your existing number, you'll need to authorize through Meta's WhatsApp Business Platform.
-                        This secure process will connect your WhatsApp Business account to our platform.
-                      </p>
-                      
-                      {!showTwilioWidget && (
-                        <Button
-                          onClick={handleInitializeTwilioWidget}
-                          disabled={isLoadingWidget}
-                          className="w-full"
-                        >
-                          {isLoadingWidget ? (
-                            <>
-                              <Loader className="mr-2 h-4 w-4 animate-spin" />
-                              Loading Authorization...
-                            </>
-                          ) : (
-                            "Start WhatsApp Business Authorization"
-                          )}
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* WhatsApp Embedded Signup Instructions */}
-                    {showTwilioWidget && twilioAuthToken && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900">
-                          <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Facebook Integration Required</h4>
-                          <p className="text-sm text-green-700 dark:text-green-300 mb-3">
-                            WhatsApp Business authorization is handled through Meta's business platform. 
-                            Please follow these steps to complete the setup:
-                          </p>
-                          <ol className="text-sm text-green-700 dark:text-green-300 space-y-2 list-decimal list-inside">
-                            <li>Visit <strong>Facebook Business Manager</strong></li>
-                            <li>Navigate to <strong>WhatsApp &gt; Getting Started</strong></li>
-                            <li>Select <strong>Port Existing Number</strong></li>
-                            <li>Follow the verification process</li>
-                            <li>Configure webhooks to point to: <code className="bg-green-100 dark:bg-green-800 px-1 rounded text-xs">{process.env.NEXT_PUBLIC_API_SERVER_URL}/api/agents/whatsapp</code></li>
-                          </ol>
-                        </div>
-                        
-                        <div className="border rounded-lg p-6 bg-white dark:bg-gray-900 text-center">
-                          <div className="mb-4">
-                            <h3 className="text-lg font-medium mb-2">Complete Authorization at Meta</h3>
-                            <p className="text-sm text-muted-foreground mb-4">
-                              Click the button below to open Facebook Business Manager and complete your WhatsApp Business setup.
-                            </p>
-                          </div>
-                          
-                          <Button
-                            asChild
-                            className="mb-4"
+              {setupType && (
+                <>
+                  {/* Country Selection (only for new_number) */}
+                  {setupType === "new_number" && (
+                    <FormField
+                      control={form.control}
+                      name="channels.whatsapp.country"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Country</FormLabel>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value)
+                              // Reset region when country changes
+                              form.setValue("channels.whatsapp.region", undefined)
+                            }}
+                            value={field.value}
                           >
-                            <a 
-                              href="https://business.facebook.com/whatsapp/getting-started"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2"
-                            >
-                              Open Facebook Business Manager
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
-                            </a>
+                            <FormControl>
+                              <SelectTrigger className="h-12">
+                                <SelectValue placeholder="Select country" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {TWILIO_COUNTRIES.map((country) => (
+                                <SelectItem key={country.code} value={country.code}>
+                                  <div className="flex items-center gap-2">
+                                    <Globe className="h-4 w-4 text-muted-foreground" />
+                                    {country.name}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Region/City Selection (only for new_number) */}
+                  {selectedCountryConfig && setupType === "new_number" && selectedCountryConfig.hasCities && availableCities.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name="channels.whatsapp.region"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preferred City</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-12">
+                                <SelectValue placeholder="Select preferred city for your number" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {availableCities.map((city) => (
+                                <SelectItem key={city.code} value={city.code}>
+                                  <div className="flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                    {city.name}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-sm text-muted-foreground">
+                            Choose the city where you'd like your new WhatsApp & SMS number to be based
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Twilio API Configuration (for use_own_account setup) */}
+                  {setupType === "use_own_account" && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="channels.whatsapp.apiToken"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Twilio API Key</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter your Twilio API Key or Auth Token"
+                                {...field}
+                              />
+                            </FormControl>
+                            <p className="text-sm text-muted-foreground">
+                              Your existing Twilio API key for WhatsApp & SMS messaging
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="channels.whatsapp.existingNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter your Twilio phone number"
+                                {...field}
+                              />
+                            </FormControl>
+                            <p className="text-sm text-muted-foreground">
+                              The phone number from your Twilio account to use as sender (e.g., +1234567890)
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Webhook URL */}
+                      <div className="space-y-2">
+                        <Label className="text-base font-medium">Webhook URL</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={`${process.env.NEXT_PUBLIC_API_SERVER_URL || 'https://your-domain.com'}/api/agents/whatsapp`}
+                            readOnly
+                            className="bg-gray-50 dark:bg-gray-900"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCopyWebhook}
+                            className="px-3"
+                          >
+                            <Copy className="h-4 w-4" />
                           </Button>
-                          
-                          <div className="text-xs text-muted-foreground">
-                            <p>After completing the setup at Meta, your WhatsApp Business will be automatically connected.</p>
-                          </div>
                         </div>
-                        
-                        <div className="text-sm text-muted-foreground">
-                          <p><strong>Important:</strong> This process is handled securely by Meta. No credentials are shared with our platform.</p>
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Configure this webhook URL in your Twilio account for WhatsApp Business API
+                        </p>
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          {/* Setup Requested Status */}
+          {setupRequested && !hasApiToken && setupType !== "use_own_account" && (
+            <div className="flex items-center space-x-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-900">
+              <CheckCircle2 className="h-5 w-5 text-blue-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Setup request submitted</p>
+                <p className="text-xs text-muted-foreground">
+                  Our team will contact you soon to complete the WhatsApp Business setup
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* API Key Connected Status */}
+          {setupType === "use_own_account" && whatsappConfig?.apiToken && whatsappConfig.apiToken.trim() !== '' && (
+            <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Twilio API connected</p>
+                <p className="text-xs text-muted-foreground">
+                  Your Twilio API key is configured for WhatsApp & SMS messaging
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* API Token Configured Status */}
+          {hasApiToken && setupType !== "use_own_account" && (
+            <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">WhatsApp Business connected</p>
+                <p className="text-xs text-muted-foreground">
+                  Your WhatsApp Business API is configured and ready to use
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+
+        {/* Action Footer */}
+        {isEnabled && (
+          <ActionFooter>
+            <div className="flex items-center justify-between w-full">
+              <div className="text-sm text-muted-foreground">
+                {!setupRequested && !hasApiToken && setupType ? (
+                  setupType === "new_number" 
+                    ? "We'll help you get a new WhatsApp & SMS number in your preferred city" 
+                    : "Connect your existing Twilio account for WhatsApp & SMS messaging"
+                ) : setupRequested || hasApiToken ? (
+                  "WhatsApp Business is configured and ready"
+                ) : (
+                  "Configure your WhatsApp Business setup above"
                 )}
-
-                {/* Twilio API Key Input (for api_key setup) */}
-                {setupType === "api_key" && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="whatsapp.apiToken"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Twilio API Key</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter your Twilio API Key or Auth Token"
-                              {...field}
-                            />
-                          </FormControl>
-                          <p className="text-sm text-muted-foreground">
-                            Your existing Twilio API key for WhatsApp & SMS messaging
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="whatsapp.existingNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter your Twilio phone number"
-                              {...field}
-                            />
-                          </FormControl>
-                          <p className="text-sm text-muted-foreground">
-                            The phone number from your Twilio account to use as sender (e.g., +1234567890)
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
+              </div>
+              
+              <div className="flex gap-2">
+                {!setupRequested && !hasApiToken && setupType === "new_number" && (
+                  <Button
+                    onClick={handleRequestSetup}
+                    disabled={!canRequestSetup || isRequesting}
+                  >
+                    {isRequesting ? "Requesting..." : "Request Setup"}
+                  </Button>
                 )}
-              </>
-            )}
-          </>
-        )}
-
-        {/* Setup Requested Status */}
-        {setupRequested && !hasApiToken && setupType !== "api_key" && (
-          <div className="flex items-center space-x-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-900">
-            <CheckCircle2 className="h-5 w-5 text-blue-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Setup request submitted</p>
-              <p className="text-xs text-muted-foreground">
-                {setupType === "port_existing" 
-                  ? "Authorization completed. Our team will finalize the WhatsApp Business setup."
-                  : "Our team will contact you soon to complete the WhatsApp Business setup"
-                }
-              </p>
+                
+                {!setupRequested && !hasApiToken && setupType === "use_own_account" && (
+                  <Button
+                    onClick={async () => {
+                      // Save the WhatsApp configuration
+                      if (currentSite && canRequestSetup) {
+                        try {
+                          setIsRequesting(true)
+                          await updateSettings(currentSite.id, { 
+                            channels: { 
+                              email: currentSite.settings?.channels?.email || {
+                                enabled: false,
+                                email: "",
+                                password: "",
+                                incomingServer: "",
+                                incomingPort: "",
+                                outgoingServer: "",
+                                outgoingPort: "",
+                                status: "not_configured"
+                              },
+                              whatsapp: { 
+                                enabled: true,
+                                setupType: whatsappConfig?.setupType,
+                                country: whatsappConfig?.country,
+                                region: whatsappConfig?.region,
+                                existingNumber: whatsappConfig?.existingNumber,
+                                setupRequested: false,
+                                apiToken: whatsappConfig?.apiToken,
+                                status: "active"
+                              } 
+                            } 
+                          })
+                          toast.success("Twilio API configuration saved successfully!")
+                        } catch (error) {
+                          console.error("Error saving WhatsApp configuration:", error)
+                          toast.error("Failed to save configuration")
+                        } finally {
+                          setIsRequesting(false)
+                        }
+                      }
+                    }}
+                    disabled={!canRequestSetup || isRequesting}
+                  >
+                    {isRequesting ? "Saving..." : "Save Configuration"}
+                  </Button>
+                )}
+                
+                {(hasApiToken || existingNumber || setupRequested) && (
+                  <Button
+                    variant="outline"
+                    onClick={handleResetConfiguration}
+                    disabled={isRequesting}
+                  >
+                    Reset Configuration
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          </ActionFooter>
         )}
-
-        {/* API Key Connected Status */}
-        {setupType === "api_key" && whatsappConfig?.apiToken && whatsappConfig.apiToken.trim() !== '' && (
-          <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Twilio API connected</p>
-              <p className="text-xs text-muted-foreground">
-                Your Twilio API key is configured for WhatsApp & SMS messaging
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* API Token Configured Status */}
-        {hasApiToken && setupType !== "api_key" && (
-          <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">WhatsApp Business connected</p>
-              <p className="text-xs text-muted-foreground">
-                Your WhatsApp Business API is configured and ready to use
-              </p>
-            </div>
-          </div>
-        )}
-      </CardContent>
-
-      {/* Action Footer */}
-      {isEnabled && !setupRequested && !hasApiToken && setupType && !showTwilioWidget && (
-        <CardFooter className="px-8 py-4 bg-gray-50 dark:bg-gray-900/50 border-t">
-          <div className="flex items-center justify-between w-full">
-            <div className="text-sm text-muted-foreground">
-              {setupType === "new_number" 
-                ? "We'll help you get a new WhatsApp & SMS number in your preferred city" 
-                : setupType === "port_existing"
-                ? "Authorize through Twilio & Meta to port your existing number"
-                : "Connect your existing Twilio account for WhatsApp & SMS messaging"
-              }
-            </div>
-            {setupType !== "port_existing" && (
-              <Button
-                onClick={setupType === "api_key" ? () => {
-                  // For API key setup, just mark as configured
-                  form.setValue("whatsapp.setupRequested", false)
-                  toast.success("Twilio API key configured successfully!")
-                } : handleRequestSetup}
-                disabled={!canRequestSetup || isRequesting}
-                className="ml-4"
-              >
-                {isRequesting ? "Requesting..." : setupType === "api_key" ? "Connect API" : "Request Setup"}
-              </Button>
-            )}
-          </div>
-        </CardFooter>
-      )}
-    </Card>
+      </Card>
+    </>
   )
 } 
