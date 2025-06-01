@@ -152,7 +152,11 @@ export function SiteForm({
         welcome_message: "Welcome to our website! How can we assist you today?",
         chat_title: "Chat with us"
       },
-      whatsapp_token: initialData?.whatsapp_token || "",
+      whatsapp: initialData?.whatsapp || {
+        enabled: false,
+        setupRequested: false,
+        apiToken: ""
+      },
       billing: initialData?.billing || {
         plan: "free",
         auto_renew: true

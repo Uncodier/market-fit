@@ -165,11 +165,11 @@ export function EmptyCard({
       
       <Card className={cn(
         showShadow ? "border-dashed bg-card/50" : "border-0 bg-transparent shadow-none", 
-        "w-full relative z-10",
+        "w-full relative z-0",
         className
       )}>
         <CardContent className={cn(
-          "flex flex-col items-center justify-center px-6 pb-0 relative z-20 min-h-[300px]", 
+          "flex flex-col items-center justify-center px-6 pb-0 relative z-[1] min-h-[300px]", 
           contentClassName
         )}>
           {isSimple ? (
@@ -206,7 +206,7 @@ export function EmptyCard({
             <div className="flex flex-col items-center justify-center space-y-4">
               {/* Hero section with icon */}
               <div className="flex flex-col items-center space-y-3">
-                <div className="relative z-30">
+                <div className="relative z-[2]">
                   {/* Main icon container - smaller and more subtle */}
                   <div className="w-16 h-16 mx-auto rounded-lg bg-primary/8 backdrop-blur-sm border border-primary/15 flex items-center justify-center shadow-sm">
                     <div className="text-primary/70 flex items-center justify-center [&>*]:!w-6 [&>*]:!h-6 [&_svg]:!stroke-primary/70 [&_svg]:!fill-primary/70 [&_svg_*]:!stroke-primary/70 [&_svg_*]:!fill-none">
@@ -216,11 +216,11 @@ export function EmptyCard({
                 </div>
                 
                 {title && (
-                  <h3 className="text-sm font-medium text-muted-foreground relative z-30 text-center">{title}</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground relative z-[2] text-center">{title}</h3>
                 )}
                 
                 {description && (
-                  <p className="text-xs text-muted-foreground/70 leading-relaxed max-w-md mx-auto relative z-30 text-center">
+                  <p className="text-xs text-muted-foreground/70 leading-relaxed max-w-md mx-auto relative z-[2] text-center">
                     {description}
                   </p>
                 )}
@@ -228,14 +228,14 @@ export function EmptyCard({
 
               {/* Action button */}
               {actionButton && (
-                <div className="relative z-30 pt-1">
+                <div className="relative z-[2] pt-1">
                   {actionButton}
                 </div>
               )}
               
               {/* Optional automatic operation hint */}
               {showHint && (
-                <div className="pt-3 border-t border-border/20 relative z-30">
+                <div className="pt-3 border-t border-border/20 relative z-[2]">
                   <p className="text-xs text-muted-foreground/50 max-w-sm mx-auto leading-relaxed text-center">
                     💡 <span className="font-medium">Most operations run automatically.</span> Your AI agents work in the background without manual direction. Feel free to return later if you prefer not to actively manage them right now.
                   </p>

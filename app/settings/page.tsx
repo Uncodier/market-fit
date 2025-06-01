@@ -298,7 +298,7 @@ export default function SettingsPage() {
     const emailPassword = hasEmailPassword ? "STORED_SECURELY" : "";
     const emailStatus = (site.settings?.channels?.email?.status || (hasEmailPassword ? "synced" : "not_configured")) as "not_configured" | "password_required" | "pending_sync" | "synced";
 
-    const hasWhatsAppToken = site.settings?.whatsapp_token || "";
+    const hasWhatsAppToken = site.settings?.whatsapp?.apiToken || "";
     const whatsAppToken = hasWhatsAppToken ? "STORED_SECURELY" : "";
     
     // Process team members data
@@ -409,8 +409,16 @@ export default function SettingsPage() {
         analytics_id: site.tracking?.analytics_id || "",
         tracking_code: site.tracking?.tracking_code || ""
       },
-      // Add WhatsApp Business token (placeholder if stored securely)
-      whatsapp_token: whatsAppToken,
+      // Add WhatsApp Business configuration
+      whatsapp: {
+        enabled: Boolean(site.settings?.whatsapp?.enabled) || Boolean(site.settings?.whatsapp?.apiToken),
+        setupType: site.settings?.whatsapp?.setupType,
+        country: site.settings?.whatsapp?.country,
+        region: site.settings?.whatsapp?.region,
+        existingNumber: site.settings?.whatsapp?.existingNumber,
+        setupRequested: site.settings?.whatsapp?.setupRequested || false,
+        apiToken: hasWhatsAppToken ? "STORED_SECURELY" : (site.settings?.whatsapp?.apiToken || "")
+      },
       // Add team info
       team_members: processedTeamMembers,
       // Billing info
@@ -459,7 +467,7 @@ export default function SettingsPage() {
       // Extract site-specific fields (exclude team_members from general save)
       const { 
         name, url, description, logo_url, resource_urls, 
-        competitors, focusMode, billing, tracking, whatsapp_token, 
+        competitors, focusMode, billing, tracking, whatsapp, 
         team_members, channels, 
         // Extract all the settings fields explicitly to avoid any tracking contamination
         about, company_size, industry, products, services, locations, 
@@ -644,19 +652,19 @@ export default function SettingsPage() {
         console.log("SAVE SECURE: Processing secure tokens");
         
         // Check for WhatsApp token - Don't process 'STORED_SECURELY' as it's just a placeholder
-        if (data.whatsapp_token && 
-            data.whatsapp_token.trim() !== '' && 
-            data.whatsapp_token !== 'STORED_SECURELY') {
+        if (data.whatsapp?.apiToken && 
+            data.whatsapp.apiToken.trim() !== '' && 
+            data.whatsapp.apiToken !== 'STORED_SECURELY') {
           try {
             console.log("SAVE SECURE: Storing WhatsApp token");
             await secureTokensService.storeToken(
               currentSite.id,
               'whatsapp',
-              data.whatsapp_token,
+              data.whatsapp.apiToken,
               'default'
             );
             // Clear the token from the form data to avoid storing in plaintext
-            data.whatsapp_token = "";
+            data.whatsapp.apiToken = "";
           } catch (tokenError) {
             console.error("Error storing WhatsApp token:", tokenError);
           }

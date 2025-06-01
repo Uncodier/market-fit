@@ -9,7 +9,7 @@ import { Switch } from "../ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
-import { Code, Copy, Check, Key, KeyRound, ShieldCheck, ExternalLink, ChevronDown, ChevronUp } from "../ui/icons"
+import { Code, Copy, Check, Key, KeyRound, ShieldCheck, ExternalLink, ChevronDown, ChevronUp, Mail, Globe } from "../ui/icons"
 import { Textarea } from "../ui/textarea"
 import { ColorInput } from "../ui/color-input"
 import { secureTokensService } from "../../services/secure-tokens-service"
@@ -22,6 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "../ui/select"
+import { WhatsAppSection } from "./WhatsAppSection"
 
 export interface ChannelsSectionProps {
   active: boolean
@@ -137,10 +138,6 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
   const emailStatus = form.watch("channels.email.status") || "not_configured";
   const hasEmailToken = emailStatus === "synced";
   
-  // Get WhatsApp status from form 
-  const whatsappTokenValue = form.watch("whatsapp_token");
-  const hasWhatsAppToken = whatsappTokenValue === "STORED_SECURELY";
-
   // Función para detectar proveedor basado en el email
   const detectProviderFromEmail = (email: string) => {
     if (!email) return null;
@@ -452,62 +449,6 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
     }
   };
 
-  const handleSaveWhatsAppToken = async () => {
-    if (!siteId) {
-      toast.error("Site ID is required to save token");
-      return;
-    }
-    
-    const token = form.getValues("whatsapp_token");
-    
-    if (!token) {
-      toast.error("WhatsApp token is required");
-      return;
-    }
-    
-    try {
-      setIsConnecting(true);
-      
-      // Guardar la configuración de WhatsApp en settings
-      if (currentSite && updateSettings) {
-        try {
-          console.log("Guardando configuración de WhatsApp en settings...");
-          
-          // Actualizar settings con la referencia al token de WhatsApp
-          await updateSettings(siteId, {
-            whatsapp_token: "STORED_SECURELY"
-          });
-          
-          console.log("Configuración de WhatsApp guardada correctamente en settings");
-        } catch (settingsError) {
-          console.error("Error guardando configuración de WhatsApp en settings:", settingsError);
-          toast.error("Error saving WhatsApp configuration");
-          throw settingsError;
-        }
-      }
-      
-      // Store the token securely
-      const success = await secureTokensService.storeWhatsAppToken(
-        siteId,
-        token
-      );
-      
-      if (success) {
-        toast.success("WhatsApp configuration saved successfully");
-        
-        // Update the token field in the form with the secure placeholder
-        form.setValue("whatsapp_token", "STORED_SECURELY");
-      } else {
-        toast.error("Failed to save WhatsApp token. Please ensure you're logged in.");
-      }
-    } catch (error) {
-      console.error("Error saving WhatsApp token:", error);
-      toast.error("An error occurred while saving token");
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
   const handleRemoveEmailCredentials = async (email: string) => {
     if (!siteId) return;
     
@@ -535,40 +476,16 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
     }
   };
 
-  const handleRemoveWhatsAppToken = async () => {
-    if (!siteId) return;
-    
-    try {
-      setIsConnecting(true);
-      
-      const success = await secureTokensService.deleteToken(
-        siteId,
-        'whatsapp',
-        'default'
-      );
-      
-      if (success) {
-        // Update the WhatsApp token in the form
-        form.setValue("whatsapp_token", "");
-        toast.success("WhatsApp token removed");
-      } else {
-        toast.error("Failed to remove WhatsApp token. Please ensure you're logged in.");
-      }
-    } catch (error) {
-      console.error("Error removing WhatsApp token:", error);
-      toast.error("An error occurred while removing WhatsApp token");
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
   if (!active) return null
 
   return (
     <>
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Website Channel</CardTitle>
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Website Channel
+          </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Configure how your site tracks visitor behavior
           </p>
@@ -872,7 +789,10 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Email Channel</CardTitle>
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Email Channel
+          </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Configure email settings to send and receive messages
           </p>
@@ -1193,98 +1113,12 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
         )}
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">WhatsApp Business Channel</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Connect with WhatsApp Business API to enable messaging
-          </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8 space-y-6">
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              WhatsApp integration allows you to communicate with your users directly through the WhatsApp platform.
-              Connect your WhatsApp Business account by entering your token below.
-            </p>
-            
-            {!hasWhatsAppToken ? (
-              <FormField
-                control={form.control}
-                name="whatsapp_token"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>WhatsApp Business API Token</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          className="pl-10"
-                          placeholder="Enter your WhatsApp API token"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      You can obtain your token from the WhatsApp Business Platform
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ) : (
-              <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
-                <ShieldCheck className="h-5 w-5 text-green-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">WhatsApp token stored securely</p>
-                  <p className="text-xs text-muted-foreground">Your WhatsApp API token is encrypted and stored in a secure vault</p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={handleRemoveWhatsAppToken}
-                  disabled={isConnecting}
-                >
-                  Remove
-                </Button>
-              </div>
-            )}
-
-            <div className="flex justify-between pt-2">
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  type="button" 
-                  onClick={() => window.open("https://business.whatsapp.com/products/business-platform", "_blank")}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Learn More
-                </Button>
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={() => window.open("https://business.facebook.com/settings/system-users/add", "_blank")}
-                >
-                  <Key className="h-4 w-4 mr-2" />
-                  Generate Token
-                </Button>
-              </div>
-              
-              {!hasWhatsAppToken && (
-                <Button 
-                  variant="default" 
-                  type="button"
-                  onClick={handleSaveWhatsAppToken}
-                  disabled={isConnecting || !form.getValues("whatsapp_token")}
-                >
-                  <KeyRound className="h-4 w-4 mr-2" />
-                  {isConnecting ? "Saving..." : "Save Token Securely"}
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <WhatsAppSection 
+        active={active} 
+        form={form} 
+        siteId={siteId} 
+        siteName={siteName} 
+      />
     </>
   )
 } 

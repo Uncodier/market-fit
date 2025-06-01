@@ -76,7 +76,16 @@ export interface SiteSettings {
   marketing_budget?: MarketingBudget | null
   marketing_channels?: MarketingChannel[] | null
   social_media?: SocialMedia[] | null
-  whatsapp_token?: string | null
+  whatsapp?: {
+    enabled?: boolean
+    setupType?: "new_number" | "port_existing" | "api_key"
+    country?: string
+    region?: string
+    existingNumber?: string
+    setupRequested?: boolean
+    apiToken?: string
+    status?: "not_configured" | "pending" | "connected"
+  } | null
   team_members?: TeamMember[] | null
   team_roles?: { name: string; permissions: string[]; description?: string }[] | null
   org_structure?: Record<string, any> | null
@@ -666,7 +675,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 }),
                 marketing_channels: parseJsonField(settingsData.marketing_channels, []),
                 social_media: parseJsonField(settingsData.social_media, []),
-                whatsapp_token: settingsData.whatsapp_token,
+                whatsapp: settingsData.whatsapp,
                 team_members: parseJsonField(settingsData.team_members, []),
                 team_roles: parseJsonField(settingsData.team_roles, []),
                 org_structure: parseJsonField(settingsData.org_structure, {}),
@@ -934,8 +943,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
         formattedSettings.social_media = Array.isArray(settings.social_media) ? settings.social_media : [];
       }
       
-      if (settings.whatsapp_token !== undefined) {
-        formattedSettings.whatsapp_token = typeof settings.whatsapp_token === 'string' ? settings.whatsapp_token : null;
+      if (settings.whatsapp !== undefined) {
+        formattedSettings.whatsapp = typeof settings.whatsapp === 'object' ? settings.whatsapp : null;
       }
       
       if (settings.team_members !== undefined) {
