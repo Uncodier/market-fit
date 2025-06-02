@@ -171,7 +171,6 @@ export const siteFormSchema = z.object({
       country: z.string().optional(),
       region: z.string().optional(), // For new_number: city code
       number: z.string().optional(), // The assigned WhatsApp number
-      apiToken: z.string().optional(), // For use_own_account setup type
       existingNumber: z.string().optional().refine((val) => {
         if (!val || val.trim() === '') return true; // Optional field
         // Validate phone number format (international format with +)
@@ -188,14 +187,13 @@ export const siteFormSchema = z.object({
       status: "not_configured"
     }).refine((data) => {
       if (!data) return true;
-      // If use_own_account setup, both apiToken and existingNumber are required
+      // If use_own_account setup, existingNumber is required (apiToken is handled securely)
       if (data.setupType === "use_own_account") {
-        if (!data.apiToken || data.apiToken.trim() === '') return false;
         if (!data.existingNumber || data.existingNumber.trim() === '') return false;
       }
       return true;
     }, {
-      message: "API Token and Phone Number are required for using your own Twilio account",
+      message: "Phone Number is required for using your own Twilio account",
       path: ["setupType"]
     })
   }).optional().default({

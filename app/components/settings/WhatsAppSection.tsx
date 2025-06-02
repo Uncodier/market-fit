@@ -15,17 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select"
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "../ui/form"
 import { Input } from "../ui/input"
 import { MessageSquare, CheckCircle2, Globe, Copy, AlertCircle } from "../ui/icons"
 import { type SiteFormValues } from "./form-schema"
 import { useSite } from "../../context/SiteContext"
+import { secureTokensService } from "../../services/secure-tokens-service"
 
 // Twilio supported countries and regions
 const TWILIO_COUNTRIES = [
@@ -379,7 +373,6 @@ interface WhatsAppSectionProps {
   active: boolean
   form: UseFormReturn<SiteFormValues>
   siteId?: string
-  siteName?: string
 }
 
 // Local state interface
@@ -392,9 +385,10 @@ interface WhatsAppLocalState {
   existingNumber?: string
   status: "not_configured" | "pending" | "active"
   setupRequested: boolean
+  hasSecureToken: boolean // Track if secure token exists
 }
 
-export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSectionProps) {
+export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) {
   const [isRequesting, setIsRequesting] = useState(false)
   const [phoneValidation, setPhoneValidation] = useState<{ isValid: boolean; error?: string }>({ isValid: true })
   const { currentSite, updateSettings } = useSite()
@@ -403,30 +397,43 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
   const [localState, setLocalState] = useState<WhatsAppLocalState>({
     enabled: false,
     status: "not_configured",
-    setupRequested: false
+    setupRequested: false,
+    hasSecureToken: false
   })
 
   // Initialize local state from current site data
   useEffect(() => {
-    if (currentSite?.settings?.channels?.whatsapp) {
-      const whatsappData = currentSite.settings.channels.whatsapp
-      setLocalState({
-        enabled: whatsappData.enabled || false,
-        setupType: whatsappData.setupType,
-        country: whatsappData.country,
-        region: whatsappData.region,
-        apiToken: whatsappData.apiToken,
-        existingNumber: whatsappData.existingNumber,
-        status: whatsappData.status || "not_configured",
-        setupRequested: whatsappData.setupRequested || false
-      })
-      
-      // Validate existing number if present
-      if (whatsappData.existingNumber) {
-        setPhoneValidation(validatePhoneNumber(whatsappData.existingNumber))
+    const initializeWhatsAppState = async () => {
+      if (currentSite?.settings?.channels?.whatsapp) {
+        const whatsappData = currentSite.settings.channels.whatsapp
+        
+        // Check if secure token exists using phone number as identifier
+        let hasSecureToken = false
+        if (siteId && whatsappData.setupType === "use_own_account" && whatsappData.existingNumber) {
+          hasSecureToken = await secureTokensService.hasToken(siteId, 'twilio_whatsapp', whatsappData.existingNumber)
+        }
+        
+        setLocalState({
+          enabled: whatsappData.enabled || false,
+          setupType: whatsappData.setupType,
+          country: whatsappData.country,
+          region: whatsappData.region,
+          apiToken: "", // Never store token in local state
+          existingNumber: whatsappData.existingNumber,
+          status: whatsappData.status || "not_configured",
+          setupRequested: whatsappData.setupRequested || false,
+          hasSecureToken
+        })
+        
+        // Validate existing number if present
+        if (whatsappData.existingNumber) {
+          setPhoneValidation(validatePhoneNumber(whatsappData.existingNumber))
+        }
       }
     }
-  }, [currentSite])
+
+    initializeWhatsAppState()
+  }, [currentSite, siteId])
 
   if (!active) return null
 
@@ -440,9 +447,15 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
     }
     
     if (localState.setupType === "use_own_account") {
-      return localState.apiToken?.trim() && 
-             localState.existingNumber?.trim() && 
-             phoneValidation.isValid
+      // For saving new configuration, require API token input and phone number
+      // For already configured, just require valid phone number
+      if (localState.hasSecureToken) {
+        return localState.existingNumber?.trim() && phoneValidation.isValid
+      } else {
+        return localState.apiToken?.trim() && 
+               localState.existingNumber?.trim() && 
+               phoneValidation.isValid
+      }
     }
     
     return false
@@ -460,7 +473,8 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
       setLocalState({
         enabled: false,
         status: "not_configured",
-        setupRequested: false
+        setupRequested: false,
+        hasSecureToken: false
       })
       setPhoneValidation({ isValid: true })
       toast.success("WhatsApp Business disabled")
@@ -473,8 +487,9 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
       setupType,
       // Clear fields from the other setup type
       ...(setupType === "new_number" ? {
-        apiToken: undefined,
-        existingNumber: undefined
+        apiToken: "",
+        existingNumber: undefined,
+        hasSecureToken: false
       } : {
         country: undefined,
         region: undefined
@@ -503,22 +518,42 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
     setLocalState(prev => ({ ...prev, apiToken }))
   }
 
-  const handleExistingNumberChange = (existingNumber: string) => {
+  const handleExistingNumberChange = async (existingNumber: string) => {
     setLocalState(prev => ({ ...prev, existingNumber }))
     
     // Validate phone number in real-time
     const validation = validatePhoneNumber(existingNumber)
     setPhoneValidation(validation)
+    
+    // Check if secure token exists for this phone number
+    if (siteId && existingNumber.trim() && validation.isValid && localState.setupType === "use_own_account") {
+      const hasSecureToken = await secureTokensService.hasToken(siteId, 'twilio_whatsapp', existingNumber)
+      setLocalState(prev => ({ ...prev, hasSecureToken }))
+    } else {
+      setLocalState(prev => ({ ...prev, hasSecureToken: false }))
+    }
   }
 
   const handleSaveConfiguration = async () => {
-    if (!currentSite || !canSaveConfiguration()) return
+    if (!currentSite || !canSaveConfiguration() || !siteId) return
 
     setIsRequesting(true)
     try {
       const newStatus = localState.setupType === "use_own_account" ? "active" : "pending"
       const newSetupRequested = localState.setupType === "new_number" ? true : false
 
+      // For use_own_account, store API token securely
+      let tokenStored = true
+      if (localState.setupType === "use_own_account" && localState.apiToken?.trim() && localState.existingNumber?.trim()) {
+        const result = await secureTokensService.storeToken(siteId, 'twilio_whatsapp', localState.apiToken, localState.existingNumber)
+        tokenStored = !!result
+        if (!tokenStored) {
+          toast.error("Failed to securely store API token. Please try again.")
+          return
+        }
+      }
+
+      // Update settings without storing the API token
       await updateSettings(currentSite.id, {
         channels: {
           email: currentSite.settings?.channels?.email || {
@@ -537,7 +572,7 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
             country: localState.country,
             region: localState.region,
             existingNumber: localState.existingNumber,
-            apiToken: localState.apiToken,
+            // DO NOT store apiToken here - it's stored securely via secureTokensService
             setupRequested: newSetupRequested,
             status: newStatus
           }
@@ -549,19 +584,21 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
         const updatedState: WhatsAppLocalState = {
           ...prev,
           status: newStatus as "not_configured" | "pending" | "active",
-          setupRequested: newSetupRequested
+          setupRequested: newSetupRequested,
+          hasSecureToken: localState.setupType === "use_own_account" && tokenStored,
+          apiToken: "" // Clear API token from local state after saving
         }
         return updatedState
       })
 
-      // Sync with form for consistency
+      // Sync with form for consistency (without API token)
       form.setValue("channels.whatsapp", {
         enabled: true,
         setupType: localState.setupType,
         country: localState.country,
         region: localState.region,
         existingNumber: localState.existingNumber,
-        apiToken: localState.apiToken,
+        // DO NOT sync apiToken to form
         setupRequested: newSetupRequested,
         status: newStatus
       })
@@ -581,11 +618,17 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
 
   const handleResetConfiguration = async () => {
     try {
+      // Delete secure token if it exists
+      if (siteId && localState.hasSecureToken && localState.existingNumber) {
+        await secureTokensService.deleteToken(siteId, 'twilio_whatsapp', localState.existingNumber)
+      }
+
       // Reset local state
       setLocalState({
         enabled: false,
         status: "not_configured",
-        setupRequested: false
+        setupRequested: false,
+        hasSecureToken: false
       })
 
       // Reset phone validation
@@ -756,17 +799,32 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
 
             {localState.setupType === "use_own_account" && (
               <div className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium text-foreground">Twilio API Key</Label>
-                  <Input
-                    placeholder="Enter your Twilio API Key or Auth Token"
-                    value={localState.apiToken || ""}
-                    onChange={(e) => handleApiTokenChange(e.target.value)}
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Your existing Twilio API key for WhatsApp & SMS messaging
-                  </p>
-                </div>
+                {!localState.hasSecureToken && (
+                  <div>
+                    <Label className="text-sm font-medium text-foreground">Twilio API Key</Label>
+                    <Input
+                      placeholder="Enter your Twilio API Key or Auth Token"
+                      value={localState.apiToken || ""}
+                      onChange={(e) => handleApiTokenChange(e.target.value)}
+                      type="password"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Your existing Twilio API key for WhatsApp & SMS messaging (stored securely)
+                    </p>
+                  </div>
+                )}
+
+                {localState.hasSecureToken && (
+                  <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">API Token Secured</p>
+                      <p className="text-xs text-muted-foreground">
+                        Your Twilio API token is securely stored and encrypted
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <Label className="text-sm font-medium text-foreground">Phone Number</Label>
@@ -831,13 +889,67 @@ export function WhatsAppSection({ active, form, siteId, siteName }: WhatsAppSect
 
         {/* Configuration Active Status */}
         {isConfigurationSaved && (
-          <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">WhatsApp Business connected</p>
-              <p className="text-xs text-muted-foreground">
-                Your WhatsApp Business API is configured and ready to use
-              </p>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">WhatsApp Business connected</p>
+                <p className="text-xs text-muted-foreground">
+                  Your WhatsApp Business API is configured and ready to use
+                </p>
+              </div>
+            </div>
+
+            {/* Show configured details */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-foreground">Setup Type</Label>
+                <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border">
+                  {localState.setupType === "new_number" ? "New Number (Managed by us)" : "Your Own Twilio Account"}
+                </div>
+              </div>
+
+              {localState.existingNumber && (
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Configured Phone Number</Label>
+                  <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono">{localState.existingNumber}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    This number is configured for WhatsApp Business messaging
+                  </p>
+                </div>
+              )}
+
+              {localState.country && localState.setupType === "new_number" && (
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Requested Location</Label>
+                  <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      {TWILIO_COUNTRIES.find(c => c.code === localState.country)?.name}
+                      {localState.region && (
+                        <span className="text-muted-foreground"> - {
+                          getCitiesForCountry(localState.country).find(c => c.code === localState.region)?.name ||
+                          getRegionsForCountry(localState.country).find(r => r.code === localState.region)?.name ||
+                          localState.region
+                        }</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {localState.hasSecureToken && (
+                <div>
+                  <Label className="text-sm font-medium text-foreground">API Security</Label>
+                  <div className="mt-1 p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <span className="text-sm">API Token is securely stored and encrypted</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

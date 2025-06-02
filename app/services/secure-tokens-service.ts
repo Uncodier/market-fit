@@ -13,7 +13,7 @@ export interface SecureToken {
   updated_at: string;
 }
 
-export type TokenType = 'email' | 'whatsapp' | 'api';
+export type TokenType = 'email' | 'whatsapp' | 'twilio_whatsapp' | 'api';
 
 class SecureTokensService {
   private supabase: any;
@@ -318,30 +318,33 @@ class SecureTokensService {
    * Verify WhatsApp token for a site
    * @param siteId - The site ID
    * @param token - The token to verify
+   * @param phoneNumber - The phone number identifier (e.g., +1234567890)
    * @returns True if token is valid
    */
-  async verifyWhatsAppToken(siteId: string, token: string): Promise<boolean> {
-    return this.verifyToken(siteId, 'whatsapp', token, 'default');
+  async verifyWhatsAppToken(siteId: string, token: string, phoneNumber: string): Promise<boolean> {
+    return this.verifyToken(siteId, 'twilio_whatsapp', token, phoneNumber);
   }
 
   /**
    * Store WhatsApp token securely with SHA-256
    * @param siteId - The site ID
    * @param token - The token to encrypt and store
+   * @param phoneNumber - The phone number identifier (e.g., +1234567890)
    * @returns Success indicator
    */
-  async storeWhatsAppToken(siteId: string, token: string): Promise<boolean> {
-    const result = await this.storeToken(siteId, 'whatsapp', token, 'default');
+  async storeWhatsAppToken(siteId: string, token: string, phoneNumber: string): Promise<boolean> {
+    const result = await this.storeToken(siteId, 'twilio_whatsapp', token, phoneNumber);
     return !!result;
   }
 
   /**
    * Check if WhatsApp token exists for a site
    * @param siteId - The site ID
+   * @param phoneNumber - The phone number identifier (e.g., +1234567890)
    * @returns True if token exists
    */
-  async hasWhatsAppToken(siteId: string): Promise<boolean> {
-    return this.hasToken(siteId, 'whatsapp', 'default');
+  async hasWhatsAppToken(siteId: string, phoneNumber: string): Promise<boolean> {
+    return this.hasToken(siteId, 'twilio_whatsapp', phoneNumber);
   }
 
   /**

@@ -298,8 +298,7 @@ export default function SettingsPage() {
     const emailPassword = hasEmailPassword ? "STORED_SECURELY" : "";
     const emailStatus = (site.settings?.channels?.email?.status || (hasEmailPassword ? "synced" : "not_configured")) as "not_configured" | "password_required" | "pending_sync" | "synced";
 
-    const hasWhatsAppToken = site.settings?.channels?.whatsapp?.apiToken || "";
-    const whatsAppToken = hasWhatsAppToken ? "STORED_SECURELY" : "";
+    // WhatsApp configuration (no longer includes apiToken in form data)
     
     // Process team members data
     const teamMembers = site.settings?.team_members || [];
@@ -382,7 +381,6 @@ export default function SettingsPage() {
           region: site.settings.channels.whatsapp?.region,
           existingNumber: site.settings.channels.whatsapp?.existingNumber,
           setupRequested: site.settings.channels.whatsapp?.setupRequested || false,
-          apiToken: whatsAppToken,
           status: site.settings.channels.whatsapp?.status || "not_configured"
         }
       } : {
@@ -403,7 +401,6 @@ export default function SettingsPage() {
           region: undefined,
           existingNumber: undefined,
           setupRequested: false,
-          apiToken: undefined,
           status: "not_configured" as const
         }
       },
@@ -652,7 +649,6 @@ export default function SettingsPage() {
             region: undefined,
             existingNumber: undefined,
             setupRequested: false,
-            apiToken: undefined,
             status: "not_configured" as const
           }
         },
@@ -671,25 +667,6 @@ export default function SettingsPage() {
       if (currentSite.id) {
         console.log("SAVE SECURE: Processing secure tokens");
         
-        // Check for WhatsApp token - Don't process 'STORED_SECURELY' as it's just a placeholder
-        if (data.channels?.whatsapp?.apiToken && 
-            data.channels.whatsapp.apiToken.trim() !== '' && 
-            data.channels.whatsapp.apiToken !== 'STORED_SECURELY') {
-          try {
-            console.log("SAVE SECURE: Storing WhatsApp token");
-            await secureTokensService.storeToken(
-              currentSite.id,
-              'whatsapp',
-              data.channels.whatsapp.apiToken,
-              'default'
-            );
-            // Clear the token from the form data to avoid storing in plaintext
-            data.channels.whatsapp.apiToken = "";
-          } catch (tokenError) {
-            console.error("Error storing WhatsApp token:", tokenError);
-          }
-        }
-
         // Check for email credentials - Don't process 'STORED_SECURELY' as it's just a placeholder
         if (data.channels?.email?.password && 
             data.channels.email.password.trim() !== '' && 
@@ -715,7 +692,6 @@ export default function SettingsPage() {
                 region: undefined,
                 existingNumber: undefined,
                 setupRequested: false,
-                apiToken: undefined,
                 status: "not_configured" as const
               }
             };
@@ -744,7 +720,6 @@ export default function SettingsPage() {
               region: undefined,
               existingNumber: undefined,
               setupRequested: false,
-              apiToken: undefined,
               status: "not_configured" as const
             }
           };
