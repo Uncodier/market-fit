@@ -1,8 +1,27 @@
 "use client";
 
-import React, { useMemo } from 'react';
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
-import * as d3 from 'd3';
+import React, { useMemo, useCallback } from 'react';
+import { scaleQuantile } from 'd3-scale';
+import { color } from 'd3-color';
+import dynamic from 'next/dynamic';
+
+// Lazy load react-simple-maps components to avoid build issues
+const ComposableMap = dynamic(() => import('react-simple-maps').then(mod => ({ default: mod.ComposableMap })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-full">Loading map...</div>
+});
+
+const Geographies = dynamic(() => import('react-simple-maps').then(mod => ({ default: mod.Geographies })), {
+  ssr: false
+});
+
+const Geography = dynamic(() => import('react-simple-maps').then(mod => ({ default: mod.Geography })), {
+  ssr: false
+});
+
+const ZoomableGroup = dynamic(() => import('react-simple-maps').then(mod => ({ default: mod.ZoomableGroup })), {
+  ssr: false
+});
 
 interface MapData {
   id: string;
@@ -45,10 +64,29 @@ const SafeMapWrapper: React.FC<SafeMapWrapperProps> = ({
 }) => {
   // Memoize the color scale to prevent unnecessary recalculations
   const colorScale = useMemo(() => {
-    return d3.scaleQuantile<number, ColorType>()
+    return scaleQuantile<ColorType>()
       .domain(data.map(d => d.value))
       .range(colorRange);
   }, [data]);
+
+  // Memoize data lookup for performance
+  const dataMap = useMemo(() => {
+    const map = new Map<string, MapData>();
+    data.forEach(item => {
+      map.set(item.id, item);
+    });
+    return map;
+  }, [data]);
+
+  // Function to get colors for a geography - memoized
+  const getGeographyColors = useCallback((geoId: string) => {
+    const current = dataMap.get(geoId);
+    const fillColor: string = current ? colorScale(current.value) || "#F5F4F6" : "#F5F4F6";
+    const hoverColor: string = current ? color(fillColor)?.darker(0.2).toString() || fillColor : "#F5F4F6";
+    const pressedColor: string = current ? color(fillColor)?.darker(0.3).toString() || fillColor : "#F5F4F6";
+    
+    return { fillColor, hoverColor, pressedColor };
+  }, [dataMap, colorScale]);
 
   return (
     <div style={{ width, height, ...style }}>
@@ -63,10 +101,7 @@ const SafeMapWrapper: React.FC<SafeMapWrapperProps> = ({
           <Geographies geography="/features.json">
             {({ geographies }) =>
               geographies.map((geo) => {
-                const current = data.find(d => d.id === geo.id);
-                const fillColor: string = current ? colorScale(current.value) : "#F5F4F6";
-                const hoverColor: string = current ? d3.color(fillColor)?.darker(0.2).toString() || fillColor : "#F5F4F6";
-                const pressedColor: string = current ? d3.color(fillColor)?.darker(0.3).toString() || fillColor : "#F5F4F6";
+                const { fillColor, hoverColor, pressedColor } = getGeographyColors(geo.id);
 
                 return (
                   <Geography

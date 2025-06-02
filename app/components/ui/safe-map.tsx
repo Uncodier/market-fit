@@ -1,5 +1,23 @@
 import React from 'react';
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
+import dynamic from 'next/dynamic';
+
+// Lazy load react-simple-maps components to avoid build issues
+const ComposableMap = dynamic(() => import('react-simple-maps').then(mod => ({ default: mod.ComposableMap })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-full">Loading map...</div>
+});
+
+const Geographies = dynamic(() => import('react-simple-maps').then(mod => ({ default: mod.Geographies })), {
+  ssr: false
+});
+
+const Geography = dynamic(() => import('react-simple-maps').then(mod => ({ default: mod.Geography })), {
+  ssr: false
+});
+
+const ZoomableGroup = dynamic(() => import('react-simple-maps').then(mod => ({ default: mod.ZoomableGroup })), {
+  ssr: false
+});
 
 // Función de sanitización para valores de color
 const sanitizeColor = (color: string): string => {

@@ -42,18 +42,6 @@ const nextConfig = {
   eslint: {
     // ⚠️ Solución temporal para permitir la compilación
     ignoreDuringBuilds: true,
-  },
-  // Configuración para manejar errores de prerender
-  output: 'standalone',
-  // Configurar páginas estáticas vs dinámicas
-  staticPageGenerationTimeout: 120,
-  experimental: {
-    // Desactivar la reconstrucción completa forzada que puede causar problemas
-    forceSwcTransforms: false,
-    // Optimizaciones para la compilación
-    optimizeCss: true,
-    scrollRestoration: true,
-    workerThreads: true,
   }
 }
 
