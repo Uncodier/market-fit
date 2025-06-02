@@ -583,9 +583,11 @@ function AgentPageSkeleton() {
   );
 }
 
-export default function AgentManagePage({ params }: { params: { id: string } }) {
+// Content component that will use React.use()
+function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(params)
+  const agentId = unwrappedParams.id
   const router = useRouter()
-  const agentId = params.id
   const { currentSite } = useSite()
   const supabase = createClient()
   
@@ -1780,4 +1782,6 @@ export default function AgentManagePage({ params }: { params: { id: string } }) 
       </Tabs>
     </div>
   )
-} 
+}
+
+export default AgentDetailPageContent 

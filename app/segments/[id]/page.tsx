@@ -398,8 +398,7 @@ const AnalysisTab = dynamic<{
   selectedAdPlatform: NewAdPlatformType;
 }>(() => import('./components/SegmentAnalysisTab'), {
   loading: () => <AnalysisSkeleton />,
-  ssr: false,
-  suspense: true
+  ssr: false
 });
 
 // Lazy load the ICP tab
@@ -408,8 +407,7 @@ const ICPTab = dynamic<{
   activeSection: string;
 }>(() => import('./components/SegmentICPTab'), {
   loading: () => <ICPProfileSkeleton />,
-  ssr: false,
-  suspense: true
+  ssr: false
 });
 
 const SegmentUrlModal = dynamic(
@@ -417,8 +415,7 @@ const SegmentUrlModal = dynamic(
     return () => <div className="p-4 text-center">Error loading URL modal. Please try refreshing the page.</div>;
   }),
   {
-    ssr: false,
-    suspense: true
+    ssr: false
   }
 );
 
@@ -497,12 +494,11 @@ const SegmentDetailsSkeleton = () => (
 // Lazy load the details tab
 const DetailsTab = dynamic<DetailsTabProps>(() => import('./components/SegmentDetailsTab'), {
   loading: () => <SegmentDetailsSkeleton />,
-  ssr: false,
-  suspense: true
+  ssr: false
 });
 
 // Wrap the component with Suspense
-export default function SegmentDetailPage({ params }: { params: { id: string } }) {
+export default function SegmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <Suspense fallback={<LoadingState />}>
       <SegmentDetailPageContent params={params} />
@@ -511,10 +507,11 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
 }
 
 // Move the main component logic to a separate component
-function SegmentDetailPageContent({ params }: { params: { id: string } }) {
+function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { currentSite } = useSite()
-  const segmentId = params.id
+  const unwrappedParams = React.use(params)
+  const segmentId = unwrappedParams.id
   
   const [segment, setSegment] = useState<Segment | null>(null)
   const [isActive, setIsActive] = useState(false)

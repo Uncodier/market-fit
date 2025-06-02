@@ -33,14 +33,17 @@ export default function LeadDetailPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   
+  // Extract id safely from params
+  const leadId = Array.isArray(params.id) ? params.id[0] : params.id
+  
   useEffect(() => {
-    if (currentSite?.id && params.id) {
+    if (currentSite?.id && leadId) {
       // Reset title to default when component mounts and while loading
       document.title = 'Leads | Market Fit'
       const resetEvent = new CustomEvent('breadcrumb:update', {
         detail: {
           title: 'Lead Details',
-          path: `/leads/${params.id}`,
+          path: `/leads/${leadId}`,
           section: 'leads'
         }
       })
@@ -50,7 +53,7 @@ export default function LeadDetailPage() {
       loadSegments()
       loadCampaigns()
     }
-  }, [currentSite?.id, params.id])
+  }, [currentSite?.id, leadId])
   
   // Add effect to update the title in the topbar when lead is loaded
   useEffect(() => {
@@ -100,11 +103,11 @@ export default function LeadDetailPage() {
   }, [])
   
   const loadLead = async () => {
-    if (!currentSite?.id || !params.id) return
+    if (!currentSite?.id || !leadId) return
     
     setLoading(true)
     try {
-      const result = await getLeadById(params.id as string, currentSite.id)
+      const result = await getLeadById(leadId as string, currentSite.id)
       
       if (result.error || !result.lead) {
         toast.error(result.error || "Lead not found")
