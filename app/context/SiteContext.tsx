@@ -105,6 +105,7 @@ export interface SiteSettings {
       setupType?: "new_number" | "use_own_account"
       country?: string
       region?: string
+      number?: string
       existingNumber?: string
       setupRequested?: boolean
       apiToken?: string

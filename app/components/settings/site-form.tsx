@@ -116,7 +116,13 @@ export function SiteForm({
           incomingServer: "",
           incomingPort: "",
           outgoingServer: "",
-          outgoingPort: ""
+          outgoingPort: "",
+          status: "not_configured"
+        },
+        whatsapp: {
+          enabled: false,
+          setupRequested: false,
+          status: "not_configured"
         }
       },
       marketing_channels: initialData?.marketing_channels || [],
@@ -151,11 +157,6 @@ export function SiteForm({
         chat_position: "bottom-right",
         welcome_message: "Welcome to our website! How can we assist you today?",
         chat_title: "Chat with us"
-      },
-      whatsapp: initialData?.whatsapp || {
-        enabled: false,
-        setupRequested: false,
-        apiToken: ""
       },
       billing: initialData?.billing || {
         plan: "free",

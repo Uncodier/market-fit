@@ -170,8 +170,16 @@ export const siteFormSchema = z.object({
       setupType: z.enum(["new_number", "use_own_account"]).optional(),
       country: z.string().optional(),
       region: z.string().optional(), // For new_number: city code
+      number: z.string().optional(), // The assigned WhatsApp number
       apiToken: z.string().optional(), // For use_own_account setup type
-      existingNumber: z.string().optional(), // For use_own_account setup type
+      existingNumber: z.string().optional().refine((val) => {
+        if (!val || val.trim() === '') return true; // Optional field
+        // Validate phone number format (international format with +)
+        const phoneRegex = /^\+[1-9]\d{1,14}$/;
+        return phoneRegex.test(val.trim());
+      }, {
+        message: "Phone number must be in international format (e.g., +1234567890)"
+      }), // For use_own_account setup type
       setupRequested: z.boolean().default(false),
       status: z.enum(["not_configured", "pending", "active"]).optional().default("not_configured")
     }).optional().default({
