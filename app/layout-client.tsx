@@ -13,7 +13,6 @@ import { type Segment } from "./requirements/types"
 import { ThemeProvider } from "./context/ThemeContext"
 import { LayoutProvider, useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
-import { WidgetProvider } from "./context/WidgetContext"
 
 const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/control-center": {
@@ -290,73 +289,71 @@ export default function LayoutClient({
     <ThemeProvider>
       <SiteProvider>
         <LayoutProvider>
-          <WidgetProvider>
-            <NotificationsProvider>
-              <TooltipProvider>
-                <div className={cn(
-                  "flex min-h-screen bg-background transition-all duration-300",
-                  isLayoutCollapsed ? "collapsed" : ""
-                )}>
-                  {fetchError && (
-                    <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
-                      Error: {fetchError}
-                    </div>
-                  )}
-                  {isLoginPage ? (
-                    // Para la página de login, solo mostrar el contenido sin layout
-                    <div className="min-h-screen w-full">
-                      {children}
-                    </div>
-                  ) : (
-                    // Para el resto de páginas, mostrar el layout completo
-                    <div className="flex h-fit overflow-visible relative min-h-screen">
-                      <Sidebar 
-                        isCollapsed={isLayoutCollapsed} 
-                        onCollapse={handleCollapse} 
-                        className="flex-none fixed left-0 top-0 h-screen z-20"
+          <NotificationsProvider>
+            <TooltipProvider>
+              <div className={cn(
+                "flex min-h-screen bg-background transition-all duration-300",
+                isLayoutCollapsed ? "collapsed" : ""
+              )}>
+                {fetchError && (
+                  <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
+                    Error: {fetchError}
+                  </div>
+                )}
+                {isLoginPage ? (
+                  // Para la página de login, solo mostrar el contenido sin layout
+                  <div className="min-h-screen w-full">
+                    {children}
+                  </div>
+                ) : (
+                  // Para el resto de páginas, mostrar el layout completo
+                  <div className="flex h-fit overflow-visible relative min-h-screen">
+                    <Sidebar 
+                      isCollapsed={isLayoutCollapsed} 
+                      onCollapse={handleCollapse} 
+                      className="flex-none fixed left-0 top-0 h-screen z-20"
+                    />
+                    <div 
+                      className={cn(
+                        "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
+                        isLayoutCollapsed ? "ml-16" : "ml-64"
+                      )}
+                    >
+                      <TopBar 
+                        title={currentPage.title || ""}
+                        helpText={currentPage.helpText || undefined}
+                        isCollapsed={isLayoutCollapsed}
+                        onCollapse={handleCollapse}
+                        segments={segments}
+                        className="fixed top-0 right-0 z-10"
+                        style={{ 
+                          left: isLayoutCollapsed ? '4rem' : '16rem',
+                        }}
+                        breadcrumb={customBreadcrumb}
+                        isExperimentDetailPage={isExperimentDetailPage}
+                        onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
                       />
-                      <div 
+                      <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+                      <main 
                         className={cn(
-                          "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
-                          isLayoutCollapsed ? "ml-16" : "ml-64"
-                        )}
+                          "flex-1",
+                          isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
+                        )} 
+                        style={
+                          isChatPage ? 
+                          { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
+                          : {}
+                        }
                       >
-                        <TopBar 
-                          title={currentPage.title || ""}
-                          helpText={currentPage.helpText || undefined}
-                          isCollapsed={isLayoutCollapsed}
-                          onCollapse={handleCollapse}
-                          segments={segments}
-                          className="fixed top-0 right-0 z-10"
-                          style={{ 
-                            left: isLayoutCollapsed ? '4rem' : '16rem',
-                          }}
-                          breadcrumb={customBreadcrumb}
-                          isExperimentDetailPage={isExperimentDetailPage}
-                          onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
-                        />
-                        <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
-                        <main 
-                          className={cn(
-                            "flex-1",
-                            isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
-                          )} 
-                          style={
-                            isChatPage ? 
-                            { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
-                            : {}
-                          }
-                        >
-                          {children}
-                        </main>
-                      </div>
+                        {children}
+                      </main>
                     </div>
-                  )}
-                  <Toaster />
-                </div>
-              </TooltipProvider>
-            </NotificationsProvider>
-          </WidgetProvider>
+                  </div>
+                )}
+                <Toaster />
+              </div>
+            </TooltipProvider>
+          </NotificationsProvider>
         </LayoutProvider>
       </SiteProvider>
     </ThemeProvider>
