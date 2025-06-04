@@ -5,6 +5,7 @@ import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 
 interface ROIWidgetProps {
   segmentId?: string;
@@ -37,6 +38,7 @@ export function ROIWidget({
 }: ROIWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [roi, setRoi] = useState<ROIData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -54,6 +56,12 @@ export function ROIWidget({
 
   useEffect(() => {
     const fetchRoi = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[ROIWidget] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -84,7 +92,7 @@ export function ROIWidget({
     };
 
     fetchRoi();
-  }, [segmentId, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

@@ -6,6 +6,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 
 interface RevenueWidgetProps {
   segmentId?: string;
@@ -54,6 +55,7 @@ export function RevenueWidget({
 }: RevenueWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -76,6 +78,12 @@ export function RevenueWidget({
     let isMounted = true;
     
     const fetchRevenue = async () => {
+      // Global widget protection - simpler and more reliable
+      if (!shouldExecuteWidgets) {
+        console.log("[RevenueWidget] Widget execution disabled by context");
+        return;
+      }
+      
       if (!currentSite || currentSite.id === "default") return;
       
       if (isMounted) {
@@ -138,18 +146,17 @@ export function RevenueWidget({
 
     fetchRevenue();
     
-    // Cleanup function
     return () => {
       isMounted = false;
       cancelAllRequests();
     };
   }, [
+    shouldExecuteWidgets,
     segmentId, 
     startDate, 
     endDate, 
-    currentSite?.id, // Only depend on site ID, not the entire object
-    user?.id // Only depend on user ID, not the entire object
-    // Note: fetchWithController and cancelAllRequests are stable now with useCallback
+    currentSite?.id,
+    user?.id
   ]);
 
   // Handle date range selection
@@ -170,18 +177,20 @@ export function RevenueWidget({
   const isPositiveChange = safeChangeValue > 0;
   
   return (
-    <BaseKpiWidget
-      title="Total Revenue"
-      tooltipText={`Total revenue across ${segmentId === "all" ? "all segments" : "selected segment"}`}
-      value={formattedValue}
-      changeText={isDemoData ? `${changeText} (Demo data)` : changeText}
-      isPositiveChange={isPositiveChange}
-      isLoading={isLoading}
-      showDatePicker={!propStartDate && !propEndDate}
-      startDate={startDate}
-      endDate={endDate}
-      onDateChange={handleDateChange}
-      segmentBadge={segmentId !== "all"}
-    />
+    <div data-widget="revenue">
+      <BaseKpiWidget
+        title="Total Revenue"
+        tooltipText={`Total revenue across ${segmentId === "all" ? "all segments" : "selected segment"}`}
+        value={formattedValue}
+        changeText={isDemoData ? `${changeText} (Demo data)` : changeText}
+        isPositiveChange={isPositiveChange}
+        isLoading={isLoading}
+        showDatePicker={!propStartDate && !propEndDate}
+        startDate={startDate}
+        endDate={endDate}
+        onDateChange={handleDateChange}
+        segmentBadge={segmentId !== "all"}
+      />
+    </div>
   );
 } 

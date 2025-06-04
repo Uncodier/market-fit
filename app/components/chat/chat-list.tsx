@@ -199,7 +199,7 @@ export function ChatList({
       try {
         const supabase = createClient();
         
-        console.log(`🛑 DEBUG: Setting up real-time subscription for site: ${siteId}`);
+        console.log(`🔍 Setting up real-time subscription for site: ${siteId}`);
         
         // Limpieza de cualquier suscripción existente
         if (subscriptionRef.current) {
@@ -207,17 +207,21 @@ export function ChatList({
         }
         
         // Crear una suscripción simple y directa usando el enfoque clásico de Supabase
-        console.log('🛑 DEBUG: Setting up subscription using classic approach');
+        console.log('🔍 Setting up subscription using classic approach');
         
         // Un canal por tipo de evento, enfoque más tradicional
-        const channel = supabase.channel('public:conversations')
+        const channel = supabase.channel(`conversations-${siteId}`, {
+          config: {
+            broadcast: { self: false }
+          }
+        })
           .on('postgres_changes', {
             event: 'UPDATE',
             schema: 'public',
             table: 'conversations',
             filter: `site_id=eq.${siteId}`
           }, (payload: any) => {
-            console.log('🛑 DEBUG: UPDATE event received:', payload);
+            console.log('🔍 UPDATE event received:', payload);
             
             if (payload.new) {
               // Asegurar que isLoading sea false antes de actualizar
@@ -242,7 +246,7 @@ export function ChatList({
                 )
               );
               
-              console.log(`🛑 DEBUG: Conversation ${payload.new.id} updated directly in state without reloading`);
+              console.log(`🔍 Conversation ${payload.new.id} updated directly in state without reloading`);
             }
           })
         
@@ -253,7 +257,7 @@ export function ChatList({
           table: 'conversations',
           filter: `site_id=eq.${siteId}`
         }, (payload: any) => {
-          console.log('🛑 DEBUG: INSERT event received:', payload);
+          console.log('🔍 INSERT event received:', payload);
           
           // Asegurar que isLoading sea false antes de actualizar
           setIsLoading(false);
@@ -274,7 +278,7 @@ export function ChatList({
             
             // Añadir la nueva conversación al principio de la lista
             setConversations(prev => [newConversation, ...prev]);
-            console.log(`🛑 DEBUG: New conversation ${newConversation.id} added directly to state`);
+            console.log(`🔍 New conversation ${newConversation.id} added directly to state`);
           } else {
             // Solo si no tenemos suficiente información, recargamos la lista completa
             // pero sin activar el estado de carga
@@ -284,10 +288,10 @@ export function ChatList({
               isFirstLoadRef.current = false; // Forzar a falso para evitar el esqueleto
               
               loadConversationsRef.current().then(() => {
-                console.log(`🛑 DEBUG: List reloaded for INSERT without showing skeleton`);
+                console.log(`🔍 List reloaded for INSERT without showing skeleton`);
               });
               
-              console.log(`🛑 DEBUG: Insufficient data for new conversation, reloading without skeleton`);
+              console.log(`🔍 Insufficient data for new conversation, reloading without skeleton`);
             }
           }
         });
@@ -299,7 +303,7 @@ export function ChatList({
           table: 'conversations',
           filter: `site_id=eq.${siteId}`
         }, (payload: any) => {
-          console.log('🛑 DEBUG: DELETE event received:', payload);
+          console.log('🔍 DELETE event received:', payload);
           
           // Asegurar que isLoading sea false antes de actualizar
           setIsLoading(false);
@@ -310,7 +314,7 @@ export function ChatList({
               prevConversations.filter(conv => conv.id !== payload.old.id)
             );
             
-            console.log(`🛑 DEBUG: Conversation ${payload.old.id} removed from state without reloading`);
+            console.log(`🔍 Conversation ${payload.old.id} removed from state without reloading`);
             
             // Si la conversación eliminada era la seleccionada, redirigir a la lista de chat
             if (selectedConversationIdRef.current === payload.old.id) {
@@ -319,24 +323,36 @@ export function ChatList({
           }
         });
         
-        // Suscribir al canal
+        // Suscribir al canal con mejor manejo de errores
         channel.subscribe((status: string) => {
-          console.log(`🛑 DEBUG: Channel subscription status: ${status}`);
+          console.log(`🔍 Channel subscription status: ${status}`);
           
-          // Log adicional para depuración
-          if (status === 'CHANNEL_ERROR') {
-            console.error('🛑 DEBUG: ¡ERROR DE CANAL! Verifica configuración de CSP para WebSockets');
-            console.error('🛑 DEBUG: Si acabas de modificar next.config.js, necesitas reiniciar el servidor');
-            console.log('🛑 DEBUG: URL de Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+          switch (status) {
+            case 'SUBSCRIBED':
+              console.log('✅ Successfully subscribed to real-time updates');
+              break;
+            case 'CHANNEL_ERROR':
+              console.warn('⚠️ Real-time subscription error - continuing without live updates');
+              console.log('🔍 This may be due to network issues or server configuration');
+              console.log('🔍 The app will continue to work but may not show real-time updates');
+              break;
+            case 'TIMED_OUT':
+              console.warn('⚠️ Real-time subscription timed out - will retry automatically');
+              break;
+            case 'CLOSED':
+              console.log('🔍 Real-time subscription closed');
+              break;
+            default:
+              console.log(`🔍 Real-time status: ${status}`);
           }
         });
         
         // Guardar la referencia
         subscriptionRef.current = channel;
         
-        // Opcional: monitorea los INSERT y DELETE por separado si es necesario
       } catch (error) {
-        console.error('🛑 DEBUG: Error setting up Realtime:', error);
+        console.warn('⚠️ Failed to set up real-time subscription:', error);
+        console.log('🔍 The app will work normally but without real-time updates');
       }
     }
     

@@ -5,6 +5,7 @@ import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 
 interface ActiveExperimentsWidgetProps {
   startDate?: Date;
@@ -35,8 +36,10 @@ export function ActiveExperimentsWidget({
 }: ActiveExperimentsWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [activeExperiments, setActiveExperiments] = useState<ActiveExperimentsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
@@ -52,9 +55,17 @@ export function ActiveExperimentsWidget({
 
   useEffect(() => {
     const fetchActiveExperiments = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[ActiveExperimentsWidget] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
+      setHasError(false);
+      
       try {
         // Validate dates - don't allow future dates
         const now = new Date();
@@ -83,13 +94,14 @@ export function ActiveExperimentsWidget({
         setActiveExperiments(data);
       } catch (error) {
         console.error("Error fetching active experiments:", error);
+        setHasError(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchActiveExperiments();
-  }, [startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

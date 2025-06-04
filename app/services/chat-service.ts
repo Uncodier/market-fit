@@ -143,21 +143,41 @@ export async function checkApiServerAvailability(): Promise<boolean> {
     
     // Set a short timeout to avoid long waits
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => {
+      controller.abort('Request timeout after 3 seconds');
+    }, 3000);
     
-    const response = await fetch(API_URL, {
-      method: 'GET',
-      mode: 'no-cors', // Cambiamos a no-cors para evitar problemas CORS
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
-    // Con modo no-cors, siempre devuelve un status de tipo "opaque"
-    // así que solo verificamos que la respuesta existe
-    return true;
+    try {
+      const response = await fetch(API_URL, {
+        method: 'GET',
+        mode: 'no-cors', // Cambiamos a no-cors para evitar problemas CORS
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // Con modo no-cors, siempre devuelve un status de tipo "opaque"
+      // así que solo verificamos que la respuesta existe
+      return true;
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      // Check if the error is due to abort signal (timeout)
+      if (fetchError instanceof Error && 
+          (fetchError.name === 'AbortError' || 
+           fetchError.message.includes('Request timeout') ||
+           fetchError.toString().includes('Request timeout'))) {
+        console.log("API server check timed out after 3 seconds - server may be unavailable");
+        return false;
+      }
+      
+      // Log other fetch errors but don't throw them - just return false
+      console.log("API server fetch failed:", fetchError instanceof Error ? fetchError.message : String(fetchError));
+      return false;
+    }
   } catch (error) {
-    console.error("API server is not available:", error);
+    // This should now only catch setup errors, not fetch errors
+    console.error("Unexpected error in checkApiServerAvailability:", error);
     return false;
   }
 }

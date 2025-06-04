@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
+import { useWidgetContext } from "@/app/context/WidgetContext"
 import { 
   differenceInDays, differenceInMonths, format, 
   addDays, addMonths, addQuarters, addYears,
@@ -31,6 +32,7 @@ interface SaleData {
 export function Overview({ startDate: propStartDate, endDate: propEndDate, segmentId = "all" }: { startDate?: Date, endDate?: Date, segmentId?: string }) {
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
+  const { shouldExecuteWidgets } = useWidgetContext()
   const [chartData, setChartData] = useState<ChartDataItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30))
@@ -51,14 +53,17 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
     const controller = new AbortController();
     
     const fetchSalesData = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[Overview] Widget execution disabled by context");
+        return;
+      }
+
+      if (!currentSite || currentSite.id === "default") return;
+      
       // Always start with loading state
       if (isMounted) {
         setIsLoading(true)
-      }
-      
-      if (!currentSite?.id || currentSite.id === "default") {
-        // No site data, just keep showing the skeleton
-        return
       }
       
       try {
@@ -243,12 +248,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
       isMounted = false;
       controller.abort();
     };
-  }, [
-    startDate, 
-    endDate, 
-    currentSite?.id, // Only depend on site ID, not the entire object 
-    segmentId
-  ])
+  }, [shouldExecuteWidgets, propStartDate, propEndDate, segmentId, currentSite]);
 
   // Calculate intervals based on date range and type
   const generateIntervals = (

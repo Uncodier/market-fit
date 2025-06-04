@@ -32,6 +32,31 @@ const nextConfig = {
       },
     ],
   },
+  // Headers configuration for CSP
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: `
+              default-src 'self';
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://files.uncodie.com https://backend.uncodie.com;
+              style-src 'self' 'unsafe-inline';
+              img-src 'self' data: https:;
+              font-src 'self' data:;
+              connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* https://tu-api-real.com https://api.market-fit.ai https://backend.uncodie.com;
+              object-src 'none';
+              base-uri 'self';
+              form-action 'self';
+              frame-ancestors 'none';
+            `.replace(/\s{2,}/g, ' ').trim()
+          },
+        ],
+      },
+    ];
+  },
   // Desactivar TypeScript durante la compilación
   typescript: {
     // ⚠️ Solución temporal para permitir la compilación 

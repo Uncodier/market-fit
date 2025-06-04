@@ -372,181 +372,193 @@ export default function DashboardPage() {
 
         <div className="px-16">
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
-              <RevenueWidget 
-                segmentId={selectedSegment}
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-              />
-              <ActiveUsersWidget
-                segmentId={selectedSegment}
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-              />
-              <ActiveSegmentsWidget
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-              />
-              <ActiveExperimentsWidget
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-              />
-              <LTVWidget
-                segmentId={selectedSegment}
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-              />
-              <CACWidget
-                segmentId={selectedSegment}
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-              />
-              <ROIWidget
-                segmentId={selectedSegment}
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-              />
-              <CPLWidget
-                segmentId={selectedSegment}
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-              />
-            </div>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Overview</CardTitle>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <div className="min-h-[350px]">
-                    <Overview 
-                      startDate={dateRange.startDate}
-                      endDate={dateRange.endDate}
-                      segmentId={selectedSegment}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Recent commercial activity</CardTitle>
-                  <CardDescription>
-                    Completed lead tasks and user interactions.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="min-h-[200px]">
-                    <RecentActivity 
-                      limit={5}
-                      startDate={dateRange.startDate}
-                      endDate={dateRange.endDate} 
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            {activeTab === "overview" && (
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
+                  <RevenueWidget 
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <ActiveUsersWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <ActiveSegmentsWidget
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <ActiveExperimentsWidget
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <LTVWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <CACWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <ROIWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <CPLWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                </div>
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
+                  <Card className="col-span-4">
+                    <CardHeader>
+                      <CardTitle>Overview</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pl-2">
+                      <div className="min-h-[350px]">
+                        <Overview 
+                          startDate={dateRange.startDate}
+                          endDate={dateRange.endDate}
+                          segmentId={selectedSegment}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="col-span-3">
+                    <CardHeader>
+                      <CardTitle>Recent commercial activity</CardTitle>
+                      <CardDescription>
+                        Completed lead tasks and user interactions.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="min-h-[200px]">
+                        <RecentActivity 
+                          limit={5}
+                          startDate={dateRange.startDate}
+                          endDate={dateRange.endDate} 
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            )}
           </TabsContent>
           <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 min-h-[160px]">
-              <Card className="col-span-1">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Clients by Segment</CardTitle>
-                  <CardDescription className="text-xs">
-                    Distribution of clients across segments
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <SegmentDonut
-                    segmentId={selectedSegment}
-                    startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                    endpoint="clients-by-segment"
-                  />
-                </CardContent>
-              </Card>
-              <Card className="col-span-1">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Revenue by Segment</CardTitle>
-                  <CardDescription className="text-xs">
-                    Distribution of revenue across segments
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <SegmentDonut
-                    segmentId={selectedSegment}
-                    startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                    endpoint="revenue-by-segment"
-                    formatValues={true}
-                  />
-                </CardContent>
-              </Card>
-              <Card className="col-span-1">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Clients by Campaign</CardTitle>
-                  <CardDescription className="text-xs">
-                    Distribution of clients across campaigns
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <SegmentDonut
-                    segmentId={selectedSegment}
-                    startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                    endpoint="clients-by-campaign"
-                  />
-                </CardContent>
-              </Card>
-              <Card className="col-span-1">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Revenue by Campaign</CardTitle>
-                  <CardDescription className="text-xs">
-                    Revenue across campaigns{formattedTotal ? ` - ${formattedTotal}` : ""}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <SegmentDonut
-                    segmentId={selectedSegment}
-                    startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                    endpoint="revenue-by-campaign"
-                    formatValues={true}
-                    onTotalUpdate={handleTotalUpdate}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-            <div className="grid gap-4 grid-cols-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cohort Analysis</CardTitle>
-                  <CardDescription>
-                    Weekly retention metrics for sales and usage cohorts.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <CohortTables
-                    segmentId={selectedSegment}
-                    startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
-                </CardContent>
-              </Card>
-            </div>
+            {activeTab === "analytics" && (
+              <>
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 min-h-[160px]">
+                  <Card className="col-span-1">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Clients by Segment</CardTitle>
+                      <CardDescription className="text-xs">
+                        Distribution of clients across segments
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <SegmentDonut
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                        endpoint="clients-by-segment"
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card className="col-span-1">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Revenue by Segment</CardTitle>
+                      <CardDescription className="text-xs">
+                        Distribution of revenue across segments
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <SegmentDonut
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                        endpoint="revenue-by-segment"
+                        formatValues={true}
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card className="col-span-1">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Clients by Campaign</CardTitle>
+                      <CardDescription className="text-xs">
+                        Distribution of clients across campaigns
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <SegmentDonut
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                        endpoint="clients-by-campaign"
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card className="col-span-1">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Revenue by Campaign</CardTitle>
+                      <CardDescription className="text-xs">
+                        Revenue across campaigns{formattedTotal ? ` - ${formattedTotal}` : ""}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <SegmentDonut
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                        endpoint="revenue-by-campaign"
+                        formatValues={true}
+                        onTotalUpdate={handleTotalUpdate}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="grid gap-4 grid-cols-1">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Cohort Analysis</CardTitle>
+                      <CardDescription>
+                        Weekly retention metrics for sales and usage cohorts.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <CohortTables
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            )}
           </TabsContent>
           <TabsContent value="costs" className="space-y-4">
-            <CostReports 
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              segmentId={selectedSegment}
-            />
+            {activeTab === "costs" && (
+              <CostReports 
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                segmentId={selectedSegment}
+              />
+            )}
           </TabsContent>
           <TabsContent value="sales" className="space-y-4">
-            <SalesReports 
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              segmentId={selectedSegment}
-            />
+            {activeTab === "sales" && (
+              <SalesReports 
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                segmentId={selectedSegment}
+              />
+            )}
           </TabsContent>
         </div>
       </Tabs>

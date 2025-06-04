@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { useSite } from "@/app/context/SiteContext"
+import { useWidgetContext } from "@/app/context/WidgetContext"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { PieChart, BarChart } from "@/app/components/ui/icons"
@@ -96,6 +97,7 @@ export function SalesReports({
   segmentId = "all" 
 }: SalesReportsProps) {
   const { currentSite } = useSite();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dataReady, setDataReady] = useState(false);
@@ -119,6 +121,12 @@ export function SalesReports({
     let isMounted = true;
     
     const fetchSalesData = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[SalesReports] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       if (isMounted) {
@@ -182,11 +190,11 @@ export function SalesReports({
       cancelAllRequests();
     };
   }, [
+    shouldExecuteWidgets,
     startDate, 
     endDate, 
-    currentSite?.id, // Only depend on site ID, not the entire object
+    currentSite?.id,
     segmentId
-    // Note: fetchWithController and cancelAllRequests are stable now with useCallback
   ]);
   
   // Check if categories data is empty

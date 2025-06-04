@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 import { subDays } from "date-fns";
 
 interface OverheadWidgetProps {
@@ -47,6 +48,7 @@ export function OverheadWidget({
   endDate: propEndDate
 }: OverheadWidgetProps) {
   const { currentSite } = useSite();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [costData, setCostData] = useState<CostData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [overhead, setOverhead] = useState({
@@ -70,6 +72,12 @@ export function OverheadWidget({
 
   useEffect(() => {
     const fetchCostData = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[OverheadWidget] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -127,7 +135,7 @@ export function OverheadWidget({
     };
 
     fetchCostData();
-  }, [startDate, endDate, currentSite]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite]);
 
   const formattedValue = formatCurrency(overhead.amount);
   const changeText = hasData 

@@ -5,6 +5,7 @@ import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 
 interface CPLWidgetProps {
   segmentId?: string;
@@ -47,6 +48,7 @@ export function CPLWidget({
 }: CPLWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [cpl, setCpl] = useState<CPLData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -64,6 +66,12 @@ export function CPLWidget({
 
   useEffect(() => {
     const fetchCpl = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[CPLWidget] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -94,7 +102,7 @@ export function CPLWidget({
     };
 
     fetchCpl();
-  }, [segmentId, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 import { format, subDays } from "date-fns";
 
 interface MarketingCostsWidgetProps {
@@ -47,6 +48,7 @@ export function MarketingCostsWidget({
   endDate: propEndDate
 }: MarketingCostsWidgetProps) {
   const { currentSite } = useSite();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [costData, setCostData] = useState<CostData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [marketingCost, setMarketingCost] = useState({
@@ -70,6 +72,12 @@ export function MarketingCostsWidget({
 
   useEffect(() => {
     const fetchCostData = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[MarketingCostsWidget] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -119,7 +127,7 @@ export function MarketingCostsWidget({
     };
 
     fetchCostData();
-  }, [startDate, endDate, currentSite]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite]);
 
   const formattedValue = formatCurrency(marketingCost.amount);
   const changeText = hasData 

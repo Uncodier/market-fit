@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 import { format, subDays } from "date-fns";
 
 interface TotalCostsWidgetProps {
@@ -39,6 +40,7 @@ export function TotalCostsWidget({
   endDate: propEndDate
 }: TotalCostsWidgetProps) {
   const { currentSite } = useSite();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [costData, setCostData] = useState<CostData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasData, setHasData] = useState(true);
@@ -57,6 +59,12 @@ export function TotalCostsWidget({
 
   useEffect(() => {
     const fetchCostData = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[TotalCostsWidget] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -77,7 +85,7 @@ export function TotalCostsWidget({
     };
 
     fetchCostData();
-  }, [startDate, endDate, currentSite]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite]);
 
   const formattedValue = costData && hasData
     ? `$${costData.totalCosts.formattedActual}` 

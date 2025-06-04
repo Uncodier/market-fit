@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 import { subDays } from "date-fns";
 
 interface OnlineSalesWidgetProps {
@@ -52,6 +53,7 @@ export function OnlineSalesWidget({
   endDate: propEndDate
 }: OnlineSalesWidgetProps) {
   const { currentSite } = useSite();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -69,6 +71,12 @@ export function OnlineSalesWidget({
 
   useEffect(() => {
     const fetchSalesData = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[OnlineSalesWidget] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -87,7 +95,7 @@ export function OnlineSalesWidget({
     };
 
     fetchSalesData();
-  }, [startDate, endDate, currentSite]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite]);
 
   // Set defaults if no data available
   const onlineSales = salesData?.channelSales?.online || {

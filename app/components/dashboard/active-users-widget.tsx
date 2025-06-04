@@ -5,6 +5,7 @@ import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 
 interface ActiveUsersWidgetProps {
   segmentId?: string;
@@ -37,6 +38,7 @@ export function ActiveUsersWidget({
 }: ActiveUsersWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [activeUsers, setActiveUsers] = useState<ActiveUsersData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -54,6 +56,12 @@ export function ActiveUsersWidget({
 
   useEffect(() => {
     const fetchActiveUsers = async () => {
+      // Global widget protection - simpler and more reliable
+      if (!shouldExecuteWidgets) {
+        console.log("[ActiveUsersWidget] Widget execution disabled by context");
+        return;
+      }
+      
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -92,7 +100,7 @@ export function ActiveUsersWidget({
     };
 
     fetchActiveUsers();
-  }, [segmentId, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -105,18 +113,20 @@ export function ActiveUsersWidget({
   const isPositiveChange = (activeUsers?.percentChange || 0) > 0;
   
   return (
-    <BaseKpiWidget
-      title="Active Clients"
-      tooltipText="Clients active in the selected time period"
-      value={formattedValue}
-      changeText={changeText}
-      isPositiveChange={isPositiveChange}
-      isLoading={isLoading}
-      showDatePicker={!propStartDate && !propEndDate}
-      startDate={startDate}
-      endDate={endDate}
-      onDateChange={handleDateChange}
-      segmentBadge={segmentId !== "all"}
-    />
+    <div data-widget="active-users">
+      <BaseKpiWidget
+        title="Active Clients"
+        tooltipText="Clients active in the selected time period"
+        value={formattedValue}
+        changeText={changeText}
+        isPositiveChange={isPositiveChange}
+        isLoading={isLoading}
+        showDatePicker={!propStartDate && !propEndDate}
+        startDate={startDate}
+        endDate={endDate}
+        onDateChange={handleDateChange}
+        segmentBadge={segmentId !== "all"}
+      />
+    </div>
   );
 } 

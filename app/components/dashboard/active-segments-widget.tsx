@@ -5,6 +5,7 @@ import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
+import { useWidgetContext } from "@/app/context/WidgetContext";
 
 interface ActiveSegmentsWidgetProps {
   startDate?: Date;
@@ -35,6 +36,7 @@ export function ActiveSegmentsWidget({
 }: ActiveSegmentsWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
+  const { shouldExecuteWidgets } = useWidgetContext();
   const [activeSegments, setActiveSegments] = useState<ActiveSegmentsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -53,6 +55,12 @@ export function ActiveSegmentsWidget({
 
   useEffect(() => {
     const fetchActiveSegments = async () => {
+      // Global widget protection
+      if (!shouldExecuteWidgets) {
+        console.log("[ActiveSegmentsWidget] Widget execution disabled by context");
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -107,7 +115,7 @@ export function ActiveSegmentsWidget({
     };
 
     fetchActiveSegments();
-  }, [startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
