@@ -87,7 +87,7 @@ export default function BillingPage() {
             <BillingForm 
               id="billing-form"
               initialData={{
-                plan: currentSite.billing?.plan || "free",
+                plan: currentSite.billing?.plan || "commission",
                 card_name: currentSite.billing?.card_name,
                 card_expiry: currentSite.billing?.card_expiry,
                 card_address: currentSite.billing?.card_address,

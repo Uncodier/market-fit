@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, MutableRefObject } from "react"
+import { useState, useEffect, useRef, MutableRefObject, use } from "react"
 import { useRouter } from "next/navigation"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -204,13 +204,16 @@ const DetailsSkeleton = () => (
 )
 
 // Main component
-export default function TaskDetailPage({ params }: { params: { id: string } }) {
+export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { currentSite } = useSite()
   const [task, setTask] = useState<Task | null>(null)
   const [activeTab, setActiveTab] = useState("updates")
   const [isLoading, setIsLoading] = useState(true)
   const formRef = useRef<HTMLFormElement>(null) as MutableRefObject<HTMLFormElement>
+
+  // Unwrap the params Promise
+  const { id: taskId } = use(params)
 
   // Fetch task data
   useEffect(() => {
@@ -229,7 +232,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             name
           )
         `)
-        .eq('id', params.id)
+        .eq('id', taskId)
         .eq('site_id', currentSite.id)
         .single()
 
@@ -244,7 +247,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     }
 
     fetchTask()
-  }, [currentSite, params.id])
+  }, [currentSite, taskId])
 
   // Update breadcrumb when component mounts
   useEffect(() => {
@@ -264,7 +267,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     const event = new CustomEvent('breadcrumb:update', {
       detail: {
         title: breadcrumbTitle,
-        path: `/control-center/${params.id}`,
+        path: `/control-center/${taskId}`,
         section: 'Control Center',
         parent: {
           title: 'Control Center',
@@ -279,7 +282,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     return () => {
       document.title = "Market Fit"
     }
-  }, [task, params.id])
+  }, [task, taskId])
 
   // Handle status change
   const handleStatusChange = async (newStatus: Task['status']) => {

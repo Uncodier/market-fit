@@ -77,9 +77,9 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
     async function fetchUsers() {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id, name')
-        .eq('site_id', currentSite?.id)
+        .order('name')
 
       if (error) {
         console.error('Error fetching users:', error)

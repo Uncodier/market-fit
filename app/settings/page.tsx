@@ -430,7 +430,7 @@ export default function SettingsPage() {
       team_members: processedTeamMembers,
       // Billing info
       billing: site.billing || {
-        plan: "free",
+        plan: "commission",
         auto_renew: true
       },
       // Agregar datos de company (este campo es requerido por el esquema)

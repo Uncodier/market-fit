@@ -40,7 +40,7 @@ export interface Site {
     tracking_code?: string;
   }
   billing?: {
-    plan: 'free' | 'starter' | 'professional' | 'enterprise'
+    plan: 'commission' | 'startup' | 'enterprise'
     masked_card_number?: string
     card_name?: string
     card_expiry?: string
@@ -109,6 +109,7 @@ export interface SiteSettings {
       existingNumber?: string
       setupRequested?: boolean
       apiToken?: string
+      account_sid?: string
       status?: "not_configured" | "pending" | "active"
     }
   } | null
@@ -703,6 +704,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                     existingNumber: "",
                     setupRequested: false,
                     apiToken: "",
+                    account_sid: "",
                     status: "not_configured"
                   }
                 })
@@ -992,6 +994,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
             existingNumber: "",
             setupRequested: false,
             apiToken: "",
+            account_sid: "",
             status: "not_configured"
           }
         };

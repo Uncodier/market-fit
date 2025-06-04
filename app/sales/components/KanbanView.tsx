@@ -40,7 +40,6 @@ interface KanbanViewProps {
   onUpdateSaleStatus: (saleId: string, newStatus: string) => Promise<void>
   segments: Array<{ id: string; name: string }>
   onSaleClick: (sale: Sale) => void
-  onSendSale: (sale: Sale) => void
   onPrintSale: (sale: Sale) => void
   onRegisterPayment: (sale: Sale) => void
 }
@@ -50,7 +49,6 @@ export function KanbanView({
   onUpdateSaleStatus, 
   segments,
   onSaleClick,
-  onSendSale,
   onPrintSale,
   onRegisterPayment
 }: KanbanViewProps) {

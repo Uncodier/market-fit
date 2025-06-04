@@ -24,7 +24,7 @@ import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { KanbanView, LeadFilters } from "@/app/components/kanban-view"
 import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
 import { useRouter } from "next/navigation"
-import { Lead } from "@/app/leads/types"
+import { Lead, AttributionData } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { JOURNEY_STAGES } from "@/app/leads/types"
 import { useCommandK } from "@/app/hooks/use-command-k"
@@ -32,6 +32,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
 import { createClient } from "@/utils/supabase/client"
+import { AttributionModal } from "@/app/leads/components/AttributionModal"
 
 // Cache de etapas para cada lead
 const leadJourneyStagesCache: Record<string, string> = {};
@@ -464,6 +465,12 @@ export default function LeadsPage() {
     origin: []
   })
   const { currentSite } = useSite()
+  const [showAttributionModal, setShowAttributionModal] = useState(false)
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    leadId: string
+    leadName: string
+    newStatus: string
+  } | null>(null)
   
   // Initialize command+k hook
   useCommandK()
@@ -666,8 +673,24 @@ export default function LeadsPage() {
     const lead = dbLeads.find(l => l.id === leadId)
     if (!lead) return
     
+    // Si el nuevo status es "converted", mostrar el modal de atribución
+    if (newStatus === "converted") {
+      setPendingStatusChange({
+        leadId,
+        leadName: lead.name,
+        newStatus
+      })
+      setShowAttributionModal(true)
+      return
+    }
+
+    // Para otros statuses, actualizar directamente
+    await updateLeadDirectly(leadId, newStatus, lead)
+  }
+
+  const updateLeadDirectly = async (leadId: string, newStatus: string, lead: Lead, attribution?: AttributionData) => {
     try {
-      const result = await updateLead({
+      const updateData: any = {
         id: leadId,
         name: lead.name,
         email: lead.email,
@@ -678,7 +701,13 @@ export default function LeadsPage() {
         status: newStatus as any,
         origin: lead.origin,
         site_id: currentSite?.id || ""
-      })
+      }
+
+      if (attribution) {
+        updateData.attribution = attribution
+      }
+
+      const result = await updateLead(updateData)
       
       if (result.error) {
         toast.error(result.error)
@@ -688,15 +717,41 @@ export default function LeadsPage() {
       // Actualizamos el lead en el estado local
       setDbLeads(prevLeads => 
         prevLeads.map(l => 
-          l.id === leadId ? { ...l, status: newStatus as any } : l
+          l.id === leadId ? { 
+            ...l, 
+            status: newStatus as any,
+            ...(attribution && { attribution })
+          } : l
         )
       );
       
-      toast.success("Lead status updated successfully")
+      toast.success("Lead updated successfully")
     } catch (error) {
       console.error("Error updating lead status:", error)
       toast.error("Error updating lead status")
     }
+  }
+
+  const handleAttributionConfirm = async (attribution: AttributionData) => {
+    if (!pendingStatusChange) return
+
+    const lead = dbLeads.find(l => l.id === pendingStatusChange.leadId)
+    if (!lead) return
+
+    await updateLeadDirectly(
+      pendingStatusChange.leadId, 
+      pendingStatusChange.newStatus, 
+      lead,
+      attribution
+    )
+
+    setPendingStatusChange(null)
+    setShowAttributionModal(false)
+  }
+
+  const handleAttributionCancel = () => {
+    setPendingStatusChange(null)
+    setShowAttributionModal(false)
   }
 
   // Función para manejar el clic en una fila o tarjeta
@@ -729,6 +784,15 @@ export default function LeadsPage() {
   return (
     <LeadsContext.Provider value={{ segments }}>
     <div className="flex-1 p-0">
+      {/* Attribution Modal */}
+      <AttributionModal
+        isOpen={showAttributionModal}
+        onOpenChange={setShowAttributionModal}
+        leadName={pendingStatusChange?.leadName || ""}
+        onConfirm={handleAttributionConfirm}
+        onCancel={handleAttributionCancel}
+      />
+      
       {/* Modal de filtros */}
       <LeadFilterModal
         isOpen={isFilterModalOpen}

@@ -17,7 +17,7 @@ import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 
 const billingFormSchema = z.object({
-  plan: z.enum(["free", "starter", "professional", "enterprise"]).default("free"),
+  plan: z.enum(["commission", "startup", "enterprise"]).default("commission"),
   card_name: z.string().optional(),
   card_number: z.string().optional(),
   card_expiry: z.string().optional(),
@@ -53,7 +53,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
     defaultValues: {
-      plan: initialData?.plan || "free",
+      plan: initialData?.plan || "commission",
       card_name: initialData?.card_name || "",
       card_number: "", // Never prefill card number for security
       card_expiry: initialData?.card_expiry || "",
@@ -160,6 +160,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                     {currentSite?.billing?.credits_available || 0} <span className="text-sm font-medium text-muted-foreground">credits available</span>
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">Your credits will reset on the first day of each month</div>
+                  <div className="text-sm text-muted-foreground mt-1">Credits are used for inference tokens, ads, and third-party services</div>
                 </div>
                 <div className="flex items-center gap-4">
                   <Button variant="outline" className="h-10" type="button" onClick={() => window.location.href = "/billing?tab=payment_history"}>
@@ -172,38 +173,39 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 <div 
                   className={cn(
                     "border rounded-lg p-4 transition-all cursor-pointer hover:border-blue-300 flex flex-col items-center justify-center text-center",
-                    creditsToBuy === 50 && "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20"
+                    creditsToBuy === 20 && "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20"
                   )}
-                  onClick={() => setCreditsToBuy(50)}
+                  onClick={() => setCreditsToBuy(20)}
                 >
-                  <div className="font-medium mb-2">50 Credits</div>
-                  <div className="text-2xl font-bold mb-2">$19</div>
-                  <div className="text-sm text-muted-foreground">One-time purchase</div>
+                  <div className="font-medium mb-2">20 Credits</div>
+                  <div className="text-2xl font-bold mb-2">$20</div>
+                  <div className="text-sm text-muted-foreground">$1.00 per credit</div>
                 </div>
                 
                 <div 
                   className={cn(
                     "border rounded-lg p-4 transition-all cursor-pointer hover:border-blue-300 flex flex-col items-center justify-center text-center relative",
-                    creditsToBuy === 100 ? "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20" : "hover:border-blue-300"
+                    creditsToBuy === 52 ? "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20" : "hover:border-blue-300"
                   )}
-                  onClick={() => setCreditsToBuy(100)}
+                  onClick={() => setCreditsToBuy(52)}
                 >
-                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs py-0.5 px-2 rounded-full">Most popular</div>
-                  <div className="font-medium mb-2">100 Credits</div>
-                  <div className="text-2xl font-bold mb-2">$29</div>
-                  <div className="text-sm text-muted-foreground">One-time purchase</div>
+                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs py-0.5 px-2 rounded-full">1.5% discount</div>
+                  <div className="font-medium mb-2">52 Credits</div>
+                  <div className="text-2xl font-bold mb-2">$49.25</div>
+                  <div className="text-sm text-muted-foreground">$0.95 per credit</div>
                 </div>
                 
                 <div 
                   className={cn(
-                    "border rounded-lg p-4 transition-all cursor-pointer hover:border-blue-300 flex flex-col items-center justify-center text-center",
-                    creditsToBuy === 200 && "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20"
+                    "border rounded-lg p-4 transition-all cursor-pointer hover:border-blue-300 flex flex-col items-center justify-center text-center relative",
+                    creditsToBuy === 515 && "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20"
                   )}
-                  onClick={() => setCreditsToBuy(200)}
+                  onClick={() => setCreditsToBuy(515)}
                 >
-                  <div className="font-medium mb-2">200 Credits</div>
-                  <div className="text-2xl font-bold mb-2">$49</div>
-                  <div className="text-sm text-muted-foreground">One-time purchase</div>
+                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs py-0.5 px-2 rounded-full">3% discount</div>
+                  <div className="font-medium mb-2">515 Credits</div>
+                  <div className="text-2xl font-bold mb-2">$500</div>
+                  <div className="text-sm text-muted-foreground">$0.97 per credit</div>
                 </div>
               </div>
               
@@ -217,7 +219,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   <PlusCircle className="h-4 w-4 mr-2" />
                   {isPurchasingCredits 
                     ? `Processing payment...` 
-                    : `Purchase ${creditsToBuy} Credits for ${creditsToBuy === 50 ? '$19' : creditsToBuy === 100 ? '$29' : '$49'}`
+                    : `Purchase ${creditsToBuy} Credits for ${creditsToBuy === 20 ? '$20' : creditsToBuy === 52 ? '$49.25' : '$500'}`
                   }
                 </Button>
               )}
@@ -236,17 +238,17 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-foreground">Current Plan</FormLabel>
                     <FormControl>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div 
                           className={cn(
                             "border rounded-lg p-4 cursor-pointer transition-all",
-                            field.value === "free" 
+                            field.value === "commission" 
                               ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
                               : "border-border hover:border-blue-300"
                           )}
-                          onClick={() => field.onChange("free")}
+                          onClick={() => field.onChange("commission")}
                         >
-                          <div className="font-medium mb-2">Free</div>
+                          <div className="font-medium mb-2">Commission</div>
                           <div className="text-2xl font-bold mb-2">$0</div>
                           <div className="text-sm text-muted-foreground">Basic features</div>
                         </div>
@@ -254,29 +256,15 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                         <div 
                           className={cn(
                             "border rounded-lg p-4 cursor-pointer transition-all",
-                            field.value === "starter" 
+                            field.value === "startup" 
                               ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
                               : "border-border hover:border-blue-300"
                           )}
-                          onClick={() => field.onChange("starter")}
+                          onClick={() => field.onChange("startup")}
                         >
-                          <div className="font-medium mb-2">Starter</div>
-                          <div className="text-2xl font-bold mb-2">$29</div>
-                          <div className="text-sm text-muted-foreground">100 credits/mo</div>
-                        </div>
-                        
-                        <div 
-                          className={cn(
-                            "border rounded-lg p-4 cursor-pointer transition-all",
-                            field.value === "professional" 
-                              ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                              : "border-border hover:border-blue-300"
-                          )}
-                          onClick={() => field.onChange("professional")}
-                        >
-                          <div className="font-medium mb-2">Professional</div>
-                          <div className="text-2xl font-bold mb-2">$79</div>
-                          <div className="text-sm text-muted-foreground">500 credits/mo</div>
+                          <div className="font-medium mb-2">Startup</div>
+                          <div className="text-2xl font-bold mb-2">$99</div>
+                          <div className="text-sm text-muted-foreground">Startup features</div>
                         </div>
                         
                         <div 
@@ -289,8 +277,8 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                           onClick={() => field.onChange("enterprise")}
                         >
                           <div className="font-medium mb-2">Enterprise</div>
-                          <div className="text-2xl font-bold mb-2">$199</div>
-                          <div className="text-sm text-muted-foreground">Unlimited credits</div>
+                          <div className="text-2xl font-bold mb-2">$500</div>
+                          <div className="text-sm text-muted-foreground">Enterprise features</div>
                         </div>
                       </div>
                     </FormControl>

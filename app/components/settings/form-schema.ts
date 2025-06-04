@@ -171,6 +171,7 @@ export const siteFormSchema = z.object({
       country: z.string().optional(),
       region: z.string().optional(), // For new_number: city code
       number: z.string().optional(), // The assigned WhatsApp number
+      account_sid: z.string().optional(), // Twilio Account SID for use_own_account setup
       existingNumber: z.string().optional().refine((val) => {
         if (!val || val.trim() === '') return true; // Optional field
         // Validate phone number format (international format with +)
@@ -187,13 +188,14 @@ export const siteFormSchema = z.object({
       status: "not_configured"
     }).refine((data) => {
       if (!data) return true;
-      // If use_own_account setup, existingNumber is required (apiToken is handled securely)
+      // If use_own_account setup, existingNumber and account_sid are required (apiToken is handled securely)
       if (data.setupType === "use_own_account") {
         if (!data.existingNumber || data.existingNumber.trim() === '') return false;
+        if (!data.account_sid || data.account_sid.trim() === '') return false;
       }
       return true;
     }, {
-      message: "Phone Number is required for using your own Twilio account",
+      message: "Phone Number and Account SID are required for using your own Twilio account",
       path: ["setupType"]
     })
   }).optional().default({
@@ -274,18 +276,10 @@ export const siteFormSchema = z.object({
   }),
   // Billing fields
   billing: z.object({
-    plan: z.enum(["free", "starter", "professional", "enterprise"]).default("free"),
-    card_number: z.string().optional(),
-    card_expiry: z.string().optional(),
-    card_cvc: z.string().optional(),
-    card_name: z.string().optional(),
-    billing_address: z.string().optional(),
-    billing_city: z.string().optional(),
-    billing_postal_code: z.string().optional(),
-    billing_country: z.string().optional(),
+    plan: z.enum(["commission", "startup", "enterprise"]).default("commission"),
     auto_renew: z.boolean().default(true)
   }).optional().default({
-    plan: "free",
+    plan: "commission",
     auto_renew: true
   }),
   company: z.object({

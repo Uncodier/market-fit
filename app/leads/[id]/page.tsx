@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { getLeadById, updateLead, deleteLead } from "@/app/leads/actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
-import { Lead, Segment, LEAD_STATUSES, STATUS_STYLES } from "@/app/leads/types"
+import { Lead, Segment, LEAD_STATUSES, STATUS_STYLES, AttributionData } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { ChevronLeft } from "@/app/components/ui/icons"
@@ -23,6 +23,7 @@ import { Input } from "@/app/components/ui/input"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Badge } from "@/app/components/ui/badge"
 import { StatusSegmentBar } from "@/app/leads/components/StatusSegmentBar"
+import { AttributionModal } from "@/app/leads/components/AttributionModal"
 
 export default function LeadDetailPage() {
   const params = useParams()
@@ -32,6 +33,8 @@ export default function LeadDetailPage() {
   const [segments, setSegments] = useState<Segment[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAttributionModal, setShowAttributionModal] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState<"new" | "contacted" | "qualified" | "converted" | "lost" | null>(null)
   
   // Extract id safely from params
   const leadId = Array.isArray(params.id) ? params.id[0] : params.id
@@ -217,9 +220,37 @@ export default function LeadDetailPage() {
   
   // Handler for status change
   const handleStatusChange = (status: "new" | "contacted" | "qualified" | "converted" | "lost") => {
-    if (lead) {
-      handleUpdateLead(lead.id, { status })
+    if (status === "converted") {
+      // Show attribution modal for conversion
+      setPendingStatus(status)
+      setShowAttributionModal(true)
+    } else {
+      // Direct update for other statuses
+      if (lead) {
+        handleUpdateLead(lead.id, { status })
+      }
     }
+  }
+
+  const handleAttributionConfirm = async (attribution: AttributionData) => {
+    if (lead && pendingStatus) {
+      try {
+        await handleUpdateLead(lead.id, { 
+          status: pendingStatus,
+          attribution: attribution
+        })
+        setPendingStatus(null)
+      } catch (error) {
+        console.error('Error updating lead with attribution:', error)
+        toast.error("Error updating lead")
+        setPendingStatus(null)
+      }
+    }
+  }
+
+  const handleAttributionCancel = () => {
+    setPendingStatus(null)
+    setShowAttributionModal(false)
   }
   
   if (loading) {
@@ -280,6 +311,7 @@ export default function LeadDetailPage() {
                       onClose={() => {}} 
                       onDeleteLead={handleDeleteLead}
                       hideStatus={true}
+                      onStatusChange={handleStatusChange}
                     />
                   </CardContent>
                 </Card>
@@ -288,6 +320,15 @@ export default function LeadDetailPage() {
           )}
         </div>
       </Tabs>
+
+      {/* Attribution Modal */}
+      <AttributionModal
+        isOpen={showAttributionModal}
+        onOpenChange={setShowAttributionModal}
+        leadName={lead?.name || ""}
+        onConfirm={handleAttributionConfirm}
+        onCancel={handleAttributionCancel}
+      />
     </div>
   )
 }

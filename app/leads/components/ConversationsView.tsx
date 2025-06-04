@@ -3,6 +3,7 @@ import { Card } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { MessageSquare, Mail, Phone } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { Button } from "@/app/components/ui/button"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
@@ -10,7 +11,17 @@ import { useRouter } from "next/navigation"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { getLeadConversations } from "@/app/leads/actions"
 
-// Types for conversations
+// Types for conversations from the database
+interface DatabaseConversation {
+  id: string
+  type: 'email' | 'call' | 'chat'
+  subject: string
+  message: string
+  date: string
+  status: 'sent' | 'received' | 'scheduled'
+}
+
+// Types for conversations displayed in the UI
 interface Conversation {
   id: string
   type: 'email' | 'call' | 'chat'
@@ -62,7 +73,7 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
           console.log(`Found ${result.conversations.length} conversations for lead ${leadId}`)
           
           // La acción ya devuelve los datos en el formato correcto que necesitamos
-          setConversations(result.conversations.map(conv => ({
+          setConversations(result.conversations.map((conv: DatabaseConversation) => ({
             ...conv,
             // Asegurar que los tipos se ajusten a la interfaz esperada
             type: conv.type as 'email' | 'call' | 'chat',

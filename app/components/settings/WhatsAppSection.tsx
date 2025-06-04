@@ -382,6 +382,7 @@ interface WhatsAppLocalState {
   country?: string
   region?: string
   apiToken?: string
+  accountSid?: string
   existingNumber?: string
   status: "not_configured" | "pending" | "active"
   setupRequested: boolean
@@ -419,6 +420,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
           country: whatsappData.country,
           region: whatsappData.region,
           apiToken: "", // Never store token in local state
+          accountSid: whatsappData.account_sid || "",
           existingNumber: whatsappData.existingNumber,
           status: whatsappData.status || "not_configured",
           setupRequested: whatsappData.setupRequested || false,
@@ -447,12 +449,15 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
     }
     
     if (localState.setupType === "use_own_account") {
-      // For saving new configuration, require API token input and phone number
-      // For already configured, just require valid phone number
+      // For saving new configuration, require API token, Account SID, and phone number
+      // For already configured, just require valid phone number and Account SID
       if (localState.hasSecureToken) {
-        return localState.existingNumber?.trim() && phoneValidation.isValid
+        return localState.accountSid?.trim() &&
+               localState.existingNumber?.trim() && 
+               phoneValidation.isValid
       } else {
         return localState.apiToken?.trim() && 
+               localState.accountSid?.trim() &&
                localState.existingNumber?.trim() && 
                phoneValidation.isValid
       }
@@ -488,6 +493,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
       // Clear fields from the other setup type
       ...(setupType === "new_number" ? {
         apiToken: "",
+        accountSid: "",
         existingNumber: undefined,
         hasSecureToken: false
       } : {
@@ -516,6 +522,10 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
 
   const handleApiTokenChange = (apiToken: string) => {
     setLocalState(prev => ({ ...prev, apiToken }))
+  }
+
+  const handleAccountSidChange = (accountSid: string) => {
+    setLocalState(prev => ({ ...prev, accountSid }))
   }
 
   const handleExistingNumberChange = async (existingNumber: string) => {
@@ -571,6 +581,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
             setupType: localState.setupType,
             country: localState.country,
             region: localState.region,
+            account_sid: localState.accountSid,
             existingNumber: localState.existingNumber,
             // DO NOT store apiToken here - it's stored securely via secureTokensService
             setupRequested: newSetupRequested,
@@ -597,6 +608,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
         setupType: localState.setupType,
         country: localState.country,
         region: localState.region,
+        account_sid: localState.accountSid,
         existingNumber: localState.existingNumber,
         // DO NOT sync apiToken to form
         setupRequested: newSetupRequested,
@@ -814,6 +826,19 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   </div>
                 )}
 
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Twilio Account SID</Label>
+                  <Input
+                    placeholder="Enter your Twilio Account SID (e.g., ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)"
+                    value={localState.accountSid || ""}
+                    onChange={(e) => handleAccountSidChange(e.target.value)}
+                    type="text"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your Twilio Account SID identifier (starts with AC)
+                  </p>
+                </div>
+
                 {localState.hasSecureToken && (
                   <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
                     <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -938,6 +963,19 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                       )}
                     </span>
                   </div>
+                </div>
+              )}
+
+              {localState.accountSid && localState.setupType === "use_own_account" && (
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Twilio Account SID</Label>
+                  <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-sm">{localState.accountSid}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your configured Twilio Account SID
+                  </p>
                 </div>
               )}
 

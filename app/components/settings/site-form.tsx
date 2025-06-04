@@ -159,7 +159,7 @@ export function SiteForm({
         chat_title: "Chat with us"
       },
       billing: initialData?.billing || {
-        plan: "free",
+        plan: "commission",
         auto_renew: true
       }
     }
@@ -618,13 +618,13 @@ export function SiteForm({
                             <div 
                               className={cn(
                                 "border rounded-lg p-4 cursor-pointer transition-all",
-                                field.value === "free" 
+                                field.value === "commission" 
                                   ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
                                   : "border-border hover:border-blue-300"
                               )}
-                              onClick={() => field.onChange("free")}
+                              onClick={() => field.onChange("commission")}
                             >
-                              <div className="font-medium mb-2">Free</div>
+                              <div className="font-medium mb-2">Commission</div>
                               <div className="text-2xl font-bold mb-2">$0</div>
                               <div className="text-sm text-muted-foreground">Basic features</div>
                             </div>
@@ -632,29 +632,15 @@ export function SiteForm({
                             <div 
                               className={cn(
                                 "border rounded-lg p-4 cursor-pointer transition-all",
-                                field.value === "starter" 
+                                field.value === "startup" 
                                   ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
                                   : "border-border hover:border-blue-300"
                               )}
-                              onClick={() => field.onChange("starter")}
+                              onClick={() => field.onChange("startup")}
                             >
-                              <div className="font-medium mb-2">Starter</div>
-                              <div className="text-2xl font-bold mb-2">$29</div>
-                              <div className="text-sm text-muted-foreground">100 credits/mo</div>
-                            </div>
-                            
-                            <div 
-                              className={cn(
-                                "border rounded-lg p-4 cursor-pointer transition-all",
-                                field.value === "professional" 
-                                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                                  : "border-border hover:border-blue-300"
-                              )}
-                              onClick={() => field.onChange("professional")}
-                            >
-                              <div className="font-medium mb-2">Professional</div>
-                              <div className="text-2xl font-bold mb-2">$79</div>
-                              <div className="text-sm text-muted-foreground">500 credits/mo</div>
+                              <div className="font-medium mb-2">Startup</div>
+                              <div className="text-2xl font-bold mb-2">$99</div>
+                              <div className="text-sm text-muted-foreground">Startup features</div>
                             </div>
                             
                             <div 
@@ -667,8 +653,8 @@ export function SiteForm({
                               onClick={() => field.onChange("enterprise")}
                             >
                               <div className="font-medium mb-2">Enterprise</div>
-                              <div className="text-2xl font-bold mb-2">$199</div>
-                              <div className="text-sm text-muted-foreground">Unlimited credits</div>
+                              <div className="text-2xl font-bold mb-2">$500</div>
+                              <div className="text-sm text-muted-foreground">Enterprise features</div>
                             </div>
                           </div>
                         </FormControl>

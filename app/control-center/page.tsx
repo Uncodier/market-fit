@@ -21,20 +21,6 @@ import { toast } from "react-hot-toast"
 import { getUserData } from "@/app/services/user-service"
 import { useCommandK } from "@/app/hooks/use-command-k"
 
-// Task types
-const TASK_TYPES = [
-  'website_visit',
-  'demo',
-  'meeting',
-  'email',
-  'call',
-  'quote',
-  'contract',
-  'payment',
-  'referral',
-  'feedback'
-]
-
 interface ExtendedTask extends Task {
   leadName?: string
   assigneeName?: string
@@ -56,6 +42,7 @@ export default function ControlCenterPage() {
   const [selectedItem, setSelectedItem] = useState<string>("all")
   const [categories, setCategories] = useState<Category[]>([])
   const [tasks, setTasks] = useState<ExtendedTask[]>([])
+  const [taskTypes, setTaskTypes] = useState<string[]>([])
   const [taskCounts, setTaskCounts] = useState<TaskCounts>({ byCategory: {}, byType: {} })
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -189,6 +176,17 @@ export default function ControlCenterPage() {
         )
 
         setTasks(enrichedTasks)
+
+        // Extract unique task types from the fetched tasks
+        const uniqueTypes = Array.from(new Set(
+          enrichedTasks
+            .map(task => task.type)
+            .filter(type => type && type.trim() !== '')
+        )).sort()
+        
+        console.log('Dynamic task types found:', uniqueTypes)
+        setTaskTypes(uniqueTypes)
+
       } catch (error) {
         console.error('Error fetching tasks:', error)
         toast.error("Failed to load tasks")
@@ -324,6 +322,16 @@ export default function ControlCenterPage() {
         )
 
         setTasks(enrichedTasks)
+
+        // Update task types as well
+        const uniqueTypes = Array.from(new Set(
+          enrichedTasks
+            .map(task => task.type)
+            .filter(type => type && type.trim() !== '')
+        )).sort()
+        
+        setTaskTypes(uniqueTypes)
+
       } catch (error) {
         console.error('Error fetching tasks:', error)
       }
@@ -407,7 +415,7 @@ export default function ControlCenterPage() {
       )} style={{ top: "64px" }}>
         <TaskSidebar
           categories={categories}
-          taskTypes={TASK_TYPES}
+          taskTypes={taskTypes}
           selectedItem={selectedItem}
           onSelectItem={setSelectedItem}
           taskCountByCategory={taskCounts.byCategory}
@@ -449,12 +457,14 @@ export default function ControlCenterPage() {
         {/* Content */}
         <div className="flex-1 overflow-auto bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
           {filteredTasks.length === 0 ? (
-            <EmptyState 
-              icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
-              title="No tasks found"
-              description={searchQuery ? "Try adjusting your search or filters to find what you're looking for." : "There are no tasks to display at this time."}
-              variant="fancy"
-            />
+            <div className="h-full flex items-center justify-center">
+              <EmptyState 
+                icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
+                title="No tasks found"
+                description={searchQuery ? "Try adjusting your search or filters to find what you're looking for." : "There are no tasks to display at this time."}
+                variant="fancy"
+              />
+            </div>
           ) : (
             <div className="p-8 h-full">
               {viewType === "kanban" ? (

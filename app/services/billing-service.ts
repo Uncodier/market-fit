@@ -1,32 +1,65 @@
 import { createClient } from '@/lib/supabase/client'
 import { loadStripe } from '@stripe/stripe-js'
 
-// Cargamos Stripe de forma condicional
+// Stripe instance management
 let stripePromise: Promise<any> | null = null;
+let stripeInitializationError: string | null = null;
 
-// Solo inicializamos Stripe en el cliente, no en el servidor
-if (typeof window !== 'undefined') {
+// Initialize Stripe only in the browser
+const initializeStripe = () => {
+  if (typeof window === 'undefined') {
+    return null; // Server-side rendering
+  }
+
+  if (stripePromise) {
+    return stripePromise; // Already initialized
+  }
+
+  if (stripeInitializationError) {
+    console.error('Stripe initialization previously failed:', stripeInitializationError);
+    return null;
+  }
+
   try {
     const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     
     if (!stripeKey) {
-      console.error('Stripe publishable key is missing. Please add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to your .env.local file.');
-    } else if (!stripeKey.startsWith('pk_')) {
-      console.error('Invalid Stripe publishable key format. The key should start with "pk_test_" or "pk_live_".');
-    } else {
-      stripePromise = loadStripe(stripeKey)
-        .catch(error => {
-          console.error('Failed to initialize Stripe:', error);
-          return null;
-        });
+      stripeInitializationError = 'Stripe publishable key is missing. Please add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to your .env.local file.';
+      console.error(stripeInitializationError);
+      return null;
     }
+    
+    if (!stripeKey.startsWith('pk_')) {
+      stripeInitializationError = 'Invalid Stripe publishable key format. The key should start with "pk_test_" or "pk_live_".';
+      console.error(stripeInitializationError);
+      return null;
+    }
+
+    stripePromise = loadStripe(stripeKey)
+      .then(stripe => {
+        if (!stripe) {
+          throw new Error('Failed to initialize Stripe SDK');
+        }
+        console.log('Stripe initialized successfully');
+        return stripe;
+      })
+      .catch(error => {
+        stripeInitializationError = `Failed to load Stripe.js: ${error.message}`;
+        console.error(stripeInitializationError);
+        stripePromise = null; // Reset so we can try again later
+        return null;
+      });
+
+    return stripePromise;
   } catch (error) {
-    console.error('Error initializing Stripe:', error);
+    stripeInitializationError = `Error during Stripe initialization: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error(stripeInitializationError);
+    return null;
   }
-}
+};
 
 export interface BillingData {
-  plan: 'free' | 'starter' | 'professional' | 'enterprise'
+  plan: 'commission' | 'startup' | 'enterprise'
   card_name?: string
   card_number?: string
   card_expiry?: string
@@ -46,87 +79,109 @@ export interface BillingData {
 
 class BillingService {
   /**
+   * Get Stripe instance with proper error handling
+   */
+  private async getStripe() {
+    const stripePromise = initializeStripe();
+    
+    if (!stripePromise) {
+      throw new Error(stripeInitializationError || 'Stripe is not available');
+    }
+
+    const stripe = await stripePromise;
+    
+    if (!stripe) {
+      throw new Error('Failed to load Stripe. Please check your internet connection and try again.');
+    }
+
+    return stripe;
+  }
+
+  /**
    * Create or update payment method with Stripe and save billing info
    */
   async saveBillingInfo(siteId: string, billingData: BillingData): Promise<{ success: boolean; error?: string }> {
     try {
       const supabase = createClient()
       
-      // Solo procesamos la tarjeta si estamos en el cliente y tenemos la información completa
+      // Only process card if we're on the client and have complete card information
       let stripeCustomerId = ''
       let stripePaymentMethodId = ''
       let maskedCardNumber = ''
 
-      if (typeof window !== 'undefined' && stripePromise && billingData.card_number && billingData.card_expiry && billingData.card_cvc) {
-        const stripe = await stripePromise
+      if (typeof window !== 'undefined' && billingData.card_number && billingData.card_expiry && billingData.card_cvc) {
+        try {
+          const stripe = await this.getStripe();
 
-        if (!stripe) {
-          console.error('Stripe failed to initialize. Please check if your Stripe publishable key is correct.');
-          return { success: false, error: 'Payment service unavailable. Please check your configuration or try again later.' }
-        }
+          // Get any existing billing info to check for Stripe customer ID
+          const { data: existingBilling } = await supabase
+            .from('billing')
+            .select('stripe_customer_id')
+            .eq('site_id', siteId)
+            .single()
 
-        // Get any existing billing info to check for Stripe customer ID
-        const { data: existingBilling } = await supabase
-          .from('billing')
-          .select('stripe_customer_id')
-          .eq('site_id', siteId)
-          .single()
-
-        // If we have sensitive card info, create a payment method in Stripe
-        const { paymentMethod, error: stripeError } = await stripe.createPaymentMethod({
-          type: 'card',
-          card: {
-            number: billingData.card_number,
-            exp_month: parseInt(billingData.card_expiry.split('/')[0]),
-            exp_year: parseInt(billingData.card_expiry.split('/')[1]),
-            cvc: billingData.card_cvc,
-          },
-          billing_details: {
-            name: billingData.card_name,
-            address: {
-              line1: billingData.card_address,
-              city: billingData.card_city,
-              postal_code: billingData.card_postal_code,
-              country: billingData.card_country,
+          // Create payment method in Stripe
+          const { paymentMethod, error: stripeError } = await stripe.createPaymentMethod({
+            type: 'card',
+            card: {
+              number: billingData.card_number,
+              exp_month: parseInt(billingData.card_expiry.split('/')[0]),
+              exp_year: parseInt(billingData.card_expiry.split('/')[1]),
+              cvc: billingData.card_cvc,
             },
-          },
-        })
-
-        if (stripeError) {
-          return { success: false, error: stripeError.message }
-        }
-
-        if (paymentMethod) {
-          stripePaymentMethodId = paymentMethod.id
-
-          // Create or get Stripe customer
-          if (existingBilling?.stripe_customer_id) {
-            stripeCustomerId = existingBilling.stripe_customer_id
-            
-            // Attach payment method to existing customer
-            await stripe.paymentMethods.attach(paymentMethod.id, {
-              customer: stripeCustomerId,
-            })
-          } else {
-            // Create new customer with payment method
-            const { customer } = await stripe.customers.create({
-              payment_method: paymentMethod.id,
+            billing_details: {
               name: billingData.card_name,
-              email: (await supabase.auth.getUser()).data.user?.email,
-            })
-            
-            if (customer) {
-              stripeCustomerId = customer.id
-            }
+              address: {
+                line1: billingData.card_address,
+                city: billingData.card_city,
+                postal_code: billingData.card_postal_code,
+                country: billingData.card_country,
+              },
+            },
+          })
+
+          if (stripeError) {
+            return { success: false, error: stripeError.message }
           }
 
-          // Mask the card number for storage (••••••••••••1234)
-          const last4 = paymentMethod.card?.last4 || billingData.card_number.slice(-4)
-          maskedCardNumber = `•••• •••• •••• ${last4}`
+          if (paymentMethod) {
+            stripePaymentMethodId = paymentMethod.id
+
+            // Create or get Stripe customer
+            if (existingBilling?.stripe_customer_id) {
+              stripeCustomerId = existingBilling.stripe_customer_id
+              
+              // Attach payment method to existing customer
+              await stripe.paymentMethods.attach(paymentMethod.id, {
+                customer: stripeCustomerId,
+              })
+            } else {
+              // Create new customer with payment method
+              const { customer } = await stripe.customers.create({
+                payment_method: paymentMethod.id,
+                name: billingData.card_name,
+                email: (await supabase.auth.getUser()).data.user?.email,
+              })
+              
+              if (customer) {
+                stripeCustomerId = customer.id
+              }
+            }
+
+            // Mask the card number for storage (••••••••••••1234)
+            const last4 = paymentMethod.card?.last4 || billingData.card_number.slice(-4)
+            maskedCardNumber = `•••• •••• •••• ${last4}`
+          }
+        } catch (stripeError) {
+          console.error('Stripe processing error:', stripeError);
+          return { 
+            success: false, 
+            error: `Payment processing failed: ${stripeError instanceof Error ? stripeError.message : 'Unknown error'}`
+          }
         }
       } else if (billingData.card_number) {
-        // Si no estamos en el cliente o no tenemos Stripe, pero hay un número de tarjeta,
-        // enmascararlo manualmente para almacenamiento
+        // If not on client or don't have Stripe, but have card number,
+        // mask it manually for storage
         const last4 = billingData.card_number.slice(-4);
         maskedCardNumber = `•••• •••• •••• ${last4}`;
       }

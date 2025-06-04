@@ -11,7 +11,7 @@ import { Sale, SaleOrder, SaleOrderItem } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { User, Tag, ShoppingCart, Plus, Pencil, Trash2, Send, Printer, ChevronLeft, CreditCard } from "@/app/components/ui/icons"
+import { User, Tag, ShoppingCart, Plus, Pencil, Trash2, Printer, ChevronLeft, CreditCard } from "@/app/components/ui/icons"
 import { Badge } from "@/app/components/ui/badge"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
@@ -633,12 +633,11 @@ export default function SaleDetailPage() {
     }
   };
   
-  const handleSend = () => {
-    toast.info("Send functionality will be implemented soon");
-  };
-  
   const handlePrint = () => {
-    window.print();
+    if (sale) {
+      // Open the print-friendly page in a new window
+      window.open(`/invoice-pdf/${sale.id}`, '_blank');
+    }
   };
   
   const handleStatusChange = async (newStatus: string) => {
@@ -776,16 +775,6 @@ export default function SaleDetailPage() {
               </Button>
               
               <div className="w-px h-6 bg-border mx-1" />
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSend}
-                className="flex items-center gap-1"
-              >
-                <Send className="h-4 w-4" />
-                Send Invoice
-              </Button>
               
               <Button
                 variant="ghost"

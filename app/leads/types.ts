@@ -1,5 +1,14 @@
 import { Company } from "@/app/companies/types"
 
+export interface AttributionData {
+  user_id: string
+  user_name: string
+  date: string
+  final_amount?: number
+  is_market_fit_influenced: boolean
+  notes?: string
+}
+
 export interface Lead {
   id: string
   name: string
@@ -52,6 +61,7 @@ export interface Lead {
     [key: string]: string | undefined
   } | null
   notes: string | null
+  attribution?: AttributionData | null
 }
 
 export interface LeadFilters {

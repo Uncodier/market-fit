@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { DollarSign, ShoppingCart, Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Send, Printer, CreditCard, Eye } from "@/app/components/ui/icons"
+import { DollarSign, ShoppingCart, Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Printer, CreditCard, Eye } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -57,7 +57,6 @@ interface SalesTableProps {
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
   onSaleClick: (sale: Sale) => void
-  onSendSale: (sale: Sale) => void
   onPrintSale: (sale: Sale) => void
   onRegisterPayment: (sale: Sale) => void
 }
@@ -70,7 +69,6 @@ function SalesTable({
   onPageChange,
   onItemsPerPageChange,
   onSaleClick,
-  onSendSale,
   onPrintSale,
   onRegisterPayment
 }: SalesTableProps) {
@@ -183,17 +181,6 @@ function SalesTable({
                           <span className="sr-only">Register Payment</span>
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSendSale(sale)
-                        }}
-                      >
-                        <Send className="h-4 w-4" />
-                        <span className="sr-only">Send</span>
-                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -395,203 +382,6 @@ function SalesTableSkeleton() {
   )
 }
 
-// SendSaleDialog component
-interface SendSaleDialogProps {
-  sale: Sale | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSave: (updatedSale: Sale) => void
-}
-
-function SendSaleDialog({ sale, open, onOpenChange, onSave }: SendSaleDialogProps) {
-  const [formData, setFormData] = useState<Partial<Sale>>({})
-  const { segments } = useSalesContext()
-
-  useEffect(() => {
-    if (sale) {
-      // Initialize form data with the sale values
-      const initialFormData = { ...sale };
-      // Handle segmentId specifically to avoid type issues
-      if (initialFormData.segmentId === null || initialFormData.segmentId === undefined) {
-        initialFormData.segmentId = NO_SEGMENT as any;
-      }
-      setFormData(initialFormData);
-    }
-  }, [sale])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'amount' ? parseFloat(value) : value
-    }))
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (sale && formData) {
-      const updatedSale = {
-        ...sale,
-        ...formData,
-      };
-      
-      // Convert NO_SEGMENT back to null for the segmentId
-      if (updatedSale.segmentId === NO_SEGMENT) {
-        updatedSale.segmentId = null;
-      }
-      
-      onSave(updatedSale);
-    }
-  }
-
-  if (!sale) return null
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Send Sale</DialogTitle>
-          <DialogDescription>
-            Prepare the sale information to send.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">
-                Title
-              </Label>
-              <Input
-                id="title"
-                name="title"
-                value={formData.title || ''}
-                onChange={handleChange}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="productName" className="text-right">
-                Product
-              </Label>
-              <Input
-                id="productName"
-                name="productName"
-                value={formData.productName || ''}
-                onChange={handleChange}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
-                Amount
-              </Label>
-              <Input
-                id="amount"
-                name="amount"
-                type="number"
-                value={formData.amount || 0}
-                onChange={handleChange}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="leadName" className="text-right">
-                Customer
-              </Label>
-              <Input
-                id="leadName"
-                name="leadName"
-                value={formData.leadName || ''}
-                onChange={handleChange}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Status
-              </Label>
-              <Select
-                name="status"
-                value={formData.status}
-                onValueChange={(value) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    status: value as 'pending' | 'completed' | 'cancelled' | 'refunded'
-                  }))
-                }}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="refunded">Refunded</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="source" className="text-right">
-                Source
-              </Label>
-              <Select
-                name="source"
-                value={formData.source}
-                onValueChange={(value) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    source: value as 'retail' | 'online'
-                  }))
-                }}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="retail">Retail</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="segmentId" className="text-right">
-                Segment
-              </Label>
-              <Select
-                name="segmentId"
-                value={formData.segmentId || NO_SEGMENT}
-                onValueChange={(value) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    segmentId: value
-                  }))
-                }}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select segment" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_SEGMENT}>No Segment</SelectItem>
-                  {segments?.map(segment => (
-                    <SelectItem key={segment.id} value={segment.id}>
-                      {segment.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit">Save changes</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 // PrintSaleDialog component
 interface PrintSaleDialogProps {
   sale: Sale | null
@@ -631,14 +421,14 @@ function PrintSaleDialog({ sale, open, onOpenChange, onConfirm }: PrintSaleDialo
 }
 
 export default function SalesPage() {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [activeTab, setActiveTab] = useState("all")
   const [sales, setSales] = useState<Sale[]>([])
-  const [loading, setLoading] = useState(true)
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string }>>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [viewType, setViewType] = useState<ViewType>("table")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const { currentSite } = useSite()
@@ -648,7 +438,6 @@ export default function SalesPage() {
   useCommandK()
   
   // States for dialog controls
-  const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const [registerPaymentOpen, setRegisterPaymentOpen] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
@@ -795,12 +584,6 @@ export default function SalesPage() {
     router.push(`/sales/${sale.id}`);
   }
 
-  // Send sale handler
-  const handleSendSale = (sale: Sale) => {
-    setSelectedSale(sale)
-    setSendDialogOpen(true)
-  }
-
   // Print sale handler
   const handlePrintSale = (sale: Sale) => {
     setSelectedSale(sale)
@@ -822,39 +605,12 @@ export default function SalesPage() {
     toast.success("Payment registered successfully")
   }
 
-  // Save edited sale
-  const handleSaveSale = async (updatedSale: Sale) => {
-    if (!currentSite?.id) return
-
-    try {
-      const result = await updateSale(currentSite.id, updatedSale)
-      
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      
-      // Update local state
-      setSales(prevSales => 
-        prevSales.map(sale => 
-          sale.id === updatedSale.id ? updatedSale : sale
-        )
-      )
-      
-      toast.success("Sale sent successfully")
-      setSendDialogOpen(false)
-    } catch (error) {
-      console.error("Error sending sale:", error)
-      toast.error("Error sending sale")
-    }
-  }
-
   // Confirm print sale
   const handleConfirmPrint = async (id: string) => {
-    // Simulate printing operation
-    toast.success("Sale sent to printer")
-    setPrintDialogOpen(false)
-  }
+    // Open the print-friendly page in a new window
+    window.open(`/invoice-pdf/${id}`, '_blank');
+    setPrintDialogOpen(false);
+  };
 
   // Function to update sale status (for Kanban view)
   const handleUpdateSaleStatus = async (saleId: string, newStatus: string) => {
@@ -939,7 +695,6 @@ export default function SalesPage() {
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -949,7 +704,6 @@ export default function SalesPage() {
                         onUpdateSaleStatus={handleUpdateSaleStatus}
                         segments={segments}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -966,7 +720,6 @@ export default function SalesPage() {
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -976,7 +729,6 @@ export default function SalesPage() {
                         onUpdateSaleStatus={handleUpdateSaleStatus}
                         segments={segments}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -993,7 +745,6 @@ export default function SalesPage() {
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -1003,7 +754,6 @@ export default function SalesPage() {
                         onUpdateSaleStatus={handleUpdateSaleStatus}
                         segments={segments}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -1020,7 +770,6 @@ export default function SalesPage() {
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -1030,7 +779,6 @@ export default function SalesPage() {
                         onUpdateSaleStatus={handleUpdateSaleStatus}
                         segments={segments}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -1047,7 +795,6 @@ export default function SalesPage() {
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -1057,7 +804,6 @@ export default function SalesPage() {
                         onUpdateSaleStatus={handleUpdateSaleStatus}
                         segments={segments}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -1074,7 +820,6 @@ export default function SalesPage() {
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -1084,7 +829,6 @@ export default function SalesPage() {
                         onUpdateSaleStatus={handleUpdateSaleStatus}
                         segments={segments}
                         onSaleClick={handleSaleClick}
-                        onSendSale={handleSendSale}
                         onPrintSale={handlePrintSale}
                         onRegisterPayment={handleRegisterPayment}
                       />
@@ -1095,14 +839,6 @@ export default function SalesPage() {
             </div>
           </div>
         </Tabs>
-        
-        {/* Send Sale Dialog */}
-        <SendSaleDialog
-          sale={selectedSale}
-          open={sendDialogOpen}
-          onOpenChange={setSendDialogOpen}
-          onSave={handleSaveSale}
-        />
         
         {/* Print Sale Dialog */}
         <PrintSaleDialog

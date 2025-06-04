@@ -65,9 +65,10 @@ interface LeadDetailProps {
   onClose: () => void
   onDeleteLead?: (id: string) => Promise<void>
   hideStatus?: boolean
+  onStatusChange?: (status: "new" | "contacted" | "qualified" | "converted" | "lost") => void
 }
 
-export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead, hideStatus = false }: LeadDetailProps) {
+export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead, hideStatus = false, onStatusChange }: LeadDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -76,6 +77,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     name: lead.name,
     email: lead.email,
     phone: lead.phone,
+    company_id: lead.company_id,
     company: lead.company || { 
       name: "", 
       website: "", 
@@ -110,7 +112,8 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
       pinterest: ""
     },
     address: lead.address || { street: "", city: "", state: "", zipcode: "", country: "" },
-    notes: lead.notes || null
+    notes: lead.notes || null,
+    attribution: lead.attribution || null
   })
   
   // Función para obtener el nombre del segmento
@@ -178,6 +181,16 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
       setShowDeleteDialog(false)
     }
   }
+
+  const handleStatusChange = (value: "new" | "contacted" | "qualified" | "converted" | "lost") => {
+    if (onStatusChange) {
+      // Use custom status change handler if provided
+      onStatusChange(value)
+    } else {
+      // Default behavior: update directly
+      onUpdateLead(lead.id, { status: value })
+    }
+  }
   
   return (
     <div className="w-full p-6 overflow-auto h-full">
@@ -221,9 +234,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
                   <Select 
                     value={lead.status}
-                    onValueChange={(value: "new" | "contacted" | "qualified" | "converted" | "lost") => 
-                      onUpdateLead(lead.id, { status: value })
-                    }
+                    onValueChange={handleStatusChange}
                   >
                     <SelectTrigger className="h-8 text-sm border-none p-0 shadow-none hover:bg-transparent focus:ring-0">
                       <Badge className={`text-xs ${STATUS_STYLES[lead.status]}`}>

@@ -56,6 +56,14 @@ const LeadSchema = z.object({
       zipcode: z.string().optional(),
       country: z.string().optional(),
     }).nullable(),
+    attribution: z.object({
+      user_id: z.string(),
+      user_name: z.string(),
+      date: z.string(),
+      final_amount: z.number().optional(),
+      is_market_fit_influenced: z.boolean(),
+      notes: z.string().optional(),
+    }).nullable().optional(),
   })).nullable(),
   error: z.string().optional()
 })
@@ -116,6 +124,14 @@ const SingleLeadSchema = z.object({
       zipcode: z.string().optional(),
       country: z.string().optional(),
     }).nullable(),
+    attribution: z.object({
+      user_id: z.string(),
+      user_name: z.string(),
+      date: z.string(),
+      final_amount: z.number().optional(),
+      is_market_fit_influenced: z.boolean(),
+      notes: z.string().optional(),
+    }).nullable().optional(),
   }).nullable(),
   error: z.string().optional()
 })
@@ -176,8 +192,8 @@ export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
 // Schema para validar los datos de entrada al actualizar un lead
 const UpdateLeadSchema = z.object({
   id: z.string().min(1, "ID is required"),
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
+  name: z.string().optional(),
+  email: z.string().email().optional(),
   phone: z.string().optional().nullable(),
   company: z.object({
     name: z.string().optional(),
@@ -194,9 +210,10 @@ const UpdateLeadSchema = z.object({
       zipcode: z.string().optional(),
       country: z.string().optional(),
     }).optional(),
-  }).nullable(),
+  }).optional().nullable(),
   company_id: z.string().optional().nullable(),
   position: z.string().optional().nullable(),
+  campaign_id: z.string().optional().nullable(),
   segment_id: z.string().optional().nullable(),
   status: z.enum(["new", "contacted", "qualified", "converted", "lost"]),
   notes: z.string().optional().nullable(),
@@ -220,6 +237,14 @@ const UpdateLeadSchema = z.object({
     state: z.string().optional(),
     zipcode: z.string().optional(),
     country: z.string().optional(),
+  }).optional().nullable(),
+  attribution: z.object({
+    user_id: z.string(),
+    user_name: z.string(),
+    date: z.string(),
+    final_amount: z.number().optional(),
+    is_market_fit_influenced: z.boolean(),
+    notes: z.string().optional(),
   }).optional().nullable(),
 })
 
@@ -252,7 +277,8 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
         birthday,
         language,
         social_networks,
-        address
+        address,
+        attribution
       `)
       .eq('id', id)
       .eq('site_id', site_id)
@@ -299,7 +325,8 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         birthday,
         language,
         social_networks,
-        address
+        address,
+        attribution
       `)
       .eq('site_id', site_id)
       .order("created_at", { ascending: false })
@@ -341,7 +368,8 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
         birthday,
         language,
         social_networks,
-        address
+        address,
+        attribution
       `)
       .eq('campaign_id', campaign_id)
       .eq('site_id', site_id)
