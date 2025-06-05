@@ -169,8 +169,7 @@ export function SiteForm({
         billing_city: "",
         billing_postal_code: "",
         billing_country: ""
-      },
-      allowed_domains: initialData?.allowed_domains || []
+      }
     }
   })
 

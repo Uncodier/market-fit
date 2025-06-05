@@ -297,23 +297,6 @@ export const siteFormSchema = z.object({
     values: z.string().optional(),
     differentiators: z.string().optional(),
   }),
-  // Allowed domains for security
-  allowed_domains: z.array(z.object({
-    id: z.string().optional(),
-    domain: z.string().min(1, "Domain is required").refine((val) => {
-      const domain = val.toLowerCase().trim();
-      // Allow localhost
-      if (domain === 'localhost') return true;
-      // Allow IP addresses (IPv4)
-      if (/^(\d{1,3}\.){3}\d{1,3}$/.test(domain)) return true;
-      // Allow standard domains
-      if (/^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/.test(domain)) return true;
-      return false;
-    }, {
-      message: "Must be a valid domain, IP address, or 'localhost'"
-    }),
-    site_id: z.string().optional()
-  })).optional().default([]),
 })
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>

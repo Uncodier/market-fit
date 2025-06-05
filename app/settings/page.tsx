@@ -442,9 +442,7 @@ export default function SettingsPage() {
         differentiators: ""
       },
       // Add business_hours
-      business_hours: business_hours,
-      // Add allowed domains
-      allowed_domains: site.settings?.allowed_domains || []
+      business_hours: business_hours
     }
     
     console.log("🔍 ADAPT: Final adapted data:", result);
@@ -477,7 +475,7 @@ export default function SettingsPage() {
       const { 
         name, url, description, logo_url, resource_urls, 
         competitors, focusMode, billing, tracking, 
-        team_members, channels, allowed_domains,
+        team_members, channels,
         // Extract all the settings fields explicitly to avoid any tracking contamination
         about, company_size, industry, products, services, locations, 
         business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels, 
@@ -488,7 +486,7 @@ export default function SettingsPage() {
       const settingsData = {
         about, company_size, industry, products, services, locations,
         business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels,
-        social_media, company, allowed_domains
+        social_media, company
       };
       
       console.log("SAVE 3: Datos extraídos del formulario:", {
@@ -662,8 +660,7 @@ export default function SettingsPage() {
           yearly: goals.yearly || "", 
           fiveYear: goals.fiveYear || "",
           tenYear: goals.tenYear || ""
-        }, // Use the validated goals object with correct field names
-        allowed_domains: settingsData.allowed_domains || []
+        } // Use the validated goals object with correct field names
       };
       
       // Handle secure token storage if new values are provided
