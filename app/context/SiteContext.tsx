@@ -113,6 +113,11 @@ export interface SiteSettings {
       status?: "not_configured" | "pending" | "active"
     }
   } | null
+  allowed_domains?: Array<{
+    id?: string
+    domain: string
+    site_id?: string
+  }> | null
 }
 
 export interface ResourceUrl {
@@ -707,7 +712,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
                     account_sid: "",
                     status: "not_configured"
                   }
-                })
+                }),
+                allowed_domains: parseJsonField(settingsData.allowed_domains, [])
               }
             };
           } else {

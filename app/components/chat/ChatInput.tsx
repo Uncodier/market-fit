@@ -57,7 +57,7 @@ export function ChatInput({
   
   return (
     <div className={cn(
-      "py-4 flex-none chat-input-container transition-all duration-300 ease-in-out fixed w-[-webkit-fill-available] bottom-0 bg-background/95"
+      "py-4 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 backdrop-blur"
     )}>
       <div className="max-w-[calc(100%-240px)] mx-auto">
         <form onSubmit={handleSendMessage} className="relative">

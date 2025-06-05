@@ -353,7 +353,7 @@ export function ChatMessages({
 
   if (!hasSelectedConversation) {
     return (
-      <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-[200px]">
+      <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-6">
         <EmptyState
           icon={<MessageSquare className="h-12 w-12" />}
           title="No conversation selected"
@@ -365,7 +365,7 @@ export function ChatMessages({
   }
 
   return (
-    <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px]">
+    <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-6">
       <div className="max-w-[calc(100%-240px)] mx-auto">
         {isLoadingMessages ? (
           <div className="space-y-6 w-full">
@@ -687,11 +687,11 @@ export function ChatMessages({
             )}
             
             {/* Agregar espacio adicional después de los mensajes para evitar que la animación quede pegada al área de texto */}
-            <div className="h-40"></div>
+            <div className="h-8"></div>
           </div>
         )}
         {/* Elemento de referencia para el scroll automático - desplazado del fondo para mejor visualización */}
-        <div ref={messagesEndRef} className="pt-16 pb-32"></div>
+        <div ref={messagesEndRef} className="pt-4 pb-8"></div>
       </div>
     </div>
   )

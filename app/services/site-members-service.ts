@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import { sendTeamInvitation } from './team-invitation-service'
+import { sendMagicLinkInvitation } from './magic-link-invitation-service'
 
 export interface SiteMember {
   id: string
@@ -97,7 +97,7 @@ export const siteMembersService = {
       throw new Error(`Failed to add site member: ${error.message}`)
     }
     
-    // After successfully creating the site member, send invitation via external API
+    // After successfully creating the site member, send magic link invitation
     try {
       // Get site information for the invitation
       const { data: siteData } = await supabase
@@ -108,7 +108,7 @@ export const siteMembersService = {
       
       const siteName = siteData?.name || 'Your Site';
       
-      // Map site_member role back to form role for the API invitation
+      // Map site_member role to invitation role for magic link
       let invitationRole: string = 'view';
       switch (member.role) {
         case 'admin': invitationRole = 'admin'; break;
@@ -117,26 +117,26 @@ export const siteMembersService = {
         default: invitationRole = 'view'; break;
       }
       
-      // Send invitation via external API with the correct role format
-      const invitationResult = await sendTeamInvitation({
+      // Send magic link invitation
+      const invitationResult = await sendMagicLinkInvitation({
         email: member.email,
-        role: invitationRole, // Use the mapped role for the API
-        name: member.name,
-        position: member.position,
         siteId: siteId,
-        siteName: siteName
+        siteName: siteName,
+        role: invitationRole,
+        name: member.name,
+        position: member.position
       });
       
       if (invitationResult.success) {
-        console.log(`Team invitation sent successfully to ${member.email}`);
+        console.log(`Magic link invitation sent successfully to ${member.email}`);
       } else {
-        console.warn(`Failed to send invitation to ${member.email}:`, invitationResult.error);
+        console.warn(`Failed to send magic link invitation to ${member.email}:`, invitationResult.error);
         // Note: We don't throw an error here because the site member was created successfully
         // The invitation failure is logged but doesn't affect the main operation
       }
       
     } catch (invitationError) {
-      console.warn('Error sending team invitation:', invitationError);
+      console.warn('Error sending magic link invitation:', invitationError);
       // Again, we log the error but don't throw it since the main operation succeeded
     }
     

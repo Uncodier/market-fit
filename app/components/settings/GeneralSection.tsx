@@ -12,6 +12,7 @@ import { useDropzone } from "react-dropzone"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { AllowedDomainsSection } from "./AllowedDomainsSection"
 
 interface GeneralSectionProps {
   active: boolean
@@ -162,6 +163,8 @@ export function GeneralSection({ active }: GeneralSectionProps) {
           />
         </CardContent>
       </Card>
+      
+      <AllowedDomainsSection active={active} />
     </>
   )
 } 

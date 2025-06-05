@@ -292,7 +292,7 @@ export default function LayoutClient({
           <NotificationsProvider>
             <TooltipProvider>
               <div className={cn(
-                "flex min-h-screen bg-background transition-all duration-300",
+                "flex min-h-screen w-full bg-background transition-all duration-300",
                 isLayoutCollapsed ? "collapsed" : ""
               )}>
                 {fetchError && (
@@ -307,7 +307,7 @@ export default function LayoutClient({
                   </div>
                 ) : (
                   // Para el resto de páginas, mostrar el layout completo
-                  <div className="flex h-fit overflow-visible relative min-h-screen">
+                  <div className="flex h-fit overflow-visible relative min-h-screen w-full">
                     <Sidebar 
                       isCollapsed={isLayoutCollapsed} 
                       onCollapse={handleCollapse} 

@@ -6,6 +6,7 @@ import { useSite } from "../context/SiteContext"
 import { SiteOnboarding } from "../components/onboarding/site-onboarding"
 import { useAuth } from "../hooks/use-auth"
 import { useRouter } from "next/navigation"
+import { apiClient } from "../services/api-client-service"
 
 export default function CreateSitePage() {
   const [isSaving, setIsSaving] = useState(false)
@@ -56,6 +57,32 @@ export default function CreateSitePage() {
       
       setCreatedSiteId(newSite.id)
       setIsSuccess(true)
+
+      // Call site setup endpoint in background
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_API_KEY || "market-fit-dev-api-key"
+        const apiSecret = process.env.NEXT_PUBLIC_API_SECRET || "market-fit-dev-api-secret"
+        
+        console.log("Calling site setup endpoint for site:", newSite.id)
+        
+        const setupResponse = await apiClient.postWithApiKeys(
+          '/api/site/setup',
+          { site_id: newSite.id },
+          apiKey,
+          apiSecret
+        )
+        
+        if (setupResponse.success) {
+          console.log("Site setup initiated successfully")
+        } else {
+          console.warn("Site setup initiation failed:", setupResponse.error?.message)
+          // Don't show error to user since this is background process
+        }
+      } catch (setupError) {
+        console.warn("Error initiating site setup:", setupError)
+        // Don't show error to user since this is background process
+      }
+      
     } catch (error) {
       console.error(error)
       toast.error("Error creating project")

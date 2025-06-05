@@ -160,8 +160,17 @@ export function SiteForm({
       },
       billing: initialData?.billing || {
         plan: "commission",
-        auto_renew: true
-      }
+        auto_renew: true,
+        card_name: "",
+        card_number: "",
+        card_expiry: "",
+        card_cvc: "",
+        billing_address: "",
+        billing_city: "",
+        billing_postal_code: "",
+        billing_country: ""
+      },
+      allowed_domains: initialData?.allowed_domains || []
     }
   })
 

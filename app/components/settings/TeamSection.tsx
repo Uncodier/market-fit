@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../ui/alert-dialog"
-import { resendTeamInvitation } from "@/app/services/team-invitation-service"
+import { resendMagicLinkInvitation } from "@/app/services/magic-link-invitation-service"
 
 interface TeamSectionProps {
   active: boolean
@@ -327,17 +327,17 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           invitationRole = 'view'; break;
       }
       
-      const result = await resendTeamInvitation({
+      const result = await resendMagicLinkInvitation({
         email: member.email,
+        siteId: siteId,
+        siteName: siteName,
         role: invitationRole,
         name: member.name,
-        position: member.position,
-        siteId: siteId,
-        siteName: siteName
+        position: member.position
       });
 
       if (result.success) {
-        toast.success(`Invitation resent to ${member.name || member.email}`);
+        toast.success(`Magic link invitation resent to ${member.name || member.email}`);
       } else {
         toast.error(result.error || "Failed to resend invitation");
       }
