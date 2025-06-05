@@ -20,6 +20,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { useSite } from "@/app/context/SiteContext"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
+import { getSegments } from "@/app/segments/actions"
 import type { Campaign } from "@/app/types"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -620,10 +621,17 @@ export default function CampaignsPage() {
 
         // Fetch existing segments
         try {
-          const response = await fetch(`/api/segments?siteId=${currentSite.id}`);
-          if (response.ok) {
-            const segmentsData = await response.json();
-            setSegments(segmentsData);
+          const segmentsResponse = await getSegments(currentSite.id);
+          if (segmentsResponse.error) {
+            console.error("Error loading segments:", segmentsResponse.error);
+            setSegments([]);
+          } else {
+            const mappedSegments = (segmentsResponse.segments || []).map(segment => ({
+              id: segment.id,
+              name: segment.name,
+              description: segment.description || ""
+            }));
+            setSegments(mappedSegments);
           }
         } catch (segErr) {
           console.error("Error loading segments:", segErr);

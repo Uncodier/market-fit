@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSite } from "@/app/context/SiteContext"
 import { getContent, createContent, updateContentStatus, updateContent, type ContentItem } from "./actions"
 import { getSegments } from "@/app/segments/actions"
+import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { toast } from "sonner"
 import React from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/app/components/ui/sheet"
@@ -1585,13 +1586,16 @@ export default function ContentPage() {
     if (!currentSite?.id) return
     
     try {
-      const response = await fetch(`/api/campaigns?siteId=${currentSite.id}`)
-      if (!response.ok) throw new Error('Failed to load campaigns')
-      
-      const data = await response.json()
-      setCampaigns(data)
+      const response = await getCampaigns(currentSite.id)
+      if (response.error) {
+        console.error('Error loading campaigns:', response.error)
+        setCampaigns([])
+      } else {
+        setCampaigns(response.data || [])
+      }
     } catch (error) {
       console.error('Error loading campaigns:', error)
+      setCampaigns([])
     }
   }
 

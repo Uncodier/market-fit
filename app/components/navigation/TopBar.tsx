@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
+import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { TopBarTitle } from "./TopBarTitle"
 import { TopBarActions } from "./TopBarActions"
 
@@ -131,10 +132,12 @@ export function TopBar({
       // Load campaigns for the Requirements page, Leads page, and Experiments page
       if (pathname === "/requirements" || pathname === "/leads" || pathname === "/experiments") {
         try {
-          const campaignsResponse = await fetch(`/api/campaigns?siteId=${currentSite.id}`);
-          if (campaignsResponse.ok) {
-            const campaignsData = await campaignsResponse.json();
-            setCampaigns(campaignsData);
+          const campaignsResponse = await getCampaigns(currentSite.id);
+          if (campaignsResponse.error) {
+            console.error("Error loading campaigns:", campaignsResponse.error);
+            setCampaigns([]);
+          } else {
+            setCampaigns(campaignsResponse.data || []);
           }
         } catch (campaignErr) {
           console.error("Error loading campaigns:", campaignErr);

@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import { Check, Trash2, MessageSquare, ChevronRight } from "@/app/components/ui/icons"
+import { Check, Trash2, MessageSquare, ChevronRight, ClipboardList } from "@/app/components/ui/icons"
 import { Notification } from "../types"
 import { useRouter } from "next/navigation"
 
@@ -60,6 +60,9 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete }: Notif
   // Check if this notification is for a conversation
   const isConversationNotification = notification.related_entity_type === "conversation" && notification.related_entity_id
 
+  // Check if this notification is for a task
+  const isTaskNotification = notification.related_entity_type === "task" && notification.related_entity_id
+
   // Handle navigation to chat
   const handleNavigateToChat = () => {
     if (isConversationNotification && notification.related_entity_id) {
@@ -78,6 +81,19 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete }: Notif
     }
   }
 
+  // Handle navigation to task
+  const handleNavigateToTask = () => {
+    if (isTaskNotification && notification.related_entity_id) {
+      // Mark as read if not already read
+      if (!notification.is_read) {
+        onMarkAsRead(notification.id)
+      }
+      
+      const url = `/control-center/${notification.related_entity_id}`
+      router.push(url)
+    }
+  }
+
   // Handle card click, but prevent if clicking on buttons
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking on buttons
@@ -87,6 +103,8 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete }: Notif
     
     if (isConversationNotification) {
       handleNavigateToChat()
+    } else if (isTaskNotification) {
+      handleNavigateToTask()
     }
   }
 
@@ -97,7 +115,7 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete }: Notif
           ? 'hover:bg-muted/30' 
           : 'shadow-sm hover:shadow-md'
       } ${
-        isConversationNotification ? 'cursor-pointer hover:bg-muted/50' : ''
+        (isConversationNotification || isTaskNotification) ? 'cursor-pointer hover:bg-muted/50' : ''
       }`}
       onClick={handleCardClick}
     >
@@ -147,6 +165,20 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete }: Notif
               >
                 <MessageSquare className="h-3.5 w-3.5" />
                 <span>Go to chat</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </div>
+            )}
+            
+            {isTaskNotification && (
+              <div 
+                className="flex items-center gap-2 text-xs font-medium bg-muted text-muted-foreground px-3 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm border border-border/50 hover:border-border"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleNavigateToTask()
+                }}
+              >
+                <ClipboardList className="h-3.5 w-3.5" />
+                <span>Go to task</span>
                 <ChevronRight className="h-3.5 w-3.5" />
               </div>
             )}

@@ -99,13 +99,13 @@ export default function NotificationsPage() {
 
       <div className="px-16 py-8">
         {loading ? (
-          <div className="space-y-6">
+          <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <NotificationSkeleton key={i} />
             ))}
           </div>
         ) : filteredNotifications.length > 0 ? (
-          <div className="space-y-6">
+          <div className="space-y-2">
             {filteredNotifications.map((notification) => (
               <NotificationCard 
                 key={notification.id} 
