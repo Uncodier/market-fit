@@ -5,12 +5,82 @@ import { useRouter } from 'next/navigation'
 import { User, AuthChangeEvent, Session, OAuthResponse, Provider } from '@supabase/supabase-js'
 import { useSupabaseClient } from './use-supabase-client'
 
+// Declarar tipos para MarketFit en el window object
+declare global {
+  interface Window {
+    MarketFit?: {
+      siteId?: string;
+      init?: (config: any) => void;
+      chat?: {
+        identify: (userData: { name: string; email: string; phone?: string }) => Promise<void>
+      }
+    }
+  }
+}
+
 // Definimos el tipo para las opciones de OAuth extendidas
 interface ExtendedOAuthOptions {
   redirectTo?: string;
   queryParams?: Record<string, string>;
   scopes?: string;
   skipBrowserRedirect?: boolean;
+}
+
+// Función para identificar usuario en MarketFit chat
+const identifyUserInChat = async (user: User | null, supabaseClient: any, retryCount = 0) => {
+  if (!user) return
+
+  const maxRetries = 10 // Máximo 10 reintentos (10 segundos)
+
+  try {
+    // Verificar si MarketFit está disponible
+    if (typeof window !== 'undefined' && window.MarketFit?.chat?.identify) {
+      // Obtener información adicional del perfil desde Supabase
+      const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('name, email')
+        .eq('id', user.id)
+        .single()
+
+      if (error) {
+        console.warn('[MarketFit Chat] Could not fetch profile from database, using auth user data')
+      }
+
+      // Preparar datos del usuario para MarketFit
+      const userData = {
+        name: profile?.name || user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        email: profile?.email || user.email || '',
+        // Agregar más campos si es necesario
+        phone: user.user_metadata?.phone || ''
+      }
+
+      console.log('[MarketFit Chat] Identifying user:', userData.email)
+      
+      // Llamar a la función identify del chat
+      await window.MarketFit.chat.identify(userData)
+      
+      console.log('[MarketFit Chat] User identified successfully')
+    } else {
+      // Si MarketFit no está disponible aún, esperar un poco y reintentar
+      if (retryCount < maxRetries) {
+        console.log(`[MarketFit Chat] MarketFit not ready, retrying in 1 second... (${retryCount + 1}/${maxRetries})`)
+        setTimeout(() => {
+          identifyUserInChat(user, supabaseClient, retryCount + 1)
+        }, 1000)
+      } else {
+        console.warn('[MarketFit Chat] Failed to identify user after maximum retries - MarketFit may not be loaded')
+      }
+    }
+  } catch (error) {
+    console.error('[MarketFit Chat] Error identifying user:', error)
+    
+    // Si hay un error pero no hemos superado los reintentos, intentar de nuevo
+    if (retryCount < maxRetries) {
+      setTimeout(() => {
+        identifyUserInChat(user, supabaseClient, retryCount + 1)
+      }, 2000) // Esperar más tiempo después de un error
+    }
+  }
 }
 
 export function useAuth() {
@@ -36,6 +106,11 @@ export function useAuth() {
                    session?.user?.id ? `User ID: ${session.user.id.substring(0, 8)}...` : '')
         
         setUser(session?.user ?? null)
+        
+        // Si hay una sesión activa, identificar al usuario en MarketFit chat
+        if (session?.user) {
+          identifyUserInChat(session.user, supabase)
+        }
         
         // Verificar redirección inicial si hay sesión activa y estamos en la página de autenticación
         if (session?.user && typeof window !== 'undefined' && window.location.pathname.startsWith('/auth')) {
@@ -71,6 +146,9 @@ export function useAuth() {
         
         // Manejar eventos específicos de autenticación
         if (event === 'SIGNED_IN') {
+          // Identificar usuario en MarketFit chat
+          identifyUserInChat(session?.user || null, supabase)
+          
           // Si el usuario acaba de iniciar sesión, redirigir a la página adecuada
           if (currentPath.startsWith('/auth')) {
             // Obtener el returnTo desde la URL
