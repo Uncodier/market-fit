@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { processTeamInvitation } from '@/app/services/magic-link-invitation-service'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
@@ -8,7 +8,7 @@ import { Button } from '@/app/components/ui/button'
 import { Loader, CheckCircle2, AlertCircle, Users } from '@/app/components/ui/icons'
 import { toast } from 'sonner'
 
-export default function TeamInvitationPage() {
+function TeamInvitationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isProcessing, setIsProcessing] = useState(false)
@@ -191,5 +191,39 @@ export default function TeamInvitationPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// Loading fallback component
+function TeamInvitationLoading() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+            <Users className="w-6 h-6 text-primary" />
+          </div>
+          <CardTitle className="text-xl">Team Invitation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center space-y-3">
+              <Loader className="w-8 h-8 animate-spin mx-auto text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Loading invitation...
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export default function TeamInvitationPage() {
+  return (
+    <Suspense fallback={<TeamInvitationLoading />}>
+      <TeamInvitationContent />
+    </Suspense>
   )
 } 
