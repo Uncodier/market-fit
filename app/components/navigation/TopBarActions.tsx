@@ -4,7 +4,7 @@ import { createAsset } from "@/app/assets/actions"
 import { createRequirement } from "@/app/requirements/actions"
 import { createLead } from "@/app/leads/actions"
 import { createCampaign } from "@/app/campaigns/actions/campaigns/create"
-import { buildSegmentsWithAI, buildExperimentsWithAI } from "@/app/services/ai-service"
+import { buildSegmentsWithAI, buildExperimentsWithAI, buildCampaignsWithAI, buildContentWithAI } from "@/app/services/ai-service"
 import { Button } from "../ui/button"
 import { CreateSegmentDialog } from "../create-segment-dialog"
 import { CreateExperimentDialog } from "../create-experiment-dialog"
@@ -234,6 +234,22 @@ export function TopBarActions({
         estimatedTime: 120, // 2 minutes
         action: handleBuildExperimentsWithAI
       });
+    } else if (isCampaignsPage) {
+      setAIModalConfig({
+        title: "Building Campaigns with AI",
+        description: "Our AI will analyze your site data and automatically create optimized marketing campaigns tailored to your business objectives. This helps you generate effective campaign strategies that align with your target audience and goals.",
+        actionLabel: "Build Campaigns",
+        estimatedTime: 120, // 2 minutes
+        action: handleBuildCampaignsWithAI
+      });
+    } else if (isContentPage) {
+      setAIModalConfig({
+        title: "Building Content with AI",
+        description: "Our AI will analyze your site data and automatically create high-quality content pieces optimized for your target audience. This helps you generate engaging content that resonates with your users and supports your marketing objectives.",
+        actionLabel: "Build Content",
+        estimatedTime: 120, // 2 minutes
+        action: handleBuildContentWithAI
+      });
     }
     
     // Open the modal after configuring it
@@ -408,6 +424,198 @@ export function TopBarActions({
       }
     } catch (error) {
       console.error("Unexpected error in handleBuildExperimentsWithAI:", error);
+      
+      // Return an object with the format expected by the modal
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "An unexpected error occurred",
+        details: {
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : "Unknown Error"
+        }
+      };
+    } finally {
+      // Always mark as not processing when finished
+      setIsProcessing(false);
+    }
+  };
+
+  // Function to handle the AI campaign building process
+  const handleBuildCampaignsWithAI = async (): Promise<any> => {
+    try {
+      // Mark as processing
+      setIsProcessing(true);
+      
+      // Verify that there is a selected site
+      if (!currentSite) {
+        setIsProcessing(false);
+        toast.error("Please select a site first");
+        return {
+          success: false,
+          error: "No site selected"
+        };
+      }
+
+      // Verify that the site has a URL
+      if (!currentSite.url) {
+        setIsProcessing(false);
+        toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+        return {
+          success: false,
+          error: "Site URL is missing"
+        };
+      }
+
+      // Get the current user ID
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setIsProcessing(false);
+        toast.error("You must be logged in to use this feature");
+        return {
+          success: false,
+          error: "Authentication required"
+        };
+      }
+
+      console.log("Starting AI campaign building with params:", {
+        user_id: user.id,
+        site_id: currentSite.id,
+        url: currentSite.url,
+        campaignCount: 3
+      });
+
+      // Call the AI service to build campaigns
+      const result = await buildCampaignsWithAI({
+        user_id: user.id,
+        site_id: currentSite.id,
+        url: currentSite.url,
+        campaignCount: 3
+      });
+
+      console.log("AI campaign building result:", result);
+
+      if (result.success) {
+        toast.success("Campaigns created successfully!");
+        // For campaigns page, manually refresh data instead of full page reload
+        if (isCampaignsPage) {
+          setTimeout(() => {
+            // Trigger a refresh of campaigns data without full page reload
+            window.location.reload();
+          }, 1000);
+        }
+        return result;
+      } else {
+        // Instead of throwing an error, return the complete result
+        // so the modal can display the error and HTML response if it exists
+        console.error("Error building campaigns with AI:", result.error);
+        if (result.rawResponse) {
+          console.error("Raw response from server:", result.rawResponse.substring(0, 200) + "...");
+        }
+        if (result.details) {
+          console.error("Error details:", result.details);
+        }
+        return result;
+      }
+    } catch (error) {
+      console.error("Unexpected error in handleBuildCampaignsWithAI:", error);
+      
+      // Return an object with the format expected by the modal
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "An unexpected error occurred",
+        details: {
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : "Unknown Error"
+        }
+      };
+    } finally {
+      // Always mark as not processing when finished
+      setIsProcessing(false);
+    }
+  };
+
+  // Function to handle the AI content building process
+  const handleBuildContentWithAI = async (): Promise<any> => {
+    try {
+      // Mark as processing
+      setIsProcessing(true);
+      
+      // Verify that there is a selected site
+      if (!currentSite) {
+        setIsProcessing(false);
+        toast.error("Please select a site first");
+        return {
+          success: false,
+          error: "No site selected"
+        };
+      }
+
+      // Verify that the site has a URL
+      if (!currentSite.url) {
+        setIsProcessing(false);
+        toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+        return {
+          success: false,
+          error: "Site URL is missing"
+        };
+      }
+
+      // Get the current user ID
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setIsProcessing(false);
+        toast.error("You must be logged in to use this feature");
+        return {
+          success: false,
+          error: "Authentication required"
+        };
+      }
+
+      console.log("Starting AI content building with params:", {
+        user_id: user.id,
+        site_id: currentSite.id,
+        url: currentSite.url,
+        contentCount: 3
+      });
+
+      // Call the AI service to build content
+      const result = await buildContentWithAI({
+        user_id: user.id,
+        site_id: currentSite.id,
+        url: currentSite.url,
+        contentCount: 3
+      });
+
+      console.log("AI content building result:", result);
+
+      if (result.success) {
+        toast.success("Content created successfully!");
+        // For content page, manually refresh data instead of full page reload
+        if (isContentPage) {
+          setTimeout(() => {
+            // Trigger a refresh of content data without full page reload
+            window.location.reload();
+          }, 1000);
+        }
+        return result;
+      } else {
+        // Instead of throwing an error, return the complete result
+        // so the modal can display the error and HTML response if it exists
+        console.error("Error building content with AI:", result.error);
+        if (result.rawResponse) {
+          console.error("Raw response from server:", result.rawResponse.substring(0, 200) + "...");
+        }
+        if (result.details) {
+          console.error("Error details:", result.details);
+        }
+        return result;
+      }
+    } catch (error) {
+      console.error("Unexpected error in handleBuildContentWithAI:", error);
       
       // Return an object with the format expected by the modal
       return {
@@ -816,39 +1024,81 @@ The success of this experiment will be measured by:
       )}
       {isContentPage && (
         currentSite ? (
-          <CreateContentDialog 
-            segments={segments.length > 0 ? segments : propSegments || []}
-            onSuccess={() => {
-              // Use the content list's refresh function instead of reloading the page
-              if (typeof window !== 'undefined' && (window as any).refreshContentList) {
-                (window as any).refreshContentList();
-              } else {
-                // Fallback to page reload if the function isn't available
-                window.location.reload();
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="secondary" 
+              size="default"
+              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+              onClick={handleBuildWithAI}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <FlaskConical className="h-4 w-4" />
+                  Build with AI
+                </>
+              )}
+            </Button>
+            <CreateContentDialog 
+              segments={segments.length > 0 ? segments : propSegments || []}
+              onSuccess={() => {
+                // Use the content list's refresh function instead of reloading the page
+                if (typeof window !== 'undefined' && (window as any).refreshContentList) {
+                  (window as any).refreshContentList();
+                } else {
+                  // Fallback to page reload if the function isn't available
+                  window.location.reload();
+                }
+              }}
+              trigger={
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Content
+                </Button>
               }
-            }}
-            trigger={
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                New Content
-              </Button>
-            }
-          />
+            />
+          </div>
         ) : null
       )}
       {isCampaignsPage && (
         currentSite ? (
-          <CreateCampaignDialog
-            segments={segments.length > 0 ? segments : propSegments || []}
-            requirements={requirements}
-            onCreateCampaign={handleCreateCampaign}
-            trigger={
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                New Campaign
-              </Button>
-            }
-          />
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="secondary" 
+              size="default"
+              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+              onClick={handleBuildWithAI}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <FlaskConical className="h-4 w-4" />
+                  Build with AI
+                </>
+              )}
+            </Button>
+            <CreateCampaignDialog
+              segments={segments.length > 0 ? segments : propSegments || []}
+              requirements={requirements}
+              onCreateCampaign={handleCreateCampaign}
+              trigger={
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Campaign
+                </Button>
+              }
+            />
+          </div>
         ) : null
       )}
       {isSalesPage && (
@@ -905,7 +1155,7 @@ The success of this experiment will be measured by:
         creditsRequired={3} // Building segments might cost more credits
         icon={<Cpu className="h-5 w-5 text-primary" />}
         estimatedTime={AIModalConfig.estimatedTime}
-        refreshOnComplete={true} // Refresh the page when the action completes
+        refreshOnComplete={isSegmentsPage || isExperimentsPage} // Only refresh for segments and experiments
       />
     </div>
   )

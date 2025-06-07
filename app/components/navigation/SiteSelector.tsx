@@ -42,13 +42,27 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   
   useEffect(() => {
     setIsMounted(true)
-    
-    // Only set first site if there's no current site and sites are available
-    if (sites.length > 0 && !currentSite) {
-      console.log("No current site but sites available. Setting first site:", sites[0].name)
-      setCurrentSite(sites[0])
+  }, [])
+
+  // Separate useEffect for site selection logic with more careful conditions
+  useEffect(() => {
+    // Only auto-select if:
+    // 1. Component is mounted
+    // 2. Sites are available
+    // 3. No current site is set
+    // 4. Not currently loading
+    // 5. No saved site ID in localStorage (to avoid overriding user selection)
+    if (isMounted && sites.length > 0 && !currentSite && !isLoading) {
+      const savedSiteId = typeof window !== 'undefined' ? localStorage.getItem('currentSiteId') : null
+      
+      if (!savedSiteId) {
+        console.log("🔧 SiteSelector: No current site and no saved site ID. Auto-selecting first site:", sites[0].name)
+        setCurrentSite(sites[0])
+      } else {
+        console.log("🔧 SiteSelector: Found saved site ID, letting SiteContext handle selection:", savedSiteId)
+      }
     }
-  }, [sites, currentSite, setCurrentSite])
+  }, [isMounted, sites, currentSite, setCurrentSite, isLoading])
 
   const getInitials = (name: string) => {
     if (!name) return "..."

@@ -25,8 +25,6 @@ export interface BuildSegmentsParams {
   includeScreenshot?: boolean;
   user_id: string;
   site_id: string;
-  apiKey?: string;
-  apiSecret?: string;
 }
 
 // Variable para controlar si hay una petición en curso
@@ -79,19 +77,13 @@ export async function buildSegmentsWithAI(params: BuildSegmentsParams): Promise<
       }
     };
     
-    // Obtener las credenciales de API (en un entorno real, estas vendrían de una fuente segura)
-    const apiKey = params.apiKey || process.env.NEXT_PUBLIC_API_KEY || "YOUR_API_KEY";
-    const apiSecret = params.apiSecret || process.env.NEXT_PUBLIC_API_SECRET || "YOUR_API_SECRET";
-    
     console.log("Calling AI service with params:", requestParams);
     console.log("Target site URL:", params.url);
     
     try {
-      const response = await apiClient.postWithApiKeys(
+      const response = await apiClient.post(
         '/api/site/segments',
-        requestParams,
-        apiKey,
-        apiSecret
+        requestParams
       );
       
       // Verificar si la respuesta contiene un arreglo 'errors' no vacío
@@ -360,8 +352,6 @@ export interface BuildExperimentsParams {
   includeScreenshot?: boolean;
   user_id: string;
   site_id: string;
-  apiKey?: string;
-  apiSecret?: string;
 }
 
 /**
@@ -410,19 +400,13 @@ export async function buildExperimentsWithAI(params: BuildExperimentsParams): Pr
       }
     };
     
-    // Get API credentials (in a real environment, these would come from a secure source)
-    const apiKey = params.apiKey || process.env.NEXT_PUBLIC_API_KEY || "YOUR_API_KEY";
-    const apiSecret = params.apiSecret || process.env.NEXT_PUBLIC_API_SECRET || "YOUR_API_SECRET";
-    
     console.log("Calling AI service for experiments with params:", requestParams);
     console.log("Target site URL:", params.url);
     
     try {
-      const response = await apiClient.postWithApiKeys(
+      const response = await apiClient.post(
         '/api/site/experiments',
-        requestParams,
-        apiKey,
-        apiSecret
+        requestParams
       );
       
       // Check if the response contains a non-empty 'errors' array
@@ -490,6 +474,290 @@ export async function buildExperimentsWithAI(params: BuildExperimentsParams): Pr
     }
   } catch (error) {
     console.error("Error in buildExperimentsWithAI:", error);
+    isRequestInProgress = false; // Release the lock
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred"
+    };
+  }
+}
+
+/**
+ * Interface for build campaigns parameters
+ */
+export interface BuildCampaignsParams {
+  url?: string;
+  campaignCount?: number;
+  mode?: 'create' | 'analyze' | 'update';
+  provider?: string;
+  modelId?: string;
+  includeScreenshot?: boolean;
+  user_id: string;
+  site_id: string;
+}
+
+/**
+ * Service to build campaigns using AI
+ */
+export async function buildCampaignsWithAI(params: BuildCampaignsParams): Promise<AISegmentResponse> {
+  // If a request is already in progress, return an error
+  if (isRequestInProgress) {
+    console.warn("A request is already in progress. Please wait for it to complete.");
+    return {
+      success: false,
+      error: "A request is already in progress. Please wait for it to complete."
+    };
+  }
+
+  // Mark that a request is in progress
+  isRequestInProgress = true;
+
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      isRequestInProgress = false; // Release the lock
+      return {
+        success: false,
+        error: "Authentication required. Please sign in to continue."
+      };
+    }
+    
+    // Prepare parameters according to the correct structure
+    const requestParams = {
+      // The URL should be the selected site URL or the one provided in the parameters
+      url: params.url,
+      campaignCount: params.campaignCount || 3, // Default to 3 campaigns
+      mode: params.mode || "create",
+      provider: params.provider || "openai",
+      modelId: params.modelId || "gpt-4o",
+      includeScreenshot: params.includeScreenshot !== false,
+      // Include user_id and site_id directly in the main object
+      user_id: params.user_id,
+      site_id: params.site_id,
+      // Additional metadata if needed
+      metadata: {
+        // Any other metadata needed
+      }
+    };
+    
+    console.log("Calling AI service for campaigns with params:", requestParams);
+    console.log("Target site URL:", params.url);
+    
+    try {
+      const response = await apiClient.post(
+        '/api/workflow/buildCampaigns',
+        requestParams
+      );
+      
+      // Check if the response contains a non-empty 'errors' array
+      if (response.data?.errors && Array.isArray(response.data.errors) && response.data.errors.length > 0) {
+        console.error("API returned errors:", response.data.errors);
+        isRequestInProgress = false; // Release the lock
+        return {
+          success: false,
+          error: Array.isArray(response.data.errors) 
+            ? response.data.errors.map((e: any) => e.message || e).join(', ') 
+            : "API returned errors",
+          details: response.data
+        };
+      }
+      
+      isRequestInProgress = false; // Release the lock
+      
+      if (!response.success) {
+        return {
+          success: false,
+          error: response.error?.message || "Unknown error occurred",
+          details: response.error?.details,
+          rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
+          apiUrl: apiClient.getApiUrl()
+        };
+      }
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (fetchError) {
+      console.error("Network error in buildCampaignsWithAI:", fetchError);
+      
+      // Provide more detailed information about the network error
+      let errorMessage = "Network error occurred while connecting to the server";
+      let errorDetails = {};
+      
+      if (fetchError instanceof Error) {
+        errorMessage = `Network error: ${fetchError.message}`;
+        errorDetails = {
+          name: fetchError.name,
+          message: fetchError.message,
+          stack: fetchError.stack
+        };
+        
+        // Check if it's a CORS error or connection refused
+        if (
+          fetchError.message.includes('CORS') || 
+          fetchError.message.includes('Failed to fetch') ||
+          fetchError.message.includes('Network request failed') ||
+          fetchError.message.includes('Connection refused')
+        ) {
+          errorMessage = `Cannot connect to API server at ${apiClient.getApiUrl()}. Please check if the server is running and accessible.`;
+        }
+      }
+      
+      isRequestInProgress = false; // Release the lock
+      return {
+        success: false,
+        error: errorMessage,
+        details: errorDetails,
+        apiUrl: apiClient.getApiUrl() // Include the API URL to help with debugging
+      };
+    }
+  } catch (error) {
+    console.error("Error in buildCampaignsWithAI:", error);
+    isRequestInProgress = false; // Release the lock
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred"
+    };
+  }
+}
+
+/**
+ * Interface for build content parameters
+ */
+export interface BuildContentParams {
+  url?: string;
+  contentCount?: number;
+  mode?: 'create' | 'analyze' | 'update';
+  provider?: string;
+  modelId?: string;
+  includeScreenshot?: boolean;
+  user_id: string;
+  site_id: string;
+}
+
+/**
+ * Service to build content using AI
+ */
+export async function buildContentWithAI(params: BuildContentParams): Promise<AISegmentResponse> {
+  // If a request is already in progress, return an error
+  if (isRequestInProgress) {
+    console.warn("A request is already in progress. Please wait for it to complete.");
+    return {
+      success: false,
+      error: "A request is already in progress. Please wait for it to complete."
+    };
+  }
+
+  // Mark that a request is in progress
+  isRequestInProgress = true;
+
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      isRequestInProgress = false; // Release the lock
+      return {
+        success: false,
+        error: "Authentication required. Please sign in to continue."
+      };
+    }
+    
+    // Prepare parameters according to the correct structure
+    const requestParams = {
+      // The URL should be the selected site URL or the one provided in the parameters
+      url: params.url,
+      contentCount: params.contentCount || 3, // Default to 3 content pieces
+      mode: params.mode || "create",
+      provider: params.provider || "openai",
+      modelId: params.modelId || "gpt-4o",
+      includeScreenshot: params.includeScreenshot !== false,
+      // Include user_id and site_id directly in the main object
+      user_id: params.user_id,
+      site_id: params.site_id,
+      // Additional metadata if needed
+      metadata: {
+        // Any other metadata needed
+      }
+    };
+    
+    console.log("Calling AI service for content with params:", requestParams);
+    console.log("Target site URL:", params.url);
+    
+    try {
+      const response = await apiClient.post(
+        '/api/workflow/buildContent',
+        requestParams
+      );
+      
+      // Check if the response contains a non-empty 'errors' array
+      if (response.data?.errors && Array.isArray(response.data.errors) && response.data.errors.length > 0) {
+        console.error("API returned errors:", response.data.errors);
+        isRequestInProgress = false; // Release the lock
+        return {
+          success: false,
+          error: Array.isArray(response.data.errors) 
+            ? response.data.errors.map((e: any) => e.message || e).join(', ') 
+            : "API returned errors",
+          details: response.data
+        };
+      }
+      
+      isRequestInProgress = false; // Release the lock
+      
+      if (!response.success) {
+        return {
+          success: false,
+          error: response.error?.message || "Unknown error occurred",
+          details: response.error?.details,
+          rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
+          apiUrl: apiClient.getApiUrl()
+        };
+      }
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (fetchError) {
+      console.error("Network error in buildContentWithAI:", fetchError);
+      
+      // Provide more detailed information about the network error
+      let errorMessage = "Network error occurred while connecting to the server";
+      let errorDetails = {};
+      
+      if (fetchError instanceof Error) {
+        errorMessage = `Network error: ${fetchError.message}`;
+        errorDetails = {
+          name: fetchError.name,
+          message: fetchError.message,
+          stack: fetchError.stack
+        };
+        
+        // Check if it's a CORS error or connection refused
+        if (
+          fetchError.message.includes('CORS') || 
+          fetchError.message.includes('Failed to fetch') ||
+          fetchError.message.includes('Network request failed') ||
+          fetchError.message.includes('Connection refused')
+        ) {
+          errorMessage = `Cannot connect to API server at ${apiClient.getApiUrl()}. Please check if the server is running and accessible.`;
+        }
+      }
+      
+      isRequestInProgress = false; // Release the lock
+      return {
+        success: false,
+        error: errorMessage,
+        details: errorDetails,
+        apiUrl: apiClient.getApiUrl() // Include the API URL to help with debugging
+      };
+    }
+  } catch (error) {
+    console.error("Error in buildContentWithAI:", error);
     isRequestInProgress = false; // Release the lock
     return {
       success: false,

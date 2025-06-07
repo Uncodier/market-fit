@@ -335,12 +335,12 @@ export function TopBarTitle({
         isCurrent: false
       });
       
-      // Usar el título personalizado si está disponible
-      breadcrumbItems.push({
-        href: `/${pathSegments[0]}/${pathSegments[1]}`,
-        label: customTitle || 'Content Details',
-        isCurrent: true
-      });
+              // Usar el título personalizado si está disponible
+        breadcrumbItems.push({
+          href: `/${pathSegments[0]}/${pathSegments[1]}`,
+          label: customTitle || 'Content Details',
+          isCurrent: true
+        });
       
       return breadcrumbItems;
     }

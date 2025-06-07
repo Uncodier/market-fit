@@ -52,7 +52,12 @@ import {
   FileText as TextIcon,
   Users,
   BarChart,
-  Trash2
+  Trash2,
+  Mail,
+  FileVideo,
+  PlayCircle,
+  Globe,
+  LayoutGrid
 } from "@/app/components/ui/icons"
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -88,13 +93,24 @@ import {
   AlertDialogTrigger,
 } from "@/app/components/ui/alert-dialog"
 
-const MenuBar = ({ editor, onSave, isSaving, onDelete }: { 
+const MenuBar = ({ 
+  editor, 
+  instructionsEditor, 
+  onSave, 
+  isSaving, 
+  onDelete, 
+  activeTab
+}: { 
   editor: any, 
+  instructionsEditor: any,
   onSave: () => void, 
   isSaving: boolean,
-  onDelete: () => void 
+  onDelete: () => void,
+  activeTab: 'copy' | 'instructions'
 }) => {
-  if (!editor) {
+  const currentEditor = activeTab === 'copy' ? editor : instructionsEditor
+  
+  if (!currentEditor) {
     return null
   }
 
@@ -124,48 +140,48 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete }: {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive('bold') ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().toggleBold().run()}
+          className={currentEditor.isActive('bold') ? 'bg-muted' : ''}
         >
           <Bold className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={editor.isActive('italic') ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().toggleItalic().run()}
+          className={currentEditor.isActive('italic') ? 'bg-muted' : ''}
         >
           <Italic className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={editor.isActive('bulletList') ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().toggleBulletList().run()}
+          className={currentEditor.isActive('bulletList') ? 'bg-muted' : ''}
         >
           <List className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={editor.isActive('orderedList') ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().toggleOrderedList().run()}
+          className={currentEditor.isActive('orderedList') ? 'bg-muted' : ''}
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className={editor.isActive('blockquote') ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().toggleBlockquote().run()}
+          className={currentEditor.isActive('blockquote') ? 'bg-muted' : ''}
         >
           <Quote className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          className={editor.isActive('codeBlock') ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().toggleCodeBlock().run()}
+          className={currentEditor.isActive('codeBlock') ? 'bg-muted' : ''}
         >
           <Code className="h-4 w-4" />
         </Button>
@@ -175,44 +191,44 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete }: {
             <Button 
               variant="ghost" 
               size="sm"
-              className={editor.isActive('heading') ? 'bg-muted' : ''}
+              className={currentEditor.isActive('heading') ? 'bg-muted' : ''}
             >
-              {editor.isActive('heading', { level: 1 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H1</span>}
-              {editor.isActive('heading', { level: 2 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H2</span>}
-              {editor.isActive('heading', { level: 3 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H3</span>}
-              {editor.isActive('heading', { level: 4 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H4</span>}
-              {editor.isActive('heading', { level: 5 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H5</span>}
-              {editor.isActive('heading', { level: 6 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H6</span>}
-              {!editor.isActive('heading') && <ParagraphIcon className="h-4 w-4 text-sm" />}
+              {currentEditor.isActive('heading', { level: 1 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H1</span>}
+              {currentEditor.isActive('heading', { level: 2 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H2</span>}
+              {currentEditor.isActive('heading', { level: 3 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H3</span>}
+              {currentEditor.isActive('heading', { level: 4 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H4</span>}
+              {currentEditor.isActive('heading', { level: 5 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H5</span>}
+              {currentEditor.isActive('heading', { level: 6 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H6</span>}
+              {!currentEditor.isActive('heading') && <ParagraphIcon className="h-4 w-4 text-sm" />}
               <ChevronDown className="h-3 w-3 ml-1" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()}>
+            <DropdownMenuItem onClick={() => currentEditor.chain().focus().setParagraph().run()}>
               <ParagraphIcon className="h-4 w-4 mr-2" />
               Paragraph
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+            <DropdownMenuItem onClick={() => currentEditor.chain().focus().toggleHeading({ level: 1 }).run()}>
               <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H1</span>
               Heading 1
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+            <DropdownMenuItem onClick={() => currentEditor.chain().focus().toggleHeading({ level: 2 }).run()}>
               <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H2</span>
               Heading 2
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+            <DropdownMenuItem onClick={() => currentEditor.chain().focus().toggleHeading({ level: 3 }).run()}>
               <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H3</span>
               Heading 3
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}>
+            <DropdownMenuItem onClick={() => currentEditor.chain().focus().toggleHeading({ level: 4 }).run()}>
               <span className="w-4 h-4 inline-flex items-center justify-center mr-2 text-xs font-bold">H4</span>
               Heading 4
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 5 }).run()}>
+            <DropdownMenuItem onClick={() => currentEditor.chain().focus().toggleHeading({ level: 5 }).run()}>
               <span className="w-4 h-4 inline-flex items-center justify-center mr-2 text-xs font-bold">H5</span>
               Heading 5
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 6 }).run()}>
+            <DropdownMenuItem onClick={() => currentEditor.chain().focus().toggleHeading({ level: 6 }).run()}>
               <span className="w-4 h-4 inline-flex items-center justify-center mr-2 text-xs font-bold">H6</span>
               Heading 6
             </DropdownMenuItem>
@@ -225,10 +241,10 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete }: {
           onClick={() => {
             const url = window.prompt('Enter the URL')
             if (url) {
-              editor.chain().focus().setLink({ href: url }).run()
+              currentEditor.chain().focus().setLink({ href: url }).run()
             }
           }}
-          className={editor.isActive('link') ? 'bg-muted' : ''}
+          className={currentEditor.isActive('link') ? 'bg-muted' : ''}
         >
           <LinkIcon className="h-4 w-4" />
         </Button>
@@ -238,7 +254,7 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete }: {
           onClick={() => {
             const url = window.prompt('Enter the image URL')
             if (url) {
-              editor.chain().focus().setImage({ src: url }).run()
+              currentEditor.chain().focus().setImage({ src: url }).run()
             }
           }}
         >
@@ -248,32 +264,32 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete }: {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          className={editor.isActive({ textAlign: 'left' }) ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().setTextAlign('left').run()}
+          className={currentEditor.isActive({ textAlign: 'left' }) ? 'bg-muted' : ''}
         >
           <AlignLeft className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          className={editor.isActive({ textAlign: 'center' }) ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().setTextAlign('center').run()}
+          className={currentEditor.isActive({ textAlign: 'center' }) ? 'bg-muted' : ''}
         >
           <AlignCenter className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          className={editor.isActive({ textAlign: 'right' }) ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().setTextAlign('right').run()}
+          className={currentEditor.isActive({ textAlign: 'right' }) ? 'bg-muted' : ''}
         >
           <AlignRight className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-          className={editor.isActive({ textAlign: 'justify' }) ? 'bg-muted' : ''}
+          onClick={() => currentEditor.chain().focus().setTextAlign('justify').run()}
+          className={currentEditor.isActive({ textAlign: 'justify' }) ? 'bg-muted' : ''}
         >
           <AlignJustify className="h-4 w-4" />
         </Button>
@@ -281,16 +297,16 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete }: {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
+          onClick={() => currentEditor.chain().focus().undo().run()}
+          disabled={!currentEditor.can().undo()}
         >
           <Undo className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
+          onClick={() => currentEditor.chain().focus().redo().run()}
+          disabled={!currentEditor.can().redo()}
         >
           <Redo className="h-4 w-4" />
         </Button>
@@ -551,6 +567,249 @@ const getFullApiUrl = (baseUrl: string) => {
 // Full URL with protocol
 const FULL_API_SERVER_URL = getFullApiUrl(API_SERVER_URL);
 
+// Add new content type icons for more descriptive mapping
+const Podcast = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="2" />
+      <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
+    </svg>
+  </div>
+)
+
+const Newsletter = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <polyline points="22 6 12 13 2 6" />
+    </svg>
+  </div>
+)
+
+const CaseStudy = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  </div>
+)
+
+const Whitepaper = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <line x1="12" y1="9" x2="8" y2="9" />
+    </svg>
+  </div>
+)
+
+const Infographic = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  </div>
+)
+
+const Webinar = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+      <circle cx="12" cy="8" r="2" />
+    </svg>
+  </div>
+)
+
+const Ebook = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+  </div>
+)
+
+const Advertisement = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z" />
+      <path d="M11 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z" />
+      <path d="M19 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z" />
+    </svg>
+  </div>
+)
+
+const LandingPage = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+  <div 
+    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+    style={{ 
+      width: size, 
+      height: size, 
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      ...props.style 
+    }}
+    onClick={props.onClick}
+    aria-hidden={props["aria-hidden"] ?? true}
+  >
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <rect x="7" y="7" width="3" height="9" />
+      <rect x="14" y="7" width="3" height="5" />
+    </svg>
+  </div>
+)
+
+// Function to get content type icon
+const getContentTypeIcon = (type: string) => {
+  const iconProps = { className: "h-4 w-4" }
+  
+  switch (type) {
+    case "blog_post":
+      return <FileText {...iconProps} />
+    case "video":
+      return <FileVideo {...iconProps} />
+    case "podcast":
+      return <Podcast {...iconProps} />
+    case "social_post":
+      return <Globe {...iconProps} />
+    case "newsletter":
+      return <Newsletter {...iconProps} />
+    case "case_study":
+      return <CaseStudy {...iconProps} />
+    case "whitepaper":
+      return <Whitepaper {...iconProps} />
+    case "infographic":
+      return <Infographic {...iconProps} />
+    case "webinar":
+      return <Webinar {...iconProps} />
+    case "ebook":
+      return <Ebook {...iconProps} />
+    case "ad":
+      return <Advertisement {...iconProps} />
+    case "landing_page":
+      return <LandingPage {...iconProps} />
+    default:
+      return <FileText {...iconProps} />
+  }
+}
+
 export default function ContentDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -564,6 +823,7 @@ export default function ContentDetailPage() {
     description: '',
     content: '',
     text: '',
+    instructions: '',
     type: '',
     segment_id: '',
     campaign_id: '',
@@ -573,6 +833,7 @@ export default function ContentDetailPage() {
     performance_rating: null as number | null,
     status: 'draft' // Default status
   })
+  const [activeTab, setActiveTab] = useState<'copy' | 'instructions'>('copy')
   const [aiPrompt, setAiPrompt] = useState('')
   const [isAiProcessing, setIsAiProcessing] = useState(false)
   const [contentStyle, setContentStyle] = useState({
@@ -671,11 +932,44 @@ export default function ContentDetailPage() {
     ],
     content: '',
     onUpdate: ({ editor }) => {
-      setEditForm(prev => ({ 
-        ...prev, 
-        content: editor.getHTML(),
-        text: editor.getText()
-      }))
+      if (activeTab === 'copy') {
+        setEditForm(prev => ({ 
+          ...prev, 
+          content: editor.getHTML(),
+          text: editor.getText()
+        }))
+      }
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose-lg prose-headings:my-4 prose-p:my-3 prose-ul:my-3',
+      },
+    },
+  })
+
+  const instructionsEditor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        hardBreak: false,
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      HardBreak.configure({
+        keepMarks: true,
+        HTMLAttributes: {
+          class: 'markdown-line-break',
+        },
+      }),
+    ],
+    content: '',
+    onUpdate: ({ editor }) => {
+      if (activeTab === 'instructions') {
+        setEditForm(prev => ({ 
+          ...prev, 
+          instructions: editor.getHTML()
+        }))
+      }
     },
     editorProps: {
       attributes: {
@@ -711,10 +1005,13 @@ export default function ContentDetailPage() {
       // Update the page title for the browser tab
       document.title = `${content.title} | Content`
       
-      // Emit a custom event to update the breadcrumb with content title
+      // Get content type name for breadcrumb
+      const contentTypeName = getContentTypeName(content.type)
+      
+      // Emit a custom event to update the breadcrumb with content title and type
       const event = new CustomEvent('breadcrumb:update', {
         detail: {
-          title: content.title,
+          title: `${content.title} | ${contentTypeName}`,
           path: `/content/${content.id}`,
           section: 'content'
         }
@@ -723,7 +1020,7 @@ export default function ContentDetailPage() {
       // Ensure event is dispatched after DOM is updated
       setTimeout(() => {
         window.dispatchEvent(event)
-        console.log('Breadcrumb update event dispatched:', content.title)
+        console.log('Breadcrumb update event dispatched:', content.title, 'Type:', contentTypeName)
       }, 0)
     }
     
@@ -770,6 +1067,7 @@ export default function ContentDetailPage() {
         description: contentData.description || '',
         content: contentData.content || '',
         text: contentData.text || '',
+        instructions: contentData.instructions || '',
         type: contentData.type,
         segment_id: contentData.segment_id || '',
         campaign_id: contentData.campaign_id || '',
@@ -783,6 +1081,12 @@ export default function ContentDetailPage() {
       if (editor) {
         // Set content with HTML for proper formatting
         editor.commands.setContent(editorContent);
+      }
+
+      if (instructionsEditor) {
+        // Set instructions content
+        const instructionsContent = markdownToHTML(contentData.instructions || '');
+        instructionsEditor.commands.setContent(instructionsContent);
       }
       
       // Load campaigns after setting the content
@@ -844,22 +1148,29 @@ export default function ContentDetailPage() {
       const formattedHTML = markdownToHTML(content.text);
       editor.commands.setContent(formattedHTML);
     }
-  }, [content, editor])
+    if (instructionsEditor && content?.instructions) {
+      // Convert markdown to HTML for proper display
+      const formattedHTML = markdownToHTML(content.instructions);
+      instructionsEditor.commands.setContent(formattedHTML);
+    }
+  }, [content, editor, instructionsEditor])
 
   useEffect(() => {
     if (editor) {
       const updateCounts = () => {
-        const text = editor.getText()
-        const wordCount = text.trim().split(/\s+/).filter((word: string) => word.length > 0).length
-        const charCount = text.length
-        
-        setEditForm(prev => ({
-          ...prev,
-          word_count: wordCount,
-          char_count: charCount,
-          content: editor.getHTML(), // Store the HTML representation
-          text: editor.getText() // Store the plain text for word counting
-        }))
+        if (activeTab === 'copy') {
+          const text = editor.getText()
+          const wordCount = text.trim().split(/\s+/).filter((word: string) => word.length > 0).length
+          const charCount = text.length
+          
+          setEditForm(prev => ({
+            ...prev,
+            word_count: wordCount,
+            char_count: charCount,
+            content: editor.getHTML(), // Store the HTML representation
+            text: editor.getText() // Store the plain text for word counting
+          }))
+        }
       }
 
       // Actualizar conteos inicialmente
@@ -873,7 +1184,28 @@ export default function ContentDetailPage() {
         editor.off('update', updateCounts)
       }
     }
-  }, [editor])
+  }, [editor, activeTab])
+
+  useEffect(() => {
+    if (instructionsEditor) {
+      const updateInstructions = () => {
+        if (activeTab === 'instructions') {
+          setEditForm(prev => ({
+            ...prev,
+            instructions: instructionsEditor.getHTML()
+          }))
+        }
+      }
+
+      // Suscribirse a cambios en el editor de instructions
+      instructionsEditor.on('update', updateInstructions)
+      
+      // Limpiar suscripción al desmontar
+      return () => {
+        instructionsEditor.off('update', updateInstructions)
+      }
+    }
+  }, [instructionsEditor, activeTab])
 
   useEffect(() => {
     if (content?.text) {
@@ -907,6 +1239,7 @@ export default function ContentDetailPage() {
         tags: editForm.tags.length > 0 ? editForm.tags : null,
         content: editForm.content || undefined,
         text: editForm.text || undefined,
+        instructions: editForm.instructions || undefined,
         performance_rating: editForm.performance_rating
       })
       
@@ -949,7 +1282,8 @@ export default function ContentDetailPage() {
         return content.replace(/<br\s*\/?>/gi, '\n').replace(/<p>/gi, '').replace(/<\/p>/gi, '\n\n');
       };
       
-      const aiContent = prepareContentForAi(editor?.getHTML() || '');
+      const currentEditor = activeTab === 'copy' ? editor : instructionsEditor;
+      const aiContent = prepareContentForAi(currentEditor?.getHTML() || '');
       
       // Here we would integrate with the AI service
       // For now, we'll just simulate a delay
@@ -957,23 +1291,23 @@ export default function ContentDetailPage() {
       
       switch (action) {
         case 'improve':
-          if (editor) {
-            editor.commands.insertContent('\n\n---\n\n*Content improved by AI*')
+          if (currentEditor) {
+            currentEditor.commands.insertContent('\n\n---\n\n*Content improved by AI*')
           }
           break
         case 'expand':
-          if (editor) {
-            editor.commands.insertContent('\n\n---\n\n*Content expanded by AI*')
+          if (currentEditor) {
+            currentEditor.commands.insertContent('\n\n---\n\n*Content expanded by AI*')
           }
           break
         case 'style':
-          if (editor) {
-            editor.commands.insertContent('\n\n---\n\n*Style improved by AI*')
+          if (currentEditor) {
+            currentEditor.commands.insertContent('\n\n---\n\n*Style improved by AI*')
           }
           break
         case 'summarize':
-          if (editor) {
-            editor.commands.insertContent('\n\n---\n\n*Content summarized by AI*')
+          if (currentEditor) {
+            currentEditor.commands.insertContent('\n\n---\n\n*Content summarized by AI*')
           }
           break
         default:
@@ -1139,16 +1473,26 @@ export default function ContentDetailPage() {
         throw new Error(data.error);
       }
       
-      if (data.content && editor) {
-        // Si recibimos contenido, actualizamos el editor
-        editor.commands.setContent(data.content);
-        
-        // Update the form state with the new content
-        setEditForm(prev => ({
-          ...prev,
-          content: data.content,
-          text: editor.getText()
-        }));
+      if (data.content) {
+        // Si recibimos contenido, actualizamos el editor correspondiente
+        if (activeTab === 'copy' && editor) {
+          editor.commands.setContent(data.content);
+          
+          // Update the form state with the new content
+          setEditForm(prev => ({
+            ...prev,
+            content: data.content,
+            text: editor.getText()
+          }));
+        } else if (activeTab === 'instructions' && instructionsEditor) {
+          instructionsEditor.commands.setContent(data.content);
+          
+          // Update the form state with the new instructions
+          setEditForm(prev => ({
+            ...prev,
+            instructions: data.content
+          }));
+        }
         
         toast.success("Content generated successfully");
       } else if (data.message) {
@@ -1177,11 +1521,34 @@ export default function ContentDetailPage() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none">
-          <MenuBar editor={editor} onSave={handleSaveChanges} isSaving={isSaving} onDelete={handleDeleteContent} />
+          <MenuBar 
+            editor={editor} 
+            instructionsEditor={instructionsEditor}
+            onSave={handleSaveChanges} 
+            isSaving={isSaving} 
+            onDelete={handleDeleteContent}
+            activeTab={activeTab}
+          />
         </div>
-        <div className="flex-1 overflow-auto">
-          <div className="p-4 h-full flex flex-col">
-            <EditorContent editor={editor} className="prose prose-sm dark:prose-invert max-w-none flex-1" />
+        <div className="flex-1 overflow-auto relative">
+          {/* Floating Tab Selector */}
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+            <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'copy' | 'instructions')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="copy">Copy</TabsTrigger>
+                  <TabsTrigger value="instructions">Instructions</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
+
+          <div className="p-4 pt-16 h-full flex flex-col">
+            {activeTab === 'copy' ? (
+              <EditorContent editor={editor} className="prose prose-sm dark:prose-invert max-w-none flex-1" />
+            ) : (
+              <EditorContent editor={instructionsEditor} className="prose prose-sm dark:prose-invert max-w-none flex-1" />
+            )}
           </div>
         </div>
       </div>
@@ -1193,11 +1560,9 @@ export default function ContentDetailPage() {
           <div className="h-[71px] border-b flex items-center justify-center px-4">
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="ai">
-                <Cpu className="h-4 w-4 mr-2" />
                 AI Assistant
               </TabsTrigger>
               <TabsTrigger value="details">
-                <FileText className="h-4 w-4 mr-2" />
                 Details
               </TabsTrigger>
             </TabsList>
@@ -1596,14 +1961,15 @@ export default function ContentDetailPage() {
                         </div>
                         <div className="space-y-2.5">
                           <Label className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            Content Type
+                            {getContentTypeIcon(editForm.type)}
+                            <span className="text-muted-foreground">Content Type</span>
                           </Label>
-                          <Input
-                            value={getContentTypeName(editForm.type)}
-                            disabled
-                            className="bg-muted h-11"
-                          />
+                          <div className="flex items-center gap-3 p-3 bg-muted rounded-md">
+                            <div className="text-primary">
+                              {getContentTypeIcon(editForm.type)}
+                            </div>
+                            <span className="font-medium">{getContentTypeName(editForm.type)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>

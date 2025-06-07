@@ -38,44 +38,46 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/images/logo.png" />
 
-        <Script 
-          id="market-fit-tracking"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                window.MarketFit = window.MarketFit || {};
-                MarketFit.siteId = "9be0a6a2-5567-41bf-ad06-cb4014f0faf2";
-                
-                var script = document.createElement('script');
-                script.async = true;
-                script.src = 'https://files.uncodie.com/tracking.min.js';
-                
-                script.onload = function() {
-                  if (window.MarketFit && typeof window.MarketFit.init === 'function') {
-                    window.MarketFit.init({
-                      siteId: "9be0a6a2-5567-41bf-ad06-cb4014f0faf2",
-                      trackVisitors: true,
-                      trackActions: true,
-                      recordScreen: true,
-                      debug: false,
-                      chat: {
-                        enabled: true,
-                        allowAnonymousMessages: false,
-                        position: "bottom-right",
-                        title: "Customer and Tech Support",
-                        welcomeMessage: "Welcome to app! How can we assist you today?"
-                      }
-                    });
-                  }
-                };
-                
-                var firstScript = document.getElementsByTagName('script')[0];
-                firstScript.parentNode.insertBefore(script, firstScript);
-              })();
-            `
-          }}
-        />
+        {process.env.NODE_ENV !== 'development' && (
+          <Script 
+            id="market-fit-tracking"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function() {
+                  window.MarketFit = window.MarketFit || {};
+                  MarketFit.siteId = "9be0a6a2-5567-41bf-ad06-cb4014f0faf2";
+                  
+                  var script = document.createElement('script');
+                  script.async = true;
+                  script.src = 'https://files.uncodie.com/tracking.min.js';
+                  
+                  script.onload = function() {
+                    if (window.MarketFit && typeof window.MarketFit.init === 'function') {
+                      window.MarketFit.init({
+                        siteId: "9be0a6a2-5567-41bf-ad06-cb4014f0faf2",
+                        trackVisitors: true,
+                        trackActions: true,
+                        recordScreen: true,
+                        debug: false,
+                        chat: {
+                          enabled: true,
+                          allowAnonymousMessages: false,
+                          position: "bottom-right",
+                          title: "Customer and Tech Support",
+                          welcomeMessage: "Welcome to app! How can we assist you today?"
+                        }
+                      });
+                    }
+                  };
+                  
+                  var firstScript = document.getElementsByTagName('script')[0];
+                  firstScript.parentNode.insertBefore(script, firstScript);
+                })();
+              `
+            }}
+          />
+        )}
 
       </head>
       <body className={inter.className}>

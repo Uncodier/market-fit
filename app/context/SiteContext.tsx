@@ -496,21 +496,30 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Si hay sitios, intentamos restaurar el sitio guardado o usar el primero
       if (sitesWithData.length > 0) {
         const savedSiteId = getLocalStorage("currentSiteId")
-        console.log("Saved site ID from localStorage:", savedSiteId)
-        
         const savedSite = savedSiteId ? sitesWithData.find((site: any) => site.id === savedSiteId) : null
-        console.log("Found saved site:", savedSite ? "yes" : "no")
         
-        // Si el sitio guardado existe en los datos actuales, lo usamos
+        // PRIORIDAD 1: Si hay un sitio guardado válido, usarlo siempre
         if (savedSite) {
-          console.log("Using saved site as current:", savedSite.name)
           await handleSetCurrentSite(savedSite)
         } 
-        // Si no hay sitio guardado o no se encuentra, usamos el primero solo si no hay sitio actual
-        else if (!currentSite) {
-          console.log("No saved site found and no current site, using first site:", sitesWithData[0].name)
+        // PRIORIDAD 2: Si estamos durante la inicialización y no hay sitio guardado, usar el primero
+        else if (!isInitialized && sitesWithData.length > 0) {
           await handleSetCurrentSite(sitesWithData[0])
           setLocalStorage("currentSiteId", sitesWithData[0].id)
+        }
+        // PRIORIDAD 3: Si ya estamos inicializados, tenemos sitio actual, pero no está guardado
+        else if (isInitialized && currentSite && !savedSite) {
+          // Verificar que el sitio actual aún existe en la lista
+          const existingSite = sitesWithData.find((site: any) => site.id === currentSite.id)
+          if (existingSite) {
+            await handleSetCurrentSite(existingSite)
+          } else {
+            await handleSetCurrentSite(sitesWithData[0])
+          }
+        }
+        // PRIORIDAD 4: Caso fallback - no hay sitio actual ni guardado
+        else if (!currentSite && sitesWithData.length > 0) {
+          await handleSetCurrentSite(sitesWithData[0])
         }
       }
 
@@ -614,12 +623,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = async (site: Site) => {
+    
     // Solo guardar si es un sitio válido y no es el 'default'
     if (site && site.id) {
       try {
         // Cargar los settings específicamente para este sitio
         if (!site.settings && supabaseRef.current) {
-          console.log(`Loading settings for site being set as current: ${site.id}`);
+
           const { data: settingsData, error: settingsError } = await supabaseRef.current
             .from('settings')
             .select('*')
@@ -633,8 +643,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
           
           // Si tenemos settings, los agregamos al sitio
           if (settingsData) {
-            console.log(`Settings found for site ${site.id}:`, settingsData);
-            console.log("Raw goals data from DB:", settingsData.goals);
             
             let parsedGoals = {
               quarterly: '',
@@ -643,17 +651,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
               tenYear: ''
             };
             
-            try {
-              parsedGoals = parseJsonField(settingsData.goals, {
-                quarterly: '',
-                yearly: '',
-                fiveYear: '',
-                tenYear: ''
-              });
-              console.log("Goals after parsing:", parsedGoals);
-            } catch (goalsError) {
-              console.error("Error parsing goals:", goalsError);
-            }
+                          try {
+                parsedGoals = parseJsonField(settingsData.goals, {
+                  quarterly: '',
+                  yearly: '',
+                  fiveYear: '',
+                  tenYear: ''
+                });
+              } catch (goalsError) {
+                console.error("Error parsing goals:", goalsError);
+              }
             
             // Parse business_hours specifically
             const parsedBusinessHours = parseJsonField(settingsData.business_hours, []);
@@ -716,8 +723,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 allowed_domains: parseJsonField(settingsData.allowed_domains, [])
               }
             };
-          } else {
-            console.log(`No settings found for site ${site.id}, using defaults`);
           }
         } else {
           console.log("Skipping settings load because:", {
@@ -731,7 +736,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       // Guardar el ID directamente - nuestra función setLocalStorage ya maneja la limpieza
-      console.log(`Estableciendo sitio actual: ${site.name} (${site.id})`)
       setLocalStorage("currentSiteId", site.id)
     }
     

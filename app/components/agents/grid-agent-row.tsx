@@ -3,10 +3,12 @@ import { Agent, AgentActivity } from "@/app/types/agents"
 import { Avatar, AvatarImage, AvatarFallback } from "@/app/components/ui/avatar"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import { MessageSquare, Pencil, PlayCircle, ChevronUp, ChevronDown } from "@/app/components/ui/icons"
+import { MessageSquare, Pencil, PlayCircle, ChevronUp, ChevronDown, Mail, Globe, Bell, LogIn, LogOut } from "@/app/components/ui/icons"
 import * as Icons from "@/app/components/ui/icons"
+import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { agentStatusVariants, metricItemVariants } from "./agent-card.styles"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { useSite } from "@/app/context/SiteContext"
 
 // Extender el tipo Agent para incluir datos personalizados
 interface ExtendedAgent extends Agent {
@@ -109,6 +111,31 @@ export function GridAgentRow({
   // Determinar si el botón de chat debe estar deshabilitado
   const isChatDisabled = !hasCustomData;
   
+  // Communication icons logic (same as SimpleAgentCard)
+  const { currentSite } = useSite()
+  
+  // Determine if this agent should have entry icons (Customer Support)
+  const shouldShowEntryIcons = agent.id === "7" && hasCustomData && displayStatus === "active"
+  
+  // Determine which agents should show exit (reach out) icons
+  const shouldShowExitIcons = (
+    (agent.id === "5" || agent.id === "7" || agent.id === "1") && 
+    hasCustomData && 
+    displayStatus === "active"
+  )
+  
+  // Check which channels are enabled in site settings
+  const channels = currentSite?.settings?.channels
+  const isEmailEnabled = channels?.email?.enabled && channels?.email?.status === "synced"
+  const isWhatsAppEnabled = channels?.whatsapp?.enabled && channels?.whatsapp?.status === "active"
+  const isWebChatEnabled = currentSite?.tracking?.enable_chat // Chat is in site.tracking, not settings
+
+  // Get enabled communication channels
+  const enabledChannels = []
+  if (isWhatsAppEnabled) enabledChannels.push('whatsapp')
+  if (isEmailEnabled) enabledChannels.push('email')
+  if (isWebChatEnabled) enabledChannels.push('web')
+  
   // Format date consistently
   const formattedDate = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
@@ -158,6 +185,62 @@ export function GridAgentRow({
             </div>
             <p className="text-xs text-muted-foreground truncate">{displayDescription}</p>
           </div>
+        </div>
+        
+        {/* Entry Icons Column */}
+        <div className="w-20 flex justify-center">
+          {shouldShowEntryIcons && (
+            <div className="flex items-center gap-1">
+              <LogIn className="h-3 w-3 text-green-600 dark:text-green-400" />
+              <div className="flex gap-1">
+                {enabledChannels.map((channel) => (
+                  <div key={channel} className={`flex items-center justify-center w-5 h-5 rounded-full ${
+                    channel === 'whatsapp' 
+                      ? 'bg-green-100 dark:bg-green-900/40' 
+                      : channel === 'email'
+                      ? 'bg-blue-100 dark:bg-blue-900/40'
+                      : 'bg-purple-100 dark:bg-purple-900/40'
+                  }`} title={`${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Web Chat'} Support`}>
+                    {channel === 'whatsapp' && <WhatsAppIcon size={10} className="text-green-600 dark:text-green-400" />}
+                    {channel === 'email' && <Mail className="h-2 w-2 text-blue-600 dark:text-blue-400" />}
+                    {channel === 'web' && <Globe className="h-2 w-2 text-purple-600 dark:text-purple-400" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Communication Icons Column */}
+        <div className="w-24 flex justify-center">
+          {hasCustomData && displayStatus === "active" && (
+            <div className="flex items-center gap-1">
+              {shouldShowExitIcons && (
+                <LogOut className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+              )}
+              <div className="flex gap-1">
+                {/* System Notifications - always shown for agents with custom data and active status */}
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40" title="System Notifications">
+                  <Bell className="h-2 w-2 text-amber-600 dark:text-amber-400" />
+                </div>
+                
+                {/* Communication Channels - only for agents with reach out capability and enabled channels */}
+                {shouldShowExitIcons && enabledChannels.map((channel) => (
+                  <div key={channel} className={`flex items-center justify-center w-5 h-5 rounded-full ${
+                    channel === 'whatsapp' 
+                      ? 'bg-green-100 dark:bg-green-900/40' 
+                      : channel === 'email'
+                      ? 'bg-blue-100 dark:bg-blue-900/40'
+                      : 'bg-purple-100 dark:bg-purple-900/40'
+                  }`} title={`${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Web Chat'} Outreach`}>
+                    {channel === 'whatsapp' && <WhatsAppIcon size={10} className="text-green-600 dark:text-green-400" />}
+                    {channel === 'email' && <Mail className="h-2 w-2 text-blue-600 dark:text-blue-400" />}
+                    {channel === 'web' && <Globe className="h-2 w-2 text-purple-600 dark:text-purple-400" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-6 mx-4">

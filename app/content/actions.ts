@@ -11,6 +11,7 @@ export type ContentItem = {
   type: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page"
   content: string | null
   text: string | null
+  instructions: string | null
   status: string
   segment_id: string | null
   campaign_id: string | null
@@ -178,6 +179,7 @@ export async function updateContent({
   tags,
   content,
   text,
+  instructions,
   performance_rating
 }: {
   contentId: string
@@ -189,6 +191,7 @@ export async function updateContent({
   tags?: string[] | null
   content?: string
   text?: string
+  instructions?: string
   performance_rating?: number | null
 }) {
   try {
@@ -204,6 +207,7 @@ export async function updateContent({
         campaign_id,
         tags,
         text,
+        instructions,
         performance_rating,
         updated_at: new Date().toISOString()
       })
