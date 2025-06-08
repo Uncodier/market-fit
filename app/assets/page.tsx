@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/app/components/ui/alert-dialog"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { safeReload } from "@/app/utils/safe-reload"
 
 interface AssetWithThumbnail extends Asset {
   thumbnailUrl?: string
@@ -563,7 +564,7 @@ function AssetsContent() {
           <p className="text-red-500 mb-4">{error}</p>
           <Button 
             variant="outline" 
-            onClick={() => window.location.reload()}
+            onClick={() => safeReload(false, 'Assets page error retry')}
           >
             Intentar nuevamente
           </Button>

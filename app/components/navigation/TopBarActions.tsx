@@ -30,6 +30,7 @@ import {
   FileText
 } from "@/app/components/ui/icons"
 import { subMonths, format } from "date-fns"
+import { safeReload } from "../../utils/safe-reload"
 
 // Cpu icon para representación de AI
 const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
@@ -172,7 +173,7 @@ export function TopBarActions({
       }
 
       // Recargar la página para mostrar el nuevo segmento
-      window.location.reload()
+      safeReload(false, 'New segment created')
     } catch (error) {
       console.error("Error creating segment:", error)
       throw error
@@ -188,7 +189,7 @@ export function TopBarActions({
       }
 
       // Recargar la página para mostrar el nuevo experimento
-      window.location.reload();
+      safeReload(false, 'New experiment created');
       return { data: result.data };
     } catch (error) {
       console.error("Error creating experiment:", error);
@@ -205,7 +206,7 @@ export function TopBarActions({
       }
 
       // Recargar la página para mostrar el nuevo requerimiento
-      window.location.reload()
+      safeReload(false, 'New requirement created')
       return { data: result.data }
     } catch (error) {
       console.error("Error creating requirement:", error)
@@ -502,7 +503,7 @@ export function TopBarActions({
         if (isCampaignsPage) {
           setTimeout(() => {
             // Trigger a refresh of campaigns data without full page reload
-            window.location.reload();
+            safeReload(false, 'AI campaigns created');
           }, 1000);
         }
         return result;
@@ -598,7 +599,7 @@ export function TopBarActions({
         if (isContentPage) {
           setTimeout(() => {
             // Trigger a refresh of content data without full page reload
-            window.location.reload();
+            safeReload(false, 'AI content created');
           }, 1000);
         }
         return result;
@@ -665,7 +666,7 @@ export function TopBarActions({
       }
 
       // Recargar la página para mostrar el nuevo asset
-      window.location.reload()
+      safeReload(false, 'New asset created')
     } catch (error) {
       console.error("Error creating asset:", error)
       throw error
@@ -681,7 +682,7 @@ export function TopBarActions({
       }
 
       // Recargar la página para mostrar el nuevo lead
-      window.location.reload()
+      safeReload(false, 'New lead created')
       return { lead: result.lead }
     } catch (error) {
       console.error("Error creating lead:", error)
@@ -699,7 +700,7 @@ export function TopBarActions({
       toast.success("Campaign created successfully");
       
       // Reload the page to show the new campaign
-      window.location.reload();
+      safeReload(false, 'New campaign created');
       
       return { data: response.data };
     } catch (error) {
@@ -1052,7 +1053,7 @@ The success of this experiment will be measured by:
                   (window as any).refreshContentList();
                 } else {
                   // Fallback to page reload if the function isn't available
-                  window.location.reload();
+                  safeReload(false, 'New content created');
                 }
               }}
               trigger={

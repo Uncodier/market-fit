@@ -415,13 +415,27 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+            <AlertDialogTitle>Delete Campaign "{campaign.title}"</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this campaign? This action cannot be undone.
+              This will permanently delete the campaign and all associated data including:
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="flex items-center justify-center py-4">
-            <AlertTriangle className="h-12 w-12 text-destructive" />
+          <div className="py-4 space-y-3">
+            <div className="flex items-center justify-center mb-4">
+              <AlertTriangle className="h-12 w-12 text-destructive" />
+            </div>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Campaign details and configuration</li>
+              <li>Associated leads and contacts</li>
+              <li>Sales and conversion data</li>
+              <li>Financial records and transactions</li>
+              <li>Performance metrics and analytics</li>
+            </ul>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 mt-4">
+              <p className="text-sm font-medium text-destructive">
+                ⚠️ This action cannot be undone
+              </p>
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
@@ -432,9 +446,9 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
                 onDeleteCampaign?.();
                 setIsDeleteDialogOpen(false);
               }}
-              className="bg-destructive hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             >
-              Delete
+              Delete Campaign
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

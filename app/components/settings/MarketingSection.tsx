@@ -37,17 +37,18 @@ export function MarketingSection({ active }: MarketingSectionProps) {
 
   // Sync products and services when form values change
   useEffect(() => {
-    const formProducts = form.getValues("products")
-    const formServices = form.getValues("services")
+    // Use a subscription instead of putting watch in dependencies
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'products' && value.products && Array.isArray(value.products)) {
+        setProductsList(value.products);
+      }
+      if (name === 'services' && value.services && Array.isArray(value.services)) {
+        setServicesList(value.services);
+      }
+    });
     
-    if (formProducts && Array.isArray(formProducts)) {
-      setProductsList(formProducts)
-    }
-    
-    if (formServices && Array.isArray(formServices)) {
-      setServicesList(formServices)
-    }
-  }, [form.watch("products"), form.watch("services")])
+    return () => subscription.unsubscribe();
+  }, [form])
 
   // Add channel
   const addChannel = () => {
@@ -185,7 +186,9 @@ export function MarketingSection({ active }: MarketingSectionProps) {
 
   if (!active) return null
 
-  const focusConfig = getFocusModeConfig(form.watch("focusMode"))
+  // Get focus mode value once and use memoization if needed
+  const focusModeValue = form.getValues("focusMode")
+  const focusConfig = getFocusModeConfig(focusModeValue)
 
   return (
     <>

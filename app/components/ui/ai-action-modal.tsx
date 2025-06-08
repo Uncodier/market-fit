@@ -30,6 +30,7 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { sendErrorReport } from "@/app/services/support-service"
 import { checkApiConnection, diagnoseApiConnection } from "@/app/services/ai-service"
 import { toast } from "sonner"
+import { safeReload } from "../../utils/safe-reload"
 import { JsonHighlighter } from "@/app/components/agents/json-highlighter"
 import { JsonDisplay } from "@/app/components/ui/json-display"
 
@@ -276,7 +277,7 @@ export function AIActionModal({
             
             // Refresh the page if requested
             if (refreshOnComplete) {
-              window.location.reload();
+              safeReload(false, 'AI action completed');
             }
           }, 1500); // Slightly longer delay to show the completion message
         } else {
@@ -287,7 +288,7 @@ export function AIActionModal({
             
             // Refresh the page if requested
             if (refreshOnComplete) {
-              window.location.reload();
+              safeReload(false, 'AI action completed');
             }
           }, 1000);
         }

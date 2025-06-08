@@ -10,6 +10,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { getLeadConversations } from "@/app/leads/actions"
+import { safeReload } from "@/app/utils/safe-reload"
 
 // Types for conversations from the database
 interface DatabaseConversation {
@@ -146,7 +147,7 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
           icon={<MessageSquare className="h-12 w-12 text-muted-foreground" />}
         />
         <div className="flex justify-center mt-4">
-          <Button onClick={() => window.location.reload()}>Retry</Button>
+          <Button onClick={() => safeReload(false, 'Retry conversations')}>Retry</Button>
         </div>
       </div>
     )

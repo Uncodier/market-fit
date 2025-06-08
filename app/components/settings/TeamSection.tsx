@@ -114,13 +114,16 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     }, 300);
   }, [updateFormValues]);
   
-  // Fetch site members from the site_members table when available
+  // Fetch site members from the site_members table when the component becomes active
   useEffect(() => {
-    // Ensure we fetch when the team tab becomes active or siteId changes
+    // Only fetch when team tab becomes active and we have a siteId
     if (!active || !siteId) return;
     
     // Don't overwrite local state if there are unsaved changes
     if (hasUnsavedChanges) return;
+    
+    // Create a flag to prevent state updates if component unmounts
+    let isMounted = true;
     
     const fetchSiteMembers = async () => {
       try {
@@ -129,6 +132,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         
         // Try to get members from site_members table first
         const members = await siteMembersService.getMembers(siteId)
+        
+        if (!isMounted) return; // Component unmounted, don't update state
         
         // Convert ALL members (including owner/admin) to form format for display
         const formattedMembers = members.map(siteMemberToFormMember)
@@ -149,6 +154,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           }
         }
       } catch (error) {
+        if (!isMounted) return; // Component unmounted, don't update state
+        
         console.error("Error fetching site members:", error)
         // We'll fall back to the values from team_members in settings
         const currentTeamMembers = form.getValues("team_members") || [];
@@ -157,12 +164,18 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           setTeamList(currentTeamMembers)
         }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
     
     fetchSiteMembers()
-  }, [active, siteId, hasUnsavedChanges, updateFormValues, form])
+    
+    return () => {
+      isMounted = false;
+    }
+  }, [active, siteId, hasUnsavedChanges]) // Removed updateFormValues and form from dependencies
 
   // Add team member
   const addTeamMember = () => {

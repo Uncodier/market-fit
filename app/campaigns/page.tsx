@@ -560,7 +560,7 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>(["high", "medium", "low"]);
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState("all");
   const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([]);
   const [requirements, setRequirements] = useState<Array<{ 
     id: string; 
@@ -581,7 +581,7 @@ export default function CampaignsPage() {
   campaigns.forEach(campaign => {
     // Filter campaigns by tab status
     const campaignStatus = campaign.status || "active";
-    if (campaignStatus !== activeTab) {
+    if (activeTab !== "all" && campaignStatus !== activeTab) {
       return;
     }
     
@@ -678,6 +678,7 @@ export default function CampaignsPage() {
           <div className="flex items-center gap-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
               <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="active">Active</TabsTrigger>
                 <TabsTrigger value="pending">Pending</TabsTrigger>
                 <TabsTrigger value="completed">Completed</TabsTrigger>
@@ -748,6 +749,89 @@ export default function CampaignsPage() {
       ) : (
         <div className="px-8 pb-8">
           <Tabs value={activeTab} className="h-auto">
+            <TabsContent value="all" className="w-full h-auto overflow-visible">
+              {Object.keys(campaignsByType).length > 0 ? (
+                <div className="w-full overflow-x-auto overflow-y-visible">
+                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+                    {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
+                      <KanbanColumn
+                        key={type}
+                        title={type.charAt(0).toUpperCase() + type.slice(1)}
+                        tasks={typeCampaigns.map(campaign => {
+                          // Get requirements associated with this campaign
+                          const campaignRequirements = requirements
+                            ? requirements
+                                .filter(req => {
+                                  // Check for campaign_requirements data in each requirement
+                                  const campaignReqs = req.campaign_requirements || [];
+                                  const isIncluded = campaignReqs.some(cr => cr.campaign_id === campaign.id);
+                                  
+                                  if (campaign.requirements && campaign.requirements.length > 0 && !isIncluded) {
+                                    // For debugging purposes, log when a campaign has requirements that we can't find
+                                    console.log(`Campaign ${campaign.title} (${campaign.id}) has requirement IDs but none match:`, 
+                                      campaign.requirements, 
+                                      "Looking in:", requirements.map(r => r.id)
+                                    );
+                                  }
+                                  return isIncluded;
+                                })
+                                .map(req => ({
+                                  id: req.id,
+                                  title: req.title,
+                                  description: req.description || "",
+                                  status: req.status || "backlog",
+                                  priority: req.priority || "medium",
+                                  completion_status: req.completion_status || "pending"
+                                }))
+                            : [];
+                          
+                          // Debug log - simplified to avoid linter errors
+                          console.log(`Campaign ${campaign.title} - Requirements:`, campaign.requirements, `Matched: ${campaignRequirements.length}`);
+                            
+                          return {
+                            id: campaign.id,
+                            title: campaign.title,
+                            description: campaign.description,
+                            priority: campaign.priority,
+                            dueDate: new Date(campaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                            assignees: campaign.assignees,
+                            issues: campaign.issues,
+                            revenue: campaign.revenue,
+                            budget: campaign.budget,
+                            costs: {
+                              fixed: 0,
+                              variable: 0,
+                              total: campaign.budget?.allocated && campaign.budget?.remaining ? 
+                                campaign.budget.allocated - campaign.budget.remaining : 0,
+                              currency: campaign.budget?.currency || "USD"
+                            },
+                            requirements: campaignRequirements
+                          };
+                        })}
+                        searchQuery={searchQuery}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<Target className="h-12 w-12 text-muted-foreground" />}
+                  title="No Campaigns"
+                  description="You don't have any campaigns yet. Create your first campaign to get started."
+                  features={[
+                    {
+                      title: "Campaign Management",
+                      items: [
+                        "Organize marketing initiatives",
+                        "Track performance and ROI",
+                        "Manage subtasks and deadlines"
+                      ]
+                    }
+                  ]}
+                />
+              )}
+            </TabsContent>
+
             <TabsContent value="active" className="w-full h-auto overflow-visible">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">

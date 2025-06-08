@@ -33,6 +33,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
 import { createClient } from "@/utils/supabase/client"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
+import { safeReload } from "@/app/utils/safe-reload"
 
 // Cache de etapas para cada lead
 const leadJourneyStagesCache: Record<string, string> = {};
@@ -652,7 +653,7 @@ export default function LeadsPage() {
       toast.success("Lead created successfully")
       
       // Recargar los leads
-      window.location.reload()
+      safeReload(false, 'New lead created')
       
       return { lead: result.lead }
     } catch (error) {

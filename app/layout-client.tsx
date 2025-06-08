@@ -13,6 +13,7 @@ import { type Segment } from "./requirements/types"
 import { ThemeProvider } from "./context/ThemeContext"
 import { LayoutProvider, useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
+import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
 
 const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/control-center": {
@@ -169,6 +170,9 @@ export default function LayoutClient({
   const [customTitle, setCustomTitle] = useState<string | null>(null)
   const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
+
+  // Use the page refresh prevention hook
+  const { shouldPreventRefresh, isCreateEditRoute } = usePageRefreshPrevention()
 
   // Determine if we're on an experiment detail page
   const isExperimentDetailPage = pathname ? /^\/experiments\/[a-zA-Z0-9-]+$/.test(pathname) : false;

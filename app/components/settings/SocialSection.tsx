@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { useState, useEffect } from "react"
+import { useCallback, useMemo } from "react"
 import { 
   SocialIcon,
   FacebookIcon,
@@ -44,14 +44,6 @@ const SOCIAL_PLATFORMS = [
   { value: "custom", label: "Custom" }
 ]
 
-// Mapping of platforms to their required fields
-const PLATFORM_FIELDS = {
-  "whatsapp": ["phone", "phoneCode"],
-  "telegram": ["handle", "url"],
-  "discord": ["inviteCode", "url"],
-  "default": ["url", "handle"]
-};
-
 // Country codes for phone fields
 const COUNTRY_CODES = [
   { value: "+1", label: "+1 (US)" },
@@ -70,7 +62,7 @@ const COUNTRY_CODES = [
   { value: "+61", label: "+61 (Australia)" }
 ];
 
-// Function to get platform icon
+// Function to get platform icon - memoized
 const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
   if (!platform) return <GlobeIcon size={size} />;
   
@@ -92,86 +84,18 @@ const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
   }
 };
 
-// Get platform-specific fields and proper labels
-const getPlatformFields = (platform: string) => {
-  switch (platform) {
-    case 'whatsapp':
-      return {
-        fields: PLATFORM_FIELDS.whatsapp,
-        labels: {
-          phone: "Phone Number",
-          phoneCode: "Country Code"
-        },
-        placeholders: {
-          phone: "123456789"
-        }
-      };
-    case 'telegram':
-      return {
-        fields: PLATFORM_FIELDS.telegram,
-        labels: {
-          handle: "Username",
-          url: "Invite Link"
-        },
-        placeholders: {
-          handle: "@username",
-          url: "https://t.me/username"
-        }
-      };
-    case 'discord':
-      return {
-        fields: PLATFORM_FIELDS.discord,
-        labels: {
-          inviteCode: "Invite Code",
-          url: "Server URL"
-        },
-        placeholders: {
-          inviteCode: "discord-invite-code",
-          url: "https://discord.gg/code"
-        }
-      };
-    default:
-      return {
-        fields: PLATFORM_FIELDS.default,
-        labels: {
-          url: "URL",
-          handle: "Username"
-        },
-        placeholders: {
-          url: "https://example.com/profile",
-          handle: "@username"
-        }
-      };
-  }
-};
-
 interface SocialSectionProps {
   active: boolean
 }
 
 export function SocialSection({ active }: SocialSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [socialList, setSocialList] = useState<{
-    platform: string, 
-    url: string, 
-    handle?: string,
-    phone?: string,
-    phoneCode?: string,
-    inviteCode?: string,
-    channelId?: string
-  }[]>(
-    form.getValues("social_media") || []
-  )
-  const [forceUpdate, setForceUpdate] = useState(0)
+  const socialMedia = form.watch("social_media") || []
 
-  // Force re-render on component mount
-  useEffect(() => {
-    setForceUpdate(prev => prev + 1)
-  }, [])
-
-  // Add social media entry
-  const addSocialMedia = () => {
-    const newSocialMedia = [...socialList, { 
+  // Memoized functions for better performance
+  const addSocialMedia = useCallback(() => {
+    const currentSocialMedia = form.getValues("social_media") || []
+    const newSocialMedia = [...currentSocialMedia, { 
       platform: "", 
       url: "",
       handle: "",
@@ -180,18 +104,69 @@ export function SocialSection({ active }: SocialSectionProps) {
       inviteCode: "",
       channelId: ""
     }]
-    setSocialList(newSocialMedia)
     form.setValue("social_media", newSocialMedia)
-    setForceUpdate(prev => prev + 1)
-  }
+  }, [form])
 
-  // Remove social media entry
-  const removeSocialMedia = (index: number) => {
-    const newSocialMedia = socialList.filter((_, i) => i !== index)
-    setSocialList(newSocialMedia)
+  const removeSocialMedia = useCallback((index: number) => {
+    const currentSocialMedia = form.getValues("social_media") || []
+    const newSocialMedia = currentSocialMedia.filter((_, i) => i !== index)
     form.setValue("social_media", newSocialMedia)
-    setForceUpdate(prev => prev + 1)
-  }
+  }, [form])
+
+  // Memoize platform-specific configuration
+  const getPlatformFields = useMemo(() => {
+    return (platform: string) => {
+      switch (platform) {
+        case 'whatsapp':
+          return {
+            fields: ["phone", "phoneCode"],
+            labels: {
+              phone: "Phone Number",
+              phoneCode: "Country Code"
+            },
+            placeholders: {
+              phone: "123456789"
+            }
+          };
+        case 'telegram':
+          return {
+            fields: ["handle", "url"],
+            labels: {
+              handle: "Username",
+              url: "Invite Link"
+            },
+            placeholders: {
+              handle: "@username",
+              url: "https://t.me/username"
+            }
+          };
+        case 'discord':
+          return {
+            fields: ["inviteCode", "url"],
+            labels: {
+              inviteCode: "Invite Code",
+              url: "Server URL"
+            },
+            placeholders: {
+              inviteCode: "discord-invite-code",
+              url: "https://discord.gg/code"
+            }
+          };
+        default:
+          return {
+            fields: ["url", "handle"],
+            labels: {
+              url: "URL",
+              handle: "Username"
+            },
+            placeholders: {
+              url: "https://example.com/profile",
+              handle: "@username"
+            }
+          };
+      }
+    }
+  }, [])
 
   if (!active) return null
 
@@ -204,11 +179,11 @@ export function SocialSection({ active }: SocialSectionProps) {
         </p>
       </CardHeader>
       <CardContent className="space-y-6 px-8 pb-8">
-        {socialList.map((social, index) => {
+        {socialMedia.map((social, index) => {
           const platformConfig = getPlatformFields(social.platform);
           
           return (
-            <div key={`social-row-${index}-${forceUpdate}`} className="space-y-4">
+            <div key={`social-row-${index}`} className="space-y-4">
               <div className="grid grid-cols-12 gap-4 items-center">
                 <FormField
                   control={form.control}
@@ -220,13 +195,7 @@ export function SocialSection({ active }: SocialSectionProps) {
                       </FormLabel>
                       <Select
                         value={field.value}
-                        onValueChange={(value) => {
-                          field.onChange(value)
-                          const newSocialMedia = [...socialList]
-                          newSocialMedia[index] = { ...newSocialMedia[index], platform: value }
-                          setSocialList(newSocialMedia)
-                          setForceUpdate(prev => prev + 1)
-                        }}
+                        onValueChange={field.onChange}
                       >
                         <FormControl>
                           <SelectTrigger className="h-12">
@@ -262,12 +231,7 @@ export function SocialSection({ active }: SocialSectionProps) {
                               <FormLabel className={index !== 0 ? "sr-only" : undefined}>Country Code</FormLabel>
                               <Select
                                 value={field.value || "+1"}
-                                onValueChange={(value) => {
-                                  field.onChange(value)
-                                  const newSocialMedia = [...socialList]
-                                  newSocialMedia[index] = { ...newSocialMedia[index], phoneCode: value }
-                                  setSocialList(newSocialMedia)
-                                }}
+                                onValueChange={field.onChange}
                               >
                                 <FormControl>
                                   <SelectTrigger className="h-12">
@@ -301,12 +265,6 @@ export function SocialSection({ active }: SocialSectionProps) {
                                     placeholder="123456789"
                                     {...field}
                                     className="pl-9 h-12"
-                                    onChange={(e) => {
-                                      field.onChange(e)
-                                      const newSocialMedia = [...socialList]
-                                      newSocialMedia[index] = { ...newSocialMedia[index], phone: e.target.value }
-                                      setSocialList(newSocialMedia)
-                                    }}
                                   />
                                 </div>
                               </FormControl>
@@ -335,12 +293,6 @@ export function SocialSection({ active }: SocialSectionProps) {
                                     placeholder="@username"
                                     {...field}
                                     className="pl-9 h-12"
-                                    onChange={(e) => {
-                                      field.onChange(e)
-                                      const newSocialMedia = [...socialList]
-                                      newSocialMedia[index] = { ...newSocialMedia[index], handle: e.target.value }
-                                      setSocialList(newSocialMedia)
-                                    }}
                                   />
                                 </div>
                               </FormControl>
@@ -359,12 +311,6 @@ export function SocialSection({ active }: SocialSectionProps) {
                                   placeholder="https://t.me/username"
                                   {...field}
                                   className="h-12"
-                                  onChange={(e) => {
-                                    field.onChange(e)
-                                    const newSocialMedia = [...socialList]
-                                    newSocialMedia[index] = { ...newSocialMedia[index], url: e.target.value }
-                                    setSocialList(newSocialMedia)
-                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -392,12 +338,6 @@ export function SocialSection({ active }: SocialSectionProps) {
                                     placeholder="discord-invite-code"
                                     {...field}
                                     className="pl-9 h-12"
-                                    onChange={(e) => {
-                                      field.onChange(e)
-                                      const newSocialMedia = [...socialList]
-                                      newSocialMedia[index] = { ...newSocialMedia[index], inviteCode: e.target.value }
-                                      setSocialList(newSocialMedia)
-                                    }}
                                   />
                                 </div>
                               </FormControl>
@@ -416,12 +356,6 @@ export function SocialSection({ active }: SocialSectionProps) {
                                   placeholder="https://discord.gg/code"
                                   {...field}
                                   className="h-12"
-                                  onChange={(e) => {
-                                    field.onChange(e)
-                                    const newSocialMedia = [...socialList]
-                                    newSocialMedia[index] = { ...newSocialMedia[index], url: e.target.value }
-                                    setSocialList(newSocialMedia)
-                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -449,12 +383,6 @@ export function SocialSection({ active }: SocialSectionProps) {
                                     placeholder="https://example.com/profile"
                                     {...field}
                                     className="pl-9 h-12"
-                                    onChange={(e) => {
-                                      field.onChange(e)
-                                      const newSocialMedia = [...socialList]
-                                      newSocialMedia[index] = { ...newSocialMedia[index], url: e.target.value }
-                                      setSocialList(newSocialMedia)
-                                    }}
                                   />
                                 </div>
                               </FormControl>
@@ -473,12 +401,6 @@ export function SocialSection({ active }: SocialSectionProps) {
                                   placeholder="@username"
                                   {...field}
                                   className="h-12"
-                                  onChange={(e) => {
-                                    field.onChange(e)
-                                    const newSocialMedia = [...socialList]
-                                    newSocialMedia[index] = { ...newSocialMedia[index], handle: e.target.value }
-                                    setSocialList(newSocialMedia)
-                                  }}
                                 />
                               </FormControl>
                               <FormMessage />

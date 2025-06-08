@@ -54,6 +54,7 @@ import { CreateContentDialog } from "./components"
 import { getContentTypeName, getSegmentName, getContentTypeIconClass } from "./utils"
 import { StarRating } from "@/app/components/ui/rating"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { safeReload } from "@/app/utils/safe-reload"
 
 // Definimos los tipos de estado del contenido
 const CONTENT_STATUSES = [
@@ -1717,7 +1718,7 @@ export default function ContentPage() {
           <p className="text-red-500 mb-4">{error}</p>
           <Button 
             variant="outline" 
-            onClick={() => window.location.reload()}
+            onClick={() => safeReload(false, 'Error recovery')}
           >
             Try Again
           </Button>

@@ -30,6 +30,7 @@ import {
   DropdownMenuSeparator
 } from "@/app/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
+import { safeReload } from "@/app/utils/safe-reload"
 
 // Constantes para estados
 const REQUIREMENT_STATUS = {
@@ -832,6 +833,12 @@ export default function RequirementsPage() {
       }
     }
 
+    // Ordenar por prioridad: high, medium, low
+    filtered.sort((a, b) => {
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
+
     setFilteredRequirements(filtered);
   }, [requirements, activeTab, searchQuery, filters]);
 
@@ -1035,7 +1042,7 @@ export default function RequirementsPage() {
                     <h3 className="font-semibold mb-2">Error loading requirements</h3>
                     <p>{visibleError}</p>
                     <button 
-                      onClick={() => window.location.reload()} 
+                      onClick={() => safeReload(false, 'Requirements page error retry')} 
                       className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-md"
                     >
                       Retry

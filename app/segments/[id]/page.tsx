@@ -44,6 +44,7 @@ import { AIActionModal, AIActionIcon } from "@/app/components/ui/ai-action-modal
 import { notFound } from "next/navigation"
 import { buildSegmentsWithAI } from "@/app/services/ai-service"
 import { toast } from "sonner"
+import { safeReload } from "@/app/utils/safe-reload"
 import { SegmentStatusWidget } from "./components/SegmentStatusWidget"
 import { NewAdPlatformType } from "./components/analysisComponents"
 import SegmentDetailsTab from "./components/SegmentDetailsTab"
@@ -840,7 +841,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       if (result.success) {
         toast.success("Segment analyzed successfully!");
         // Reload the page to show the updated segment data
-        window.location.reload();
+        safeReload(false, 'Segment analysis completed');
         return result;
       } else {
         // En lugar de lanzar un error, devolvemos el resultado completo
@@ -925,7 +926,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       if (result.success) {
         toast.success("ICP generated successfully!");
         // Reload the page to show the updated ICP data
-        window.location.reload();
+        safeReload(false, 'ICP generation completed');
         return result;
       } else {
         // En lugar de lanzar un error, devolvemos el resultado completo
@@ -1010,7 +1011,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       if (result.success) {
         toast.success("Topics generated successfully!");
         // Reload the page to show the updated topics data
-        window.location.reload();
+        safeReload(false, 'Topics generation completed');
         return result;
       } else {
         // En lugar de lanzar un error, devolvemos el resultado completo

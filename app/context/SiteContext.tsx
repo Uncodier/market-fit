@@ -113,11 +113,12 @@ export interface SiteSettings {
       status?: "not_configured" | "pending" | "active"
     }
   } | null
-  allowed_domains?: Array<{
-    id?: string
-    domain: string
-    site_id?: string
-  }> | null
+  // allowed_domains is handled in a separate table, not in settings
+  // allowed_domains?: Array<{
+  //   id?: string
+  //   domain: string
+  //   site_id?: string
+  // }> | null
 }
 
 export interface ResourceUrl {
@@ -568,58 +569,62 @@ export function SiteProvider({ children }: SiteProviderProps) {
   useEffect(() => {
     if (!isInitialized || !isMounted || !supabaseRef.current) return
 
-    // Suscribirse a cambios en la tabla sites
-    const sitesSubscription = supabaseRef.current
-      .channel('sites-db-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'sites' 
-      }, (payload: { eventType: string; new: any; old: any }) => {
-        // Recargar sitios solo si hay cambios relevantes
-        if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
-          loadSites()
-        } else if (payload.eventType === 'UPDATE') {
-          // Para actualizaciones, solo recargamos si es el sitio actual
-          const newRecord = payload.new as Site
-          if (currentSite?.id === newRecord.id) {
-            loadSites()
+    // Only subscribe after a delay to avoid immediate triggers during initialization
+    const subscriptionTimer = setTimeout(() => {
+      // Suscribirse a cambios en la tabla sites
+      const sitesSubscription = supabaseRef.current
+        .channel('sites-db-changes')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'sites' 
+        }, (payload: { eventType: string; new: any; old: any }) => {
+          console.log('Sites subscription triggered:', payload.eventType);
+          
+          // Be more conservative about when to reload
+          if (payload.eventType === 'INSERT') {
+            // Only reload if this is a new site for current user
+            console.log('New site created, reloading sites list');
+            loadSites();
+          } else if (payload.eventType === 'DELETE') {
+            // Only reload if the deleted site affects current user
+            console.log('Site deleted, reloading sites list');
+            loadSites();
+          } else if (payload.eventType === 'UPDATE') {
+            // For updates, be very selective - only reload if it's the current site AND it's a significant change
+            const newRecord = payload.new as Site;
+            if (currentSite?.id === newRecord.id) {
+              // Check if it's a significant change that would affect the settings page
+              const oldRecord = payload.old as Site;
+              const significantChanges = newRecord.name !== oldRecord.name || 
+                                       newRecord.url !== oldRecord.url ||
+                                       newRecord.description !== oldRecord.description;
+              
+              if (significantChanges) {
+                console.log('Significant site update detected, reloading');
+                loadSites();
+              }
+            }
           }
+        })
+        .subscribe()
+      
+      // Remove the settings subscription entirely to prevent constant reloading
+      // Settings changes will be handled through the manual save process
+      
+      return () => {
+        try {
+          sitesSubscription.unsubscribe()
+        } catch (error) {
+          console.error("Error unsubscribing from sites channel:", error)
         }
-      })
-      .subscribe()
-    
-    // Suscribirse a cambios en la tabla settings
-    const settingsSubscription = supabaseRef.current
-      .channel('settings-db-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'settings' 
-      }, (payload: { eventType: string; new: any; old: any }) => {
-        // Reload sites when settings change
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
-          // For settings changes, check if it affects the current site
-          if (payload.new && payload.new.site_id === currentSite?.id) {
-            console.log('Settings changed for current site, reloading sites data')
-            loadSites()
-          } else if (payload.old && payload.old.site_id === currentSite?.id) {
-            console.log('Settings deleted for current site, reloading sites data')
-            loadSites()
-          }
-        }
-      })
-      .subscribe()
+      }
+    }, 2000); // Delay subscription by 2 seconds to avoid initialization conflicts
     
     return () => {
-      try {
-        sitesSubscription.unsubscribe()
-        settingsSubscription.unsubscribe()
-      } catch (error) {
-        console.error("Error unsubscribing from channels:", error)
-      }
+      clearTimeout(subscriptionTimer);
     }
-  }, [isInitialized, currentSite?.id, isMounted])
+  }, [isInitialized, isMounted]) // Removed currentSite?.id dependency to prevent re-subscriptions
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = async (site: Site) => {
@@ -719,8 +724,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
                     account_sid: "",
                     status: "not_configured"
                   }
-                }),
-                allowed_domains: parseJsonField(settingsData.allowed_domains, [])
+                })
+                // allowed_domains is handled in a separate table, not in settings
               }
             };
           }
@@ -746,7 +751,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Actualizar un sitio en Supabase
   const handleUpdateSite = async (site: Site) => {
     try {
-      setIsLoading(true);
+      // Don't set isLoading to avoid UI interruptions during save
+      // setIsLoading(true);
       
       // Extract tracking data for clean update
       const trackingData = site.tracking || {
@@ -777,12 +783,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
         await handleUpdateSettings(site.id, site.settings)
       }
       
-      await loadSites() // Reload the sites to get updated data
+      // Don't automatically reload sites to prevent constant recompilation
+      // The UI will handle local state updates as needed
+      // await loadSites() // Reload the sites to get updated data
       
     } catch (err) {
       console.error("Error updating site:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
       throw err
+    } finally {
+      // setIsLoading(false) // Not needed since we don't set it to true
     }
   }
   
@@ -916,7 +926,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
         goals: settings.goals
       });
       
-      setIsLoading(true);
+      // Don't set isLoading to avoid UI interruptions during save
+      // setIsLoading(true);
       const now = new Date().toISOString();
       
       console.log("UPDATE SETTINGS 3: Preparando datos formateados");
@@ -1048,14 +1059,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
         goals: formattedSettings.goals
       });
       
+      // Remove allowed_domains from settings as it belongs to a separate table
+      // Since allowed_domains is no longer part of SiteSettings interface, we just use formattedSettings directly
+      const settingsForDB = formattedSettings;
+      
       // Use upsert operation with site_id as the conflict resolution field
       try {
-        console.log("UPDATE SETTINGS: Raw upsert data:", JSON.stringify(formattedSettings));
-        console.log("UPDATE SETTINGS: Goals before upsert:", formattedSettings.goals);
+        console.log("UPDATE SETTINGS: Raw upsert data:", JSON.stringify(settingsForDB));
+        console.log("UPDATE SETTINGS: Goals before upsert:", settingsForDB.goals);
         
         const { error } = await supabaseRef.current
           .from('settings')
-          .upsert(formattedSettings, { 
+          .upsert(settingsForDB, { 
             onConflict: 'site_id',
             ignoreDuplicates: false
           });
@@ -1088,9 +1103,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       console.log("UPDATE SETTINGS 9: Recargando información");
-      // Reload settings after update
-      await loadSites();
-      console.log("UPDATE SETTINGS 10: Proceso completado con éxito");
+      // Don't automatically reload sites after settings update to prevent constant reloading
+      // The settings page will handle its own state updates
+      // await loadSites();
+      console.log("UPDATE SETTINGS 10: Proceso completado con éxito (sin reload automático)");
       
     } catch (err) {
       console.error("UPDATE SETTINGS ERROR GENERAL:", err);
@@ -1098,7 +1114,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setError(err instanceof Error ? err : new Error(String(err)));
       throw err;
     } finally {
-      setIsLoading(false);
+      // setIsLoading(false); // Not needed since we don't set it to true
     }
   }
 

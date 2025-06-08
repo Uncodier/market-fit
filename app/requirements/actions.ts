@@ -105,11 +105,6 @@ export async function createRequirement(data: RequirementFormValues) {
 
     revalidatePath("/requirements")
     
-    // Asegurar que el cliente recargue para ver los nuevos datos
-    if (typeof window !== 'undefined') {
-      window.location.reload()
-    }
-    
     return { data: requirement }
   } catch (error) {
     return {

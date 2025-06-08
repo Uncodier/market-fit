@@ -134,9 +134,13 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("Gmail")
 
-  // Get the email channel status from form
-  const emailStatus = form.watch("channels.email.status") || "not_configured";
+  // Get the email channel status from form (using getValues instead of watch)
+  const emailStatus = form.getValues("channels.email.status") || "not_configured";
   const hasEmailToken = emailStatus === "synced";
+  
+  // Get enable_chat status (using getValues instead of watch)
+  const enableChat = form.getValues("tracking.enable_chat") || false;
+  const emailEnabled = form.getValues("channels.email.enabled") || false;
   
   // Función para detectar proveedor basado en el email
   const detectProviderFromEmail = (email: string) => {
@@ -572,7 +576,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             )}
           />
           
-          {form.watch("tracking.enable_chat") && (
+          {enableChat && (
             <FormField
               control={form.control}
               name="tracking.chat_accent_color"
@@ -596,7 +600,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             />
           )}
           
-          {form.watch("tracking.enable_chat") && (
+          {enableChat && (
             <FormField
               control={form.control}
               name="tracking.chat_position"
@@ -629,7 +633,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             />
           )}
           
-          {form.watch("tracking.enable_chat") && (
+          {enableChat && (
             <FormField
               control={form.control}
               name="tracking.chat_title"
@@ -651,7 +655,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             />
           )}
           
-          {form.watch("tracking.enable_chat") && (
+          {enableChat && (
             <FormField
               control={form.control}
               name="tracking.welcome_message"
@@ -674,7 +678,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             />
           )}
           
-          {form.watch("tracking.enable_chat") && (
+          {enableChat && (
             <FormField
               control={form.control}
               name="tracking.allow_anonymous_messages"
@@ -831,7 +835,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             )}
           />
 
-          {form.watch("channels.email.enabled") && (
+          {emailEnabled && (
             <div className="space-y-4">
               <FormField
                 control={form.control}
@@ -1077,7 +1081,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             </div>
           )}
         </CardContent>
-        {form.watch("channels.email.enabled") && (
+        {emailEnabled && (
           <ActionFooter>
             <Button 
               type="button"
@@ -1117,7 +1121,6 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
         active={active} 
         form={form} 
         siteId={siteId} 
-        siteName={siteName} 
       />
     </>
   )

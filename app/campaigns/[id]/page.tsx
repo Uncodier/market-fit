@@ -145,7 +145,7 @@ function CampaignStatusBar({ currentStatus, onStatusChange }: CampaignStatusBarP
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => onStatusChange("completed")} 
-              className="bg-success hover:bg-success/90 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-600 dark:hover:bg-green-700"
             >
               Complete Campaign
             </AlertDialogAction>
@@ -588,8 +588,22 @@ export default function TaskDetailPage() {
   };
   
   const handleStatusChange = async (newStatus: "active" | "pending" | "completed") => {
+    if (!campaign?.id || !currentSite?.id) return;
+    
     try {
-      // Make a complete update with all required fields
+      // Update the campaign status directly in the database
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("campaigns")
+        .update({ status: newStatus })
+        .eq("id", campaign.id);
+      
+      if (error) {
+        toast.error(`Failed to update campaign status: ${error.message}`);
+        return;
+      }
+      
+      // Update local state with the new status
       const updatedCampaign = {
         ...campaign,
         status: newStatus

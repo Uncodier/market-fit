@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Button } from '@/app/components/ui/button'
 import { Loader, CheckCircle2, AlertCircle, Users } from '@/app/components/ui/icons'
 import { toast } from 'sonner'
+import { safeReload } from '@/app/utils/safe-reload'
 
 function TeamInvitationContent() {
   const router = useRouter()
@@ -81,7 +82,7 @@ function TeamInvitationContent() {
 
   const handleRetry = () => {
     setProcessingResult(null)
-    window.location.reload()
+    safeReload(false, "Team invitation retry")
   }
 
   const handleGoToDashboard = () => {

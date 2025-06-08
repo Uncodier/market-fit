@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { CheckCircle2, XCircle, AlertCircle, Info } from "../ui/icons"
+import { safeReload } from "../../utils/safe-reload"
 
 export function StripeDebugger() {
   const [debugInfo, setDebugInfo] = useState<{
@@ -82,7 +83,7 @@ export function StripeDebugger() {
   }
 
   const retest = () => {
-    window.location.reload()
+    safeReload(false, "Stripe configuration retest")
   }
 
   return (
