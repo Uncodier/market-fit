@@ -248,6 +248,7 @@ export default function TaskDetailPage() {
             id, 
             title, 
             description, 
+            type,
             priority, 
             status, 
             completion_status, 

@@ -575,6 +575,167 @@ html.safari .safari-icon-fix {
   justify-content: center !important;
 }
 
+/* Nuevos contenedores de inputs con iconos */
+html.safari .safari-input-container {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+html.safari .safari-input-fix {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+html.safari .safari-icon-container {
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10 !important;
+}
+
+html.safari .safari-icon-container svg {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: static !important;
+  margin: 0 auto !important;
+}
+
+/* Fixes específicos para botones con iconos en Safari */
+html.safari button {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+html.safari button svg {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: static !important;
+  flex-shrink: 0 !important;
+}
+
+/* Fix específico para el botón de Google y otros botones con texto e iconos */
+html.safari button .w-4.h-4 {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin-right: 8px !important;
+}
+
+/* Fix específico para inputs con iconos usando InputWithIcon */
+html.safari .safari-input-container .safari-icon-container {
+  pointer-events: none !important;
+}
+
+html.safari .safari-input-container .safari-icon-container[data-clickable="true"] {
+  pointer-events: auto !important;
+}
+
+/* Fix para asegurar que los iconos de Mail no se descoloquen */
+html.safari .safari-input-container input[type="email"] ~ div svg,
+html.safari .safari-input-container input[type="email"] + div svg {
+  width: 16px !important;
+  height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 auto !important;
+}
+
+/* Fix muy específico para el contenedor del ícono de Mail */
+html.safari .safari-input-container .safari-icon-container:first-child {
+  left: 12px !important;
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10 !important;
+}
+
+/* Fix para el IconWrapper dentro del Mail */
+html.safari .safari-input-container .safari-icon-wrapper,
+html.safari .safari-input-container .safari-icon-fix {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Asegurar que el ícono Mail tenga el tamaño correcto */
+html.safari .safari-input-container .safari-icon-container svg[viewBox="0 0 24 24"] {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Fix específico para iconos en formularios de autenticación */
+html.safari form svg {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Fix super específico para el ícono de Mail en inputs de email */
+html.safari input[type="email"] + div .safari-icon-container,
+html.safari input[type="email"] ~ div .safari-icon-container,
+html.safari .safari-input-container input[type="email"] ~ .safari-icon-container:first-child,
+html.safari .safari-input-container .safari-icon-container[data-icon="mail"] {
+  position: absolute !important;
+  left: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+html.safari input[type="email"] + div .safari-icon-container svg,
+html.safari input[type="email"] ~ div .safari-icon-container svg,
+html.safari .safari-input-container input[type="email"] ~ .safari-icon-container:first-child svg,
+html.safari .safari-input-container .safari-icon-container[data-icon="mail"] svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Detección previa de Safari para evitar flash */
+.safari-detection-script {
+  display: none;
+}
+
 html.safari .safari-button-fix {
   display: inline-flex !important;
   align-items: center !important;

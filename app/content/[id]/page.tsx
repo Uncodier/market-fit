@@ -1431,6 +1431,15 @@ export default function ContentDetailPage() {
       return
     }
 
+    // Always save changes before generating content
+    try {
+      await handleSaveChanges()
+    } catch (error) {
+      console.error("Error saving before generation:", error)
+      toast.error("Failed to save changes before generating content")
+      return
+    }
+
     setIsGenerating(true)
     try {
       // Prepare request body
@@ -2025,7 +2034,9 @@ export default function ContentDetailPage() {
                               <SelectItem value="none">No campaign</SelectItem>
                               {campaigns.map(campaign => (
                                 <SelectItem key={campaign.id} value={campaign.id}>
-                                  {campaign.title}
+                                  <div className="truncate max-w-[200px]" title={campaign.title}>
+                                    {campaign.title}
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>

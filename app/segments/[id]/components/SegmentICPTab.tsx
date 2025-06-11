@@ -425,25 +425,31 @@ const ICPSummaryCard = ({
 };
 
 export function SegmentICPTab({ segment, activeSection }: SegmentICPTabProps) {
-  // Check if the segment has ICP data
-  const hasICPData = !!segment?.icp?.profile || Object.keys(segment?.icp || {}).length > 0;
+  // Check if the segment has real ICP data (not just empty object)
+  const hasRealICPData = !!segment?.icp?.profile && 
+    typeof segment.icp.profile === 'object' && 
+    Object.keys(segment.icp.profile).length > 0;
 
-  // Extract the ICP profile data from the segment, or use sample data if none exists
-  const profileData = segment?.icp?.profile || fallbackICPProfile;
-  const icpProfile = profileData as ICPProfileData;
-
-  // Ensure we have a complete profile with all required sections
-  const completeProfile = {
-    ...icpProfile,
-    demographics: icpProfile.demographics || fallbackICPProfile.demographics,
-    psychographics: icpProfile.psychographics || fallbackICPProfile.psychographics,
-    behavioralTraits: icpProfile.behavioralTraits || fallbackICPProfile.behavioralTraits,
-    professionalContext: icpProfile.professionalContext || fallbackICPProfile.professionalContext,
-    customAttributes: icpProfile.customAttributes || fallbackICPProfile.customAttributes
-  };
+  // Only use real data if it exists, otherwise show empty state
+  let completeProfile: ICPProfileData | null = null;
+  
+  if (hasRealICPData) {
+    const icpProfile = segment.icp.profile as ICPProfileData;
+    completeProfile = {
+      ...icpProfile,
+      // Only fallback individual sections if they're missing, not the whole profile
+      demographics: icpProfile.demographics || fallbackICPProfile.demographics,
+      psychographics: icpProfile.psychographics || fallbackICPProfile.psychographics,
+      behavioralTraits: icpProfile.behavioralTraits || fallbackICPProfile.behavioralTraits,
+      professionalContext: icpProfile.professionalContext || fallbackICPProfile.professionalContext,
+      customAttributes: icpProfile.customAttributes || fallbackICPProfile.customAttributes
+    };
+  }
 
   // Render the appropriate tab content based on activeSection
   const renderTabContent = () => {
+    if (!completeProfile) return null;
+    
     switch (activeSection) {
       case "demographics":
         return <DemographicsTab icpProfile={completeProfile} />;
@@ -461,7 +467,7 @@ export function SegmentICPTab({ segment, activeSection }: SegmentICPTabProps) {
   };
 
   // If there's no ICP data, show an empty state
-  if (!hasICPData) {
+  if (!hasRealICPData || !completeProfile) {
     return (
       <EmptyState
         icon={<Users className="h-12 w-12 text-primary/60" />}
@@ -486,9 +492,9 @@ export function SegmentICPTab({ segment, activeSection }: SegmentICPTabProps) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-semibold">
-            {completeProfile.name}
+            {completeProfile?.name || 'ICP Profile'}
           </h2>
-          <p className="text-muted-foreground mt-1">{completeProfile.description}</p>
+          <p className="text-muted-foreground mt-1">{completeProfile?.description || 'No description available'}</p>
         </div>
       </div>
       

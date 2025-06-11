@@ -5,7 +5,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
-import { Plus, X, Filter, ClipboardList } from "@/app/components/ui/icons"
+import { Plus, X, Filter, ClipboardList, Mail, Search, RotateCcw, CheckCircle2 } from "@/app/components/ui/icons"
 import { Button } from "./ui/button"
 import { cn } from "@/lib/utils"
 import { Input } from "./ui/input"
@@ -19,6 +19,8 @@ import { EmptyState } from "@/app/components/ui/empty-state"
 import { JOURNEY_STAGES } from "@/app/leads/types"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { createClient } from "@/utils/supabase/client"
+import { apiClient } from "@/app/services/api-client-service"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
 // Definimos los tipos de estado de los leads
 const LEAD_STATUSES = [
@@ -80,6 +82,8 @@ export function KanbanView({
   const { currentSite } = useSite()
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
   const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(true)
+  const [loadingActions, setLoadingActions] = useState<Record<string, 'research' | 'followup' | null>>({})
+  const [successActions, setSuccessActions] = useState<Record<string, 'research' | 'followup' | null>>({})
   
   // Organizamos los leads por estado
   const getLeadsByStatus = () => {
@@ -205,6 +209,62 @@ export function KanbanView({
     if (stageId === "not_contacted") return "Unaware"
     return JOURNEY_STAGES.find(stage => stage.id === stageId)?.label || "Unknown"
   }
+
+  // Función para llamar API de research
+  const handleLeadResearch = async (leadId: string) => {
+    setLoadingActions(prev => ({ ...prev, [leadId]: 'research' }))
+    
+    try {
+      const response = await apiClient.post('/api/workflow/leadResearch', {
+        lead_id: leadId,
+        user_id: currentSite?.user_id,
+        site_id: currentSite?.id
+      })
+      
+      if (response.success) {
+        setSuccessActions(prev => ({ ...prev, [leadId]: 'research' }))
+        setTimeout(() => {
+          setSuccessActions(prev => ({ ...prev, [leadId]: null }))
+        }, 2000)
+        toast.success("Lead research initiated successfully")
+      } else {
+        throw new Error(response.error?.message || 'Failed to initiate lead research')
+      }
+    } catch (error) {
+      console.error('Error calling lead research API:', error)
+      toast.error("Failed to initiate lead research")
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [leadId]: null }))
+    }
+  }
+
+  // Función para llamar API de follow up
+  const handleLeadFollowUp = async (leadId: string) => {
+    setLoadingActions(prev => ({ ...prev, [leadId]: 'followup' }))
+    
+    try {
+      const response = await apiClient.post('/api/workflow/leadFollowUp', {
+        lead_id: leadId,
+        user_id: currentSite?.user_id,
+        site_id: currentSite?.id
+      })
+      
+      if (response.success) {
+        setSuccessActions(prev => ({ ...prev, [leadId]: 'followup' }))
+        setTimeout(() => {
+          setSuccessActions(prev => ({ ...prev, [leadId]: null }))
+        }, 2000)
+        toast.success("Lead follow-up initiated successfully")
+      } else {
+        throw new Error(response.error?.message || 'Failed to initiate lead follow-up')
+      }
+    } catch (error) {
+      console.error('Error calling lead follow-up API:', error)
+      toast.error("Failed to initiate lead follow-up")
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [leadId]: null }))
+    }
+  }
   
   // Actualizamos los leads cuando cambia la prop leads
   React.useEffect(() => {
@@ -281,7 +341,7 @@ export function KanbanView({
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="inline-flex gap-4 pb-4 min-h-[200px]">
               {LEAD_STATUSES.map(status => (
-                <div key={status.id} className="flex flex-col h-full w-[280px]">
+                <div key={status.id} className="flex flex-col h-full min-w-[260px] w-auto">
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="font-medium text-sm">{status.name}</h3>
                     <Badge variant="outline">{leadsByStatus[status.id].length}</Badge>
@@ -293,13 +353,13 @@ export function KanbanView({
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                         className={cn(
-                          "flex-1 rounded-md p-2 min-h-[500px]",
+                          "flex-1 rounded-md p-2 min-h-[200px]",
                           snapshot.isDraggingOver 
                             ? 'bg-gray-100/80 dark:bg-primary/10' 
                             : 'bg-gray-50/80 dark:bg-[rgb(2,8,23)]/5'
                         )}
                       >
-                        <ScrollArea className="h-[500px] w-full pr-4">
+                        <div className="space-y-3">
                           {leadsByStatus[status.id].map((lead, index) => (
                             <Draggable key={lead.id} draggableId={lead.id} index={index}>
                               {(provided, snapshot) => (
@@ -308,7 +368,7 @@ export function KanbanView({
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   className={cn(
-                                    "mb-3 transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer",
+                                    "transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer",
                                     snapshot.isDragging 
                                       ? 'shadow-lg dark:shadow-black/20 border-primary/20' 
                                       : ''
@@ -329,7 +389,7 @@ export function KanbanView({
                                       )}
                                     </CardTitle>
                                   </CardHeader>
-                                  <CardContent className="p-3 pt-2">
+                                  <CardContent className="p-3 pt-2 pb-0">
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                       {lead.email}
                                     </div>
@@ -338,12 +398,76 @@ export function KanbanView({
                                         {getCompanyName(lead.company)}
                                       </div>
                                     )}
-                                    <div className="flex items-center justify-between mt-2">
+                                    <div className="flex items-center justify-between mt-2 mb-3">
                                       {lead.segment_id && (
                                         <Badge variant="secondary" className="text-xs">
                                           {getSegmentName(lead.segment_id)}
                                         </Badge>
                                       )}
+                                    </div>
+                                    {/* AI Actions Footer */}
+                                    <div className="flex items-center justify-between pt-2 pb-2 border-t border-gray-100 dark:border-gray-800">
+                                      <span className="text-xs text-gray-500 font-medium">AI Actions</span>
+                                      <div className="flex gap-1">
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className={`h-6 w-6 ${successActions[lead.id] === 'research' ? 'bg-green-100 text-green-700' : ''}`}
+                                                disabled={loadingActions[lead.id] === 'research'}
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  e.preventDefault()
+                                                  handleLeadResearch(lead.id)
+                                                }}
+                                              >
+                                                {loadingActions[lead.id] === 'research' ? (
+                                                  <RotateCcw className="h-3 w-3 animate-spin" />
+                                                ) : successActions[lead.id] === 'research' ? (
+                                                  <CheckCircle2 className="h-3 w-3" />
+                                                ) : (
+                                                  <Search className="h-3 w-3" />
+                                                )}
+                                                <span className="sr-only">Lead Research</span>
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Research lead</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className={`h-6 w-6 ${successActions[lead.id] === 'followup' ? 'bg-green-100 text-green-700' : ''}`}
+                                                disabled={loadingActions[lead.id] === 'followup'}
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  e.preventDefault()
+                                                  handleLeadFollowUp(lead.id)
+                                                }}
+                                              >
+                                                {loadingActions[lead.id] === 'followup' ? (
+                                                  <RotateCcw className="h-3 w-3 animate-spin" />
+                                                ) : successActions[lead.id] === 'followup' ? (
+                                                  <CheckCircle2 className="h-3 w-3" />
+                                                ) : (
+                                                  <Mail className="h-3 w-3" />
+                                                )}
+                                                <span className="sr-only">Lead Follow Up</span>
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Intelligent follow-up</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </div>
                                     </div>
                                   </CardContent>
                                 </Card>
@@ -351,7 +475,7 @@ export function KanbanView({
                             </Draggable>
                           ))}
                           {provided.placeholder}
-                        </ScrollArea>
+                        </div>
                       </div>
                     )}
                   </Droppable>

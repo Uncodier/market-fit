@@ -78,6 +78,7 @@ interface Requirement {
   id: string
   title: string
   description: string
+  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completionStatus: CompletionStatusType
@@ -304,7 +305,29 @@ export function KanbanView({
                                     } ${!isDraggable(requirement) ? 'opacity-80' : ''}`}
                                   >
                                     <div className="flex justify-between items-start mb-2">
-                                      <h3 className="font-medium text-sm leading-tight">{requirement.title}</h3>
+                                      <div className="flex-1 min-w-0">
+                                        <h3 className="font-medium text-sm leading-tight truncate">{requirement.title}</h3>
+                                        <span className={`text-xs mt-1 inline-block ${
+                                          requirement.type === 'content' ? 'text-blue-600 dark:text-blue-400' :
+                                          requirement.type === 'design' ? 'text-purple-600 dark:text-purple-400' :
+                                          requirement.type === 'research' ? 'text-indigo-600 dark:text-indigo-400' :
+                                          requirement.type === 'follow_up' ? 'text-yellow-600 dark:text-yellow-400' :
+                                          requirement.type === 'task' ? 'text-green-600 dark:text-green-400' :
+                                          requirement.type === 'develop' ? 'text-red-600 dark:text-red-400' :
+                                          requirement.type === 'analytics' ? 'text-teal-600 dark:text-teal-400' :
+                                          requirement.type === 'testing' ? 'text-orange-600 dark:text-orange-400' :
+                                          requirement.type === 'approval' ? 'text-emerald-600 dark:text-emerald-400' :
+                                          requirement.type === 'coordination' ? 'text-cyan-600 dark:text-cyan-400' :
+                                          requirement.type === 'strategy' ? 'text-violet-600 dark:text-violet-400' :
+                                          requirement.type === 'optimization' ? 'text-lime-600 dark:text-lime-400' :
+                                          requirement.type === 'automation' ? 'text-sky-600 dark:text-sky-400' :
+                                          requirement.type === 'integration' ? 'text-rose-600 dark:text-rose-400' :
+                                          requirement.type === 'planning' ? 'text-amber-600 dark:text-amber-400' :
+                                          'text-pink-600 dark:text-pink-400'
+                                        }`}>
+                                          {requirement.type === 'follow_up' ? 'Follow Up' : requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)}
+                                        </span>
+                                      </div>
                                       <Badge className={`text-xs whitespace-nowrap ml-2 ${PRIORITY_COLORS[requirement.priority]}`}>
                                         {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
                                       </Badge>
@@ -314,22 +337,24 @@ export function KanbanView({
                                       {requirement.description}
                                     </p>
                                     
-                                    <div className="flex flex-wrap gap-2 mt-3">
-                                      {requirement.campaignNames && requirement.campaignNames.length > 0 ? (
-                                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                                          <Target className="h-3 w-3" />
-                                          <span className="truncate max-w-[120px]">{requirement.campaignNames[0]}</span>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-500">
-                                          <Target className="h-3 w-3" />
-                                          <span>No campaign</span>
-                                        </div>
-                                      )}
+                                    <div className="flex justify-between items-center mt-3">
+                                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                                        {requirement.campaignNames && requirement.campaignNames.length > 0 ? (
+                                          <>
+                                            <Target className="h-3 w-3" />
+                                            <span className="truncate max-w-[120px]">{requirement.campaignNames[0]}</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Target className="h-3 w-3" />
+                                            <span className="text-gray-500 dark:text-gray-500">No campaign</span>
+                                          </>
+                                        )}
+                                      </div>
                                       
                                       <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
                                         {requirement.budget ? (
-                                          <span>${requirement.budget.toLocaleString()}</span>
+                                          <span className="font-medium">${requirement.budget.toLocaleString()}</span>
                                         ) : (
                                           <span className="text-gray-500 dark:text-gray-500">No budget</span>
                                         )}
@@ -398,7 +423,29 @@ function KanbanRequirementCard({
       }}
     >
       <div className="flex items-center justify-between">
-        <h4 className="font-medium truncate max-w-[250px]">{requirement.title}</h4>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium truncate">{requirement.title}</h4>
+          <span className={`text-xs mt-1 inline-block ${
+            requirement.type === 'content' ? 'text-blue-600 dark:text-blue-400' :
+            requirement.type === 'design' ? 'text-purple-600 dark:text-purple-400' :
+            requirement.type === 'research' ? 'text-indigo-600 dark:text-indigo-400' :
+            requirement.type === 'follow_up' ? 'text-yellow-600 dark:text-yellow-400' :
+            requirement.type === 'task' ? 'text-green-600 dark:text-green-400' :
+            requirement.type === 'develop' ? 'text-red-600 dark:text-red-400' :
+            requirement.type === 'analytics' ? 'text-teal-600 dark:text-teal-400' :
+            requirement.type === 'testing' ? 'text-orange-600 dark:text-orange-400' :
+            requirement.type === 'approval' ? 'text-emerald-600 dark:text-emerald-400' :
+            requirement.type === 'coordination' ? 'text-cyan-600 dark:text-cyan-400' :
+            requirement.type === 'strategy' ? 'text-violet-600 dark:text-violet-400' :
+            requirement.type === 'optimization' ? 'text-lime-600 dark:text-lime-400' :
+            requirement.type === 'automation' ? 'text-sky-600 dark:text-sky-400' :
+            requirement.type === 'integration' ? 'text-rose-600 dark:text-rose-400' :
+            requirement.type === 'planning' ? 'text-amber-600 dark:text-amber-400' :
+            'text-pink-600 dark:text-pink-400'
+          }`}>
+            {requirement.type === 'follow_up' ? 'Follow Up' : requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)}
+          </span>
+        </div>
         <Badge className={`capitalize ${PRIORITY_COLORS[requirement.priority]}`}>{requirement.priority}</Badge>
       </div>
       
@@ -408,35 +455,37 @@ function KanbanRequirementCard({
       </div>
       
       {/* Badges y metadatos */}
-      <div className="flex flex-wrap items-center gap-2 mt-2">
+      <div className="flex justify-between items-center mt-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="bg-muted/20 text-muted-foreground text-xs">
+            <CalendarIcon className="w-3 h-3 mr-1" />
+            {formatDate(requirement.createdAt)}
+          </Badge>
+          
+          <Badge 
+            variant="outline" 
+            className={`flex items-center gap-1 ${requirement.completionStatus === 'completed' 
+              ? 'bg-green-100/20 text-green-600 dark:text-green-400 border-green-300/30' 
+              : requirement.completionStatus === 'rejected' 
+                ? 'bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30' 
+                : 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30'
+            }`}
+          >
+            {requirement.completionStatus === 'completed' 
+              ? <CheckCircle2 className="w-3 h-3" /> 
+              : requirement.completionStatus === 'rejected' 
+                ? <AlertCircle className="w-3 h-3" /> 
+                : <Clock className="w-3 h-3" />
+            }
+            {getCompletionStatusDisplay(requirement.completionStatus)}
+          </Badge>
+        </div>
+        
         {requirement.budget != null && (
-          <Badge variant="outline" className="bg-muted/20">
+          <Badge variant="outline" className="bg-muted/20 font-medium">
             ${requirement.budget.toLocaleString()}
           </Badge>
         )}
-        
-        <Badge variant="outline" className="bg-muted/20 text-muted-foreground text-xs">
-          <CalendarIcon className="w-3 h-3 mr-1" />
-          {formatDate(requirement.createdAt)}
-        </Badge>
-        
-        <Badge 
-          variant="outline" 
-          className={`flex items-center gap-1 ${requirement.completionStatus === 'completed' 
-            ? 'bg-green-100/20 text-green-600 dark:text-green-400 border-green-300/30' 
-            : requirement.completionStatus === 'rejected' 
-              ? 'bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30' 
-              : 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30'
-          }`}
-        >
-          {requirement.completionStatus === 'completed' 
-            ? <CheckCircle2 className="w-3 h-3" /> 
-            : requirement.completionStatus === 'rejected' 
-              ? <AlertCircle className="w-3 h-3" /> 
-              : <Clock className="w-3 h-3" />
-          }
-          {getCompletionStatusDisplay(requirement.completionStatus)}
-        </Badge>
       </div>
       
       {/* Segment information */}

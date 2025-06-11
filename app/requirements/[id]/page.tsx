@@ -111,6 +111,7 @@ interface Requirement {
   title: string
   description: string
   instructions: string
+  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completionStatus: CompletionStatusType
@@ -251,6 +252,7 @@ function RequirementDetailContent() {
     title: '',
     description: '',
     instructions: '',
+    type: 'task' as "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment",
     priority: 'medium' as 'high' | 'medium' | 'low',
     status: 'backlog' as RequirementStatusType,
     completionStatus: 'pending' as CompletionStatusType,
@@ -366,6 +368,7 @@ function RequirementDetailContent() {
         editForm.title !== (requirement.title || '') ||
         editForm.description !== (requirement.description || '') ||
         editForm.instructions !== (requirement.instructions || '') ||
+        editForm.type !== (requirement.type || 'task') ||
         editForm.priority !== (requirement.priority || 'medium') ||
         editForm.status !== (requirement.status || 'backlog') ||
         editForm.completionStatus !== (requirement.completionStatus || 'pending') ||
@@ -486,6 +489,7 @@ function RequirementDetailContent() {
         title: requirement.title,
         description: requirement.description || "",
         instructions: requirement.instructions || "",
+        type: requirement.type || "task",
         priority: requirement.priority || "medium",
         status: requirement.status || "backlog",
         completionStatus: requirement.completion_status || "pending",
@@ -540,6 +544,7 @@ function RequirementDetailContent() {
         title: formattedRequirement.title,
         description: formattedRequirement.description,
         instructions: formattedRequirement.instructions,
+        type: formattedRequirement.type,
         priority: formattedRequirement.priority,
         status: formattedRequirement.status,
         completionStatus: formattedRequirement.completionStatus,
@@ -749,6 +754,7 @@ function RequirementDetailContent() {
         id: requirement.id,
         title: editForm.title,
         description: editForm.description,
+        type: editForm.type,
         priority: editForm.priority,
         status: editForm.status,
         completionStatus: editForm.completionStatus,
@@ -1004,6 +1010,46 @@ function RequirementDetailContent() {
                     className="h-11"
                     placeholder="Enter budget amount"
                   />
+                </div>
+                
+                <div className="space-y-2.5">
+                  <Label className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    Type
+                  </Label>
+                  <Select
+                    value={editForm.type}
+                    onValueChange={(value: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment") => {
+                      setEditForm({...editForm, type: value})
+                    }}
+                  >
+                    <SelectTrigger className="h-11 w-full">
+                      <SelectValue placeholder="Select type">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4" />
+                          {editForm.type === 'follow_up' ? 'Follow Up' : editForm.type.charAt(0).toUpperCase() + editForm.type.slice(1)}
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="content">Content</SelectItem>
+                      <SelectItem value="design">Design</SelectItem>
+                      <SelectItem value="research">Research</SelectItem>
+                      <SelectItem value="follow_up">Follow Up</SelectItem>
+                      <SelectItem value="task">Task</SelectItem>
+                      <SelectItem value="develop">Develop</SelectItem>
+                      <SelectItem value="analytics">Analytics</SelectItem>
+                      <SelectItem value="testing">Testing</SelectItem>
+                      <SelectItem value="approval">Approval</SelectItem>
+                      <SelectItem value="coordination">Coordination</SelectItem>
+                      <SelectItem value="strategy">Strategy</SelectItem>
+                      <SelectItem value="optimization">Optimization</SelectItem>
+                      <SelectItem value="automation">Automation</SelectItem>
+                      <SelectItem value="integration">Integration</SelectItem>
+                      <SelectItem value="planning">Planning</SelectItem>
+                      <SelectItem value="payment">Payment</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="space-y-2.5">

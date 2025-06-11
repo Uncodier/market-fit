@@ -55,6 +55,7 @@ interface Requirement {
   id: string
   title: string
   description: string
+  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completionStatus: CompletionStatusType
@@ -72,6 +73,7 @@ interface RequirementData {
   id: string
   title: string
   description: string
+  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completion_status: CompletionStatusType
@@ -205,7 +207,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
     >
       <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
         <CardContent className="flex-1 p-4 w-full overflow-x-auto">
-          <div className="flex items-start gap-4 min-w-[1000px]">
+          <div className="flex items-start gap-4 min-w-[1200px]">
             <div className="w-[500px] min-w-[500px] pr-2 flex-grow">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
@@ -264,6 +266,31 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                 )}
               </div>
               <p className="text-sm text-muted-foreground/80 line-clamp-1">{requirement.description}</p>
+            </div>
+            <div className="w-[100px] min-w-[100px] flex-shrink-0">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Type</p>
+              <div className="flex justify-center">
+                <Badge variant="outline" className={`text-xs ${
+                  requirement.type === 'content' ? 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30' :
+                  requirement.type === 'design' ? 'bg-purple-100/20 text-purple-600 dark:text-purple-400 border-purple-300/30' :
+                  requirement.type === 'research' ? 'bg-indigo-100/20 text-indigo-600 dark:text-indigo-400 border-indigo-300/30' :
+                  requirement.type === 'follow_up' ? 'bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 border-yellow-300/30' :
+                  requirement.type === 'task' ? 'bg-green-100/20 text-green-600 dark:text-green-400 border-green-300/30' :
+                  requirement.type === 'develop' ? 'bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30' :
+                  requirement.type === 'analytics' ? 'bg-teal-100/20 text-teal-600 dark:text-teal-400 border-teal-300/30' :
+                  requirement.type === 'testing' ? 'bg-orange-100/20 text-orange-600 dark:text-orange-400 border-orange-300/30' :
+                  requirement.type === 'approval' ? 'bg-emerald-100/20 text-emerald-600 dark:text-emerald-400 border-emerald-300/30' :
+                  requirement.type === 'coordination' ? 'bg-cyan-100/20 text-cyan-600 dark:text-cyan-400 border-cyan-300/30' :
+                  requirement.type === 'strategy' ? 'bg-violet-100/20 text-violet-600 dark:text-violet-400 border-violet-300/30' :
+                  requirement.type === 'optimization' ? 'bg-lime-100/20 text-lime-600 dark:text-lime-400 border-lime-300/30' :
+                  requirement.type === 'automation' ? 'bg-sky-100/20 text-sky-600 dark:text-sky-400 border-sky-300/30' :
+                  requirement.type === 'integration' ? 'bg-rose-100/20 text-rose-600 dark:text-rose-400 border-rose-300/30' :
+                  requirement.type === 'planning' ? 'bg-amber-100/20 text-amber-600 dark:text-amber-400 border-amber-300/30' :
+                  'bg-pink-100/20 text-pink-600 dark:text-pink-400 border-pink-300/30'
+                }`}>
+                  {requirement.type === 'follow_up' ? 'Follow Up' : requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)}
+                </Badge>
+              </div>
             </div>
             <div className="w-[100px] min-w-[100px] flex-shrink-0">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Status</p>
@@ -628,6 +655,7 @@ export default function RequirementsPage() {
             id: req.id,
             title: req.title,
             description: req.description || "",
+            type: req.type || "task",
             priority: req.priority || "medium",
             status: req.status || "backlog",
             completionStatus: req.completion_status || "pending",
@@ -1032,9 +1060,9 @@ export default function RequirementsPage() {
             {/* Rendering for all tabs */}
             {["all", "pending", "completed", "rejected"].map((tab) => (
               <TabsContent key={tab} value={tab} className="space-y-4 min-h-[300px]">
-                {/* Case 1: No site selected */}
-                {!currentSite ? (
-                  <NoSiteSelected />
+                {/* Case 1: Loading or initial state - prioritize loading over no site selected */}
+                {isLoading || (!currentSite && !visibleError) ? (
+                  <LoadingState />
                 ) : 
                 /* Case 2: Visible error */
                 visibleError ? (
@@ -1049,15 +1077,19 @@ export default function RequirementsPage() {
                     </button>
                   </div>
                 ) : 
-                /* Case 3: Loading */
-                isLoading ? (
-                  <LoadingState />
+                /* Case 3: No site selected (only show this when we're sure there's no site and not loading) */
+                !currentSite ? (
+                  <NoSiteSelected />
                 ) : 
-                /* Case 4: No filtered requirements to show */
+                /* Case 4: Still processing data - show loading if we have requirements but no filtered results yet */
+                (requirements.length > 0 && filteredRequirements.length === 0) ? (
+                  <LoadingState />
+                ) :
+                /* Case 5: No filtered requirements to show */
                 filteredRequirements.length === 0 ? (
                   <EmptyResults />
                 ) : 
-                /* Case 5: Show requirements - List or Kanban view */
+                /* Case 6: Show requirements - List or Kanban view */
                 viewMode === "table" ? (
                   <div className="space-y-2">
                     {filteredRequirements.map((requirement) => (

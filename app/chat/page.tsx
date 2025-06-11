@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState, Suspense } from "react"
+import React, { useEffect, useRef, useState, Suspense, useCallback, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { agents } from "@/app/data/mock-agents"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
@@ -102,8 +102,8 @@ function ChatPageContent() {
     }
   }, [chatMessages, isAgentResponding])
 
-  // Wrapper function for the form submission
-  const handleSendMessageSubmit = async (e: React.FormEvent) => {
+  // Wrapper function for the form submission - optimized with useCallback
+  const handleSendMessageSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (message.trim()) {
       await handleSendMessage(message)
@@ -114,10 +114,10 @@ function ChatPageContent() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
       }, 100)
     }
-  }
+  }, [message, handleSendMessage, setMessage])
 
-  // Handle keyboard shortcuts for sending messages
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // Handle keyboard shortcuts for sending messages - optimized with useCallback
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Send with Enter (without Shift)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -130,7 +130,7 @@ function ChatPageContent() {
     if (e.key === 'Enter' && e.shiftKey && !e.ctrlKey) {
       // Don't prevent default to allow line break
     }
-  }
+  }, [message, isLoading, handleSendMessageSubmit])
 
   // Load agent data when agentId changes
   useEffect(() => {
@@ -256,13 +256,13 @@ function ChatPageContent() {
     }
   }, [agentId, agentName, currentAgent])
 
-  // Function to toggle chat list visibility
-  const toggleChatList = () => {
+  // Function to toggle chat list visibility - memoized for performance
+  const toggleChatList = useCallback(() => {
     setIsChatListCollapsed(!isChatListCollapsed)
-  }
+  }, [isChatListCollapsed])
 
-  // Function to select a conversation
-  const handleSelectConversation = (selectedConversationId: string, selectedAgentName: string, selectedAgentId: string) => {
+  // Function to select a conversation - memoized for performance
+  const handleSelectConversation = useCallback((selectedConversationId: string, selectedAgentName: string, selectedAgentId: string) => {
     // First clear messages to avoid showing previous conversation data
     if (conversationId !== selectedConversationId) {
       setChatMessages([]);
@@ -274,7 +274,7 @@ function ChatPageContent() {
     
     // We need to replace the window.location.search to ensure the component picks up the new parameters
     router.replace(newUrl);
-  }
+  }, [conversationId, setChatMessages, router])
 
   // Fetch agent details when conversationId changes
   useEffect(() => {
@@ -404,6 +404,11 @@ function ChatPageContent() {
     }
   }, [conversationId, agentId, setChatMessages, setIsAgentOnlyConversation])
 
+  // Memoize conversation validation to avoid unnecessary calculations
+  const hasSelectedConversation = useMemo(() => {
+    return conversationId && conversationId !== "" && !conversationId.startsWith("new-")
+  }, [conversationId])
+
   // Sobrescribe el estado de isAgentResponding desde el tracker de API
   useEffect(() => {
     // Sincronizar estado de animación de carga según peticiones activas
@@ -469,14 +474,16 @@ function ChatPageContent() {
         />
         
         {/* Message input area */}
-        <ChatInput 
-          message={message}
-          setMessage={setMessage}
-          isLoading={isLoading}
-          handleSendMessage={handleSendMessageSubmit}
-          handleKeyDown={handleKeyDown}
-          conversationId={conversationId}
-        />
+        {hasSelectedConversation && (
+          <ChatInput 
+            message={message}
+            setMessage={setMessage}
+            isLoading={isLoading}
+            handleSendMessage={handleSendMessageSubmit}
+            handleKeyDown={handleKeyDown}
+            conversationId={conversationId}
+          />
+        )}
       </div>
     </div>
   )

@@ -527,7 +527,6 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
   
   // Estados para controlar las solicitudes en proceso
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [isGeneratingICP, setIsGeneratingICP] = useState(false)
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false)
   
   // AI Action Modal states
@@ -578,72 +577,18 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
         }
         
         console.log('Segment found:', result.segment.name)
+        console.log('Segment ICP data:', result.segment.icp)
+        console.log('Segment analysis data:', result.segment.analysis)
         
-        // Agregar la dummy data del ICP profile para mostrar la UI
+        // Solo crear estructura ICP vacía si no existe, pero no sobreescribir datos existentes
         if (!result.segment.icp) {
-          result.segment.icp = {} as any;
+          result.segment.icp = {};
         }
         
-        // Asegurarse de que estimated_value esté definido
-        (result.segment as any).estimated_value = (result.segment as any).estimated_value || null;
-        
-        // Agregar el perfil ICP
-        (result.segment.icp as any).profile = {
-          id: "icp_47f14b99-cfe9-4269-aad2-6ae50161de99_m86ln584",
-          name: "Business Leaders and Executives",
-          description: "Executives and business leaders seeking AI-powered solutions to optimize business management and operations",
-          demographics: {
-            ageRange: {
-              primary: "35-50",
-              secondary: "30-55"
-            },
-            gender: {
-              distribution: "Balanced with slight male majority"
-            },
-            locations: [
-              {
-                type: "region",
-                name: "North America",
-                relevance: "High"
-              },
-              {
-                type: "region",
-                name: "Europe",
-                relevance: "High"
-              },
-              {
-                type: "region",
-                name: "Latin America",
-                relevance: "Medium"
-              }
-            ],
-            education: {
-              primary: "Master's Degree",
-              secondary: [
-                "Bachelor's Degree",
-                "Doctorate"
-              ]
-            },
-            income: {
-              currency: "USD",
-              level: "High",
-              range: "100,000-250,000 annually"
-            },
-            languages: [
-              {
-                name: "English",
-                proficiency: "Native",
-                relevance: "Very high"
-              },
-              {
-                name: "Spanish",
-                proficiency: "Intermediate-advanced",
-                relevance: "High"
-              }
-            ]
-          },
-          // ... resto del perfil ICP ...
-        };
+        // Asegurar que estimated_value esté definido
+        if (result.segment.estimated_value === undefined) {
+          result.segment.estimated_value = null;
+        }
         
         setSegment(result.segment as Segment)
         setIsActive(result.segment.is_active)
@@ -676,7 +621,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
             id: segment.id,
             activeTab,
             isAnalyzing,
-            isGeneratingICP,
+            isGeneratingTopics,
             openAIModal
           }
         }
@@ -702,7 +647,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
         }
       }))
     }
-  }, [segment, activeTab, isAnalyzing, isGeneratingICP])
+  }, [segment, activeTab, isAnalyzing, isGeneratingTopics])
 
   // Listen for tab changes to update the breadcrumb
   useEffect(() => {
@@ -712,13 +657,13 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
         detail: {
           activeTab,
           isAnalyzing,
-          isGeneratingICP
+          isGeneratingTopics
         }
       })
       
       window.dispatchEvent(event)
     }
-  }, [activeTab, isAnalyzing, isGeneratingICP, segment])
+  }, [activeTab, isAnalyzing, isGeneratingTopics, segment])
 
   const toggleSegmentStatus = async () => {
     if (!segment) {
@@ -777,7 +722,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
   }
 
   // AI action handlers
-  const handleAnalyzeWithAI = async (): Promise<any> => {
+  const handleAnalyzeSegmentWithAI = async (): Promise<any> => {
     // Evitar múltiples solicitudes simultáneas
     if (isAnalyzing) {
       toast.error("Analysis is already in progress. Please wait.");
@@ -795,12 +740,12 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       };
     }
 
-    // Verificar que el segmento tiene una URL
-    if (!segment.url) {
-      toast.error("This segment doesn't have a URL. Please add a URL to the segment before analyzing.");
+    // Verificar que el sitio tiene una URL
+    if (!currentSite.url) {
+      toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
       return {
         success: false,
-        error: "Segment URL is missing"
+        error: "Site URL is missing"
       };
     }
 
@@ -825,16 +770,16 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
         user_id: user.id,
         site_id: currentSite.id,
         mode: "analyze",
-        url: segment.url,
+        url: currentSite.url,
         segmentCount: 3
       });
 
-      // Call the AI service to analyze the segment
+      // Call the AI service to analyze the segment (using general workflow)
       const result = await buildSegmentsWithAI({
         user_id: user.id,
         site_id: currentSite.id,
         mode: "analyze",
-        url: segment.url,
+        url: currentSite.url,
         segmentCount: 3
       });
 
@@ -860,91 +805,6 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
     }
   };
 
-  const handleGenerateICP = async (): Promise<any> => {
-    // Evitar múltiples solicitudes simultáneas
-    if (isGeneratingICP) {
-      toast.error("ICP generation is already in progress. Please wait.");
-      return {
-        success: false,
-        error: "ICP generation is already in progress"
-      };
-    }
-
-    if (!segment || !currentSite) {
-      toast.error("No segment or site selected");
-      return {
-        success: false,
-        error: "No segment or site selected"
-      };
-    }
-
-    // Verificar que el segmento tiene una URL
-    if (!segment.url) {
-      toast.error("This segment doesn't have a URL. Please add a URL to the segment before generating ICP.");
-      return {
-        success: false,
-        error: "Segment URL is missing"
-      };
-    }
-
-    try {
-      // Marcar como en proceso
-      setIsGeneratingICP(true);
-
-      // Get the current user ID from Supabase
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("You must be logged in to use this feature");
-        setIsGeneratingICP(false);
-        return {
-          success: false,
-          error: "Authentication required"
-        };
-      }
-
-      console.log("Generating ICP with params:", {
-        user_id: user.id,
-        site_id: currentSite.id,
-        mode: "analyze",
-        analysisType: "icp",
-        url: segment.url,
-        segmentCount: 3
-      });
-
-      // Call the AI service to generate ICP
-      const result = await buildSegmentsWithAI({
-        user_id: user.id,
-        site_id: currentSite.id,
-        mode: "analyze",
-        analysisType: "icp",
-        url: segment.url,
-        segmentCount: 3
-      });
-
-      if (result.success) {
-        toast.success("ICP generated successfully!");
-        // Reload the page to show the updated ICP data
-        safeReload(false, 'ICP generation completed');
-        return result;
-      } else {
-        // En lugar de lanzar un error, devolvemos el resultado completo
-        return result;
-      }
-    } catch (error) {
-      console.error("Error generating ICP with AI:", error);
-      // Devolvemos un objeto con formato similar al de la respuesta del servicio
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred"
-      };
-    } finally {
-      // Siempre marcar como no en proceso al finalizar
-      setIsGeneratingICP(false);
-    }
-  };
-
   const handleGetTopics = async (): Promise<any> => {
     // Evitar múltiples solicitudes simultáneas
     if (isGeneratingTopics) {
@@ -963,12 +823,12 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       };
     }
 
-    // Verificar que el segmento tiene una URL
-    if (!segment.url) {
-      toast.error("This segment doesn't have a URL. Please add a URL to the segment before generating topics.");
+    // Verificar que el sitio tiene una URL
+    if (!currentSite.url) {
+      toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
       return {
         success: false,
-        error: "Segment URL is missing"
+        error: "Site URL is missing"
       };
     }
 
@@ -994,7 +854,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
         site_id: currentSite.id,
         mode: "analyze",
         analysisType: "topics",
-        url: segment.url,
+        url: currentSite.url,
         segmentCount: 3
       });
 
@@ -1004,7 +864,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
         site_id: currentSite.id,
         mode: "analyze",
         analysisType: "topics",
-        url: segment.url,
+        url: currentSite.url,
         segmentCount: 3
       });
 
@@ -1033,31 +893,22 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
   // Open AI modal with specific configuration
   const openAIModal = (type: 'analysis' | 'icp') => {
     // Verificar si ya hay una operación en curso
-    if (isAnalyzing || isGeneratingICP || isGeneratingTopics) {
+    if (isAnalyzing || isGeneratingTopics) {
       toast.error("Another operation is already in progress. Please wait.");
       return;
     }
     
-    // Configuraciones para cada tipo de modal
-    const configs = {
-      analysis: {
-        title: "Analyze Segment with AI",
-        description: "Our AI will analyze this segment to identify key characteristics, behaviors, and preferences of your audience. This helps you better understand your target market.",
-        actionLabel: "Start Analysis",
-        action: handleAnalyzeWithAI,
-        estimatedTime: 60 // 1 minute
-      },
-      icp: {
-        title: "Generate Ideal Customer Profile",
-        description: "Our AI will create a detailed Ideal Customer Profile (ICP) for this segment, including demographics, pain points, goals, and buying behaviors. This helps you tailor your marketing and product strategies.",
-        actionLabel: "Generate ICP",
-        action: handleGenerateICP,
-        estimatedTime: 90 // 1.5 minutes
-      }
+    // Configuración unificada para análisis con AI
+    const config = {
+      title: "Analyze Segment with AI",
+      description: "Our AI will analyze this segment to identify key characteristics, behaviors, preferences, and create a detailed Ideal Customer Profile. This helps you better understand your target market and tailor your marketing strategies.",
+      actionLabel: "Start Analysis",
+      action: handleAnalyzeSegmentWithAI,
+      estimatedTime: 60 // 1 minute
     };
 
-    // Establecer la configuración según el tipo seleccionado
-    setAIModalConfig(configs[type]);
+    // Establecer la configuración
+    setAIModalConfig(config);
     
     // Abrir el modal después de configurarlo
     setTimeout(() => {

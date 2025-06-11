@@ -1,0 +1,246 @@
+{
+  "profile": {
+    "id": "icp_9cf1a1e2-152c-4518-a4f1-f69ff309ed73_jp6ngaiv5",
+    "name": "Enhanced ICP Profile for VC-Backed Startup Portfolio Companies",
+    "description": "Comprehensive ICP analysis based on segment data and market insights",
+    "demographics": {
+      "gender": {
+        "distribution": "Predominantly male (60%), female (40%), but increasing diversity with new accelerator cohorts."
+      },
+      "income": {
+        "level": "Medium-High (founders/execs); startup team salaries variable by funding stage",
+        "range": "$60,000 - $200,000+ USD (personal); startup budgets $100K - $1M+ for tech/ops",
+        "currency": "USD"
+      },
+      "ageRange": {
+        "primary": "26-36",
+        "secondary": "24-25, 37-40"
+      },
+      "education": {
+        "primary": "Bachelor's degree (Tech, Business, Design)",
+        "secondary": [
+          "Master's degree (less common)",
+          "Accelerator/fellowship program"
+        ]
+      },
+      "languages": [
+        {
+          "name": "English/Spanish/Portuguese",
+          "relevance": "Very high",
+          "proficiency": "Native/Advanced"
+        }
+      ],
+      "locations": [
+        {
+          "name": "US, Mexico, UK, Brazil, Spain, Canada (startup/VC hubs)",
+          "type": "region",
+          "relevance": "High"
+        }
+      ]
+    },
+    "psychographics": {
+      "goals": [
+        {
+          "name": "Rapid market entry and scalable traction",
+          "priority": "High",
+          "description": "Deliver KPIs for VC milestones and follow-on funding."
+        }
+      ],
+      "values": [
+        {
+          "name": "Speed & experimentation",
+          "importance": "High",
+          "description": "Embrace MVP launches, fast pivots, and iterative product-market fit."
+        },
+        {
+          "name": "Transparency",
+          "importance": "Medium",
+          "description": "Share learnings, failures, and wins with investors/peers."
+        }
+      ],
+      "interests": [
+        "Startups",
+        "Venture capital",
+        "Accelerator programs",
+        "Growth hacking",
+        "AI-driven solutions"
+      ],
+      "challenges": [
+        {
+          "name": "Achieving growth targets under time/resource constraints",
+          "severity": "High",
+          "description": "Under pressure to deliver ROI and meet investor expectations."
+        },
+        {
+          "name": "Hiring for growth",
+          "severity": "Medium",
+          "description": "Talent shortages in engineering, product, and growth roles."
+        }
+      ],
+      "motivations": [
+        {
+          "name": "Securing next funding round",
+          "strength": "High",
+          "description": "Driven by milestone-based funding and demo day results."
+        },
+        {
+          "name": "Recognition as an innovator",
+          "strength": "Medium",
+          "description": "Desire for press, awards, and peer validation."
+        }
+      ]
+    },
+    "behavioralTraits": {
+      "onlineBehavior": {
+        "deviceUsage": {
+          "primary": "Desktop",
+          "secondary": "Mobile",
+          "tertiary": "Tablet"
+        },
+        "browsingHabits": {
+          "peakHours": [
+            "Weekdays 8am-12pm (team sprints, research)",
+            "Weekdays 7pm-10pm (founder networking, investor updates)"
+          ],
+          "contentPreferences": [
+            "Accelerator demo day replays",
+            "Startup success/failure postmortems",
+            "Growth playbooks",
+            "AI tool reviews"
+          ]
+        },
+        "socialPlatforms": [
+          {
+            "name": "LinkedIn",
+            "relevance": "Very high",
+            "usageFrequency": "Daily",
+            "engagementLevel": "High"
+          },
+          {
+            "name": "Twitter/X",
+            "relevance": "High",
+            "usageFrequency": "Daily",
+            "engagementLevel": "Medium"
+          },
+          {
+            "name": "Slack/Discord (private startup groups)",
+            "relevance": "Medium",
+            "usageFrequency": "Weekly",
+            "engagementLevel": "High"
+          }
+        ]
+      },
+      "contentConsumption": {
+        "researchHabits": {
+          "depth": "Medium",
+          "sources": [
+            "Accelerator/founder community posts",
+            "YouTube pitch videos",
+            "VC firm blogs",
+            "Growth hacking newsletters"
+          ],
+          "timeSpent": "1 week for tool pilots, 2-4 weeks for major platform decisions"
+        },
+        "preferredFormats": [
+          {
+            "type": "Short guides/checklists",
+            "preference": "High",
+            "idealLength": "1-2 pages"
+          },
+          {
+            "type": "Video demos",
+            "preference": "Medium",
+            "idealDuration": "5-15 min"
+          }
+        ]
+      },
+      "purchasingBehavior": {
+        "priceRange": {
+          "oneTime": {
+            "optimal": "$1,000 - $10,000",
+            "preference": "$500 - $20,000"
+          },
+          "subscription": {
+            "annual": {
+              "optimal": "$3,000 - $25,000",
+              "preference": "$2,000 - $50,000"
+            },
+            "monthly": {
+              "optimal": "$150 - $1,500",
+              "preference": "$80 - $2,000"
+            }
+          }
+        },
+        "decisionFactors": [
+          {
+            "name": "Pilot/freemium availability",
+            "importance": "High",
+            "description": "Ability to test before committing is critical."
+          },
+          {
+            "name": "Performance-based pricing",
+            "importance": "High",
+            "description": "Aligns risk/reward and fits budget-conscious startups."
+          }
+        ],
+        "purchaseFrequency": {
+          "hardware": "Rarely (lean, remote-first teams)",
+          "software": "Monthly/quarterly (as growth needs evolve)",
+          "education": "Monthly (accelerator workshops, webinars)"
+        }
+      }
+    },
+    "customAttributes": [
+      {
+        "name": "Accelerator/VC network involvement",
+        "value": "Active",
+        "description": "Frequent engagement in demo days, mentorship, and peer knowledge sharing."
+      }
+    ],
+    "professionalContext": {
+      "roles": [
+        {
+          "title": "Founder / Growth Lead / COO / Portfolio Manager",
+          "relevance": "Very high"
+        }
+      ],
+      "tools": {
+        "current": [
+          "Airtable",
+          "Notion",
+          "HubSpot",
+          "Zapier"
+        ],
+        "desired": [
+          "AI-powered growth automation",
+          "Performance-based SaaS",
+          "API-first ops platforms"
+        ]
+      },
+      "industries": [
+        "Startups",
+        "VC/PE-backed tech",
+        "Internet",
+        "Software"
+      ],
+      "painPoints": [
+        {
+          "name": "Lack of time for onboarding new tools",
+          "severity": "Medium",
+          "description": "Need for rapid deployment and self-serve onboarding."
+        }
+      ],
+      "companySize": {
+        "primary": "1-10",
+        "secondary": [
+          "11-50",
+          "51-200"
+        ]
+      },
+      "decisionMakingPower": {
+        "level": "High",
+        "description": "Founders/team leads have rapid decision cycles and authority."
+      }
+    }
+  }
+} 

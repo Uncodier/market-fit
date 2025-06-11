@@ -475,14 +475,14 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
             </div>
             
             <div className="mt-6 bg-muted/30 p-3 rounded-md">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-medium mb-1">Primary Age Range</h4>
-                  <p className="text-md font-semibold">{demographics.ageRange?.primary || 'N/A'}</p>
+              <div>
+                <h4 className="text-sm font-medium mb-1">Primary Age Range</h4>
+                <p className="text-md font-semibold mb-3">{demographics.ageRange?.primary || 'N/A'}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="indigo">
+                    {maxAge - minAge} years span
+                  </Badge>
                 </div>
-                <Badge variant="indigo">
-                  {maxAge - minAge} years span
-                </Badge>
               </div>
             </div>
           </div>
@@ -693,20 +693,18 @@ export const DemographicsTab = ({ icpProfile }: DemographicsTabProps) => {
             
             {/* Current Education Level */}
             <div className="mt-6 bg-muted/30 p-3 rounded-md">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-medium mb-1">Current Level</h4>
-                  <p className="text-md font-semibold">{demographics.education?.primary || 'N/A'}</p>
-                </div>
-                <div className="flex flex-col items-end">
-                  <Badge variant="indigo" className="mb-1">Level {educationLevel}</Badge>
-                  <span className="text-xs text-muted-foreground">
+              <div>
+                <h4 className="text-sm font-medium mb-1">Current Level</h4>
+                <p className="text-md font-semibold mb-3">{demographics.education?.primary || 'N/A'}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="indigo">Level {educationLevel}</Badge>
+                  <Badge variant="outline" className="text-xs">
                     {educationLevel === 1 ? 'Basic' : 
                      educationLevel === 2 ? 'Intermediate' : 
                      educationLevel === 3 ? 'Advanced' : 
                      educationLevel === 4 ? 'Expert' : 
                      educationLevel === 5 ? 'Specialized' : 'Unknown'}
-                  </span>
+                  </Badge>
                 </div>
               </div>
             </div>

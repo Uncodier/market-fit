@@ -34,6 +34,8 @@ import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
 import { createClient } from "@/utils/supabase/client"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
 import { safeReload } from "@/app/utils/safe-reload"
+import { apiClient } from "@/app/services/api-client-service"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
 // Cache de etapas para cada lead
 const leadJourneyStagesCache: Record<string, string> = {};
@@ -81,6 +83,8 @@ function LeadsTable({
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
   const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(true)
+  const [loadingActions, setLoadingActions] = useState<Record<string, 'research' | 'followup' | null>>({})
+  const [successActions, setSuccessActions] = useState<Record<string, 'research' | 'followup' | null>>({})
   
   // Cargar etapas del journey para cada lead
   useEffect(() => {
@@ -166,6 +170,62 @@ function LeadsTable({
     fetchJourneyStagesForLeads()
   }, [leads, currentSite?.id])
   
+  // Función para llamar API de research
+  const handleLeadResearch = async (leadId: string) => {
+    setLoadingActions(prev => ({ ...prev, [leadId]: 'research' }))
+    
+    try {
+      const response = await apiClient.post('/api/workflow/leadResearch', {
+        lead_id: leadId,
+        user_id: currentSite?.user_id,
+        site_id: currentSite?.id
+      })
+      
+      if (response.success) {
+        setSuccessActions(prev => ({ ...prev, [leadId]: 'research' }))
+        setTimeout(() => {
+          setSuccessActions(prev => ({ ...prev, [leadId]: null }))
+        }, 2000)
+        toast.success("Lead research initiated successfully")
+      } else {
+        throw new Error(response.error?.message || 'Failed to initiate lead research')
+      }
+    } catch (error) {
+      console.error('Error calling lead research API:', error)
+      toast.error("Failed to initiate lead research")
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [leadId]: null }))
+    }
+  }
+
+  // Función para llamar API de follow up
+  const handleLeadFollowUp = async (leadId: string) => {
+    setLoadingActions(prev => ({ ...prev, [leadId]: 'followup' }))
+    
+    try {
+      const response = await apiClient.post('/api/workflow/leadFollowUp', {
+        lead_id: leadId,
+        user_id: currentSite?.user_id,
+        site_id: currentSite?.id
+      })
+      
+      if (response.success) {
+        setSuccessActions(prev => ({ ...prev, [leadId]: 'followup' }))
+        setTimeout(() => {
+          setSuccessActions(prev => ({ ...prev, [leadId]: null }))
+        }, 2000)
+        toast.success("Lead follow-up initiated successfully")
+      } else {
+        throw new Error(response.error?.message || 'Failed to initiate lead follow-up')
+      }
+    } catch (error) {
+      console.error('Error calling lead follow-up API:', error)
+      toast.error("Failed to initiate lead follow-up")
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [leadId]: null }))
+    }
+  }
+  
   // Debug logs
   console.log('Leads:', leads)
   console.log('Segments:', segments)
@@ -204,13 +264,12 @@ function LeadsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[250px]">Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Segment</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Journey Stage</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="w-[200px]">Name</TableHead>
+            <TableHead className="w-[150px]">Company</TableHead>
+            <TableHead className="w-[120px]">Segment</TableHead>
+            <TableHead className="w-[100px]">Status</TableHead>
+            <TableHead className="w-[120px]">Journey Stage</TableHead>
+            <TableHead className="text-right w-[100px]">AI Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -229,9 +288,6 @@ function LeadsTable({
                         <p className="font-medium text-sm">{String(lead.name || '')}</p>
                         <p className="text-xs text-muted-foreground">{String(lead.email || '')}</p>
                       </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {truncateText(lead.phone)}
                     </TableCell>
                     <TableCell className="font-medium">
                       {truncateText(lead.company)}
@@ -255,30 +311,62 @@ function LeadsTable({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            window.open(`mailto:${lead.email}`)
-                          }}
-                        >
-                          <Mail className="h-4 w-4" />
-                          <span className="sr-only">Email</span>
-                        </Button>
-                        {lead.phone && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              window.open(`tel:${lead.phone}`)
-                            }}
-                          >
-                            <Phone className="h-4 w-4" />
-                            <span className="sr-only">Call</span>
-                          </Button>
-                        )}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={loadingActions[lead.id] === 'research'}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleLeadResearch(lead.id)
+                                }}
+                                className={`${successActions[lead.id] === 'research' ? 'bg-green-100 text-green-700' : ''}`}
+                              >
+                                {loadingActions[lead.id] === 'research' ? (
+                                  <RotateCcw className="h-4 w-4 animate-spin" />
+                                ) : successActions[lead.id] === 'research' ? (
+                                  <CheckCircle2 className="h-4 w-4" />
+                                ) : (
+                                  <Search className="h-4 w-4" />
+                                )}
+                                <span className="sr-only">Lead Research</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Research lead</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={loadingActions[lead.id] === 'followup'}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleLeadFollowUp(lead.id)
+                                }}
+                                className={`${successActions[lead.id] === 'followup' ? 'bg-green-100 text-green-700' : ''}`}
+                              >
+                                {loadingActions[lead.id] === 'followup' ? (
+                                  <RotateCcw className="h-4 w-4 animate-spin" />
+                                ) : successActions[lead.id] === 'followup' ? (
+                                  <CheckCircle2 className="h-4 w-4" />
+                                ) : (
+                                  <Mail className="h-4 w-4" />
+                                )}
+                                <span className="sr-only">Lead Follow Up</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Intelligent follow-up</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -286,7 +374,7 @@ function LeadsTable({
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   <EmptyCard
                     icon={<Users className="h-16 w-16 text-muted-foreground" />}
                     title="No leads found"
@@ -380,14 +468,8 @@ function LeadsTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="whitespace-nowrap">
+            <TableHead className="w-[200px]">
               <Skeleton className="h-4 w-24" />
-            </TableHead>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-16" />
             </TableHead>
             <TableHead className="w-[150px]">
               <Skeleton className="h-4 w-16" />
@@ -395,10 +477,13 @@ function LeadsTableSkeleton() {
             <TableHead className="w-[120px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="w-[120px]">
+            <TableHead className="w-[100px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
             <TableHead className="w-[120px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="text-right w-[100px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
           </TableRow>
@@ -411,9 +496,6 @@ function LeadsTableSkeleton() {
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-48" />
                 </div>
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-24" />

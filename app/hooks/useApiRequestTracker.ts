@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 const API_CHAT_MESSAGE_ENDPOINT = '/api/agents/chat/message'
 
@@ -9,8 +9,17 @@ const API_CHAT_MESSAGE_ENDPOINT = '/api/agents/chat/message'
  * Usado principalmente para determinar si hay peticiones pendientes a /agents/chat/message
  */
 export function useApiRequestTracker() {
-  const [pendingChatRequests, setPendingChatRequests] = useState(0)
-  const [isAgentChatRequest, setIsAgentChatRequest] = useState(false)
+  const [hasActiveChatRequest, setHasActiveChatRequest] = useState(false)
+  const pendingRequestsRef = useRef(0)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const updateRequestState = useCallback(() => {
+    const hasActive = pendingRequestsRef.current > 0
+    setHasActiveChatRequest(prev => {
+      // Only update if the state actually changed
+      return prev !== hasActive ? hasActive : prev
+    })
+  }, [])
 
   useEffect(() => {
     // Objeto original de fetch
@@ -25,8 +34,8 @@ export function useApiRequestTracker() {
       const isChatMessageRequest = urlString.includes(API_CHAT_MESSAGE_ENDPOINT)
 
       if (isChatMessageRequest) {
-        setIsAgentChatRequest(true)
-        setPendingChatRequests(prev => prev + 1)
+        pendingRequestsRef.current += 1
+        updateRequestState()
         console.log(`[ApiTracker] ↗️ Iniciando petición a ${API_CHAT_MESSAGE_ENDPOINT}`)
       }
 
@@ -39,15 +48,18 @@ export function useApiRequestTracker() {
       } finally {
         // Decrementar el contador cuando la solicitud finaliza
         if (isChatMessageRequest) {
-          setPendingChatRequests(prev => Math.max(0, prev - 1))
+          pendingRequestsRef.current = Math.max(0, pendingRequestsRef.current - 1)
           console.log(`[ApiTracker] ↘️ Finalizando petición a ${API_CHAT_MESSAGE_ENDPOINT}`)
           
-          // Si no hay más peticiones pendientes, limpiar el estado
-          setTimeout(() => {
-            if (pendingChatRequests <= 1) {
-              setIsAgentChatRequest(false)
-            }
-          }, 300)
+          // Clear any existing timeout
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current)
+          }
+          
+          // Update state with a small delay to avoid rapid state changes
+          timeoutRef.current = setTimeout(() => {
+            updateRequestState()
+          }, 100)
         }
       }
     }
@@ -58,10 +70,13 @@ export function useApiRequestTracker() {
     // Limpiar al desmontar
     return () => {
       window.fetch = originalFetch
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
     }
-  }, [pendingChatRequests])
+  }, [updateRequestState])
 
   return {
-    hasActiveChatRequest: pendingChatRequests > 0 && isAgentChatRequest
+    hasActiveChatRequest
   }
 } 

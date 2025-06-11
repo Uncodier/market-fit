@@ -1,11 +1,10 @@
 "use client"
 
-import React, { FormEvent, useCallback, useState } from "react"
+import React, { FormEvent, useCallback, useRef } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Textarea } from "@/app/components/ui/textarea"
 import * as Icons from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
-import { useDebouncedCallback } from "use-debounce"
 
 interface ChatInputProps {
   message: string
@@ -24,35 +23,37 @@ export function ChatInput({
   handleKeyDown,
   conversationId
 }: ChatInputProps) {
-  // Local state to avoid re-rendering parent on every keystroke
-  const [localMessage, setLocalMessage] = useState(message)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   
-  // Update parent state less frequently with debounce
-  const debouncedSetMessage = useDebouncedCallback(
-    (value: string) => {
-      setMessage(value);
-    },
-    100 // 100ms debounce time
-  );
-  
-  // Handle local changes immediately for responsive UI
+  // Handle input changes directly without debounce for better responsiveness
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    setLocalMessage(newValue);
-    debouncedSetMessage(newValue);
-  }, [debouncedSetMessage]);
+    setMessage(e.target.value)
+  }, [setMessage])
   
-  // Sync local state when parent message changes (e.g., after send)
-  React.useEffect(() => {
-    setLocalMessage(message);
-  }, [message]);
+  // Optimized keyboard handler to prevent conflicts and improve responsiveness
+  const handleKeyDownInternal = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // For better performance, handle common cases locally first
+    if (e.key === 'Tab') {
+      // Let tab work normally for accessibility
+      return
+    }
+    
+    // Let the parent handle the complex logic
+    handleKeyDown(e)
+  }, [handleKeyDown])
+  
+  // Memoize the form submit handler
+  const handleSubmit = useCallback((e: FormEvent) => {
+    e.preventDefault()
+    handleSendMessage(e)
+  }, [handleSendMessage])
   
   // Check if a conversation is selected
-  const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
+  const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-")
   
   // If no conversation is selected, don't render the input
   if (!hasSelectedConversation) {
-    return null;
+    return null
   }
   
   return (
@@ -60,12 +61,13 @@ export function ChatInput({
       "py-4 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 backdrop-blur"
     )}>
       <div className="max-w-[calc(100%-240px)] mx-auto">
-        <form onSubmit={handleSendMessage} className="relative">
+        <form onSubmit={handleSubmit} className="relative">
           <div className="relative">
             <Textarea
-              value={localMessage}
+              ref={textareaRef}
+              value={message}
               onChange={handleChange}
-              onKeyDown={handleKeyDown}
+              onKeyDown={handleKeyDownInternal}
               placeholder="Message..."
               className="resize-none h-[135px] w-full py-5 pl-[60px] pr-[60px] rounded-2xl border border-input bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
               disabled={isLoading}
@@ -107,8 +109,8 @@ export function ChatInput({
                 type="submit" 
                 size="icon"
                 variant="ghost"
-                disabled={isLoading || !localMessage.trim()}
-                className={`rounded-xl h-[39px] w-[39px] text-primary hover:text-primary/90 transition-colors hover:bg-muted ${!localMessage.trim() ? 'opacity-50' : 'opacity-100'}`}
+                disabled={isLoading || !message.trim()}
+                className={`rounded-xl h-[39px] w-[39px] text-primary hover:text-primary/90 transition-colors hover:bg-muted ${!message.trim() ? 'opacity-50' : 'opacity-100'}`}
               >
                 {isLoading ? (
                   <Icons.Loader className="h-5 w-5 animate-spin" />

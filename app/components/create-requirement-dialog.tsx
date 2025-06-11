@@ -76,6 +76,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
     defaultValues: {
       title: "",
       description: "",
+      type: "task",
       priority: "medium",
       status: "backlog",
       completionStatus: "pending",
@@ -200,6 +201,46 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                 <p className="text-sm text-red-500 flex items-center gap-1">
                   <XCircle className="h-4 w-4" />
                   {form.formState.errors.title.message}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label>Type</Label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Select 
+                  onValueChange={(value) => form.setValue("type", value as "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment")}
+                  defaultValue={form.getValues("type") || "task"}
+                >
+                  <SelectTrigger className="h-12 pl-10">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="content">Content</SelectItem>
+                    <SelectItem value="design">Design</SelectItem>
+                    <SelectItem value="research">Research</SelectItem>
+                    <SelectItem value="follow_up">Follow Up</SelectItem>
+                    <SelectItem value="task">Task</SelectItem>
+                    <SelectItem value="develop">Develop</SelectItem>
+                    <SelectItem value="analytics">Analytics</SelectItem>
+                    <SelectItem value="testing">Testing</SelectItem>
+                    <SelectItem value="approval">Approval</SelectItem>
+                    <SelectItem value="coordination">Coordination</SelectItem>
+                    <SelectItem value="strategy">Strategy</SelectItem>
+                    <SelectItem value="optimization">Optimization</SelectItem>
+                    <SelectItem value="automation">Automation</SelectItem>
+                    <SelectItem value="integration">Integration</SelectItem>
+                    <SelectItem value="planning">Planning</SelectItem>
+                    <SelectItem value="payment">Payment</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.formState.errors.type && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <XCircle className="h-4 w-4" />
+                  {form.formState.errors.type.message}
                 </p>
               )}
             </div>

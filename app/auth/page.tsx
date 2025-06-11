@@ -5,10 +5,37 @@ import { AuthForm } from "@/app/components/auth/auth-form"
 import Image from "next/image"
 import { useTheme } from "@/app/context/ThemeContext"
 import { FileText, Target, Send } from "@/app/components/ui/icons"
+import { useSafariDetection } from "@/app/hooks/use-safari-detection"
 
 export default function AuthPage() {
   const { theme } = useTheme()
+  const isSafari = useSafariDetection()
   const [authType, setAuthType] = useState<string>("signin")
+
+  // Safari detection script que ejecuta inmediatamente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const script = document.createElement('script');
+      script.innerHTML = `
+        (function() {
+          if (typeof navigator !== 'undefined') {
+            const userAgent = navigator.userAgent;
+            const isSafari = userAgent.match(/AppleWebKit\\/[\\d.]+/g) &&
+              userAgent.match(/Version\\/[\\d.]+.*Safari/) &&
+              !userAgent.match(/Chrome\\/[\\d.]+/g) &&
+              !userAgent.match(/Chromium\\/[\\d.]+/g) &&
+              !userAgent.match(/Edge\\/[\\d.]+/g) &&
+              !userAgent.match(/Firefox\\/[\\d.]+/g);
+            if (isSafari) {
+              document.documentElement.classList.add('safari');
+            }
+          }
+        })();
+      `;
+      script.className = 'safari-detection-script';
+      document.head.appendChild(script);
+    }
+  }, [])
   const [returnTo, setReturnTo] = useState<string | null>(null)
   const [signupData, setSignupData] = useState<{
     email?: string

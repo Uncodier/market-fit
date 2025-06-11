@@ -5,11 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/app/context/ThemeContext'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/app/components/ui/form"
 import { Input } from "@/app/components/ui/input"
+import { InputWithIcon } from "@/app/components/ui/input-with-icon"
 import { Button } from "@/app/components/ui/button"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag } from "@/app/components/ui/icons"
+import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google } from "@/app/components/ui/icons"
 import { Separator } from "@/app/components/ui/separator"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
 
@@ -353,14 +354,12 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-foreground">Name</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          className="pl-10 h-12 text-sm bg-background border-input" 
-                          placeholder="Your name"
-                          {...field} 
-                        />
-                      </div>
+                      <InputWithIcon
+                        leftIcon={<User className="h-4 w-4 text-muted-foreground" />}
+                        className="h-12 text-sm bg-background border-input" 
+                        placeholder="Your name"
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage className="text-xs mt-1" />
                   </FormItem>
@@ -380,26 +379,25 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                       </span>
                     </FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          className={`pl-10 pr-10 h-12 text-sm bg-background border-input ${
-                            referralCodeStatus === 'valid' 
-                              ? 'border-green-300 focus:border-green-500' 
-                              : referralCodeStatus === 'invalid' 
-                                ? 'border-red-300 focus:border-red-500' 
-                                : ''
-                          }`}
-                          placeholder="Enter code"
-                          {...field} 
-                        />
-                        {referralCodeStatus === 'valid' && (
-                          <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
-                        )}
-                        {referralCodeStatus === 'checking' && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
-                        )}
-                      </div>
+                      <InputWithIcon
+                        leftIcon={<Tag className="h-4 w-4 text-muted-foreground" />}
+                        rightIcon={
+                          referralCodeStatus === 'valid' ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : referralCodeStatus === 'checking' ? (
+                            <div className="h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                          ) : null
+                        }
+                        className={`h-12 text-sm bg-background border-input ${
+                          referralCodeStatus === 'valid' 
+                            ? 'border-green-300 focus:border-green-500' 
+                            : referralCodeStatus === 'invalid' 
+                              ? 'border-red-300 focus:border-red-500' 
+                              : ''
+                        }`}
+                        placeholder="Enter code"
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage className="text-xs mt-1" />
                   </FormItem>
@@ -427,15 +425,13 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Email address</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      className="pl-10 h-12 text-sm bg-background border-input" 
-                      placeholder="name@example.com"
-                      type="email"
-                      {...field} 
-                    />
-                  </div>
+                  <InputWithIcon
+                    leftIcon={<Mail className="h-4 w-4 text-muted-foreground" />}
+                    className="h-12 text-sm bg-background border-input" 
+                    placeholder="name@example.com"
+                    type="email"
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage className="text-xs mt-1" />
               </FormItem>
@@ -451,23 +447,23 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 <FormItem>
                   <FormLabel className="text-sm font-medium text-foreground">Password</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        className="pl-10 pr-10 h-12 text-sm bg-background border-input" 
-                        type={showPassword ? "text" : "password"}
-                        placeholder={authMode === 'sign_up' ? "Create a password" : "Enter your password"}
-                        {...field} 
-                      />
-                      <button 
-                        type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-                        onClick={togglePasswordVisibility}
-                        tabIndex={-1}
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
+                    <InputWithIcon
+                      leftIcon={<Lock className="h-4 w-4 text-muted-foreground" />}
+                      rightIconButton={
+                        <button 
+                          type="button"
+                          className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      }
+                      onRightIconClick={togglePasswordVisibility}
+                      className="h-12 text-sm bg-background border-input" 
+                      type={showPassword ? "text" : "password"}
+                      placeholder={authMode === 'sign_up' ? "Create a password" : "Enter your password"}
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage className="text-xs mt-1" />
                 </FormItem>
@@ -518,24 +514,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           onClick={handleGoogleSignIn}
           disabled={loading || !isGoogleButtonEnabled()}
         >
-          <svg viewBox="0 0 24 24" className="w-4 h-4 mr-2" aria-hidden="true">
-            <path
-              d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0353 3.12C17.9503 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z"
-              fill="#EA4335"
-            />
-            <path
-              d="M23.49 12.275C23.49 11.49 23.415 10.73 23.3 10H12V14.51H18.47C18.18 15.99 17.34 17.25 16.08 18.1L19.945 21.1C22.2 19.01 23.49 15.92 23.49 12.275Z"
-              fill="#4285F4"
-            />
-            <path
-              d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 11.9999C4.88501 11.1999 5.01998 10.4299 5.26498 9.7049L1.275 6.60986C0.46 8.22986 0 10.0599 0 11.9999C0 13.9399 0.46 15.7699 1.28 17.3899L5.26498 14.2949Z"
-              fill="#FBBC05"
-            />
-            <path
-              d="M12.0004 24C15.2404 24 17.9654 22.935 19.9454 21.095L16.0804 18.095C15.0054 18.82 13.6204 19.245 12.0004 19.245C8.8704 19.245 6.21537 17.135 5.2654 14.29L1.27539 17.385C3.25539 21.31 7.3104 24 12.0004 24Z"
-              fill="#34A853"
-            />
-          </svg>
+          <Google className="w-4 h-4 mr-2" />
           Google
           {authMode === 'sign_up' && referralCodeStatus !== 'valid' && (
             <span className="text-xs ml-2 opacity-60">(Referral code required)</span>

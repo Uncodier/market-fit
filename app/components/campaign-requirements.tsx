@@ -28,6 +28,25 @@ const PRIORITY_COLORS: Record<string, string> = {
   'low': 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
 };
 
+const TYPE_COLORS: Record<string, string> = {
+  'content': 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300',
+  'design': 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
+  'research': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300',
+  'follow_up': 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
+  'task': 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
+  'develop': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+  'analytics': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300',
+  'testing': 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
+  'approval': 'bg-lime-100 text-lime-800 dark:bg-lime-900/50 dark:text-lime-300',
+  'coordination': 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300',
+  'strategy': 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-300',
+  'optimization': 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300',
+  'automation': 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/50 dark:text-fuchsia-300',
+  'integration': 'bg-slate-100 text-slate-800 dark:bg-slate-900/50 dark:text-slate-300',
+  'planning': 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300',
+  'payment': 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
+};
+
 // Completion status colors and icons
 const COMPLETION_STATUS: Record<string, { color: string, label: string }> = {
   'pending': { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', label: 'Pending' },
@@ -39,6 +58,7 @@ interface Requirement {
   id: string;
   title: string;
   description: string;
+  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment";
   priority: 'high' | 'medium' | 'low';
   status: string;
   completion_status: string;
@@ -242,10 +262,11 @@ export function CampaignRequirements({
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="w-[350px]">Title</TableHead>
-                    <TableHead className="w-[150px]">Priority</TableHead>
-                    <TableHead className="w-[150px]">Status</TableHead>
-                    <TableHead className="w-[150px]">Budget</TableHead>
+                    <TableHead className="w-[300px]">Title</TableHead>
+                    <TableHead className="w-[120px]">Type</TableHead>
+                    <TableHead className="w-[120px]">Priority</TableHead>
+                    <TableHead className="w-[120px]">Status</TableHead>
+                    <TableHead className="w-[120px]">Budget</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -260,6 +281,11 @@ export function CampaignRequirements({
                         <p className="text-sm text-muted-foreground line-clamp-1">
                           {req.description}
                         </p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={TYPE_COLORS[req.type]}>
+                          {req.type.replace('_', ' ')}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge className={PRIORITY_COLORS[req.priority]}>

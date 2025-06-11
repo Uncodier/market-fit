@@ -27,7 +27,8 @@ import {
   CheckCircle2,
   Pencil,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Target
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
@@ -51,7 +52,7 @@ import { EmptyState } from "@/app/components/ui/empty-state"
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
 import { useRouter } from "next/navigation"
 import { CreateContentDialog } from "./components"
-import { getContentTypeName, getSegmentName, getContentTypeIconClass } from "./utils"
+import { getContentTypeName, getSegmentName, getContentTypeIconClass, getCampaignName } from "./utils"
 import { StarRating } from "@/app/components/ui/rating"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { safeReload } from "@/app/utils/safe-reload"
@@ -558,9 +559,10 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
   )
 }
 
-function ContentCard({ content, segments, onClick, onRatingChange }: { 
+function ContentCard({ content, segments, campaigns, onClick, onRatingChange }: { 
   content: ContentItem, 
   segments: Array<{ id: string; name: string }>,
+  campaigns: Array<{ id: string; title: string }>,
   onClick: (content: ContentItem) => void,
   onRatingChange?: (contentId: string, rating: number) => void
 }) {
@@ -635,19 +637,21 @@ function ContentCard({ content, segments, onClick, onRatingChange }: {
         )}
         
         <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center gap-2 flex-grow-0 max-w-[65%]">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             {segmentName && (
-              <Badge variant="outline" className="text-xs whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
-                {truncateText(segmentName)}
+              <Badge variant="outline" className="text-xs whitespace-nowrap overflow-hidden text-ellipsis pr-3 max-w-[180px] flex items-center block">
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+                  {segmentName}
+                </span>
               </Badge>
             )}
             {content.word_count && (
-              <span className="text-xs text-muted-foreground">{content.word_count} words</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{content.word_count} words</span>
             )}
           </div>
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="w-[30%] flex justify-end scale-75 origin-right"
+            className="flex-shrink-0 flex items-center justify-end scale-75 origin-right"
           >
             <StarRating 
               rating={content.performance_rating} 
@@ -658,6 +662,18 @@ function ContentCard({ content, segments, onClick, onRatingChange }: {
             />
           </div>
         </div>
+        
+        {/* Campaign information - similar to requirements kanban */}
+        {content.campaign_id && (
+          <div className="flex mt-2 border-t pt-2">
+            <div className="flex items-center gap-1">
+              <Target className="h-3 w-3 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+              <span className="px-1.5 py-0.5 text-xs rounded-full bg-purple-100/20 text-purple-600 dark:text-purple-400 border border-purple-300/30 overflow-hidden text-ellipsis whitespace-nowrap max-w-[200px]">
+                {getCampaignName(content.campaign_id, campaigns)}
+              </span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -667,12 +683,14 @@ function ContentKanban({
   contentItems, 
   onUpdateContentStatus, 
   segments, 
+  campaigns,
   onContentClick,
   onRatingChange
 }: {
   contentItems: ContentItem[]
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
   segments: Array<{ id: string; name: string }>
+  campaigns: Array<{ id: string; title: string }>
   onContentClick: (content: ContentItem) => void
   onRatingChange?: (contentId: string, rating: number) => void
 }) {
@@ -807,6 +825,7 @@ function ContentKanban({
                               <ContentCard 
                                 content={item} 
                                 segments={segments}
+                                campaigns={campaigns}
                                 onClick={onContentClick}
                                 onRatingChange={handleRatingChange}
                               />
@@ -840,6 +859,7 @@ function ContentTable({
   onItemsPerPageChange,
   onContentClick,
   segments,
+  campaigns,
   onRatingChange
 }: { 
   contentItems: ContentItem[]
@@ -850,6 +870,7 @@ function ContentTable({
   onItemsPerPageChange: (value: string) => void
   onContentClick: (content: ContentItem) => void
   segments: Array<{ id: string; name: string }>
+  campaigns: Array<{ id: string; title: string }>
   onRatingChange?: (contentId: string, rating: number) => void
 }) {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
@@ -889,13 +910,12 @@ function ContentTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[45%]">Title</TableHead>
+            <TableHead className="w-[40%]">Title</TableHead>
             <TableHead className="w-[12%]">Type</TableHead>
-            <TableHead className="w-[10%]">Segment</TableHead>
+            <TableHead className="w-[14%]">Segment</TableHead>
+            <TableHead className="w-[16%]">Campaign</TableHead>
             <TableHead className="w-[10%]">Status</TableHead>
-            <TableHead className="w-[8%]">Created</TableHead>
-            <TableHead className="w-[10%]">Performance</TableHead>
-            <TableHead className="w-[5%] text-right">Actions</TableHead>
+            <TableHead className="w-[8%]">Performance</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -923,17 +943,19 @@ function ContentTable({
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  <div className="max-w-[120px] whitespace-nowrap overflow-hidden text-ellipsis">
-                    {truncateText(getSegmentName(content.segment_id, segments), 20)}
+                  <div className="whitespace-nowrap overflow-hidden text-ellipsis">
+                    {getSegmentName(content.segment_id, segments)}
+                  </div>
+                </TableCell>
+                <TableCell className="font-medium">
+                  <div className="whitespace-nowrap overflow-hidden text-ellipsis">
+                    {getCampaignName(content.campaign_id, campaigns)}
                   </div>
                 </TableCell>
                 <TableCell>
                   <Badge className={STATUS_COLORS[content.status]}>
                     {content.status.charAt(0).toUpperCase() + content.status.slice(1)}
                   </Badge>
-                </TableCell>
-                <TableCell className="text-sm whitespace-nowrap">
-                  {new Date(content.created_at).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
                   <div onClick={(e) => e.stopPropagation()} className="scale-75 origin-left">
@@ -945,25 +967,11 @@ function ContentTable({
                     />
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onContentClick(content)
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span className="sr-only">View</span>
-                  </Button>
-                </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
+              <TableCell colSpan={6} className="h-24 text-center">
                 No content found.
               </TableCell>
             </TableRow>
@@ -1848,6 +1856,7 @@ export default function ContentPage() {
                   contentItems={filteredContent}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
+                  campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                 />
@@ -1861,6 +1870,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                 />
               )}
@@ -1876,6 +1886,7 @@ export default function ContentPage() {
                   contentItems={filteredContent.filter(item => item.type === 'blog_post')}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
+                  campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                 />
@@ -1889,6 +1900,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                 />
               )}
@@ -1904,6 +1916,7 @@ export default function ContentPage() {
                   contentItems={filteredContent.filter(item => item.type === 'video')}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
+                  campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                 />
@@ -1917,6 +1930,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                 />
               )}
@@ -1932,6 +1946,7 @@ export default function ContentPage() {
                   contentItems={filteredContent.filter(item => item.type === 'social_post')}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
+                  campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                 />
@@ -1945,6 +1960,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                 />
               )}
@@ -1960,6 +1976,7 @@ export default function ContentPage() {
                   contentItems={filteredContent.filter(item => item.type === 'ad')}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   segments={segments}
+                  campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                 />
@@ -1973,6 +1990,7 @@ export default function ContentPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
                   segments={segments}
+                  campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                 />
               )}

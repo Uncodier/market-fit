@@ -45,6 +45,18 @@ export function getSegmentName(
   return segment ? segment.name : "Unknown Segment";
 }
 
+// Helper function to get a campaign name from a campaign ID and list of campaigns
+export function getCampaignName(
+  campaignId: string | null | undefined, 
+  campaigns: Array<{ id: string, title: string }> = []
+): string {
+  if (!campaignId) return "No Campaign";
+  if (!campaigns || campaigns.length === 0) return "Unknown Campaign";
+  
+  const campaign = campaigns.find(c => c.id === campaignId);
+  return campaign ? campaign.title : "Unknown Campaign";
+}
+
 // Helper to get content type icon class
 export function getContentTypeIconClass(type: ContentType | string): string {
   switch (type as ContentType) {

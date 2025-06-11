@@ -44,6 +44,7 @@ export async function createRequirement(data: RequirementFormValues) {
       .insert({
         title: data.title,
         description: data.description,
+        type: data.type,
         priority: data.priority,
         status: data.status,
         completion_status: data.completionStatus,
@@ -222,6 +223,7 @@ interface UpdateRequirementData {
   id: string
   title: string
   description: string
+  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completionStatus: CompletionStatusType
@@ -244,6 +246,7 @@ export async function updateRequirement(data: UpdateRequirementData) {
       .update({
         title: data.title,
         description: data.description,
+        type: data.type,
         priority: data.priority,
         status: data.status,
         completion_status: data.completionStatus,

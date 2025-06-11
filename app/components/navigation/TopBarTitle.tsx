@@ -47,7 +47,6 @@ export function TopBarTitle({
     id: string;
     activeTab: string;
     isAnalyzing: boolean;
-    isGeneratingICP: boolean;
     isGeneratingTopics: boolean;
     openAIModal: (type: 'analysis' | 'icp' | 'topics') => void;
   } | null>(null);
@@ -124,7 +123,6 @@ export function TopBarTitle({
             ...prevData,
             activeTab: event.detail.activeTab,
             isAnalyzing: event.detail.isAnalyzing,
-            isGeneratingICP: event.detail.isGeneratingICP,
             isGeneratingTopics: event.detail.isGeneratingTopics
           };
         });

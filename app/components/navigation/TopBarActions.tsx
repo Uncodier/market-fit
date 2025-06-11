@@ -79,7 +79,6 @@ interface TopBarActionsProps {
     id: string
     activeTab: string
     isAnalyzing: boolean
-    isGeneratingICP: boolean
     isGeneratingTopics: boolean
     openAIModal: (type: 'analysis' | 'icp' | 'topics') => void
   } | null
@@ -827,13 +826,13 @@ The success of this experiment will be measured by:
       {/* Segment Detail Page AI Buttons */}
       {segmentData && (
         <>
-          {segmentData.activeTab === "analysis" && (
+          {(segmentData.activeTab === "analysis" || segmentData.activeTab === "icp") && (
             <Button 
               variant="secondary" 
               size="default"
               className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
               onClick={() => segmentData.openAIModal('analysis')}
-              disabled={segmentData.isAnalyzing || segmentData.isGeneratingICP || segmentData.isGeneratingTopics}
+              disabled={segmentData.isAnalyzing}
             >
               {segmentData.isAnalyzing ? (
                 <>
@@ -848,34 +847,13 @@ The success of this experiment will be measured by:
               )}
             </Button>
           )}
-          {segmentData.activeTab === "icp" && (
-            <Button 
-              variant="secondary" 
-              size="default"
-              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
-              onClick={() => segmentData.openAIModal('icp')}
-              disabled={segmentData.isAnalyzing || segmentData.isGeneratingICP || segmentData.isGeneratingTopics}
-            >
-              {segmentData.isGeneratingICP ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Users className="h-4 w-4" />
-                  Generate with AI
-                </>
-              )}
-            </Button>
-          )}
           {segmentData.activeTab === "topics" && (
             <Button 
               variant="secondary" 
               size="default"
               className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
               onClick={() => segmentData.openAIModal('topics')}
-              disabled={segmentData.isAnalyzing || segmentData.isGeneratingICP || segmentData.isGeneratingTopics}
+              disabled={segmentData.isGeneratingTopics}
             >
               {segmentData.isGeneratingTopics ? (
                 <>
