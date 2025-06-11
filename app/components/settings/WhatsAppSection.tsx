@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "../ui/select"
 import { Input } from "../ui/input"
-import { MessageSquare, CheckCircle2, Globe, Copy, AlertCircle } from "../ui/icons"
+import { MessageSquare, CheckCircle2, Globe, Copy, AlertCircle, Eye, EyeOff } from "../ui/icons"
 import { type SiteFormValues } from "./form-schema"
 import { useSite } from "../../context/SiteContext"
 import { secureTokensService } from "../../services/secure-tokens-service"
@@ -392,6 +392,7 @@ interface WhatsAppLocalState {
 export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) {
   const [isRequesting, setIsRequesting] = useState(false)
   const [phoneValidation, setPhoneValidation] = useState<{ isValid: boolean; error?: string }>({ isValid: true })
+  const [showAccountSid, setShowAccountSid] = useState(false)
   const { currentSite, updateSettings } = useSite()
   
   // Local state to avoid form auto-save issues
@@ -828,12 +829,23 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
 
                 <div>
                   <Label className="text-sm font-medium text-foreground">Twilio Account SID</Label>
-                  <Input
-                    placeholder="Enter your Twilio Account SID (e.g., ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)"
-                    value={localState.accountSid || ""}
-                    onChange={(e) => handleAccountSidChange(e.target.value)}
-                    type="text"
-                  />
+                  <div className="relative">
+                    <Input
+                      placeholder="Enter your Twilio Account SID (e.g., ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)"
+                      value={localState.accountSid || ""}
+                      onChange={(e) => handleAccountSidChange(e.target.value)}
+                      type={showAccountSid ? "text" : "password"}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2"
+                      onClick={() => setShowAccountSid(!showAccountSid)}
+                    >
+                      {showAccountSid ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your Twilio Account SID identifier (starts with AC)
                   </p>
@@ -971,7 +983,18 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   <Label className="text-sm font-medium text-foreground">Twilio Account SID</Label>
                   <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-mono text-sm">{localState.accountSid}</span>
+                    <span className="font-mono text-sm flex-1">
+                      {showAccountSid ? localState.accountSid : '•'.repeat(localState.accountSid.length)}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2"
+                      onClick={() => setShowAccountSid(!showAccountSid)}
+                    >
+                      {showAccountSid ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </Button>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your configured Twilio Account SID
