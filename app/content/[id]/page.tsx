@@ -11,6 +11,89 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
 import { updateContent, updateContentStatus, deleteContent, getContentById } from "../actions"
 import { getContentTypeName, processMarkdownText, markdownToHTML } from "../utils"
+
+// Function to convert HTML back to markdown
+const htmlToMarkdown = (html: string): string => {
+  if (!html) return '';
+  
+  try {
+    // Create a temporary element to parse HTML
+    const tempElement = document.createElement('div');
+    tempElement.innerHTML = html;
+    
+    // Function to convert DOM node to markdown
+    const nodeToMarkdown = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent || '';
+      }
+      
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        const children = Array.from(element.childNodes).map(nodeToMarkdown).join('');
+        
+        switch (element.tagName.toLowerCase()) {
+          case 'h1':
+            return `# ${children}\n\n`;
+          case 'h2':
+            return `## ${children}\n\n`;
+          case 'h3':
+            return `### ${children}\n\n`;
+          case 'h4':
+            return `#### ${children}\n\n`;
+          case 'h5':
+            return `##### ${children}\n\n`;
+          case 'h6':
+            return `###### ${children}\n\n`;
+          case 'p':
+            return `${children}\n\n`;
+          case 'strong':
+          case 'b':
+            return `**${children}**`;
+          case 'em':
+          case 'i':
+            return `*${children}*`;
+          case 'ul':
+            return `${children}\n`;
+          case 'ol':
+            return `${children}\n`;
+          case 'li':
+            return `- ${children}\n`;
+          case 'blockquote':
+            return `> ${children}\n\n`;
+          case 'code':
+            return `\`${children}\``;
+          case 'pre':
+            return `\`\`\`\n${children}\n\`\`\`\n\n`;
+          case 'br':
+            return '\n';
+          case 'a':
+            const href = element.getAttribute('href');
+            return href ? `[${children}](${href})` : children;
+          case 'img':
+            const src = element.getAttribute('src');
+            const alt = element.getAttribute('alt') || '';
+            return src ? `![${alt}](${src})` : '';
+          default:
+            return children;
+        }
+      }
+      
+      return '';
+    };
+    
+    const markdown = nodeToMarkdown(tempElement);
+    
+    // Clean up extra newlines
+    return markdown
+      .replace(/\n{3,}/g, '\n\n') // Replace 3+ newlines with 2
+      .trim();
+    
+  } catch (error) {
+    console.error("Error converting HTML to markdown:", error);
+    // Fallback: strip HTML tags
+    return html.replace(/<[^>]*>/g, '').trim();
+  }
+}
 import { StarRating } from "@/app/components/ui/rating"
 import { createClient } from "@/lib/supabase/client"
 import { 
@@ -1228,6 +1311,10 @@ export default function ContentDetailPage() {
     
     setIsSaving(true)
     try {
+      // Convert HTML content back to markdown for storage
+      const markdownContent = htmlToMarkdown(editForm.content);
+      const markdownInstructions = htmlToMarkdown(editForm.instructions);
+      
       // First update the content
       const result = await updateContent({
         contentId: content.id,
@@ -1237,9 +1324,9 @@ export default function ContentDetailPage() {
         segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
         campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
         tags: editForm.tags.length > 0 ? editForm.tags : null,
-        content: editForm.content || undefined,
-        text: editForm.text || undefined,
-        instructions: editForm.instructions || undefined,
+        content: markdownContent || undefined,
+        text: markdownContent || undefined,
+        instructions: markdownInstructions || undefined,
         performance_rating: editForm.performance_rating
       })
       
@@ -1425,19 +1512,42 @@ export default function ContentDetailPage() {
     }
   }
 
+  // Function to check if there are unsaved changes
+  const hasUnsavedChanges = () => {
+    if (!content) return false
+    
+    // Convert current editor content to markdown for comparison
+    const currentMarkdownContent = htmlToMarkdown(editForm.content);
+    const currentMarkdownInstructions = htmlToMarkdown(editForm.instructions);
+    
+    return (
+      editForm.title !== content.title ||
+      editForm.description !== (content.description || '') ||
+      editForm.segment_id !== (content.segment_id || '') ||
+      editForm.campaign_id !== (content.campaign_id || '') ||
+      JSON.stringify(editForm.tags) !== JSON.stringify(content.tags || []) ||
+      currentMarkdownContent !== (content.content || content.text || '') ||
+      currentMarkdownInstructions !== (content.instructions || '') ||
+      editForm.performance_rating !== content.performance_rating ||
+      editForm.status !== (content.status || 'draft')
+    )
+  }
+
   const generateContent = async (quickAction?: string) => {
     if (!content?.id || !content?.site_id) {
       toast.error("Content ID or site ID not available")
       return
     }
 
-    // Always save changes before generating content
-    try {
-      await handleSaveChanges()
-    } catch (error) {
-      console.error("Error saving before generation:", error)
-      toast.error("Failed to save changes before generating content")
-      return
+    // Only save changes if there are unsaved changes
+    if (hasUnsavedChanges()) {
+      try {
+        await handleSaveChanges()
+      } catch (error) {
+        console.error("Error saving before generation:", error)
+        toast.error("Failed to save changes before generating content")
+        return
+      }
     }
 
     setIsGenerating(true)
@@ -1895,7 +2005,8 @@ export default function ContentDetailPage() {
                                   campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
                                   tags: editForm.tags.length > 0 ? editForm.tags : null,
                                   text: editForm.text || undefined,
-                                  performance_rating: rating
+                                  performance_rating: rating,
+                                  skipRevalidation: true // Prevent automatic page refresh for rating updates
                                 }).then(() => {
                                   toast.success("Performance rating updated");
                                 }).catch(error => {

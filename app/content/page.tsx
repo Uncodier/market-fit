@@ -132,7 +132,8 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
       contentId: content.id,
       title: content.title,
       type: content.type,
-      performance_rating: rating
+      performance_rating: rating,
+      skipRevalidation: true // Prevent automatic page refresh
     }).then(() => {
       toast.success("Performance rating updated", {
         position: "bottom-right",
@@ -581,12 +582,13 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange }: 
       onRatingChange(content.id, rating);
     }
     
-    // Update the rating in the database
+    // Update the rating in the database without revalidation to avoid refresh
     updateContent({
       contentId: content.id,
       title: content.title,
       type: content.type,
-      performance_rating: rating
+      performance_rating: rating,
+      skipRevalidation: true // Prevent automatic page refresh
     }).then(() => {
       toast.success("Performance rating updated", {
         position: "bottom-right",
@@ -888,12 +890,13 @@ function ContentTable({
       onRatingChange(contentId, rating);
     }
     
-    // Update the rating in the database
+    // Update the rating in the database without revalidation to avoid refresh
     updateContent({
       contentId: contentId,
       title: contentItems.find(item => item.id === contentId)?.title || '',
       type: contentItems.find(item => item.id === contentId)?.type || 'blog_post',
-      performance_rating: rating
+      performance_rating: rating,
+      skipRevalidation: true // Prevent automatic page refresh
     }).then(() => {
       toast.success("Performance rating updated", {
         position: "bottom-right",
@@ -1709,7 +1712,7 @@ export default function ContentPage() {
       )
     );
     
-    // Also update the filtered content
+    // Also update the filtered content to keep it in sync
     setFilteredContent(prevItems => 
       prevItems.map(item => 
         item.id === contentId 

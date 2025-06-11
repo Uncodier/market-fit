@@ -11,6 +11,89 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
 import { updateRequirementStatus, updateCompletionStatus, updateRequirementPriority, updateRequirementInstructions, updateRequirement, deleteRequirement } from "../actions"
 import { markdownToHTML } from "../utils"
+
+// Function to convert HTML back to markdown
+const htmlToMarkdown = (html: string): string => {
+  if (!html) return '';
+  
+  try {
+    // Create a temporary element to parse HTML
+    const tempElement = document.createElement('div');
+    tempElement.innerHTML = html;
+    
+    // Function to convert DOM node to markdown
+    const nodeToMarkdown = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent || '';
+      }
+      
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        const children = Array.from(element.childNodes).map(nodeToMarkdown).join('');
+        
+        switch (element.tagName.toLowerCase()) {
+          case 'h1':
+            return `# ${children}\n\n`;
+          case 'h2':
+            return `## ${children}\n\n`;
+          case 'h3':
+            return `### ${children}\n\n`;
+          case 'h4':
+            return `#### ${children}\n\n`;
+          case 'h5':
+            return `##### ${children}\n\n`;
+          case 'h6':
+            return `###### ${children}\n\n`;
+          case 'p':
+            return `${children}\n\n`;
+          case 'strong':
+          case 'b':
+            return `**${children}**`;
+          case 'em':
+          case 'i':
+            return `*${children}*`;
+          case 'ul':
+            return `${children}\n`;
+          case 'ol':
+            return `${children}\n`;
+          case 'li':
+            return `- ${children}\n`;
+          case 'blockquote':
+            return `> ${children}\n\n`;
+          case 'code':
+            return `\`${children}\``;
+          case 'pre':
+            return `\`\`\`\n${children}\n\`\`\`\n\n`;
+          case 'br':
+            return '\n';
+          case 'a':
+            const href = element.getAttribute('href');
+            return href ? `[${children}](${href})` : children;
+          case 'img':
+            const src = element.getAttribute('src');
+            const alt = element.getAttribute('alt') || '';
+            return src ? `![${alt}](${src})` : '';
+          default:
+            return children;
+        }
+      }
+      
+      return '';
+    };
+    
+    const markdown = nodeToMarkdown(tempElement);
+    
+    // Clean up extra newlines
+    return markdown
+      .replace(/\n{3,}/g, '\n\n') // Replace 3+ newlines with 2
+      .trim();
+    
+  } catch (error) {
+    console.error("Error converting HTML to markdown:", error);
+    // Fallback: strip HTML tags
+    return html.replace(/<[^>]*>/g, '').trim();
+  }
+}
 import { 
   ChevronLeft,
   Save, 
@@ -364,10 +447,13 @@ function RequirementDetailContent() {
   // Check for unsaved changes when form values change
   useEffect(() => {
     if (requirement) {
+      // Convert current editor content to markdown for comparison
+      const currentMarkdownInstructions = htmlToMarkdown(editForm.instructions);
+      
       const hasFormChanges = 
         editForm.title !== (requirement.title || '') ||
         editForm.description !== (requirement.description || '') ||
-        editForm.instructions !== (requirement.instructions || '') ||
+        currentMarkdownInstructions !== (requirement.instructions || '') ||
         editForm.type !== (requirement.type || 'task') ||
         editForm.priority !== (requirement.priority || 'medium') ||
         editForm.status !== (requirement.status || 'backlog') ||
@@ -742,8 +828,11 @@ function RequirementDetailContent() {
     
     setIsSaving(true)
     try {
+      // Convert HTML instructions back to markdown for storage
+      const markdownInstructions = htmlToMarkdown(editForm.instructions);
+      
       // Update the requirement with instructions first
-      const instructionsResult = await updateRequirementInstructions(requirement.id, editForm.instructions)
+      const instructionsResult = await updateRequirementInstructions(requirement.id, markdownInstructions)
       
       if (instructionsResult.error) {
         throw new Error(instructionsResult.error)

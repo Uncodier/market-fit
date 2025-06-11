@@ -180,7 +180,8 @@ export async function updateContent({
   content,
   text,
   instructions,
-  performance_rating
+  performance_rating,
+  skipRevalidation
 }: {
   contentId: string
   title: string
@@ -193,6 +194,7 @@ export async function updateContent({
   text?: string
   instructions?: string
   performance_rating?: number | null
+  skipRevalidation?: boolean
 }) {
   try {
     const supabase = await createServiceClient()
@@ -220,7 +222,11 @@ export async function updateContent({
       return { error: error.message }
     }
     
-    revalidatePath("/content")
+    // Only revalidate if not specifically skipped (for rating updates)
+    if (!skipRevalidation) {
+      revalidatePath("/content")
+    }
+    
     return { content: data }
   } catch (error) {
     console.error("Error updating content:", error)
