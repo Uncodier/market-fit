@@ -182,14 +182,16 @@ const MenuBar = ({
   onSave, 
   isSaving, 
   onDelete, 
-  activeTab
+  activeTab,
+  hasChanges
 }: { 
   editor: any, 
   instructionsEditor: any,
   onSave: () => void, 
   isSaving: boolean,
   onDelete: () => void,
-  activeTab: 'copy' | 'instructions'
+  activeTab: 'copy' | 'instructions',
+  hasChanges: boolean
 }) => {
   const currentEditor = activeTab === 'copy' ? editor : instructionsEditor
   
@@ -204,7 +206,7 @@ const MenuBar = ({
           variant="secondary" 
           size="default"
           onClick={onSave}
-          disabled={isSaving}
+          disabled={isSaving || !hasChanges}
           className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
         >
           {isSaving ? (
@@ -919,6 +921,7 @@ export default function ContentDetailPage() {
   const [activeTab, setActiveTab] = useState<'copy' | 'instructions'>('copy')
   const [aiPrompt, setAiPrompt] = useState('')
   const [isAiProcessing, setIsAiProcessing] = useState(false)
+  const [editorsReady, setEditorsReady] = useState(false)
   const [contentStyle, setContentStyle] = useState({
     tone: 50, // Formal (0) to Casual (100)
     complexity: 50, // Simple (0) to Complex (100)
@@ -1021,6 +1024,10 @@ export default function ContentDetailPage() {
           content: editor.getHTML(),
           text: editor.getText()
         }))
+        // Mark that user has made changes only if editors are ready (to avoid initial loading triggering this)
+        if (editorsReady) {
+          setHasUserMadeChanges(true)
+        }
       }
     },
     editorProps: {
@@ -1052,6 +1059,10 @@ export default function ContentDetailPage() {
           ...prev, 
           instructions: editor.getHTML()
         }))
+        // Mark that user has made changes only if editors are ready (to avoid initial loading triggering this)
+        if (editorsReady) {
+          setHasUserMadeChanges(true)
+        }
       }
     },
     editorProps: {
@@ -1226,17 +1237,30 @@ export default function ContentDetailPage() {
   }
 
   useEffect(() => {
-    if (editor && content?.text) {
+    if (editor && content && !editor.isFocused) {
       // Convert markdown to HTML for proper display
-      const formattedHTML = markdownToHTML(content.text);
-      editor.commands.setContent(formattedHTML);
+      const contentText = content.text || content.content || '';
+      if (contentText) {
+        const formattedHTML = markdownToHTML(contentText);
+        editor.commands.setContent(formattedHTML);
+      }
     }
-    if (instructionsEditor && content?.instructions) {
+    if (instructionsEditor && content && !instructionsEditor.isFocused) {
       // Convert markdown to HTML for proper display
-      const formattedHTML = markdownToHTML(content.instructions);
-      instructionsEditor.commands.setContent(formattedHTML);
+      const instructionsText = content.instructions || '';
+      if (instructionsText) {
+        const formattedHTML = markdownToHTML(instructionsText);
+        instructionsEditor.commands.setContent(formattedHTML);
+      }
     }
-  }, [content, editor, instructionsEditor])
+    
+    // Mark editors as ready after a short delay to allow content to settle
+    if (editor && instructionsEditor && content && !editorsReady) {
+      setTimeout(() => {
+        setEditorsReady(true);
+      }, 500);
+    }
+  }, [content, editor, instructionsEditor, editorsReady])
 
   useEffect(() => {
     if (editor) {
@@ -1350,6 +1374,8 @@ export default function ContentDetailPage() {
       
       console.log("Content saved successfully with campaign_id:", result.content?.campaign_id)
       setIsEditing(false)
+      // Reset the user changes flag after successful save
+      setHasUserMadeChanges(false)
       toast.success("Content updated successfully")
       loadContent()
     } catch (error) {
@@ -1512,25 +1538,29 @@ export default function ContentDetailPage() {
     }
   }
 
+  // Add state to track if user has made explicit changes
+  const [hasUserMadeChanges, setHasUserMadeChanges] = useState(false)
+  
   // Function to check if there are unsaved changes
   const hasUnsavedChanges = () => {
-    if (!content) return false
+    if (!content || !editorsReady) {
+      return false
+    }
     
-    // Convert current editor content to markdown for comparison
-    const currentMarkdownContent = htmlToMarkdown(editForm.content);
-    const currentMarkdownInstructions = htmlToMarkdown(editForm.instructions);
+    // Only check for changes in form fields, not editor content
+    // Editor content changes are tracked via hasUserMadeChanges
+    const titleChanged = editForm.title !== content.title
+    const descriptionChanged = editForm.description !== (content.description || '')
+    const segmentChanged = editForm.segment_id !== (content.segment_id || '')
+    const campaignChanged = editForm.campaign_id !== (content.campaign_id || '')
+    const tagsChanged = JSON.stringify(editForm.tags?.sort() || []) !== JSON.stringify(content.tags?.sort() || [])
+    const ratingChanged = editForm.performance_rating !== content.performance_rating
+    const statusChanged = editForm.status !== (content.status || 'draft')
     
-    return (
-      editForm.title !== content.title ||
-      editForm.description !== (content.description || '') ||
-      editForm.segment_id !== (content.segment_id || '') ||
-      editForm.campaign_id !== (content.campaign_id || '') ||
-      JSON.stringify(editForm.tags) !== JSON.stringify(content.tags || []) ||
-      currentMarkdownContent !== (content.content || content.text || '') ||
-      currentMarkdownInstructions !== (content.instructions || '') ||
-      editForm.performance_rating !== content.performance_rating ||
-      editForm.status !== (content.status || 'draft')
-    )
+    // Check if user has made explicit changes to editor content
+    const contentOrInstructionsChanged = hasUserMadeChanges
+    
+    return titleChanged || descriptionChanged || segmentChanged || campaignChanged || tagsChanged || contentOrInstructionsChanged || ratingChanged || statusChanged
   }
 
   const generateContent = async (quickAction?: string) => {
@@ -1539,16 +1569,20 @@ export default function ContentDetailPage() {
       return
     }
 
-    // Only save changes if there are unsaved changes
-    if (hasUnsavedChanges()) {
+    // Check if there are unsaved changes before generating
+    const hasChanges = hasUnsavedChanges()
+    
+    if (hasChanges) {
       try {
         await handleSaveChanges()
+        // Reset the user changes flag after successful save
+        setHasUserMadeChanges(false)
       } catch (error) {
         console.error("Error saving before generation:", error)
         toast.error("Failed to save changes before generating content")
         return
       }
-    }
+          }
 
     setIsGenerating(true)
     try {
@@ -1647,6 +1681,7 @@ export default function ContentDetailPage() {
             isSaving={isSaving} 
             onDelete={handleDeleteContent}
             activeTab={activeTab}
+            hasChanges={hasUnsavedChanges()}
           />
         </div>
         <div className="flex-1 overflow-auto relative">
@@ -2062,7 +2097,10 @@ export default function ContentDetailPage() {
                           </Label>
                           <Input
                             value={editForm.title}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                            onChange={(e) => {
+                              setEditForm(prev => ({ ...prev, title: e.target.value }))
+                              if (editorsReady) setHasUserMadeChanges(true)
+                            }}
                             placeholder="Enter title"
                             className="h-11"
                           />
@@ -2074,7 +2112,10 @@ export default function ContentDetailPage() {
                           </Label>
                           <Textarea
                             value={editForm.description}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                            onChange={(e) => {
+                              setEditForm(prev => ({ ...prev, description: e.target.value }))
+                              if (editorsReady) setHasUserMadeChanges(true)
+                            }}
                             placeholder="Enter description"
                             className="min-h-[100px] resize-none"
                           />
