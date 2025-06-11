@@ -668,9 +668,9 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange }: 
         {/* Campaign information - similar to requirements kanban */}
         {content.campaign_id && (
           <div className="flex mt-2 border-t pt-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 min-w-0 flex-1">
               <Target className="h-3 w-3 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-              <span className="px-1.5 py-0.5 text-xs rounded-full bg-purple-100/20 text-purple-600 dark:text-purple-400 border border-purple-300/30 overflow-hidden text-ellipsis whitespace-nowrap max-w-[200px]">
+              <span className="px-1.5 py-0.5 text-xs rounded-full bg-purple-100/20 text-purple-600 dark:text-purple-400 border border-purple-300/30 overflow-hidden text-ellipsis whitespace-nowrap max-w-full inline-block">
                 {getCampaignName(content.campaign_id, campaigns)}
               </span>
             </div>
