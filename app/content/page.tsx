@@ -560,12 +560,13 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
   )
 }
 
-function ContentCard({ content, segments, campaigns, onClick, onRatingChange }: { 
+function ContentCard({ content, segments, campaigns, onClick, onRatingChange, isLoadingCampaigns }: { 
   content: ContentItem, 
   segments: Array<{ id: string; name: string }>,
   campaigns: Array<{ id: string; title: string }>,
   onClick: (content: ContentItem) => void,
-  onRatingChange?: (contentId: string, rating: number) => void
+  onRatingChange?: (contentId: string, rating: number) => void,
+  isLoadingCampaigns?: boolean
 }) {
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return null
@@ -670,9 +671,13 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange }: 
           <div className="flex mt-2 border-t pt-2">
             <div className="flex items-center gap-1 min-w-0 flex-1">
               <Target className="h-3 w-3 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-              <span className="px-1.5 py-0.5 text-xs rounded-full bg-purple-100/20 text-purple-600 dark:text-purple-400 border border-purple-300/30 overflow-hidden text-ellipsis whitespace-nowrap max-w-full inline-block">
-                {getCampaignName(content.campaign_id, campaigns)}
-              </span>
+              {isLoadingCampaigns ? (
+                <Skeleton className="h-5 w-24 rounded-full" />
+              ) : (
+                <span className="px-1.5 py-0.5 text-xs rounded-full bg-purple-100/20 text-purple-600 dark:text-purple-400 border border-purple-300/30 overflow-hidden text-ellipsis whitespace-nowrap max-w-full inline-block">
+                  {getCampaignName(content.campaign_id, campaigns)}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -687,7 +692,8 @@ function ContentKanban({
   segments, 
   campaigns,
   onContentClick,
-  onRatingChange
+  onRatingChange,
+  isLoadingCampaigns
 }: {
   contentItems: ContentItem[]
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
@@ -695,6 +701,7 @@ function ContentKanban({
   campaigns: Array<{ id: string; title: string }>
   onContentClick: (content: ContentItem) => void
   onRatingChange?: (contentId: string, rating: number) => void
+  isLoadingCampaigns?: boolean
 }) {
   const [items, setItems] = useState<Record<string, ContentItem[]>>({})
 
@@ -830,6 +837,7 @@ function ContentKanban({
                                 campaigns={campaigns}
                                 onClick={onContentClick}
                                 onRatingChange={handleRatingChange}
+                                isLoadingCampaigns={isLoadingCampaigns}
                               />
                             </div>
                           )}
@@ -1529,6 +1537,7 @@ export default function ContentPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [totalContent, setTotalContent] = useState(0)
   const [campaigns, setCampaigns] = useState<Array<{id: string, title: string, description?: string}>>([])
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
 
   // Initialize command+k hook
   useCommandK()
@@ -1598,6 +1607,7 @@ export default function ContentPage() {
     if (!currentSite?.id) return
     
     try {
+      setIsLoadingCampaigns(true)
       const response = await getCampaigns(currentSite.id)
       if (response.error) {
         console.error('Error loading campaigns:', response.error)
@@ -1608,6 +1618,8 @@ export default function ContentPage() {
     } catch (error) {
       console.error('Error loading campaigns:', error)
       setCampaigns([])
+    } finally {
+      setIsLoadingCampaigns(false)
     }
   }
 
@@ -1862,6 +1874,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
+                  isLoadingCampaigns={isLoadingCampaigns}
                 />
               ) : (
                 <ContentTable 
@@ -1892,6 +1905,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
+                  isLoadingCampaigns={isLoadingCampaigns}
                 />
               ) : (
                 <ContentTable 
@@ -1922,6 +1936,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
+                  isLoadingCampaigns={isLoadingCampaigns}
                 />
               ) : (
                 <ContentTable 
@@ -1952,6 +1967,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
+                  isLoadingCampaigns={isLoadingCampaigns}
                 />
               ) : (
                 <ContentTable 
@@ -1982,6 +1998,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
+                  isLoadingCampaigns={isLoadingCampaigns}
                 />
               ) : (
                 <ContentTable 
