@@ -147,15 +147,35 @@ export async function POST(request: Request) {
     console.log(`🔍 Processing invitation for ${email}`)
     console.log(`📧 User exists: ${!!existingUser}`)
 
-    // Always use magic link for both new and existing users
-    // This is simpler and more reliable than mixing invite + magic link flows
-    console.log(`🔗 Sending magic link to ${email} (${existingUser ? 'existing' : 'new'} user)`)
-    
-    invitationResult = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true, // Allow creating new users automatically
-        emailRedirectTo: redirectTo,
+    if (existingUser) {
+      // For existing users, use magic link sign in
+      // This won't set last_sign_in_at until they actually click the link
+      console.log(`🔗 Sending magic link to existing user ${email}`)
+      
+      invitationResult = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false, // Don't create user, they already exist
+          emailRedirectTo: redirectTo,
+          data: {
+            invitationType: 'team_invitation',
+            siteId,
+            siteName,
+            role,
+            email,
+            ...(name && { name }),
+            ...(position && { position }),
+            redirectUrl: redirectTo
+          }
+        }
+      })
+    } else {
+      // For new users, use admin invite to avoid premature last_sign_in
+      // This creates the user in "invited" status without setting last_sign_in_at
+      console.log(`📧 Sending invitation to new user ${email}`)
+      
+      invitationResult = await adminSupabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectTo,
         data: {
           invitationType: 'team_invitation',
           siteId,
@@ -166,13 +186,14 @@ export async function POST(request: Request) {
           ...(position && { position }),
           redirectUrl: redirectTo
         }
-      }
-    })
+      })
+    }
 
-    console.log(`📤 Magic Link response:`, { 
+    console.log(`📤 Invitation response:`, { 
       success: !invitationResult.error, 
       error: invitationResult.error?.message,
-      code: invitationResult.error?.code 
+      code: invitationResult.error?.code,
+      method: existingUser ? 'magic_link' : 'admin_invite'
     })
 
     if (invitationResult.error) {
@@ -192,7 +213,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log(`Magic link invitation sent successfully to ${email}`)
+    console.log(`Team invitation sent successfully to ${email} using ${existingUser ? 'magic link' : 'admin invite'}`)
 
     return NextResponse.json({
       success: true,
@@ -201,7 +222,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error sending magic link invitation:', error)
+    console.error('Error sending team invitation:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
