@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
@@ -10,7 +10,7 @@ import { toast } from "sonner"
 
 type ConfirmationState = 'loading' | 'success' | 'error' | 'redirect'
 
-export default function ConfirmPage() {
+function ConfirmContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [state, setState] = useState<ConfirmationState>('loading')
@@ -203,5 +203,24 @@ export default function ConfirmPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function ConfirmPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <Card>
+            <CardContent className="flex flex-col items-center text-center py-8">
+              <Loader className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+              <p className="text-gray-600">Loading...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <ConfirmContent />
+    </Suspense>
   )
 } 
