@@ -391,11 +391,19 @@ export const handleDeleteSite = async (
   try {
     setIsSaving(true)
     await deleteSite(currentSite.id)
+    
+    // Cerrar el dialog inmediatamente para evitar efectos secundarios
+    setShowDeleteDialog(false)
+    
+    // Navegar a la página principal después de la eliminación exitosa
+    if (typeof window !== 'undefined') {
+      window.location.href = '/'
+    }
+    
     toast.success("Site deleted successfully")
   } catch (error) {
     console.error(error)
     toast.error("Error deleting site")
-  } finally {
     setIsSaving(false)
     setShowDeleteDialog(false)
   }

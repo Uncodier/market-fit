@@ -1,4 +1,4 @@
-import { createClient } from '../supabase/server'
+import { createClient } from '../supabase/client'
 import { Tables, TablesInsert, TablesUpdate } from '../types/database.types'
 
 export interface SiteWithResourceUrls extends Tables<'sites'> {
@@ -130,10 +130,10 @@ export async function deleteSite(id: string): Promise<void> {
   try {
     const supabase = createClient()
     
-    const { error } = await supabase
-      .from('sites')
-      .delete()
-      .eq('id', id)
+    // Usar la función SQL segura en lugar del DELETE directo
+    const { error } = await supabase.rpc('delete_site_safely', {
+      site_id_param: id
+    })
     
     if (error) throw new SiteServiceError(`Error deleting site: ${error.message}`)
   } catch (error) {

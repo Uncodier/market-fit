@@ -907,10 +907,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
     try {
       setError(null)
       
-      const { error } = await supabaseRef.current
-        .from('sites')
-        .delete()
-        .eq('id', id)
+      // Usar la función SQL segura en lugar del DELETE directo
+      const { error } = await supabaseRef.current.rpc('delete_site_safely', {
+        site_id_param: id
+      })
       
       if (error) throw error
       

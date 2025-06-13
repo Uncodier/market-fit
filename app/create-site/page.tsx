@@ -12,7 +12,7 @@ export default function CreateSitePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [createdSiteId, setCreatedSiteId] = useState<string>("")
-  const { createSite } = useSite()
+  const { createSite, setCurrentSite, sites } = useSite()
   const { user } = useAuth()
   const router = useRouter()
 
@@ -91,11 +91,25 @@ export default function CreateSitePage() {
     }
   }
 
-  const handleGoToDashboard = () => {
+  const handleGoToDashboard = async () => {
+    // First, set the created site as current site
+    if (createdSiteId) {
+      const createdSite = sites.find(site => site.id === createdSiteId)
+      if (createdSite) {
+        await setCurrentSite(createdSite)
+      }
+    }
     router.push("/dashboard")
   }
 
-  const handleGoToSettings = () => {
+  const handleGoToSettings = async () => {
+    // First, set the created site as current site
+    if (createdSiteId) {
+      const createdSite = sites.find(site => site.id === createdSiteId)
+      if (createdSite) {
+        await setCurrentSite(createdSite)
+      }
+    }
     router.push("/settings")
   }
 
@@ -105,6 +119,8 @@ export default function CreateSitePage() {
       isLoading={isSaving}
       isSuccess={isSuccess}
       createdSiteId={createdSiteId}
+      onGoToDashboard={handleGoToDashboard}
+      onGoToSettings={handleGoToSettings}
     />
   )
 } 

@@ -6,9 +6,25 @@ import { Check, Globe, AppWindow } from "../../ui/icons"
 interface SuccessStepProps {
   projectName: string
   onNavigateToSettings: () => void
+  onNavigateToDashboard?: () => Promise<void>
 }
 
-export function SuccessStep({ projectName, onNavigateToSettings }: SuccessStepProps) {
+export function SuccessStep({ projectName, onNavigateToSettings, onNavigateToDashboard }: SuccessStepProps) {
+  const handleDashboardClick = () => {
+    if (onNavigateToDashboard) {
+      onNavigateToDashboard()
+    } else {
+      // Fallback - this shouldn't happen in normal flow
+      window.location.href = "/dashboard"
+    }
+  }
+
+  const handleSettingsClick = () => {
+    if (onNavigateToSettings) {
+      onNavigateToSettings()
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Success Header */}
@@ -38,7 +54,27 @@ export function SuccessStep({ projectName, onNavigateToSettings }: SuccessStepPr
       <div className="grid md:grid-cols-2 gap-4">
         <Card 
           className="border-2 hover:border-primary/50 transition-colors cursor-pointer"
-          onClick={onNavigateToSettings}
+          onClick={handleDashboardClick}
+        >
+          <CardContent className="p-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <AppWindow className="h-5 w-5 text-primary" />
+                </div>
+                <h4 className="font-semibold text-foreground">Go to Dashboard</h4>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Start exploring your project analytics, view real-time insights, and monitor your AI agents' progress. 
+                Your journey to better market fit begins here.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-2 hover:border-primary/50 transition-colors cursor-pointer"
+          onClick={handleSettingsClick}
         >
           <CardContent className="p-6">
             <div className="space-y-3">
@@ -49,28 +85,8 @@ export function SuccessStep({ projectName, onNavigateToSettings }: SuccessStepPr
                 <h4 className="font-semibold text-foreground">Connect Your Channels</h4>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Link WhatsApp, Email, and social media to capture real customer conversations and feedback. 
+                Link WhatsApp, Email, and your website to capture real customer conversations and feedback. 
                 This helps our AI understand your market fit more accurately.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card 
-          className="border-2 hover:border-primary/50 transition-colors cursor-pointer"
-          onClick={onNavigateToSettings}
-        >
-          <CardContent className="p-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <AppWindow className="h-5 w-5 text-primary" />
-                </div>
-                <h4 className="font-semibold text-foreground">Invite Your Team</h4>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Collaborate with teammates to share insights, track progress, and make informed decisions together. 
-                Multiple perspectives lead to better market understanding.
               </p>
             </div>
           </CardContent>

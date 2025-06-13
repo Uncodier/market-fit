@@ -73,9 +73,18 @@ interface SiteOnboardingProps {
   isLoading?: boolean
   isSuccess?: boolean
   createdSiteId?: string
+  onGoToDashboard?: () => Promise<void>
+  onGoToSettings?: () => Promise<void>
 }
 
-export function SiteOnboarding({ onComplete, isLoading, isSuccess, createdSiteId }: SiteOnboardingProps) {
+export function SiteOnboarding({ 
+  onComplete, 
+  isLoading, 
+  isSuccess, 
+  createdSiteId,
+  onGoToDashboard,
+  onGoToSettings
+}: SiteOnboardingProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set())
   const [expandedServices, setExpandedServices] = useState<Set<number>>(new Set())
@@ -93,7 +102,9 @@ export function SiteOnboarding({ onComplete, isLoading, isSuccess, createdSiteId
   }, [isSuccess])
 
   const navigateToSiteSettings = () => {
-    if (createdSiteId) {
+    if (onGoToSettings) {
+      onGoToSettings()
+    } else if (createdSiteId) {
       router.push(`/settings?site=${createdSiteId}`)
     } else {
       router.push("/settings")
@@ -539,6 +550,7 @@ export function SiteOnboarding({ onComplete, isLoading, isSuccess, createdSiteId
                     <SuccessStep 
                       projectName={form.watch("name")}
                       onNavigateToSettings={navigateToSiteSettings}
+                      onNavigateToDashboard={onGoToDashboard}
                     />
                   ) : (
                     <>
@@ -901,7 +913,7 @@ export function SiteOnboarding({ onComplete, isLoading, isSuccess, createdSiteId
                   ) : (
                     <div className="flex gap-4 w-full">
                       <Button 
-                        onClick={() => router.push("/dashboard")}
+                        onClick={onGoToDashboard || (() => router.push("/dashboard"))}
                         size="lg"
                         className="flex-1"
                       >

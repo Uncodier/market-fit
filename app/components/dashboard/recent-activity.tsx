@@ -33,6 +33,8 @@ interface Activity {
   title: string;
   status?: string;
   campaign?: string;
+  journeyStage?: string | null;
+  description?: string | null;
 }
 
 interface RecentActivityProps {
@@ -40,6 +42,26 @@ interface RecentActivityProps {
   startDate?: Date;
   endDate?: Date;
 }
+
+// Colores para las etapas del journey
+const JOURNEY_STAGE_COLORS: Record<string, string> = {
+  awareness: 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200',
+  consideration: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200',
+  decision: 'bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200',
+  purchase: 'bg-green-50 text-green-700 hover:bg-green-50 border-green-200',
+  retention: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-50 border-indigo-200',
+  referral: 'bg-pink-50 text-pink-700 hover:bg-pink-50 border-pink-200',
+  default: 'bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200'
+};
+
+// Colores para los status
+const STATUS_COLORS: Record<string, string> = {
+  completed: 'bg-green-50 text-green-700 hover:bg-green-50 border-green-200',
+  in_progress: 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200',
+  pending: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200',
+  failed: 'bg-red-50 text-red-700 hover:bg-red-50 border-red-200',
+  default: 'bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200'
+};
 
 // Función auxiliar para obtener iniciales
 function getInitials(name: string | undefined | null): string {
@@ -76,6 +98,26 @@ function formatDate(dateString: string): string {
     console.error('Error formatting date:', e);
     return 'Unknown date';
   }
+}
+
+// Función para obtener el color del journey stage
+function getJourneyStageColor(stage: string | null | undefined): string {
+  if (!stage) return JOURNEY_STAGE_COLORS.default;
+  const lowerStage = stage.toLowerCase();
+  return JOURNEY_STAGE_COLORS[lowerStage] || JOURNEY_STAGE_COLORS.default;
+}
+
+// Función para obtener el color del status
+function getStatusColor(status: string | null | undefined): string {
+  if (!status) return STATUS_COLORS.default;
+  const lowerStatus = status.toLowerCase();
+  return STATUS_COLORS[lowerStatus] || STATUS_COLORS.default;
+}
+
+// Función para capitalizar el status
+function capitalizeStatus(status: string | null | undefined): string {
+  if (!status) return 'Unknown';
+  return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 export function RecentActivity({ 
@@ -272,19 +314,35 @@ export function RecentActivity({
             <AvatarImage src={activity.user.imageUrl ?? ""} alt={activity.user.name || ""} />
             <AvatarFallback>{getInitials(activity.user.name || activity.lead?.name || "")}</AvatarFallback>
           </Avatar>
-          <div className="ml-4 space-y-1">
-            <p className="text-sm font-medium leading-none">{activity.user.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {activity.action || activity.title || "Performed an action"} 
-              {activity.segment && 
-                <span> on <span className="font-medium">{activity.segment}</span></span>
-              }
-              {activity.campaign && 
-                <span> in <span className="font-medium">{activity.campaign}</span></span>
-              }
-            </p>
+          <div className="ml-4 space-y-1 flex-1 pr-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium text-foreground leading-snug">
+                {activity.user.name} | {activity.action || activity.title || "Performed an action"}
+                {activity.segment && 
+                  <span> on <span className="font-medium">{activity.segment}</span></span>
+                }
+                {activity.campaign && 
+                  <span> in <span className="font-medium">{activity.campaign}</span></span>
+                }
+              </p>
+              {activity.journeyStage && (
+                <Badge className={`text-xs px-2 py-1 ${getJourneyStageColor(activity.journeyStage)}`}>
+                  {activity.journeyStage}
+                </Badge>
+              )}
+            </div>
+            {activity.description && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {activity.description}
+              </p>
+            )}
           </div>
-          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+            {activity.status && (
+              <Badge className={`text-xs px-2 py-1 ${getStatusColor(activity.status)}`}>
+                {capitalizeStatus(activity.status)}
+              </Badge>
+            )}
             <span title={new Date(activity.date).toLocaleString()}>
               {formatDate(activity.date)}
             </span>
