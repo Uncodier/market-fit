@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Check if user already exists
+    // Check if user already exists and has confirmed their email
     const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers()
     if (listError) {
       console.error('Error listing users:', listError)
@@ -108,6 +108,7 @@ export async function POST(request: Request) {
     }
 
     const existingUser = existingUsers.users.find((u: any) => u.email === email)
+    const userHasConfirmedEmail = existingUser && !!existingUser.email_confirmed_at
 
     // Create the redirect URL for the magic link
     // Determine base URL: use localhost only in development, production URL otherwise
@@ -146,16 +147,17 @@ export async function POST(request: Request) {
 
     console.log(`🔍 Processing invitation for ${email}`)
     console.log(`📧 User exists: ${!!existingUser}`)
+    console.log(`✅ Email confirmed: ${userHasConfirmedEmail}`)
 
-    if (existingUser) {
-      // For existing users, use magic link sign in
-      // This won't set last_sign_in_at until they actually click the link
-      console.log(`🔗 Sending magic link to existing user ${email}`)
+    if (userHasConfirmedEmail) {
+      // For users who have confirmed their email, use magic link without creation
+      // This avoids any potential last_sign_in_at issues
+      console.log(`🔗 Sending magic link to confirmed user ${email}`)
       
       invitationResult = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: false, // Don't create user, they already exist
+          shouldCreateUser: false, // User already exists and is confirmed
           emailRedirectTo: redirectTo,
           data: {
             invitationType: 'team_invitation',
@@ -170,30 +172,35 @@ export async function POST(request: Request) {
         }
       })
     } else {
-      // For new users, use admin invite to avoid premature last_sign_in
-      // This creates the user in "invited" status without setting last_sign_in_at
-      console.log(`📧 Sending invitation to new user ${email}`)
+      // For new users or users who haven't confirmed email, use magic link with creation
+      // last_sign_in_at won't be set until they actually confirm their email and complete authentication
+      console.log(`🔗 Sending magic link to ${existingUser ? 'unconfirmed' : 'new'} user ${email}`)
       
-      invitationResult = await adminSupabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: redirectTo,
-        data: {
-          invitationType: 'team_invitation',
-          siteId,
-          siteName,
-          role,
-          email,
-          ...(name && { name }),
-          ...(position && { position }),
-          redirectUrl: redirectTo
+      invitationResult = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true, // Create user if needed, but they must confirm email first
+          emailRedirectTo: redirectTo,
+          data: {
+            invitationType: 'team_invitation',
+            siteId,
+            siteName,
+            role,
+            email,
+            ...(name && { name }),
+            ...(position && { position }),
+            redirectUrl: redirectTo
+          }
         }
       })
     }
 
-    console.log(`📤 Invitation response:`, { 
+    console.log(`📤 Magic link response:`, { 
       success: !invitationResult.error, 
       error: invitationResult.error?.message,
       code: invitationResult.error?.code,
-      method: existingUser ? 'magic_link' : 'admin_invite'
+      userExists: !!existingUser,
+      emailConfirmed: userHasConfirmedEmail
     })
 
     if (invitationResult.error) {
@@ -213,7 +220,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log(`Team invitation sent successfully to ${email} using ${existingUser ? 'magic link' : 'admin invite'}`)
+    console.log(`Magic link invitation sent successfully to ${email}`)
 
     return NextResponse.json({
       success: true,
@@ -222,7 +229,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error sending team invitation:', error)
+    console.error('Error sending magic link invitation:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
