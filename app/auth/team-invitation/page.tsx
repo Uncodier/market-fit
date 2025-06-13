@@ -26,6 +26,8 @@ function TeamInvitationContent() {
   const name = searchParams.get('name')
   const position = searchParams.get('position')
   const userEmail = searchParams.get('email') // This should come from the auth session
+  
+  console.log('🎯 Team invitation page params:', { siteId, siteName, role, name, position, userEmail })
 
   useEffect(() => {
     // Auto-process the invitation when the page loads
@@ -41,16 +43,15 @@ function TeamInvitationContent() {
       setIsProcessing(true)
 
       try {
-        // Get email from current session or URL params
-        const emailToUse = userEmail || '' // Will be validated in the service
-
+        // The service will get the email from the authenticated user session
+        // No need to pass userEmail since it will be obtained from auth
         const result = await processTeamInvitation({
           siteId,
           siteName,
           role,
           name: name || undefined,
           position: position || undefined,
-          userEmail: emailToUse
+          userEmail: userEmail || '' // This is optional now
         })
 
         setProcessingResult(result)
