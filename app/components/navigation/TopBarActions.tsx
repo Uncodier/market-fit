@@ -899,25 +899,6 @@ The success of this experiment will be measured by:
       {isExperimentsPage && (
         currentSite ? (
           <div className="flex items-center gap-2">
-            <Button 
-              variant="secondary" 
-              size="default"
-              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
-              onClick={handleBuildWithAI}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <FlaskConical className="h-4 w-4" />
-                  Build with AI
-                </>
-              )}
-            </Button>
             <CreateExperimentDialog 
               segments={segments || []}
               campaigns={campaigns}
