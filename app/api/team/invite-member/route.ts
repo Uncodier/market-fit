@@ -165,6 +165,8 @@ export async function POST(request: Request) {
             siteName,
             role,
             email,
+            // For existing users, check if they have password set, if not mark as false
+            password_set: existingUser?.user_metadata?.password_set ?? false,
             ...(name && { name }),
             ...(position && { position }),
             redirectUrl: redirectTo
@@ -184,6 +186,7 @@ export async function POST(request: Request) {
           siteName,
           role,
           email,
+          password_set: false, // Explicitly mark that password is not set
           ...(name && { name }),
           ...(position && { position }),
           redirectUrl: redirectTo

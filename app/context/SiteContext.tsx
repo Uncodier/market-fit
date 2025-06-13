@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useRouter, usePathname } from "next/navigation"
 import type { Tables } from "@/lib/types/database.types"
 import type { 
   Location, 
@@ -319,6 +320,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   
+  // Navigation hooks
+  const router = useRouter()
+  const pathname = usePathname()
+  
   // Referencia segura a supabase (inicializada solo en useEffect)
   const supabaseRef = useRef<any>(null)
   
@@ -625,6 +630,35 @@ export function SiteProvider({ children }: SiteProviderProps) {
       clearTimeout(subscriptionTimer);
     }
   }, [isInitialized, isMounted]) // Removed currentSite?.id dependency to prevent re-subscriptions
+
+  // Redirect to /create-site if user has no sites
+  useEffect(() => {
+    // Only redirect if:
+    // 1. Component is mounted and initialized
+    // 2. Not currently loading
+    // 3. No sites available
+    // 4. Not already on create-site page or auth pages
+    // 5. User has a session (authenticated)
+    if (
+      isMounted && 
+      isInitialized && 
+      !isLoading && 
+      sites.length === 0 && 
+      !pathname.startsWith('/create-site') && 
+      !pathname.startsWith('/auth/') &&
+      supabaseRef.current
+    ) {
+      // Check if user is authenticated before redirecting
+      supabaseRef.current.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
+        if (session) {
+          console.log("No sites found for authenticated user, redirecting to /create-site")
+          router.push('/create-site')
+        }
+      }).catch((error: any) => {
+        console.error("Error checking session for redirect:", error)
+      })
+    }
+  }, [isMounted, isInitialized, isLoading, sites.length, pathname, router])
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = async (site: Site) => {

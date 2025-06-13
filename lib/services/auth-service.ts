@@ -38,6 +38,11 @@ export async function signUp(email: string, password: string): Promise<{ user: U
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          password_set: true // Mark that password is set for normal signups
+        }
+      }
     })
     
     if (error) throw new AuthServiceError(`Error al registrarse: ${error.message}`)

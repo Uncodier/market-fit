@@ -23,6 +23,7 @@ function ConfirmContent() {
         const tokenHash = searchParams.get('token_hash')
         const type = searchParams.get('type')
         const redirectTo = searchParams.get('redirect_to')
+        const invitationType = searchParams.get('invitationType')
 
         if (!tokenHash) {
           setState('error')
@@ -33,7 +34,10 @@ function ConfirmContent() {
         const supabase = createClient()
 
         // Handle different types of confirmations
-        if (type === 'invite') {
+        // Check if it's any kind of team invitation (admin invite or magic link)
+        const isTeamInvitation = type === 'invite' || invitationType === 'team_invitation'
+        
+        if (isTeamInvitation) {
           // This is a team invitation
           console.log('🔗 Processing team invitation confirmation')
           
@@ -51,11 +55,12 @@ function ConfirmContent() {
 
           console.log('✅ Invitation confirmed successfully:', data)
           
-          // Check if user needs to set password (new user or invited user without password)
+          // Check if user needs to set password (invited users always need to set password)
           const user = data.user
-          const isNewUser = !user?.user_metadata?.password_set
+          const hasPasswordSet = user?.user_metadata?.password_set === true
           
-          if (isNewUser || !user?.last_sign_in_at) {
+          // For invitations, always require password setup unless explicitly set
+          if (!hasPasswordSet) {
             console.log('🔐 User needs to set password, redirecting to password setup')
             setState('redirect')
             setMessage('Invitation confirmed! Setting up your account...')
@@ -102,7 +107,23 @@ function ConfirmContent() {
 
           console.log('✅ Email confirmed successfully:', data)
           
-          if (redirectTo) {
+          // Check if user needs to set password even for regular confirmations
+          const user = data.user
+          const hasPasswordSet = user?.user_metadata?.password_set === true
+          
+          if (!hasPasswordSet) {
+            console.log('🔐 User needs to set password, redirecting to password setup')
+            setState('redirect')
+            setMessage('Email confirmed! Setting up your account...')
+            
+            // Encode the original redirect URL to pass it through password setup
+            const encodedRedirect = redirectTo ? encodeURIComponent(redirectTo) : ''
+            const passwordSetupUrl = `/auth/set-password?redirect_to=${encodedRedirect}`
+            
+            setTimeout(() => {
+              router.push(passwordSetupUrl)
+            }, 1500)
+          } else if (redirectTo) {
             const decodedRedirect = decodeURIComponent(redirectTo)
             setState('redirect')
             setMessage('Email confirmed! Redirecting...')
