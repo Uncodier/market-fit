@@ -373,11 +373,11 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     }
   };
 
-  // Get pending members for footer actions - only show resend for users who haven't confirmed email
+  // Get pending members for footer actions - show resend for users who haven't confirmed email OR haven't signed in
   const pendingMembers = teamList.filter(member => 
     member.status === 'pending' && 
     member.id && 
-    !member.emailConfirmed // Only show resend for users who haven't clicked the email
+    (!member.emailConfirmed || !member.lastSignIn) // Show resend for users who haven't clicked the email OR never signed in
   );
 
   // Toggle member expansion
