@@ -36,14 +36,27 @@ interface EditSaleDialogProps {
 
 // Categorías predefinidas para ventas
 const PRODUCT_CATEGORIES = [
-  { value: "software", label: "Software" },
-  { value: "hardware", label: "Hardware" },
-  { value: "service", label: "Service" },
-  { value: "subscription", label: "Subscription" },
-  { value: "consulting", label: "Consulting" },
-  { value: "training", label: "Training" },
-  { value: "support", label: "Support" },
-  { value: "other", label: "Other" }
+  { value: "Physical Product", label: "Physical Product" },
+  { value: "Digital Product", label: "Digital Product" },
+  { value: "Service", label: "Service" },
+  { value: "Subscription", label: "Subscription" },
+  { value: "Course", label: "Course" },
+  { value: "Consultation", label: "Consultation" },
+  { value: "Software", label: "Software" },
+  { value: "Electronics", label: "Electronics" },
+  { value: "Clothing", label: "Clothing" },
+  { value: "Home & Garden", label: "Home & Garden" },
+  { value: "Beauty & Health", label: "Beauty & Health" },
+  { value: "Food & Beverage", label: "Food & Beverage" },
+  { value: "Books & Media", label: "Books & Media" },
+  { value: "Sports & Recreation", label: "Sports & Recreation" },
+  { value: "Automotive", label: "Automotive" },
+  { value: "Travel & Tourism", label: "Travel & Tourism" },
+  { value: "Professional Services", label: "Professional Services" },
+  { value: "Creative Services", label: "Creative Services" },
+  { value: "Technical Services", label: "Technical Services" },
+  { value: "Marketing Services", label: "Marketing Services" },
+  { value: "Other", label: "Other" }
 ];
 
 export function EditSaleDialog({ 

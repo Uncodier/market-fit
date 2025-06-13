@@ -84,6 +84,8 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
   
   // Fetch cohort data
   useEffect(() => {
+    const abortController = new AbortController();
+    
     const fetchCohortData = async () => {
       if (!currentSite || currentSite.id === "default") {
         setIsLoading(false);
@@ -107,7 +109,16 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
         
         console.log(`[CohortTables] Fetching data with params:`, Object.fromEntries(params.entries()));
         
-        const response = await fetch(`/api/cohorts?${params.toString()}`);
+        const response = await fetch(`/api/cohorts?${params.toString()}`, {
+          signal: abortController.signal
+        });
+        
+        // Check if request was aborted
+        if (abortController.signal.aborted) {
+          console.log("[CohortTables] Request was cancelled");
+          return;
+        }
+        
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`[CohortTables] API error ${response.status}: ${errorText}`);
@@ -117,28 +128,53 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
         const data: CohortResponse = await response.json();
         console.log(`[CohortTables] Received data:`, data);
         
-        if (!data.salesCohorts || !Array.isArray(data.salesCohorts) || data.salesCohorts.length === 0 ||
-            !data.usageCohorts || !Array.isArray(data.usageCohorts) || data.usageCohorts.length === 0) {
-          console.error("[CohortTables] No cohort data found in response");
+        // More lenient validation - ensure the response structure is correct
+        const salesCohorts = data.salesCohorts || [];
+        const usageCohorts = data.usageCohorts || [];
+        
+        // Validate that we have the expected structure
+        if (!Array.isArray(salesCohorts) || !Array.isArray(usageCohorts)) {
+          console.error("[CohortTables] Invalid cohort data structure in response", data);
           setHasError(true);
           setSalesCohortData([]);
           setUsageCohortData([]);
           return;
         }
         
-        setSalesCohortData(data.salesCohorts);
-        setUsageCohortData(data.usageCohorts);
+        // Set the data even if arrays are empty - the component will handle empty states
+        setSalesCohortData(salesCohorts);
+        setUsageCohortData(usageCohorts);
+        
+        // Log if we have no data for debugging
+        if (salesCohorts.length === 0 && usageCohorts.length === 0) {
+          console.log("[CohortTables] No cohort data available for the selected period");
+        } else {
+          console.log(`[CohortTables] Loaded ${salesCohorts.length} sales cohorts and ${usageCohorts.length} usage cohorts`);
+        }
       } catch (error) {
+        // Don't show error if request was just cancelled
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log("[CohortTables] Request was cancelled");
+          return;
+        }
+        
         console.error("Error fetching cohort data:", error);
         setHasError(true);
         setSalesCohortData([]);
         setUsageCohortData([]);
       } finally {
-        setIsLoading(false);
+        if (!abortController.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
     
     fetchCohortData();
+    
+    // Cleanup function to cancel the request if component unmounts or dependencies change
+    return () => {
+      abortController.abort();
+    };
   }, [segmentId, startDate, endDate, currentSite, user]);
   
   if (isLoading) {
@@ -189,7 +225,18 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
     );
   }
   
-  if (hasError || salesCohortData.length === 0 || usageCohortData.length === 0) {
+  if (hasError) {
+    return (
+      <EmptyCard 
+        icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
+        title="Error loading cohort data"
+        description="There was an error loading the retention data. Please try again."
+      />
+    );
+  }
+
+  // If no data at all, show empty state
+  if (salesCohortData.length === 0 && usageCohortData.length === 0) {
     return (
       <EmptyCard 
         icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
@@ -198,90 +245,107 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
       />
     );
   }
-  
+
   return (
     <div className="space-y-8">
-      {/* Sales Cohort Table */}
-      <div>
-        <h3 className="text-lg font-medium mb-4">Sales Retention by Week</h3>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cohort</TableHead>
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <TableHead key={i} className="text-center">Week {i + 1}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {salesCohortData.map((row) => (
-                <TableRow key={row.cohort}>
-                  <TableCell className="font-medium">{row.cohort}</TableCell>
-                  {Array.from({ length: 8 }).map((_, i) => {
-                    const value = row.weeks[i] || 0;
-                    return (
-                      <TableCell 
-                        key={i} 
-                        className="text-center"
-                        style={{ 
-                          background: value > 0 ? getGradientBackground(value, isDarkMode) : 'transparent',
-                          color: value > 0 ? 'white' : undefined,
-                          textShadow: value > 0 ? '0px 0px 2px rgba(0, 0, 0, 0.3)' : undefined,
-                          borderRadius: value > 0 ? '0.2rem' : undefined
-                        }}
-                      >
-                        {value > 0 ? `${value}%` : ''}
-                      </TableCell>
-                    );
-                  })}
+      {/* Sales Cohort Table - Only show if we have sales data */}
+      {salesCohortData.length > 0 && (
+        <div>
+          <h3 className="text-lg font-medium mb-4">Sales Retention by Week</h3>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cohort</TableHead>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <TableHead key={i} className="text-center">Week {i + 1}</TableHead>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {salesCohortData.map((row) => (
+                  <TableRow key={row.cohort}>
+                    <TableCell className="font-medium">{row.cohort}</TableCell>
+                    {Array.from({ length: 8 }).map((_, i) => {
+                      const value = row.weeks[i] || 0;
+                      return (
+                        <TableCell 
+                          key={i} 
+                          className="text-center"
+                          style={{ 
+                            background: value > 0 ? getGradientBackground(value, isDarkMode) : 'transparent',
+                            color: value > 0 ? 'white' : undefined,
+                            textShadow: value > 0 ? '0px 0px 2px rgba(0, 0, 0, 0.3)' : undefined,
+                            borderRadius: value > 0 ? '0.2rem' : undefined
+                          }}
+                        >
+                          {value > 0 ? `${value}%` : ''}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      </div>
+      )}
       
-      {/* Usage Cohort Table */}
-      <div>
-        <h3 className="text-lg font-medium mb-4">Usage Retention by Week</h3>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cohort</TableHead>
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <TableHead key={i} className="text-center">Week {i + 1}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {usageCohortData.map((row) => (
-                <TableRow key={row.cohort}>
-                  <TableCell className="font-medium">{row.cohort}</TableCell>
-                  {Array.from({ length: 8 }).map((_, i) => {
-                    const value = row.weeks[i] || 0;
-                    return (
-                      <TableCell 
-                        key={i} 
-                        className="text-center"
-                        style={{ 
-                          background: value > 0 ? getGradientBackground(value, isDarkMode) : 'transparent',
-                          color: value > 0 ? 'white' : undefined,
-                          textShadow: value > 0 ? '0px 0px 2px rgba(0, 0, 0, 0.3)' : undefined,
-                          borderRadius: value > 0 ? '0.2rem' : undefined
-                        }}
-                      >
-                        {value > 0 ? `${value}%` : ''}
-                      </TableCell>
-                    );
-                  })}
+      {/* Usage Cohort Table - Only show if we have usage data */}
+      {usageCohortData.length > 0 && (
+        <div>
+          <h3 className="text-lg font-medium mb-4">Usage Retention by Week</h3>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cohort</TableHead>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <TableHead key={i} className="text-center">Week {i + 1}</TableHead>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {usageCohortData.map((row) => (
+                  <TableRow key={row.cohort}>
+                    <TableCell className="font-medium">{row.cohort}</TableCell>
+                    {Array.from({ length: 8 }).map((_, i) => {
+                      const value = row.weeks[i] || 0;
+                      return (
+                        <TableCell 
+                          key={i} 
+                          className="text-center"
+                          style={{ 
+                            background: value > 0 ? getGradientBackground(value, isDarkMode) : 'transparent',
+                            color: value > 0 ? 'white' : undefined,
+                            textShadow: value > 0 ? '0px 0px 2px rgba(0, 0, 0, 0.3)' : undefined,
+                            borderRadius: value > 0 ? '0.2rem' : undefined
+                          }}
+                        >
+                          {value > 0 ? `${value}%` : ''}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Show message if we only have partial data */}
+      {salesCohortData.length === 0 && usageCohortData.length > 0 && (
+        <div className="text-sm text-muted-foreground text-center p-4 bg-muted/50 rounded-md">
+          Only usage retention data is available for the selected period.
+        </div>
+      )}
+      
+      {usageCohortData.length === 0 && salesCohortData.length > 0 && (
+        <div className="text-sm text-muted-foreground text-center p-4 bg-muted/50 rounded-md">
+          Only sales retention data is available for the selected period.
+        </div>
+      )}
     </div>
   )
 } 

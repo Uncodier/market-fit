@@ -49,6 +49,11 @@ const ACCEPTED_FILE_TYPES = {
   'application/pdf': ['.pdf'],
   'text/csv': ['.csv'],
   'application/vnd.ms-excel': ['.csv'],
+  'text/markdown': ['.md'],
+  'text/plain': ['.md', '.txt'],
+  'application/json': ['.json'],
+  'text/yaml': ['.yaml', '.yml'],
+  'application/x-yaml': ['.yaml', '.yml'],
   'image/jpeg': ['.jpg', '.jpeg'],
   'image/png': ['.png'],
   'image/webp': ['.webp'],
@@ -161,7 +166,7 @@ export function UploadFileDialog({
   const onDrop = useCallback(async (acceptedFiles: File[], rejectedFiles: any[]) => {
     // Handle rejected files
     if (rejectedFiles.length > 0) {
-      const message = "This file type is not supported. Please upload a CSV, PDF, or image file (JPG, PNG, WebP).";
+      const message = "This file type is not supported. Please upload a CSV, PDF, Markdown (.md), TXT, JSON, YAML, or image file (JPG, PNG, WebP).";
       setError(message);
       return;
     }
@@ -175,7 +180,7 @@ export function UploadFileDialog({
       try {
         // Additional type validation to exclude GIFs or other unwanted types
         if (!isAcceptableFile(selectedFile)) {
-          setError("This file type is not supported. Please upload a CSV, PDF, or image file (JPG, PNG, WebP).");
+          setError("This file type is not supported. Please upload a CSV, PDF, Markdown (.md), TXT, JSON, YAML, or image file (JPG, PNG, WebP).");
           setIsLoading(false);
           return;
         }
@@ -241,12 +246,20 @@ export function UploadFileDialog({
     if (!file) return ""
     
     const fileType = file.type
+    const fileName = file.name.toLowerCase()
+    
     if (fileType.startsWith('image/')) {
       return "image"
     } else if (fileType === 'application/pdf') {
       return "document"
     } else if (fileType === 'text/csv' || fileType === 'application/vnd.ms-excel') {
       return "spreadsheet"
+    } else if (fileType === 'application/json' || fileName.endsWith('.json')) {
+      return "data"
+    } else if (fileType === 'text/yaml' || fileType === 'application/x-yaml' || fileName.endsWith('.yaml') || fileName.endsWith('.yml')) {
+      return "data"
+    } else if (fileType === 'text/plain' && fileName.endsWith('.txt')) {
+      return "text"
     } else {
       return "document"
     }
@@ -496,7 +509,7 @@ export function UploadFileDialog({
                         {isSubmitting ? "Uploading..." : (mode === 'update' ? "Drag and drop a new file or click to select" : "Drag and drop a file or click to select")}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        Only CSV, PDF, and images (JPG, PNG, WebP) up to 10MB
+                        CSV, PDF, Markdown (.md), TXT, JSON, YAML, and images (JPG, PNG, WebP) up to 10MB
                       </p>
                     </div>
                   </div>

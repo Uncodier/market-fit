@@ -47,7 +47,8 @@ const nextConfig = {
               img-src 'self' data: https:;
               font-src 'self' data:;
               connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* https://tu-api-real.com https://backend.aimarket.fit https://backend.uncodie.com https://api.uncodie.com;
-              object-src 'none';
+              frame-src 'self' https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://docs.google.com;
+              object-src 'self' https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co;
               base-uri 'self';
               form-action 'self';
               frame-ancestors 'none';

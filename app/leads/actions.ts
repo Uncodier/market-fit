@@ -143,22 +143,25 @@ const CreateLeadSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
-  company: z.object({
-    name: z.string().optional(),
-    website: z.string().optional(),
-    industry: z.string().optional(),
-    size: z.string().optional(),
-    annual_revenue: z.string().optional(),
-    founded: z.string().optional(),
-    description: z.string().optional(),
-    address: z.object({
-      street: z.string().optional(),
-      city: z.string().optional(),
-      state: z.string().optional(),
-      zipcode: z.string().optional(),
-      country: z.string().optional(),
-    }).optional(),
-  }).nullable(),
+  company: z.union([
+    z.string(),
+    z.object({
+      name: z.string().optional(),
+      website: z.string().optional(),
+      industry: z.string().optional(),
+      size: z.string().optional(),
+      annual_revenue: z.string().optional(),
+      founded: z.string().optional(),
+      description: z.string().optional(),
+      address: z.object({
+        street: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zipcode: z.string().optional(),
+        country: z.string().optional(),
+      }).optional(),
+    })
+  ]).optional().nullable(),
   company_id: z.string().optional(),
   position: z.string().optional(),
   segment_id: z.string().optional(),
@@ -195,22 +198,25 @@ const UpdateLeadSchema = z.object({
   name: z.string().optional(),
   email: z.string().email().optional(),
   phone: z.string().optional().nullable(),
-  company: z.object({
-    name: z.string().optional(),
-    website: z.string().optional(),
-    industry: z.string().optional(),
-    size: z.string().optional(),
-    annual_revenue: z.string().optional(),
-    founded: z.string().optional(),
-    description: z.string().optional(),
-    address: z.object({
-      street: z.string().optional(),
-      city: z.string().optional(),
-      state: z.string().optional(),
-      zipcode: z.string().optional(),
-      country: z.string().optional(),
-    }).optional(),
-  }).optional().nullable(),
+  company: z.union([
+    z.string(),
+    z.object({
+      name: z.string().optional(),
+      website: z.string().optional(),
+      industry: z.string().optional(),
+      size: z.string().optional(),
+      annual_revenue: z.string().optional(),
+      founded: z.string().optional(),
+      description: z.string().optional(),
+      address: z.object({
+        street: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zipcode: z.string().optional(),
+        country: z.string().optional(),
+      }).optional(),
+    })
+  ]).optional().nullable(),
   company_id: z.string().optional().nullable(),
   position: z.string().optional().nullable(),
   campaign_id: z.string().optional().nullable(),
@@ -389,14 +395,28 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
 async function handleCompanyForLead(data: CreateLeadInput | Partial<UpdateLeadInput>) {
   let company_id = data.company_id
 
-  // Si no hay company_id pero hay company.name, intentar crear/encontrar la company
-  if (!company_id && data.company?.name) {
-    const { company, error } = await findOrCreateCompany(data.company.name)
-    if (error) {
-      console.error("Error handling company:", error)
-      return { company_id: null, error }
+  // Handle different company data types
+  if (!company_id && data.company) {
+    let companyName: string | null = null
+    
+    // If company is a string, use it directly
+    if (typeof data.company === 'string') {
+      companyName = data.company
     }
-    company_id = company?.id || null
+    // If company is an object with a name property, use that
+    else if (typeof data.company === 'object' && data.company.name) {
+      companyName = data.company.name
+    }
+    
+    // If we have a company name, try to create/find the company
+    if (companyName) {
+      const { company, error } = await findOrCreateCompany(companyName)
+      if (error) {
+        console.error("Error handling company:", error)
+        return { company_id: null, error }
+      }
+      company_id = company?.id || null
+    }
   }
 
   return { company_id, error: null }
@@ -409,6 +429,18 @@ export async function createLead(data: CreateLeadInput): Promise<{ error?: strin
     // Validate input data
     const validatedData = CreateLeadSchema.parse(data)
     
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error("Error getting authenticated user:", authError)
+      return { error: "Authentication error" }
+    }
+
+    if (!user) {
+      return { error: "User not authenticated" }
+    }
+    
     // Handle company creation/lookup
     const { company_id, error: companyError } = await handleCompanyForLead(validatedData)
     if (companyError) {
@@ -418,7 +450,8 @@ export async function createLead(data: CreateLeadInput): Promise<{ error?: strin
     // Prepare data for insertion
     const insertData = {
       ...validatedData,
-      company_id
+      company_id,
+      user_id: user.id
     }
     
     // Insert the lead
@@ -448,6 +481,18 @@ export async function createLead(data: CreateLeadInput): Promise<{ error?: strin
 export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ error?: string; success?: boolean }> {
   try {
     const supabase = await createClient()
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error("Error getting authenticated user:", authError)
+      return { error: "Authentication error" }
+    }
+
+    if (!user) {
+      return { error: "User not authenticated" }
+    }
     
     // Validate input data (we use partial to allow for partial updates)
     UpdateLeadSchema.parse(data) // This should throw if validation fails
@@ -492,6 +537,18 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
 export async function deleteLead(id: string): Promise<{ error?: string; success?: boolean }> {
   try {
     const supabase = await createClient()
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error("Error getting authenticated user:", authError)
+      return { error: "Authentication error" }
+    }
+
+    if (!user) {
+      return { error: "User not authenticated" }
+    }
     
     // Delete the lead
     const { error } = await supabase

@@ -70,6 +70,9 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [useGoogleViewer, setUseGoogleViewer] = useState(false)
+  const [textContent, setTextContent] = useState<string | null>(null)
+  const [isLoadingText, setIsLoadingText] = useState(false)
 
   const getDefaultThumbnail = (type: string): string | undefined => {
     switch (type) {
@@ -114,10 +117,168 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
     }
   }
 
+  const getDocumentPreview = () => {
+    const fileExtension = asset.name.split('.').pop()?.toLowerCase()
+    const isPDF = fileExtension === 'pdf'
+    const fileName = asset.name.toLowerCase()
+    
+    // Detectar archivos de texto (incluyendo archivos sin extensión que podrían ser texto)
+    const isTextFile = !fileExtension || // Sin extensión, podría ser texto
+      ['txt', 'md', 'json', 'xml', 'csv', 'log', 'conf', 'config', 'yml', 'yaml', 'ini', 'env'].includes(fileExtension) ||
+      fileName.includes('readme') || 
+      fileName.includes('faq') ||
+      fileName.includes('changelog') ||
+      fileName.includes('license') ||
+      fileName.includes('config')
+    
+    // URLs para diferentes métodos de visualización
+    const directPdfUrl = isPDF ? `${asset.file_path}#toolbar=0&navpanes=0&scrollbar=0&view=FitH` : asset.file_path
+    const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(asset.file_path)}&embedded=true`
+    
+    const handleDirectLoadError = () => {
+      if (isPDF && !useGoogleViewer) {
+        // Si el PDF directo falla, intentar con Google Viewer
+        setUseGoogleViewer(true)
+      } else {
+        // Si Google Viewer también falla, mostrar fallback
+        setImageError(true)
+      }
+    }
+
+    // Función para cargar contenido de texto
+    const loadTextContent = async () => {
+      if (textContent !== null || isLoadingText) return // Ya cargado o cargando
+      
+      setIsLoadingText(true)
+      try {
+        const response = await fetch(asset.file_path)
+        if (response.ok) {
+          const text = await response.text()
+          setTextContent(text)
+        } else {
+          setImageError(true)
+        }
+      } catch (error) {
+        console.error('Error loading text content:', error)
+        setImageError(true)
+      } finally {
+        setIsLoadingText(false)
+      }
+    }
+
+    // Cargar contenido de texto si es necesario
+    if (isTextFile && textContent === null && !isLoadingText && !imageError) {
+      loadTextContent()
+    }
+    
+    return (
+      <div className="w-full h-full bg-white relative">
+        {isPDF ? (
+          // Para PDFs, intentar carga directa primero, luego Google Viewer
+          <iframe
+            key={useGoogleViewer ? 'google' : 'direct'} // Force re-render when switching
+            src={useGoogleViewer ? googleViewerUrl : directPdfUrl}
+            className="w-full h-full border-0"
+            title={asset.name}
+            onError={handleDirectLoadError}
+            onLoad={(e) => {
+              // Verificar si el iframe cargó correctamente
+              try {
+                const iframe = e.target as HTMLIFrameElement
+                setTimeout(() => {
+                  if (!iframe.contentWindow) {
+                    handleDirectLoadError()
+                  }
+                }, useGoogleViewer ? 3000 : 1500)
+              } catch (error) {
+                handleDirectLoadError()
+              }
+            }}
+          />
+        ) : isTextFile ? (
+          // Para archivos de texto, mostrar contenido cargado
+          <div className="w-full h-full relative">
+            {isLoadingText ? (
+              <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-sm text-gray-600">Loading content...</p>
+                </div>
+              </div>
+            ) : textContent ? (
+              <div className="w-full h-full overflow-auto bg-white p-4">
+                <pre 
+                  className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800"
+                  style={{
+                    fontFamily: 'Monaco, Consolas, "Lucida Console", monospace',
+                    fontSize: '13px',
+                    lineHeight: '1.6'
+                  }}
+                >
+                  {textContent}
+                </pre>
+              </div>
+            ) : (
+              // Fallback mientras carga
+              <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Preparing preview...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          // Para otros tipos, mostrar placeholder
+          <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+            <div className="bg-blue-100 p-6 rounded-2xl">
+              <FileText className="h-16 w-16 text-blue-600" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-blue-800 mb-1">Document</p>
+              <p className="text-xs text-blue-600 uppercase tracking-wide font-medium">
+                {fileExtension || 'No Extension'}
+              </p>
+            </div>
+            <div className="text-xs text-blue-700/70 text-center max-w-48">
+              Click "Open" to view the {fileExtension?.toUpperCase() || 'file'}
+            </div>
+          </div>
+        )}
+        
+        {/* Fallback overlay cuando todo falla */}
+        {imageError && (
+          <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-amber-50 to-orange-50 p-6">
+            <div className="bg-amber-100 p-6 rounded-2xl">
+              <FileText className="h-16 w-16 text-amber-600" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-amber-800 mb-1">
+                {isPDF ? 'PDF Preview' : 'Document Preview'}
+              </p>
+              <p className="text-xs text-amber-600 uppercase tracking-wide font-medium">
+                {fileExtension || 'Document'}
+              </p>
+            </div>
+            <div className="text-xs text-amber-700/70 text-center">
+              Preview not available - Click "Open" to view
+            </div>
+            {isPDF && (
+              <div className="text-[10px] text-amber-600/60 text-center mt-2">
+                PDF viewer blocked by security policy
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // Para imágenes, usamos la URL del archivo directamente
   // Para videos, mostramos un thumbnail o un icono
-  // Para documentos, mostramos un icono
+  // Para documentos, intentamos mostrar un preview en iframe
   const shouldShowImage = asset.file_type === "image" && !imageError
+  const shouldShowDocumentPreview = asset.file_type === "document" && !imageError
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -201,6 +362,8 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
                 onError={() => setImageError(true)}
               />
             </div>
+          ) : shouldShowDocumentPreview ? (
+            getDocumentPreview()
           ) : (
             getIcon(asset.file_type)
           )}

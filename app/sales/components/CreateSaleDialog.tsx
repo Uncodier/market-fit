@@ -21,7 +21,7 @@ interface FormData {
   productName: string
   productType: string
   amount: number
-  status: 'draft' | 'pending' | 'completed' | 'cancelled' | 'refunded'
+  status: 'pending' | 'completed' | 'cancelled' | 'refunded'
   source: 'retail' | 'online'
   saleDate: string
   paymentMethod: string
@@ -35,7 +35,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
     productName: "",
     productType: "",
     amount: 0,
-    status: "draft",
+    status: "pending",
     source: "retail",
     saleDate: new Date().toISOString().split('T')[0],
     paymentMethod: "cash"
@@ -59,7 +59,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
         ...formData,
         amount_due: formData.amount, // Set initial amount_due equal to amount
         siteId: currentSite.id,
-        campaignId: currentSite.id // Temporal, hasta que implementemos la selección de campaña
+        campaignId: null // No campaign selected by default
       })
 
       if (result.error) {
@@ -133,10 +133,27 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                   <SelectValue placeholder="Select product type" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Physical Product">Physical Product</SelectItem>
+                  <SelectItem value="Digital Product">Digital Product</SelectItem>
+                  <SelectItem value="Service">Service</SelectItem>
+                  <SelectItem value="Subscription">Subscription</SelectItem>
+                  <SelectItem value="Course">Course</SelectItem>
+                  <SelectItem value="Consultation">Consultation</SelectItem>
+                  <SelectItem value="Software">Software</SelectItem>
                   <SelectItem value="Electronics">Electronics</SelectItem>
                   <SelectItem value="Clothing">Clothing</SelectItem>
-                  <SelectItem value="Home">Home</SelectItem>
-                  <SelectItem value="Beauty">Beauty</SelectItem>
+                  <SelectItem value="Home & Garden">Home & Garden</SelectItem>
+                  <SelectItem value="Beauty & Health">Beauty & Health</SelectItem>
+                  <SelectItem value="Food & Beverage">Food & Beverage</SelectItem>
+                  <SelectItem value="Books & Media">Books & Media</SelectItem>
+                  <SelectItem value="Sports & Recreation">Sports & Recreation</SelectItem>
+                  <SelectItem value="Automotive">Automotive</SelectItem>
+                  <SelectItem value="Travel & Tourism">Travel & Tourism</SelectItem>
+                  <SelectItem value="Professional Services">Professional Services</SelectItem>
+                  <SelectItem value="Creative Services">Creative Services</SelectItem>
+                  <SelectItem value="Technical Services">Technical Services</SelectItem>
+                  <SelectItem value="Marketing Services">Marketing Services</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>

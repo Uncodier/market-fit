@@ -36,7 +36,6 @@ const NO_SEGMENT = "no_segment"
 
 // Status colors for sales
 const STATUS_STYLES = {
-  draft: "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200",
   pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
   completed: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
   cancelled: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
@@ -154,7 +153,7 @@ function SalesTable({
                     {truncateText(getSegmentName(sale.segmentId))}
                   </TableCell>
                   <TableCell>
-                    <Badge className={`${STATUS_STYLES[sale.status]}`}>
+                    <Badge className={`${STATUS_STYLES[sale.status as keyof typeof STATUS_STYLES] || STATUS_STYLES.pending}`}>
                       {sale.status}
                     </Badge>
                   </TableCell>
@@ -650,14 +649,13 @@ export default function SalesPage() {
             <div className="px-16 pt-0">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
-                  <TabsList>
-                    <TabsTrigger value="all" className="text-sm font-medium">All Sales</TabsTrigger>
-                    <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
-                    <TabsTrigger value="pending" className="text-sm font-medium">Pending</TabsTrigger>
-                    <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
-                    <TabsTrigger value="cancelled" className="text-sm font-medium">Cancelled</TabsTrigger>
-                    <TabsTrigger value="refunded" className="text-sm font-medium">Refunded</TabsTrigger>
-                  </TabsList>
+                                      <TabsList>
+                      <TabsTrigger value="all" className="text-sm font-medium">All Sales</TabsTrigger>
+                      <TabsTrigger value="pending" className="text-sm font-medium">Pending</TabsTrigger>
+                      <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
+                      <TabsTrigger value="cancelled" className="text-sm font-medium">Cancelled</TabsTrigger>
+                      <TabsTrigger value="refunded" className="text-sm font-medium">Refunded</TabsTrigger>
+                    </TabsList>
                   <div className="relative w-64">
                     <Input 
                       data-command-k-input
@@ -686,31 +684,6 @@ export default function SalesPage() {
               ) : (
                 <>
                   <TabsContent value="all" className="space-y-4">
-                    {viewType === "table" ? (
-                      <SalesTable
-                        sales={currentSales}
-                        currentPage={currentPage}
-                        itemsPerPage={itemsPerPage}
-                        totalSales={filteredSales.length}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    ) : (
-                      <KanbanView 
-                        sales={filteredSales}
-                        onUpdateSaleStatus={handleUpdateSaleStatus}
-                        segments={segments}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="draft" className="space-y-4">
                     {viewType === "table" ? (
                       <SalesTable
                         sales={currentSales}

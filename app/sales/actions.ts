@@ -73,9 +73,9 @@ export async function createSale(data: {
   productType?: string;
   amount: number;
   amount_due?: number;
-  status: 'draft' | 'pending' | 'completed' | 'cancelled' | 'refunded';
+  status: 'pending' | 'completed' | 'cancelled' | 'refunded';
   leadId?: string;
-  campaignId: string;
+  campaignId?: string | null;
   segmentId?: string;
   saleDate: string;
   paymentMethod?: string;
@@ -86,6 +86,13 @@ export async function createSale(data: {
   try {
     const supabase = await createClient();
     
+    // Get the authenticated user
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      return { error: "Unauthorized: User not authenticated" };
+    }
+    
     const saleData: Partial<SaleData> = {
       title: data.title,
       product_name: data.productName || null,
@@ -94,13 +101,14 @@ export async function createSale(data: {
       amount_due: data.amount_due !== undefined ? data.amount_due : data.amount,
       status: data.status,
       lead_id: data.leadId || null,
-      campaign_id: data.campaignId,
+      campaign_id: data.campaignId || null,
       segment_id: data.segmentId || null,
       sale_date: data.saleDate,
       payment_method: data.paymentMethod || null,
       source: data.source,
       notes: data.notes || null,
       site_id: data.siteId,
+      user_id: session.user.id,
     };
 
     const { data: sale, error } = await supabase
