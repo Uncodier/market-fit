@@ -49,6 +49,8 @@ interface FormTeamMember {
   id?: string;
   status?: 'pending' | 'active' | 'rejected';
   originalRole?: 'owner' | 'admin' | 'marketing' | 'collaborator'; // Track original DB role
+  emailConfirmed?: boolean; // Track if user has confirmed their email
+  lastSignIn?: string; // Track last sign in to know if user is truly active
 }
 
 // Helper to convert SiteMember to FormTeamMember
@@ -69,7 +71,9 @@ const siteMemberToFormMember = (member: SiteMember): FormTeamMember => {
     role: formRole,
     position: member.position || undefined,
     status: member.status,
-    originalRole: member.role // Keep track of original DB role
+    originalRole: member.role, // Keep track of original DB role
+    emailConfirmed: member.emailConfirmed,
+    lastSignIn: member.lastSignIn
   };
 };
 
@@ -369,8 +373,12 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     }
   };
 
-  // Get pending members for footer actions
-  const pendingMembers = teamList.filter(member => member.status === 'pending' && member.id);
+  // Get pending members for footer actions - only show resend for users who haven't confirmed email
+  const pendingMembers = teamList.filter(member => 
+    member.status === 'pending' && 
+    member.id && 
+    !member.emailConfirmed // Only show resend for users who haven't clicked the email
+  );
 
   // Toggle member expansion
   const toggleMemberExpansion = (index: number) => {
@@ -477,9 +485,21 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             <CheckCircle2 className="h-3 w-3 mr-1" /> Active
                           </Badge>
                         ) : member.status === 'pending' ? (
-                          <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200 text-xs">
-                            <Clock className="h-3 w-3 mr-1" /> Pending
-                          </Badge>
+                          <>
+                            {/* Email confirmation status for pending users */}
+                            {member.emailConfirmed ? (
+                              <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 text-xs">
+                                <CheckCircle2 className="h-3 w-3 mr-1" /> Email Confirmed
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200 text-xs">
+                                <Mail className="h-3 w-3 mr-1" /> Awaiting Email Click
+                              </Badge>
+                            )}
+                            <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200 text-xs">
+                              <Clock className="h-3 w-3 mr-1" /> Pending
+                            </Badge>
+                          </>
                         ) : null}
                       </>
                     )}
@@ -707,7 +727,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                   ) : (
                     <Mail className="w-4 h-4 mr-2" />
                   )}
-                  Resend to {member.name || member.email}
+                  Resend Magic Link to {member.name || member.email}
                 </Button>
               );
             })}

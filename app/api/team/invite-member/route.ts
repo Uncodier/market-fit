@@ -147,31 +147,15 @@ export async function POST(request: Request) {
     console.log(`🔍 Processing invitation for ${email}`)
     console.log(`📧 User exists: ${!!existingUser}`)
 
-    // Use the appropriate method based on whether user exists
-    if (existingUser) {
-      console.log(`👤 Sending magic link to existing user: ${email}`)
-      // For existing users, use signInWithOtp
-      invitationResult = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: redirectTo,
-          data: {
-            invitationType: 'team_invitation',
-            siteId,
-            siteName,
-            role,
-            email,
-            ...(name && { name }),
-            ...(position && { position }),
-            redirectUrl: redirectTo
-          }
-        }
-      })
-    } else {
-      console.log(`✨ Inviting new user: ${email}`)
-      // For new users, use admin invite which creates account and sends email
-      invitationResult = await adminSupabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: redirectTo,
+    // Always use magic link for both new and existing users
+    // This is simpler and more reliable than mixing invite + magic link flows
+    console.log(`🔗 Sending magic link to ${email} (${existingUser ? 'existing' : 'new'} user)`)
+    
+    invitationResult = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true, // Allow creating new users automatically
+        emailRedirectTo: redirectTo,
         data: {
           invitationType: 'team_invitation',
           siteId,
@@ -182,8 +166,8 @@ export async function POST(request: Request) {
           ...(position && { position }),
           redirectUrl: redirectTo
         }
-      })
-    }
+      }
+    })
 
     console.log(`📤 Magic Link response:`, { 
       success: !invitationResult.error, 

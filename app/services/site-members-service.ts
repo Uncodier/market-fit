@@ -13,6 +13,8 @@ export interface SiteMember {
   name: string | null
   position: string | null
   status: 'pending' | 'active' | 'rejected'
+  emailConfirmed?: boolean // Track if user has confirmed their email
+  lastSignIn?: string // Track last sign in to know if user is truly active
 }
 
 export interface SiteMemberInput {
@@ -58,7 +60,46 @@ export const siteMembersService = {
       throw new Error(`Failed to fetch site members: ${error.message}`)
     }
     
-    return data || []
+    // For each member, get their email confirmation status from auth.users
+    const membersWithStatus = await Promise.all((data || []).map(async (member: any) => {
+      if (!member.user_id) {
+        // User hasn't been created yet, so email is not confirmed
+        return {
+          ...member,
+          emailConfirmed: false,
+          lastSignIn: null
+        }
+      }
+      
+      try {
+        // Get user info from auth.users via admin API
+        const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(member.user_id)
+        
+        if (userError || !user) {
+          console.warn(`Could not fetch user info for user_id ${member.user_id}:`, userError)
+          return {
+            ...member,
+            emailConfirmed: false,
+            lastSignIn: null
+          }
+        }
+        
+        return {
+          ...member,
+          emailConfirmed: !!user.email_confirmed_at,
+          lastSignIn: user.last_sign_in_at
+        }
+      } catch (err) {
+        console.warn(`Error fetching user status for ${member.email}:`, err)
+        return {
+          ...member,
+          emailConfirmed: false,
+          lastSignIn: null
+        }
+      }
+    }))
+    
+    return membersWithStatus
   },
   
   // Add a new member to a site
