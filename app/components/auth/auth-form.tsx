@@ -70,6 +70,12 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   useEffect(() => {
     setMounted(true)
     
+    // Clear Supabase auth state if there are PKCE-related errors
+    if (initialError && initialError.includes('team invitation')) {
+      console.log('🧹 Clearing Supabase auth state due to team invitation error')
+      supabase.auth.signOut({ scope: 'local' }).catch(console.warn)
+    }
+    
     // Get returnTo from URL if not provided as prop
     if (!returnTo && typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -88,7 +94,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     if (initialError) {
       setErrorMessage(initialError)
     }
-  }, [returnTo, signupData, initialError])
+  }, [returnTo, signupData, initialError, supabase.auth])
 
   // Handle auth type change (sign in or sign up)
   const toggleAuthMode = () => {

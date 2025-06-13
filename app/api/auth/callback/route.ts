@@ -37,14 +37,37 @@ export async function GET(request: Request) {
         
         // Handle PKCE flow errors specifically for team invitations
         if ((error.message.includes('code verifier') || error.message.includes('auth code and code verifier')) && invitationType === 'team_invitation') {
-          console.log('🔄 PKCE error for team invitation, redirecting to auth with invitation params preserved');
+          console.log('🔄 PKCE error for team invitation, clearing auth state and redirecting to auth');
           
           // Preserve invitation params in the auth redirect
           const authUrl = new URL('/auth', request.url)
           authUrl.searchParams.set('error', 'Please sign in to accept your team invitation')
           authUrl.searchParams.set('returnTo', `/auth/team-invitation?${requestUrl.searchParams.toString().replace('code=', '').replace(/&code=[^&]*/, '')}`)
           
-          return NextResponse.redirect(authUrl)
+          const response = NextResponse.redirect(authUrl)
+          
+          // Clear all Supabase auth cookies to prevent PKCE conflicts
+          const cookiesToClear = [
+            'supabase-auth-token',
+            'sb-rnjgeloamtszdjplmqxy-auth-token',
+            'sb-rnjgeloamtszdjplmqxy-auth-token.0',
+            'sb-rnjgeloamtszdjplmqxy-auth-token.1',
+            'supabase.auth.token',
+            'pkce_verifier',
+            'auth_mode',
+            'validate_user_exists'
+          ]
+          
+          cookiesToClear.forEach(cookieName => {
+            response.cookies.delete(cookieName)
+            response.cookies.set(cookieName, '', { 
+              expires: new Date(0),
+              path: '/',
+              domain: process.env.NODE_ENV === 'production' ? '.uncodie.com' : undefined
+            })
+          })
+          
+          return response
         }
         
         return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent(error.message)}&returnTo=${encodeURIComponent(returnTo)}`, request.url))
