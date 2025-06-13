@@ -374,11 +374,21 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
   };
 
   // Get pending members for footer actions - show resend for users who haven't confirmed email OR haven't signed in
-  const pendingMembers = teamList.filter(member => 
-    member.status === 'pending' && 
-    member.id && 
-    (!member.emailConfirmed || !member.lastSignIn) // Show resend for users who haven't clicked the email OR never signed in
-  );
+  const pendingMembers = teamList.filter(member => {
+    const shouldShow = member.status === 'pending' && 
+                      member.id && 
+                      (!member.emailConfirmed || !member.lastSignIn);
+    
+    if (shouldShow) {
+      console.log(`🔔 User ${member.email} eligible for invitation resend:`, {
+        status: member.status,
+        emailConfirmed: member.emailConfirmed,
+        lastSignIn: member.lastSignIn
+      });
+    }
+    
+    return shouldShow;
+  });
 
   // Toggle member expansion
   const toggleMemberExpansion = (index: number) => {

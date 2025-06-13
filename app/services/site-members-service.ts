@@ -47,59 +47,25 @@ const mapTeamRoleToSiteMemberRole = (role: 'view' | 'create' | 'delete' | 'admin
 export const siteMembersService = {
   // Get all members for a site
   async getMembers(siteId: string): Promise<SiteMember[]> {
-    const supabase = createClient()
-    
-    const { data, error } = await supabase
-      .from('site_members')
-      .select('*')
-      .eq('site_id', siteId)
-      .order('role', { ascending: false })
-    
-    if (error) {
-      console.error('Error fetching site members:', error)
-      throw new Error(`Failed to fetch site members: ${error.message}`)
-    }
-    
-    // For each member, get their email confirmation status from auth.users
-    const membersWithStatus = await Promise.all((data || []).map(async (member: any) => {
-      if (!member.user_id) {
-        // User hasn't been created yet, so email is not confirmed
-        return {
-          ...member,
-          emailConfirmed: false,
-          lastSignIn: null
-        }
+    try {
+      // Use the API route that has admin access to get complete member data
+      const response = await fetch(`/api/site-members/${siteId}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch site members: ${response.statusText}`)
       }
       
-      try {
-        // Get user info from auth.users via admin API
-        const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(member.user_id)
-        
-        if (userError || !user) {
-          console.warn(`Could not fetch user info for user_id ${member.user_id}:`, userError)
-          return {
-            ...member,
-            emailConfirmed: false,
-            lastSignIn: null
-          }
-        }
-        
-        return {
-          ...member,
-          emailConfirmed: !!user.email_confirmed_at,
-          lastSignIn: user.last_sign_in_at
-        }
-      } catch (err) {
-        console.warn(`Error fetching user status for ${member.email}:`, err)
-        return {
-          ...member,
-          emailConfirmed: false,
-          lastSignIn: null
-        }
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch site members')
       }
-    }))
-    
-    return membersWithStatus
+      
+      return result.members || []
+    } catch (error) {
+      console.error('Error fetching site members:', error)
+      throw error
+    }
   },
   
   // Add a new member to a site
