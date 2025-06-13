@@ -110,24 +110,32 @@ export async function POST(request: Request) {
     const existingUser = existingUsers.users.find((u: any) => u.email === email)
 
     // Create the redirect URL for the magic link
-    // Force localhost in development to override Supabase Site URL
+    // Determine base URL: use localhost only in development, production URL otherwise
     const baseUrl = process.env.NODE_ENV === 'development' 
       ? 'http://localhost:3000' 
       : (process.env.NEXT_PUBLIC_APP_URL || 'https://app.uncodie.com')
     
-    // For team invitations, we need to include invitation data in the redirect URL
-    // This way, both Magic Link and email verify flows will work
+    console.log(`🚀 Detected environment: ${process.env.NODE_ENV}`)
+    console.log(`📝 NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'NOT SET'}`)
+    console.log(`🎯 Using base URL: ${baseUrl}`)
+    
+    // Generate a temporary invitation token to avoid URL parameter issues
+    const invitationToken = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+    
+    // Store invitation data temporarily (you could use Redis or a temp table)
+    // For now, we'll still use URL params as primary and user metadata as backup
     const invitationParams = new URLSearchParams({
       invitationType: 'team_invitation',
       siteId,
       siteName,
       role,
       email, // Include email so we can verify it on the callback
+      token: invitationToken, // Add token for extra security
       ...(name && { name }),
       ...(position && { position })
     })
     
-    // Use the API auth callback which is already configured in Supabase
+    // Use the API auth callback which should be configured as wildcard in Supabase
     const redirectTo = `${baseUrl}/api/auth/callback?${invitationParams.toString()}`
     
     console.log(`🔗 Redirect URL: ${redirectTo}`)
@@ -139,23 +147,43 @@ export async function POST(request: Request) {
     console.log(`🔍 Processing invitation for ${email}`)
     console.log(`📧 User exists: ${!!existingUser}`)
 
-    // Always send magic link, regardless of whether user exists or not
-    // If user doesn't exist, Supabase will create them automatically
-    invitationResult = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true, // Allow creating new users
-        emailRedirectTo: redirectTo,
+    // Use the appropriate method based on whether user exists
+    if (existingUser) {
+      console.log(`👤 Sending magic link to existing user: ${email}`)
+      // For existing users, use signInWithOtp
+      invitationResult = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectTo,
+          data: {
+            invitationType: 'team_invitation',
+            siteId,
+            siteName,
+            role,
+            email,
+            ...(name && { name }),
+            ...(position && { position }),
+            redirectUrl: redirectTo
+          }
+        }
+      })
+    } else {
+      console.log(`✨ Inviting new user: ${email}`)
+      // For new users, use admin invite which creates account and sends email
+      invitationResult = await adminSupabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectTo,
         data: {
           invitationType: 'team_invitation',
           siteId,
           siteName,
           role,
+          email,
           ...(name && { name }),
-          ...(position && { position })
+          ...(position && { position }),
+          redirectUrl: redirectTo
         }
-      }
-    })
+      })
+    }
 
     console.log(`📤 Magic Link response:`, { 
       success: !invitationResult.error, 

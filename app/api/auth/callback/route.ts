@@ -34,19 +34,51 @@ export async function GET(request: Request) {
       
       if (error) {
         console.error("Auth callback error:", error);
+        
+        // Handle PKCE flow errors specifically for team invitations
+        if ((error.message.includes('code verifier') || error.message.includes('auth code and code verifier')) && invitationType === 'team_invitation') {
+          console.log('🔄 PKCE error for team invitation, redirecting to auth with invitation params preserved');
+          
+          // Preserve invitation params in the auth redirect
+          const authUrl = new URL('/auth', request.url)
+          authUrl.searchParams.set('error', 'Please sign in to accept your team invitation')
+          authUrl.searchParams.set('returnTo', `/auth/team-invitation?${requestUrl.searchParams.toString().replace('code=', '').replace(/&code=[^&]*/, '')}`)
+          
+          return NextResponse.redirect(authUrl)
+        }
+        
         return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent(error.message)}&returnTo=${encodeURIComponent(returnTo)}`, request.url))
       }
 
+      // Check for team invitation - either from URL params or user metadata
+      let teamInvitationData = null
+      
+      if (invitationType === 'team_invitation' && siteId && siteName && role) {
+        // Team invitation data from URL parameters
+        teamInvitationData = { siteId, siteName, role, name, position }
+      } else if (data.session?.user?.user_metadata?.invitationType === 'team_invitation') {
+        // Team invitation data from user metadata (fallback when emailRedirectTo is ignored)
+        const metadata = data.session.user.user_metadata
+        teamInvitationData = {
+          siteId: metadata.siteId,
+          siteName: metadata.siteName,
+          role: metadata.role,
+          name: metadata.name,
+          position: metadata.position
+        }
+        console.log(`🔄 Team invitation found in user metadata:`, teamInvitationData);
+      }
+
       // If this is a team invitation and user is now authenticated, redirect to team invitation processor
-      if (invitationType === 'team_invitation' && siteId && siteName && role && data.session?.user) {
+      if (teamInvitationData && data.session?.user) {
         console.log(`🔄 Redirecting to team invitation processor for ${data.session.user.email}`);
         
         const invitationParams = new URLSearchParams({
-          siteId,
-          siteName,
-          role,
-          ...(name && { name }),
-          ...(position && { position }),
+          siteId: teamInvitationData.siteId,
+          siteName: teamInvitationData.siteName,
+          role: teamInvitationData.role,
+          ...(teamInvitationData.name && { name: teamInvitationData.name }),
+          ...(teamInvitationData.position && { position: teamInvitationData.position }),
           type: 'team_invitation'
         })
         
