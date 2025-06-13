@@ -122,10 +122,12 @@ export async function POST(request: Request) {
       siteId,
       siteName,
       role,
+      email, // Include email so we can verify it on the callback
       ...(name && { name }),
       ...(position && { position })
     })
     
+    // Use the API auth callback which is already configured in Supabase
     const redirectTo = `${baseUrl}/api/auth/callback?${invitationParams.toString()}`
     
     console.log(`🔗 Redirect URL: ${redirectTo}`)
