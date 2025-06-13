@@ -9,7 +9,9 @@
     "lint": "next lint . --ext ts,tsx",
     "lint:fix": "npm run lint -- --fix",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:magic-links": "npx tsx scripts/test-magic-links.ts",
+    "test:api-invitations": "npx tsx scripts/test-api-invitations.ts"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.0",

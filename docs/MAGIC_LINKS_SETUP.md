@@ -41,24 +41,75 @@ https://your-production-domain.com
 
 #### Redirect URLs (para magic links):
 ```
-http://localhost:3000/auth/team-invitation
-https://your-production-domain.com/auth/team-invitation
+http://localhost:3000/api/auth/callback
+https://your-production-domain.com/api/auth/callback
 ```
 
-### 3. Email Templates (Opcional)
+**⚠️ IMPORTANTE:** Estas URLs deben estar **exactamente configuradas** en Supabase Dashboard, de lo contrario el usuario no se autenticará y solo verá la pantalla de login.
 
-Puedes personalizar el template de email en **Authentication > Email Templates > Magic Link**:
+**Pasos para configurar:**
+1. Ve a [Supabase Dashboard](https://supabase.com/dashboard) → Tu proyecto
+2. **Authentication** → **URL Configuration** 
+3. En **Redirect URLs** agrega:
+   - `http://localhost:3000/api/auth/callback`
+   - `https://tu-dominio-produccion.com/api/auth/callback`
+4. **Guarda los cambios**
+
+**Verificación:**
+- Si el usuario ve la pantalla de login = URL no configurada ❌
+- Si el usuario se autentica automáticamente = URL configurada correctamente ✅
+
+### 3. Email Templates (Requerido)
+
+**IMPORTANTE:** Para invitaciones de equipo usamos el template **"Magic Link"** que es más confiable para autenticación.
+
+Configura el template de **"Magic Link"** en **Authentication > Email Templates > Magic Link**:
 
 ```html
-<h2>You've been invited to join a team!</h2>
+<h2>You've been invited to join {{ .Data.siteName }}!</h2>
+<p>Hello {{ .Data.name }},</p>
+<p>You've been invited to join the team at <strong>{{ .Data.siteName }}</strong> as a {{ .Data.role }}.</p>
 <p>Click the link below to accept your invitation:</p>
 <p><a href="{{ .ConfirmationURL }}">Accept Invitation</a></p>
-<p>This link expires in 24 hours.</p>
+<p>If you already have an account, you'll be logged in automatically. If not, a new account will be created for you.</p>
+<p>This invitation expires in 24 hours.</p>
+<p>Welcome to the team!</p>
 ```
+
+**¿Por qué Magic Link en lugar de Invite user?**
+- ✅ **Flujo de autenticación más simple** - No hay "wall guardian" ni códigos extra
+- ✅ **Funciona para usuarios existentes y nuevos** - Un solo método para todos
+- ✅ **Mejor experiencia de usuario** - Click directo y autenticación automática
+- ✅ **Menos problemas de configuración** - Un solo template para personalizar
 
 ## Cómo Funciona el Nuevo Sistema
 
 ### 1. Envío de Invitación
+
+El sistema ahora usa un **flujo unificado con Magic Links** para todos los usuarios:
+
+#### Para todos los usuarios (existentes y nuevos):
+- Se envía un **Magic Link** usando `signInWithOtp()` con `shouldCreateUser: true`
+- Usa el template "Magic Link" personalizado para invitaciones
+- Si el usuario existe: autentica directamente
+- Si el usuario no existe: Supabase crea la cuenta automáticamente
+- En ambos casos: click en el link → autenticación → página de invitación
+
+**Ventajas del flujo unificado:**
+- 🔒 **Sin wall guardian** - Autenticación directa y segura
+- 🎯 **Un solo template** - Más fácil de configurar y mantener
+- ⚡ **Experiencia fluida** - Click directo, sin códigos extras
+
+### 2. API Route para Invitaciones
+
+El sistema ahora usa una API route (`/api/team/invite-member`) que:
+
+1. **Valida permisos**: Verifica que el usuario tenga permisos para invitar
+2. **Envía Magic Link unificado**: Usa `signInWithOtp()` con `shouldCreateUser: true`
+3. **Maneja todos los casos**: Usuarios existentes y nuevos en un solo flujo
+4. **Maneja errores**: Proporciona mensajes de error claros incluindo rate limits
+
+### 3. Procesamiento de Invitación
 
 Cuando se agrega un nuevo miembro:
 
@@ -137,10 +188,87 @@ La página `/auth/team-invitation` automáticamente:
 - El usuario debe autenticarse primero con el magic link
 - Verifica que el email en la invitación coincida con el email autenticado
 
-### Los emails no llegan
-- Revisa la configuración de SMTP en Supabase
-- Verifica que el dominio del email esté permitido
-- Checa la carpeta de spam
+### Error: "email rate limit exceeded"
+**Causa:** Supabase limita el número de Magic Links que se pueden enviar por email por período de tiempo.
+
+**Límites de Supabase:**
+- **Desarrollo:** ~3-5 emails por minuto por email
+- **Producción:** Límites más altos dependiendo del plan
+
+**Soluciones:**
+1. **Durante Desarrollo:**
+   ```bash
+   # Espera 1-2 minutos entre invitaciones al mismo email
+   # Usa diferentes emails para pruebas
+   # Verifica logs de Supabase Dashboard para ver rate limits
+   ```
+
+2. **En Producción:**
+   - Upgrade a un plan de Supabase con límites más altos
+   - Implementa validación del lado cliente para evitar envíos duplicados
+   - Considera usar webhooks para notificaciones críticas
+
+3. **Manejo en Código:**
+   ```typescript
+   // El sistema ya maneja rate limits automáticamente
+   // Muestra mensajes específicos al usuario
+   // Sugiere tiempo de espera antes de reintentar
+   ```
+
+### Error: "Los emails de invitación no llegan"
+**Causa más común:** Template no configurado correctamente
+
+**Diagnóstico:**
+1. **Verifica en Supabase Dashboard > Logs & Analytics** qué requests llegan:
+   - ✅ `/auth/v1/verify?type=signup` = Confirmación de cuenta (funciona)
+   - ✅ `/auth/v1/otp` = Magic link (debería aparecer para invitaciones)
+
+2. **Verifica template en Supabase Dashboard:**
+   - Ve a **Authentication > Email Templates > Magic Link**
+   - Personaliza el template para invitaciones como se muestra arriba
+
+**Solución:**
+```typescript
+// ✅ CORRECTO (usa template "Magic Link" personalizado)
+await supabase.auth.signInWithOtp({ 
+  email, 
+  options: { 
+    shouldCreateUser: true,
+    emailRedirectTo: redirectTo,
+    data: { /* invitation data */ }
+  } 
+})
+```
+
+**Template recomendado:**
+- Personaliza el texto para que sea claro que es una invitación
+- Incluye variables como `{{ .Data.siteName }}` y `{{ .Data.role }}`
+- Mantén la funcionalidad de autenticación automática
+
+### Error: "signInWithOtp envía verify email en lugar de Magic Link"
+
+**Problema:** `signInWithOtp()` está enviando emails de verificación en lugar de Magic Links.
+
+**✅ SOLUCIÓN IMPLEMENTADA:** El sistema ahora **funciona con ambos tipos de email**:
+
+1. **Magic Link** (preferido) - Autenticación directa
+2. **Email Verify** (backup) - Verificación + autenticación via callback
+
+**Cómo funciona:**
+```
+1. Usuario hace clic en email (Magic Link O email verify)
+2. Supabase autentica → Redirige a /api/auth/callback
+3. Callback detecta `invitationType=team_invitation`
+4. Callback redirige a /auth/team-invitation con los datos
+5. Procesamiento automático de la invitación
+```
+
+**URLs de redirección actualizadas:**
+- Ahora todos los emails redirigen a `/api/auth/callback` con parámetros de invitación
+- El callback maneja la detección automática del tipo de flujo
+- Funciona independientemente del template de email que use Supabase
+
+**No necesitas configurar templates específicos** - funciona con cualquier configuración de Supabase.
 
 ## Ventajas del Nuevo Sistema
 

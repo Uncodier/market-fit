@@ -409,10 +409,9 @@ export default function ControlCenterPage() {
     <div className="flex h-full relative overflow-hidden">
       {/* Sidebar */}
       <div className={cn(
-        "fixed h-[calc(100vh-64px)] transition-all duration-300 ease-in-out z-[9999]",
-        isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px]",
-        !isSidebarCollapsed && (isLayoutCollapsed ? "left-[64px]" : "left-[256px]")
-      )} style={{ top: "64px" }}>
+        "h-full transition-all duration-200 ease-in-out",
+        isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px]"
+      )} style={{ overflow: 'hidden' }}>
         <TaskSidebar
           categories={categories}
           taskTypes={taskTypes}
@@ -428,12 +427,8 @@ export default function ControlCenterPage() {
 
       {/* Main content */}
       <div className={cn(
-        "flex flex-col h-full flex-1 transition-all duration-300 ease-in-out",
-        isSidebarCollapsed 
-          ? "pl-0"
-          : isLayoutCollapsed 
-            ? "pl-[319px]" 
-            : "pl-[319px]"
+        "flex flex-col h-full flex-1 transition-all duration-200 ease-in-out",
+        isSidebarCollapsed ? "ml-0" : "ml-0"
       )}>
         {/* Header */}
         <div className="relative">

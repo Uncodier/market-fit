@@ -24,6 +24,7 @@ interface AuthFormProps {
     referralCode?: string
   }
   onAuthTypeChange?: (authType: string) => void
+  initialError?: string | null
 }
 
 // Create schema with conditional validation for referral code
@@ -36,7 +37,7 @@ const authFormSchema = z.object({
 
 type AuthFormValues = z.infer<typeof authFormSchema>
 
-export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData, onAuthTypeChange }: AuthFormProps) {
+export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData, onAuthTypeChange, initialError }: AuthFormProps) {
   const supabase = createClient()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -82,7 +83,12 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     if (signupData?.referralCode && authMode === 'sign_up') {
       validateReferralCode(signupData.referralCode)
     }
-  }, [returnTo, signupData])
+
+    // Set initial error if provided
+    if (initialError) {
+      setErrorMessage(initialError)
+    }
+  }, [returnTo, signupData, initialError])
 
   // Handle auth type change (sign in or sign up)
   const toggleAuthMode = () => {
@@ -176,6 +182,27 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           return
         }
 
+        // Check if email already exists with different auth method
+        const emailCheckResponse = await fetch('/api/auth/check-email-exists', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: values.email })
+        })
+        
+        const emailCheckResult = await emailCheckResponse.json()
+        
+        if (emailCheckResult.exists && emailCheckResult.authMethod !== 'email') {
+          let errorMessage = ''
+          if (emailCheckResult.authMethod === 'google') {
+            errorMessage = `An account with ${values.email} already exists using Google sign-in. Please sign in with Google instead.`
+          } else {
+            errorMessage = `An account with ${values.email} already exists using ${emailCheckResult.authMethod}. Please use that method to sign in.`
+          }
+          throw new Error(errorMessage)
+        }
+
         // If valid referral code, proceed with normal signup
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: values.email,
@@ -256,6 +283,18 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     setErrorMessage(null)
     
     try {
+      // Set auth mode in cookies for callback validation
+      await fetch('/api/auth/google-pre-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          authMode,
+          returnTo: finalReturnTo
+        })
+      })
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -524,7 +563,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       
       {/* Toggle between sign in and sign up */}
       {!waitlistSuccess && (
-        <div className="text-center mt-6">
+        <div className="text-center mt-6 space-y-3">
           <button 
             type="button"
             onClick={toggleAuthMode}
@@ -537,6 +576,13 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               {authMode === 'sign_in' ? "Sign up" : "Sign in"}
             </span>
           </button>
+          
+          {/* Helper text for mixed authentication methods */}
+          {authMode === 'sign_in' && (
+            <p className="text-xs text-muted-foreground">
+              💡 If you signed up with Google, please use the Google button above
+            </p>
+          )}
         </div>
       )}
     </div>

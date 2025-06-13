@@ -63,7 +63,7 @@ export function TaskSidebar({
 
   return (
     <div className={cn(
-      "h-full transition-all duration-300 ease-in-out",
+      "h-full transition-all duration-200 ease-in-out",
       !isDarkMode && "border-r",
       isCollapsed ? "w-0 opacity-0" : "w-[319px]"
     )}>
@@ -78,7 +78,7 @@ export function TaskSidebar({
           "h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60"
         )}>
           <div className={cn(
-            "w-[319px] transition-all duration-300 ease-in-out",
+            "w-[319px] transition-all duration-200 ease-in-out",
             isCollapsed ? "opacity-0" : "opacity-100"
           )}>
             {/* Show single empty state if no categories and no task types */}

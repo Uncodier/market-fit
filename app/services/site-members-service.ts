@@ -131,6 +131,18 @@ export const siteMembersService = {
         console.log(`Magic link invitation sent successfully to ${member.email}`);
       } else {
         console.warn(`Failed to send magic link invitation to ${member.email}:`, invitationResult.error);
+        
+        // For rate limit errors, we want to propagate this to the user
+        if (invitationResult.code === 'RATE_LIMIT_EXCEEDED') {
+          throw new Error(`Rate limit exceeded for ${member.email}. Please wait ${invitationResult.retryAfter || 60} seconds before trying again.`);
+        }
+        
+        // For other critical errors, also propagate
+        if (invitationResult.code === 'SIGNUP_DISABLED') {
+          throw new Error('User registration is currently disabled. Please contact support.');
+        }
+        
+        // For other errors, log but don't fail the operation
         // Note: We don't throw an error here because the site member was created successfully
         // The invitation failure is logged but doesn't affect the main operation
       }

@@ -44,6 +44,28 @@ export async function GET(request: Request) {
       )
     }
 
+    // Check if this is a team invitation by looking at user metadata
+    const userMetadata = user.user_metadata || {}
+    const isTeamInvitation = userMetadata.invitationType === 'team_invitation'
+
+    if (isTeamInvitation) {
+      // This is a team invitation confirmation, redirect to team invitation page with parameters
+      const invitationParams = new URLSearchParams({
+        siteId: userMetadata.siteId || '',
+        siteName: userMetadata.siteName || '',
+        role: userMetadata.role || '',
+        email: user.email || '',
+        ...(userMetadata.name && { name: userMetadata.name }),
+        ...(userMetadata.position && { position: userMetadata.position }),
+        type: 'team_invitation'
+      })
+      
+      const redirectUrl = `/auth/team-invitation?${invitationParams.toString()}`
+      console.log('Redirecting team invitation to:', redirectUrl)
+      
+      return NextResponse.redirect(new URL(redirectUrl, request.url))
+    }
+
     // Redirigir al usuario a la página especificada o al inicio
     return NextResponse.redirect(new URL(next, request.url))
   } catch (error: any) {

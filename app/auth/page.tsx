@@ -42,6 +42,7 @@ export default function AuthPage() {
     name?: string
     referralCode?: string
   }>({})
+  const [authError, setAuthError] = useState<string | null>(null)
   
   // Obtener los parámetros de la URL de manera segura sin hooks
   useEffect(() => {
@@ -50,11 +51,21 @@ export default function AuthPage() {
       const mode = url.searchParams.get("mode")
       const returnPath = url.searchParams.get("returnTo")
       const forceSignup = url.searchParams.get("signup") === "true"
+      const error = url.searchParams.get("error")
       
       // Campos para pre-llenar en signup
       const email = url.searchParams.get("email")
       const name = url.searchParams.get("name")
       const referralCode = url.searchParams.get("referralCode") || url.searchParams.get("referral_code")
+      
+      // Manejar errores de autenticación
+      if (error) {
+        setAuthError(decodeURIComponent(error))
+        // Limpiar el error de la URL
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('error')
+        window.history.replaceState({}, '', newUrl.toString())
+      }
       
       // Si hay campos de signup o parámetro signup=true, cambiar automáticamente a modo signup
       const hasSignupData = email || name || referralCode || forceSignup
@@ -403,6 +414,7 @@ export default function AuthPage() {
             returnTo={returnTo} 
             signupData={signupData}
             onAuthTypeChange={handleAuthTypeChange}
+            initialError={authError}
           />
         </div>
       </div>

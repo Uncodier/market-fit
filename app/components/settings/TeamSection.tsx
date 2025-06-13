@@ -352,7 +352,14 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
       if (result.success) {
         toast.success(`Magic link invitation resent to ${member.name || member.email}`);
       } else {
-        toast.error(result.error || "Failed to resend invitation");
+        // Handle specific error types
+        if (result.code === 'RATE_LIMIT_EXCEEDED') {
+          toast.error(`Rate limit exceeded. Please wait ${result.retryAfter || 60} seconds before resending to ${member.email}`);
+        } else if (result.code === 'SIGNUP_DISABLED') {
+          toast.error("User registration is currently disabled. Please contact support.");
+        } else {
+          toast.error(result.error || "Failed to resend invitation");
+        }
       }
     } catch (error) {
       console.error("Error resending invitation:", error);
