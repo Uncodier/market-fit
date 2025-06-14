@@ -164,7 +164,7 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
       initialExpandedState[group.stage] = true;
     });
     setExpandedStages(initialExpandedState);
-  }, [stageGroups.length]);
+  }, [stageGroups.length]); // This is fine since we only use the length
 
   // Load comments count for tasks
   React.useEffect(() => {
@@ -199,7 +199,7 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
     }
     
     loadCommentsCount()
-  }, [stageGroups])
+  }, [leadId]) // Use leadId instead of stageGroups to avoid infinite loop
   
   // Toggle expanded/collapsed state for a stage
   const toggleStageExpanded = (stageId: string) => {

@@ -156,6 +156,9 @@ export function LeadsProvider({ children }: LeadsProviderProps) {
     }
     
     try {
+      // Find the existing lead to get its current attribution data
+      const existingLead = leads.find(l => l.id === id)
+      
       // Make sure the required fields are present
       const updateData = {
         id,
@@ -163,6 +166,8 @@ export function LeadsProvider({ children }: LeadsProviderProps) {
         email: data.email || "",
         status: data.status || "new", // Default to new status if undefined
         site_id: currentSite.id,
+        // Preserve existing attribution data unless explicitly provided
+        ...(existingLead?.attribution && !data.attribution && { attribution: existingLead.attribution }),
         ...data
       }
       

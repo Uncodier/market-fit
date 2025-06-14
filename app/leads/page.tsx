@@ -783,7 +783,9 @@ export default function LeadsPage() {
         segment_id: lead.segment_id,
         status: newStatus as any,
         origin: lead.origin,
-        site_id: currentSite?.id || ""
+        site_id: currentSite?.id || "",
+        // Preserve existing attribution data unless explicitly provided
+        ...(lead.attribution && !attribution && { attribution: lead.attribution })
       }
 
       if (attribution) {

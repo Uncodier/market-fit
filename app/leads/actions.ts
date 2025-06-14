@@ -494,8 +494,15 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
       return { error: "User not authenticated" }
     }
     
-    // Validate input data (we use partial to allow for partial updates)
-    UpdateLeadSchema.parse(data) // This should throw if validation fails
+    // Only validate attribution strictly when changing status to "converted"
+    if (data.status === "converted" && data.attribution) {
+      // Full validation when converting lead with attribution
+      UpdateLeadSchema.parse(data)
+    } else {
+      // Skip attribution validation for other updates
+      const { attribution, ...dataWithoutAttribution } = data
+      UpdateLeadSchema.omit({ attribution: true }).parse(dataWithoutAttribution)
+    }
     
     // Handle company creation/lookup if needed
     const { company_id, error: companyError } = await handleCompanyForLead(data)

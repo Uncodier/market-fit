@@ -303,7 +303,10 @@ export default function SegmentAnalysisTab({ segment, selectedAdPlatform }: Segm
   return (
     <div className="space-y-6">
       {/* Performance Metrics Cards */}
-      <PerformanceMetricsComponent isDarkMode={isDarkMode} />
+      <PerformanceMetricsComponent 
+        isDarkMode={isDarkMode}
+        segmentId={currentSegment.id}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Market Penetration Card */}

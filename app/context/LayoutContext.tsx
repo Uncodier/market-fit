@@ -4,10 +4,15 @@ import { createContext, useContext, ReactNode, useState, useEffect } from 'react
 
 interface LayoutContextType {
   isLayoutCollapsed: boolean
-  setIsLayoutCollapsed: (value: boolean) => void
+  setIsLayoutCollapsed: (collapsed: boolean) => void
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined)
+
+interface LayoutProviderProps {
+  children: ReactNode
+  isLayoutCollapsed?: boolean
+}
 
 export function useLayout() {
   const context = useContext(LayoutContext)
@@ -17,20 +22,16 @@ export function useLayout() {
   return context
 }
 
-interface LayoutProviderProps {
-  children: ReactNode
-  isLayoutCollapsed?: boolean
-}
-
 export function LayoutProvider({ children, isLayoutCollapsed: initialIsCollapsed = false }: LayoutProviderProps) {
   const [isLayoutCollapsed, setIsLayoutCollapsed] = useState(initialIsCollapsed)
 
-  // Sincronizar con localStorage
+  // Sincronizar con localStorage al montar
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed')
     if (saved !== null) {
       try {
-        setIsLayoutCollapsed(JSON.parse(saved))
+        const parsedValue = JSON.parse(saved)
+        setIsLayoutCollapsed(parsedValue)
       } catch (error) {
         console.error("Error parsing sidebar collapsed state:", error)
       }

@@ -156,6 +156,132 @@ function cleanLocalStorageOnStartup() {
   }
 }
 
+// Componente interno que usa el contexto
+function LayoutClientInner({
+  children,
+  pathname,
+  segments,
+  breadcrumbFromEvent,
+  customTitle,
+  fetchError,
+  isExperimentDetailPage,
+}: {
+  children: React.ReactNode
+  pathname: string
+  segments: Segment[]
+  breadcrumbFromEvent: React.ReactNode
+  customTitle: string | null
+  fetchError: string | null
+  isExperimentDetailPage: boolean
+}) {
+  const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
+  const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
+
+  const handleCollapse = () => {
+    setIsLayoutCollapsed(!isLayoutCollapsed)
+  }
+
+  // Si la ruta actual comienza con /chat, extraer el breadcrumb de los props de los hijos
+  let pageCustomTitle: string | null = null;
+  let customHelpText: string | null = null;
+  let customBreadcrumb: React.ReactNode = null;
+  const isChatPage = pathname && pathname.startsWith('/chat');
+  
+  if (isChatPage) {
+    pageCustomTitle = "Chat";
+    customHelpText = "Chatting with your agent";
+    
+    // Usar el breadcrumb del evento si está disponible
+    if (breadcrumbFromEvent) {
+      customBreadcrumb = breadcrumbFromEvent;
+    } else {
+      // Mantener la lógica anterior como fallback
+      const childrenAsAny = children as any;
+      if (childrenAsAny && childrenAsAny.type && childrenAsAny.type.breadcrumb) {
+        customBreadcrumb = childrenAsAny.type.breadcrumb;
+      }
+    }
+  }
+  
+  const currentPage = pageCustomTitle || customTitle
+    ? { title: pageCustomTitle || customTitle, helpText: customHelpText }
+    : (navigationTitles[pathname] || { title: "Dashboard" });
+
+  // Determinar si estamos en la página de login
+  const isLoginPage = pathname === '/auth/login'
+
+  // Handle create sale button click
+  const handleCreateSaleClick = () => {
+    window.dispatchEvent(new CustomEvent('sales:create'))
+  }
+
+  return (
+    <TooltipProvider>
+      <div className={cn(
+        "flex min-h-screen w-full bg-background transition-all duration-300",
+        isLayoutCollapsed ? "collapsed" : ""
+      )}>
+        {fetchError && (
+          <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
+            Error: {fetchError}
+          </div>
+        )}
+        {isLoginPage ? (
+          // Para la página de login, solo mostrar el contenido sin layout
+          <div className="min-h-screen w-full">
+            {children}
+          </div>
+        ) : (
+          // Para el resto de páginas, mostrar el layout completo
+          <div className="flex h-fit overflow-visible relative min-h-screen w-full">
+            <Sidebar 
+              isCollapsed={isLayoutCollapsed} 
+              onCollapse={handleCollapse} 
+              className="flex-none fixed left-0 top-0 h-screen z-20"
+            />
+            <div 
+              className={cn(
+                "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
+                isLayoutCollapsed ? "ml-16" : "ml-64"
+              )}
+            >
+              <TopBar 
+                title={currentPage.title || ""}
+                helpText={currentPage.helpText || undefined}
+                isCollapsed={isLayoutCollapsed}
+                onCollapse={handleCollapse}
+                segments={segments}
+                className="fixed top-0 right-0 z-10"
+                style={{ 
+                  left: isLayoutCollapsed ? '4rem' : '16rem',
+                }}
+                breadcrumb={customBreadcrumb}
+                isExperimentDetailPage={isExperimentDetailPage}
+                onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
+              />
+              <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+              <main 
+                className={cn(
+                  "flex-1",
+                  isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
+                )} 
+                style={
+                  isChatPage ? 
+                  { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
+                  : {}
+                }
+              >
+                {children}
+              </main>
+            </div>
+          </div>
+        )}
+        <Toaster />
+      </div>
+    </TooltipProvider>
+  )
+}
+
 export default function LayoutClient({
   children,
 }: {
@@ -168,8 +294,6 @@ export default function LayoutClient({
   const [retryCount, setRetryCount] = useState(0)
   const [breadcrumbFromEvent, setBreadcrumbFromEvent] = useState<React.ReactNode>(null)
   const [customTitle, setCustomTitle] = useState<string | null>(null)
-  const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
-  const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
 
   // Use the page refresh prevention hook
   const { shouldPreventRefresh, isCreateEditRoute } = usePageRefreshPrevention()
@@ -241,44 +365,6 @@ export default function LayoutClient({
     return () => clearTimeout(fetchTimer)
   }, [isMounted, pathname])
 
-  // Si la ruta actual comienza con /chat, extraer el breadcrumb de los props de los hijos
-  let pageCustomTitle: string | null = null;
-  let customHelpText: string | null = null;
-  let customBreadcrumb: React.ReactNode = null;
-  const isChatPage = pathname && pathname.startsWith('/chat');
-  
-  if (isChatPage) {
-    pageCustomTitle = "Chat";
-    customHelpText = "Chatting with your agent";
-    
-    // Usar el breadcrumb del evento si está disponible
-    if (breadcrumbFromEvent) {
-      customBreadcrumb = breadcrumbFromEvent;
-    } else {
-      // Mantener la lógica anterior como fallback
-      const childrenAsAny = children as any;
-      if (childrenAsAny && childrenAsAny.type && childrenAsAny.type.breadcrumb) {
-        customBreadcrumb = childrenAsAny.type.breadcrumb;
-      }
-    }
-  }
-  
-  const currentPage = pageCustomTitle || customTitle
-    ? { title: pageCustomTitle || customTitle, helpText: customHelpText }
-    : (navigationTitles[pathname] || { title: "Dashboard" });
-
-  const handleCollapse = () => {
-    setIsLayoutCollapsed(!isLayoutCollapsed)
-  }
-
-  // Determinar si estamos en la página de login
-  const isLoginPage = pathname === '/auth/login'
-
-  // Handle create sale button click
-  const handleCreateSaleClick = () => {
-    window.dispatchEvent(new CustomEvent('sales:create'))
-  }
-
   // Renderizar un estado de carga simple hasta que la aplicación esté hidratada
   if (!isMounted) {
     return (
@@ -294,69 +380,16 @@ export default function LayoutClient({
       <SiteProvider>
         <LayoutProvider>
           <NotificationsProvider>
-            <TooltipProvider>
-              <div className={cn(
-                "flex min-h-screen w-full bg-background transition-all duration-300",
-                isLayoutCollapsed ? "collapsed" : ""
-              )}>
-                {fetchError && (
-                  <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
-                    Error: {fetchError}
-                  </div>
-                )}
-                {isLoginPage ? (
-                  // Para la página de login, solo mostrar el contenido sin layout
-                  <div className="min-h-screen w-full">
-                    {children}
-                  </div>
-                ) : (
-                  // Para el resto de páginas, mostrar el layout completo
-                  <div className="flex h-fit overflow-visible relative min-h-screen w-full">
-                    <Sidebar 
-                      isCollapsed={isLayoutCollapsed} 
-                      onCollapse={handleCollapse} 
-                      className="flex-none fixed left-0 top-0 h-screen z-20"
-                    />
-                    <div 
-                      className={cn(
-                        "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
-                        isLayoutCollapsed ? "ml-16" : "ml-64"
-                      )}
-                    >
-                      <TopBar 
-                        title={currentPage.title || ""}
-                        helpText={currentPage.helpText || undefined}
-                        isCollapsed={isLayoutCollapsed}
-                        onCollapse={handleCollapse}
-                        segments={segments}
-                        className="fixed top-0 right-0 z-10"
-                        style={{ 
-                          left: isLayoutCollapsed ? '4rem' : '16rem',
-                        }}
-                        breadcrumb={customBreadcrumb}
-                        isExperimentDetailPage={isExperimentDetailPage}
-                        onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
-                      />
-                      <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
-                      <main 
-                        className={cn(
-                          "flex-1",
-                          isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
-                        )} 
-                        style={
-                          isChatPage ? 
-                          { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
-                          : {}
-                        }
-                      >
-                        {children}
-                      </main>
-                    </div>
-                  </div>
-                )}
-                <Toaster />
-              </div>
-            </TooltipProvider>
+            <LayoutClientInner
+              pathname={pathname}
+              segments={segments}
+              breadcrumbFromEvent={breadcrumbFromEvent}
+              customTitle={customTitle}
+              fetchError={fetchError}
+              isExperimentDetailPage={isExperimentDetailPage}
+            >
+              {children}
+            </LayoutClientInner>
           </NotificationsProvider>
         </LayoutProvider>
       </SiteProvider>

@@ -62,6 +62,14 @@ export default function ControlCenterPage() {
   // Initialize command+k hook
   useCommandK()
 
+  // Calculate sidebar left position based on layout state
+  const [sidebarLeft, setSidebarLeft] = useState('256px')
+
+  // Update sidebar position when layout state changes
+  useEffect(() => {
+    setSidebarLeft(isLayoutCollapsed ? '64px' : '256px')
+  }, [isLayoutCollapsed])
+
   // Update breadcrumb when component mounts
   useEffect(() => {
     // Update the page title for the browser tab
@@ -406,12 +414,18 @@ export default function ControlCenterPage() {
   }
 
   return (
-    <div className="flex h-full relative overflow-hidden">
+    <div className="flex h-full relative">
       {/* Sidebar */}
-      <div className={cn(
-        "h-full transition-all duration-200 ease-in-out",
-        isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px]"
-      )} style={{ overflow: 'hidden' }}>
+      <div 
+        className={cn(
+          "fixed h-screen transition-all duration-200 ease-in-out z-10",
+          isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
+        )}
+        style={{ 
+          left: sidebarLeft,
+          top: '64px'
+        }}
+      >
         <TaskSidebar
           categories={categories}
           taskTypes={taskTypes}
@@ -426,10 +440,12 @@ export default function ControlCenterPage() {
       </div>
 
       {/* Main content */}
-      <div className={cn(
-        "flex flex-col h-full flex-1 transition-all duration-200 ease-in-out",
-        isSidebarCollapsed ? "ml-0" : "ml-0"
-      )}>
+      <div 
+        className="flex flex-col h-full w-full transition-all duration-200 ease-in-out"
+        style={{ 
+          marginLeft: isSidebarCollapsed ? '0px' : '319px'
+        }}
+      >
         {/* Header */}
         <div className="relative">
           <ControlCenterHeader

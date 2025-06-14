@@ -316,13 +316,15 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
             </div>
             
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="company">Company</TabsTrigger>
-                <TabsTrigger value="social_networks">Social Networks</TabsTrigger>
-                <TabsTrigger value="address">Address</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
-              </TabsList>
+              <div className="flex justify-center mb-4">
+                <TabsList>
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="company">Company</TabsTrigger>
+                  <TabsTrigger value="social_networks">Social Networks</TabsTrigger>
+                  <TabsTrigger value="address">Address</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                </TabsList>
+              </div>
               
               {/* Details Tab */}
               <TabsContent value="details" className="mt-0">

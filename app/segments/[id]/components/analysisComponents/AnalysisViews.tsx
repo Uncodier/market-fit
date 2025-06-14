@@ -16,7 +16,10 @@ export function OverviewAnalysis({ segment }: AnalysisComponentProps) {
   return (
     <div className="space-y-6">
       {/* Performance Metrics Cards */}
-      <PerformanceMetricsComponent isDarkMode={isDarkMode} />
+      <PerformanceMetricsComponent 
+        isDarkMode={isDarkMode}
+        segmentId={segment.id}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Market Penetration Card */}

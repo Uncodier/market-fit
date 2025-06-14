@@ -170,14 +170,25 @@ export default function LeadDetailPage() {
     
     try {
       // Make sure the required fields are present, including company
-      const updateData = {
+      const updateData: any = {
         id,
         name: data.name || lead.name || "",
         email: data.email || lead.email || "",
         status: data.status || lead.status || "new",
         company: data.company || lead.company || { name: "" }, // Ensure company is always included
         site_id: currentSite.id,
-        ...data
+      }
+      
+      // Add other fields from data, excluding attribution unless it's complete
+      Object.entries(data).forEach(([key, value]) => {
+        if (key !== 'attribution' && key !== 'id' && value !== undefined) {
+          updateData[key] = value
+        }
+      })
+      
+      // Only include attribution if it's explicitly provided and complete
+      if (data.attribution) {
+        updateData.attribution = data.attribution
       }
       
       const result = await updateLead(updateData)

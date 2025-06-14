@@ -80,7 +80,7 @@ export function ChatInput({
               }}
             />
             {/* Botones de acciones a la izquierda */}
-            <div className="absolute bottom-[15px] left-[15px] flex space-x-1">
+            <div className="absolute bottom-[15px] left-[15px] flex space-x-1 hidden">
               <Button 
                 type="button" 
                 size="icon"
