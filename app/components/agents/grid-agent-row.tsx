@@ -9,6 +9,8 @@ import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { agentStatusVariants, metricItemVariants } from "./agent-card.styles"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useSite } from "@/app/context/SiteContext"
+import { ActivityExecutionStatus } from "@/app/hooks/use-activity-execution"
+import { AgentActivityItem } from "./agent-activity-item"
 
 // Extender el tipo Agent para incluir datos personalizados
 interface ExtendedAgent extends Agent {
@@ -35,6 +37,7 @@ interface GridAgentRowProps {
   onExecuteActivity: (agent: ExtendedAgent, activity: AgentActivity) => void
   setSelectedAgent?: (agent: ExtendedAgent | null) => void
   forceShow?: boolean
+  activityStates?: Record<string, ActivityExecutionStatus>
 }
 
 export function GridAgentRowSkeleton() {
@@ -77,7 +80,8 @@ export function GridAgentRow({
   onChat,
   onExecuteActivity,
   setSelectedAgent,
-  forceShow = false
+  forceShow = false,
+  activityStates = {}
 }: GridAgentRowProps) {
   // Si el agente está marcado como deshabilitado y no estamos forzando a mostrarlo, no renderizarlo
   if (agent.isDisabled && !forceShow) {
@@ -313,39 +317,13 @@ export function GridAgentRow({
             </div>
             <div className="divide-y divide-border/70">
               {agent.activities.map((activity: AgentActivity) => (
-                <div 
-                  key={activity.id}
-                  className="group flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-8 flex items-center justify-center">
-                      <span className="text-sm font-medium text-muted-foreground group-hover:hidden">
-                        {activity.id.split('').pop()}
-                      </span>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onExecuteActivity(agent, activity);
-                        }}
-                        className="hidden group-hover:flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-                        aria-label={`Execute ${activity.name}`}
-                      >
-                        <PlayCircle className="h-4 w-4" />
-                      </button>
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium truncate">{activity.name}</h4>
-                      <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-6">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{activity.estimatedTime}</span>
-                    <span className="text-xs text-foreground font-medium whitespace-nowrap">{activity.successRate}%</span>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{activity.executions} runs</span>
-                  </div>
-                </div>
+                <AgentActivityItem 
+                  key={activity.id} 
+                  activity={activity} 
+                  onExecute={(activity) => onExecuteActivity(agent, activity)}
+                  viewMode="vertical"
+                  executionStatus={activityStates[activity.id]}
+                />
               ))}
             </div>
           </div>

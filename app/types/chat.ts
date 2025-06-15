@@ -22,6 +22,7 @@ export interface ConversationListItem {
   unreadCount?: number
   messageCount?: number
   leadName?: string
+  channel?: 'web' | 'email' | 'whatsapp'
 }
 
 export interface ChatMessage {

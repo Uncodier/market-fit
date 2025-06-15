@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { Search, PlusCircle, MessageSquare, Trash2 } from "@/app/components/ui/icons"
+import { Search, PlusCircle, MessageSquare, Trash2, Globe, Mail } from "@/app/components/ui/icons"
+import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { Input } from "@/app/components/ui/input"
 import { useTheme } from "@/app/context/ThemeContext"
@@ -86,6 +87,21 @@ function getDefaultMessage(title: string): string {
   }
   
   return "No response generated";
+}
+
+// Función para obtener el icono del canal
+function getChannelIcon(channel: 'web' | 'email' | 'whatsapp' | undefined) {
+  const iconChannel = channel || 'web'; // Default to web if not specified
+  
+  switch (iconChannel) {
+    case 'whatsapp':
+      return <WhatsAppIcon size={15} className="text-muted-foreground/60" />;
+    case 'email':
+      return <Mail className="text-muted-foreground/60" style={{ width: '15px', height: '15px' }} />;
+    case 'web':
+    default:
+      return <Globe className="text-muted-foreground/60" style={{ width: '15px', height: '15px' }} />;
+  }
 }
 
 export function ChatList({
@@ -561,7 +577,7 @@ export function ChatList({
           </div>
         ) : (
           <div className="h-full overflow-auto pt-[71px]">
-            <div className="w-[320px]">
+            <div className="w-[320px] pb-[200px]">
               {filteredConversations.map(conversation => (
                 <div
                   key={conversation.id}
@@ -610,10 +626,11 @@ export function ChatList({
                     </div>
                     <div className="flex justify-between items-center mt-0.5">
                       <div className={cn(
-                        "text-[11px]",
+                        "text-[11px] flex items-center gap-1",
                         selectedConversationId === conversation.id ? "text-primary/70" : "text-muted-foreground/70"
                       )}>
-                        {conversation.agentName || "No Agent Name"} 
+                        {getChannelIcon(conversation.channel)}
+                        <span>{conversation.agentName || "No Agent Name"}</span>
                         {!conversation.agentName && <span className="text-red-500">!</span>}
                         {conversation.leadName && <span> · {conversation.leadName}</span>}
                       </div>

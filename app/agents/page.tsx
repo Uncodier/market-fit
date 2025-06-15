@@ -28,6 +28,7 @@ import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { toast } from "react-hot-toast"
 import { SimpleAgentCardSkeleton, GridAgentRowSkeleton } from "@/app/components/agents/skeleton-components"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { useActivityExecution } from "@/app/hooks/use-activity-execution"
 
 // Type-safe version of the example commands
 const exampleCommands: Command[] = [
@@ -135,6 +136,9 @@ function AgentsPageContent() {
   
   // Initialize command+k hook
   useCommandK()
+  
+  // Initialize activity execution states
+  const { setActivityState, getActivityState, activityStates } = useActivityExecution()
   
   // Fetch agents from API
   useEffect(() => {
@@ -411,10 +415,248 @@ function AgentsPageContent() {
     });
   };
   
-  const handleExecuteActivity = (agent: Agent, activity: AgentActivity) => {
+  const handleExecuteActivity = async (agent: Agent, activity: AgentActivity) => {
     console.log('Executing activity:', activity.name, 'with agent:', agent.name);
+    console.log('Activity ID:', activity.id, 'Activity name:', activity.name);
+    console.log('Agent ID:', agent.id, 'Agent name:', agent.name);
     setSelectedAgent(agent);
     setSelectedActivity(activity);
+    
+    // Handle specific activities that require API calls
+    console.log('🔍 Checking activity conditions...');
+    console.log('Is cs4 + Answer Emails?', activity.id === "cs4" && activity.name === "Answer Emails");
+    console.log('Is mk4 + Analyze Segments?', activity.id === "mk4" && activity.name === "Analyze Segments");
+    console.log('Is mk1 + Create Marketing Campaign?', activity.id === "mk1" && activity.name === "Create Marketing Campaign");
+    console.log('Is ct1 + Content Calendar Creation?', activity.id === "ct1" && activity.name === "Content Calendar Creation");
+    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1");
+    
+    if (activity.id === "cs4" && activity.name === "Answer Emails") {
+      try {
+        console.log('Calling syncEmails workflow for Customer Support agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Synchronizing emails...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Use the same pattern as leadFollowUp - call external API server
+        const { apiClient } = await import('@/app/services/api-client-service');
+        
+        const response = await apiClient.post('/api/workflow/syncEmails', {
+          user_id: user.id,
+          site_id: currentSite.id
+        });
+        
+        if (response.success) {
+          setActivityState(activity.id, 'success', 'Email synchronization completed successfully!');
+          toast?.success?.(`Email synchronization completed successfully!`);
+          console.log('SyncEmails workflow completed successfully:', response.data);
+        } else {
+          const errorMessage = response.error?.message || 'Failed to synchronize emails';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('SyncEmails workflow failed:', response.error);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Answer Emails activity:', error);
+        const errorMessage = 'An error occurred while synchronizing emails';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
+    } else if (activity.id === "mk4") {
+      console.log('✅ MATCHED: Analyze Segments activity detected!');
+      try {
+        console.log('Calling buildSegmentsWithAI workflow for Growth Marketer agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Analyzing segments and building customer profiles...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Verify that the site has a URL
+        if (!currentSite.url) {
+          setActivityState(activity.id, 'error', 'Site URL is missing. Please add a URL to your site in the settings.');
+          toast?.error?.("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+          return;
+        }
+        
+        // Import the buildSegmentsWithAI function
+        const { buildSegmentsWithAI } = await import('@/app/services/ai-service');
+        
+        // Call the buildSegmentsWithAI workflow
+        const result = await buildSegmentsWithAI({
+          user_id: user.id,
+          site_id: currentSite.id,
+          url: currentSite.url,
+          segmentCount: 3,
+          mode: "create",
+          analysisType: "general",
+          provider: "openai",
+          modelId: "gpt-4o",
+          includeScreenshot: true
+        });
+        
+        if (result.success) {
+          setActivityState(activity.id, 'success', 'Segment analysis completed successfully!');
+          toast?.success?.(`Segment analysis completed successfully!`);
+          console.log('buildSegmentsWithAI workflow completed successfully:', result.data);
+          
+          // Redirect to the segments page to view the results
+          if (result.data?.segmentId) {
+            router.push(`/segments/${result.data.segmentId}`);
+          } else {
+            router.push('/segments');
+          }
+        } else {
+          const errorMessage = result.error || 'Failed to analyze segments';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('buildSegmentsWithAI workflow failed:', result);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Analyze Segments activity:', error);
+        const errorMessage = 'An error occurred while analyzing segments';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
+    } else if (activity.id === "mk1") {
+      console.log('✅ MATCHED: Create Marketing Campaign activity detected!');
+      try {
+        console.log('Calling buildCampaignsWithAI workflow for Growth Marketer agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Creating marketing campaigns with AI...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Verify that the site has a URL
+        if (!currentSite.url) {
+          setActivityState(activity.id, 'error', 'Site URL is missing. Please add a URL to your site in the settings.');
+          toast?.error?.("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+          return;
+        }
+        
+        // Import the buildCampaignsWithAI function
+        const { buildCampaignsWithAI } = await import('@/app/services/ai-service');
+        
+        // Call the buildCampaignsWithAI workflow
+        const result = await buildCampaignsWithAI({
+          user_id: user.id,
+          site_id: currentSite.id,
+          url: currentSite.url,
+          campaignCount: 3,
+          mode: "create",
+          provider: "openai",
+          modelId: "gpt-4o",
+          includeScreenshot: true
+        });
+        
+        if (result.success) {
+          setActivityState(activity.id, 'success', 'Marketing campaigns created successfully!');
+          toast?.success?.(`Marketing campaigns created successfully!`);
+          console.log('buildCampaignsWithAI workflow completed successfully:', result.data);
+          
+          // Redirect to the campaigns page to view the results
+          router.push('/campaigns');
+        } else {
+          const errorMessage = result.error || 'Failed to create marketing campaigns';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('buildCampaignsWithAI workflow failed:', result);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Create Marketing Campaign activity:', error);
+        const errorMessage = 'An error occurred while creating marketing campaigns';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
+    } else if (activity.id === "ct1") {
+      console.log('✅ MATCHED: Content Calendar Creation activity detected!');
+      try {
+        console.log('Calling buildContentWithAI workflow for Content Creator & Copywriter agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Creating content calendar with AI...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Verify that the site has a URL
+        if (!currentSite.url) {
+          setActivityState(activity.id, 'error', 'Site URL is missing. Please add a URL to your site in the settings.');
+          toast?.error?.("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+          return;
+        }
+        
+        // Import the buildContentWithAI function
+        const { buildContentWithAI } = await import('@/app/services/ai-service');
+        
+        // Call the buildContentWithAI workflow
+        const result = await buildContentWithAI({
+          user_id: user.id,
+          site_id: currentSite.id,
+          url: currentSite.url,
+          contentCount: 3,
+          mode: "create",
+          provider: "openai",
+          modelId: "gpt-4o",
+          includeScreenshot: true
+        });
+        
+        if (result.success) {
+          setActivityState(activity.id, 'success', 'Content calendar created successfully!');
+          toast?.success?.(`Content calendar created successfully!`);
+          console.log('buildContentWithAI workflow completed successfully:', result.data);
+          
+          // Redirect to the content page to view the results
+          router.push('/content');
+        } else {
+          const errorMessage = result.error || 'Failed to create content calendar';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('buildContentWithAI workflow failed:', result);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Content Calendar Creation activity:', error);
+        const errorMessage = 'An error occurred while creating content calendar';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
+    } else {
+      // For other activities, just show they're not available yet
+      console.log(`Activity "${activity.name}" is not available yet`);
+    }
   };
   
   const isAgentExpanded = (agentId: string) => expandedAgentIds.includes(agentId);
@@ -466,6 +708,7 @@ function AgentsPageContent() {
             onExecuteActivity={handleExecuteActivity}
             setSelectedAgent={setSelectedAgent}
             forceShow={true} // Forzar mostrar incluso si isDisabled es true
+            activityStates={activityStates}
           />
         ))}
       </div>
@@ -564,6 +807,7 @@ function AgentsPageContent() {
                                     onExecuteActivity={handleExecuteActivity}
                                     setSelectedAgent={setSelectedAgent}
                                     className="border-primary shadow-md"
+                                    activityStates={activityStates}
                                   />
                                 </div>
                               )}
@@ -606,6 +850,7 @@ function AgentsPageContent() {
                                         onExecuteActivity={handleExecuteActivity}
                                         setSelectedAgent={setSelectedAgent}
                                         className="border-primary/30 shadow-md"
+                                        activityStates={activityStates}
                                       />
                                     </div>
                                   </div>
@@ -727,6 +972,7 @@ function AgentsPageContent() {
                                                 showActivities={isAgentExpanded(agent.id)}
                                                 onExecuteActivity={handleExecuteActivity}
                                                 setSelectedAgent={setSelectedAgent}
+                                                activityStates={activityStates}
                                               />
                                               
                                               {/* If this is the Sales Specialist, show Customer Support beneath it */}
@@ -755,6 +1001,7 @@ function AgentsPageContent() {
                                                         showActivities={isAgentExpanded("7")}
                                                         onExecuteActivity={handleExecuteActivity}
                                                         setSelectedAgent={setSelectedAgent}
+                                                        activityStates={activityStates}
                                                       />
                                                     </div>
                                                   )}
@@ -833,6 +1080,7 @@ function AgentsPageContent() {
                                             onExecuteActivity={handleExecuteActivity}
                                             setSelectedAgent={setSelectedAgent}
                                             className={index === 0 ? "border-primary/50 shadow-md" : ""}
+                                            activityStates={activityStates}
                                           />
                                         </div>
                                         
@@ -894,6 +1142,7 @@ function AgentsPageContent() {
                                             onExecuteActivity={handleExecuteActivity}
                                             setSelectedAgent={setSelectedAgent}
                                             className={index === 0 ? "border-primary/50 shadow-md" : ""}
+                                            activityStates={activityStates}
                                           />
                                         </div>
                                         
@@ -1001,6 +1250,7 @@ function AgentsPageContent() {
                                             onExecuteActivity={handleExecuteActivity}
                                             setSelectedAgent={setSelectedAgent}
                                             className={index === 0 ? "border-primary/50 shadow-md" : ""}
+                                            activityStates={activityStates}
                                           />
                                         </div>
                                         

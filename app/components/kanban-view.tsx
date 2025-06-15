@@ -5,7 +5,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
-import { Plus, X, Filter, ClipboardList, Mail, Search, RotateCcw, CheckCircle2 } from "@/app/components/ui/icons"
+import { Plus, X, Filter, ClipboardList, Mail, Search, Loader, CheckCircle2 } from "@/app/components/ui/icons"
 import { Button } from "./ui/button"
 import { cn } from "@/lib/utils"
 import { Input } from "./ui/input"
@@ -424,7 +424,7 @@ export function KanbanView({
                                                 }}
                                               >
                                                 {loadingActions[lead.id] === 'research' ? (
-                                                  <RotateCcw className="h-3 w-3 animate-spin" />
+                                                  <Loader className="h-3 w-3" />
                                                 ) : successActions[lead.id] === 'research' ? (
                                                   <CheckCircle2 className="h-3 w-3" />
                                                 ) : (
@@ -453,7 +453,7 @@ export function KanbanView({
                                                 }}
                                               >
                                                 {loadingActions[lead.id] === 'followup' ? (
-                                                  <RotateCcw className="h-3 w-3 animate-spin" />
+                                                  <Loader className="h-3 w-3" />
                                                 ) : successActions[lead.id] === 'followup' ? (
                                                   <CheckCircle2 className="h-3 w-3" />
                                                 ) : (

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, RotateCcw, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -325,7 +325,7 @@ function LeadsTable({
                                 className={`${successActions[lead.id] === 'research' ? 'bg-green-100 text-green-700' : ''}`}
                               >
                                 {loadingActions[lead.id] === 'research' ? (
-                                  <RotateCcw className="h-4 w-4 animate-spin" />
+                                  <Loader className="h-4 w-4" />
                                 ) : successActions[lead.id] === 'research' ? (
                                   <CheckCircle2 className="h-4 w-4" />
                                 ) : (
@@ -353,7 +353,7 @@ function LeadsTable({
                                 className={`${successActions[lead.id] === 'followup' ? 'bg-green-100 text-green-700' : ''}`}
                               >
                                 {loadingActions[lead.id] === 'followup' ? (
-                                  <RotateCcw className="h-4 w-4 animate-spin" />
+                                  <Loader className="h-4 w-4" />
                                 ) : successActions[lead.id] === 'followup' ? (
                                   <CheckCircle2 className="h-4 w-4" />
                                 ) : (

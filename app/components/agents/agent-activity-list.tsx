@@ -2,19 +2,22 @@ import { cn } from "@/lib/utils"
 import { Agent, AgentActivity } from "@/app/types/agents"
 import { Badge } from "@/app/components/ui/badge"
 import { AgentActivityItem } from "./agent-activity-item"
+import { ActivityExecutionStatus } from "@/app/hooks/use-activity-execution"
 
 interface AgentActivityListProps {
   agent: Agent,
   onExecute: (agent: Agent, activity: AgentActivity) => void,
   viewMode?: "vertical" | "horizontal",
-  hideTitle?: boolean
+  hideTitle?: boolean,
+  activityStates?: Record<string, ActivityExecutionStatus>
 }
 
 export function AgentActivityList({
   agent,
   onExecute,
   viewMode = "vertical",
-  hideTitle = false
+  hideTitle = false,
+  activityStates = {}
 }: AgentActivityListProps) {
   if (!agent.activities || agent.activities.length === 0) {
     return (
@@ -58,23 +61,19 @@ export function AgentActivityList({
             <span className="w-8">#</span>
             <span>Activity</span>
           </div>
-          <div className="flex items-center gap-6">
-            <span>Time</span>
-            <span>Success</span>
-            <span>Runs</span>
-          </div>
         </div>
         
         <div className={cn(
           "divide-y divide-border max-h-[300px] overflow-y-auto",
           viewMode === "horizontal" && "divide-border/50"
         )}>
-          {agent.activities.map(activity => (
+          {agent.activities.map((activity: AgentActivity) => (
             <AgentActivityItem 
               key={activity.id} 
               activity={activity} 
               onExecute={(activity) => onExecute(agent, activity)}
               viewMode={viewMode}
+              executionStatus={activityStates[activity.id]}
             />
           ))}
         </div>

@@ -10,7 +10,7 @@ import {
   Globe,
   Tag,
   FileText,
-  RotateCcw,
+  Loader,
   CheckCircle2,
   X,
   Pencil,
@@ -404,7 +404,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
             
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
-                <RotateCcw className="h-5 w-5 text-primary" />
+                <Loader className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-[5px]">Time</p>
@@ -432,7 +432,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
             disabled={isSaving}
           >
             {isSaving ? (
-              <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
+              <Loader className="mr-2 h-4 w-4" />
             ) : (
               <CheckCircle2 className="mr-2 h-4 w-4" />
             )}

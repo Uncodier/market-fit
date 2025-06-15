@@ -250,6 +250,15 @@ const customerSupportActivities: AgentActivity[] = [
     successRate: 89,
     executions: 73,
     status: "available"
+  },
+  {
+    id: "cs4",
+    name: "Answer Emails",
+    description: "Synchronize and respond to customer emails automatically with personalized responses",
+    estimatedTime: "15-20 min",
+    successRate: 92,
+    executions: 156,
+    status: "available"
   }
 ];
 

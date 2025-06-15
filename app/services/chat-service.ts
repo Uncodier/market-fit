@@ -269,6 +269,7 @@ export async function getConversations(siteId: string): Promise<ConversationList
         lead_id,
         last_message_at,
         created_at,
+        custom_data,
         messages (
           content,
           created_at,
@@ -367,6 +368,10 @@ export async function getConversations(siteId: string): Promise<ConversationList
       const agentName = agentsMap[agentId] || 
         (agentId && agentId !== "" ? "Unknown Agent" : "Agent");
       
+      // Extract channel from custom_data or default to 'web'
+      const customData = conv.custom_data || {};
+      const channel = customData.channel || 'web';
+      
       return {
         id: conv.id || "",
         title: title,
@@ -375,7 +380,8 @@ export async function getConversations(siteId: string): Promise<ConversationList
         leadName: leadName || undefined,
         lastMessage,
         timestamp: new Date(messageDate),
-        messageCount: conv.messages?.length || 0
+        messageCount: conv.messages?.length || 0,
+        channel: (channel as 'web' | 'email' | 'whatsapp') || 'web'
       }
     })
   } catch (error) {
@@ -421,6 +427,7 @@ export async function createConversation(
     visitor_id?: string;
     status?: string;
     is_agent_conversation?: boolean; // New flag to indicate this is just an agent conversation
+    channel?: 'web' | 'email' | 'whatsapp'; // Channel for the conversation
   }
 ): Promise<Conversation | null> {
   console.log("==== createConversation called ====");
@@ -985,5 +992,51 @@ export async function sendAgentMessage(
     console.error('API server URL configured as:', FULL_API_SERVER_URL);
     console.error('Network error - API server might be unavailable');
     throw error;
+  }
+}
+
+/**
+ * Helper function to set conversation channel (for testing and migration purposes)
+ */
+export async function setConversationChannel(
+  conversationId: string,
+  channel: 'web' | 'email' | 'whatsapp'
+): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    
+    // Get current custom_data
+    const { data: conversation, error: fetchError } = await supabase
+      .from("conversations")
+      .select("custom_data")
+      .eq("id", conversationId)
+      .single();
+      
+    if (fetchError) {
+      console.error("Error fetching conversation:", fetchError);
+      return false;
+    }
+    
+    const existingCustomData = conversation?.custom_data || {};
+    const updatedCustomData = {
+      ...existingCustomData,
+      channel: channel
+    };
+    
+    const { error: updateError } = await supabase
+      .from("conversations")
+      .update({ custom_data: updatedCustomData })
+      .eq("id", conversationId);
+      
+    if (updateError) {
+      console.error("Error updating conversation channel:", updateError);
+      return false;
+    }
+    
+    console.log(`Successfully set conversation ${conversationId} channel to ${channel}`);
+    return true;
+  } catch (error) {
+    console.error("Unexpected error setting conversation channel:", error);
+    return false;
   }
 } 

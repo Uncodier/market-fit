@@ -10,6 +10,7 @@ import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { agentStatusVariants, agentCardVariants } from "./agent-card.styles"
 import { AgentActivityList } from "./agent-activity-list"
 import { useSite } from "@/app/context/SiteContext"
+import { ActivityExecutionStatus } from "@/app/hooks/use-activity-execution"
 
 // Extender el tipo Agent para incluir datos personalizados
 interface ExtendedAgent extends Agent {
@@ -38,6 +39,7 @@ interface SimpleAgentCardProps {
   selectedAgent?: ExtendedAgent | null
   setSelectedAgent?: (agent: ExtendedAgent | null) => void
   forceShow?: boolean
+  activityStates?: Record<string, ActivityExecutionStatus>
 }
 
 export function SimpleAgentCard({ 
@@ -50,7 +52,8 @@ export function SimpleAgentCard({
   className,
   selectedAgent,
   setSelectedAgent,
-  forceShow = false
+  forceShow = false,
+  activityStates = {}
 }: SimpleAgentCardProps) {
   // Si el agente está marcado como deshabilitado y no estamos forzando a mostrarlo, no renderizarlo
   if (agent.isDisabled && !forceShow) {
@@ -175,6 +178,7 @@ export function SimpleAgentCard({
               agent={agent}
               onExecute={onExecuteActivity || (() => {})}
               hideTitle={false}
+              activityStates={activityStates}
             />
           </div>
         )}
