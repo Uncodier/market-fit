@@ -30,6 +30,25 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
     multiple: false
   })
 
+  const handleUrlChange = (value: string) => {
+    // If the value is empty, don't add anything
+    if (!value) {
+      return value
+    }
+
+    // If the value already starts with http:// or https://, don't modify it
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value
+    }
+
+    // Add https:// prefix when user starts typing anything that doesn't already have a protocol
+    if (value.trim() && !value.startsWith('//')) {
+      return `https://${value}`
+    }
+
+    return value
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
@@ -67,7 +86,16 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
                     <Input 
                       className="pl-10" 
                       placeholder="https://mysite.com"
-                      {...field} 
+                      {...field}
+                      onChange={(e) => {
+                        const processedValue = handleUrlChange(e.target.value)
+                        field.onChange(processedValue)
+                      }}
+                      onBlur={(e) => {
+                        const processedValue = handleUrlChange(e.target.value)
+                        field.onChange(processedValue)
+                        field.onBlur()
+                      }}
                     />
                   </div>
                 </FormControl>

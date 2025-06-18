@@ -58,7 +58,7 @@ export function EmptyState({
       )}
       
       <div className={cn(
-        "text-center px-4 relative z-10",
+        "text-center px-4 relative z-[1]",
         isSimple ? "max-w-md" : "max-w-2xl"
       )}>
         {isSimple ? (
@@ -91,7 +91,7 @@ export function EmptyState({
           <>
             {/* Hero section with icon */}
             <div className="mb-12 relative">
-              <div className="relative mb-8 z-10">
+              <div className="relative mb-8 z-[2]">
                 {/* Main icon container - auth style */}
                 <div className="w-32 h-32 mx-auto rounded-2xl bg-primary/10 backdrop-blur-sm border border-primary/20 flex items-center justify-center shadow-lg">
                   <div className="text-primary [&>*]:!w-12 [&>*]:!h-12 [&_svg]:!stroke-primary [&_svg]:!fill-primary [&_svg_*]:!stroke-primary [&_svg_*]:!fill-none">
@@ -100,9 +100,9 @@ export function EmptyState({
                 </div>
               </div>
               
-              <h2 className="text-2xl font-bold text-foreground mb-4 relative z-10">{title}</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4 relative z-[2]">{title}</h2>
               {description && (
-                <p className="text-base text-muted-foreground leading-relaxed max-w-lg mx-auto relative z-10">
+                <p className="text-base text-muted-foreground leading-relaxed max-w-lg mx-auto relative z-[2]">
                   {description}
                 </p>
               )}

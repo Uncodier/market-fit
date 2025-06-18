@@ -414,8 +414,8 @@ export default function DashboardPage() {
                     endDate={dateRange.endDate}
                   />
                 </div>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
-                  <Card className="col-span-4">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
+                  <Card className="col-span-1">
                     <CardHeader>
                       <CardTitle>Overview</CardTitle>
                     </CardHeader>
@@ -429,7 +429,7 @@ export default function DashboardPage() {
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="col-span-3">
+                  <Card className="col-span-1">
                     <CardHeader>
                       <CardTitle>Recent commercial activity</CardTitle>
                       <CardDescription>
