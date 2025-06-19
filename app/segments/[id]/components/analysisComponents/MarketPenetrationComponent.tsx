@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Copy, TrendingUp } from "@/app/components/ui/icons";
-import { AnalysisComponentProps } from "./types";
+import { BaseAnalysisComponentProps } from "./types";
 import { getPlatformDisplayName, getKeywordsForPlatform, getAudienceProfile } from "./utils";
 import { Segment } from "../../page";
 
-interface MarketPenetrationComponentProps extends Pick<AnalysisComponentProps, 
+interface MarketPenetrationComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform'> {
   segment: Segment;
 }

@@ -2,7 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Copy } from "@/app/components/ui/icons";
-import { AnalysisComponentProps } from "./types";
+import { BaseAnalysisComponentProps } from "./types";
 import WorldMapComponent from "@/app/components/WorldMapComponent";
 import { 
   getCountriesFromPlatform, 
@@ -19,7 +19,7 @@ import {
 import { Segment } from "../../page";
 import { Badge } from "@/app/components/ui/badge";
 
-interface RegionalDistributionComponentProps extends Pick<AnalysisComponentProps, 
+interface RegionalDistributionComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform' | 'copyStates' | 'copyToClipboard'> {
   segment: Segment;
 }
@@ -161,14 +161,14 @@ export const RegionalDistributionComponent: React.FC<RegionalDistributionCompone
                 regionalData.message = `No regional data available for ${getPlatformDisplayName(selectedAdPlatform)} Ads`;
               }
               
-              copyToClipboard(JSON.stringify(regionalData, null, 2), 'regional');
+              copyToClipboard?.(JSON.stringify(regionalData, null, 2), 'regional');
             }}
             className="flex items-center justify-center relative"
             disabled={!hasLocationData && !hasLinkedInLocationData && !hasFacebookLocationData && !hasTikTokLocationData && (!googleGeoTargeting || (googleGeoTargeting.regions.length === 0 && googleGeoTargeting.cities.length === 0))}
           >
             <div className="flex items-center justify-center min-w-0">
               <Copy className="h-3.5 w-3.5 mr-1.5" />
-              <span>{copyStates.regional ? "Copied!" : "Copy Regional Data"}</span>
+              <span>{copyStates?.regional ? "Copied!" : "Copy Regional Data"}</span>
             </div>
           </Button>
         </div>

@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Copy } from "@/app/components/ui/icons";
-import { AnalysisComponentProps, NewAdPlatformType } from "./types";
+import { BaseAnalysisComponentProps, NewAdPlatformType } from "./types";
 import { getPlatformDisplayName, getAudienceProfile, getBehaviorForPlatform } from "./utils";
 import { Segment } from "../../page";
 
-interface BehaviorComponentProps extends Pick<AnalysisComponentProps, 
+interface BehaviorComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform' | 'copyStates' | 'copyToClipboard'> {
   segment: Segment;
 }
@@ -202,14 +202,14 @@ export const BehaviorComponent: React.FC<BehaviorComponentProps> = ({
               }
               
               const jsonString = JSON.stringify(behaviorData, null, 2);
-              copyToClipboard(jsonString, 'behavior');
+              copyToClipboard?.(jsonString, 'behavior');
             }}
             className="flex items-center justify-center relative"
             disabled={!hasBehaviorData}
           >
             <div className="flex items-center justify-center min-w-0">
               <Copy className="h-3.5 w-3.5 mr-1.5" />
-              <span>{copyStates.behavior ? "Copied!" : "Copy Behavior"}</span>
+              <span>{copyStates?.behavior ? "Copied!" : "Copy Behavior"}</span>
             </div>
           </Button>
         </div>

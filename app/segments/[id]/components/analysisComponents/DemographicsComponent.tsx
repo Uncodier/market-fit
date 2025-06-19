@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Copy } from "@/app/components/ui/icons";
-import { AnalysisComponentProps, GenderDistribution } from "./types";
+import { BaseAnalysisComponentProps, GenderDistribution } from "./types";
 import { ageDistributionData, genderDistributionData } from "./data";
 import { 
   getAgeRangeDisplay, 
@@ -19,7 +19,7 @@ import {
 } from "./utils";
 import { Segment } from "../../page";
 
-interface DemographicsComponentProps extends Pick<AnalysisComponentProps, 
+interface DemographicsComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform' | 'copyStates' | 'copyToClipboard' | 'isDarkMode'> {
   segment: Segment;
 }
@@ -337,13 +337,13 @@ export const DemographicsComponent: React.FC<DemographicsComponentProps> = ({
                 demographicsData.message = `No demographic data available for ${getPlatformDisplayName(selectedAdPlatform)} Ads`;
               }
               
-              copyToClipboard(JSON.stringify(demographicsData, null, 2), 'demographics');
+              copyToClipboard?.(JSON.stringify(demographicsData, null, 2), 'demographics');
             }}
             className="flex items-center justify-center relative"
           >
             <div className="flex items-center justify-center min-w-0">
               <Copy className="h-3.5 w-3.5 mr-1.5" />
-              <span>{copyStates.demographics ? "Copied!" : "Copy Demographics"}</span>
+              <span>{copyStates?.demographics ? "Copied!" : "Copy Demographics"}</span>
             </div>
           </Button>
         </div>

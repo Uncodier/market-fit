@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Copy } from "@/app/components/ui/icons";
-import { AnalysisComponentProps, NewAdPlatformType } from "./types";
+import { BaseAnalysisComponentProps, NewAdPlatformType } from "./types";
 import { getPlatformDisplayName, getInterestsForPlatform } from "./utils";
 import { Segment } from "../../page";
 
-interface InterestsComponentProps extends Pick<AnalysisComponentProps, 
+interface InterestsComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform' | 'copyStates' | 'copyToClipboard'> {
   segment: Segment;
 }
@@ -37,13 +37,13 @@ export const InterestsComponent: React.FC<InterestsComponentProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => copyToClipboard(interests.join(", "), 'interests')}
+            onClick={() => copyToClipboard?.(interests.join(", "), 'interests')}
             className="flex items-center justify-center relative"
             disabled={!hasInterestsData}
           >
             <div className="flex items-center justify-center min-w-0">
               <Copy className="h-3.5 w-3.5 mr-1.5" />
-              <span>{copyStates.interests ? "Copied!" : "Copy Interests"}</span>
+              <span>{copyStates?.interests ? "Copied!" : "Copy Interests"}</span>
             </div>
           </Button>
         </div>
