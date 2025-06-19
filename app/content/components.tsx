@@ -59,6 +59,7 @@ export function CreateContentDialog({
   const [isOpen, setIsOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [text, setText] = useState('')
   const [type, setType] = useState<"blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page">('blog_post')
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null)
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
@@ -83,7 +84,8 @@ export function CreateContentDialog({
         type,
         segment_id: selectedSegment,
         campaign_id: selectedCampaign,
-        tags: tags.length > 0 ? tags : null
+        tags: tags.length > 0 ? tags : null,
+        text: text
       })
 
       if (result.error) {
@@ -92,6 +94,16 @@ export function CreateContentDialog({
       }
 
       toast.success("Content created successfully")
+      // Reset form
+      setTitle('')
+      setDescription('')
+      setText('')
+      setType('blog_post')
+      setSelectedSegment(null)
+      setSelectedCampaign(null)
+      setTags([])
+      setTagInput('')
+      
       if (onOpenChange) onOpenChange(false)
       onSuccess && onSuccess()
     } catch (error) {
@@ -120,10 +132,7 @@ export function CreateContentDialog({
     }
   }
 
-  // Function to toggle segment selection
-  const toggleSegment = (segmentId: string) => {
-    setSelectedSegment(prevSelected => prevSelected === segmentId ? null : segmentId);
-  }
+
 
   // Function to toggle campaign selection
   const toggleCampaign = (campaignId: string) => {
@@ -172,6 +181,20 @@ export function CreateContentDialog({
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="text" className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                Content Text
+              </Label>
+              <Textarea
+                id="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Enter the main content text"
+                rows={6}
+                className="min-h-[150px]"
+              />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="type" className="flex items-center gap-2">
                 <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                 Content Type
@@ -191,44 +214,26 @@ export function CreateContentDialog({
               </Select>
             </div>
             <div className="grid gap-2">
-              <div className="flex items-center gap-2">
+              <Label htmlFor="segment" className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <Label htmlFor="segment">Segment</Label>
-              </div>
-              <ScrollArea className="h-[200px] rounded-md border">
-                <div className="p-4">
-                  {segments.map((segment) => {
-                    const isSelected = selectedSegment === segment.id;
-                    
-                    return (
-                      <div 
-                        key={segment.id} 
-                        className={cn(
-                          "flex items-center justify-between space-x-3 space-y-0 rounded-lg border p-4 mb-2 last:mb-0",
-                          "transition-colors hover:bg-muted/50"
-                        )}
-                      >
-                        <div className="grid gap-1.5 leading-none">
-                          <label
-                            htmlFor={`segment-${segment.id}`}
-                            className="text-sm font-medium leading-none cursor-pointer"
-                          >
-                            {segment.name}
-                          </label>
-                          <p className="text-sm text-muted-foreground">
-                            {segment.description || "No description available"}
-                          </p>
-                        </div>
-                        <Switch
-                          id={`segment-${segment.id}`}
-                          checked={isSelected}
-                          onCheckedChange={() => toggleSegment(segment.id)}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
+                Segment
+              </Label>
+              <Select
+                value={selectedSegment || ""}
+                onValueChange={(value) => setSelectedSegment(value === "none" ? null : value)}
+              >
+                <SelectTrigger id="segment" className="h-12">
+                  <SelectValue placeholder="Select a segment (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No segment</SelectItem>
+                  {segments.map((segment) => (
+                    <SelectItem key={segment.id} value={segment.id}>
+                      {segment.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {campaigns.length > 0 && (

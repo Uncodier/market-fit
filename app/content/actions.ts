@@ -95,7 +95,7 @@ export async function createContent({
   segment_id,
   campaign_id,
   tags,
-  content
+  text
 }: {
   siteId: string
   title: string
@@ -104,7 +104,7 @@ export async function createContent({
   segment_id?: string | null
   campaign_id?: string | null
   tags?: string[] | null
-  content?: string
+  text?: string
 }) {
   try {
     const supabase = await createServiceClient()
@@ -119,7 +119,7 @@ export async function createContent({
         segment_id,
         campaign_id,
         tags,
-        content,
+        text,
         status: 'draft',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

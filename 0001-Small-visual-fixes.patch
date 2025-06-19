@@ -1,0 +1,185 @@
+From c34b84fd8bd1a105a52ba57ef1c2c027482534d7 Mon Sep 17 00:00:00 2001
+From: Sergio <sergio@uncodie.com>
+Date: Wed, 18 Jun 2025 11:51:59 -0600
+Subject: [PATCH] Small visual fixes
+
+---
+ .../onboarding/steps/basic-info-step.tsx           | 30 +++++++++++-
+ app/components/ui/empty-state.tsx                  |  8 ++--
+ app/dashboard/page.tsx                             |  6 +--
+ app/globals.css                                    | 53 ++++++++++++++++++++++
+ 4 files changed, 89 insertions(+), 8 deletions(-)
+
+diff --git a/app/components/onboarding/steps/basic-info-step.tsx b/app/components/onboarding/steps/basic-info-step.tsx
+index d463a84..d50ce1d 100644
+--- a/app/components/onboarding/steps/basic-info-step.tsx
++++ b/app/components/onboarding/steps/basic-info-step.tsx
+@@ -30,6 +30,25 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
+     multiple: false
+   })
+ 
++  const handleUrlChange = (value: string) => {
++    // If the value is empty, don't add anything
++    if (!value) {
++      return value
++    }
++
++    // If the value already starts with http:// or https://, don't modify it
++    if (value.startsWith('http://') || value.startsWith('https://')) {
++      return value
++    }
++
++    // Add https:// prefix when user starts typing anything that doesn't already have a protocol
++    if (value.trim() && !value.startsWith('//')) {
++      return `https://${value}`
++    }
++
++    return value
++  }
++
+   return (
+     <div className="space-y-6">
+       <div className="grid md:grid-cols-2 gap-6">
+@@ -67,7 +86,16 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
+                     <Input 
+                       className="pl-10" 
+                       placeholder="https://mysite.com"
+-                      {...field} 
++                      {...field}
++                      onChange={(e) => {
++                        const processedValue = handleUrlChange(e.target.value)
++                        field.onChange(processedValue)
++                      }}
++                      onBlur={(e) => {
++                        const processedValue = handleUrlChange(e.target.value)
++                        field.onChange(processedValue)
++                        field.onBlur()
++                      }}
+                     />
+                   </div>
+                 </FormControl>
+diff --git a/app/components/ui/empty-state.tsx b/app/components/ui/empty-state.tsx
+index 5d68f53..31cffd7 100644
+--- a/app/components/ui/empty-state.tsx
++++ b/app/components/ui/empty-state.tsx
+@@ -58,7 +58,7 @@ export function EmptyState({
+       )}
+       
+       <div className={cn(
+-        "text-center px-4 relative z-10",
++        "text-center px-4 relative z-[1]",
+         isSimple ? "max-w-md" : "max-w-2xl"
+       )}>
+         {isSimple ? (
+@@ -91,7 +91,7 @@ export function EmptyState({
+           <>
+             {/* Hero section with icon */}
+             <div className="mb-12 relative">
+-              <div className="relative mb-8 z-10">
++              <div className="relative mb-8 z-[2]">
+                 {/* Main icon container - auth style */}
+                 <div className="w-32 h-32 mx-auto rounded-2xl bg-primary/10 backdrop-blur-sm border border-primary/20 flex items-center justify-center shadow-lg">
+                   <div className="text-primary [&>*]:!w-12 [&>*]:!h-12 [&_svg]:!stroke-primary [&_svg]:!fill-primary [&_svg_*]:!stroke-primary [&_svg_*]:!fill-none">
+@@ -100,9 +100,9 @@ export function EmptyState({
+                 </div>
+               </div>
+               
+-              <h2 className="text-2xl font-bold text-foreground mb-4 relative z-10">{title}</h2>
++              <h2 className="text-2xl font-bold text-foreground mb-4 relative z-[2]">{title}</h2>
+               {description && (
+-                <p className="text-base text-muted-foreground leading-relaxed max-w-lg mx-auto relative z-10">
++                <p className="text-base text-muted-foreground leading-relaxed max-w-lg mx-auto relative z-[2]">
+                   {description}
+                 </p>
+               )}
+diff --git a/app/dashboard/page.tsx b/app/dashboard/page.tsx
+index cd42ba1..a5adea6 100644
+--- a/app/dashboard/page.tsx
++++ b/app/dashboard/page.tsx
+@@ -414,8 +414,8 @@ export default function DashboardPage() {
+                     endDate={dateRange.endDate}
+                   />
+                 </div>
+-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
+-                  <Card className="col-span-4">
++                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
++                  <Card className="col-span-1">
+                     <CardHeader>
+                       <CardTitle>Overview</CardTitle>
+                     </CardHeader>
+@@ -429,7 +429,7 @@ export default function DashboardPage() {
+                       </div>
+                     </CardContent>
+                   </Card>
+-                  <Card className="col-span-3">
++                  <Card className="col-span-1">
+                     <CardHeader>
+                       <CardTitle>Recent commercial activity</CardTitle>
+                       <CardDescription>
+diff --git a/app/globals.css b/app/globals.css
+index e8898aa..1ed91bb 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -178,6 +178,59 @@
+   }
+ }
+ 
++/* Custom scrollbar styles - Hide scrollbars on non-Mac browsers while maintaining Mac-style scrollbars */
++/* For Webkit browsers (Chrome, Edge, newer Safari) - except Mac */
++::-webkit-scrollbar {
++  width: 0px;
++  height: 0px;
++  background: transparent;
++}
++
++::-webkit-scrollbar-track {
++  background: transparent;
++}
++
++::-webkit-scrollbar-thumb {
++  background: transparent;
++}
++
++::-webkit-scrollbar-corner {
++  background: transparent;
++}
++
++/* For Firefox */
++* {
++  scrollbar-width: none;
++}
++
++/* Restore Mac-style scrollbars on macOS Safari */
++@media not all and (min-resolution:.001dpcm) { 
++  @supports (-webkit-appearance:none) {
++    /* This targets Safari on macOS - restore normal scrollbars */
++    ::-webkit-scrollbar {
++      width: auto;
++      height: auto;
++      background: auto;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: auto;
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background: auto;
++    }
++
++    ::-webkit-scrollbar-corner {
++      background: auto;
++    }
++
++    * {
++      scrollbar-width: auto;
++    }
++  }
++}
++
+ /* Estilos para el contenedor principal de la lista de chats */
+ .flex.flex-col.h-full.border-r.transition-all.duration-300.ease-in-out.bg-background {
+   background-color: white !important;
+-- 
+2.15.0
+

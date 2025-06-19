@@ -107,8 +107,33 @@ function ConfirmContent() {
 
           console.log('✅ Email confirmed successfully:', data)
           
-          // Check if user needs to set password even for regular confirmations
+          // Process referral code if present in user metadata
           const user = data.user
+          const referralCode = user?.raw_user_meta_data?.referral_code
+          
+          if (referralCode) {
+            try {
+              console.log('🎯 Processing referral code:', referralCode)
+              const referralResponse = await fetch('/api/process-referral', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${data.session?.access_token}`
+                },
+                body: JSON.stringify({ referralCode })
+              })
+              
+              if (referralResponse.ok) {
+                console.log('✅ Referral code processed successfully')
+              } else {
+                console.warn('⚠️ Failed to process referral code')
+              }
+            } catch (error) {
+              console.warn('⚠️ Error processing referral code:', error)
+            }
+          }
+          
+          // Check if user needs to set password even for regular confirmations
           const hasPasswordSet = user?.user_metadata?.password_set === true
           
           if (!hasPasswordSet) {

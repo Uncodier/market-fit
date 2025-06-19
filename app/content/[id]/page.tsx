@@ -1699,9 +1699,17 @@ export default function ContentDetailPage() {
 
           <div className="p-4 pt-16 h-full flex flex-col">
             {activeTab === 'copy' ? (
-              <EditorContent editor={editor} className="prose prose-sm dark:prose-invert max-w-none flex-1" />
+              <EditorContent 
+                editor={editor} 
+                className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
+                style={{ minHeight: 'calc(100vh - 200px)' }}
+              />
             ) : (
-              <EditorContent editor={instructionsEditor} className="prose prose-sm dark:prose-invert max-w-none flex-1" />
+              <EditorContent 
+                editor={instructionsEditor} 
+                className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
+                style={{ minHeight: 'calc(100vh - 200px)' }}
+              />
             )}
           </div>
         </div>
@@ -1931,14 +1939,14 @@ export default function ContentDetailPage() {
                         </CardContent>
                       </Card>
 
-                      {/* Prompts Section */}
+                      {/* Personalization Section */}
                       <Card className="border-none bg-muted/30">
                         <CardContent className="p-0">
                           <Collapsible defaultOpen>
                             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
                               <div className="flex items-center gap-2 text-sm font-medium">
                                 <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                                Prompts
+                                Personalization
                               </div>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="px-4 pb-4">
@@ -1976,16 +1984,7 @@ export default function ContentDetailPage() {
                                   />
                                 </div>
 
-                                {/* AI Prompt */}
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">AI Prompt</Label>
-                                  <Textarea
-                                    value={aiPrompt}
-                                    onChange={(e) => setAiPrompt(e.target.value)}
-                                    placeholder="Describe what you want the AI to do..."
-                                    className="min-h-[100px]"
-                                  />
-                                </div>
+
                               </div>
                             </CollapsibleContent>
                           </Collapsible>
@@ -1994,8 +1993,17 @@ export default function ContentDetailPage() {
                     </div>
                   </ScrollArea>
                   
-                  {/* Fixed Footer con Generate Content button */}
-                  <div className="border-t p-4 bg-background">
+                  {/* Fixed Footer con AI Prompt y Generate Content button */}
+                  <div className="border-t p-4 bg-background space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">AI Prompt</Label>
+                      <Textarea
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="Describe what you want the AI to do..."
+                        className="min-h-[80px] resize-none"
+                      />
+                    </div>
                     <Button 
                       className="w-full" 
                       size="lg" 

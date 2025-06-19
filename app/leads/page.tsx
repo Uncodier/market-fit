@@ -34,7 +34,6 @@ import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
 import { createClient } from "@/utils/supabase/client"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
 import { safeReload } from "@/app/utils/safe-reload"
-import { apiClient } from "@/app/services/api-client-service"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
 // Cache de etapas para cada lead
@@ -175,6 +174,9 @@ function LeadsTable({
     setLoadingActions(prev => ({ ...prev, [leadId]: 'research' }))
     
     try {
+      // Use the same pattern as leadFollowUp - call external API server
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
       const response = await apiClient.post('/api/workflow/leadResearch', {
         lead_id: leadId,
         user_id: currentSite?.user_id,
@@ -203,6 +205,9 @@ function LeadsTable({
     setLoadingActions(prev => ({ ...prev, [leadId]: 'followup' }))
     
     try {
+      // Use the same pattern as leadFollowUp - call external API server
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
       const response = await apiClient.post('/api/workflow/leadFollowUp', {
         lead_id: leadId,
         user_id: currentSite?.user_id,

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { Campaign, CampaignType, CampaignStatus, CampaignPriority } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
-import { AlertTriangle, Trash2, DollarSign, CalendarIcon, Tag, ChevronDown } from "@/app/components/ui/icons"
+import { AlertTriangle, Trash2, DollarSign, CalendarIcon, Tag, ChevronDown, Copy } from "@/app/components/ui/icons"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Switch } from "@/app/components/ui/switch"
@@ -100,6 +100,42 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
     });
   };
 
+  const handleCopyId = async () => {
+    try {
+      // First try using the modern clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(campaign.id)
+        toast.success("Campaign ID copied to clipboard")
+        return
+      }
+
+      // Fallback using a temporary element
+      const textArea = document.createElement("textarea")
+      textArea.value = campaign.id
+      
+      // Prevent scrolling
+      textArea.style.position = "fixed"
+      textArea.style.left = "-999999px"
+      textArea.style.top = "-999999px"
+      document.body.appendChild(textArea)
+      
+      textArea.focus()
+      textArea.select()
+
+      try {
+        document.execCommand('copy')
+        textArea.remove()
+        toast.success("Campaign ID copied to clipboard")
+      } catch (err) {
+        console.error('Fallback: Unable to copy', err)
+        toast.error("Failed to copy. Please copy manually.")
+      }
+    } catch (err) {
+      console.error('Failed to copy text: ', err)
+      toast.error("Failed to copy. Please copy manually.")
+    }
+  }
+
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6 max-w-3xl mx-auto">
       {/* Basic Information */}
@@ -169,6 +205,48 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
               className="h-12"
               mode="task"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Campaign Attribution */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Campaign Attribution</CardTitle>
+          <CardDescription>
+            Use this campaign ID to track and attribute leads, sales, and conversions
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Campaign ID</Label>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-muted px-3 py-2 rounded-md text-sm font-mono">
+                {campaign.id}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyId}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Use this ID as a URL parameter to track this campaign: <code className="text-xs">?campaign_id={campaign.id}</code>
+            </p>
+          </div>
+          <div className="space-y-2 rounded-lg border p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+            <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">Attribution Examples:</h4>
+            <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+              <li>• <code>https://yoursite.com?campaign_id={campaign.id}</code></li>
+              <li>• <code>https://yoursite.com/landing?campaign_id={campaign.id}&utm_source=facebook</code></li>
+              <li>• <code>https://yoursite.com/signup?campaign_id={campaign.id}&ref=email</code></li>
+            </ul>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+              When visitors access URLs with this campaign ID, they will be automatically attributed to this campaign for tracking conversions and ROI.
+            </p>
           </div>
         </CardContent>
       </Card>

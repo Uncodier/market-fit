@@ -867,19 +867,21 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       // Crear configuración inicial si el sitio se creó correctamente
       if (createdSite && createdSite.id) {
-        // Valores iniciales para settings
-        const initialSettings: Partial<SiteSettings> = {
+        // Usar los settings que se pasaron en newSite, o valores por defecto
+        const settingsToSave: Partial<SiteSettings> = {
           site_id: createdSite.id,
-          // Asignar los valores iniciales para competitors y focusMode que ahora pertenecen a settings
-          competitors: [],
-          focus_mode: 50
+          // Usar los settings pasados como parámetro, o valores por defecto
+          ...(newSite.settings || {}),
+          // Asegurar que siempre tenemos estos valores mínimos
+          competitors: newSite.settings?.competitors || [],
+          focus_mode: newSite.settings?.focus_mode || 50
         };
         
         try {
-          await handleUpdateSettings(createdSite.id, initialSettings);
+          await handleUpdateSettings(createdSite.id, settingsToSave);
           
-          // Actualizar el objeto createdSite con los settings iniciales
-          createdSite.settings = initialSettings as SiteSettings;
+          // Actualizar el objeto createdSite con los settings guardados
+          createdSite.settings = settingsToSave as SiteSettings;
         } catch (settingsError) {
           console.error("Error creating initial settings:", settingsError);
         }
@@ -897,6 +899,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
       console.error("Error creating site:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
       throw err
+    } finally {
+      setIsLoading(false);
     }
   }
   

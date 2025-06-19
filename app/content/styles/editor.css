@@ -1,8 +1,11 @@
 .ProseMirror {
   padding: 1rem;
-  min-height: 100%;
+  min-height: calc(100vh - 200px);
   height: 100%;
   outline: none;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 /* Handle line breaks properly in the editor */

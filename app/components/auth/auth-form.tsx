@@ -243,6 +243,24 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
 
         if (data.user?.email_confirmed_at) {
           // User was automatically confirmed
+          // Process referral code if provided
+          if (values.referralCode && referralCodeStatus === 'valid') {
+            try {
+              const referralResponse = await fetch('/api/process-referral', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ referralCode: values.referralCode })
+              })
+              
+              if (!referralResponse.ok) {
+                console.warn('Failed to process referral code after signup')
+              }
+            } catch (error) {
+              console.warn('Error processing referral code:', error)
+            }
+          }
           window.location.href = finalReturnTo
         } else {
           // User needs to confirm email

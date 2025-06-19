@@ -178,6 +178,59 @@
   }
 }
 
+/* Custom scrollbar styles - Hide scrollbars on non-Mac browsers while maintaining Mac-style scrollbars */
+/* For Webkit browsers (Chrome, Edge, newer Safari) - except Mac */
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: none;
+}
+
+/* Restore Mac-style scrollbars on macOS Safari */
+@media not all and (min-resolution:.001dpcm) { 
+  @supports (-webkit-appearance:none) {
+    /* This targets Safari on macOS - restore normal scrollbars */
+    ::-webkit-scrollbar {
+      width: auto;
+      height: auto;
+      background: auto;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: auto;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: auto;
+    }
+
+    ::-webkit-scrollbar-corner {
+      background: auto;
+    }
+
+    * {
+      scrollbar-width: auto;
+    }
+  }
+}
+
 /* Estilos para el contenedor principal de la lista de chats */
 .flex.flex-col.h-full.border-r.transition-all.duration-300.ease-in-out.bg-background {
   background-color: white !important;
