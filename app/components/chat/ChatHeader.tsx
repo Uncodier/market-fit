@@ -160,9 +160,6 @@ export function ChatHeader({
             <div className="transition-transform duration-300 ease-in-out">
               <div className="flex items-center gap-2">
                 <h2 className="font-medium text-lg">{displayAgentName}</h2>
-                <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300">
-                  {agentRole}
-                </Badge>
                 <span className="text-xs text-muted-foreground transition-colors duration-300">
                   {(() => {
                     // Determinar el color según el estado

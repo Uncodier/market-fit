@@ -23,6 +23,12 @@ export function ChatInput({
   handleKeyDown,
   conversationId
 }: ChatInputProps) {
+  // Calculate dimensions for fixed positioning
+  // Sidebar: 256px (expanded) or 64px (collapsed)
+  // Chat list: 319px (expanded) or 0px (collapsed)
+  // These values should match the layout in chat page
+  const sidebarWidth = 256 // This could be dynamic based on layout state
+  const chatListWidth = 319 // This could be dynamic based on chat list state
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
   // Handle input changes directly without debounce for better responsiveness
@@ -57,10 +63,17 @@ export function ChatInput({
   }
   
   return (
-    <div className={cn(
-      "py-4 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 backdrop-blur"
-    )}>
-      <div className="max-w-[calc(100%-240px)] mx-auto">
+    <div 
+      className={cn(
+        "fixed bottom-0 py-4 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10"
+      )}
+      style={{
+        left: `${sidebarWidth + chatListWidth}px`,
+        right: '0px',
+        maxWidth: `calc(100vw - ${sidebarWidth + chatListWidth}px)`
+      }}
+    >
+      <div className="px-12">
         <form onSubmit={handleSubmit} className="relative">
           <div className="relative">
             <Textarea
