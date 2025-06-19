@@ -482,6 +482,7 @@ function ChatPageContent() {
             handleSendMessage={handleSendMessageSubmit}
             handleKeyDown={handleKeyDown}
             conversationId={conversationId}
+            isChatListCollapsed={isChatListCollapsed}
           />
         )}
       </div>

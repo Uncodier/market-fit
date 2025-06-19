@@ -5,6 +5,7 @@ import { Button } from "@/app/components/ui/button"
 import { Textarea } from "@/app/components/ui/textarea"
 import * as Icons from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { useLayout } from "@/app/context/LayoutContext"
 
 interface ChatInputProps {
   message: string
@@ -13,6 +14,7 @@ interface ChatInputProps {
   handleSendMessage: (e: FormEvent) => Promise<void>
   handleKeyDown: (e: React.KeyboardEvent) => void
   conversationId?: string
+  isChatListCollapsed?: boolean
 }
 
 export function ChatInput({
@@ -21,14 +23,17 @@ export function ChatInput({
   isLoading,
   handleSendMessage,
   handleKeyDown,
-  conversationId
+  conversationId,
+  isChatListCollapsed = false
 }: ChatInputProps) {
+  const { isLayoutCollapsed } = useLayout()
+  
   // Calculate dimensions for fixed positioning
   // Sidebar: 256px (expanded) or 64px (collapsed)
   // Chat list: 319px (expanded) or 0px (collapsed)
   // These values should match the layout in chat page
-  const sidebarWidth = 256 // This could be dynamic based on layout state
-  const chatListWidth = 319 // This could be dynamic based on chat list state
+  const sidebarWidth = isLayoutCollapsed ? 64 : 256 // Dynamic based on layout state
+  const chatListWidth = isChatListCollapsed ? 0 : 319 // Dynamic based on chat list state
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
   // Handle input changes directly without debounce for better responsiveness
