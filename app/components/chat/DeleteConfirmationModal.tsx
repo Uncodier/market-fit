@@ -56,7 +56,7 @@ export function DeleteConfirmationModal({
             Are you sure you want to delete this conversation? This action cannot be undone and 
             all messages in this conversation will be permanently deleted.
             <div className="mt-2 p-2 border rounded bg-muted/50">
-              <p className="font-medium text-sm">{conversationTitle || "Untitled Conversation"}</p>
+              <span className="font-medium text-sm">{conversationTitle || "Untitled Conversation"}</span>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

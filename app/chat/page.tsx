@@ -75,7 +75,9 @@ function ChatPageContent() {
     setChatMessages,
     isLoadingMessages,
     isAgentResponding,
-    setIsAgentResponding
+    setIsAgentResponding,
+    isTransitioningConversation,
+    clearMessagesForTransition
   } = useChatMessages(conversationId, agentId, agentName, isAgentOnlyConversation)
   
   const {
@@ -263,9 +265,9 @@ function ChatPageContent() {
 
   // Function to select a conversation - memoized for performance
   const handleSelectConversation = useCallback((selectedConversationId: string, selectedAgentName: string, selectedAgentId: string) => {
-    // First clear messages to avoid showing previous conversation data
+    // First clear messages and set transition state to show skeleton
     if (conversationId !== selectedConversationId) {
-      setChatMessages([]);
+      clearMessagesForTransition();
     }
     
     // Use the native history API to update the URL without triggering a hard reload
@@ -274,7 +276,7 @@ function ChatPageContent() {
     
     // We need to replace the window.location.search to ensure the component picks up the new parameters
     router.replace(newUrl);
-  }, [conversationId, setChatMessages, router])
+  }, [conversationId, clearMessagesForTransition, router])
 
   // Fetch agent details when conversationId changes
   useEffect(() => {
@@ -341,7 +343,7 @@ function ChatPageContent() {
       if (convId && agId && agName) {
         // Forzar recarga de mensajes si cambió la conversación
         if (convId !== conversationId) {
-          setChatMessages([]);
+          clearMessagesForTransition();
         }
         
         // Mode-specific handling
@@ -402,7 +404,7 @@ function ChatPageContent() {
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [conversationId, agentId, setChatMessages, setIsAgentOnlyConversation])
+  }, [conversationId, agentId, clearMessagesForTransition, setIsAgentOnlyConversation])
 
   // Memoize conversation validation to avoid unnecessary calculations
   const hasSelectedConversation = useMemo(() => {
@@ -465,6 +467,7 @@ function ChatPageContent() {
           chatMessages={chatMessages}
           isLoadingMessages={isLoadingMessages}
           isAgentResponding={isAgentResponding}
+          isTransitioningConversation={isTransitioningConversation}
           messagesEndRef={messagesEndRef}
           agentId={agentId}
           agentName={agentName}

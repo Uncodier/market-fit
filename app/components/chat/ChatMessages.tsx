@@ -36,6 +36,7 @@ interface ChatMessagesProps {
   chatMessages: ChatMessage[]
   isLoadingMessages: boolean
   isAgentResponding: boolean
+  isTransitioningConversation?: boolean
   messagesEndRef: RefObject<HTMLDivElement | null>
   agentId: string
   agentName: string
@@ -311,6 +312,7 @@ export function ChatMessages({
   chatMessages,
   isLoadingMessages,
   isAgentResponding,
+  isTransitioningConversation = false,
   messagesEndRef,
   agentId,
   agentName,
@@ -367,7 +369,7 @@ export function ChatMessages({
   return (
     <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-44">
       <div className="max-w-[calc(100%-240px)] mx-auto">
-        {isLoadingMessages ? (
+        {(isLoadingMessages || isTransitioningConversation) ? (
           <div className="space-y-6 w-full">
             {[1, 2, 3].map((i) => (
               <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"} animate-pulse`}>

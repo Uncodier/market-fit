@@ -15,6 +15,7 @@ export function useChatMessages(
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [isAgentResponding, setIsAgentResponding] = useState(false)
+  const [isTransitioningConversation, setIsTransitioningConversation] = useState(false)
   const { hasActiveChatRequest } = useApiRequestTracker()
   const messageSubscriptionRef = useRef<any>(null)
   const lastConversationIdRef = useRef<string>('')
@@ -24,6 +25,12 @@ export function useChatMessages(
     setIsAgentResponding(hasActiveChatRequest)
   }, [hasActiveChatRequest])
   
+  // Function to clear messages and set transition state
+  const clearMessagesForTransition = useCallback(() => {
+    setIsTransitioningConversation(true)
+    setChatMessages([])
+  }, [])
+  
   // Optimized message loader
   const loadMessages = useCallback(async () => {
     // Clean up any previous subscription
@@ -32,7 +39,10 @@ export function useChatMessages(
       messageSubscriptionRef.current = null
     }
   
-    if (!conversationId) return
+    if (!conversationId) {
+      setIsTransitioningConversation(false)
+      return
+    }
     
     setIsLoadingMessages(true)
     
@@ -40,6 +50,7 @@ export function useChatMessages(
       if (conversationId.startsWith("new-")) {
         setChatMessages([])
         setIsAgentResponding(false)
+        setIsTransitioningConversation(false)
       } else {
         // Load existing messages from the API
         const messages = await getConversationMessages(conversationId)
@@ -51,6 +62,9 @@ export function useChatMessages(
           setChatMessages([])
           setIsAgentResponding(false)
         }
+        
+        // End transition state after messages are loaded
+        setIsTransitioningConversation(false)
         
         // Subscribe to new messages in real time
         if (!conversationId.startsWith("new-")) {
@@ -84,6 +98,7 @@ export function useChatMessages(
           error_message: "Failed to load conversation messages"
         }
       }])
+      setIsTransitioningConversation(false)
     } finally {
       setIsLoadingMessages(false)
     }
@@ -111,6 +126,8 @@ export function useChatMessages(
     setChatMessages,
     isLoadingMessages,
     isAgentResponding,
-    setIsAgentResponding
+    setIsAgentResponding,
+    isTransitioningConversation,
+    clearMessagesForTransition
   }
 } 
