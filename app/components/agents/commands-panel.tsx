@@ -80,13 +80,13 @@ function handlePotentialBase64Image(value: any): any {
   return value;
 }
 
-/**
- * Safely processes nested objects to prevent circular references
- * and limit object depth to prevent rendering issues
- */
-function processSafeObject(obj: any, currentDepth = 0, visitedObjects = new WeakSet()): any {
-  // Return simple values directly
-  if (obj === null || obj === undefined) return obj;
+// Safe object processing with circular reference detection and unlimited depth
+function processSafeObject(obj: any, visitedObjects = new WeakSet()): any {
+  // Base cases
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
   if (typeof obj !== 'object') {
     // Handle base64 encoded strings (likely images)
     if (typeof obj === 'string' && isBase64Image(obj) && obj.length > MAX_BASE64_LENGTH) {
@@ -100,29 +100,24 @@ function processSafeObject(obj: any, currentDepth = 0, visitedObjects = new Weak
     return "[Circular Reference]";
   }
   
-  // Prevent too deep recursion
-  if (currentDepth >= MAX_DEPTH) {
-    return "[Object too deeply nested]";
-  }
-  
   // Add object to visited set to detect circular references
   visitedObjects.add(obj);
   
   // Handle arrays
   if (Array.isArray(obj)) {
-    // Limit array size
+    // Limit array size for performance but allow deep nesting
     if (obj.length > MAX_ITEMS) {
       const limited = obj.slice(0, MAX_ITEMS);
-      // Process each item recursively with increased depth
-      return limited.map(item => processSafeObject(item, currentDepth + 1, visitedObjects));
+      // Process each item recursively without depth limitation
+      return limited.map(item => processSafeObject(item, visitedObjects));
     }
     // Process normal sized arrays
-    return obj.map(item => processSafeObject(item, currentDepth + 1, visitedObjects));
+    return obj.map(item => processSafeObject(item, visitedObjects));
   }
   
-  // Handle objects
+  // Handle objects - allow unlimited depth
   const result: Record<string, any> = {};
-  // Limit number of keys (take first MAX_ITEMS keys)
+  // Limit number of keys (take first MAX_ITEMS keys) but allow deep nesting
   const keys = Object.keys(obj).slice(0, MAX_ITEMS);
   
   for (const key of keys) {
@@ -131,9 +126,9 @@ function processSafeObject(obj: any, currentDepth = 0, visitedObjects = new Weak
       if (key === 'logo_url' || key.includes('image')) {
         result[key] = typeof obj[key] === 'string' && obj[key].length > MAX_BASE64_LENGTH
           ? "[Large image data removed]"
-          : processSafeObject(obj[key], currentDepth + 1, visitedObjects);
+          : processSafeObject(obj[key], visitedObjects);
       } else {
-        result[key] = processSafeObject(obj[key], currentDepth + 1, visitedObjects);
+        result[key] = processSafeObject(obj[key], visitedObjects);
       }
     } catch (e) {
       result[key] = "[Error processing value]";

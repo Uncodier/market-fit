@@ -23,6 +23,7 @@ import {
 } from "@/app/components/ui/icons"
 import { JsonHighlighter } from "@/app/components/agents/json-highlighter"
 import { PageTransition } from "@/app/components/ui/page-transition"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 import { cn } from "@/app/lib/utils"
 import { Command } from "@/app/agents/types"
 import { useEffect, useState } from "react"
@@ -549,8 +550,8 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
           table: 'commands',
           filter: `id=eq.${commandId}`
         },
-        (payload) => {
-          if (payload.new.performance !== undefined) {
+        (payload: any) => {
+          if (payload.new?.performance !== undefined) {
             setPerformance({ performance: payload.new.performance });
           }
         }
@@ -1052,7 +1053,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                 <TabsContent value="results" className="mt-0 p-0">
                   <Card>
                     <CardContent className="pt-6">
-                      {command.results ? (
+                      {command.results && (!Array.isArray(command.results) || command.results.length > 0) ? (
                         <div className="space-y-4">
                           <h3 className="text-lg font-medium">Command Results</h3>
                           
@@ -1079,11 +1080,13 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                           )}
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                          <h3 className="text-lg font-medium mb-2">No Results Available</h3>
-                          <p className="text-muted-foreground">This command has not produced any results yet.</p>
-                        </div>
+                        <EmptyCard
+                          icon={<FileText className="h-10 w-10 text-muted-foreground" />}
+                          title="No Results Available"
+                          description="This command has not produced any results yet."
+                          showShadow={false}
+                          contentClassName="py-8"
+                        />
                       )}
                     </CardContent>
                   </Card>
@@ -1092,7 +1095,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                 <TabsContent value="tools" className="mt-0 p-0">
                   <Card>
                     <CardContent className="pt-6">
-                      {command.tools ? (
+                      {command.tools && (!Array.isArray(command.tools) || command.tools.length > 0) ? (
                         <div className="space-y-4">
                           <h3 className="text-lg font-medium">Tools Used</h3>
                           
@@ -1130,11 +1133,13 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                           )}
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <Target className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                          <h3 className="text-lg font-medium mb-2">No Tools Information</h3>
-                          <p className="text-muted-foreground">This command has no tools information available.</p>
-                        </div>
+                        <EmptyCard
+                          icon={<Target className="h-10 w-10 text-muted-foreground" />}
+                          title="No Tools Information"
+                          description="This command has no tools information available."
+                          showShadow={false}
+                          contentClassName="py-8"
+                        />
                       )}
                     </CardContent>
                   </Card>
@@ -1152,7 +1157,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                             Functions
                           </h3>
                           
-                          {command.functions ? (
+                          {command.functions && (!Array.isArray(command.functions) || command.functions.length > 0) ? (
                             <div className="space-y-4">
                               {Array.isArray(command.functions) ? (
                                 command.functions.map((func, index) => (
@@ -1173,28 +1178,23 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                                       )}
                                     </div>
                                     
-                                    {func.type === "function" && func.function && (
-                                      <div className="mb-3 bg-muted/30 p-3 rounded-md">
-                                        <div className="flex justify-between items-center">
-                                          <h5 className="text-sm font-medium">
-                                            {func.function.name}
-                                          </h5>
-                                        </div>
-                                        
-                                        {func.function.arguments && (
-                                          <div className="mt-2">
-                                            <p className="text-xs font-medium text-muted-foreground mb-1">Arguments</p>
-                                            <pre className="text-xs font-mono bg-background p-2 rounded border border-border/50 overflow-x-auto">
-                                              {typeof func.function.arguments === 'string' 
-                                                ? JSON.stringify(JSON.parse(func.function.arguments), null, 2)
-                                                : JSON.stringify(func.function.arguments, null, 2)}
-                                            </pre>
+                                    {/* Render each property of the function separately */}
+                                    {Object.entries(func).map(([key, value]) => {
+                                      if (value === null || value === undefined) return null;
+                                      
+                                      return (
+                                        <div key={key} className="mb-3">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <Badge variant="outline" className="bg-primary/5 text-primary/90 text-xs">
+                                              {key}
+                                            </Badge>
                                           </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    
-                                    <JsonHighlighter data={func} maxHeight="none" />
+                                          <div className="bg-muted/20 rounded-md p-2">
+                                            <JsonHighlighter data={value} maxHeight="none" />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 ))
                               ) : (
@@ -1204,9 +1204,13 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                               )}
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center justify-center py-6 text-center">
-                              <p className="text-muted-foreground">No function calls were required for this command</p>
-                            </div>
+                            <EmptyCard
+                              icon={<FileText className="h-8 w-8 text-muted-foreground" />}
+                              title="No Function Calls"
+                              description="No function calls were required for this command."
+                              showShadow={false}
+                              contentClassName="py-6"
+                            />
                           )}
                         </div>
                         
@@ -1216,7 +1220,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                             Execution Targets
                           </h3>
                           
-                          {command.targets ? (
+                          {command.targets && (!Array.isArray(command.targets) || command.targets.length > 0) ? (
                             <div className="space-y-4">
                               {Array.isArray(command.targets) ? (
                                 command.targets.map((target, index) => (
@@ -1236,28 +1240,23 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                                       )}
                                     </div>
                                     
-                                    {target.function && (
-                                      <div className="mb-3 bg-muted/30 p-3 rounded-md">
-                                        <div className="flex justify-between items-center">
-                                          <h5 className="text-sm font-medium">
-                                            {target.function.name}
-                                          </h5>
-                                        </div>
-                                        
-                                        {target.function.arguments && (
-                                          <div className="mt-2">
-                                            <p className="text-xs font-medium text-muted-foreground mb-1">Arguments</p>
-                                            <pre className="text-xs font-mono bg-background p-2 rounded border border-border/50 overflow-x-auto">
-                                              {typeof target.function.arguments === 'string' 
-                                                ? JSON.stringify(JSON.parse(target.function.arguments), null, 2)
-                                                : JSON.stringify(target.function.arguments, null, 2)}
-                                            </pre>
+                                    {/* Render each property of the target separately */}
+                                    {Object.entries(target).map(([key, value]) => {
+                                      if (value === null || value === undefined) return null;
+                                      
+                                      return (
+                                        <div key={key} className="mb-3">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <Badge variant="outline" className="bg-primary/5 text-primary/90 text-xs">
+                                              {key}
+                                            </Badge>
                                           </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    
-                                    <JsonHighlighter data={target} maxHeight="none" />
+                                          <div className="bg-muted/20 rounded-md p-2">
+                                            <JsonHighlighter data={value} maxHeight="none" />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 ))
                               ) : (
@@ -1267,9 +1266,13 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                               )}
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center justify-center py-6 text-center">
-                              <p className="text-muted-foreground">No target information available</p>
-                            </div>
+                            <EmptyCard
+                              icon={<Target className="h-8 w-8 text-muted-foreground" />}
+                              title="No Target Information"
+                              description="No target information available."
+                              showShadow={false}
+                              contentClassName="py-6"
+                            />
                           )}
                         </div>
                         
@@ -1281,12 +1284,38 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                           
                           {command.supervisor ? (
                             <div className="bg-background rounded-md p-3 border border-border/50">
-                              <JsonHighlighter data={command.supervisor} maxHeight="none" />
+                              {typeof command.supervisor === 'object' && command.supervisor !== null ? (
+                                <div className="space-y-3">
+                                  {/* Render each property of the supervisor separately */}
+                                  {Object.entries(command.supervisor).map(([key, value]) => {
+                                    if (value === null || value === undefined) return null;
+                                    
+                                    return (
+                                      <div key={key} className="mb-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Badge variant="outline" className="bg-primary/5 text-primary/90 text-xs">
+                                            {key}
+                                          </Badge>
+                                        </div>
+                                        <div className="bg-muted/20 rounded-md p-2">
+                                          <JsonHighlighter data={value} maxHeight="none" />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <JsonHighlighter data={command.supervisor} maxHeight="none" />
+                              )}
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center justify-center py-6 text-center">
-                              <p className="text-muted-foreground">No supervisor information available</p>
-                            </div>
+                            <EmptyCard
+                              icon={<User className="h-8 w-8 text-muted-foreground" />}
+                              title="No Supervisor Information"
+                              description="No supervisor information available."
+                              showShadow={false}
+                              contentClassName="py-6"
+                            />
                           )}
                         </div>
                       </div>
@@ -1315,11 +1344,13 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <Info className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                          <h3 className="text-lg font-medium mb-2">No Context Available</h3>
-                          <p className="text-muted-foreground">This command has no context information available.</p>
-                        </div>
+                        <EmptyCard
+                          icon={<Info className="h-10 w-10 text-muted-foreground" />}
+                          title="No Context Available"
+                          description="This command has no context information available."
+                          showShadow={false}
+                          contentClassName="py-8"
+                        />
                       )}
                     </CardContent>
                   </Card>
@@ -1346,11 +1377,13 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <Info className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                          <h3 className="text-lg font-medium mb-2">No Agent Background Available</h3>
-                          <p className="text-muted-foreground">This command has no agent background information available.</p>
-                        </div>
+                        <EmptyCard
+                          icon={<Info className="h-10 w-10 text-muted-foreground" />}
+                          title="No Agent Background Available"
+                          description="This command has no agent background information available."
+                          showShadow={false}
+                          contentClassName="py-8"
+                        />
                       )}
                     </CardContent>
                   </Card>

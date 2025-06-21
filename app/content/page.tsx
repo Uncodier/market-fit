@@ -787,17 +787,29 @@ function ContentKanban({
     setItems(newItems)
 
     try {
-      // Update in the database
+      // Update in the database - this will also update the parent state
       await onUpdateContentStatus(draggableId, destination.droppableId)
     } catch (error) {
       // Revert on error
       console.error('Error updating content status:', error)
       toast.error('Failed to update content status')
       
-      // Revert to original state
-      setItems({
-        ...items
+      // Revert to original state - rebuild from contentItems
+      const revertedItems: Record<string, ContentItem[]> = {}
+      
+      // Initialize all statuses with empty arrays
+      CONTENT_STATUSES.forEach(status => {
+        revertedItems[status.id] = []
       })
+      
+      // Group content items by status
+      contentItems.forEach(item => {
+        if (revertedItems[item.status]) {
+          revertedItems[item.status].push(item)
+        }
+      })
+      
+      setItems(revertedItems)
     }
   }
 
@@ -1680,23 +1692,27 @@ export default function ContentPage() {
       }
 
       // Update local state
-      setContentItems(prev => 
-        prev.map(item => 
-          item.id === contentId 
-            ? { 
-                ...item, 
-                status: newStatus as any,
-                updated_at: new Date().toISOString(),
-                ...(newStatus === 'published' ? { published_at: new Date().toISOString() } : {})
-              } 
-            : item
-        )
+      const updatedItems = contentItems.map(item => 
+        item.id === contentId 
+          ? { 
+              ...item, 
+              status: newStatus as any,
+              updated_at: new Date().toISOString(),
+              ...(newStatus === 'published' ? { published_at: new Date().toISOString() } : {})
+            } 
+          : item
       )
+      
+      setContentItems(updatedItems)
+      
+      // Update filtered content as well to maintain consistency
+      updateFilteredContent(searchTerm, filters, updatedItems)
 
       toast.success(`Content status updated to ${newStatus}`)
     } catch (error) {
       console.error("Error updating content status:", error)
       toast.error("Failed to update content status")
+      throw error // Re-throw to trigger the revert in kanban
     }
   }
 
@@ -1716,22 +1732,16 @@ export default function ContentPage() {
   // Handle content rating changes
   const handleContentRatingChange = (contentId: string, rating: number) => {
     // Update the content items array
-    setContentItems(prevItems => 
-      prevItems.map(item => 
-        item.id === contentId 
-          ? { ...item, performance_rating: rating } 
-          : item
-      )
+    const updatedItems = contentItems.map(item => 
+      item.id === contentId 
+        ? { ...item, performance_rating: rating } 
+        : item
     );
     
-    // Also update the filtered content to keep it in sync
-    setFilteredContent(prevItems => 
-      prevItems.map(item => 
-        item.id === contentId 
-          ? { ...item, performance_rating: rating } 
-          : item
-      )
-    );
+    setContentItems(updatedItems);
+    
+    // Update filtered content to maintain consistency
+    updateFilteredContent(searchTerm, filters, updatedItems);
   };
 
   if (error) {

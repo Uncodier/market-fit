@@ -10,15 +10,13 @@ interface JsonHighlighterProps {
   commandId?: string
 }
 
-// Maximum allowed depth for objects to be stringified
-const MAX_STRINGIFY_DEPTH = 3;
-// Maximum string length for serialized JSON
-const MAX_JSON_LENGTH = 10000;
+// Maximum string length for serialized JSON to prevent UI freezing
+const MAX_JSON_LENGTH = 50000; // Increased for more detailed objects
 
 /**
- * Safely stringifies an object with circular reference detection and depth limiting
+ * Safely stringifies an object with circular reference detection and unlimited depth
  */
-function safeStringify(obj: any, depth = 0, visitedObjects = new WeakSet()): string {
+function safeStringify(obj: any, visitedObjects = new WeakSet()): string {
   try {
     // Handle primitive values
     if (obj === null) return 'null';
@@ -30,41 +28,36 @@ function safeStringify(obj: any, depth = 0, visitedObjects = new WeakSet()): str
       return '"[Circular Reference]"';
     }
     
-    // Limit recursion depth
-    if (depth >= MAX_STRINGIFY_DEPTH) {
-      return '"[Object too deeply nested]"';
-    }
-    
     // Add to visited objects
     visitedObjects.add(obj);
     
     if (Array.isArray(obj)) {
-      const arrayContent = obj.slice(0, 50).map(item => {
+      const arrayContent = obj.slice(0, 100).map(item => { // Increased limit
         try {
-          return safeStringify(item, depth + 1, visitedObjects);
+          return safeStringify(item, visitedObjects);
         } catch (e) {
           return '"[Error processing array item]"';
         }
       }).join(',');
       
-      return obj.length > 50 
-        ? `[${arrayContent},"... (${obj.length - 50} more items)"]` 
+      return obj.length > 100 
+        ? `[${arrayContent},"... (${obj.length - 100} more items)"]` 
         : `[${arrayContent}]`;
     }
     
-    // Handle objects
-    const entries = Object.entries(obj).slice(0, 50);
+    // Handle objects - render all properties recursively
+    const entries = Object.entries(obj).slice(0, 100); // Increased limit
     const objContent = entries.map(([key, value]) => {
       try {
-        return `"${key}":${safeStringify(value, depth + 1, visitedObjects)}`;
+        return `"${key}":${safeStringify(value, visitedObjects)}`;
       } catch (e) {
         return `"${key}":"[Error processing value]"`;
       }
     }).join(',');
     
-    const hasMoreKeys = Object.keys(obj).length > 50;
+    const hasMoreKeys = Object.keys(obj).length > 100;
     return hasMoreKeys 
-      ? `{${objContent},"... (${Object.keys(obj).length - 50} more properties)"}` 
+      ? `{${objContent},"... (${Object.keys(obj).length - 100} more properties)"}` 
       : `{${objContent}}`;
   } catch (e) {
     return '"[Error stringifying object]"';
