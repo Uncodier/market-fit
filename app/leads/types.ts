@@ -33,6 +33,9 @@ export interface Lead {
     }
     [key: string]: any
   } | null
+  companies?: {
+    name: string
+  } | null
   position: string | null
   segment_id: string | null
   campaign_id: string | null

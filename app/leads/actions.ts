@@ -284,7 +284,8 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
         language,
         social_networks,
         address,
-        attribution
+        attribution,
+        companies(name)
       `)
       .eq('id', id)
       .eq('site_id', site_id)
@@ -332,7 +333,8 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         language,
         social_networks,
         address,
-        attribution
+        attribution,
+        companies(name)
       `)
       .eq('site_id', site_id)
       .order("created_at", { ascending: false })
@@ -375,7 +377,8 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
         language,
         social_networks,
         address,
-        attribution
+        attribution,
+        companies(name)
       `)
       .eq('campaign_id', campaign_id)
       .eq('site_id', site_id)

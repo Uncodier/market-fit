@@ -119,10 +119,19 @@ export function KanbanView({
   }
   
   // Función para obtener el nombre de la compañía
-  const getCompanyName = (company: { name?: string; website?: string; industry?: string; size?: string } | string | null) => {
-    if (!company) return null
-    if (typeof company === 'string') return company
-    return company.name || null
+  const getCompanyName = (lead: Lead) => {
+    // Si existe companies (joined data), usar eso
+    if (lead.companies && lead.companies.name) {
+      return lead.companies.name
+    }
+    // Fallback al campo company existente
+    if (lead.company && typeof lead.company === 'object' && lead.company.name) {
+      return lead.company.name
+    }
+    if (typeof lead.company === 'string') {
+      return lead.company
+    }
+    return null
   }
   
   // Cargar etapas del journey para cada lead
@@ -423,11 +432,11 @@ export function KanbanView({
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                       {lead.email}
                                     </div>
-                                    {lead.company && (
-                                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                        {getCompanyName(lead.company)}
-                                      </div>
-                                    )}
+                                                                          {getCompanyName(lead) && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                          {getCompanyName(lead)}
+                                        </div>
+                                      )}
                                     <div className="flex items-center justify-between mt-2 mb-3">
                                       {lead.segment_id && (
                                         <Badge variant="secondary" className="text-xs">

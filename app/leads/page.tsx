@@ -286,6 +286,22 @@ function LeadsTable({
     return `${stringValue.substring(0, maxLength)}...`
   }
 
+  // Función para obtener el nombre de la compañía
+  const getCompanyName = (lead: Lead) => {
+    // Si existe companies (joined data), usar eso
+    if (lead.companies && lead.companies.name) {
+      return lead.companies.name
+    }
+    // Fallback al campo company existente
+    if (lead.company && typeof lead.company === 'object' && lead.company.name) {
+      return lead.company.name
+    }
+    if (typeof lead.company === 'string') {
+      return lead.company
+    }
+    return "-"
+  }
+
   const statusStyles = {
     new: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
     contacted: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200", 
@@ -325,7 +341,7 @@ function LeadsTable({
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {truncateText(lead.company)}
+                      {truncateText(getCompanyName(lead))}
                     </TableCell>
                     <TableCell className="font-medium">
                       {truncateText(getSegmentName(lead.segment_id))}
