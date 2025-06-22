@@ -95,24 +95,24 @@ export function CompanyTab({
   // If not editing, always show read-only view with individual fields
   if (!isEditing) {
     return (
-      <div className="grid gap-4">
+      <div className="grid gap-4 min-w-0">
         {/* Company Name with View Profile Button */}
         {selectedCompany ? (
           <div 
-            className="flex items-center gap-3 p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors cursor-pointer group"
+            className="flex items-center gap-3 p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors cursor-pointer group min-w-0"
             onClick={() => window.open(`/companies/${selectedCompany.id}`, '_blank')}
           >
-            <div className="bg-primary/10 rounded-md flex items-center justify-center" style={{ width: '48px', height: '48px' }}>
+            <div className="bg-primary/10 rounded-md flex items-center justify-center flex-shrink-0" style={{ width: '48px', height: '48px' }}>
               <Globe className="h-5 w-5 text-primary" />
             </div>
-            <div className="flex-1">
-              <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
-              <p className="text-sm font-medium text-primary group-hover:underline">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground mb-[5px] truncate">Company</p>
+              <p className="text-sm font-medium text-primary group-hover:underline truncate" title={selectedCompany.name}>
                 {selectedCompany.name}
               </p>
             </div>
             <div 
-              className="flex items-center gap-1 text-primary hover:underline cursor-pointer shrink-0"
+              className="flex items-center gap-1 text-primary hover:underline cursor-pointer flex-shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
                 window.open(`/companies/${selectedCompany.id}`, '_blank');
@@ -123,50 +123,53 @@ export function CompanyTab({
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
               <Globe className="h-5 w-5 text-primary" />
             </div>
-            <div className="flex-1">
-              <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
-              <p className="text-sm font-medium text-muted-foreground">Not specified</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground mb-[5px] truncate">Company</p>
+              <p className="text-sm font-medium text-muted-foreground truncate">Not specified</p>
             </div>
           </div>
         )}
 
         {/* Website */}
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
             <Globe className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Website</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground mb-[5px] truncate">Website</p>
             {selectedCompany?.website ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <a 
                   href={selectedCompany.website} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-sm font-medium text-primary hover:underline"
+                  className="text-sm font-medium text-primary hover:underline truncate flex-1"
+                  title={selectedCompany.website}
                 >
                   {selectedCompany.website.replace(/^https?:\/\//, '')}
                 </a>
-                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
               </div>
             ) : (
-              <p className="text-sm font-medium text-muted-foreground">Not specified</p>
+              <p className="text-sm font-medium text-muted-foreground truncate">Not specified</p>
             )}
           </div>
         </div>
 
         {/* Industry */}
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
             <Tag className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Industry</p>
-            <p className="text-sm font-medium">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground mb-[5px] truncate">Industry</p>
+            <p className="text-sm font-medium truncate" title={selectedCompany?.industry ? 
+                COMPANY_INDUSTRIES.find(i => i.id === selectedCompany.industry)?.name || selectedCompany.industry 
+                : "Not specified"}>
               {selectedCompany?.industry ? 
                 COMPANY_INDUSTRIES.find(i => i.id === selectedCompany.industry)?.name || selectedCompany.industry 
                 : "Not specified"
@@ -176,13 +179,15 @@ export function CompanyTab({
         </div>
 
         {/* Company Size */}
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
             <User className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Company Size</p>
-            <p className="text-sm font-medium">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground mb-[5px] truncate">Company Size</p>
+            <p className="text-sm font-medium truncate" title={selectedCompany?.size ? 
+                COMPANY_SIZES.find(s => s.id === selectedCompany.size)?.name || selectedCompany.size 
+                : "Not specified"}>
               {selectedCompany?.size ? 
                 COMPANY_SIZES.find(s => s.id === selectedCompany.size)?.name || selectedCompany.size 
                 : "Not specified"
@@ -192,26 +197,34 @@ export function CompanyTab({
         </div>
 
         {/* Description */}
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
             <Globe className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Description</p>
-            <p className="text-sm font-medium whitespace-pre-wrap">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground mb-[5px] truncate">Description</p>
+            <p className="text-sm font-medium whitespace-pre-wrap break-words" title={selectedCompany?.description || "Not specified"}>
               {selectedCompany?.description || "Not specified"}
             </p>
           </div>
         </div>
 
         {/* Address */}
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
             <MapPin className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Address</p>
-            <p className="text-sm font-medium">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground mb-[5px] truncate">Address</p>
+            <p className="text-sm font-medium break-words" title={selectedCompany?.address ? 
+                [
+                  selectedCompany.address.street,
+                  selectedCompany.address.city,
+                  selectedCompany.address.state,
+                  selectedCompany.address.zipcode,
+                  selectedCompany.address.country
+                ].filter(Boolean).join(', ') || "Not specified"
+                : "Not specified"}>
               {selectedCompany?.address ? 
                 [
                   selectedCompany.address.street,
@@ -227,13 +240,15 @@ export function CompanyTab({
         </div>
 
         {/* Annual Revenue */}
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
             <Globe className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Annual Revenue</p>
-            <p className="text-sm font-medium">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground mb-[5px] truncate">Annual Revenue</p>
+            <p className="text-sm font-medium truncate" title={selectedCompany?.annual_revenue ? 
+                COMPANY_ANNUAL_REVENUES.find(r => r.id === selectedCompany.annual_revenue)?.name || selectedCompany.annual_revenue 
+                : "Not specified"}>
               {selectedCompany?.annual_revenue ? 
                 COMPANY_ANNUAL_REVENUES.find(r => r.id === selectedCompany.annual_revenue)?.name || selectedCompany.annual_revenue 
                 : "Not specified"
@@ -243,13 +258,13 @@ export function CompanyTab({
         </div>
 
         {/* Founded */}
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
             <Globe className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-[5px]">Founded</p>
-            <p className="text-sm font-medium">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground mb-[5px] truncate">Founded</p>
+            <p className="text-sm font-medium truncate" title={selectedCompany?.founded || "Not specified"}>
               {selectedCompany?.founded || "Not specified"}
             </p>
           </div>

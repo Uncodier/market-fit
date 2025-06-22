@@ -254,6 +254,23 @@ export default function TimelineTab({ task }: TimelineTabProps) {
       setNewComment("")
       setSelectedFiles([])
       setIsPrivate(false)
+
+      // 5. Call external API for public comments
+      if (!isPrivate && task.lead_id) {
+        try {
+          const { apiClient } = await import('@/app/services/api-client-service')
+          
+          await apiClient.post('/api/notifications/taskStatus', {
+            message: newComment.trim(),
+            lead_id: task.lead_id,
+            site_id: currentSite.id
+          })
+        } catch (apiError) {
+          console.error('Error calling task status notification API:', apiError)
+          // Don't throw error here as the comment was already saved successfully
+        }
+      }
+
       toast.success("Comment added successfully")
     } catch (error) {
       console.error('Error adding comment:', error)

@@ -28,13 +28,13 @@ export function SocialNetworkTab({
   setEditForm 
 }: SocialNetworkTabProps) {
   return (
-    <div className="grid gap-4">
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+    <div className="grid gap-4 min-w-0">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Linkedin className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">LinkedIn</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">LinkedIn</p>
           {isEditing ? (
             <Input
               value={editForm.social_networks?.linkedin || ""}
@@ -49,14 +49,14 @@ export function SocialNetworkTab({
               placeholder="LinkedIn profile URL"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.social_networks?.linkedin || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.social_networks?.linkedin || "Not specified"}>{lead.social_networks?.linkedin || "Not specified"}</p>
               {lead.social_networks?.linkedin && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(lead.social_networks?.linkedin as string, '_blank')}
-                  className="h-8 ml-2"
+                  className="h-8 flex-shrink-0"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -66,12 +66,12 @@ export function SocialNetworkTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Twitter className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Twitter</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Twitter</p>
           {isEditing ? (
             <Input
               value={editForm.social_networks?.twitter || ""}
@@ -86,14 +86,14 @@ export function SocialNetworkTab({
               placeholder="Twitter profile URL"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.social_networks?.twitter || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.social_networks?.twitter || "Not specified"}>{lead.social_networks?.twitter || "Not specified"}</p>
               {lead.social_networks?.twitter && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(lead.social_networks?.twitter as string, '_blank')}
-                  className="h-8 ml-2"
+                  className="h-8 flex-shrink-0"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -103,12 +103,12 @@ export function SocialNetworkTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Facebook className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Facebook</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Facebook</p>
           {isEditing ? (
             <Input
               value={editForm.social_networks?.facebook || ""}
@@ -123,14 +123,14 @@ export function SocialNetworkTab({
               placeholder="Facebook profile URL"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.social_networks?.facebook || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.social_networks?.facebook || "Not specified"}>{lead.social_networks?.facebook || "Not specified"}</p>
               {lead.social_networks?.facebook && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(lead.social_networks?.facebook as string, '_blank')}
-                  className="h-8 ml-2"
+                  className="h-8 flex-shrink-0"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -140,12 +140,12 @@ export function SocialNetworkTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Instagram className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Instagram</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Instagram</p>
           {isEditing ? (
             <Input
               value={editForm.social_networks?.instagram || ""}
@@ -160,14 +160,14 @@ export function SocialNetworkTab({
               placeholder="Instagram profile URL"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.social_networks?.instagram || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.social_networks?.instagram || "Not specified"}>{lead.social_networks?.instagram || "Not specified"}</p>
               {lead.social_networks?.instagram && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(lead.social_networks?.instagram as string, '_blank')}
-                  className="h-8 ml-2"
+                  className="h-8 flex-shrink-0"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -177,12 +177,12 @@ export function SocialNetworkTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <TikTok className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">TikTok</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">TikTok</p>
           {isEditing ? (
             <Input
               value={editForm.social_networks?.tiktok || ""}
@@ -197,14 +197,14 @@ export function SocialNetworkTab({
               placeholder="TikTok profile URL"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.social_networks?.tiktok || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.social_networks?.tiktok || "Not specified"}>{lead.social_networks?.tiktok || "Not specified"}</p>
               {lead.social_networks?.tiktok && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(lead.social_networks?.tiktok as string, '_blank')}
-                  className="h-8 ml-2"
+                  className="h-8 flex-shrink-0"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -214,12 +214,12 @@ export function SocialNetworkTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <YouTube className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">YouTube</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">YouTube</p>
           {isEditing ? (
             <Input
               value={editForm.social_networks?.youtube || ""}
@@ -234,14 +234,14 @@ export function SocialNetworkTab({
               placeholder="YouTube channel URL"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.social_networks?.youtube || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.social_networks?.youtube || "Not specified"}>{lead.social_networks?.youtube || "Not specified"}</p>
               {lead.social_networks?.youtube && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(lead.social_networks?.youtube as string, '_blank')}
-                  className="h-8 ml-2"
+                  className="h-8 flex-shrink-0"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -251,12 +251,12 @@ export function SocialNetworkTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <WhatsApp className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">WhatsApp</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">WhatsApp</p>
           {isEditing ? (
             <Input
               value={editForm.social_networks?.whatsapp || ""}
@@ -271,14 +271,14 @@ export function SocialNetworkTab({
               placeholder="WhatsApp number with country code"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.social_networks?.whatsapp || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.social_networks?.whatsapp || "Not specified"}>{lead.social_networks?.whatsapp || "Not specified"}</p>
               {lead.social_networks?.whatsapp && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(`https://wa.me/${lead.social_networks?.whatsapp?.replace(/\D/g, '')}`, '_blank')}
-                  className="h-8 ml-2"
+                  className="h-8 flex-shrink-0"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -288,12 +288,12 @@ export function SocialNetworkTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Pinterest className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Pinterest</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Pinterest</p>
           {isEditing ? (
             <Input
               value={editForm.social_networks?.pinterest || ""}
@@ -308,14 +308,14 @@ export function SocialNetworkTab({
               placeholder="Pinterest profile URL"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.social_networks?.pinterest || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.social_networks?.pinterest || "Not specified"}>{lead.social_networks?.pinterest || "Not specified"}</p>
               {lead.social_networks?.pinterest && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(lead.social_networks?.pinterest as string, '_blank')}
-                  className="h-8 ml-2"
+                  className="h-8 flex-shrink-0"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>

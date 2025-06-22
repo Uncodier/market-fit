@@ -40,13 +40,13 @@ export function DetailsTab({
   getLanguageName
 }: DetailsTabProps) {
   return (
-    <div className="grid gap-4">
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+    <div className="grid gap-4 min-w-0">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <User className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Name</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Name</p>
           {isEditing ? (
             <Input
               value={editForm.name}
@@ -55,17 +55,17 @@ export function DetailsTab({
               placeholder="Lead name"
             />
           ) : (
-            <p className="text-sm font-medium">{lead.name}</p>
+            <p className="text-sm font-medium truncate" title={lead.name}>{lead.name}</p>
           )}
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <MessageSquare className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Email</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Email</p>
           {isEditing ? (
             <Input
               value={editForm.email}
@@ -74,13 +74,13 @@ export function DetailsTab({
               placeholder="email@example.com"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.email}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.email}>{lead.email}</p>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => window.open(`mailto:${lead.email}`, '_blank')}
-                className="h-8 ml-2"
+                className="h-8 flex-shrink-0"
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -89,12 +89,12 @@ export function DetailsTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Phone className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Phone</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Phone</p>
           {isEditing ? (
             <Input
               value={editForm.phone || ""}
@@ -103,10 +103,10 @@ export function DetailsTab({
               placeholder="Phone number"
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{lead.phone || "Not specified"}</p>
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.phone || "Not specified"}>{lead.phone || "Not specified"}</p>
               {lead.phone && (
-                <div className="flex space-x-1">
+                <div className="flex space-x-1 flex-shrink-0">
                   <Button
                     size="sm"
                     variant="ghost"
@@ -136,12 +136,12 @@ export function DetailsTab({
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <CalendarDays className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Birthday</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Birthday</p>
           {isEditing ? (
             <Input
               type="date"
@@ -151,19 +151,19 @@ export function DetailsTab({
               placeholder="Birthday"
             />
           ) : (
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium truncate" title={lead.birthday ? new Date(lead.birthday).toLocaleDateString() : "Not specified"}>
               {lead.birthday ? new Date(lead.birthday).toLocaleDateString() : "Not specified"}
             </p>
           )}
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Globe className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Language</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Language</p>
           {isEditing ? (
             <Select 
               value={editForm.language || "none"}
@@ -186,19 +186,19 @@ export function DetailsTab({
               </SelectContent>
             </Select>
           ) : (
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium truncate" title={getLanguageName(lead.language) || "Not specified"}>
               {getLanguageName(lead.language) || "Not specified"}
             </p>
           )}
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <User className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Position</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Position</p>
           {isEditing ? (
             <Input
               value={editForm.position || ""}
@@ -207,17 +207,17 @@ export function DetailsTab({
               placeholder="Position or role"
             />
           ) : (
-            <p className="text-sm font-medium">{lead.position || "Not specified"}</p>
+            <p className="text-sm font-medium truncate" title={lead.position || "Not specified"}>{lead.position || "Not specified"}</p>
           )}
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Tag className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Segment</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Segment</p>
           {isEditing ? (
             <Select 
               value={editForm.segment_id || "none"}
@@ -236,17 +236,17 @@ export function DetailsTab({
               </SelectContent>
             </Select>
           ) : (
-            <p className="text-sm font-medium">{getSegmentName(lead.segment_id)}</p>
+            <p className="text-sm font-medium truncate" title={getSegmentName(lead.segment_id)}>{getSegmentName(lead.segment_id)}</p>
           )}
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <Target className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Campaign</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Campaign</p>
           {isEditing ? (
             <Select 
               value={editForm.campaign_id || "none"}
@@ -265,17 +265,17 @@ export function DetailsTab({
               </SelectContent>
             </Select>
           ) : (
-            <p className="text-sm font-medium">{getCampaignName(lead.campaign_id)}</p>
+            <p className="text-sm font-medium truncate" title={getCampaignName(lead.campaign_id)}>{getCampaignName(lead.campaign_id)}</p>
           )}
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
           <FileText className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-[5px]">Origin</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Origin</p>
           {isEditing ? (
             <Input
               value={editForm.origin || ""}
@@ -284,7 +284,7 @@ export function DetailsTab({
               placeholder="Lead origin"
             />
           ) : (
-            <p className="text-sm font-medium">{lead.origin || "Not specified"}</p>
+            <p className="text-sm font-medium truncate" title={lead.origin || "Not specified"}>{lead.origin || "Not specified"}</p>
           )}
         </div>
       </div>

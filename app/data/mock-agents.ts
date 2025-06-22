@@ -94,6 +94,24 @@ const dataAnalystActivities: AgentActivity[] = [
     successRate: 96,
     executions: 94,
     status: "available"
+  },
+  {
+    id: "da6",
+    name: "Lead Segmentation",
+    description: "Segment leads based on behavior, demographics and engagement patterns for targeted campaigns",
+    estimatedTime: "30-35 min",
+    successRate: 92,
+    executions: 65,
+    status: "available"
+  },
+  {
+    id: "da7",
+    name: "Deep Research",
+    description: "Conduct comprehensive market research and competitive analysis to identify growth opportunities",
+    estimatedTime: "45-60 min",
+    successRate: 88,
+    executions: 43,
+    status: "available"
   }
 ];
 

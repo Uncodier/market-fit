@@ -193,7 +193,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
   }
   
   return (
-    <div className="w-full p-6 overflow-auto h-full">
+    <div className="w-full p-6 overflow-auto h-full min-w-0">
       {!hideStatus && (
         <div className="pb-6">
           {isEditing ? (
@@ -202,7 +202,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                 <div className="bg-primary/10 rounded-md flex items-center justify-center mt-4" style={{ width: '48px', height: '48px' }}>
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">Status</p>
                   <Select 
                     value={editForm.status}
@@ -226,18 +226,18 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
             </div>
           ) : (
             <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center">
+              <div className="flex items-center min-w-0 flex-1">
                 <div className="bg-primary/10 rounded-md flex items-center justify-center mr-3" style={{ width: '48px', height: '48px' }}>
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
                   <Select 
                     value={lead.status}
                     onValueChange={handleStatusChange}
                   >
-                    <SelectTrigger className="h-8 text-sm border-none p-0 shadow-none hover:bg-transparent focus:ring-0">
-                      <Badge className={`text-xs ${STATUS_STYLES[lead.status]}`}>
+                    <SelectTrigger className="h-8 text-sm border-none p-0 shadow-none hover:bg-transparent focus:ring-0 max-w-full">
+                      <Badge className={`text-xs ${STATUS_STYLES[lead.status]} truncate`}>
                         {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
                       </Badge>
                     </SelectTrigger>
@@ -254,7 +254,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
               {/* Options Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0">
                     <span className="sr-only">Open menu</span>
                     <span className="text-base leading-none">⋮</span>
                   </Button>
@@ -280,19 +280,19 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
         </div>
       )}
       
-      <div className="space-y-6">
+      <div className="space-y-6 min-w-0">
         <div className="grid grid-cols-1 gap-5">
           {/* Contact Information with Tabs */}
-          <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+          <div className="bg-muted/40 rounded-lg p-4 border border-border/30 min-w-0">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider truncate flex-1 mr-2">
                 Contact Information
               </h3>
               
               {/* Options Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0">
                     <span className="sr-only">Open menu</span>
                     <span className="text-base leading-none">⋮</span>
                   </Button>
@@ -315,9 +315,9 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
               </DropdownMenu>
             </div>
             
-            <Tabs defaultValue="details" className="w-full">
-              <div className="flex justify-center mb-4">
-                <TabsList>
+            <Tabs defaultValue="details" className="w-full min-w-0">
+              <div className="flex justify-center mb-4 overflow-x-auto">
+                <TabsList className="min-w-max">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="company">Company</TabsTrigger>
                   <TabsTrigger value="social_networks">Social Networks</TabsTrigger>
@@ -327,7 +327,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
               </div>
               
               {/* Details Tab */}
-              <TabsContent value="details" className="mt-0">
+              <TabsContent value="details" className="mt-0 min-w-0">
                 <DetailsTab 
                   lead={lead}
                   segments={segments}
@@ -342,7 +342,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
               </TabsContent>
               
               {/* Company Tab */}
-              <TabsContent value="company" className="mt-0">
+              <TabsContent value="company" className="mt-0 min-w-0">
                 <CompanyTab 
                   lead={lead}
                   isEditing={isEditing}
@@ -352,7 +352,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
               </TabsContent>
               
               {/* Social Networks Tab */}
-              <TabsContent value="social_networks" className="mt-0">
+              <TabsContent value="social_networks" className="mt-0 min-w-0">
                 <SocialNetworkTab 
                   lead={lead}
                   isEditing={isEditing}
@@ -362,7 +362,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
               </TabsContent>
               
               {/* Address Tab */}
-              <TabsContent value="address" className="mt-0">
+              <TabsContent value="address" className="mt-0 min-w-0">
                 <AddressTab 
                   lead={lead}
                   isEditing={isEditing}
@@ -372,7 +372,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
               </TabsContent>
               
               {/* Notes Tab */}
-              <TabsContent value="notes" className="mt-0">
+              <TabsContent value="notes" className="mt-0 min-w-0">
                 <NotesTab 
                   lead={lead}
                   isEditing={isEditing}
@@ -384,31 +384,31 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
           </div>
         </div>
         
-        <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-          <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+        <div className="bg-muted/40 rounded-lg p-4 border border-border/30 min-w-0">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider truncate">
             Creation Date
           </h3>
           
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
                 <FileText className="h-5 w-5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground mb-[5px]">Date</p>
-                <p className="text-sm font-medium">
+                <p className="text-sm font-medium truncate">
                   {new Date(lead.created_at).toLocaleDateString()}
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
                 <Loader className="h-5 w-5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground mb-[5px]">Time</p>
-                <p className="text-sm font-medium">
+                <p className="text-sm font-medium truncate">
                   {new Date(lead.created_at).toLocaleTimeString()}
                 </p>
               </div>

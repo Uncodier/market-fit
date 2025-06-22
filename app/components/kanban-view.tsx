@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useContext } from "react"
+import React, { useState, useEffect, useContext, useMemo } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
@@ -81,9 +81,14 @@ export function KanbanView({
 }: KanbanViewProps) {
   const { currentSite } = useSite()
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
-  const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(true)
+  const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false) // Iniciamos en false
   const [loadingActions, setLoadingActions] = useState<Record<string, 'research' | 'followup' | null>>({})
   const [successActions, setSuccessActions] = useState<Record<string, 'research' | 'followup' | null>>({})
+  
+  // Crear una key estable basada en los IDs de los leads para evitar re-renders innecesarios
+  const leadsKey = useMemo(() => {
+    return leads.map(lead => lead.id).sort().join(',')
+  }, [leads])
   
   // Organizamos los leads por estado
   const getLeadsByStatus = () => {
@@ -128,27 +133,57 @@ export function KanbanView({
         return
       }
       
+      // Verificar si todos los leads ya están en cache
+      const leadIds = leads.map(lead => lead.id)
+      const allLeadsInCache = leadIds.every(id => leadJourneyStagesCache[id])
+      
+      if (allLeadsInCache) {
+        // Si todos están en cache, usar los valores cacheados sin mostrar loading
+        const stages: Record<string, string> = {}
+        leads.forEach(lead => {
+          stages[lead.id] = leadJourneyStagesCache[lead.id]
+        })
+        setLeadJourneyStages(stages)
+        setIsLoadingJourneyStages(false)
+        return
+      }
+      
+      // Solo mostrar loading si realmente necesitamos hacer la consulta
+      const uncachedLeads = leads.filter(lead => !leadJourneyStagesCache[lead.id])
+      if (uncachedLeads.length === 0) {
+        setIsLoadingJourneyStages(false)
+        return
+      }
+      
       setIsLoadingJourneyStages(true)
       const stages: Record<string, string> = {}
       
+      // Primero, llenar con datos del cache
+      leads.forEach(lead => {
+        if (leadJourneyStagesCache[lead.id]) {
+          stages[lead.id] = leadJourneyStagesCache[lead.id]
+        }
+      })
+      
       try {
-        // ✅ UNA SOLA QUERY optimizada en lugar de N queries
+        // Solo consultar para leads que no están en cache
         const supabase = createClient()
-        const leadIds = leads.map(lead => lead.id)
+        const uncachedLeadIds = uncachedLeads.map(lead => lead.id)
         
-        // Obtener todas las tasks completadas de todos los leads de una vez
+        // Obtener todas las tasks completadas solo de leads no cacheados
         const { data: allTasks, error } = await supabase
           .from('tasks')
           .select('lead_id, stage, status')
-          .in('lead_id', leadIds)
+          .in('lead_id', uncachedLeadIds)
           .eq('status', 'completed')
           .eq('site_id', currentSite.id)
         
         if (error) {
           console.error('Error fetching tasks:', error)
-          // Set default stage for all leads
-          leads.forEach(lead => {
-            stages[lead.id] = leadJourneyStagesCache[lead.id] || "not_contacted"
+          // Set default stage for uncached leads
+          uncachedLeads.forEach(lead => {
+            stages[lead.id] = "not_contacted"
+            leadJourneyStagesCache[lead.id] = "not_contacted"
           })
         } else {
           // Procesar las tasks para encontrar la etapa más alta por lead
@@ -161,14 +196,8 @@ export function KanbanView({
             return acc
           }, {} as Record<string, any[]>) || {}
           
-          // Procesar cada lead
-          leads.forEach(lead => {
-            // Usar cache si está disponible
-            if (leadJourneyStagesCache[lead.id]) {
-              stages[lead.id] = leadJourneyStagesCache[lead.id]
-              return
-            }
-            
+          // Procesar solo leads no cacheados
+          uncachedLeads.forEach(lead => {
             const leadTasks = tasksByLead[lead.id] || []
             
             if (leadTasks.length === 0) {
@@ -191,9 +220,10 @@ export function KanbanView({
         }
       } catch (error) {
         console.error('Error in fetchJourneyStagesForLeads:', error)
-        // Set default stage for all leads
-        leads.forEach(lead => {
-          stages[lead.id] = leadJourneyStagesCache[lead.id] || "not_contacted"
+        // Set default stage for uncached leads
+        uncachedLeads.forEach(lead => {
+          stages[lead.id] = "not_contacted"
+          leadJourneyStagesCache[lead.id] = "not_contacted"
         })
       }
       
@@ -202,7 +232,7 @@ export function KanbanView({
     }
     
     fetchJourneyStagesForLeads()
-  }, [leads, currentSite?.id])
+  }, [leadsKey, currentSite?.id]) // Usar leadsKey en lugar de leads
   
   // Obtener el nombre legible de una etapa
   const getJourneyStageName = (stageId: string) => {

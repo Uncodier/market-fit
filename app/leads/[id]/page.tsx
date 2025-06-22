@@ -311,9 +311,9 @@ export default function LeadDetailPage() {
               </div>
               
               {/* Lead Details - Right Side (40%) - Always visible */}
-              <div className="w-[40%]">
-                <Card>
-                  <CardContent className="p-0">
+              <div className="w-[40%] min-w-0">
+                <Card className="h-fit">
+                  <CardContent className="p-0 min-w-0">
                     <LeadDetail 
                       lead={lead} 
                       segments={segments}
