@@ -223,7 +223,50 @@ export function ChatList({
         }
         
         // Crear una suscripción simple y directa usando el enfoque clásico de Supabase
-        console.log('🔍 Setting up subscription using classic approach');
+        console.log('🔍 Setting up subscription using classic approach with enhanced conversation details');
+        
+        // Función auxiliar para obtener detalles completos de una conversación
+        const getConversationDetails = async (conversationData: any) => {
+          const supabase = createClient();
+          
+          // Obtener información del agente si existe agent_id
+          let agentName = "Unknown Agent";
+          if (conversationData.agent_id) {
+            const { data: agent, error: agentError } = await supabase
+              .from("agents")
+              .select("name")
+              .eq("id", conversationData.agent_id)
+              .single();
+            
+            if (!agentError && agent) {
+              agentName = agent.name;
+            }
+          }
+          
+          // Obtener información del lead si existe lead_id
+          let leadName = undefined;
+          if (conversationData.lead_id) {
+            const { data: lead, error: leadError } = await supabase
+              .from("leads")
+              .select("name, company")
+              .eq("id", conversationData.lead_id)
+              .single();
+            
+            if (!leadError && lead) {
+              const companyName = lead.company && typeof lead.company === 'object' && lead.company.name 
+                ? lead.company.name 
+                : (typeof lead.company === 'string' ? lead.company : '');
+              
+              leadName = lead.name + (companyName ? ` (${companyName})` : '');
+            }
+          }
+          
+          // Extract channel from custom_data or default to 'web'
+          const customData = conversationData.custom_data || {};
+          const channel = customData.channel || 'web';
+          
+          return { agentName, leadName, channel };
+        };
         
         // Un canal por tipo de evento, enfoque más tradicional
         const channel = supabase.channel(`conversations-${siteId}`, {
@@ -236,33 +279,61 @@ export function ChatList({
             schema: 'public',
             table: 'conversations',
             filter: `site_id=eq.${siteId}`
-          }, (payload: any) => {
+          }, async (payload: any) => {
             console.log('🔍 UPDATE event received:', payload);
             
             if (payload.new) {
               // Asegurar que isLoading sea false antes de actualizar
               setIsLoading(false);
               
-              // Actualizar sólo la conversación modificada en el estado
-              setConversations(prevConversations => 
-                prevConversations.map(conv => 
-                  conv.id === payload.new.id 
-                    ? { 
-                        ...conv, 
-                        title: payload.new.title || conv.title,
-                        timestamp: new Date(payload.new.updated_at || new Date()),
-                        lastMessage: payload.new.last_message || conv.lastMessage,
-                        agentId: conv.agentId,
-                        agentName: conv.agentName,
-                        unreadCount: conv.unreadCount,
-                        messageCount: conv.messageCount,
-                        leadName: conv.leadName
-                      } 
-                    : conv
-                )
-              );
-              
-              console.log(`🔍 Conversation ${payload.new.id} updated directly in state without reloading`);
+              try {
+                // Obtener detalles actualizados si es necesario
+                const details = await getConversationDetails(payload.new);
+                
+                // Generate a better title if we have a lead name
+                let title = payload.new.title || "Untitled Conversation";
+                if (details.leadName && (!payload.new.title || payload.new.title === "Untitled Conversation")) {
+                  title = `Chat with ${details.leadName}`;
+                }
+                
+                // Actualizar sólo la conversación modificada en el estado
+                setConversations(prevConversations => 
+                  prevConversations.map(conv => 
+                    conv.id === payload.new.id 
+                      ? { 
+                          ...conv, 
+                          title: title,
+                          timestamp: new Date(payload.new.updated_at || new Date()),
+                          lastMessage: payload.new.last_message || conv.lastMessage,
+                          agentId: payload.new.agent_id || conv.agentId,
+                          agentName: details.agentName,
+                          leadName: details.leadName,
+                          channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web'
+                        } 
+                      : conv
+                  )
+                );
+                
+                console.log(`🔍 Conversation ${payload.new.id} updated with agent: ${details.agentName}, channel: ${details.channel}`);
+              } catch (error) {
+                console.error('🔍 Error fetching conversation details for UPDATE:', error);
+                
+                // Fallback: actualizar solo con los datos disponibles
+                setConversations(prevConversations => 
+                  prevConversations.map(conv => 
+                    conv.id === payload.new.id 
+                      ? { 
+                          ...conv, 
+                          title: payload.new.title || conv.title,
+                          timestamp: new Date(payload.new.updated_at || new Date()),
+                          lastMessage: payload.new.last_message || conv.lastMessage
+                        } 
+                      : conv
+                  )
+                );
+                
+                console.log(`🔍 Conversation ${payload.new.id} updated with limited data due to error`);
+              }
             }
           })
         
@@ -272,42 +343,68 @@ export function ChatList({
           schema: 'public',
           table: 'conversations',
           filter: `site_id=eq.${siteId}`
-        }, (payload: any) => {
+        }, async (payload: any) => {
           console.log('🔍 INSERT event received:', payload);
           
           // Asegurar que isLoading sea false antes de actualizar
           setIsLoading(false);
           
-          // En lugar de recargar toda la lista, añadir sólo la nueva conversación
-          // Comprobar si tenemos suficiente información para crear un objeto de conversación
-          if (payload.new && payload.new.id && payload.new.title) {
-            const newConversation: ConversationListItem = {
-              id: payload.new.id,
-              title: payload.new.title || "New Conversation",
-              agentId: payload.new.agent_id || "",
-              agentName: payload.new.agent_name || "Unknown Agent",
-              lastMessage: payload.new.last_message || "",
-              timestamp: new Date(payload.new.updated_at || payload.new.created_at || new Date()),
-              unreadCount: 0,
-              messageCount: 0
-            };
-            
-            // Añadir la nueva conversación al principio de la lista
-            setConversations(prev => [newConversation, ...prev]);
-            console.log(`🔍 New conversation ${newConversation.id} added directly to state`);
+          // Obtener información completa de la nueva conversación
+          if (payload.new && payload.new.id) {
+            try {
+              // Usar la función auxiliar para obtener detalles
+              const details = await getConversationDetails(payload.new);
+              
+              // Generate a better title if we have a lead name
+              let title = payload.new.title || "Untitled Conversation";
+              if (details.leadName && (!payload.new.title || payload.new.title === "Untitled Conversation")) {
+                title = `Chat with ${details.leadName}`;
+              }
+              
+              const newConversation: ConversationListItem = {
+                id: payload.new.id,
+                title: title,
+                agentId: payload.new.agent_id || "",
+                agentName: details.agentName,
+                leadName: details.leadName,
+                lastMessage: payload.new.last_message || "",
+                timestamp: new Date(payload.new.updated_at || payload.new.created_at || new Date()),
+                unreadCount: 0,
+                messageCount: 0,
+                channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web'
+              };
+              
+              // Añadir la nueva conversación al principio de la lista
+              setConversations(prev => [newConversation, ...prev]);
+              console.log(`🔍 New conversation ${newConversation.id} added with agent: ${details.agentName}, channel: ${details.channel}`);
+              console.log(`🔍 DEBUG: Full conversation object:`, newConversation);
+              
+            } catch (error) {
+              console.error('🔍 Error fetching conversation details:', error);
+              
+              // Fallback: recargar toda la lista si no podemos obtener los detalles
+              if (loadConversationsRef.current) {
+                const wasFirstLoad = isFirstLoadRef.current;
+                isFirstLoadRef.current = false; // Forzar a falso para evitar el esqueleto
+                
+                loadConversationsRef.current().then(() => {
+                  console.log(`🔍 List reloaded for INSERT due to error fetching details`);
+                });
+                
+                console.log(`🔍 Error fetching conversation details, reloading without skeleton`);
+              }
+            }
           } else {
-            // Solo si no tenemos suficiente información, recargamos la lista completa
-            // pero sin activar el estado de carga
+            // Solo si no tenemos información básica, recargamos la lista completa
             if (loadConversationsRef.current) {
-              // Guardar el estado original de isFirstLoadRef para restaurarlo después
               const wasFirstLoad = isFirstLoadRef.current;
               isFirstLoadRef.current = false; // Forzar a falso para evitar el esqueleto
               
               loadConversationsRef.current().then(() => {
-                console.log(`🔍 List reloaded for INSERT without showing skeleton`);
+                console.log(`🔍 List reloaded for INSERT without conversation ID`);
               });
               
-              console.log(`🔍 Insufficient data for new conversation, reloading without skeleton`);
+              console.log(`🔍 No conversation ID in INSERT payload, reloading without skeleton`);
             }
           }
         });
