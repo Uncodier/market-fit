@@ -93,14 +93,14 @@ export function TasksTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
-            <TableHead className="w-[250px]">Title</TableHead>
-            <TableHead>Stage</TableHead>
-            <TableHead>Lead</TableHead>
-            <TableHead>Assignee</TableHead>
-            <TableHead>Due Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="w-[80px] min-w-[80px] max-w-[80px]">ID</TableHead>
+            <TableHead className="min-w-[200px]">Title</TableHead>
+            <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Stage</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Lead</TableHead>
+            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Assignee</TableHead>
+            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Due Date</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Status</TableHead>
+            <TableHead className="w-[100px] min-w-[100px] max-w-[100px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -118,8 +118,8 @@ export function TasksTable({
                 </TableCell>
                 <TableCell>
                   <div className="space-y-0.5">
-                    <p className="font-medium text-sm">{task.title}</p>
-                    <p className="text-xs text-muted-foreground min-h-[1.2rem]">{task.description}</p>
+                    <p className="font-medium text-sm line-clamp-2" title={task.title}>{task.title}</p>
+                    <p className="text-xs text-muted-foreground min-h-[1.2rem] line-clamp-2" title={task.description || ""}>{task.description}</p>
                   </div>
                 </TableCell>
                 <TableCell>

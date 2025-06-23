@@ -407,7 +407,7 @@ export function KanbanView({
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   className={cn(
-                                    "transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer",
+                                    "w-[320px] transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer",
                                     snapshot.isDragging 
                                       ? 'shadow-lg dark:shadow-black/20 border-primary/20' 
                                       : ''
@@ -432,8 +432,8 @@ export function KanbanView({
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                       {lead.email}
                                     </div>
-                                                                          {getCompanyName(lead) && (
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                      {getCompanyName(lead) && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
                                           {getCompanyName(lead)}
                                         </div>
                                       )}

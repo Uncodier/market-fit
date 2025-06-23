@@ -14,6 +14,7 @@ interface KanbanColumnProps {
     title: string
     description: string
     priority: "high" | "medium" | "low"
+    status?: string
     dueDate?: string
     assignees?: number
     issues?: number
@@ -115,7 +116,7 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
         )}
       </div>
       {!isCollapsed && (
-        <div className="flex flex-col gap-5 p-2 pb-5 bg-muted/10 rounded-md mt-2 h-fit">
+        <div className="flex flex-col gap-5 p-2 pb-5 bg-muted/10 dark:bg-transparent rounded-md mt-2 h-fit">
           {filteredTasks.map((task) => (
             <KanbanCard
               key={task.id}

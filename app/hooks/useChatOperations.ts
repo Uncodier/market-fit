@@ -548,9 +548,23 @@ export function useChatOperations({
     }
   }
 
+  // Retry a failed message
+  const handleRetryMessage = async (failedMessage: ChatMessage) => {
+    if (!failedMessage.text || isLoading) return
+    
+    console.log(`[${new Date().toISOString()}] 🔄 Retrying failed message:`, failedMessage.id)
+    
+    // Remove the failed message from the UI
+    setChatMessages(prev => prev.filter(msg => msg.id !== failedMessage.id))
+    
+    // Resend the message using the existing handleSendMessage function
+    await handleSendMessage(failedMessage.text)
+  }
+
   return {
     isLoading,
     handleSendMessage,
+    handleRetryMessage,
     startNewConversation,
     handleNewLeadConversation,
     handleNewAgentConversation,

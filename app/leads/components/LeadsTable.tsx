@@ -39,7 +39,7 @@ export function LeadsTable({
     return segment?.name || "Unknown Segment"
   }
 
-  // Función para truncar texto largo
+  // Función para truncar texto largo - ya no se necesita para nombres
   const truncateText = (text: string, maxLength: number = 15) => {
     if (!text || text.length <= maxLength) return text
     return `${text.substring(0, maxLength)}...`
@@ -50,12 +50,12 @@ export function LeadsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[250px]">Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Segment</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="min-w-[200px]">Name</TableHead>
+            <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Phone</TableHead>
+            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Company</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Status</TableHead>
+            <TableHead className="w-[120px] min-w-[120px] max-w-[120px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -68,18 +68,22 @@ export function LeadsTable({
             >
               <TableCell>
                 <div className="space-y-0.5">
-                  <p className="font-medium text-sm">{lead.name}</p>
-                  <p className="text-xs text-muted-foreground">{lead.email}</p>
+                  <p className="font-medium text-sm line-clamp-2" title={lead.name}>{lead.name}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2" title={lead.email}>{lead.email}</p>
                 </div>
               </TableCell>
               <TableCell className="font-medium">
                 {lead.phone || "-"}
               </TableCell>
               <TableCell className="font-medium">
-                {lead.company || "-"}
+                <div className="line-clamp-2" title={typeof lead.company === 'string' ? lead.company : (lead.company?.name || "-")}>
+                  {typeof lead.company === 'string' ? lead.company : (lead.company?.name || "-")}
+                </div>
               </TableCell>
               <TableCell className="font-medium">
-                {lead.segment_id ? truncateText(getSegmentName(lead.segment_id)) : "No Segment"}
+                <div className="line-clamp-2" title={getSegmentName(lead.segment_id)}>
+                  {getSegmentName(lead.segment_id)}
+                </div>
               </TableCell>
               <TableCell>
                 <Badge className={`${STATUS_STYLES[lead.status]}`}>

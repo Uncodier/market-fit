@@ -315,12 +315,12 @@ function LeadsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[200px]">Name</TableHead>
-            <TableHead className="w-[150px]">Company</TableHead>
-            <TableHead className="w-[120px]">Segment</TableHead>
-            <TableHead className="w-[100px]">Status</TableHead>
-            <TableHead className="w-[120px]">Journey Stage</TableHead>
-            <TableHead className="text-right w-[100px]">AI Actions</TableHead>
+            <TableHead className="min-w-[200px]">Name</TableHead>
+            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Company</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Status</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Journey Stage</TableHead>
+            <TableHead className="w-[120px] min-w-[120px] max-w-[120px] text-right">AI Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -336,15 +336,19 @@ function LeadsTable({
                   >
                     <TableCell>
                       <div className="space-y-0.5">
-                        <p className="font-medium text-sm">{String(lead.name || '')}</p>
-                        <p className="text-xs text-muted-foreground">{String(lead.email || '')}</p>
+                        <p className="font-medium text-sm line-clamp-2" title={String(lead.name || '')}>{String(lead.name || '')}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2" title={String(lead.email || '')}>{String(lead.email || '')}</p>
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {truncateText(getCompanyName(lead))}
+                      <div className="line-clamp-2" title={getCompanyName(lead)}>
+                        {getCompanyName(lead)}
+                      </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {truncateText(getSegmentName(lead.segment_id))}
+                      <div className="line-clamp-2" title={getSegmentName(lead.segment_id)}>
+                        {getSegmentName(lead.segment_id)}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge className={`${statusStyles[lead.status]}`}>

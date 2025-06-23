@@ -83,6 +83,7 @@ function ChatPageContent() {
   const {
     isLoading,
     handleSendMessage,
+    handleRetryMessage,
     startNewConversation,
     handleNewLeadConversation,
     handleNewAgentConversation,
@@ -100,7 +101,10 @@ function ChatPageContent() {
   // Scroll to bottom when new messages are added or when loading state changes
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+      // Add a small delay to allow the fade-in animation to start before scrolling
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      }, 50)
     }
   }, [chatMessages, isAgentResponding])
 
@@ -111,10 +115,10 @@ function ChatPageContent() {
       await handleSendMessage(message)
       setMessage("")
       
-      // Forzar scroll al final inmediatamente después de enviar un mensaje
+      // Forzar scroll al final después de enviar un mensaje, sincronizado con la animación
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-      }, 100)
+      }, 150)
     }
   }, [message, handleSendMessage, setMessage])
 
@@ -474,6 +478,7 @@ function ChatPageContent() {
           isAgentOnlyConversation={isAgentOnlyConversation}
           leadData={leadData}
           conversationId={conversationId}
+          onRetryMessage={handleRetryMessage}
         />
         
         {/* Message input area */}

@@ -488,7 +488,7 @@ function ControlCenterSkeleton() {
     <div className="flex-1 p-0">
       <div className="px-8 pb-8">
         <div className="w-full overflow-x-auto overflow-y-visible">
-          <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+          <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
             {/* Kanban columns - create columns to represent different campaign types */}
             {[1, 2, 3, 4, 5].map((columnIndex) => (
               <div key={columnIndex} className="flex flex-col h-full w-[280px]">
@@ -752,7 +752,7 @@ export default function CampaignsPage() {
             <TabsContent value="all" className="w-full h-auto overflow-visible">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
-                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -793,6 +793,7 @@ export default function CampaignsPage() {
                             title: campaign.title,
                             description: campaign.description,
                             priority: campaign.priority,
+                            status: campaign.status || "active",
                             dueDate: new Date(campaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                             assignees: campaign.assignees,
                             issues: campaign.issues,
@@ -835,7 +836,7 @@ export default function CampaignsPage() {
             <TabsContent value="active" className="w-full h-auto overflow-visible">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
-                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -876,6 +877,7 @@ export default function CampaignsPage() {
                             title: campaign.title,
                             description: campaign.description,
                             priority: campaign.priority,
+                            status: campaign.status || "active",
                             dueDate: new Date(campaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                             assignees: campaign.assignees,
                             issues: campaign.issues,
@@ -918,7 +920,7 @@ export default function CampaignsPage() {
             <TabsContent value="pending">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
-                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -946,6 +948,7 @@ export default function CampaignsPage() {
                             title: campaign.title,
                             description: campaign.description,
                             priority: campaign.priority,
+                            status: campaign.status || "draft",
                             dueDate: new Date(campaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                             assignees: campaign.assignees,
                             issues: campaign.issues,
@@ -988,7 +991,7 @@ export default function CampaignsPage() {
             <TabsContent value="completed">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
-                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -1016,6 +1019,7 @@ export default function CampaignsPage() {
                             title: campaign.title,
                             description: campaign.description,
                             priority: campaign.priority,
+                            status: campaign.status || "completed",
                             dueDate: new Date(campaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                             assignees: campaign.assignees,
                             issues: campaign.issues,

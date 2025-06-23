@@ -933,12 +933,12 @@ function ContentTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[40%]">Title</TableHead>
-            <TableHead className="w-[12%]">Type</TableHead>
-            <TableHead className="w-[14%]">Segment</TableHead>
-            <TableHead className="w-[16%]">Campaign</TableHead>
-            <TableHead className="w-[10%]">Status</TableHead>
-            <TableHead className="w-[8%]">Performance</TableHead>
+            <TableHead className="min-w-[200px]">Title</TableHead>
+            <TableHead className="w-[100px] min-w-[100px] max-w-[100px]">Type</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
+            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Campaign</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Status</TableHead>
+            <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Performance</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -951,9 +951,9 @@ function ContentTable({
               >
                 <TableCell>
                   <div className="space-y-0.5">
-                    <p className="font-medium text-sm">{content.title}</p>
+                    <p className="font-medium text-sm line-clamp-2" title={content.title}>{content.title}</p>
                     {content.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">{content.description}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2" title={content.description}>{content.description}</p>
                     )}
                   </div>
                 </TableCell>
@@ -966,12 +966,12 @@ function ContentTable({
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  <div className="whitespace-nowrap overflow-hidden text-ellipsis">
+                  <div className="line-clamp-2" title={getSegmentName(content.segment_id, segments)}>
                     {getSegmentName(content.segment_id, segments)}
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  <div className="whitespace-nowrap overflow-hidden text-ellipsis">
+                  <div className="line-clamp-2" title={getCampaignName(content.campaign_id, campaigns)}>
                     {getCampaignName(content.campaign_id, campaigns)}
                   </div>
                 </TableCell>

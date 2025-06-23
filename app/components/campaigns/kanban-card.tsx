@@ -31,6 +31,7 @@ interface KanbanCardProps {
   title: string
   description: string
   priority: "high" | "medium" | "low"
+  status?: string
   dueDate?: string
   assignees?: number
   issues?: number
@@ -61,6 +62,7 @@ export function KanbanCard({
   title, 
   description, 
   priority, 
+  status,
   dueDate, 
   assignees, 
   issues,
@@ -80,15 +82,49 @@ export function KanbanCard({
     low: "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
   }
 
-  const statusColor: Record<string, string> = {
-    "completed": "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300",
-    "in-progress": "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
-    "pending": "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300",
-    "validated": "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300",
-    "on-review": "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
-    "done": "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300",
-    "backlog": "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300",
-    "canceled": "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+  const statusConfig: Record<string, { dot: string; text: string }> = {
+    // Campaign status colors - dot and text
+    "active": { 
+      dot: "bg-emerald-500 dark:bg-emerald-400", 
+      text: "text-emerald-700 dark:text-emerald-300" 
+    },
+    "draft": { 
+      dot: "bg-amber-500 dark:bg-amber-400", 
+      text: "text-amber-700 dark:text-amber-300" 
+    },
+    "pending": { 
+      dot: "bg-orange-500 dark:bg-orange-400", 
+      text: "text-orange-700 dark:text-orange-300" 
+    },
+    "completed": { 
+      dot: "bg-green-500 dark:bg-green-400", 
+      text: "text-green-700 dark:text-green-300" 
+    },
+    // Legacy status colors
+    "in-progress": { 
+      dot: "bg-blue-500 dark:bg-blue-400", 
+      text: "text-blue-700 dark:text-blue-300" 
+    },
+    "validated": { 
+      dot: "bg-green-500 dark:bg-green-400", 
+      text: "text-green-700 dark:text-green-300" 
+    },
+    "on-review": { 
+      dot: "bg-purple-500 dark:bg-purple-400", 
+      text: "text-purple-700 dark:text-purple-300" 
+    },
+    "done": { 
+      dot: "bg-green-500 dark:bg-green-400", 
+      text: "text-green-700 dark:text-green-300" 
+    },
+    "backlog": { 
+      dot: "bg-slate-500 dark:bg-slate-400", 
+      text: "text-slate-700 dark:text-slate-300" 
+    },
+    "canceled": { 
+      dot: "bg-red-500 dark:bg-red-400", 
+      text: "text-red-700 dark:text-red-300" 
+    }
   }
 
   const completionStatusColor: Record<string, string> = {
@@ -157,10 +193,32 @@ export function KanbanCard({
             {priority}
           </Badge>
         </CardTitle>
-        {dueDate && (
-          <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            <span>{dueDate}</span>
+        {(dueDate || status) && (
+          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+            {dueDate && (
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                <span>{dueDate}</span>
+              </div>
+            )}
+            {status && (
+              <div className="flex items-center gap-1.5">
+                <div 
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    statusConfig[status]?.dot || "bg-slate-500 dark:bg-slate-400"
+                  )}
+                />
+                <span 
+                  className={cn(
+                    "text-xs font-medium capitalize",
+                    statusConfig[status]?.text || "text-slate-700 dark:text-slate-300"
+                  )}
+                >
+                  {status}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </CardHeader>

@@ -126,10 +126,10 @@ export const CommandsTable = memo(function CommandsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50%]">Task</TableHead>
-            <TableHead className="w-[18%]">Status</TableHead>
-            <TableHead className="w-[18%]">Created</TableHead>
-            <TableHead className="w-[14%]">Duration</TableHead>
+            <TableHead className="min-w-[200px]">Task</TableHead>
+            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Status</TableHead>
+            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Created</TableHead>
+            <TableHead className="w-[110px] min-w-[110px] max-w-[110px]">Duration</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -145,18 +145,16 @@ export const CommandsTable = memo(function CommandsTable({
                     {getStatusIcon(command.status)}
                   </div>
                   <div className="min-w-0">
-                    <div className="font-medium truncate text-sm">{command.task || "No task"}</div>
+                    <div className="font-medium text-sm line-clamp-2" title={command.task || "No task"}>{command.task || "No task"}</div>
                     {command.description && (
-                      <div className="text-xs text-muted-foreground truncate mt-0.5 max-w-[calc(100vw-140px)] sm:max-w-none">
+                      <div className="text-xs text-muted-foreground mt-0.5 max-w-[calc(100vw-140px)] sm:max-w-none line-clamp-2" title={command.description}>
                         {command.description}
                       </div>
                     )}
                     {command.status === "failed" && command.context && (
-                      <div className="text-xs text-destructive truncate mt-1 p-1 rounded bg-destructive/5 border border-destructive/10">
+                      <div className="text-xs text-destructive mt-1 p-1 rounded bg-destructive/5 border border-destructive/10 line-clamp-2" title={typeof command.context === 'string' ? command.context : "Error details"}>
                         {typeof command.context === 'string' 
-                          ? (command.context.length > 100 
-                            ? command.context.substring(0, 100) + "..." 
-                            : command.context)
+                          ? command.context
                           : "Error details"}
                       </div>
                     )}

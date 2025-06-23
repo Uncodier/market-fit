@@ -43,6 +43,7 @@ interface ChatMessagesProps {
   isAgentOnlyConversation: boolean
   leadData: any
   conversationId?: string
+  onRetryMessage?: (failedMessage: ChatMessage) => Promise<void>
 }
 
 // Message feedback widget component
@@ -318,7 +319,8 @@ export function ChatMessages({
   agentName,
   isAgentOnlyConversation,
   leadData,
-  conversationId
+  conversationId,
+  onRetryMessage
 }: ChatMessagesProps) {
   // Use theme context for dark mode detection
   const { isDarkMode } = useTheme()
@@ -442,7 +444,7 @@ export function ChatMessages({
                         msg.role === "team_member" 
                         ? (isAgentOnlyConversation ? "justify-end" : "justify-start")
                         : (msg.role === "user" || msg.role === "visitor") ? "justify-end" : "justify-start"
-                      } animate-fade-in`}
+                      } animate-slide-in-fade`}
                     >
                       {msg.role === "team_member" && !isAgentOnlyConversation ? (
                         <div className="flex flex-col max-w-[calc(100%-240px)]">
@@ -472,21 +474,42 @@ export function ChatMessages({
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
-                              <div>
+                              <div className="flex items-center gap-2">
                                 {msg.metadata?.command_status === "failed" && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="inline-flex items-center text-xs text-red-500 mr-2">
-                                          <Icons.AlertCircle className="h-3 w-3 mr-1" />
-                                          Failed to send
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-red-500">
+                                            <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                            Failed to send
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    {onRetryMessage && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              onClick={() => onRetryMessage(msg)}
+                                              className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5 transition-colors"
+                                              type="button"
+                                            >
+                                              <Icons.RotateCcw className="h-3 w-3 mr-1" />
+                                              Retry
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Retry sending this message</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </>
                                 )}
                               </div>
                               <p className="text-xs opacity-70">
@@ -523,21 +546,42 @@ export function ChatMessages({
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
-                              <div>
+                              <div className="flex items-center gap-2">
                                 {msg.metadata?.command_status === "failed" && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="inline-flex items-center text-xs text-red-500 mr-2">
-                                          <Icons.AlertCircle className="h-3 w-3 mr-1" />
-                                          Failed to send
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-red-500">
+                                            <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                            Failed to send
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    {onRetryMessage && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              onClick={() => onRetryMessage(msg)}
+                                              className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5 transition-colors"
+                                              type="button"
+                                            >
+                                              <Icons.RotateCcw className="h-3 w-3 mr-1" />
+                                              Retry
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Retry sending this message</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </>
                                 )}
                               </div>
                               <p className="text-xs opacity-70 text-right">
@@ -610,21 +654,42 @@ export function ChatMessages({
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
-                              <div>
+                              <div className="flex items-center gap-2">
                                 {msg.metadata?.command_status === "failed" && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="inline-flex items-center text-xs text-red-500 mr-2">
-                                          <Icons.AlertCircle className="h-3 w-3 mr-1" />
-                                          Failed to send
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-red-500">
+                                            <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                            Failed to send
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    {onRetryMessage && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              onClick={() => onRetryMessage(msg)}
+                                              className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5 transition-colors"
+                                              type="button"
+                                            >
+                                              <Icons.RotateCcw className="h-3 w-3 mr-1" />
+                                              Retry
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Retry sending this message</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </>
                                 )}
                               </div>
                               <p className="text-xs opacity-70 text-right">
@@ -648,21 +713,42 @@ export function ChatMessages({
                             <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                           </div>
                           <div className="flex items-center justify-between mt-1.5">
-                            <div>
+                            <div className="flex items-center gap-2">
                               {msg.metadata?.command_status === "failed" && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="inline-flex items-center text-xs text-red-500 mr-2">
-                                        <Icons.AlertCircle className="h-3 w-3 mr-1" />
-                                        Failed to send
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                <>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center text-xs text-red-500">
+                                          <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                          Failed to send
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  {onRetryMessage && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={() => onRetryMessage(msg)}
+                                            className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5 transition-colors"
+                                            type="button"
+                                          >
+                                            <Icons.RotateCcw className="h-3 w-3 mr-1" />
+                                            Retry
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Retry sending this message</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                </>
                               )}
                             </div>
                             <p className="text-xs opacity-70">
@@ -679,7 +765,7 @@ export function ChatMessages({
             
             {/* Animación de espera mientras el agente responde */}
             {isAgentResponding && (
-              <div className="flex justify-start animate-fade-in mt-6 mb-8">
+              <div className="flex justify-start animate-slide-in-fade mt-6 mb-8">
                 <div className="max-w-[calc(100%-240px)] flex items-center space-x-2 p-4 ml-9 bg-muted/20 rounded-md">
                   <div className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
                   <div className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
