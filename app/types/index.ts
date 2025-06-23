@@ -299,6 +299,12 @@ export interface TaskComment {
     size: number
     type: string
   }>
+  cta?: {
+    primary_action: {
+      title: string
+      url: string
+    }
+  }
   profiles?: {
     id: string
     name: string

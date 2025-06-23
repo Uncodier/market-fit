@@ -119,7 +119,7 @@ export function TasksTable({
                 <TableCell>
                   <div className="space-y-0.5">
                     <p className="font-medium text-sm">{task.title}</p>
-                    <p className="text-xs text-muted-foreground">{task.description}</p>
+                    <p className="text-xs text-muted-foreground min-h-[1.2rem]">{task.description}</p>
                   </div>
                 </TableCell>
                 <TableCell>

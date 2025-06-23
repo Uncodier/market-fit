@@ -279,9 +279,9 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                     )}
                                   </div>
 
-                                  {task.description && (
-                                    <p className="text-xs text-muted-foreground mt-2 mb-2 line-clamp-2">{task.description}</p>
-                                  )}
+                                  <p className="text-xs text-muted-foreground mt-2 mb-2 line-clamp-2 min-h-[0.5rem]">
+                                    {task.description || ""}
+                                  </p>
 
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {task.stage && (

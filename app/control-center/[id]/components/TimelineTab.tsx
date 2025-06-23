@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/app/components/ui/card"
+import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Task, TaskComment } from "@/app/types"
 import { createClient } from "@/utils/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { Button } from "@/app/components/ui/button"
 import { Textarea } from "@/app/components/ui/textarea"
-import { Send, User, FileText, Lock, UnlockKeyhole, Image as ImageIcon, File, Code, MoreHorizontal, Pencil, Trash2, MessageSquare } from "@/app/components/ui/icons"
+import { Send, User, FileText, Lock, UnlockKeyhole, Image as ImageIcon, File, Code, MoreHorizontal, Pencil, Trash2, MessageSquare, Bell, ExternalLink, Plus, X, Clock } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { useAuth } from "@/app/hooks/use-auth"
 import { Switch } from "@/app/components/ui/switch"
@@ -20,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
 import {
@@ -86,6 +88,10 @@ export default function TimelineTab({ task }: TimelineTabProps) {
   const [editingContent, setEditingContent] = useState("")
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null)
   const [assigneeData, setAssigneeData] = useState<{ name: string, avatar_url: string | null } | null>(null)
+  // CTA state
+  const [ctaTitle, setCtaTitle] = useState("")
+  const [ctaUrl, setCtaUrl] = useState("")
+  const [showCtaFields, setShowCtaFields] = useState(false)
 
   // Fetch current user data
   useEffect(() => {
@@ -224,7 +230,15 @@ export default function TimelineTab({ task }: TimelineTabProps) {
         files.push(...uploadedFiles)
       }
 
-      // 3. Create comment
+      // 3. Create CTA object if both fields are provided
+      const cta = (ctaTitle.trim() && ctaUrl.trim()) ? {
+        primary_action: {
+          title: ctaTitle.trim(),
+          url: ctaUrl.trim()
+        }
+      } : null
+
+      // 4. Create comment
       const { data: comment, error: commentError } = await supabase
         .from('task_comments')
         .insert({
@@ -233,7 +247,8 @@ export default function TimelineTab({ task }: TimelineTabProps) {
           content: newComment.trim(),
           attachments: [],
           is_private: isPrivate,
-          files
+          files,
+          cta
         })
         .select('*')
         .single()
@@ -254,6 +269,9 @@ export default function TimelineTab({ task }: TimelineTabProps) {
       setNewComment("")
       setSelectedFiles([])
       setIsPrivate(false)
+      setCtaTitle("")
+      setCtaUrl("")
+      setShowCtaFields(false)
 
       // 5. Call external API for public comments
       if (!isPrivate && task.lead_id) {
@@ -263,6 +281,7 @@ export default function TimelineTab({ task }: TimelineTabProps) {
           await apiClient.post('/api/notifications/taskStatus', {
             message: newComment.trim(),
             lead_id: task.lead_id,
+            task_id: task.id,
             site_id: currentSite.id
           })
         } catch (apiError) {
@@ -336,6 +355,52 @@ export default function TimelineTab({ task }: TimelineTabProps) {
     setEditingContent("")
   }
 
+  const handleResendNotification = async (comment: TaskComment) => {
+    if (!currentSite || !task?.lead_id || comment.is_private) {
+      toast.error("Cannot resend notification for private comments or tasks without leads")
+      return
+    }
+
+    try {
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
+      await apiClient.post('/api/notifications/taskStatus', {
+        message: comment.content,
+        lead_id: task.lead_id,
+        task_id: task.id,
+        site_id: currentSite.id
+      })
+
+      toast.success("Notification resent successfully")
+    } catch (error) {
+      console.error('Error resending notification:', error)
+      toast.error("Failed to resend notification")
+    }
+  }
+
+  const handleSendReminder = async (comment: TaskComment) => {
+    if (!currentSite || !task?.lead_id || comment.is_private) {
+      toast.error("Cannot send reminder for private comments or tasks without leads")
+      return
+    }
+
+    try {
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
+      await apiClient.post('/api/notifications/taskCommentReminder', {
+        message: comment.content,
+        lead_id: task.lead_id,
+        task_id: task.id,
+        site_id: currentSite.id
+      })
+
+      toast.success("Reminder sent successfully")
+    } catch (error) {
+      console.error('Error sending reminder:', error)
+      toast.error("Failed to send reminder")
+    }
+  }
+
   // Function to render file preview
   const renderFilePreview = (file: FileUpload) => {
     if (file.type.startsWith('image/')) {
@@ -361,6 +426,104 @@ export default function TimelineTab({ task }: TimelineTabProps) {
     }
     return null
   }
+
+  // Function to detect URLs in text
+  const detectUrlsInText = (text: string) => {
+    if (!text || typeof text !== 'string') return []
+    
+    // Multiple regex patterns to catch different URL formats
+    const urlPatterns = [
+      /https?:\/\/[^\s<>"']+/gi,  // URLs with protocol
+      /www\.[^\s<>"']+/gi,        // www. URLs
+      /[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s<>"']*)?/gi  // domain.tld URLs
+    ]
+    
+    const allMatches = []
+    
+    for (const pattern of urlPatterns) {
+      const matches = text.match(pattern) || []
+      allMatches.push(...matches)
+    }
+    
+    // Remove duplicates and clean URLs
+    const uniqueUrls = Array.from(new Set(allMatches))
+    
+    return uniqueUrls.map(url => {
+      // Remove trailing punctuation
+      let cleanedUrl = url.replace(/[.,;:!?)\]}>]*$/, '')
+      
+      // Add protocol if missing
+      if (!cleanedUrl.match(/^https?:\/\//)) {
+        cleanedUrl = `https://${cleanedUrl}`
+      }
+      
+      return cleanedUrl
+    }).filter(url => {
+      // Basic validation: must have at least a domain with TLD
+      try {
+        const urlObj = new URL(url)
+        return urlObj.hostname.includes('.')
+      } catch {
+        return false
+      }
+    })
+  }
+
+  // Function to generate a title from URL
+  const generateTitleFromUrl = (url: string) => {
+    try {
+      const parsedUrl = new URL(url)
+      const hostname = parsedUrl.hostname.replace('www.', '')
+      
+      // Extract meaningful parts from pathname
+      const pathParts = parsedUrl.pathname.split('/').filter(part => part && part !== '')
+      
+      if (pathParts.length > 0) {
+        // Use the last meaningful part of the path
+        const lastPart = pathParts[pathParts.length - 1]
+        const cleaned = lastPart.replace(/[-_]/g, ' ').replace(/\.(html|php|aspx?)$/i, '')
+        return cleaned.split(' ').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ')
+      }
+      
+      // Fallback to hostname
+      return `Visit ${hostname.charAt(0).toUpperCase() + hostname.slice(1)}`
+    } catch {
+      return "View Link"
+    }
+  }
+
+  // Auto-detect URLs in comment and populate CTA
+  useEffect(() => {
+    // Debounce the URL detection to avoid issues while typing
+    const timeoutId = setTimeout(() => {
+      if (!newComment.trim()) {
+        // Clear CTA if comment is empty
+        if (showCtaFields && !ctaTitle && !ctaUrl) {
+          setShowCtaFields(false)
+        }
+        return
+      }
+
+      const urls = detectUrlsInText(newComment)
+      console.log('Detected URLs:', urls) // Debug log
+      
+      if (urls.length > 0 && !ctaUrl.trim()) {
+        // Only auto-populate if CTA URL is empty to avoid overwriting user input
+        const firstUrl = urls[0]
+        if (firstUrl && firstUrl.length > 10) { // Ensure it's a reasonable URL
+          const suggestedTitle = generateTitleFromUrl(firstUrl)
+          
+          setCtaUrl(firstUrl)
+          setCtaTitle(suggestedTitle)
+          setShowCtaFields(true)
+        }
+      }
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [newComment, ctaUrl, ctaTitle, showCtaFields])
 
   if (isLoading) {
     return (
@@ -493,55 +656,112 @@ export default function TimelineTab({ task }: TimelineTabProps) {
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              {/* File attachment button */}
-              <div>
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  onChange={handleFileSelect}
-                  multiple
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Attach Files
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-4">
-                {/* Private comment switch */}
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="private-mode"
-                    checked={isPrivate}
-                    onCheckedChange={setIsPrivate}
-                  />
-                  <Label htmlFor="private-mode" className="flex items-center gap-1.5 cursor-pointer">
-                    {isPrivate ? (
-                      <Lock className="h-4 w-4" />
-                    ) : (
-                      <UnlockKeyhole className="h-4 w-4 text-muted-foreground" />
+            {/* CTA Fields */}
+            {showCtaFields && (
+              <div className="space-y-3 p-4 border rounded-md bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium">Call to Action</Label>
+                    {detectUrlsInText(newComment).length > 0 && (
+                      <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                        Auto-detected
+                      </span>
                     )}
-                    <span>Private</span>
-                  </Label>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowCtaFields(false)
+                      setCtaTitle("")
+                      setCtaUrl("")
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <Button
-                  onClick={handleSubmitComment}
-                  disabled={isSubmitting || !newComment.trim()}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Update Status
-                </Button>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Button text (e.g., 'View Details', 'Download File')"
+                    value={ctaTitle}
+                    onChange={(e) => setCtaTitle(e.target.value)}
+                    className="text-sm"
+                  />
+                  <Input
+                    placeholder="URL (e.g., https://example.com)"
+                    value={ctaUrl}
+                    onChange={(e) => setCtaUrl(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                {detectUrlsInText(newComment).length > 1 && (
+                  <div className="text-xs text-muted-foreground">
+                    💡 Multiple URLs detected. Using the first one: {detectUrlsInText(newComment)[0]}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
           </div>
         </CardContent>
+        
+        <ActionFooter>
+          {/* File attachment and CTA buttons */}
+          <div className="flex items-center gap-2">
+            <Input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileSelect}
+              multiple
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Attach Files
+            </Button>
+            {!showCtaFields && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCtaFields(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add CTA
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Private comment switch */}
+            <div className="flex items-center gap-2">
+              <Switch
+                id="private-mode"
+                checked={isPrivate}
+                onCheckedChange={setIsPrivate}
+              />
+              <Label htmlFor="private-mode" className="flex items-center gap-1.5 cursor-pointer">
+                {isPrivate ? (
+                  <Lock className="h-4 w-4" />
+                ) : (
+                  <UnlockKeyhole className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span>Private</span>
+              </Label>
+            </div>
+
+            <Button
+              onClick={handleSubmitComment}
+              disabled={isSubmitting || !newComment.trim()}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Update Status
+            </Button>
+          </div>
+        </ActionFooter>
       </Card>
 
       {/* Comments list */}
@@ -609,7 +829,7 @@ export default function TimelineTab({ task }: TimelineTabProps) {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[160px]">
+                      <DropdownMenuContent align="end" className="w-[200px]">
                         <DropdownMenuItem 
                           className="text-sm cursor-pointer"
                           onClick={() => startEditing(comment)}
@@ -617,6 +837,16 @@ export default function TimelineTab({ task }: TimelineTabProps) {
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
+                        {!comment.is_private && task?.lead_id && (
+                          <DropdownMenuItem 
+                            className="text-sm cursor-pointer"
+                            onClick={() => handleResendNotification(comment)}
+                          >
+                            <Bell className="mr-2 h-4 w-4" />
+                            Resend Notification
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           className="text-sm cursor-pointer text-destructive focus:text-destructive"
                           onClick={() => setCommentToDelete(comment.id)}
@@ -744,6 +974,34 @@ export default function TimelineTab({ task }: TimelineTabProps) {
                     ))
                   )}
                 </div>
+              )}
+
+                            {/* CTA Footer */}
+              {comment.cta && comment.cta.primary_action && (
+                <ActionFooter>
+                  <div className="flex items-center justify-end gap-2">
+                    {!comment.is_private && task?.lead_id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSendReminder(comment)}
+                        className="gap-2"
+                      >
+                        <Clock className="h-4 w-4" />
+                        Send Reminder
+                      </Button>
+                    )}
+                    <a
+                      href={comment.cta.primary_action.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      {comment.cta.primary_action.title}
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </ActionFooter>
               )}
             </Card>
           ))

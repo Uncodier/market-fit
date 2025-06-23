@@ -74,13 +74,55 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
 
       if (leadsData) setLeads(leadsData)
 
-      // Fetch users
-      const { data: usersData } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .order('name')
-
-      if (usersData) setUsers(usersData)
+      // Try different approach: get all site members first, then get their profiles
+      console.log('Fetching site members for site:', currentSite.id)
+      
+      // First get site member user_ids
+      const { data: memberIds, error: memberError } = await supabase
+        .from('site_members')
+        .select('user_id')
+        .eq('site_id', currentSite.id)
+        .eq('status', 'active')
+        .not('user_id', 'is', null)
+      
+      console.log('Member IDs:', { memberIds, memberError })
+      
+      // Get all user IDs (site members + owner)
+      let allUserIds: string[] = []
+      
+      // Add site members
+      if (memberIds && memberIds.length > 0) {
+        allUserIds = memberIds.map(m => m.user_id)
+      }
+      
+      // Add site owner (avoid duplicates)
+      if (currentSite.user_id && !allUserIds.includes(currentSite.user_id)) {
+        allUserIds.push(currentSite.user_id)
+      }
+      
+      console.log('All user IDs to fetch (members + owner):', allUserIds)
+      
+      if (allUserIds.length > 0) {
+        // Then get profiles for those user_ids
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', allUserIds)
+          
+        console.log('Profiles data:', { profilesData, profilesError })
+        
+        if (profilesData) {
+          const transformedUsers = profilesData.map(profile => ({
+            id: profile.id,
+            name: profile.name || profile.id
+          }))
+          console.log('Final transformed users:', transformedUsers)
+          setUsers(transformedUsers)
+        }
+      } else {
+        console.log('No users found (no members and no owner)')
+        setUsers([])
+      }
     }
 
     fetchData()
