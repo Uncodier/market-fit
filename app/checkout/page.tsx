@@ -52,7 +52,7 @@ function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const credits = parseInt(searchParams.get('credits') || '20')
-  const { currentSite } = useSite()
+  const { currentSite, isLoading: siteLoading, sites } = useSite()
   const { user } = useAuth()
   
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -63,6 +63,16 @@ function CheckoutContent() {
     const pkg = creditPackages.find(p => p.credits === credits)
     setSelectedPackage(pkg || creditPackages[0])
   }, [credits])
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Checkout Debug:', {
+      siteLoading,
+      currentSite: currentSite?.name,
+      sitesLength: sites.length,
+      user: user?.email
+    })
+  }, [siteLoading, currentSite, sites.length, user])
 
   const handleSubmit = async () => {
     // Enhanced validation with specific error messages
@@ -150,12 +160,179 @@ function CheckoutContent() {
     }
   }
 
-  if (!selectedPackage) {
+  // Show complete checkout skeleton while loading
+  if (siteLoading || !selectedPackage || (!currentSite && sites.length === 0)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background">
+        <div className="container max-w-4xl px-4 py-8 mx-auto">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between mb-12">
+            <div className="flex items-center">
+              <Skeleton className="h-5 w-5 mr-1" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <Skeleton className="h-6 w-16" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Left Column Skeleton */}
+            <div>
+              <Skeleton className="h-8 w-48 mb-4" />
+              <Skeleton className="h-12 w-32 mb-8" />
+              
+              <Card className="border border-border">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-5" />
+                    <Skeleton className="h-6 w-40" />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-6 w-12" />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-5 w-12" />
+                      <Skeleton className="h-5 w-16" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Package Comparison Skeleton */}
+              <div className="mt-8">
+                <Skeleton className="h-5 w-48 mb-4" />
+                <div className="grid grid-cols-1 gap-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <Skeleton className="h-4 w-20 mb-1" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                        <div className="text-right">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-3 w-12" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column Skeleton */}
+            <div>
+              <Skeleton className="h-8 w-40 mb-6" />
+              
+              {/* Benefits Section Skeleton */}
+              <div className="bg-muted/30 rounded-lg p-6 mb-6 border border-border/30">
+                <div className="flex items-center gap-2 mb-4">
+                  <Skeleton className="h-5 w-5" />
+                  <Skeleton className="h-5 w-32" />
+                </div>
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <Skeleton className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* User Info Skeleton */}
+              <div className="bg-muted/20 rounded-lg p-4 mb-6 border border-border/20">
+                <Skeleton className="h-5 w-32 mb-2" />
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              </div>
+
+              {/* What happens next Skeleton */}
+              <div className="bg-primary/5 rounded-lg p-4 mb-6 border border-primary/20">
+                <Skeleton className="h-5 w-32 mb-3" />
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <Skeleton className="h-5 w-5 rounded-full flex-shrink-0 mt-0.5" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+                
+              <Skeleton className="w-full h-12" />
+              
+              <div className="flex justify-center items-center gap-2 mt-4">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+              
+              <div className="flex justify-center items-center gap-4 mt-4">
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show message if no site is available but user has sites (just not selected)
+  if (!currentSite && sites.length > 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
-        <div className="text-center">
-          <Skeleton className="h-8 w-48 mx-auto mb-4" />
-          <Skeleton className="h-4 w-32 mx-auto" />
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="mb-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <PlusCircle className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">No Site Selected</h2>
+            <p className="text-muted-foreground mb-6">
+              Please select a site from your available sites to continue with the purchase.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Button onClick={() => router.push('/dashboard')} className="w-full">
+              Go to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show message if no sites exist
+  if (!currentSite && sites.length === 0 && !siteLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="mb-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <PlusCircle className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">No Sites Available</h2>
+            <p className="text-muted-foreground mb-6">
+              You need to have a site set up before purchasing credits. Please create a site first.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Button onClick={() => router.push('/create-site')} className="w-full">
+              Create New Site
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/dashboard')} className="w-full">
+              Go to Dashboard
+            </Button>
+          </div>
         </div>
       </div>
     )

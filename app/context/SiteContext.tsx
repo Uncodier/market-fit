@@ -431,7 +431,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       if (!session) {
         console.log("No active session found")
+        setSites([])
+        setCurrentSite(null)
         setIsLoading(false)
+        if (!isInitialized) {
+          setIsInitialized(true)
+        }
         return
       }
       
@@ -547,6 +552,17 @@ export function SiteProvider({ children }: SiteProviderProps) {
     
     loadSites()
     
+    // Safety timeout to ensure loading state is resolved
+    const loadingTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Loading timeout reached, forcing loading to false")
+        setIsLoading(false)
+        if (!isInitialized) {
+          setIsInitialized(true)
+        }
+      }
+    }, 10000) // 10 seconds timeout
+    
     // Suscribirse a eventos de autenticación para cargar sitios cuando el usuario inicie sesión
     const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
       (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED', session: any) => {
@@ -557,6 +573,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
           console.log('User signed out, clearing sites...')
           setSites([])
           setCurrentSite(null)
+          setIsLoading(false)
           try {
             localStorage.removeItem("currentSiteId")
           } catch (e) {
@@ -567,6 +584,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     )
     
     return () => {
+      clearTimeout(loadingTimeout)
       subscription.unsubscribe()
     }
   }, [isMounted])
