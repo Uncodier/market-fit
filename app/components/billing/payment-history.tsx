@@ -27,15 +27,22 @@ interface PaymentHistoryProps {
 }
 
 export function PaymentHistory({ className }: PaymentHistoryProps) {
-  const { currentSite, refreshSites } = useSite()
+  const { currentSite } = useSite()
   const [isDownloading, setIsDownloading] = useState(false)
   const [paymentHistory, setPaymentHistory] = useState<PaymentTransaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isGeneratingTestData, setIsGeneratingTestData] = useState(false)
+  const [lastLoadedSiteId, setLastLoadedSiteId] = useState<string | null>(null)
   
   // Función para cargar el historial de pagos
   const loadPaymentHistory = async () => {
     if (!currentSite) return
+    
+    // Avoid loading if we've already loaded for this site
+    if (lastLoadedSiteId === currentSite.id && paymentHistory.length > 0) {
+      setIsLoading(false)
+      return
+    }
     
     try {
       setIsLoading(true)
@@ -73,6 +80,9 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
         setPaymentHistory(formattedData)
         console.log("Loaded payment history:", formattedData.length)
       }
+      
+      // Update the last loaded site ID
+      setLastLoadedSiteId(currentSite.id)
     } catch (error) {
       console.error("Error loading payment history:", error)
       toast.error("Failed to load payment history")
@@ -83,10 +93,20 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
     }
   }
   
-  // Load payment history from database
+  // Load payment history from database only when site actually changes
   useEffect(() => {
-    loadPaymentHistory()
-  }, [currentSite])
+    if (!currentSite) {
+      setIsLoading(false)
+      return
+    }
+    
+    // Only load if site ID has actually changed
+    if (currentSite.id !== lastLoadedSiteId) {
+      loadPaymentHistory()
+    } else {
+      setIsLoading(false)
+    }
+  }, [currentSite?.id]) // Only depend on the site ID, not the entire currentSite object
   
   // Format date as "Month Day, Year"
   const formatDate = (dateStr: string) => {
@@ -136,6 +156,15 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
     }
   }
 
+  // Function to refresh payment history manually
+  const refreshPaymentHistory = async () => {
+    if (!currentSite) return
+    
+    // Reset cache and reload
+    setLastLoadedSiteId(null)
+    await loadPaymentHistory()
+  }
+
   // Función para generar datos de prueba
   const generateTestData = async () => {
     if (!currentSite) return
@@ -157,8 +186,8 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
       
       toast.success("Test payment history generated successfully")
       
-      // Recargar los datos
-      await loadPaymentHistory()
+      // Recargar los datos forzando un refresh
+      await refreshPaymentHistory()
     } catch (error) {
       console.error("Error generating test data:", error)
       toast.error("Failed to generate test data")

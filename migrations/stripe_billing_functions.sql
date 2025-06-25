@@ -173,29 +173,32 @@ EXCEPTION
 END;
 $$;
 
--- Create payments table if it doesn't exist
-CREATE TABLE IF NOT EXISTS payments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id UUID NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
-  stripe_payment_intent_id TEXT,
-  stripe_session_id TEXT,
-  stripe_invoice_id TEXT,
-  amount DECIMAL(10,2) NOT NULL,
-  currency TEXT NOT NULL DEFAULT 'usd',
-  status TEXT NOT NULL,
-  type TEXT NOT NULL, -- 'credits_purchase', 'subscription', etc.
-  credits_purchased INTEGER,
-  description TEXT,
-  metadata JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Add missing columns to payments table if they don't exist
+DO $$
+BEGIN
+  -- Add missing columns that might not exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payments' AND column_name = 'payment_method') THEN
+    ALTER TABLE payments ADD COLUMN payment_method TEXT;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payments' AND column_name = 'invoice_url') THEN
+    ALTER TABLE payments ADD COLUMN invoice_url TEXT;
+  END IF;
+  
+  -- Ensure proper column types and defaults
+  ALTER TABLE payments ALTER COLUMN currency SET DEFAULT 'USD';
+  
+  -- Update details column to be JSONB if it isn't already
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payments' AND column_name = 'details' AND data_type != 'jsonb') THEN
+    ALTER TABLE payments ALTER COLUMN details TYPE JSONB USING details::JSONB;
+  END IF;
+END $$;
 
 -- Add indexes for payments table
 CREATE INDEX IF NOT EXISTS idx_payments_site_id ON payments(site_id);
-CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(type);
+CREATE INDEX IF NOT EXISTS idx_payments_transaction_type ON payments(transaction_type);
 CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
-CREATE INDEX IF NOT EXISTS idx_payments_stripe_payment_intent_id ON payments(stripe_payment_intent_id);
+CREATE INDEX IF NOT EXISTS idx_payments_transaction_id ON payments(transaction_id);
 
 -- Add RLS policies for payments table
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;

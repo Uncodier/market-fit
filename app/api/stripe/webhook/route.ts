@@ -12,7 +12,7 @@ import {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-05-28.basil',
 })
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -152,14 +152,18 @@ export async function POST(request: NextRequest) {
             .from('payments')
             .insert({
               site_id: siteId,
-              stripe_payment_intent_id: session.payment_intent,
-              stripe_session_id: session.id,
+              transaction_id: `stripe_${session.id}`,
+              transaction_type: 'credits_purchase',
               amount: amount,
-              currency: session.currency,
+              currency: session.currency?.toUpperCase() || 'USD',
               status: 'completed',
-              type: 'credits_purchase',
-              credits_purchased: credits,
-              created_at: new Date().toISOString()
+              payment_method: 'stripe',
+              details: {
+                stripe_payment_intent_id: session.payment_intent,
+                stripe_session_id: session.id,
+                credits_purchased: credits
+              },
+              credits: credits
             })
 
           if (paymentError) {
@@ -247,13 +251,16 @@ export async function POST(request: NextRequest) {
             .from('payments')
             .insert({
               site_id: siteId,
-              stripe_payment_intent_id: invoice.payment_intent,
-              stripe_invoice_id: invoice.id,
+              transaction_id: `stripe_invoice_${invoice.id}`,
+              transaction_type: 'subscription',
               amount: (invoice.amount_paid || 0) / 100,
-              currency: invoice.currency,
+              currency: invoice.currency?.toUpperCase() || 'USD',
               status: 'completed',
-              type: 'subscription',
-              created_at: new Date().toISOString()
+              payment_method: 'stripe',
+              details: {
+                stripe_payment_intent_id: invoice.payment_intent,
+                stripe_invoice_id: invoice.id
+              }
             })
 
           if (paymentError) {
