@@ -315,12 +315,12 @@ function LeadsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[200px]">Name</TableHead>
-            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Company</TableHead>
-            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
-            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Status</TableHead>
-            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Journey Stage</TableHead>
-            <TableHead className="w-[120px] min-w-[120px] max-w-[120px] text-right">AI Actions</TableHead>
+            <TableHead className="min-w-[300px] w-[350px]">Name</TableHead>
+            <TableHead className="w-[280px] min-w-[150px] max-w-[280px]">Company</TableHead>
+            <TableHead className="w-[260px] min-w-[140px] max-w-[260px]">Segment</TableHead>
+            <TableHead className="w-[130px] min-w-[100px] max-w-[130px]">Status</TableHead>
+            <TableHead className="w-[130px] min-w-[110px] max-w-[130px]">Journey Stage</TableHead>
+            <TableHead className="w-[120px] min-w-[100px] max-w-[120px] text-right">AI Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -523,22 +523,22 @@ function LeadsTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[200px]">
+            <TableHead className="min-w-[300px] w-[350px]">
               <Skeleton className="h-4 w-24" />
             </TableHead>
-            <TableHead className="w-[150px]">
+            <TableHead className="w-[280px] min-w-[150px] max-w-[280px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="w-[120px]">
+            <TableHead className="w-[260px] min-w-[140px] max-w-[260px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="w-[100px]">
+            <TableHead className="w-[130px] min-w-[100px] max-w-[130px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="w-[120px]">
+            <TableHead className="w-[130px] min-w-[110px] max-w-[130px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="text-right w-[100px]">
+            <TableHead className="text-right w-[120px] min-w-[100px] max-w-[120px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
           </TableRow>

@@ -806,7 +806,8 @@ export default function CampaignsPage() {
                                 campaign.budget.allocated - campaign.budget.remaining : 0,
                               currency: campaign.budget?.currency || "USD"
                             },
-                            requirements: campaignRequirements
+                            requirements: campaignRequirements,
+                            metadata: campaign.metadata
                           };
                         })}
                         searchQuery={searchQuery}
@@ -890,7 +891,8 @@ export default function CampaignsPage() {
                                 campaign.budget.allocated - campaign.budget.remaining : 0,
                               currency: campaign.budget?.currency || "USD"
                             },
-                            requirements: campaignRequirements
+                            requirements: campaignRequirements,
+                            metadata: campaign.metadata
                           };
                         })}
                         searchQuery={searchQuery}
@@ -961,7 +963,8 @@ export default function CampaignsPage() {
                                 campaign.budget.allocated - campaign.budget.remaining : 0,
                               currency: campaign.budget?.currency || "USD"
                             },
-                            requirements: campaignRequirements
+                            requirements: campaignRequirements,
+                            metadata: campaign.metadata
                           };
                         })}
                         searchQuery={searchQuery}
@@ -1032,7 +1035,8 @@ export default function CampaignsPage() {
                                 campaign.budget.allocated - campaign.budget.remaining : 0,
                               currency: campaign.budget?.currency || "USD"
                             },
-                            requirements: campaignRequirements
+                            requirements: campaignRequirements,
+                            metadata: campaign.metadata
                           };
                         })}
                         searchQuery={searchQuery}

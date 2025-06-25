@@ -3,9 +3,27 @@
 import { createClient } from "@/lib/supabase/server"
 import { transformCampaignData, isValidUUID } from "../utils/transformers"
 import { type CampaignFormValues } from "../../schema"
+import { type Campaign } from "@/app/types"
 
 // Update campaign
-export async function updateCampaign(id: string, values: Partial<CampaignFormValues>) {
+export async function updateCampaign(
+  id: string,
+  values: {
+    title?: string;
+    description?: string;
+    priority?: 'high' | 'medium' | 'low';
+    status?: 'active' | 'pending' | 'completed';
+    dueDate?: string;
+    assignees?: number;
+    issues?: number;
+    revenue?: any;
+    budget?: any;
+    type?: string;
+    segments?: string[];
+    requirements?: string[];
+    metadata?: any;
+  }
+) {
   try {
     console.log("[updateCampaign] Starting update with values:", JSON.stringify(values));
     const supabase = await createClient()
@@ -16,17 +34,20 @@ export async function updateCampaign(id: string, values: Partial<CampaignFormVal
     // Remove segments from the data to be updated directly on the campaign
     const valuesToUpdate = { ...values };
     delete valuesToUpdate.segments;
-    delete valuesToUpdate.segmentObjects; // This is just for UI display
 
     // Prepare campaign data
     const campaignData = {
       ...(valuesToUpdate.title && { title: valuesToUpdate.title }),
       ...(valuesToUpdate.description !== undefined && { description: valuesToUpdate.description }),
       ...(valuesToUpdate.priority && { priority: valuesToUpdate.priority }),
+      ...(valuesToUpdate.status && { status: valuesToUpdate.status }),
       ...(valuesToUpdate.dueDate && { due_date: valuesToUpdate.dueDate }),
-      ...(valuesToUpdate.type && { type: valuesToUpdate.type }),
+      ...(valuesToUpdate.assignees && { assignees: valuesToUpdate.assignees }),
+      ...(valuesToUpdate.issues && { issues: valuesToUpdate.issues }),
+      ...(valuesToUpdate.revenue && { revenue: valuesToUpdate.revenue }),
       ...(valuesToUpdate.budget && { budget: valuesToUpdate.budget }),
-      ...(valuesToUpdate.revenue && { revenue: valuesToUpdate.revenue })
+      ...(valuesToUpdate.type && { type: valuesToUpdate.type }),
+      ...(valuesToUpdate.metadata && { metadata: valuesToUpdate.metadata })
     }
 
     console.log("[updateCampaign] Prepared campaign data:", JSON.stringify(campaignData));
@@ -36,7 +57,7 @@ export async function updateCampaign(id: string, values: Partial<CampaignFormVal
       .from("campaigns")
       .update(campaignData)
       .eq("id", id)
-      .select()
+      .select("*, metadata")
       .single()
 
     if (error) {
@@ -215,5 +236,57 @@ export async function updateCampaign(id: string, values: Partial<CampaignFormVal
   } catch (error) {
     console.error("Error in updateCampaign:", error)
     return { data: null, error: error instanceof Error ? error.message : "An unknown error occurred" }
+  }
+}
+
+// Function to test outsourcing by updating campaign metadata
+export async function testOutsourcingStatus(campaignId: string) {
+  try {
+    const testMetadata = {
+      payment_status: {
+        status: "paid",
+        amount_paid: 150.00,
+        currency: "USD",
+        payment_method: "stripe",
+        stripe_payment_intent_id: "cs_1234567890abcdef",
+        payment_date: "2024-01-15T10:35:22.123Z",
+        outsourced: true,
+        outsource_provider: "uncodie",
+        session_metadata: {
+          type: "campaign_outsourcing",
+          task_id: "",
+          campaign_id: campaignId,
+          site_id: "123e4567-e89b-12d3-a456-426614174000",
+          user_email: "usuario@ejemplo.com"
+        }
+      },
+      performance_tracking: {
+        clicks: 0,
+        impressions: 0,
+        conversions: 0,
+        conversion_rate: 0.0,
+        cost_per_acquisition: 0.0
+      },
+      timeline: {
+        planned_start: "2024-01-01",
+        actual_start: null,
+        planned_end: "2024-03-31",
+        actual_end: null,
+        milestones: []
+      },
+      custom_fields: {},
+      tags: [],
+      external_references: {
+        project_management_url: null,
+        design_files: [],
+        documentation: []
+      }
+    };
+
+    const result = await updateCampaign(campaignId, { metadata: testMetadata });
+    return result;
+  } catch (error) {
+    console.error("Error in testOutsourcingStatus:", error);
+    return { data: null, error: error instanceof Error ? error.message : "An unknown error occurred" };
   }
 } 

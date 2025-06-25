@@ -26,7 +26,8 @@ export function transformCampaignData(data: CampaignData): Campaign {
     siteId: data.site_id,
     userId: data.user_id,
     createdAt: data.created_at,
-    updatedAt: data.updated_at
+    updatedAt: data.updated_at,
+    metadata: data.metadata
   }
 }
 
@@ -67,6 +68,7 @@ export function transformSaleData(data: SaleData): Sale {
     title: data.title,
     productName: data.product_name || "",
     amount: data.amount,
+    amount_due: data.amount_due,
     status: data.status,
     leadId: data.lead_id,
     leadName: data.lead_name || null,

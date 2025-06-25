@@ -46,8 +46,7 @@ async function resolveAgentName(agentId: string): Promise<string> {
 }
 
 export default async function CommandDetailPage({ params }: { params: { id: string; commandId: string } }) {
-  const agentId = params.id
-  const commandId = params.commandId
+  const { id: agentId, commandId } = await params
   let commandData = null
   let agentName = ""
   

@@ -8,7 +8,7 @@ import { Label } from "@/app/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Input } from "@/app/components/ui/input"
-import { BarChart, Loader, MoreHorizontal, User, Users } from "@/app/components/ui/icons"
+import { BarChart, Loader, MoreHorizontal, User, Users, ExternalLink } from "@/app/components/ui/icons"
 import { getCampaignById } from "@/app/campaigns/actions/campaigns/read"
 import { createSubtask } from "@/app/campaigns/actions/subtasks/create"
 import { Revenue, Budget, Campaign } from "@/app/types"
@@ -25,6 +25,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { CampaignDetailTabs } from "./campaign-detail-tabs"
 import { CampaignRequirements } from "@/app/components/campaign-requirements"
 import { AddCampaignLeadDialog } from "@/app/components/add-campaign-lead-dialog"
+import { cn } from "@/lib/utils"
 
 // Constants for styling
 const priorityColor: Record<string, string> = {
@@ -419,63 +420,130 @@ export function CampaignSummary({
             {/* Outsource section */}
             {campaign.budget?.allocated && campaign.budget.allocated > 0 && (
               <div className="mt-8 space-y-6">
-                <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                    Outsource Instructions
-                  </h3>
-                  
-                  <div className="space-y-4 max-w-full">
-                    {/* Budget highlighted section */}
-                    <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
-                      <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-2">
-                        <BarChart className="h-4 w-4" />
-                        Budget
-                      </Label>
-                      <div className="text-lg font-bold text-center py-1">
-                        {campaign.budget?.allocated ? `$${campaign.budget.allocated.toLocaleString()}` : "No budget specified"}
-                      </div>
+                {/* Outsourcing Status Display */}
+                {campaign.metadata?.payment_status?.outsourced && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-900/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ExternalLink className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wider">
+                        Campaign Outsourced
+                      </h3>
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Instructions for Outsourcing</Label>
-                      <div className="min-h-[150px] w-full resize-none text-sm bg-muted/20 p-3 rounded-md border">
-                        {campaign.outsourceInstructions || 
-                          "Implement this campaign according to the project specifications and timeline. Follow best practices for execution and reporting."}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Provider:</span>
+                        <span className="text-sm text-blue-600 dark:text-blue-400">
+                          {campaign.metadata.payment_status.outsource_provider || 'External Provider'}
+                        </span>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Timeline</Label>
-                      <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
-                        Please complete this campaign within the specified timeframe.
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Payment Status:</span>
+                        <Badge className={cn(
+                          "text-xs",
+                          campaign.metadata.payment_status.status === 'paid'
+                            ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900"
+                            : campaign.metadata.payment_status.status === 'failed'
+                            ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900"
+                            : "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-900"
+                        )}>
+                          {campaign.metadata.payment_status.status === 'paid' ? 'Paid' : 
+                           campaign.metadata.payment_status.status === 'failed' ? 'Failed' : 'Pending'}
+                        </Badge>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Deliverables</Label>
-                      <div className="text-muted-foreground text-sm bg-muted/40 p-2 rounded">
-                        <ul className="list-disc pl-4 space-y-1 break-words">
-                          <li>Complete implementation of the campaign strategy</li>
-                          <li>Performance metrics and analytics</li>
-                          <li>Final report with insights and recommendations</li>
-                        </ul>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Communication</Label>
-                      <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
-                        Please provide regular updates on progress and any questions via the project management system.
-                      </div>
+                      {campaign.metadata.payment_status.amount_paid && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Amount Paid:</span>
+                          <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                            ${campaign.metadata.payment_status.amount_paid.toLocaleString()} {campaign.metadata.payment_status.currency || 'USD'}
+                          </span>
+                        </div>
+                      )}
+                      {campaign.metadata.payment_status.payment_date && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Payment Date:</span>
+                          <span className="text-sm text-blue-600 dark:text-blue-400">
+                            {new Date(campaign.metadata.payment_status.payment_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-                
-                <div>
-                  <Button className="w-full" onClick={() => router.push(`/outsource/checkout?campaignId=${campaign.id}`)}>
-                    Outsource Campaign
-                  </Button>
-                </div>
+                )}
+
+                {/* Only show outsource instructions and button if not already outsourced */}
+                {!campaign.metadata?.payment_status?.outsourced && (
+                  <>
+                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                        Outsource Instructions
+                      </h3>
+                      
+                      <div className="space-y-4 max-w-full">
+                        {/* Budget highlighted section */}
+                        <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
+                          <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-2">
+                            <BarChart className="h-4 w-4" />
+                            Budget
+                          </Label>
+                          <div className="text-lg font-bold text-center py-1">
+                            {campaign.budget?.allocated ? `$${campaign.budget.allocated.toLocaleString()}` : "No budget specified"}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Instructions for Outsourcing</Label>
+                          <div className="min-h-[150px] w-full resize-none text-sm bg-muted/20 p-3 rounded-md border">
+                            {campaign.outsourceInstructions || 
+                              "Implement this campaign according to the project specifications and timeline. Follow best practices for execution and reporting."}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Timeline</Label>
+                          <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
+                            Please complete this campaign within the specified timeframe.
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Deliverables</Label>
+                          <div className="text-muted-foreground text-sm bg-muted/40 p-2 rounded">
+                            <ul className="list-disc pl-4 space-y-1 break-words">
+                              <li>Complete implementation of the campaign strategy</li>
+                              <li>Performance metrics and analytics</li>
+                              <li>Final report with insights and recommendations</li>
+                            </ul>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Communication</Label>
+                          <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
+                            Please provide regular updates on progress and any questions via the project management system.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Button className="w-full" onClick={() => router.push(`/outsource/checkout?campaignId=${campaign.id}`)}>
+                        Outsource Campaign
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {/* Show status message if already outsourced and paid */}
+                {campaign.metadata?.payment_status?.outsourced && campaign.metadata?.payment_status?.status === 'paid' && (
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-900/30">
+                    <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm font-medium">
+                        This campaign has already been outsourced and payment has been completed.
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

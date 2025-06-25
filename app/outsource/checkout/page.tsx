@@ -22,6 +22,9 @@ import {
 } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Badge } from "@/app/components/ui/badge"
+import { useSite } from "@/app/context/SiteContext"
+import { billingService, BillingData } from "@/app/services/billing-service"
+import { useAuth } from "@/app/hooks/use-auth"
 
 // Define requirement types similar to the ones used in requirements page
 type RequirementStatusType = 
@@ -279,10 +282,10 @@ function CheckoutContent() {
   const searchParams = useSearchParams()
   const taskId = searchParams.get('taskId')
   const campaignId = searchParams.get('campaignId')
+  const { currentSite, updateBilling } = useSite()
+  const { user } = useAuth()
   
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [saveInfo, setSaveInfo] = useState(false)
-  const [useSavedPayment, setUseSavedPayment] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [taskData, setTaskData] = useState<TaskDetails | null>(null)
   const [campaignData, setCampaignData] = useState<any | null>(null)
@@ -461,32 +464,83 @@ function CheckoutContent() {
         setIsLoading(false)
       }
     }
+
+
     
-    // Determine which data to fetch
-    if (campaignId) {
-      fetchCampaignData()
-    } else if (taskId) {
-      fetchTaskData()
-    } else {
-      setTaskData(fallbackTask)
-      setIsLoading(false)
+    // Load data 
+    const loadData = async () => {
+      if (campaignId) {
+        await fetchCampaignData()
+      } else if (taskId) {
+        await fetchTaskData()
+      } else {
+        // If no task or campaign ID, use fallback
+        setTaskData(fallbackTask)
+        setIsLoading(false)
+      }
     }
-  }, [taskId, campaignId])
+    
+    loadData()
+  }, [taskId, campaignId, currentSite, user])
   
   const handleSubmit = async () => {
+    if (!currentSite || !taskData || !user) {
+      toast.error("Missing required information")
+      return
+    }
+
+    // Debug: Log environment variables
+    console.log('NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL)
+    console.log('Current location:', window.location.origin)
+
     setIsSubmitting(true)
     try {
-      // Simulating API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      toast.success("Payment successful! Your project has been confirmed")
-      // Redirect to confirmation page
-      router.push('/outsource/confirmation')
-    } catch (error) {
-      toast.error("Payment failed. Please try again.")
-    } finally {
+      // Create Stripe Checkout session
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER_URL}/api/integrations/stripe/checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskId,
+          campaignId,
+          amount: taskData.budget || 199.00,
+          currency: 'usd',
+          productName: taskData.title,
+          productDescription: taskData.description,
+          productImages: [], // Could add project images here
+          siteId: currentSite.id,
+          userEmail: user.email,
+          // URLs de retorno para el checkout
+          successUrl: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/outsource/confirmation`,
+          cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/outsource/checkout?${taskId ? `taskId=${taskId}` : `campaignId=${campaignId}`}&canceled=true`,
+        }),
+      })
+
+      const { sessionId, url, error } = await response.json()
+
+      if (error) {
+        throw new Error(error)
+      }
+
+      // Redirect to Stripe Checkout
+      if (url) {
+        window.location.href = url
+      } else {
+        throw new Error('No checkout URL received')
+      }
+
+    } catch (error: any) {
+      console.error('Checkout error:', error)
+      toast.error(error.message || "Failed to start checkout. Please try again.")
       setIsSubmitting(false)
     }
   }
+
+
+
+  // Determine if we're dealing with a campaign or a task
+  const isCampaign = !!campaignId;
 
   if (isLoading) {
     return <CheckoutSkeleton />
@@ -506,9 +560,6 @@ function CheckoutContent() {
     )
   }
 
-  // Determine if we're dealing with a campaign or a task
-  const isCampaign = !!campaignId;
-  
   // If we have task data (either from API or fallback), render the checkout page
   return (
     <div className="min-h-screen bg-gradient-to-b from-background/40 to-background">
@@ -665,173 +716,109 @@ function CheckoutContent() {
               </div>
             </div>
             
-            <div className="space-y-3 border-t border-b py-4 mb-6">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>${taskData?.budget?.toFixed(2) || "199.00"}</span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Tax</span>
-                  <button className="rounded-full h-4 w-4 inline-flex items-center justify-center bg-muted text-xs">?</button>
-                </div>
-                <span>Enter address to calculate</span>
-              </div>
-              
-              <div className="flex justify-between font-medium pt-2">
-                <span>Total due</span>
-                <span>${taskData?.budget?.toFixed(2) || "199.00"}</span>
-              </div>
-            </div>
+
             
-            <div className="text-sm text-muted-foreground flex items-center gap-2">
-              <span>Powered by</span>
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Stripe_Logo%2C_revised_2016.svg/1200px-Stripe_Logo%2C_revised_2016.svg.png"
-                alt="Stripe" 
-                className="h-6 w-auto" 
-              />
-              <span className="mx-2">|</span>
-              <a href="#" className="text-muted-foreground hover:text-foreground">Terms</a>
-              <span className="mx-2">|</span>
-              <a href="#" className="text-muted-foreground hover:text-foreground">Privacy</a>
-            </div>
+
           </div>
           
-          {/* Right Column - Payment Form */}
+          {/* Right Column - Secure Checkout */}
           <div>
-            <h2 className="text-2xl font-medium mb-6">Pay with card</h2>
+            <h2 className="text-2xl font-medium mb-6">Secure Checkout</h2>
             
-            {/* Saved Payment Option */}
-            <div className="mb-6">
-              <div className="p-4 border rounded-lg mb-4 cursor-pointer hover:border-primary transition-colors flex items-center gap-4" onClick={() => setUseSavedPayment(!useSavedPayment)}>
-                <div className="h-5 w-5 rounded-full border flex items-center justify-center">
-                  {useSavedPayment && <div className="h-3 w-3 bg-primary rounded-full"></div>}
-                </div>
-                <div className="flex items-center">
-                  <CreditCardIcon className="h-6 w-6 text-muted-foreground mr-2" />
-                  <div>
-                    <div className="font-medium">Use saved payment method</div>
-                    <div className="text-sm text-muted-foreground">Visa ending in 4242</div>
-                  </div>
-                </div>
-              </div>
+            {/* Stripe Checkout Benefits */}
+            <div className="bg-muted/30 rounded-lg p-6 mb-6 border border-border/30">
+              <h3 className="font-medium mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                Powered by Stripe
+              </h3>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Industry-leading security and encryption</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Multiple payment methods supported</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>3D Secure authentication included</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>PCI DSS compliant payment processing</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Mobile and desktop optimized</span>
+                </li>
+              </ul>
             </div>
-            
-            {!useSavedPayment && (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email"
-                    type="email"
-                    placeholder="email@example.com"
-                    className="h-12"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="cardDetails">Debit/Credit Card information</Label>
-                  <div className="relative">
-                    <Input 
-                      id="cardDetails"
-                      placeholder="1234 1234 1234 1234"
-                      className="h-12 pl-10"
-                    />
-                    <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex space-x-1">
-                      <div className="w-8 h-5 bg-blue-600 rounded"></div>
-                      <div className="w-8 h-5 rounded bg-gradient-to-r from-red-500 to-yellow-500"></div>
-                      <div className="w-8 h-5 rounded bg-blue-500"></div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input 
-                      placeholder="MM / YY"
-                      className="h-12"
-                    />
-                    <div className="relative">
-                      <Input 
-                        placeholder="CVC"
-                        className="h-12"
-                      />
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground rounded-full border flex items-center justify-center text-xs">?</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="nameOnCard">Name on card</Label>
-                  <Input 
-                    id="nameOnCard"
-                    placeholder="John Smith"
-                    className="h-12"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="country">Billing address</Label>
-                  <div className="relative">
-                    <Button 
-                      variant="outline" 
-                      role="combobox" 
-                      className="w-full justify-between h-12 font-normal"
-                    >
-                      United States
-                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </div>
-                  <Input 
-                    placeholder="Address"
-                    className="h-12"
-                  />
-                  <div className="text-sm">
-                    <button className="text-primary">Enter address manually</button>
-                  </div>
-                </div>
-                
-                <div className="flex items-start space-x-3">
-                  <Checkbox 
-                    id="saveInfo" 
-                    checked={saveInfo}
-                    onCheckedChange={(checked) => setSaveInfo(Boolean(checked))}
-                    className="mt-1 h-5 w-5"
-                  />
-                  <div>
-                    <Label 
-                      htmlFor="saveInfo" 
-                      className="font-medium"
-                    >
-                      Save my info for secure 1-click checkout
-                    </Label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Pay faster on Uncodie and thousands of sites.
-                    </p>
-                  </div>
+
+            {/* User Information */}
+            {user && (
+              <div className="bg-muted/20 rounded-lg p-4 mb-6 border border-border/20">
+                <h4 className="font-medium mb-2">Account Information</h4>
+                <div className="text-sm text-muted-foreground">
+                  <p>Logged in as: {user.email}</p>
+                  <p>You'll receive updates about your project at this email address.</p>
                 </div>
               </div>
             )}
+
+            {/* Payment Summary */}
+            <div className="bg-primary/5 rounded-lg p-4 mb-6 border border-primary/20">
+              <h4 className="font-medium mb-3 text-primary">What happens next?</h4>
+              <ol className="space-y-2 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">1</span>
+                  <span>Secure payment processing via Stripe</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">2</span>
+                  <span>Project assigned to our expert team</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">3</span>
+                  <span>Regular updates via email and dashboard</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">4</span>
+                  <span>Delivery in {taskData?.estimatedDelivery || (isCampaign ? "2-3 weeks" : "3-5 days")}</span>
+                </li>
+              </ol>
+            </div>
               
             <Button 
-              className="w-full h-12 text-base mt-6"
+              className="w-full h-12 text-base"
               onClick={handleSubmit}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
                   <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
-                  Processing...
+                  Redirecting to Checkout...
                 </>
               ) : (
-                <>Pay</>
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Continue to Secure Checkout
+                </>
               )}
             </Button>
             
             <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground mt-4">
-              <Lock className="h-4 w-4" />
-              Secure checkout | SSL encrypted
+              <Shield className="h-4 w-4" />
+              256-bit SSL encryption | PCI DSS compliant
+            </div>
+            
+            <div className="flex justify-center items-center gap-4 mt-4">
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Stripe_Logo%2C_revised_2016.svg/1200px-Stripe_Logo%2C_revised_2016.svg.png"
+                alt="Stripe" 
+                className="h-6 w-auto opacity-60" 
+              />
+              <span className="text-xs text-muted-foreground">Trusted by millions worldwide</span>
             </div>
           </div>
         </div>

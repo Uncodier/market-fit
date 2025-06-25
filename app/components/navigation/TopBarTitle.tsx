@@ -56,6 +56,11 @@ export function TopBarTitle({
     const pathSegments = pathname.split('/').filter(Boolean)
     if (pathSegments.length === 0) return "Dashboard"
     
+    // Handle specific case for checkout page
+    if (pathSegments[0] === 'billing' && pathSegments[1] === 'checkout') {
+      return "Checkout"
+    }
+    
     const firstSegment = pathSegments[0]
     const routeTitles: Record<string, string> = {
       'dashboard': 'Dashboard',
@@ -71,7 +76,8 @@ export function TopBarTitle({
       'help': 'Help',
       'chat': 'Chat',
       'campaigns': 'Campaigns',
-      'control-center': 'Control Center'
+      'control-center': 'Control Center',
+      'billing': 'Billing'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
@@ -181,7 +187,8 @@ export function TopBarTitle({
       'help': 'Help',
       'chat': 'Chat',
       'campaigns': 'Campaigns',
-      'control-center': 'Control Center'
+      'control-center': 'Control Center',
+      'billing': 'Billing'
     };
     
     // Manejar casos especiales como chat con parámetros de consulta

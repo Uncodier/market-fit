@@ -95,6 +95,7 @@ export interface SiteSettings {
       enabled: boolean
       email: string
       password: string
+      aliases?: string
       incomingServer?: string
       incomingPort?: string
       outgoingServer?: string

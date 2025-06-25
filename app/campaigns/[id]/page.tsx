@@ -420,6 +420,7 @@ export default function TaskDetailPage() {
           
           if (response && response.data) {
             console.log("Campaign data:", JSON.stringify(response.data));
+            console.log("Campaign metadata:", response.data.metadata); // Debug log for metadata
             setCampaign(response.data);
             
             // Load campaign leads

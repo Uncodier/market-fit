@@ -11,7 +11,7 @@ export async function getCampaigns(siteId: string) {
 
     const { data, error } = await supabase
       .from("campaigns")
-      .select("*")
+      .select("*, metadata")
       .eq("site_id", siteId)
       .order("created_at", { ascending: false })
 
@@ -68,7 +68,7 @@ export async function getCampaignById(id: string) {
 
     const { data, error } = await supabase
       .from("campaigns")
-      .select("*")
+      .select("*, metadata")
       .eq("id", id)
       .single()
 

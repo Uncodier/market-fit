@@ -244,15 +244,77 @@ class BillingService {
   }
 
   /**
-   * Purchase additional credits
+   * Create Stripe Checkout session for credits
    */
-  async purchaseCredits(siteId: string, amount: number): Promise<{ success: boolean; error?: string }> {
+  async createCreditsCheckoutSession(
+    siteId: string, 
+    credits: number, 
+    userEmail: string
+  ): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
-      // Implementation would go here
-      // This would typically create a checkout session with Stripe
-      return { success: true }
+      const response = await fetch('/api/stripe/checkout/credits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          credits,
+          amount: credits === 20 ? 20 : credits === 52 ? 49.25 : 500,
+          siteId,
+          userEmail,
+          successUrl: `${window.location.origin}/billing/success?credits=${credits}`,
+          cancelUrl: `${window.location.origin}/checkout`,
+        }),
+      })
+
+      const { url, error } = await response.json()
+
+      if (error) {
+        return { success: false, error }
+      }
+
+      return { success: true, url }
     } catch (error) {
-      console.error('Error purchasing credits:', error)
+      console.error('Error creating checkout session:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
+    }
+  }
+
+  /**
+   * Create Stripe Checkout session for subscription
+   */
+  async createSubscriptionCheckoutSession(
+    siteId: string,
+    plan: 'startup' | 'enterprise',
+    userEmail: string
+  ): Promise<{ success: boolean; url?: string; error?: string }> {
+    try {
+      const response = await fetch('/api/stripe/checkout/subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          plan,
+          siteId,
+          userEmail,
+          successUrl: `${window.location.origin}/billing/success?plan=${plan}`,
+          cancelUrl: `${window.location.origin}/checkout`,
+        }),
+      })
+
+      const { url, error } = await response.json()
+
+      if (error) {
+        return { success: false, error }
+      }
+
+      return { success: true, url }
+    } catch (error) {
+      console.error('Error creating subscription checkout:', error)
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error occurred'

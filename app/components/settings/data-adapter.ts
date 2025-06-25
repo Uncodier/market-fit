@@ -208,6 +208,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         enabled: site.settings.channels.email?.enabled || false,
         email: site.settings.channels.email?.email || "",
         password: emailPassword,
+        aliases: site.settings.channels.email?.aliases || "",
         incomingServer: site.settings.channels.email?.incomingServer || "",
         incomingPort: site.settings.channels.email?.incomingPort || "",
         outgoingServer: site.settings.channels.email?.outgoingServer || "",
@@ -219,6 +220,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         setupType: site.settings.channels.whatsapp?.setupType,
         country: site.settings.channels.whatsapp?.country,
         region: site.settings.channels.whatsapp?.region,
+        account_sid: site.settings.channels.whatsapp?.account_sid,
         existingNumber: site.settings.channels.whatsapp?.existingNumber,
         setupRequested: site.settings.channels.whatsapp?.setupRequested || false,
         status: site.settings.channels.whatsapp?.status || "not_configured"
@@ -228,6 +230,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         enabled: false,
         email: "",
         password: "",
+        aliases: "",
         incomingServer: "",
         incomingPort: "",
         outgoingServer: "",
@@ -239,6 +242,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         setupType: undefined,
         country: undefined,
         region: undefined,
+        account_sid: undefined,
         existingNumber: undefined,
         setupRequested: false,
         status: "not_configured" as const

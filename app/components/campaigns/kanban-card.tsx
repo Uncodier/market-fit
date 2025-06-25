@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { Clock, ChevronDown, ChevronUp, ClipboardList } from "@/app/components/ui/icons"
+import { Clock, ChevronDown, ChevronUp, ClipboardList, ExternalLink } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { FinancialStats } from "./financial-stats"
@@ -54,6 +54,21 @@ interface KanbanCardProps {
     total?: number
     currency?: string
   }
+  metadata?: {
+    payment_status?: {
+      status: 'pending' | 'paid' | 'failed'
+      amount_paid?: number
+      amount_due?: number
+      currency?: string
+      payment_method?: string
+      stripe_payment_intent_id?: string
+      payment_date?: string
+      invoice_number?: string
+      outsourced?: boolean
+      outsource_provider?: string
+      outsource_contact?: string
+    }
+  }
   onCardClick?: (id: string) => void
 }
 
@@ -71,6 +86,7 @@ export function KanbanCard({
   revenue,
   budget,
   costs,
+  metadata,
   onCardClick
 }: KanbanCardProps) {
   const [expanded, setExpanded] = useState(false)
@@ -140,6 +156,11 @@ export function KanbanCard({
     revenue || budget || costs
   )
   
+  // Check if campaign is outsourced
+  const isOutsourced = metadata?.payment_status?.outsourced || false
+  const outsourcingStatus = metadata?.payment_status?.status || 'pending'
+  const outsourceProvider = metadata?.payment_status?.outsource_provider || 'External Provider'
+  
   // Debug: Log requirements to see if descriptions are present
   React.useEffect(() => {
     if (hasRequirements && expanded) {
@@ -193,7 +214,7 @@ export function KanbanCard({
             {priority}
           </Badge>
         </CardTitle>
-        {(dueDate || status) && (
+        {(dueDate || status || metadata?.payment_status) && (
           <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
             {dueDate && (
               <div className="flex items-center gap-1.5">
@@ -219,6 +240,35 @@ export function KanbanCard({
                 </span>
               </div>
             )}
+            {metadata?.payment_status && (
+              <div className="flex items-center gap-1.5">
+                <div 
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    metadata.payment_status.status === 'paid'
+                      ? "bg-green-500 dark:bg-green-400"
+                      : metadata.payment_status.status === 'failed'
+                      ? "bg-red-500 dark:bg-red-400"
+                      : "bg-yellow-500 dark:bg-yellow-400"
+                  )}
+                />
+                <span 
+                  className={cn(
+                    "text-xs font-medium capitalize",
+                    metadata.payment_status.status === 'paid'
+                      ? "text-green-700 dark:text-green-300"
+                      : metadata.payment_status.status === 'failed'
+                      ? "text-red-700 dark:text-red-300"
+                      : "text-yellow-700 dark:text-yellow-300"
+                  )}
+                >
+                  {metadata.payment_status.outsourced && metadata.payment_status.status === 'paid' 
+                    ? `Paid - ${metadata.payment_status.outsource_provider || 'Outsourced'}`
+                    : metadata.payment_status.status === 'paid' ? 'Paid' : 
+                      metadata.payment_status.status === 'failed' ? 'Payment Failed' : 'Payment Pending'}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </CardHeader>
@@ -233,7 +283,15 @@ export function KanbanCard({
           title={expanded ? "Click to hide details" : "Click to show details"}
         >
           <div className="flex gap-3">
-            {hasRequirements && (
+            {isOutsourced ? (
+              <div className="flex items-center">
+                <ExternalLink className="h-3.5 w-3.5 text-blue-600 mr-1.5" />
+                <span className="text-xs font-medium text-blue-600 mr-1">Outsourced</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[80px]">
+                  {outsourcingStatus === 'paid' ? 'Paid' : outsourcingStatus}
+                </span>
+              </div>
+            ) : hasRequirements && (
               <div className="flex items-center">
                 <ClipboardList className="h-3.5 w-3.5 text-primary mr-1.5" />
                 <span className="text-xs font-medium text-primary mr-1">{pendingRequirements.length}</span>
@@ -242,7 +300,7 @@ export function KanbanCard({
             )}
           </div>
           
-          {(hasRequirements || hasFinancialData) && (
+          {(isOutsourced || hasRequirements || hasFinancialData) && (
             <div className="flex items-center text-muted-foreground">
               {expanded ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />

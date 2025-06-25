@@ -7,6 +7,7 @@ import ClientWrapper from './client-wrapper'
 import Script from 'next/script'
 import Providers from "./providers/Providers"
 import { shouldUseLayout } from './config/routes'
+import LoggerInit from './components/LoggerInit'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -82,6 +83,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <Providers>
+          <LoggerInit />
           <main className="min-h-screen bg-background">
             <ClientWrapper>
               {children}

@@ -207,6 +207,21 @@ interface Requirement {
   segments: string[]
   segmentNames?: string[]
   outsourceInstructions?: string
+  metadata?: {
+    payment_status?: {
+      status: 'pending' | 'paid' | 'failed'
+      amount_paid?: number
+      amount_due?: number
+      currency?: string
+      payment_method?: string
+      stripe_payment_intent_id?: string
+      payment_date?: string
+      invoice_number?: string
+      outsourced?: boolean
+      outsource_provider?: string
+      outsource_contact?: string
+    }
+  }
 }
 
 // Loading state skeleton component
@@ -503,7 +518,8 @@ function RequirementDetailContent() {
         .select(`
           *,
           requirement_segments(segment_id),
-          campaign_requirements(campaign_id)
+          campaign_requirements(campaign_id),
+          metadata
         `)
         .eq("id", params.id)
         .single()
@@ -587,8 +603,13 @@ function RequirementDetailContent() {
         campaigns: campaignIds,
         campaignNames: campaignNames,
         campaign_id: campaign_id, // Usar el primer campaign_id (si existe)
-        outsourceInstructions: "" // Inicializar vacío, ya que no existe en la tabla requirements
+        outsourceInstructions: "", // Inicializar vacío, ya que no existe en la tabla requirements
+        metadata: requirement.metadata || {}
       }
+      
+      // Debug log for metadata
+      console.log("Requirement metadata:", requirement.metadata);
+      console.log("Formatted requirement:", formattedRequirement);
       
       // Process segments for the dropdown
       const formattedSegments = segments?.map((segment: {
@@ -1552,73 +1573,143 @@ function RequirementDetailContent() {
                 <div className="flex-1 overflow-hidden">
                   <ScrollArea className="h-full">
                     <div className="p-5 space-y-6">
-                      {/* Outsource Instructions */}
-                      <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                        <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                          Outsource Instructions
-                        </h3>
-                        
-                        <div className="space-y-4 max-w-full">
-                          {/* Budget highlighted section */}
-                          <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
-                            <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-2">
-                              <BarChart className="h-4 w-4" />
-                              Budget
-                            </Label>
-                            <div className="text-lg font-bold text-center py-1">
-                              {editForm.budget ? `$${editForm.budget.toLocaleString()}` : "No budget specified"}
-                            </div>
+                      {/* Outsourcing Status Display */}
+                      {requirement?.metadata?.payment_status?.outsourced && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-900/30 mb-6">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wider">
+                              Task Outsourced
+                            </h3>
                           </div>
-                          
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Instructions for Outsourcing</Label>
-                            <Textarea 
-                              placeholder="Provide detailed instructions for outsourcing this requirement..." 
-                              className="min-h-[150px] w-full resize-none text-sm"
-                              value={editForm.outsourceInstructions}
-                              onChange={(e) => setEditForm({...editForm, outsourceInstructions: e.target.value})}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Note: This information is for your reference only and is not saved to the database.
-                            </p>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Timeline</Label>
-                            <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
-                              Please complete this task within the next 2 weeks.
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Provider:</span>
+                              <span className="text-sm text-blue-600 dark:text-blue-400">
+                                {requirement.metadata.payment_status.outsource_provider || 'External Provider'}
+                              </span>
                             </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Deliverables</Label>
-                            <div className="text-muted-foreground text-sm bg-muted/40 p-2 rounded">
-                              <ul className="list-disc pl-4 space-y-1 break-words">
-                                <li>Complete implementation of the requirement</li>
-                                <li>Documentation of the changes made</li>
-                                <li>Testing report</li>
-                              </ul>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Payment Status:</span>
+                              <Badge className={cn(
+                                "text-xs",
+                                requirement.metadata.payment_status.status === 'paid'
+                                  ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900"
+                                  : requirement.metadata.payment_status.status === 'failed'
+                                  ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900"
+                                  : "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-900"
+                              )}>
+                                {requirement.metadata.payment_status.status === 'paid' ? 'Paid' : 
+                                 requirement.metadata.payment_status.status === 'failed' ? 'Failed' : 'Pending'}
+                              </Badge>
                             </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Communication</Label>
-                            <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
-                              Please provide regular updates on progress and any questions via the project management system.
-                            </div>
+                            {requirement.metadata.payment_status.amount_paid && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Amount Paid:</span>
+                                <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                                  ${requirement.metadata.payment_status.amount_paid.toLocaleString()} {requirement.metadata.payment_status.currency || 'USD'}
+                                </span>
+                              </div>
+                            )}
+                            {requirement.metadata.payment_status.payment_date && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Payment Date:</span>
+                                <span className="text-sm text-blue-600 dark:text-blue-400">
+                                  {new Date(requirement.metadata.payment_status.payment_date).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* Only show outsource instructions and button if not already outsourced */}
+                      {!requirement?.metadata?.payment_status?.outsourced && (
+                        <>
+                          {/* Outsource Instructions */}
+                          <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                            <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                              Outsource Instructions
+                            </h3>
+                            
+                            <div className="space-y-4 max-w-full">
+                              {/* Budget highlighted section */}
+                              <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
+                                <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-2">
+                                  <BarChart className="h-4 w-4" />
+                                  Budget
+                                </Label>
+                                <div className="text-lg font-bold text-center py-1">
+                                  {editForm.budget ? `$${editForm.budget.toLocaleString()}` : "No budget specified"}
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Instructions for Outsourcing</Label>
+                                <Textarea 
+                                  placeholder="Provide detailed instructions for outsourcing this requirement..." 
+                                  className="min-h-[150px] w-full resize-none text-sm"
+                                  value={editForm.outsourceInstructions}
+                                  onChange={(e) => setEditForm({...editForm, outsourceInstructions: e.target.value})}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Note: This information is for your reference only and is not saved to the database.
+                                </p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Timeline</Label>
+                                <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
+                                  Please complete this task within the next 2 weeks.
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Deliverables</Label>
+                                <div className="text-muted-foreground text-sm bg-muted/40 p-2 rounded">
+                                  <ul className="list-disc pl-4 space-y-1 break-words">
+                                    <li>Complete implementation of the requirement</li>
+                                    <li>Documentation of the changes made</li>
+                                    <li>Testing report</li>
+                                  </ul>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Communication</Label>
+                                <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
+                                  Please provide regular updates on progress and any questions via the project management system.
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Show status message if already outsourced and paid */}
+                      {requirement?.metadata?.payment_status?.outsourced && requirement.metadata?.payment_status?.status === 'paid' && (
+                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-900/30">
+                          <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm font-medium">
+                              This task has already been outsourced and payment has been completed.
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </ScrollArea>
                 </div>
                 
-                <div className="border-t p-4 bg-background mt-auto">
-                  <Button className="w-full" onClick={() => router.push(`/outsource/checkout?taskId=${params.id}`)}>
-                    <Globe className="h-4 w-4 mr-2" />
-                    Outsource Task
-                  </Button>
-                </div>
+                {/* Only show outsource button if not already outsourced */}
+                {!requirement?.metadata?.payment_status?.outsourced && (
+                  <div className="border-t p-4 bg-background mt-auto">
+                    <Button className="w-full" onClick={() => router.push(`/outsource/checkout?taskId=${params.id}`)}>
+                      <Globe className="h-4 w-4 mr-2" />
+                      Outsource Task
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
               
               <TabsContent value="info" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">

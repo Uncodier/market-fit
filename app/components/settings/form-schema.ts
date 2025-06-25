@@ -10,6 +10,7 @@ const marketingChannelSchema = z.object({
 const emailChannelSchema = z.object({
   email: z.string().email("Must be a valid email").optional(),
   password: z.string().optional(),
+  aliases: z.string().optional(),
   incomingServer: z.string().optional(),
   incomingPort: z.string().optional(),
   outgoingServer: z.string().optional(),
@@ -203,6 +204,7 @@ export const siteFormSchema = z.object({
       enabled: false,
       email: "",
       password: "",
+      aliases: "",
       incomingServer: "",
       incomingPort: "",
       outgoingServer: "",

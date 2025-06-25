@@ -188,6 +188,21 @@ export interface Campaign {
   segments?: string[];
   segmentObjects?: Array<{id: string, name: string}>;
   requirements?: string[];
+  metadata?: {
+    payment_status?: {
+      status: 'pending' | 'paid' | 'failed'
+      amount_paid?: number
+      amount_due?: number
+      currency?: string
+      payment_method?: string
+      stripe_payment_intent_id?: string
+      payment_date?: string
+      invoice_number?: string
+      outsourced?: boolean
+      outsource_provider?: string
+      outsource_contact?: string
+    }
+  };
 }
 
 // Database model types (for use with Supabase)
@@ -207,6 +222,7 @@ export interface CampaignData {
   user_id: string;
   created_at: string;
   updated_at: string;
+  metadata?: any;
 }
 
 export interface TransactionData {

@@ -13,6 +13,7 @@ import { Code, Copy, Check, Key, KeyRound, ShieldCheck, ExternalLink, ChevronDow
 import { Textarea } from "../ui/textarea"
 import { ColorInput } from "../ui/color-input"
 import { secureTokensService } from "../../services/secure-tokens-service"
+import { apiClient } from "../../services/api-client-service"
 import { toast } from "sonner"
 import { useSite } from "../../context/SiteContext"
 import { 
@@ -133,6 +134,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
   const [showTrackingCode, setShowTrackingCode] = useState(false)
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("Gmail")
+  const [isTestingConnection, setIsTestingConnection] = useState(false)
 
   // Get the email channel status from form (using getValues instead of watch)
   const emailStatus = form.getValues("channels.email.status") || "not_configured";
@@ -386,6 +388,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
         email: email,
         // La contraseña será reemplazada con un placeholder después de guardarla
         password: "STORED_SECURELY", // Placeholder temporal
+        aliases: form.getValues("channels.email.aliases") || "",
         incomingServer: form.getValues("channels.email.incomingServer"),
         incomingPort: form.getValues("channels.email.incomingPort"),
         outgoingServer: form.getValues("channels.email.outgoingServer"),
@@ -438,6 +441,11 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
         
         // Clear the password field in the form and replace with placeholder
         form.setValue("channels.email.password", "");
+        
+        // Automatically test connection after successful save
+        setTimeout(() => {
+          handleTestEmailConnection();
+        }, 1000); // Wait 1 second to ensure UI updates
       } else {
         // Revert status on error
         form.setValue("channels.email.status", "password_required");
@@ -477,6 +485,125 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       toast.error("An error occurred while removing email credentials");
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  const handleTestEmailConnection = async () => {
+    if (isTestingConnection) return;
+    
+    setIsTestingConnection(true);
+    
+    try {
+      const email = form.getValues("channels.email.email");
+      const password = form.getValues("channels.email.password");
+
+      if (!email) {
+        toast.error("Please enter email address before testing connection");
+        return;
+      }
+
+      // If we have saved credentials, use them for testing
+      if (hasEmailToken && !password) {
+        const emailConfig = {
+          email: email,
+          useSavedCredentials: true,
+          siteId: siteId,
+          incomingServer: form.getValues("channels.email.incomingServer"),
+          incomingPort: form.getValues("channels.email.incomingPort"),
+          outgoingServer: form.getValues("channels.email.outgoingServer"),
+          outgoingPort: form.getValues("channels.email.outgoingPort"),
+        };
+
+        const response = await apiClient.post('/api/agents/email/check', emailConfig);
+        
+        if (response.success) {
+          toast.success("Email connection test successful!");
+        } else {
+          const errorCode = response.error?.code;
+          let errorMessage = "Email connection test failed";
+          
+          switch (errorCode) {
+            case 'INVALID_REQUEST':
+              errorMessage = "Invalid email configuration. Please check your settings.";
+              break;
+            case 'EMAIL_CONFIG_NOT_FOUND':
+              errorMessage = "Email configuration not found. Please save your credentials first.";
+              break;
+            case 'EMAIL_FETCH_ERROR':
+              errorMessage = "Failed to connect to email server. Please verify your credentials and server settings.";
+              break;
+            case 'SYSTEM_ERROR':
+              errorMessage = "System error occurred. Please try again later.";
+              break;
+            default:
+              errorMessage = typeof response.error === 'string' 
+                ? response.error 
+                : response.error?.message 
+                ? String(response.error.message)
+                : "Email connection test failed";
+          }
+          
+          toast.error(errorMessage);
+        }
+        return;
+      }
+
+      // If no saved credentials, use form password
+      if (!password) {
+        toast.error("Please enter password or save credentials securely before testing connection");
+        return;
+      }
+
+      const emailConfig = {
+        email: email,
+        password: password,
+        incomingServer: form.getValues("channels.email.incomingServer"),
+        incomingPort: form.getValues("channels.email.incomingPort"),
+        outgoingServer: form.getValues("channels.email.outgoingServer"),
+        outgoingPort: form.getValues("channels.email.outgoingPort"),
+      };
+
+      const response = await apiClient.post('/api/agents/email/check', emailConfig);
+      
+      if (response.success) {
+        toast.success("Email connection test successful!");
+      } else {
+        const errorCode = response.error?.code;
+        let errorMessage = "Email connection test failed";
+        
+        switch (errorCode) {
+          case 'INVALID_REQUEST':
+            errorMessage = "Invalid email configuration. Please check your settings.";
+            break;
+          case 'EMAIL_CONFIG_NOT_FOUND':
+            errorMessage = "Email configuration not found. Please save your credentials first.";
+            break;
+          case 'EMAIL_FETCH_ERROR':
+            errorMessage = "Failed to connect to email server. Please verify your credentials and server settings.";
+            break;
+          case 'SYSTEM_ERROR':
+            errorMessage = "System error occurred. Please try again later.";
+            break;
+          default:
+            errorMessage = typeof response.error === 'string' 
+              ? response.error 
+              : response.error?.message 
+              ? String(response.error.message)
+              : "Email connection test failed";
+        }
+        
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error testing email connection:", error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === 'string' 
+        ? error 
+        : "Failed to test email connection";
+      toast.error(errorMessage);
+    } finally {
+      setIsTestingConnection(false);
     }
   };
 
@@ -854,6 +981,39 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                 )}
               />
               
+              <FormField
+                control={form.control}
+                name="channels.email.aliases"
+                render={({ field }) => {
+                  // Generate placeholder based on the current email
+                  const currentEmail = form.getValues("channels.email.email");
+                  let placeholder = "noreply@example.com, support@example.com, hello@example.com";
+                  
+                  if (currentEmail) {
+                    const domain = currentEmail.split('@')[1];
+                    if (domain) {
+                      placeholder = `noreply@${domain}, support@${domain}, hello@${domain}`;
+                    }
+                  }
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Respond Only Upcoming Messages from Aliases</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={placeholder}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        The system will only respond to incoming emails addressed to these aliases. Leave empty to respond to all emails received.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+              
               <FormItem>
                 <FormLabel>Email Provider</FormLabel>
                 <Select
@@ -1101,6 +1261,18 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             >
               Reset Advanced Settings
             </Button>
+            
+            {hasEmailToken && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleTestEmailConnection}
+                disabled={isTestingConnection}
+              >
+                <Globe className="w-4 h-4 mr-2" />
+                {isTestingConnection ? "Testing..." : "Test Connection"}
+              </Button>
+            )}
             
             {!hasEmailToken && (
               <Button

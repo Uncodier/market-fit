@@ -12,9 +12,10 @@ import * as z from "zod"
 import { Globe, PlusCircle, RotateCcw, Tag, User } from "../ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { useState } from "react"
-import { BillingData } from "@/app/services/billing-service"
+import { BillingData, billingService } from "@/app/services/billing-service"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/app/hooks/use-auth"
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "startup", "enterprise"]).default("commission"),
@@ -46,6 +47,7 @@ interface BillingFormProps {
 
 export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmitEnd }: BillingFormProps) {
   const { currentSite, updateBilling, refreshSites } = useSite()
+  const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [creditsToBuy, setCreditsToBuy] = useState<number | null>(null)
   const [isPurchasingCredits, setIsPurchasingCredits] = useState(false)
@@ -72,8 +74,8 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
   })
 
   const handleSubmit = async (values: BillingFormValues) => {
-    if (!currentSite) {
-      toast.error("No site selected")
+    if (!currentSite || !user) {
+      toast.error("No site selected or user not authenticated")
       return
     }
 
@@ -81,21 +83,33 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       if (onSubmitStart) onSubmitStart()
       setIsSubmitting(true)
       
-      // Format the expiry date if needed
-      let formattedExpiry = values.card_expiry
-      if (values.card_expiry && !values.card_expiry.includes('/')) {
-        // Convert MMYY to MM/YY
-        formattedExpiry = `${values.card_expiry.substring(0, 2)}/${values.card_expiry.substring(2)}`
+      // If changing to a paid plan, redirect to Stripe Checkout
+      if (values.plan === 'startup' || values.plan === 'enterprise') {
+        const result = await billingService.createSubscriptionCheckoutSession(
+          currentSite.id,
+          values.plan,
+          user.email!
+        )
+        
+        if (result.success && result.url) {
+          window.location.href = result.url
+          return
+        } else {
+          toast.error(result.error || "Failed to create checkout session")
+          return
+        }
       }
       
+      // For commission plan (free), just update the billing info
       const billingData: BillingData = {
         ...values,
-        card_expiry: formattedExpiry
+        plan: 'commission'
       }
       
       const result = await updateBilling(currentSite.id, billingData)
       
       if (result.success) {
+        toast.success("Plan updated successfully")
         if (onSuccess) {
           onSuccess()
         }
@@ -213,14 +227,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 <Button 
                   type="button"
                   className="mt-4 w-full"
-                  disabled={isPurchasingCredits}
-                  onClick={() => handlePurchaseCredits(creditsToBuy)}
+                  onClick={() => window.location.href = `/checkout?credits=${creditsToBuy}`}
                 >
                   <PlusCircle className="h-4 w-4 mr-2" />
-                  {isPurchasingCredits 
-                    ? `Processing payment...` 
-                    : `Purchase ${creditsToBuy} Credits for ${creditsToBuy === 20 ? '$20' : creditsToBuy === 52 ? '$49.25' : '$500'}`
-                  }
+                  Purchase {creditsToBuy} Credits
                 </Button>
               )}
             </CardContent>
@@ -313,191 +323,37 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
             </CardContent>
           </Card>
           
+          {/* Payment Method Info Card - Only for paid plans */}
+          {form.watch("plan") !== "commission" && (
           <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Payment Method</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
-              <FormField
-                control={form.control}
-                name="card_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Cardholder Name</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          className="pl-12 h-12 text-base" 
-                          placeholder="John Doe"
-                          {...field} 
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-xs mt-2" />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="card_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Card Number</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          className="pl-12 h-12 text-base" 
-                          placeholder={currentSite?.billing?.masked_card_number || "•••• •••• •••• ••••"}
-                          {...field} 
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-xs mt-2" />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="card_expiry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">Expiration Date</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            className="pl-12 h-12 text-base" 
-                            placeholder="MM/YY"
-                            {...field} 
-                          />
+              <CardContent className="space-y-4 px-8 pb-8">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-900/30">
+                  <h4 className="font-medium mb-2 text-blue-700 dark:text-blue-400">Secure Payment via Stripe</h4>
+                  <p className="text-sm text-blue-600 dark:text-blue-300 mb-3">
+                    Payment details will be collected securely through Stripe Checkout when you save your plan.
+                  </p>
+                  <ul className="text-sm space-y-1 text-blue-600 dark:text-blue-300">
+                    <li>• Industry-leading security and encryption</li>
+                    <li>• Support for multiple payment methods</li>
+                    <li>• PCI DSS compliant payment processing</li>
+                    <li>• 3D Secure authentication included</li>
+                  </ul>
                         </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
                 
-                <FormField
-                  control={form.control}
-                  name="card_cvc"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">CVC</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            className="pl-12 h-12 text-base" 
-                            placeholder="123"
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                {currentSite?.billing?.masked_card_number && (
+                  <div className="bg-muted/30 rounded-lg p-4 border border-border/30">
+                    <h4 className="font-medium mb-2">Current Payment Method</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Card ending in {currentSite.billing.masked_card_number.slice(-4)}
+                    </p>
+                      </div>
+                )}
             </CardContent>
           </Card>
-          
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Card Address</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
-              <FormField
-                control={form.control}
-                name="card_address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Street Address</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          className="pl-12 h-12 text-base" 
-                          placeholder="123 Main St"
-                          {...field} 
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-xs mt-2" />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="card_city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">City</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            className="pl-12 h-12 text-base" 
-                            placeholder="New York"
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="card_postal_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">Postal Code</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            className="pl-12 h-12 text-base" 
-                            placeholder="10001"
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="card_country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">Country</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            className="pl-12 h-12 text-base" 
-                            placeholder="United States"
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          )}
 
           <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">

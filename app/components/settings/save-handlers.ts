@@ -206,6 +206,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           enabled: false,
           email: "",
           password: "",
+          aliases: "",
           incomingServer: "",
           incomingPort: "",
           outgoingServer: "",
@@ -217,6 +218,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           setupType: undefined,
           country: undefined,
           region: undefined,
+          account_sid: undefined,
           existingNumber: undefined,
           setupRequested: false,
           status: "not_configured" as const
@@ -254,7 +256,9 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           data.channels.email.password = "";
           // Ensure we keep email settings structure in settings with ALL fields
           if (!settings.channels) settings.channels = { 
-            email: {} as any,
+            email: {
+              aliases: ""
+            } as any,
             whatsapp: {
               enabled: false,
               setupType: undefined,
@@ -270,6 +274,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
             enabled: data.channels.email.enabled || false,
             email: data.channels.email.email || "",
             password: "PASSWORD_PRESENT", // Indicate password is stored securely
+            aliases: data.channels.email.aliases || "",
             incomingServer: data.channels.email.incomingServer || "",
             incomingPort: data.channels.email.incomingPort || "",
             outgoingServer: data.channels.email.outgoingServer || "",
@@ -282,12 +287,15 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       } else if (data.channels?.email?.password === 'STORED_SECURELY' && data.channels.email.enabled) {
         // If using the stored password, make sure we keep ALL email configuration fields
         if (!settings.channels) settings.channels = { 
-          email: {} as any,
+          email: {
+            aliases: ""
+          } as any,
           whatsapp: {
             enabled: false,
             setupType: undefined,
             country: undefined,
             region: undefined,
+            account_sid: undefined,
             existingNumber: undefined,
             setupRequested: false,
             status: "not_configured" as const
@@ -297,6 +305,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           enabled: data.channels.email.enabled || false,
           email: data.channels.email.email || "",
           password: "PASSWORD_PRESENT", // Keep the indicator
+          aliases: data.channels.email.aliases || "",
           incomingServer: data.channels.email.incomingServer || "",
           incomingPort: data.channels.email.incomingPort || "",
           outgoingServer: data.channels.email.outgoingServer || "",

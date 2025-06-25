@@ -924,8 +924,47 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
           </div>
         )}
 
+        {/* Missing Account SID for Own Account - Allow editing just the SID */}
+        {isConfigurationSaved && localState.setupType === "use_own_account" && !localState.accountSid && (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-900">
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Account SID Required</p>
+                <p className="text-xs text-muted-foreground">
+                  Please add your Twilio Account SID to complete the configuration
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium text-foreground">Twilio Account SID</Label>
+              <div className="relative">
+                <Input
+                  placeholder="Enter your Twilio Account SID (e.g., ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)"
+                  value={localState.accountSid || ""}
+                  onChange={(e) => handleAccountSidChange(e.target.value)}
+                  type={showAccountSid ? "text" : "password"}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2"
+                  onClick={() => setShowAccountSid(!showAccountSid)}
+                >
+                  {showAccountSid ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your Twilio Account SID identifier (starts with AC)
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Configuration Active Status */}
-        {isConfigurationSaved && (
+        {isConfigurationSaved && !(localState.setupType === "use_own_account" && !localState.accountSid) && (
           <div className="space-y-4">
             <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -959,25 +998,6 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                 </div>
               )}
 
-              {localState.country && localState.setupType === "new_number" && (
-                <div>
-                  <Label className="text-sm font-medium text-foreground">Requested Location</Label>
-                  <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {TWILIO_COUNTRIES.find(c => c.code === localState.country)?.name}
-                      {localState.region && (
-                        <span className="text-muted-foreground"> - {
-                          getCitiesForCountry(localState.country).find(c => c.code === localState.region)?.name ||
-                          getRegionsForCountry(localState.country).find(r => r.code === localState.region)?.name ||
-                          localState.region
-                        }</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              )}
-
               {localState.accountSid && localState.setupType === "use_own_account" && (
                 <div>
                   <Label className="text-sm font-medium text-foreground">Twilio Account SID</Label>
@@ -999,6 +1019,25 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   <p className="text-sm text-muted-foreground mt-1">
                     Your configured Twilio Account SID
                   </p>
+                </div>
+              )}
+
+              {localState.country && localState.setupType === "new_number" && (
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Requested Location</Label>
+                  <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      {TWILIO_COUNTRIES.find(c => c.code === localState.country)?.name}
+                      {localState.region && (
+                        <span className="text-muted-foreground"> - {
+                          getCitiesForCountry(localState.country).find(c => c.code === localState.region)?.name ||
+                          getRegionsForCountry(localState.country).find(r => r.code === localState.region)?.name ||
+                          localState.region
+                        }</span>
+                      )}
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -1025,6 +1064,8 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                 localState.setupType === "new_number"
                   ? "We'll help you get a new WhatsApp & SMS number in your preferred city"
                   : "Connect your existing Twilio account for WhatsApp & SMS messaging"
+              ) : isConfigurationSaved && localState.setupType === "use_own_account" && !localState.accountSid ? (
+                "Please add your Twilio Account SID to complete the configuration"
               ) : isConfigurationSaved ? (
                 "WhatsApp Business is configured and ready"
               ) : isSetupPending ? (
@@ -1043,6 +1084,8 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   {isRequesting ? "Saving..." : localState.setupType === "new_number" ? "Request Setup" : "Save Configuration"}
                 </Button>
               )}
+
+
 
               {(isConfigurationSaved || isSetupPending) && (
                 <Button

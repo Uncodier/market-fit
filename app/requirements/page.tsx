@@ -66,6 +66,21 @@ interface Requirement {
   createdAt: string
   segments: string[]
   segmentNames?: string[]
+  metadata?: {
+    payment_status?: {
+      status: 'pending' | 'paid' | 'failed'
+      amount_paid?: number
+      amount_due?: number
+      currency?: string
+      payment_method?: string
+      stripe_payment_intent_id?: string
+      payment_date?: string
+      invoice_number?: string
+      outsourced?: boolean
+      outsource_provider?: string
+      outsource_contact?: string
+    }
+  }
 }
 
 // Define el tipo para los datos de requisitos en Supabase
@@ -82,6 +97,7 @@ interface RequirementData {
   created_at: string
   requirement_segments: Array<{ segment_id: string }> | null
   requirement_campaigns: Array<{ campaign_id: string }> | null
+  metadata?: any
 }
 
 // Define la interfaz para el segmento en Supabase
@@ -292,6 +308,14 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                 </Badge>
               </div>
             </div>
+            <div className="w-[120px] min-w-[120px] flex-shrink-0">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Campaign</p>
+              <p className="text-sm font-medium truncate text-center">
+                {requirement.campaignNames && requirement.campaignNames.length > 0 
+                  ? requirement.campaignNames[0] 
+                  : "No campaign"}
+              </p>
+            </div>
             <div className="w-[100px] min-w-[100px] flex-shrink-0">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Status</p>
               <div className="flex justify-center">
@@ -406,17 +430,17 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                 )}
               </div>
             </div>
-            <div className="w-[120px] min-w-[120px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Campaign</p>
-              <p className="text-sm font-medium truncate text-center">
-                {requirement.campaignNames && requirement.campaignNames.length > 0 
-                  ? requirement.campaignNames[0] 
-                  : "No campaign"}
-              </p>
-            </div>
             <div className="w-[80px] min-w-[80px] flex-shrink-0">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Budget</p>
-              <p className="text-sm font-medium truncate text-center">{requirement.budget ? `$${requirement.budget.toLocaleString()}` : "N/A"}</p>
+              <div className="flex justify-center">
+                {requirement.metadata?.payment_status?.outsourced && requirement.metadata.payment_status.status === 'paid' ? (
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">Paid</span>
+                ) : requirement.budget ? (
+                  <span className="text-sm font-medium">${requirement.budget.toLocaleString()}</span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">N/A</span>
+                )}
+              </div>
             </div>
             <div className="w-[180px] min-w-[180px] flex-shrink-0">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Segments</p>
@@ -600,7 +624,7 @@ export default function RequirementsPage() {
         // Load requirements - FIXING THE QUERY
         const { data: requirementData, error: requirementError } = await supabase
           .from("requirements")
-          .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id)")
+          .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id), metadata")
           .eq("site_id", siteId);
         
         if (requirementError) {
@@ -665,7 +689,8 @@ export default function RequirementsPage() {
             segments: segmentIds,
             segmentNames: segmentNames,
             campaigns: campaignIds,
-            campaignNames: campaignNames
+            campaignNames: campaignNames,
+            metadata: req.metadata || {}
           };
         });
         
