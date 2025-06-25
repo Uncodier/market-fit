@@ -488,17 +488,59 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Combine owned and shared sites
       const allSitesData = [...(ownedSitesData || []), ...sharedSitesData]
       
+      // Fetch billing information for all sites
+      const siteIds = allSitesData.map(site => site.id)
+      let billingData: any[] = []
+      
+      if (siteIds.length > 0) {
+        const { data: billingInfo, error: billingError } = await supabaseRef.current
+          .from('billing')
+          .select('*')
+          .in('site_id', siteIds)
+        
+        if (billingError) {
+          console.error("Error fetching billing data:", billingError)
+          // Don't throw error for billing data, continue without it
+        } else {
+          billingData = billingInfo || []
+        }
+      }
+      
       console.log("Sites fetched successfully:", allSitesData.length, "sites found")
       console.log("- Owned sites:", ownedSitesData?.length || 0)
       console.log("- Shared sites:", sharedSitesData.length)
+      console.log("- Billing data fetched for:", billingData.length, "sites")
       
-      // Cargar focusMode desde localStorage o usar focus_mode de la base de datos
+      // Cargar focusMode desde localStorage y agregar datos de billing
       const sitesWithData = allSitesData.map((site: Tables<'sites'>) => {
+        // Find billing data for this site
+        const siteBilling = billingData.find(billing => billing.site_id === site.id)
+        
         return {
           ...site,
           focus_mode: getLocalStorage(`site_${site.id}_focus_mode`, site.focus_mode || 50),
           // No incluimos settings aquí, se cargarán específicamente para el sitio actual
-          settings: undefined
+          settings: undefined,
+          // Add billing data if available
+          billing: siteBilling ? {
+            plan: siteBilling.plan || 'commission',
+            masked_card_number: siteBilling.masked_card_number,
+            card_name: siteBilling.card_name,
+            card_expiry: siteBilling.card_expiry,
+            stripe_customer_id: siteBilling.stripe_customer_id,
+            stripe_payment_method_id: siteBilling.stripe_payment_method_id,
+            card_address: siteBilling.card_address,
+            card_city: siteBilling.card_city,
+            card_postal_code: siteBilling.card_postal_code,
+            card_country: siteBilling.card_country,
+            tax_id: siteBilling.tax_id,
+            billing_address: siteBilling.billing_address,
+            billing_city: siteBilling.billing_city,
+            billing_postal_code: siteBilling.billing_postal_code,
+            billing_country: siteBilling.billing_country,
+            auto_renew: siteBilling.auto_renew ?? true,
+            credits_available: siteBilling.credits_available || 0
+          } : undefined
         }
       })
       

@@ -171,7 +171,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="text-3xl font-bold">
-                    {currentSite?.billing?.credits_available || 0} <span className="text-sm font-medium text-muted-foreground">credits available</span>
+                    {currentSite?.billing?.credits_available !== undefined ? currentSite.billing.credits_available : 0} <span className="text-sm font-medium text-muted-foreground">credits available</span>
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">Your credits will reset on the first day of each month</div>
                   <div className="text-sm text-muted-foreground mt-1">Credits are used for inference tokens, ads, and third-party services</div>

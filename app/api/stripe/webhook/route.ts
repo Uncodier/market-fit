@@ -182,6 +182,75 @@ export async function POST(request: NextRequest) {
           )
         }
       }
+      // Check if this is a subscription signup
+      else if (session.metadata?.type === 'subscription') {
+        try {
+          const siteId = session.metadata.site_id
+          const plan = session.metadata.plan
+          const amount = (session.amount_total || 0) / 100 // Convert from cents
+          
+          if (!siteId || !plan) {
+            console.error('Missing site_id or plan in subscription metadata')
+            break
+          }
+
+          // Update billing table with plan information
+          console.log(`Processing subscription signup: site=${siteId}, plan=${plan}, customer=${session.customer}, subscription=${session.subscription}`)
+          
+          const { data: billingResult, error: billingError } = await supabase.rpc('upsert_billing', {
+            p_site_id: siteId,
+            p_plan: plan,
+            p_stripe_customer_id: session.customer,
+            p_stripe_subscription_id: session.subscription,
+            p_subscription_status: 'active',
+            p_auto_renew: true
+          })
+          
+          console.log('Billing upsert result:', billingResult)
+          
+          if (billingError) {
+            console.error('Error updating billing for subscription:', billingError)
+            return NextResponse.json(
+              { error: 'Failed to update billing for subscription' },
+              { status: 500 }
+            )
+          }
+
+          // Record the initial subscription payment
+          const { error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+              site_id: siteId,
+              transaction_id: `stripe_${session.id}`,
+              transaction_type: 'subscription',
+              amount: amount,
+              currency: session.currency?.toUpperCase() || 'USD',
+              status: 'completed',
+              payment_method: 'stripe',
+              details: {
+                stripe_payment_intent_id: session.payment_intent,
+                stripe_session_id: session.id,
+                stripe_subscription_id: session.subscription,
+                plan: plan
+              }
+            })
+
+          if (paymentError) {
+            console.error('Error recording subscription payment:', paymentError)
+            // Don't fail the webhook if we can't record the payment,
+            // but log it for manual investigation
+          }
+
+          console.log(`Successfully activated ${plan} subscription for site ${siteId}`)
+          
+        } catch (error) {
+          console.error('Error processing subscription signup:', error)
+          return NextResponse.json(
+            { error: 'Failed to process subscription signup' },
+            { status: 500 }
+          )
+        }
+      }
       break
 
     case 'customer.subscription.created':
@@ -203,15 +272,39 @@ export async function POST(request: NextRequest) {
         const subscriptionStatus = subscription.status
         const currentPeriodEnd = new Date((subscription.current_period_end || 0) * 1000).toISOString()
         
-        const { error } = await supabase
+        // Determine plan from subscription metadata or price ID
+        let plan = subscription.metadata?.plan
+        if (!plan) {
+          // Try to determine plan from price ID
+          const priceId = subscription.items?.data?.[0]?.price?.id
+          if (priceId === process.env.STRIPE_STARTUP_PRICE_ID) {
+            plan = 'startup'
+          } else if (priceId === process.env.STRIPE_ENTERPRISE_PRICE_ID) {
+            plan = 'enterprise'
+          }
+        }
+        
+        const updateData: any = {
+          stripe_subscription_id: subscription.id,
+          subscription_status: subscriptionStatus,
+          subscription_current_period_end: currentPeriodEnd,
+          updated_at: new Date().toISOString()
+        }
+        
+        // Include plan if we have it
+        if (plan) {
+          updateData.plan = plan
+        }
+        
+        console.log(`Updating billing for subscription event: site=${siteId}, updateData=`, updateData)
+        
+        const { data: updateResult, error } = await supabase
           .from('billing')
-          .update({
-            stripe_subscription_id: subscription.id,
-            subscription_status: subscriptionStatus,
-            subscription_current_period_end: currentPeriodEnd,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('site_id', siteId)
+          .select()
+        
+        console.log('Billing update result:', updateResult)
 
         if (error) {
           console.error('Error updating subscription:', error)
@@ -221,7 +314,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        console.log(`Updated subscription ${subscription.id} for site ${siteId}: ${subscriptionStatus}`)
+        console.log(`Updated subscription ${subscription.id} for site ${siteId}: ${subscriptionStatus} ${plan ? `(${plan})` : ''}`)
         
       } catch (error) {
         console.error('Error processing subscription event:', error)
@@ -273,6 +366,14 @@ export async function POST(request: NextRequest) {
           console.error('Error processing invoice payment:', error)
         }
       }
+      break
+
+    case 'invoice.created':
+    case 'invoice.finalized':
+    case 'invoice.paid':
+    case 'customer.updated':
+      // These are informational events that we don't need to process
+      console.log(`Received informational event: ${event.type}`)
       break
 
     default:
