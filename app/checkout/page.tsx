@@ -65,10 +65,34 @@ function CheckoutContent() {
   }, [credits])
 
   const handleSubmit = async () => {
-    if (!currentSite || !selectedPackage || !user) {
-      toast.error("Missing required information")
+    // Enhanced validation with specific error messages
+    if (!user) {
+      toast.error("You must be logged in to purchase credits")
       return
     }
+
+    if (!currentSite) {
+      toast.error("Please select a site first")
+      return
+    }
+
+    if (!selectedPackage) {
+      toast.error("Package selection error. Please refresh and try again.")
+      return
+    }
+
+    // Additional validation for user email
+    if (!user.email) {
+      toast.error("User email is required for checkout")
+      return
+    }
+
+    console.log('Starting checkout with:', {
+      user: user?.email,
+      site: currentSite?.name,
+      package: selectedPackage?.credits,
+      amount: selectedPackage?.price
+    })
 
     setIsSubmitting(true)
     try {
@@ -88,6 +112,11 @@ function CheckoutContent() {
         }),
       })
 
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
       const { url, error } = await response.json()
 
       if (error) {
@@ -96,14 +125,27 @@ function CheckoutContent() {
 
       // Redirect to Stripe Checkout
       if (url) {
+        console.log('Redirecting to Stripe checkout:', url)
         window.location.href = url
       } else {
-        throw new Error('No checkout URL received')
+        throw new Error('No checkout URL received from server')
       }
 
     } catch (error: any) {
       console.error('Checkout error:', error)
-      toast.error(error.message || "Failed to start checkout. Please try again.")
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to start checkout. Please try again."
+      
+      if (error.message?.includes('STRIPE_SECRET_KEY') || error.message?.includes('Stripe')) {
+        errorMessage = "Payment service configuration error. Please contact support."
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        errorMessage = "Network error. Please check your connection and try again."
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage)
       setIsSubmitting(false)
     }
   }

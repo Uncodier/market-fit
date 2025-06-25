@@ -207,6 +207,7 @@ interface Requirement {
   segments: string[]
   segmentNames?: string[]
   outsourceInstructions?: string
+  campaignOutsourced?: boolean
   metadata?: {
     payment_status?: {
       status: 'pending' | 'paid' | 'failed'
@@ -548,7 +549,7 @@ function RequirementDetailContent() {
       // Fetch campaigns for the site
       const { data: campaigns, error: campaignsError } = await supabase
         .from("campaigns")
-        .select("id, title, description")
+        .select("id, title, description, metadata")
         .eq("site_id", requirement.site_id)
       
       if (campaignsError) {
@@ -564,9 +565,11 @@ function RequirementDetailContent() {
       }
       
       const campaignsMap = new Map()
+      const campaignsOutsourcedMap = new Map()
       if (campaigns) {
-        campaigns.forEach((campaign: { id: string, title: string }) => {
+        campaigns.forEach((campaign: { id: string, title: string, metadata?: any }) => {
           campaignsMap.set(campaign.id, campaign.title)
+          campaignsOutsourcedMap.set(campaign.id, campaign.metadata?.payment_status?.outsourced || false)
         })
       }
       
@@ -584,6 +587,11 @@ function RequirementDetailContent() {
       
       // Get the first campaign as the selected one (if any)
       const campaign_id = campaignIds.length > 0 ? campaignIds[0] : ""
+      
+      // Check if any of the related campaigns is outsourced
+      const campaignOutsourced = campaignIds.some((id: string) => 
+        campaignsOutsourcedMap.get(id) === true
+      );
       
       // Format the requirement
       const formattedRequirement = {
@@ -604,6 +612,7 @@ function RequirementDetailContent() {
         campaignNames: campaignNames,
         campaign_id: campaign_id, // Usar el primer campaign_id (si existe)
         outsourceInstructions: "", // Inicializar vacío, ya que no existe en la tabla requirements
+        campaignOutsourced: campaignOutsourced,
         metadata: requirement.metadata || {}
       }
       
@@ -1113,13 +1122,22 @@ function RequirementDetailContent() {
                     <BarChart className="h-4 w-4 text-muted-foreground" />
                     Budget
                   </Label>
-                  <Input
-                    type="number"
-                    value={editForm.budget || ''}
-                    onChange={(e) => setEditForm({...editForm, budget: e.target.value ? parseFloat(e.target.value) : null})}
-                    className="h-11"
-                    placeholder="Enter budget amount"
-                  />
+                  {(requirement?.metadata?.payment_status?.outsourced && requirement?.metadata?.payment_status?.status === 'paid') || 
+                   requirement?.campaignOutsourced ? (
+                    <div className="h-11 flex items-center px-3 border border-border rounded-md bg-green-50 dark:bg-green-900/20">
+                      <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                        Paid - Campaign Outsourced
+                      </span>
+                    </div>
+                  ) : (
+                    <Input
+                      type="number"
+                      value={editForm.budget || ''}
+                      onChange={(e) => setEditForm({...editForm, budget: e.target.value ? parseFloat(e.target.value) : null})}
+                      className="h-11"
+                      placeholder="Enter budget amount"
+                    />
+                  )}
                 </div>
                 
                 <div className="space-y-2.5">
@@ -1624,7 +1642,7 @@ function RequirementDetailContent() {
                       )}
 
                       {/* Only show outsource instructions and button if not already outsourced */}
-                      {!requirement?.metadata?.payment_status?.outsourced && (
+                      {!requirement?.metadata?.payment_status?.outsourced && !requirement?.campaignOutsourced && (
                         <>
                           {/* Outsource Instructions */}
                           <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
@@ -1687,12 +1705,15 @@ function RequirementDetailContent() {
                       )}
 
                       {/* Show status message if already outsourced and paid */}
-                      {requirement?.metadata?.payment_status?.outsourced && requirement.metadata?.payment_status?.status === 'paid' && (
+                      {((requirement?.metadata?.payment_status?.outsourced && requirement.metadata?.payment_status?.status === 'paid') || 
+                        requirement?.campaignOutsourced) && (
                         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-900/30">
                           <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                             <span className="text-sm font-medium">
-                              This task has already been outsourced and payment has been completed.
+                              {requirement?.campaignOutsourced 
+                                ? "This task's campaign has been outsourced and payment has been completed."
+                                : "This task has already been outsourced and payment has been completed."}
                             </span>
                           </div>
                         </div>
@@ -1702,7 +1723,7 @@ function RequirementDetailContent() {
                 </div>
                 
                 {/* Only show outsource button if not already outsourced */}
-                {!requirement?.metadata?.payment_status?.outsourced && (
+                {!requirement?.metadata?.payment_status?.outsourced && !requirement?.campaignOutsourced && (
                   <div className="border-t p-4 bg-background mt-auto">
                     <Button className="w-full" onClick={() => router.push(`/outsource/checkout?taskId=${params.id}`)}>
                       <Globe className="h-4 w-4 mr-2" />

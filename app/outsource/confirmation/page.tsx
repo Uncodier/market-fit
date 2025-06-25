@@ -121,13 +121,7 @@ export default function OutsourceConfirmationPage() {
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => router.push('/content')}
-            >
-              Go to Content
-            </Button>
+          <CardFooter className="flex justify-end pt-4 border-t">
             <Button 
               onClick={() => router.push('/dashboard')}
             >

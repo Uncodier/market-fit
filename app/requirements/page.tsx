@@ -81,6 +81,7 @@ interface Requirement {
       outsource_contact?: string
     }
   }
+  campaignOutsourced?: boolean
 }
 
 // Define el tipo para los datos de requisitos en Supabase
@@ -433,7 +434,8 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
             <div className="w-[80px] min-w-[80px] flex-shrink-0">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Budget</p>
               <div className="flex justify-center">
-                {requirement.metadata?.payment_status?.outsourced && requirement.metadata.payment_status.status === 'paid' ? (
+                {(requirement.metadata?.payment_status?.outsourced && requirement.metadata.payment_status.status === 'paid') || 
+                 requirement.campaignOutsourced ? (
                   <span className="text-sm font-medium text-green-600 dark:text-green-400">Paid</span>
                 ) : requirement.budget ? (
                   <span className="text-sm font-medium">${requirement.budget.toLocaleString()}</span>
@@ -631,10 +633,10 @@ export default function RequirementsPage() {
           throw new Error(`Error loading requirements: ${requirementError.message}`);
         }
         
-        // Load campaigns to get their names
+        // Load campaigns to get their names and metadata
         const { data: campaignData, error: campaignError } = await supabase
           .from("campaigns")
-          .select("id, title")
+          .select("id, title, metadata")
           .eq("site_id", siteId);
         
         if (campaignError) {
@@ -651,9 +653,11 @@ export default function RequirementsPage() {
         
         // Create a campaigns map for quick lookup
         const campaignsMap = new Map<string, string>();
+        const campaignsOutsourcedMap = new Map<string, boolean>();
         if (campaignData && campaignData.length > 0) {
-          campaignData.forEach((campaign: { id: string, title: string }) => {
+          campaignData.forEach((campaign: { id: string, title: string, metadata?: any }) => {
             campaignsMap.set(campaign.id, campaign.title);
+            campaignsOutsourcedMap.set(campaign.id, campaign.metadata?.payment_status?.outsourced || false);
           });
         }
         
@@ -675,6 +679,11 @@ export default function RequirementsPage() {
             .filter((id: string) => campaignsMap.has(id))
             .map((id: string) => campaignsMap.get(id) || "");
           
+          // Check if any of the related campaigns is outsourced
+          const campaignOutsourced = campaignIds.some((id: string) => 
+            campaignsOutsourcedMap.get(id) === true
+          );
+          
           return {
             id: req.id,
             title: req.title,
@@ -690,7 +699,8 @@ export default function RequirementsPage() {
             segmentNames: segmentNames,
             campaigns: campaignIds,
             campaignNames: campaignNames,
-            metadata: req.metadata || {}
+            metadata: req.metadata || {},
+            campaignOutsourced: campaignOutsourced
           };
         });
         
@@ -931,7 +941,7 @@ export default function RequirementsPage() {
         <Card key={i} className="overflow-hidden border border-border">
           <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
             <div className="flex-1 p-4 w-full overflow-x-auto">
-              <div className="flex items-start gap-4 min-w-[1000px]">
+              <div className="flex items-start gap-4 min-w-[1200px]">
                 <div className="w-[500px] min-w-[500px] pr-2 flex-grow">
                   <div className="flex items-center gap-2 mb-1">
                     <Skeleton className="h-6 w-3/4" />
@@ -940,20 +950,27 @@ export default function RequirementsPage() {
                   <Skeleton className="h-4 w-full" />
                 </div>
                 <div className="w-[100px] min-w-[100px] flex-shrink-0">
-                  <Skeleton className="h-4 w-16 mb-2 mx-auto" />
-                  <Skeleton className="h-6 w-24 mx-auto" />
+                  <Skeleton className="h-3 w-8 mb-1 mx-auto" />
+                  <Skeleton className="h-6 w-16 mx-auto" />
                 </div>
                 <div className="w-[120px] min-w-[120px] flex-shrink-0">
-                  <Skeleton className="h-4 w-16 mb-2 mx-auto" />
-                  <Skeleton className="h-6 w-24 mx-auto" />
+                  <Skeleton className="h-3 w-16 mb-1 mx-auto" />
+                  <Skeleton className="h-4 w-20 mx-auto" />
+                </div>
+                <div className="w-[100px] min-w-[100px] flex-shrink-0">
+                  <Skeleton className="h-3 w-12 mb-1 mx-auto" />
+                  <Skeleton className="h-6 w-20 mx-auto" />
                 </div>
                 <div className="w-[80px] min-w-[80px] flex-shrink-0">
-                  <Skeleton className="h-4 w-16 mb-2 mx-auto" />
-                  <Skeleton className="h-6 w-24 mx-auto" />
+                  <Skeleton className="h-3 w-12 mb-1 mx-auto" />
+                  <Skeleton className="h-4 w-16 mx-auto" />
                 </div>
                 <div className="w-[180px] min-w-[180px] flex-shrink-0">
-                  <Skeleton className="h-4 w-16 mb-2 mx-auto" />
-                  <Skeleton className="h-6 w-48 mx-auto" />
+                  <Skeleton className="h-3 w-16 mb-1 mx-auto" />
+                  <div className="flex items-center gap-1 justify-center">
+                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="h-5 w-8" />
+                  </div>
                 </div>
               </div>
             </div>

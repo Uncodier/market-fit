@@ -2,12 +2,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+// Validate Stripe configuration
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY
+if (!STRIPE_SECRET_KEY) {
+  console.error('STRIPE_SECRET_KEY environment variable is not set')
+}
+
+if (STRIPE_SECRET_KEY && !STRIPE_SECRET_KEY.startsWith('sk_')) {
+  console.error('Invalid STRIPE_SECRET_KEY format. Should start with sk_test_ or sk_live_')
+}
+
+const stripe = new Stripe(STRIPE_SECRET_KEY!, {
   apiVersion: '2025-05-28.basil',
 })
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate Stripe configuration first
+    if (!STRIPE_SECRET_KEY) {
+      console.error('Stripe configuration error: STRIPE_SECRET_KEY not found')
+      return NextResponse.json(
+        { error: 'Payment service configuration error. Please contact support.' },
+        { status: 500 }
+      )
+    }
+
     const { credits, amount, siteId, userEmail, successUrl, cancelUrl } = await request.json()
 
     if (!credits || !amount || !siteId || !userEmail) {
