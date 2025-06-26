@@ -121,6 +121,7 @@ export async function GET(request: Request) {
       const authMode = authModeCookie?.value
       const validateUserExists = validateUserExistsCookie?.value === 'true'
       
+      // Only validate user existence for sign-in attempts, not sign-up
       if (validateUserExists && authMode === 'sign_in' && data.session?.user) {
         const user = data.session.user
         const userEmail = user.email
@@ -189,12 +190,91 @@ export async function GET(request: Request) {
         }
       }
       
+      // Handle successful sign-up with Google
+      if (authMode === 'sign_up' && data.session?.user) {
+        const user = data.session.user
+        const userEmail = user.email
+        
+        // Check if this is a new user (just created) vs existing user
+        const createdAt = new Date(user.created_at)
+        const now = new Date()
+        const timeDiff = now.getTime() - createdAt.getTime()
+        const isNewUser = timeDiff < 10000 // User created less than 10 seconds ago
+        
+        if (isNewUser) {
+          // Check if there's already a user with this email using different auth method
+          const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers()
+          
+          if (!listError && existingUsers) {
+            // Find if there's another user with same email but different provider
+            const existingUserWithSameEmail = existingUsers.users.find(existingUser => 
+              existingUser.email === userEmail && 
+              existingUser.id !== user.id // Different user ID
+            )
+            
+            if (existingUserWithSameEmail) {
+              // Get the authentication method of the existing user
+              const existingAuthMethod = existingUserWithSameEmail.app_metadata?.provider || 'email'
+              
+              console.log(`User ${userEmail} already exists with ${existingAuthMethod} auth, attempted Google sign-up`);
+              
+              // Delete the newly created Google user
+              await supabase.auth.admin.deleteUser(user.id)
+              
+              // Sign out the current session
+              await supabase.auth.signOut()
+              
+              // Create specific error message based on existing auth method
+              let errorMessage = ''
+              if (existingAuthMethod === 'email') {
+                errorMessage = `An account with ${userEmail} already exists. Please sign in with your email and password instead, or reset your password if you've forgotten it.`
+              } else {
+                errorMessage = `An account with ${userEmail} already exists using ${existingAuthMethod}. Please use that method to sign in.`
+              }
+              
+              // Clear the auth mode cookies
+              const errorResponse = NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent(errorMessage)}&returnTo=${encodeURIComponent(returnTo)}`, request.url))
+              errorResponse.cookies.delete('auth_mode')
+              errorResponse.cookies.delete('validate_user_exists')
+              
+              return errorResponse
+            }
+          }
+          
+          // New user created successfully with Google sign-up, log them in automatically
+          console.log("New user created successfully with Google sign-up, logging in automatically:", userEmail);
+          
+          // Process referral code if provided
+          const referralCodeCookie = (await cookieStore).get('referral_code')
+          if (referralCodeCookie?.value) {
+            try {
+              const referralResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/process-referral`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ referralCode: referralCodeCookie.value })
+              })
+              
+              if (!referralResponse.ok) {
+                console.warn('Failed to process referral code after Google sign-up')
+              } else {
+                console.log('Successfully processed referral code after Google sign-up')
+              }
+            } catch (error) {
+              console.warn('Error processing referral code after Google sign-up:', error)
+            }
+          }
+        }
+      }
+      
       console.log("Auth callback success, session established for:", data.session?.user.email);
       
       // Clear the auth mode cookies on successful authentication
       const successResponse = NextResponse.redirect(new URL(returnTo, request.url))
       successResponse.cookies.delete('auth_mode')
       successResponse.cookies.delete('validate_user_exists')
+      successResponse.cookies.delete('referral_code')
       
       return successResponse
     }

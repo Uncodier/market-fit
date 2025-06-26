@@ -49,7 +49,8 @@ export function AgentActivityItem({
   const isAnalyzeSegmentsActivity = activity.id === "mk4" && activity.name === "Analyze Segments"
   const isCreateCampaignActivity = activity.id === "mk1" && activity.name === "Create Marketing Campaign"
   const isContentCalendarActivity = activity.id === "ct1" && activity.name === "Content Calendar Creation"
-  const isClickable = !isDisabled && (isSyncEmailsActivity || isAnalyzeSegmentsActivity || isCreateCampaignActivity || isContentCalendarActivity)
+  const isDailyStandUpActivity = activity.id === "gl6" && activity.name === "Daily Stand Up"
+  const isClickable = !isDisabled && (isSyncEmailsActivity || isAnalyzeSegmentsActivity || isCreateCampaignActivity || isContentCalendarActivity || isDailyStandUpActivity)
 
   const getButtonContent = () => {
     if (isExecuting) {

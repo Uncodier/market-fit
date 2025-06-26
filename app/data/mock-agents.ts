@@ -46,6 +46,15 @@ const growthLeadActivities: AgentActivity[] = [
     successRate: 93,
     executions: 117,
     status: "available"
+  },
+  {
+    id: "gl6",
+    name: "Daily Stand Up",
+    description: "Generate comprehensive daily team progress report with insights and next steps",
+    estimatedTime: "10-15 min",
+    successRate: 96,
+    executions: 78,
+    status: "available"
   }
 ];
 
