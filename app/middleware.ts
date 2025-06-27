@@ -30,7 +30,7 @@ const getCorsHeaders = (response: NextResponse) => {
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
   response.headers.set('Access-Control-Max-Age', '86400'); // 24 horas
   response.headers.set('Access-Control-Allow-Credentials', 'true');
-  response.headers.set('Content-Security-Policy', "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* https://tu-api-real.com https://api.market-fit.ai; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;");
+  response.headers.set('Content-Security-Policy', "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.0.38:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* https://tu-api-real.com https://api.market-fit.ai; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;");
   return response;
 };
 

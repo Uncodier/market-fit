@@ -502,16 +502,18 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
         return;
       }
 
-      // If we have saved credentials, use them for testing
-      if (hasEmailToken && !password) {
+      // If we have saved credentials (password shows as STORED_SECURELY), use them for testing
+      if (password === "STORED_SECURELY") {
         const emailConfig = {
-          email: email,
-          useSavedCredentials: true,
-          siteId: siteId,
-          incomingServer: form.getValues("channels.email.incomingServer"),
-          incomingPort: form.getValues("channels.email.incomingPort"),
-          outgoingServer: form.getValues("channels.email.outgoingServer"),
-          outgoingPort: form.getValues("channels.email.outgoingPort"),
+          site_id: siteId,
+          use_saved_credentials: true,
+          // Include server settings if available
+          ...(form.getValues("channels.email.incomingServer") && {
+            incoming_server: form.getValues("channels.email.incomingServer"),
+            incoming_port: form.getValues("channels.email.incomingPort"),
+            outgoing_server: form.getValues("channels.email.outgoingServer"),
+            outgoing_port: form.getValues("channels.email.outgoingPort"),
+          })
         };
 
         const response = await apiClient.post('/api/agents/email/check', emailConfig);
