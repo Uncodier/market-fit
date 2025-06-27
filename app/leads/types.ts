@@ -84,7 +84,7 @@ export interface JourneyEvent {
   description: string
   date: string
   status: "completed" | "in_progress" | "pending" | "failed"
-  type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback"
+  type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback" | "trial" | "onboarding" | "refund" | "ticket" | "kyc" | "training" | "consultation" | "follow_up" | "survey" | "review" | "support" | "billing" | "documentation" | "integration"
   stage: "awareness" | "consideration" | "decision" | "purchase" | "retention" | "referral"
   amount?: number
 }
@@ -110,7 +110,7 @@ export interface Task {
   scheduled_date: string
   completed_date?: string
   status: "completed" | "in_progress" | "pending" | "failed"
-  type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback"
+  type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback" | "trial" | "onboarding" | "refund" | "ticket" | "kyc" | "training" | "consultation" | "follow_up" | "survey" | "review" | "support" | "billing" | "documentation" | "integration"
   stage: "awareness" | "consideration" | "decision" | "purchase" | "retention" | "referral"
   amount?: number
   assignee?: string
@@ -139,7 +139,21 @@ export const TASK_TYPES = [
   { id: "contract", name: "Contract", icon: "FileText" },
   { id: "payment", name: "Payment", icon: "Tag" },
   { id: "referral", name: "Referral", icon: "User" },
-  { id: "feedback", name: "Feedback", icon: "MessageSquare" }
+  { id: "feedback", name: "Feedback", icon: "MessageSquare" },
+  { id: "trial", name: "Trial", icon: "PlayCircle" },
+  { id: "onboarding", name: "Onboarding", icon: "BookOpen" },
+  { id: "refund", name: "Refund", icon: "RotateCcw" },
+  { id: "ticket", name: "Support Ticket", icon: "HelpCircle" },
+  { id: "kyc", name: "KYC/Verification", icon: "Shield" },
+  { id: "training", name: "Training", icon: "GraduationCap" },
+  { id: "consultation", name: "Consultation", icon: "UserCheck" },
+  { id: "follow_up", name: "Follow Up", icon: "Clock" },
+  { id: "survey", name: "Survey", icon: "FileQuestion" },
+  { id: "review", name: "Review", icon: "Star" },
+  { id: "support", name: "Support", icon: "Headphones" },
+  { id: "billing", name: "Billing", icon: "CreditCard" },
+  { id: "documentation", name: "Documentation", icon: "FileText" },
+  { id: "integration", name: "Integration", icon: "Zap" }
 ]
 
 export const JOURNEY_STAGES = [

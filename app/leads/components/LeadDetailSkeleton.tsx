@@ -25,25 +25,82 @@ export function LeadDetailSkeleton() {
           <div className="flex flex-row space-x-6">
             {/* Tab Content - Left Side (60%) */}
             <div className="w-[60%]">
-              <Card className="p-6">
-                {/* Journey Timeline Skeleton */}
-                <div className="space-y-8">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex items-start gap-4">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-5 w-32" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-3/4" />
-                        <div className="flex items-center gap-2 mt-2">
-                          <Skeleton className="h-8 w-16 rounded-md" />
-                          <Skeleton className="h-8 w-16 rounded-md" />
+              {/* Journey Timeline Skeleton - Match real structure */}
+              <div className="space-y-6">
+                {/* Stage Groups */}
+                {Array.from({ length: 3 }).map((_, stageIndex) => (
+                  <div key={stageIndex} className="mb-8 last:mb-0">
+                    {/* Stage Header Card */}
+                    <Card className="mb-4 border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+                      <CardContent className="p-3 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="bg-primary/10 rounded-md w-10 h-10 flex items-center justify-center mr-3">
+                              <Skeleton className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <Skeleton className="h-5 w-24 mb-1" />
+                              <Skeleton className="h-3 w-40" />
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <Skeleton className="h-8 w-8 rounded mr-2" />
+                            <Skeleton className="h-4 w-4" />
+                          </div>
                         </div>
-                      </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Tasks for this stage */}
+                    <div className="space-y-4 ml-8 relative">
+                      {/* Timeline vertical connecting line */}
+                      <div className="absolute left-[0px] top-0 bottom-0 w-[2px] bg-border/40"></div>
+                      
+                      {Array.from({ length: 2 }).map((_, taskIndex) => (
+                        <div key={taskIndex} className="relative pl-8">
+                          {/* Status indicator skeleton */}
+                          <div className="absolute left-[-10px] top-3 bg-background rounded-full p-[2px]">
+                            <Skeleton className="h-5 w-5 rounded-full" />
+                          </div>
+                          
+                          {/* Task content skeleton */}
+                          <div className="bg-muted/40 rounded-lg p-3 border border-border/30">
+                            <div className="flex justify-between items-start mb-1">
+                              <div className="flex items-center gap-2 flex-1">
+                                {/* Task title */}
+                                <Skeleton className="h-4 w-32" />
+                                {/* Amount placeholder */}
+                                <Skeleton className="h-5 w-16 rounded" />
+                                {/* Date with clock icon */}
+                                <div className="flex items-center gap-1 ml-2">
+                                  <Skeleton className="h-2.5 w-2.5 rounded" />
+                                  <Skeleton className="h-3 w-20" />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {/* Serial ID */}
+                                <Skeleton className="h-3 w-8" />
+                                {/* Status badge */}
+                                <Skeleton className="h-6 w-16 rounded-full" />
+                                {/* Closed badge placeholder */}
+                                <Skeleton className="h-6 w-14 rounded-full" />
+                                {/* Menu button */}
+                                <Skeleton className="h-6 w-6 rounded" />
+                              </div>
+                            </div>
+                            {/* Description */}
+                            <Skeleton className="h-3 w-full mb-2" />
+                            {/* Comments section placeholder */}
+                            <div className="mt-3">
+                              <Skeleton className="h-3 w-16" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </Card>
+                  </div>
+                ))}
+              </div>
             </div>
             
             {/* Lead Details - Right Side (40%) */}

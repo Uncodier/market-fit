@@ -66,6 +66,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, leadId }: AddTaskDialogPro
     try {
       // Create task object
       const taskData: Omit<Task, "id" | "created_at"> = {
+        serial_id: "",
         lead_id: leadId,
         title,
         description,
@@ -73,6 +74,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, leadId }: AddTaskDialogPro
         stage,
         status,
         scheduled_date: scheduledDate.toISOString(),
+        priority: 1,
         ...(stage !== "awareness" && amount ? { amount: Number(amount) } : {}),
         notes
       }
@@ -177,13 +179,15 @@ export function AddTaskDialog({ isOpen, onOpenChange, leadId }: AddTaskDialogPro
               
               <div className="grid grid-cols-1 gap-2">
                 <Label className="text-sm font-medium">Scheduled Date</Label>
-                <div className="relative z-[200]">
+                <div className="relative z-[1000000]">
                   <DatePicker 
                     date={scheduledDate}
                     setDate={setScheduledDate}
                     position="top"
                     className="w-full"
                     mode="task"
+                    showTimePicker={true}
+                    timeFormat="12h"
                   />
                 </div>
               </div>

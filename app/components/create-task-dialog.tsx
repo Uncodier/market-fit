@@ -25,21 +25,9 @@ import { useSite } from "@/app/context/SiteContext"
 import { createTask } from "@/app/tasks/actions"
 import { toast } from "sonner"
 import { type CreateTaskFormValues } from "@/app/tasks/types"
+import { TASK_TYPES } from "@/app/leads/types"
 import { Combobox } from "./ui/combobox"
 import { createClient } from "@/lib/supabase/client"
-
-const TASK_TYPES = [
-  'website_visit',
-  'demo',
-  'meeting',
-  'email',
-  'call',
-  'quote',
-  'contract',
-  'payment',
-  'referral',
-  'feedback'
-]
 
 const TASK_STAGES = [
   'awareness',
@@ -245,9 +233,9 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TASK_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type.replace('_', ' ')}
+                    {TASK_TYPES.map((taskType) => (
+                      <SelectItem key={taskType.id} value={taskType.id}>
+                        {taskType.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -275,12 +263,17 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Due Date</Label>
-                <DatePicker
-                  date={date}
-                  setDate={setDate}
-                  className="h-12"
-                  placeholder="Select due date"
-                />
+                <div className="relative z-[1000000]">
+                  <DatePicker
+                    date={date}
+                    setDate={setDate}
+                    className="h-12"
+                    placeholder="Select due date"
+                    mode="task"
+                    showTimePicker={true}
+                    timeFormat="12h"
+                  />
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label>Amount</Label>

@@ -178,13 +178,15 @@ export function EditTaskDialog({ isOpen, onOpenChange, task }: EditTaskDialogPro
               
               <div className="grid grid-cols-1 gap-2">
                 <Label className="text-sm font-medium">Scheduled Date</Label>
-                <div className="relative z-[200]">
+                <div className="relative z-[1000000]">
                   <DatePicker 
                     date={scheduledDate}
                     setDate={setScheduledDate}
                     position="top"
                     className="w-full"
                     mode="task"
+                    showTimePicker={true}
+                    timeFormat="12h"
                   />
                 </div>
               </div>

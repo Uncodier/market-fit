@@ -36,6 +36,8 @@ export interface DatePickerProps {
   endDate?: Date;
   setEndDate?: (date: Date) => void;
   rangeDisplay?: string;
+  showTimePicker?: boolean;
+  timeFormat?: '12h' | '24h';
 }
 
 export function DatePicker({
@@ -52,19 +54,41 @@ export function DatePicker({
   mode = 'default',
   endDate,
   setEndDate,
-  rangeDisplay
+  rangeDisplay,
+  showTimePicker = false,
+  timeFormat = '24h'
 }: DatePickerProps) {
   const [currentMonth, setCurrentMonth] = React.useState(new Date(date))
   const [open, setOpen] = React.useState(false)
   const [isSelectingEndDate, setIsSelectingEndDate] = React.useState(false)
   const [selectedPresetLabel, setSelectedPresetLabel] = React.useState<string | null>(null)
+  const [isNavigating, setIsNavigating] = React.useState(false)
+  const [forceUpdate, setForceUpdate] = React.useState(0)
+  const [selectedTime, setSelectedTime] = React.useState({
+    hours: date.getHours(),
+    minutes: date.getMinutes()
+  })
   
   // Update currentMonth when date changes - solo si cambia significativamente
   React.useEffect(() => {
     if (!isSameMonth(currentMonth, date)) {
       setCurrentMonth(new Date(date));
     }
-  }, [date, currentMonth]);
+  }, [date]); // Remove currentMonth from dependencies to avoid conflicts
+
+  // Update selected time when date changes from outside
+  React.useEffect(() => {
+    setSelectedTime({
+      hours: date.getHours(),
+      minutes: date.getMinutes()
+    });
+  }, [date]);
+  
+  // Force re-render when currentMonth changes
+  React.useEffect(() => {
+    console.log('Current month changed to:', format(currentMonth, "MMMM yyyy"))
+    setForceUpdate(prev => prev + 1)
+  }, [currentMonth])
   
   // Generate mode-specific default events with shorter labels
   const getDefaultEvents = (): DateEvent[] => {
@@ -153,8 +177,10 @@ export function DatePicker({
   // Use provided events or mode-specific default events
   const displayEvents = events || getDefaultEvents();
   
-  // Function to generate calendar days
-  const generateCalendarDays = () => {
+  // Use useMemo to force re-calculation when currentMonth changes
+  const days = React.useMemo(() => {
+    console.log('Recalculating calendar days for month:', format(currentMonth, "MMMM yyyy"), 'forceUpdate:', forceUpdate)
+    
     // Get the first day of the month
     const monthStart = startOfMonth(currentMonth)
     // Get the last day of the month
@@ -165,26 +191,141 @@ export function DatePicker({
     const endDate = endOfWeek(monthEnd)
     
     // Get all days in the interval
-    const days = eachDayOfInterval({ start: startDate, end: endDate })
+    const calculatedDays = eachDayOfInterval({ start: startDate, end: endDate })
     
-    return days
-  }
-  
-  const days = generateCalendarDays()
+    return calculatedDays
+  }, [currentMonth, forceUpdate])
   
   // Function to go to the previous month
-  const prevMonth = (e: React.MouseEvent) => {
+  const prevMonth = React.useCallback((e: React.MouseEvent) => {
+    if (isNavigating) return
+    
+    console.log('Previous month button clicked')
     e.preventDefault()
     e.stopPropagation()
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
-  }
+    
+    setIsNavigating(true)
+    
+    // Create a new date for previous month
+    const currentYear = currentMonth.getFullYear()
+    const currentMonthNumber = currentMonth.getMonth()
+    
+    let newYear = currentYear
+    let newMonth = currentMonthNumber - 1
+    
+    if (newMonth < 0) {
+      newMonth = 11
+      newYear = currentYear - 1
+    }
+    
+    const newDate = new Date(newYear, newMonth, 1)
+    console.log('Navigating to previous month:', currentMonth.toDateString(), '->', newDate.toDateString())
+    
+    // Force update the state
+    setCurrentMonth(newDate)
+    setForceUpdate(prev => prev + 1)
+    
+    // Reset navigation state after a short delay
+    setTimeout(() => setIsNavigating(false), 100)
+  }, [currentMonth, isNavigating])
   
   // Function to go to the next month
-  const nextMonth = (e: React.MouseEvent) => {
+  const nextMonth = React.useCallback((e: React.MouseEvent) => {
+    if (isNavigating) return
+    
+    console.log('Next month button clicked')
     e.preventDefault()
     e.stopPropagation()
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
-  }
+    
+    setIsNavigating(true)
+    
+    // Create a new date for next month
+    const currentYear = currentMonth.getFullYear()
+    const currentMonthNumber = currentMonth.getMonth()
+    
+    let newYear = currentYear
+    let newMonth = currentMonthNumber + 1
+    
+    if (newMonth > 11) {
+      newMonth = 0
+      newYear = currentYear + 1
+    }
+    
+    const newDate = new Date(newYear, newMonth, 1)
+    console.log('Navigating to next month:', currentMonth.toDateString(), '->', newDate.toDateString())
+    
+    // Force update the state
+    setCurrentMonth(newDate)
+    setForceUpdate(prev => prev + 1)
+    
+    // Reset navigation state after a short delay
+    setTimeout(() => setIsNavigating(false), 100)
+  }, [currentMonth, isNavigating])
+  
+  // Add keyboard navigation support
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      prevMonth(e as any)
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      nextMonth(e as any)
+    }
+  }, [prevMonth, nextMonth])
+  
+  // Time picker helper functions
+  const formatDisplayTime = (hours: number, minutes: number): string => {
+    if (timeFormat === '12h') {
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    } else {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+  };
+
+  const handleTimeChange = (hours: number, minutes: number) => {
+    setSelectedTime({ hours, minutes });
+    
+    // Create new date with updated time
+    const newDate = new Date(date);
+    newDate.setHours(hours, minutes, 0, 0);
+    setDate(newDate);
+  };
+
+  const handleHourChange = (value: string) => {
+    const hours = parseInt(value);
+    if (!isNaN(hours)) {
+      handleTimeChange(hours, selectedTime.minutes);
+    }
+  };
+
+  const handleMinuteChange = (value: string) => {
+    const minutes = parseInt(value);
+    if (!isNaN(minutes)) {
+      handleTimeChange(selectedTime.hours, minutes);
+    }
+  };
+
+  const handleAMPMToggle = () => {
+    const newHours = selectedTime.hours >= 12 ? selectedTime.hours - 12 : selectedTime.hours + 12;
+    handleTimeChange(newHours, selectedTime.minutes);
+  };
+
+  // Update display text to include time if time picker is enabled
+  const getDisplayText = (): string => {
+    if (mode === 'range' && endDate && rangeDisplay) {
+      return rangeDisplay;
+    } else if (date) {
+      const dateStr = format(date, "PPP");
+      if (showTimePicker) {
+        const timeStr = formatDisplayTime(selectedTime.hours, selectedTime.minutes);
+        return `${dateStr} at ${timeStr}`;
+      }
+      return dateStr;
+    }
+    return placeholder;
+  };
   
   // Select date and close popover
   const selectDate = (selectedDate: Date, e?: React.MouseEvent, eventType?: DateEventType) => {
@@ -296,14 +437,7 @@ export function DatePicker({
   };
   
   // Format the range display
-  const displayText = React.useMemo(() => {
-    if (mode === 'range' && endDate && rangeDisplay) {
-      return rangeDisplay;
-    } else if (date) {
-      return format(date, "PPP");
-    }
-    return placeholder;
-  }, [date, endDate, mode, placeholder, rangeDisplay]);
+  const displayText = getDisplayText();
   
   // Function to handle preset selection
   const handlePresetSelection = (event: DateEvent, e: React.MouseEvent) => {
@@ -412,11 +546,17 @@ export function DatePicker({
     }
   };
   
-  // Add a function to disable future dates - make it more robust
-  const disableFutureDates = (date: Date) => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // End of today
-    return date > today;
+  // Add a function to disable future dates based on mode
+  const shouldDisableDate = (date: Date) => {
+    // Only disable future dates for report mode and similar analytical modes
+    if (mode === 'report' || mode === 'range') {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // End of today
+      return date > today;
+    }
+    
+    // For task mode and others, allow future dates
+    return false;
   };
 
   return (
@@ -449,10 +589,10 @@ export function DatePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-auto" side={position}>
+        <PopoverContent className="p-0 w-auto z-[999999]" side={position}>
           <div className="flex flex-row">
             {/* Calendar */}
-            <div className="p-4 min-w-[280px]">
+            <div className="p-4 min-w-[280px]" onKeyDown={handleKeyDown} tabIndex={-1}>
               {mode === 'range' && (
                 <div className="mb-3 text-sm flex flex-col gap-1">
                   <div className="text-xs font-medium text-muted-foreground">Selected Range</div>
@@ -471,27 +611,42 @@ export function DatePicker({
                 </div>
               )}
               <div className="flex justify-between items-center mb-3">
-                <Button 
-                  variant="ghost" 
-                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150" 
-                  onClick={prevMonth}
+                <button 
+                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-md flex items-center justify-center border-0 bg-transparent cursor-pointer" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    prevMonth(e);
+                  }}
                   type="button"
+                  style={{ zIndex: 1000001 }}
                 >
                   <span className="sr-only">Previous month</span>
                   <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="font-medium text-base">
-                  {format(currentMonth, "MMMM yyyy")}
-                </span>
-                <Button 
-                  variant="ghost" 
-                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150" 
-                  onClick={nextMonth}
+                </button>
+                <button
                   type="button"
+                  className="font-medium text-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded px-2 py-1"
+                  onClick={() => {
+                    // Optional: could add month/year picker functionality here
+                    console.log('Month/year clicked:', format(currentMonth, "MMMM yyyy"))
+                  }}
+                >
+                  {format(currentMonth, "MMMM yyyy")}
+                </button>
+                <button 
+                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-md flex items-center justify-center border-0 bg-transparent cursor-pointer" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    nextMonth(e);
+                  }}
+                  type="button"
+                  style={{ zIndex: 1000001 }}
                 >
                   <span className="sr-only">Next month</span>
                   <ChevronRight className="h-4 w-4" />
-                </Button>
+                </button>
               </div>
               <div className="grid grid-cols-7 gap-2">
                 {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
@@ -507,7 +662,7 @@ export function DatePicker({
                   const isInRange = isDayInRange(day);
                   const isRangeStart = mode === 'range' && isSameDay(day, date);
                   const isRangeEnd = mode === 'range' && endDate && isSameDay(day, endDate);
-                  const isFutureDate = disableFutureDates(day);
+                  const isFutureDate = shouldDisableDate(day);
                   
                   return (
                     <Button
@@ -531,15 +686,16 @@ export function DatePicker({
                   );
                 })}
               </div>
+
             </div>
             
             {/* Events Sidebar */}
             {showEvents && displayEvents.length > 0 && (
               <div className={cn(
-                "border-l p-3 w-[160px] flex flex-col gap-2 overflow-hidden",
+                "border-l p-4 w-[168px] flex flex-col gap-2 overflow-hidden",
                 mode !== 'range' && "max-h-[300px] overflow-y-auto"
               )}>
-                <div className="text-xs font-medium text-muted-foreground mb-1">{getEventGroupTitle()}</div>
+                <div className="text-xs font-medium text-muted-foreground mb-3">{getEventGroupTitle()}</div>
                 {displayEvents.map((event, index) => (
                   <div 
                     key={index}
@@ -561,6 +717,85 @@ export function DatePicker({
                     {/* Aquí se puede agregar el UI para rangos personalizados */}
                   </div>
                 )}
+              </div>
+            )}
+            
+            {/* Time Picker - Rightmost Column */}
+            {showTimePicker && (
+              <div className="border-l p-4 w-[230px] flex flex-col">
+                <div className="text-xs font-medium text-muted-foreground mb-3">Select Time</div>
+                
+                {/* Time Controls - Horizontal Layout */}
+                <div className="flex items-end gap-2 mb-4">
+                  {/* Hours */}
+                  <div className="flex flex-col flex-1">
+                    <label className="text-xs text-muted-foreground mb-1">Hours</label>
+                    <select
+                      value={timeFormat === '12h' ? (selectedTime.hours === 0 ? 12 : selectedTime.hours > 12 ? selectedTime.hours - 12 : selectedTime.hours) : selectedTime.hours}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (timeFormat === '12h') {
+                          const isPM = selectedTime.hours >= 12;
+                          const newHours = value === 12 ? (isPM ? 12 : 0) : (isPM ? value + 12 : value);
+                          handleHourChange(newHours.toString());
+                        } else {
+                          handleHourChange(e.target.value);
+                        }
+                      }}
+                      className="w-full px-2 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                      {Array.from({ length: timeFormat === '12h' ? 12 : 24 }, (_, i) => {
+                        const value = timeFormat === '12h' ? i + 1 : i;
+                        return (
+                          <option key={value} value={value}>
+                            {value.toString().padStart(2, '0')}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div className="text-muted-foreground text-lg pb-1.5">:</div>
+
+                  {/* Minutes */}
+                  <div className="flex flex-col flex-1">
+                    <label className="text-xs text-muted-foreground mb-1">Minutes</label>
+                    <select
+                      value={selectedTime.minutes}
+                      onChange={(e) => handleMinuteChange(e.target.value)}
+                      className="w-full px-2 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                      {Array.from({ length: 60 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i.toString().padStart(2, '0')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* AM/PM Toggle for 12h format */}
+                  {timeFormat === '12h' && (
+                    <div className="flex flex-col">
+                      <label className="text-xs text-muted-foreground mb-1">Period</label>
+                      <button
+                        onClick={handleAMPMToggle}
+                        className="px-2 py-1.5 text-sm border border-input rounded-md bg-background hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors min-w-[50px]"
+                      >
+                        {selectedTime.hours >= 12 ? 'PM' : 'AM'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Current time display */}
+                <div className="pt-3 border-t border-border">
+                  <div className="text-xs text-muted-foreground mb-2">Selected Time</div>
+                  <div className="text-center px-3 py-2 bg-muted/30 rounded-md">
+                    <div className="text-sm font-medium">
+                      {formatDisplayTime(selectedTime.hours, selectedTime.minutes)}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

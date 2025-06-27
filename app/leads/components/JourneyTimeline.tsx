@@ -121,21 +121,32 @@ function TaskSkeleton() {
       <div className="bg-muted/40 rounded-lg p-3 border border-border/30">
         <div className="flex justify-between items-start mb-1">
           <div className="flex items-center gap-2 flex-1">
+            {/* Task title */}
             <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-4 w-16" />
+            {/* Amount placeholder */}
+            <Skeleton className="h-5 w-16 rounded" />
+            {/* Date with clock icon */}
+            <div className="flex items-center gap-1 ml-2">
+              <Skeleton className="h-2.5 w-2.5 rounded" />
+              <Skeleton className="h-3 w-20" />
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-12" />
-            <Skeleton className="h-6 w-16" />
-            <Skeleton className="h-3 w-2" />
-            <Skeleton className="h-6 w-14" />
-            <Skeleton className="h-6 w-6" />
+            {/* Serial ID */}
+            <Skeleton className="h-3 w-8" />
+            {/* Status badge */}
+            <Skeleton className="h-6 w-16 rounded-full" />
+            {/* Closed badge placeholder */}
+            <Skeleton className="h-6 w-14 rounded-full" />
+            {/* Menu button */}
+            <Skeleton className="h-6 w-6 rounded" />
           </div>
         </div>
+        {/* Description */}
         <Skeleton className="h-3 w-full mb-2" />
-        <div className="mt-3 flex items-center gap-4">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-3 w-8" />
+        {/* Comments section placeholder */}
+        <div className="mt-3">
+          <Skeleton className="h-3 w-16" />
         </div>
       </div>
     </div>
@@ -392,6 +403,13 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                               ${task.amount.toLocaleString()}
                             </div>
                           )}
+                          {/* Date with clock icon */}
+                          {task.scheduled_date && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
+                              <Clock className="h-2.5 w-2.5" />
+                              <span>{format(new Date(task.scheduled_date), "MMM d, yyyy")}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           {/* Serial ID */}
@@ -461,25 +479,15 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground mb-2">{task.description}</p>
-                      <div className="mt-3 flex items-center gap-4">
-                        {/* Date */}
-                        <div className="text-xs text-muted-foreground">
-                          {task.scheduled_date && (
-                            <div className="inline-flex items-center">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {format(new Date(task.scheduled_date), "MMM d")} {format(new Date(task.scheduled_date), "yyyy")}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Comments count */}
-                        {taskCommentsCount[task.id] ? (
+                      {/* Comments count */}
+                      {taskCommentsCount[task.id] && (
+                        <div className="mt-3 flex items-center gap-4">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <MessageSquare className="h-3.5 w-3.5" />
                             <span>{taskCommentsCount[task.id]}</span>
                           </div>
-                        ) : null}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

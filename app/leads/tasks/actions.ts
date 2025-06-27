@@ -21,7 +21,21 @@ const TaskSchema = z.object({
     "contract", 
     "payment", 
     "referral", 
-    "feedback"
+    "feedback",
+    "trial",
+    "onboarding", 
+    "refund",
+    "ticket",
+    "kyc",
+    "training",
+    "consultation",
+    "follow_up",
+    "survey",
+    "review",
+    "support",
+    "billing",
+    "documentation",
+    "integration"
   ]),
   stage: z.enum([
     "awareness", 
@@ -56,7 +70,7 @@ export interface TaskResponse {
     lead_id: string
     title: string
     description: string | null
-    type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback"
+    type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback" | "trial" | "onboarding" | "refund" | "ticket" | "kyc" | "training" | "consultation" | "follow_up" | "survey" | "review" | "support" | "billing" | "documentation" | "integration"
     stage: "awareness" | "consideration" | "decision" | "purchase" | "retention" | "referral"
     status: "completed" | "in_progress" | "pending" | "failed"
     scheduled_date: string
@@ -82,7 +96,7 @@ export interface TasksResponse {
     lead_id: string
     title: string
     description: string | null
-    type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback"
+    type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback" | "trial" | "onboarding" | "refund" | "ticket" | "kyc" | "training" | "consultation" | "follow_up" | "survey" | "review" | "support" | "billing" | "documentation" | "integration"
     stage: "awareness" | "consideration" | "decision" | "purchase" | "retention" | "referral"
     status: "completed" | "in_progress" | "pending" | "failed"
     scheduled_date: string

@@ -46,6 +46,32 @@ export function DatePickerExample() {
         </div>
         
         <div>
+          <p className="text-sm text-muted-foreground mb-2">Task Mode with Time Picker (12h format):</p>
+          <DatePicker 
+            date={selectedDate}
+            setDate={setSelectedDate}
+            className="w-full"
+            position="bottom"
+            mode="task"
+            showTimePicker={true}
+            timeFormat="12h"
+          />
+        </div>
+        
+        <div>
+          <p className="text-sm text-muted-foreground mb-2">Task Mode with Time Picker (24h format):</p>
+          <DatePicker 
+            date={selectedDate2}
+            setDate={setSelectedDate2}
+            className="w-full"
+            position="bottom"
+            mode="task"
+            showTimePicker={true}
+            timeFormat="24h"
+          />
+        </div>
+        
+        <div>
           <p className="text-sm text-muted-foreground mb-2">Report Mode - Date Ranges for Analysis:</p>
           <DatePicker 
             date={selectedDate2}
@@ -122,6 +148,8 @@ export function DatePickerExample() {
         
         <div>
           <p className="text-sm">Selected Date: <span className="font-medium">{selectedDate.toLocaleDateString()}</span></p>
+          <p className="text-sm">Selected Time: <span className="font-medium">{selectedDate.toLocaleTimeString()}</span></p>
+          <p className="text-sm">Full DateTime: <span className="font-medium">{selectedDate.toString()}</span></p>
         </div>
       </CardContent>
     </Card>

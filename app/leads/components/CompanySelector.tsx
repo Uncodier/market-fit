@@ -114,95 +114,100 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing 
   return (
     <div className="flex-1">
       <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
-      <div className="flex gap-2">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-full justify-between h-12 text-sm"
-            >
-              {selectedCompany ? selectedCompany.name : "Select company..."}
-              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0">
-            <Command>
-              <CommandInput
-                placeholder="Search companies..."
-                value={search}
-                onValueChange={setSearch}
-              />
-              <CommandList>
-                <CommandEmpty>
-                  <div className="text-center py-4">
-                    <p className="text-sm text-muted-foreground mb-2">No companies found.</p>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setIsCreating(true)
-                        setNewCompanyName(search)
-                      }}
-                      className="h-8"
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Create "{search}"
-                    </Button>
-                  </div>
-                </CommandEmpty>
-                <CommandGroup>
-                  {filteredCompanies.map((company) => (
-                    <CommandItem
-                      key={company.id}
-                      value={company.name}
-                      onSelect={() => handleSelectCompany(company)}
-                    >
-                      <CheckCircle2
-                        className={`mr-2 h-4 w-4 ${
-                          selectedCompany?.id === company.id ? "opacity-100" : "opacity-0"
-                        }`}
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium">{company.name}</p>
-                        {company.industry && (
-                          <p className="text-xs text-muted-foreground">
-                            {COMPANY_INDUSTRIES.find(i => i.id === company.industry)?.name}
-                          </p>
-                        )}
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                {filteredCompanies.length > 0 && (
-                  <div className="border-t p-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setIsCreating(true)
-                        setNewCompanyName("")
-                      }}
-                      className="w-full justify-start h-8"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create new company
-                    </Button>
-                  </div>
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+      <div className="flex gap-1 min-w-0">
+        <div className="flex-1 min-w-0">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-full justify-between h-12 text-sm min-w-0"
+              >
+                <span className="truncate">
+                  {selectedCompany ? selectedCompany.name : "Select company..."}
+                </span>
+                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0">
+              <Command>
+                <CommandInput
+                  placeholder="Search companies..."
+                  value={search}
+                  onValueChange={setSearch}
+                />
+                <CommandList>
+                  <CommandEmpty>
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground mb-2">No companies found.</p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setIsCreating(true)
+                          setNewCompanyName(search)
+                        }}
+                        className="h-8"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Create "{search}"
+                      </Button>
+                    </div>
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {filteredCompanies.map((company) => (
+                      <CommandItem
+                        key={company.id}
+                        value={company.name}
+                        onSelect={() => handleSelectCompany(company)}
+                      >
+                        <CheckCircle2
+                          className={`mr-2 h-4 w-4 ${
+                            selectedCompany?.id === company.id ? "opacity-100" : "opacity-0"
+                          }`}
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium">{company.name}</p>
+                          {company.industry && (
+                            <p className="text-xs text-muted-foreground">
+                              {COMPANY_INDUSTRIES.find(i => i.id === company.industry)?.name}
+                            </p>
+                          )}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                  {filteredCompanies.length > 0 && (
+                    <div className="border-t p-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsCreating(true)
+                          setNewCompanyName("")
+                        }}
+                        className="w-full justify-start h-8"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create new company
+                      </Button>
+                    </div>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
         
         {selectedCompany && (
           <Button
             variant="outline"
             size="sm"
             onClick={handleClearCompany}
-            className="h-12 px-3"
+            className="h-12 w-12 flex-shrink-0 p-0"
+            title="Clear company"
           >
-            Clear
+            ✕
           </Button>
         )}
       </div>
