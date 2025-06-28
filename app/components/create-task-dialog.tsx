@@ -184,6 +184,20 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
                 className="min-h-[100px]"
               />
             </div>
+            <div className="grid gap-2">
+              <Label>Due Date</Label>
+              <div className="relative z-[1000000]">
+                <DatePicker
+                  date={date}
+                  setDate={setDate}
+                  className="h-12 w-full"
+                  placeholder="Select due date"
+                  mode="task"
+                  showTimePicker={true}
+                  timeFormat="12h"
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Priority</Label>
@@ -260,35 +274,19 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Due Date</Label>
-                <div className="relative z-[1000000]">
-                  <DatePicker
-                    date={date}
-                    setDate={setDate}
-                    className="h-12"
-                    placeholder="Select due date"
-                    mode="task"
-                    showTimePicker={true}
-                    timeFormat="12h"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>Amount</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={formData.amount || ""}
-                    onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                    className="h-12 pl-7"
-                  />
-                </div>
+            <div className="grid gap-2">
+              <Label>Amount</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={formData.amount || ""}
+                  onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                  className="h-12 pl-7 w-full"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

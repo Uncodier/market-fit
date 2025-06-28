@@ -1684,33 +1684,36 @@ export default function ContentDetailPage() {
             hasChanges={hasUnsavedChanges()}
           />
         </div>
-        <div className="flex-1 overflow-auto relative">
-          {/* Floating Tab Selector */}
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
-            <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg">
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'copy' | 'instructions')}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="copy">Copy</TabsTrigger>
-                  <TabsTrigger value="instructions">Instructions</TabsTrigger>
-                </TabsList>
-              </Tabs>
+        <div className="flex-1 overflow-auto">
+          <div className="p-4 h-full flex flex-col">
+            {/* Tab Selector - now scrolls with content */}
+            <div className="flex justify-center mb-6">
+              <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg">
+                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'copy' | 'instructions')}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="copy">Copy</TabsTrigger>
+                    <TabsTrigger value="instructions">Instructions</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
-          </div>
 
-          <div className="p-4 pt-16 h-full flex flex-col">
-            {activeTab === 'copy' ? (
-              <EditorContent 
-                editor={editor} 
-                className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
-                style={{ minHeight: 'calc(100vh - 200px)' }}
-              />
-            ) : (
-              <EditorContent 
-                editor={instructionsEditor} 
-                className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
-                style={{ minHeight: 'calc(100vh - 200px)' }}
-              />
-            )}
+            {/* Editor Content */}
+            <div className="flex-1 flex flex-col">
+              {activeTab === 'copy' ? (
+                <EditorContent 
+                  editor={editor} 
+                  className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
+                  style={{ minHeight: 'calc(100vh - 280px)' }}
+                />
+              ) : (
+                <EditorContent 
+                  editor={instructionsEditor} 
+                  className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
+                  style={{ minHeight: 'calc(100vh - 280px)' }}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

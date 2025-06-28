@@ -64,17 +64,41 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   onCollapse: () => void
 }
 
-const navigationItems = [
+// Main navigation items (always visible at top)
+const mainNavigationItems = [
   {
     title: "Dashboard",
     href: "/dashboard",
     icon: Home,
   },
+]
+
+// Human in the Loop category
+const humanInTheLoopItems = [
   {
     title: "Control Center",
     href: "/control-center",
     icon: Rocket,
   },
+  {
+    title: "Content",
+    href: "/content",
+    icon: FileText,
+  },
+  {
+    title: "Requirements",
+    href: "/requirements",
+    icon: ClipboardList,
+  },
+  {
+    title: "Experiments",
+    href: "/experiments", 
+    icon: FlaskConical,
+  },
+]
+
+// Automatic category
+const automaticItems = [
   {
     title: "Campaigns",
     href: "/campaigns",
@@ -84,21 +108,6 @@ const navigationItems = [
     title: "Segments",
     href: "/segments",
     icon: Tag,
-  },
-  {
-    title: "Content",
-    href: "/content",
-    icon: FileText,
-  },
-  {
-    title: "Experiments",
-    href: "/experiments", 
-    icon: FlaskConical,
-  },
-  {
-    title: "Requirements",
-    href: "/requirements",
-    icon: ClipboardList,
   },
   {
     title: "Assets",
@@ -118,7 +127,7 @@ const navigationItems = [
   {
     title: "AI Team",
     href: "/agents",
-    icon: Cpu, // Changed from MessageSquare to Cpu for AI representation
+    icon: Cpu,
   },
   {
     title: "Chats",
@@ -126,6 +135,31 @@ const navigationItems = [
     icon: MessageSquare,
   },
 ]
+
+// Category header component
+const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: boolean }) => {
+  if (isCollapsed) return null
+  
+  const getEmoji = (title: string) => {
+    switch (title) {
+      case "Human in the Loop":
+        return "💪"
+      case "Automatic":
+        return "🤖"
+      default:
+        return ""
+    }
+  }
+  
+  return (
+    <div className="px-3 py-2">
+      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        <span className="text-sm">{getEmoji(title)}</span>
+        {title}
+      </h3>
+    </div>
+  )
+}
 
 export function Sidebar({ 
   className, 
@@ -179,17 +213,54 @@ export function Sidebar({
 
       {/* Navigation Items - Scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="space-y-1 px-3 py-6">
-          {navigationItems.map((item) => (
-            <MenuItem
-              key={item.href}
-              href={item.href}
-              icon={item.icon}
-              title={item.title}
-              isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
-              isCollapsed={isCollapsed}
-            />
-          ))}
+        <div className="py-6">
+          {/* Main Navigation Items */}
+          <div className="space-y-1 px-3">
+            {mainNavigationItems.map((item) => (
+              <MenuItem
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                title={item.title}
+                isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
+                isCollapsed={isCollapsed}
+              />
+            ))}
+          </div>
+
+          {/* Human in the Loop Category */}
+          <div className="mt-6">
+            <CategoryHeader title="Human in the Loop" isCollapsed={isCollapsed} />
+            <div className="space-y-1 px-3">
+              {humanInTheLoopItems.map((item) => (
+                <MenuItem
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  title={item.title}
+                  isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
+                  isCollapsed={isCollapsed}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Automatic Category */}
+          <div className="mt-6">
+            <CategoryHeader title="Automatic" isCollapsed={isCollapsed} />
+            <div className="space-y-1 px-3">
+              {automaticItems.map((item) => (
+                <MenuItem
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  title={item.title}
+                  isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
+                  isCollapsed={isCollapsed}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

@@ -499,8 +499,12 @@ export default function TimelineTab({ task }: TimelineTabProps) {
     // Debounce the URL detection to avoid issues while typing
     const timeoutId = setTimeout(() => {
       if (!newComment.trim()) {
-        // Clear CTA if comment is empty
-        if (showCtaFields && !ctaTitle && !ctaUrl) {
+        // Only auto-close CTA if it was auto-populated (has URL but user cleared comment)
+        // Don't close if user manually opened CTA fields
+        if (showCtaFields && ctaUrl.trim() && !ctaTitle && !newComment.trim()) {
+          // If CTA was auto-populated but comment was cleared, clean up
+          setCtaUrl("")
+          setCtaTitle("")
           setShowCtaFields(false)
         }
         return
