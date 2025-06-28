@@ -15,7 +15,9 @@ import {
   X,
   Pencil,
   ExternalLink,
-  Trash2
+  Trash2,
+  Search,
+  Mail
 } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Target } from "@/app/components/ui/target-icon"
@@ -35,11 +37,13 @@ import {
 import { Lead, STATUS_STYLES, Segment } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { toast } from "sonner"
+import { useSite } from "@/app/context/SiteContext"
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator 
 } from "@/app/components/ui/dropdown-menu"
 import {
   AlertDialog,
@@ -69,10 +73,15 @@ interface LeadDetailProps {
 }
 
 export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead, hideStatus = false, onStatusChange }: LeadDetailProps) {
+  const { currentSite } = useSite()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [loadingActions, setLoadingActions] = useState<{ research: boolean; followup: boolean }>({
+    research: false,
+    followup: false
+  })
   const [editForm, setEditForm] = useState<Omit<Lead, "id" | "created_at">>({
     name: lead.name,
     email: lead.email,
@@ -147,6 +156,58 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
   const getLanguageName = (languageCode: string | null) => {
     if (!languageCode) return null
     return LANGUAGES[languageCode as keyof typeof LANGUAGES] || languageCode
+  }
+  
+  // Función para llamar API de research
+  const handleLeadResearch = async () => {
+    setLoadingActions(prev => ({ ...prev, research: true }))
+    
+    try {
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
+      const response = await apiClient.post('/api/workflow/leadResearch', {
+        lead_id: lead.id,
+        user_id: currentSite?.user_id,
+        site_id: currentSite?.id
+      })
+      
+      if (response.success) {
+        toast.success("Lead research initiated successfully")
+      } else {
+        throw new Error(response.error?.message || 'Failed to initiate lead research')
+      }
+    } catch (error) {
+      console.error('Error calling lead research API:', error)
+      toast.error("Failed to initiate lead research")
+    } finally {
+      setLoadingActions(prev => ({ ...prev, research: false }))
+    }
+  }
+
+  // Función para llamar API de follow up
+  const handleLeadFollowUp = async () => {
+    setLoadingActions(prev => ({ ...prev, followup: true }))
+    
+    try {
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
+      const response = await apiClient.post('/api/workflow/leadFollowUp', {
+        lead_id: lead.id,
+        user_id: currentSite?.user_id,
+        site_id: currentSite?.id
+      })
+      
+      if (response.success) {
+        toast.success("Lead follow-up initiated successfully")
+      } else {
+        throw new Error(response.error?.message || 'Failed to initiate lead follow-up')
+      }
+    } catch (error) {
+      console.error('Error calling lead follow-up API:', error)
+      toast.error("Failed to initiate lead follow-up")
+    } finally {
+      setLoadingActions(prev => ({ ...prev, followup: false }))
+    }
   }
   
   // Función para guardar los cambios
@@ -260,18 +321,45 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit Lead
+                  <DropdownMenuItem 
+                    onClick={handleLeadResearch}
+                    disabled={loadingActions.research}
+                    className="flex items-center justify-between"
+                  >
+                    {loadingActions.research ? (
+                      <Loader className="h-4 w-4" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">Lead Research</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleLeadFollowUp}
+                    disabled={loadingActions.followup}
+                    className="flex items-center justify-between"
+                  >
+                    {loadingActions.followup ? (
+                      <Loader className="h-4 w-4" />
+                    ) : (
+                      <Mail className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">Lead Follow Up</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsEditing(true)} className="flex items-center justify-between">
+                    <Pencil className="h-4 w-4" />
+                    <span className="ml-2">Edit Lead</span>
                   </DropdownMenuItem>
                   {onDeleteLead && (
-                    <DropdownMenuItem 
-                      onClick={() => setShowDeleteDialog(true)}
-                      className="text-red-600"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Lead
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="text-red-600 flex items-center justify-between"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="ml-2">Delete Lead</span>
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -298,18 +386,45 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit Lead
+                  <DropdownMenuItem 
+                    onClick={handleLeadResearch}
+                    disabled={loadingActions.research}
+                    className="flex items-center justify-between"
+                  >
+                    {loadingActions.research ? (
+                      <Loader className="h-4 w-4" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">Lead Research</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleLeadFollowUp}
+                    disabled={loadingActions.followup}
+                    className="flex items-center justify-between"
+                  >
+                    {loadingActions.followup ? (
+                      <Loader className="h-4 w-4" />
+                    ) : (
+                      <Mail className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">Lead Follow Up</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsEditing(true)} className="flex items-center justify-between">
+                    <Pencil className="h-4 w-4" />
+                    <span className="ml-2">Edit Lead</span>
                   </DropdownMenuItem>
                   {onDeleteLead && (
-                    <DropdownMenuItem 
-                      onClick={() => setShowDeleteDialog(true)}
-                      className="text-red-600"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Lead
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="text-red-600 flex items-center justify-between"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="ml-2">Delete Lead</span>
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

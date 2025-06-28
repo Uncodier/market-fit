@@ -414,24 +414,34 @@ export function KanbanView({
                                   )}
                                   onClick={(e) => handleCardClick(e, lead)}
                                 >
-                                  <CardHeader className="p-3 pb-0">
-                                    <CardTitle className="text-sm font-medium flex items-center justify-between">
-                                      {lead.name}
+                                  <CardHeader className="px-3 h-[50px] flex flex-row items-center justify-between">
+                                    <div className="flex-1 truncate">
+                                      <CardTitle className="text-sm font-medium">
+                                        {lead.name}
+                                      </CardTitle>
+                                    </div>
+                                    <div className="flex-shrink-0 m-0" style={{ marginBottom: '6px' }}>
                                       {isLoadingJourneyStages ? (
                                         <Skeleton className="h-5 w-16 rounded-full" />
                                       ) : (
-                                        <Badge className={`text-xs ${
+                                        <Badge className={`text-xs m-0 ${
                                           JOURNEY_STAGE_COLORS[leadJourneyStages[lead.id] || 'not_contacted']
                                         }`}>
                                           {getJourneyStageName(leadJourneyStages[lead.id] || 'not_contacted')}
                                         </Badge>
                                       )}
-                                    </CardTitle>
+                                    </div>
                                   </CardHeader>
+                                  <div className="border-t border-gray-100 dark:border-gray-800 mx-3"></div>
                                   <CardContent className="p-3 pt-2 pb-0">
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                       {lead.email}
                                     </div>
+                                    {lead.phone && (
+                                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                        {lead.phone}
+                                      </div>
+                                    )}
                                       {getCompanyName(lead) && (
                                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
                                           {getCompanyName(lead)}

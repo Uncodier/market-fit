@@ -140,26 +140,15 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing 
                 <CommandList>
                   <CommandEmpty>
                     <div className="text-center py-4">
-                      <p className="text-sm text-muted-foreground mb-2">No companies found.</p>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setIsCreating(true)
-                          setNewCompanyName(search)
-                        }}
-                        className="h-8"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Create "{search}"
-                      </Button>
+                      <p className="text-sm text-muted-foreground">No companies found.</p>
                     </div>
                   </CommandEmpty>
                   <CommandGroup>
                     {filteredCompanies.map((company) => (
-                      <CommandItem
+                      <div
                         key={company.id}
-                        value={company.name}
-                        onSelect={() => handleSelectCompany(company)}
+                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                        onClick={() => handleSelectCompany(company)}
                       >
                         <CheckCircle2
                           className={`mr-2 h-4 w-4 ${
@@ -174,25 +163,23 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing 
                             </p>
                           )}
                         </div>
-                      </CommandItem>
+                      </div>
                     ))}
                   </CommandGroup>
-                  {filteredCompanies.length > 0 && (
-                    <div className="border-t p-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsCreating(true)
-                          setNewCompanyName("")
-                        }}
-                        className="w-full justify-start h-8"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create new company
-                      </Button>
-                    </div>
-                  )}
+                  <div className="border-t p-2">
+                    <Button
+                      variant="secondary"
+                      size="default"
+                      onClick={() => {
+                        setIsCreating(true)
+                        setNewCompanyName(search || "")
+                      }}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {search ? `Create "${search}"` : "Create new company"}
+                    </Button>
+                  </div>
                 </CommandList>
               </Command>
             </PopoverContent>
