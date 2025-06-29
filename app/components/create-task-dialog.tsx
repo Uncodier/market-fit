@@ -249,7 +249,10 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
                   <SelectContent>
                     {TASK_TYPES.map((taskType) => (
                       <SelectItem key={taskType.id} value={taskType.id}>
-                        {taskType.name}
+                        <div className="flex items-center gap-2">
+                          <span>{taskType.emoji}</span>
+                          <span>{taskType.name}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>

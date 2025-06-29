@@ -20,7 +20,21 @@ const TYPE_EMOJIS: Record<string, string> = {
   contract: "📝",
   payment: "💳",
   referral: "🤝",
-  feedback: "💭"
+  feedback: "💭",
+  trial: "🔬",
+  onboarding: "🚀",
+  refund: "💸",
+  ticket: "🎫",
+  kyc: "🔐",
+  training: "🎓",
+  consultation: "👨‍💼",
+  follow_up: "🔄",
+  survey: "📊",
+  review: "⭐",
+  support: "🆘",
+  billing: "🧾",
+  documentation: "📚",
+  integration: "🔗"
 }
 
 // Function to get emoji for task type with fallback

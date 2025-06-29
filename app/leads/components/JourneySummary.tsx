@@ -222,24 +222,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
                   return (
                     <div key={type} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
                       <div className="flex items-center">
-                        <div className={`h-6 w-6 rounded-full mr-2 flex items-center justify-center ${
-                          type === "email" ? "bg-blue-100 text-blue-600" :
-                          type === "call" ? "bg-green-100 text-green-600" :
-                          type === "meeting" ? "bg-purple-100 text-purple-600" :
-                          type === "demo" ? "bg-yellow-100 text-yellow-600" :
-                          "bg-gray-100 text-gray-600"
-                        }`}>
-                          {type === "email" ? (
-                            <Mail className="h-3 w-3" />
-                          ) : type === "call" ? (
-                            <Phone className="h-3 w-3" />
-                          ) : type === "meeting" ? (
-                            <Users className="h-3 w-3" />
-                          ) : type === "contract" || type === "quote" || type === "payment" ? (
-                            <Tag className="h-3 w-3" />
-                          ) : (
-                            <Clock className="h-3 w-3" />
-                          )}
+                        <div className="h-6 w-6 rounded-full mr-2 flex items-center justify-center bg-muted">
+                          <span className="text-sm">{taskType?.emoji || "📋"}</span>
                         </div>
                         <span className="text-sm">{taskType?.name || type}</span>
                       </div>
@@ -266,24 +250,8 @@ function JourneySummaryContent({ leadId }: JourneySummaryProps) {
                 const taskType = TASK_TYPES.find(t => t.id === task.type)
                 return (
                   <div key={task.id} className="flex items-start space-x-3 border-b border-border/30 last:border-0 pb-3 last:pb-0">
-                    <div className={`h-6 w-6 rounded-full mt-1 flex items-center justify-center ${
-                      task.type === "email" ? "bg-blue-100 text-blue-600" :
-                      task.type === "call" ? "bg-green-100 text-green-600" :
-                      task.type === "meeting" ? "bg-purple-100 text-purple-600" :
-                      task.type === "demo" ? "bg-yellow-100 text-yellow-600" :
-                      "bg-gray-100 text-gray-600"
-                    }`}>
-                      {task.type === "email" ? (
-                        <Mail className="h-3 w-3" />
-                      ) : task.type === "call" ? (
-                        <Phone className="h-3 w-3" />
-                      ) : task.type === "meeting" ? (
-                        <Users className="h-3 w-3" />
-                      ) : task.type === "contract" || task.type === "quote" || task.type === "payment" ? (
-                        <Tag className="h-3 w-3" />
-                      ) : (
-                        <Clock className="h-3 w-3" />
-                      )}
+                    <div className="h-6 w-6 rounded-full mt-1 flex items-center justify-center bg-muted">
+                      <span className="text-sm">{taskType?.emoji || "📋"}</span>
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start">

@@ -136,7 +136,12 @@ export function AddTaskDialog({ isOpen, onOpenChange, leadId }: AddTaskDialogPro
                   </SelectTrigger>
                   <SelectContent>
                     {TASK_TYPES.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                      <SelectItem key={type.id} value={type.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{type.emoji}</span>
+                          <span>{type.name}</span>
+                        </div>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
