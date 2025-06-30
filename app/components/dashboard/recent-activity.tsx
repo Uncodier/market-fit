@@ -325,11 +325,6 @@ export function RecentActivity({
                   <span> in <span className="font-medium">{activity.campaign}</span></span>
                 }
               </p>
-              {activity.journeyStage && (
-                <Badge className={`text-xs px-2 py-1 whitespace-nowrap ${getJourneyStageColor(activity.journeyStage)}`}>
-                  {activity.journeyStage}
-                </Badge>
-              )}
             </div>
             {activity.description && (
               <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 overflow-hidden">
@@ -338,9 +333,9 @@ export function RecentActivity({
             )}
           </div>
           <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            {activity.status && (
-              <Badge className={`text-xs px-2 py-1 whitespace-nowrap ${getStatusColor(activity.status)}`}>
-                {capitalizeStatus(activity.status)}
+            {activity.journeyStage && (
+              <Badge className={`text-xs px-2 py-1 whitespace-nowrap ${getJourneyStageColor(activity.journeyStage)}`}>
+                {activity.journeyStage}
               </Badge>
             )}
             <span title={new Date(activity.date).toLocaleString()}>
