@@ -1,0 +1,11 @@
+name: Asset Management
+page: assets
+page_path: app/assets/page.tsx
+task: View and manage digital assets
+steps:
+- Navigate to assets page
+- Verify assets are displayed correctly
+- Upload new asset using upload button
+- Search for specific asset using search input
+- Delete asset and verify it's removed from the list
+expected_result: Assets display and can be managed

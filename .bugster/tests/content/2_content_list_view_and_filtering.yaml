@@ -1,0 +1,11 @@
+name: Content List View and Filtering
+page: content
+page_path: app/content/page.tsx
+task: View and filter content list
+steps:
+- Navigate to content page
+- Verify content items are displayed correctly
+- Use search input to filter by content title
+- Use filters to filter by content type and status
+- Verify filtered results match applied criteria
+expected_result: Content list displays and filters correctly

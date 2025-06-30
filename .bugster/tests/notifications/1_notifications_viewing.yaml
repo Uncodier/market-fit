@@ -1,0 +1,11 @@
+name: Notifications Viewing
+page: notifications
+page_path: app/notifications/page.tsx
+task: View system notifications
+steps:
+- Navigate to notifications page
+- Verify notifications are displayed in list
+- Switch between All/Unread tabs
+- Mark notification as read by clicking on it
+- Verify notification status updates correctly
+expected_result: Notifications display correctly and can be filtered

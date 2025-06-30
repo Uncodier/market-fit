@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "timestamp": 1751257801569,
+    "version": 2,
+    "git": {
+      "branch": "master",
+      "commit": "8a2b55c7635dc2350e75452d57b790ed7abbaec5"
+    }
+  },
+  "data": {
+    "frameworks": [
+      {
+        "id": "next",
+        "name": "Next.js",
+        "dir_path": "/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/"
+      }
+    ]
+  }
+}

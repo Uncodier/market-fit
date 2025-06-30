@@ -1,0 +1,11 @@
+name: Content Creation and Editing
+page: content/:id
+page_path: app/content/[id]/page.tsx
+task: Create and edit marketing content
+steps:
+- Navigate to content page
+- Click on existing content piece or create new
+- Use editor to modify content text and formatting
+- Add tags and set rating for the content
+- Save changes and verify they persist after page reload
+expected_result: Content is created/edited and saved successfully

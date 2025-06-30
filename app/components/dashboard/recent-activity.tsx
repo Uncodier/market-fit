@@ -316,7 +316,7 @@ export function RecentActivity({
           </Avatar>
           <div className="ml-4 space-y-1 flex-1 pr-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-medium text-foreground leading-snug">
+              <p className="text-sm font-medium text-foreground leading-snug line-clamp-1 overflow-hidden">
                 {activity.user.name} | {activity.action || activity.title || "Performed an action"}
                 {activity.segment && 
                   <span> on <span className="font-medium">{activity.segment}</span></span>
@@ -326,20 +326,20 @@ export function RecentActivity({
                 }
               </p>
               {activity.journeyStage && (
-                <Badge className={`text-xs px-2 py-1 ${getJourneyStageColor(activity.journeyStage)}`}>
+                <Badge className={`text-xs px-2 py-1 whitespace-nowrap ${getJourneyStageColor(activity.journeyStage)}`}>
                   {activity.journeyStage}
                 </Badge>
               )}
             </div>
             {activity.description && (
-              <p className="text-xs text-muted-foreground leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 overflow-hidden">
                 {activity.description}
               </p>
             )}
           </div>
           <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
             {activity.status && (
-              <Badge className={`text-xs px-2 py-1 ${getStatusColor(activity.status)}`}>
+              <Badge className={`text-xs px-2 py-1 whitespace-nowrap ${getStatusColor(activity.status)}`}>
                 {capitalizeStatus(activity.status)}
               </Badge>
             )}

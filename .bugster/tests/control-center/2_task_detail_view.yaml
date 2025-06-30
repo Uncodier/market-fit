@@ -1,0 +1,11 @@
+name: Task Detail View
+page: control-center/:id
+page_path: app/control-center/[id]/page.tsx
+task: View and update task details
+steps:
+- Navigate to control center page
+- Click on a specific task
+- Verify task details display correctly
+- Update task status using status selector
+- Verify updates persist after page reload
+expected_result: Task details display and can be updated

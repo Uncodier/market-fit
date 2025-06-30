@@ -1,0 +1,11 @@
+name: Experiment Creation
+page: experiments
+page_path: app/experiments/page.tsx
+task: Create a new marketing experiment
+steps:
+- Navigate to experiments page
+- Click create experiment button
+- Fill in experiment name and details
+- Configure experiment parameters and target segment
+- Save experiment and verify it appears in the list
+expected_result: New experiment is created and appears in the experiments list

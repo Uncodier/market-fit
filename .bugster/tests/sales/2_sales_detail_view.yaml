@@ -1,0 +1,11 @@
+name: Sales Detail View
+page: sales/:id
+page_path: app/sales/[id]/page.tsx
+task: View detailed sales information
+steps:
+- Navigate to sales page
+- Click on a specific sale record
+- Verify sale details display correctly
+- Register payment using payment button if applicable
+- Verify payment status updates correctly
+expected_result: Sales details display correctly

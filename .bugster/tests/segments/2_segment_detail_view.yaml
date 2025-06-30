@@ -1,0 +1,11 @@
+name: Segment Detail View
+page: segments/:id
+page_path: app/segments/[id]/page.tsx
+task: View segment details and analytics
+steps:
+- Navigate to segments page
+- Click on a specific segment
+- Verify segment details display correctly
+- Switch to Analysis tab and verify charts and metrics load
+- Switch to ICP tab and verify persona information displays
+expected_result: Segment details and analytics display correctly

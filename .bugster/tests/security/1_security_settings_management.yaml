@@ -1,0 +1,11 @@
+name: Security Settings Management
+page: security
+page_path: app/security/page.tsx
+task: Update security settings
+steps:
+- Navigate to security page
+- Verify current security settings display
+- Update password using password form
+- Toggle MFA settings if available
+- Verify changes are saved successfully
+expected_result: Security settings are updated successfully

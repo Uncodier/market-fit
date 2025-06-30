@@ -1,0 +1,11 @@
+name: Segment Creation
+page: segments
+page_path: app/segments/page.tsx
+task: Create a new audience segment
+steps:
+- Navigate to segments page
+- Click create segment button
+- Enter segment name and description
+- Configure segment criteria and rules
+- Save segment and verify it appears in the list
+expected_result: New segment is created and appears in the segments list

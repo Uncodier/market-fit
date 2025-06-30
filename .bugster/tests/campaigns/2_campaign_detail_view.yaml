@@ -1,0 +1,11 @@
+name: Campaign Detail View
+page: campaigns/:id
+page_path: app/campaigns/[id]/page.tsx
+task: View campaign details and metrics
+steps:
+- Navigate to campaigns page
+- Click on a specific campaign
+- Verify campaign summary information displays correctly
+- Check financial details tab for budget and expense information
+- Verify status can be updated via status bar
+expected_result: Campaign details and metrics display correctly

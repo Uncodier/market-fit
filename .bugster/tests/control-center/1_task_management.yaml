@@ -1,0 +1,11 @@
+name: Task Management
+page: control-center
+page_path: app/control-center/page.tsx
+task: View and manage tasks
+steps:
+- Navigate to control center page
+- Verify tasks are displayed correctly
+- Filter tasks by status using status filter
+- Switch between table and kanban views
+- Verify task details can be accessed by clicking on a task
+expected_result: Tasks display and can be filtered by status

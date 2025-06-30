@@ -1,0 +1,11 @@
+name: Site Settings Configuration
+page: settings
+page_path: app/settings/page.tsx
+task: Configure site settings
+steps:
+- Navigate to settings page
+- Verify current site settings display
+- Update site name, description, and other fields
+- Save changes using save button
+- Verify changes persist after page reload
+expected_result: Site settings are updated and saved

@@ -41,3 +41,10 @@ next-env.d.ts
 # IDE
 .idea
 .vscode 
+# Bugster
+.bugster/results/
+.bugster/screenshots/
+.bugster/videos/
+.bugster/logs/
+.bugster/reports/
+*.bugster.log

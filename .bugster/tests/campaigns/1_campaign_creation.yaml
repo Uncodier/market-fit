@@ -1,0 +1,11 @@
+name: Campaign Creation
+page: campaigns
+page_path: app/campaigns/page.tsx
+task: Create a new marketing campaign
+steps:
+- Navigate to campaigns page
+- Click create campaign button
+- Fill in campaign name, description, and other required fields
+- Select target segment from dropdown
+- Click save button and verify new campaign appears in the list
+expected_result: New campaign is created and appears in the campaigns list

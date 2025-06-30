@@ -1,0 +1,11 @@
+name: Sales Management
+page: sales
+page_path: app/sales/page.tsx
+task: View and manage sales records
+steps:
+- Navigate to sales page
+- Verify sales records display in table
+- Use search to filter sales by customer name
+- Create new sale using create sale button
+- Verify new sale appears in the table
+expected_result: Sales records display and can be filtered

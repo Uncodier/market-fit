@@ -1,0 +1,7 @@
+base_url: https://app.uncodie.com
+credentials:
+- id: admin
+  password: Cloud1234@R
+  username: sergio@uncodie.com
+project_id: awUZjLruaBBxGdoRod8M
+project_name: market-fit

@@ -1,0 +1,11 @@
+name: Dashboard Overview Data Display
+page: dashboard
+page_path: app/dashboard/page.tsx
+task: View dashboard metrics and charts
+steps:
+- Navigate to dashboard page
+- Verify revenue widget displays correct data
+- Change date range using the date range picker
+- Verify data updates according to selected date range
+- Switch between tabs to view different metrics
+expected_result: Dashboard displays all relevant metrics and charts correctly
