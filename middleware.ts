@@ -79,18 +79,36 @@ export async function middleware(req: NextRequest) {
     // Verificar la sesión
     const {
       data: { session },
+      error: sessionError
     } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      console.error('Middleware session error:', sessionError.message)
+    }
+
+    console.log('Middleware check:', {
+      path,
+      hasSession: !!session,
+      userId: session?.user?.id?.substring(0, 8) + '...' || 'none'
+    })
 
     // Obtener la ruta actual
     // Si es una ruta de autenticación
     if (path.startsWith('/auth')) {
-      // Si el usuario está autenticado, redirigir al dashboard o returnTo
+      // Permitir acceso a rutas específicas de auth sin redirección
+      if (path === '/auth/confirm' || path === '/auth/callback' || path === '/auth/set-password' || path === '/auth/team-invitation') {
+        console.log('Middleware: Allowing access to auth flow page:', path)
+        return res
+      }
+      
+      // Si el usuario está autenticado y no está en una página de flujo de auth, redirigir al dashboard o returnTo
       if (session) {
         const returnTo = req.nextUrl.searchParams.get('returnTo') || '/dashboard'
+        console.log('Middleware: Authenticated user on auth page, redirecting to:', returnTo)
         const redirectUrl = new URL(returnTo, req.url)
         return NextResponse.redirect(redirectUrl)
       }
-      // Si no está autenticado, permitir acceso a la página de auth
+      // Si no está autenticado, permitir acceso a la página de auth principal
       return res
     }
 
@@ -98,9 +116,12 @@ export async function middleware(req: NextRequest) {
     if (PROTECTED_ROUTES.some(route => path.startsWith(route))) {
       // Si no hay sesión, redirigir a auth con returnTo
       if (!session) {
+        console.log('Middleware: Protected route without session, redirecting to auth. Path:', path)
         const redirectUrl = new URL('/auth', req.url)
         redirectUrl.searchParams.set('returnTo', path)
         return NextResponse.redirect(redirectUrl)
+      } else {
+        console.log('Middleware: Protected route with valid session, allowing access. Path:', path)
       }
     }
 

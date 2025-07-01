@@ -121,6 +121,9 @@ export async function GET(request: Request) {
       const authMode = authModeCookie?.value
       const validateUserExists = validateUserExistsCookie?.value === 'true'
       
+      console.log("Auth mode from cookies:", { authMode, validateUserExists });
+      
+      /* TEMPORARILY DISABLED - Complex validation logic that may be causing issues
       // Only validate user existence for sign-in attempts, not sign-up
       if (validateUserExists && authMode === 'sign_in' && data.session?.user) {
         const user = data.session.user
@@ -267,14 +270,59 @@ export async function GET(request: Request) {
           }
         }
       }
+      */ 
+      
+      // Simple referral code processing if available
+      if (authMode === 'sign_up') {
+        const referralCodeCookie = (await cookieStore).get('referral_code')
+        if (referralCodeCookie?.value && data.session?.user) {
+          try {
+            console.log("Processing referral code for new user:", data.session.user.email);
+            const referralResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/process-referral`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ referralCode: referralCodeCookie.value })
+            })
+            
+            if (!referralResponse.ok) {
+              console.warn('Failed to process referral code after OAuth sign-up')
+            } else {
+              console.log('Successfully processed referral code after OAuth sign-up')
+            }
+          } catch (error) {
+            console.warn('Error processing referral code after OAuth sign-up:', error)
+          }
+        }
+      }
       
       console.log("Auth callback success, session established for:", data.session?.user.email);
+      console.log("Session details:", {
+        hasSession: !!data.session,
+        hasUser: !!data.session?.user,
+        userId: data.session?.user?.id,
+        email: data.session?.user?.email,
+        authMode: authMode
+      });
+      
+      // Verify session is properly established
+      if (!data.session || !data.session.user) {
+        console.error("No session or user found after successful OAuth exchange");
+        return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent('Authentication failed - no session established')}&returnTo=${encodeURIComponent(returnTo)}`, request.url));
+      }
       
       // Clear the auth mode cookies on successful authentication
       const successResponse = NextResponse.redirect(new URL(returnTo, request.url))
       successResponse.cookies.delete('auth_mode')
       successResponse.cookies.delete('validate_user_exists')
       successResponse.cookies.delete('referral_code')
+      
+      // Add headers to ensure proper session handling
+      successResponse.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+      successResponse.headers.set('Pragma', 'no-cache')
+      
+      console.log("Redirecting to:", returnTo, "with session for user:", data.session.user.email);
       
       return successResponse
     }
