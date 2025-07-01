@@ -10,15 +10,21 @@ export async function createTask(values: CreateTaskFormValues): Promise<{ data?:
       return { error: "User not authenticated" }
     }
 
+    // Clean the data - convert undefined to null for database
+    const cleanedValues = {
+      ...values,
+      lead_id: values.lead_id || null,
+      assignee: values.assignee || null,
+      type: values.type || null,
+      stage: values.stage || null,
+      user_id: user.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
     const { data, error } = await supabase
       .from('tasks')
-      .insert([
-        {
-          ...values,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      ])
+      .insert([cleanedValues])
       .select()
       .single()
 

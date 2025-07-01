@@ -4,9 +4,9 @@ export interface Task {
   title: string
   description: string
   status: 'pending' | 'in_progress' | 'completed'
-  priority: 'low' | 'medium' | 'high'
-  due_date?: Date
-  assigned_to?: string
+  priority: number
+  scheduled_date?: Date
+  assignee?: string
   created_at: Date
   updated_at: Date
   site_id: string
@@ -22,9 +22,9 @@ export interface CreateTaskFormValues {
   title: string
   description: string
   status: 'pending' | 'in_progress' | 'completed'
-  priority: 'low' | 'medium' | 'high'
-  due_date?: Date
-  assigned_to?: string
+  priority: number
+  scheduled_date?: Date
+  assignee?: string
   site_id: string
   type?: string
   stage?: string

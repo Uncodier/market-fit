@@ -115,14 +115,14 @@ export function TaskDialog({
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="dueDate" className="text-sm font-medium">
-                Due Date
+              <label htmlFor="scheduledDate" className="text-sm font-medium">
+                Scheduled Date
               </label>
               <Input
-                id="dueDate"
+                id="scheduledDate"
                 type="date"
-                value={formData.dueDate ? new Date(formData.dueDate).toISOString().split("T")[0] : ""}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, dueDate: new Date(e.target.value) })}
+                value={formData.scheduledDate ? new Date(formData.scheduledDate).toISOString().split("T")[0] : ""}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, scheduledDate: new Date(e.target.value) })}
               />
             </div>
           </div>

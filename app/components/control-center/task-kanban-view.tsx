@@ -145,10 +145,10 @@ export function TaskKanbanView({
                                     {task.description}
                                   </p>
                                 )}
-                                {task.dueDate && (
+                                {task.scheduledDate && (
                                   <div className="flex items-center justify-end mt-2">
                                     <Badge variant="secondary" className="text-xs bg-muted/80 dark:bg-muted/50">
-                                      Due: {new Date(task.dueDate).toLocaleDateString()}
+                                      Due: {new Date(task.scheduledDate).toLocaleDateString()}
                                     </Badge>
                                   </div>
                                 )}

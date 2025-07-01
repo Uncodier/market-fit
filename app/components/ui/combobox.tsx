@@ -5,13 +5,6 @@ import { Check, ChevronDown, X, Search } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/ui/button"
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/app/components/ui/command"
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -83,6 +76,12 @@ export function Combobox({
     }
   }
 
+  const handleSelectOption = (option: ComboboxOption) => {
+    onValueChange(option.value)
+    setSearchQuery(option.label)
+    setOpen(false)
+  }
+
   // Update displayed value when selected option changes
   React.useEffect(() => {
     if (selectedOption) {
@@ -131,29 +130,26 @@ export function Combobox({
           </div>
         </PopoverTrigger>
         <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px]" align="start">
-          <Command>
-            <CommandInput 
-              placeholder={searchPlaceholder} 
-              className="h-9"
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-              icon={<Search className="h-4 w-4" />} 
-            />
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
-            <CommandGroup className="max-h-64 overflow-auto">
+          <div className="p-2">
+            <div className="flex items-center border-b border-border px-3 pb-2 mb-2">
+              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-0 shadow-none focus-visible:ring-0 h-8"
+              />
+            </div>
+            <div className="max-h-64 overflow-auto">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((option) => (
-                  <CommandItem
+                  <div
                     key={option.value}
-                    value={option.value}
-                    onSelect={(currentValue: string) => {
-                      onValueChange(currentValue)
-                      const selectedItem = options.find(opt => opt.value === currentValue)
-                      if (selectedItem) {
-                        setSearchQuery(selectedItem.label)
-                      }
-                      setOpen(false)
-                    }}
+                    className={cn(
+                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground transition-colors",
+                      value === option.value && "bg-accent text-accent-foreground"
+                    )}
+                    onClick={() => handleSelectOption(option)}
                   >
                     <Check
                       className={cn(
@@ -162,13 +158,13 @@ export function Combobox({
                       )}
                     />
                     {option.label}
-                  </CommandItem>
+                  </div>
                 ))
               ) : (
-                <div className="py-6 text-center text-sm">{emptyMessage}</div>
+                <div className="py-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>
               )}
-            </CommandGroup>
-          </Command>
+            </div>
+          </div>
         </PopoverContent>
       </Popover>
     </div>

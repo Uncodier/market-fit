@@ -203,35 +203,52 @@ export function useAuth() {
   const signInWithOAuth = useCallback(async (provider: Provider) => {
     console.log('[Auth Debug] Attempting to sign in with OAuth provider:', provider)
     
-    // Configuración específica para cada proveedor
-    let options: ExtendedOAuthOptions = {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
-    }
-    
-    // Configuración específica para Google en Uncodie
-    if (provider === 'google') {
-      options = {
-        ...options,
-        queryParams: {
-          // Añadir el dominio de Uncodie para el login
-          hd: 'uncodie.com',
-          // Solicitar el scope de perfil y email
-          scope: 'profile email',
-          // Añadir prompt para asegurar que se muestre el selector de cuentas
-          prompt: 'select_account',
-          // Identificador de cliente para Uncodie - opcional, ya está en Supabase
-          access_type: 'offline'
+    try {
+      // Clear any existing auth state to prevent PKCE conflicts
+      console.log('🧹 Clearing auth state before OAuth to prevent PKCE conflicts')
+      await supabase.auth.signOut({ scope: 'local' })
+      
+      // Small delay to ensure state is cleared
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Use window.location.origin for consistency with other OAuth calls
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL
+      
+      // Configuración específica para cada proveedor
+      let options: ExtendedOAuthOptions = {
+        redirectTo: `${baseUrl}/auth/callback`
+      }
+      
+      // Configuración específica para Google
+      if (provider === 'google') {
+        options = {
+          ...options,
+          queryParams: {
+            // Solicitar el scope de perfil y email
+            scope: 'profile email',
+            // Añadir prompt para asegurar que se muestre el selector de cuentas
+            prompt: 'select_account',
+            // Acceso offline para refresh tokens
+            access_type: 'offline'
+          }
         }
       }
-    }
-    
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options
-    })
-    
-    if (error) {
-      console.error('[Auth Debug] OAuth sign in error:', error.message)
+      
+      console.log('🔄 Starting OAuth flow with clean state, redirectTo:', options.redirectTo)
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options
+      })
+      
+      if (error) {
+        console.error('[Auth Debug] OAuth sign in error:', error.message)
+        throw error
+      }
+      
+      console.log('✅ OAuth initiated successfully')
+    } catch (error: any) {
+      console.error('[Auth Debug] OAuth error:', error)
       throw error
     }
   }, [supabase])

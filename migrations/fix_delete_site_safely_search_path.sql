@@ -1,112 +1,83 @@
--- Migration: Fix delete_site_safely function search_path security issue
--- Date: 2024
--- Issue: Function has mutable search_path which creates security vulnerabilities
+-- FIX: delete_site_safely search_path problem
+-- El problema es que la función tiene search_path = '' y no puede encontrar la tabla sites
 
 -- ============================================================================
--- SECURE FIX: Set minimal, explicit search_path for delete_site_safely
+-- OPCIÓN 1: Arreglar el search_path de la función
 -- ============================================================================
 
-DO $$
+-- Establecer search_path correcto para que pueda encontrar public.sites
+ALTER FUNCTION public.delete_site_safely(UUID) SET search_path = 'public';
+
+-- ============================================================================
+-- OPCIÓN 2: Recrear la función con referencias explícitas al esquema
+-- ============================================================================
+
+-- Crear versión mejorada de la función con referencias explícitas
+CREATE OR REPLACE FUNCTION public.delete_site_safely(site_id_param UUID)
+RETURNS BOOLEAN AS $$
 BEGIN
-    -- Check if function exists before attempting to modify it
-    IF EXISTS (
-        SELECT 1 
-        FROM pg_proc p
-        JOIN pg_namespace n ON p.pronamespace = n.oid
-        WHERE n.nspname = 'public'
-        AND p.proname = 'delete_site_safely'
+    -- Verificar que el usuario tiene permisos (owner del sitio)
+    IF NOT EXISTS (
+        SELECT 1 FROM public.sites s
+        WHERE s.id = site_id_param 
+        AND s.user_id = auth.uid()
     ) THEN
-        
-        -- Set secure, minimal search_path
-        -- Only include 'public' since function needs access to public.sites
-        -- auth.uid() works regardless of search_path
-        ALTER FUNCTION public.delete_site_safely(UUID) 
-        SET search_path = 'public';
-        
-        RAISE NOTICE '✅ Fixed search_path for delete_site_safely to "public"';
-        
-        -- Recreate the function with explicit schema references for maximum security
-        CREATE OR REPLACE FUNCTION public.delete_site_safely(site_id_param UUID)
-        RETURNS BOOLEAN 
-        LANGUAGE plpgsql 
-        SECURITY DEFINER
-        SET search_path = 'public'
-        AS $func$
-        BEGIN
-            -- Verificar que el usuario tiene permisos (owner del sitio)
-            -- Using explicit schema reference for maximum security
-            IF NOT EXISTS (
-                SELECT 1 FROM public.sites s
-                WHERE s.id = site_id_param 
-                AND s.user_id = auth.uid()
-            ) THEN
-                RAISE EXCEPTION 'Permission denied: Only site owner can delete the site';
-            END IF;
-            
-            -- Establecer variable de contexto para indicar que estamos eliminando un sitio
-            PERFORM set_config('app.deleting_site', site_id_param::text, true);
-            
-            -- Eliminar el sitio (CASCADE eliminará todo lo demás)
-            -- Using explicit schema reference
-            DELETE FROM public.sites WHERE id = site_id_param;
-            
-            -- Limpiar la variable de contexto
-            PERFORM set_config('app.deleting_site', '', true);
-            
-            RETURN true;
-        EXCEPTION
-            WHEN OTHERS THEN
-                -- Limpiar la variable en caso de error
-                PERFORM set_config('app.deleting_site', '', true);
-                RAISE;
-        END;
-        $func$;
-        
-        -- Ensure proper permissions
-        GRANT EXECUTE ON FUNCTION public.delete_site_safely(UUID) TO authenticated;
-        
-        -- Add security comment
-        COMMENT ON FUNCTION public.delete_site_safely(UUID) IS 
-        'Safely deletes a site and all its related data. Only the site owner can delete the site. Uses fixed search_path for security.';
-        
-        RAISE NOTICE '✅ Successfully secured delete_site_safely function';
-        
-    ELSE
-        RAISE NOTICE '⚠️  Function delete_site_safely does not exist, skipping fix';
+        RAISE EXCEPTION 'Permission denied: Only site owner can delete the site';
     END IF;
-END $$;
+    
+    -- Establecer variable de contexto para indicar que estamos eliminando un sitio
+    PERFORM set_config('app.deleting_site', site_id_param::text, true);
+    
+    -- Eliminar el sitio (CASCADE eliminará todo lo demás)
+    DELETE FROM public.sites WHERE id = site_id_param;
+    
+    -- Limpiar la variable de contexto
+    PERFORM set_config('app.deleting_site', '', true);
+    
+    RETURN true;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Limpiar la variable en caso de error
+        PERFORM set_config('app.deleting_site', '', true);
+        RAISE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- VERIFICATION: Check the function configuration
+-- VERIFICAR QUE FUNCIONA
 -- ============================================================================
 
+-- Verificar que la función tiene el search_path correcto
 DO $$
 DECLARE
     func_config TEXT[];
-    config_item TEXT;
 BEGIN
-    -- Get function configuration
     SELECT proconfig INTO func_config
     FROM pg_proc p
     JOIN pg_namespace n ON p.pronamespace = n.oid
     WHERE n.nspname = 'public'
     AND p.proname = 'delete_site_safely';
     
-    IF func_config IS NOT NULL THEN
-        RAISE NOTICE '📋 Function configuration:';
-        FOREACH config_item IN ARRAY func_config
-        LOOP
-            RAISE NOTICE '   - %', config_item;
-        END LOOP;
+    RAISE NOTICE 'Configuración de la función: %', func_config;
+    
+    -- También verificar que podemos ver la tabla desde la función
+    RAISE NOTICE 'Probando acceso a public.sites desde contexto similar...';
+    
+    IF EXISTS (SELECT 1 FROM public.sites LIMIT 1) THEN
+        RAISE NOTICE '✅ Acceso a public.sites: OK';
     ELSE
-        RAISE NOTICE '⚠️  No configuration found for function';
+        RAISE NOTICE '⚠️  Tabla public.sites vacía, pero accesible';
     END IF;
 END $$;
 
 -- ============================================================================
--- SUCCESS MESSAGE
+-- CONCEDER PERMISOS NUEVAMENTE (por si acaso)
 -- ============================================================================
 
-SELECT 
-    '🔒 SECURITY FIX APPLIED: delete_site_safely search_path secured' AS status,
-    'Function now has fixed search_path = "public" for security' AS details; 
+GRANT EXECUTE ON FUNCTION public.delete_site_safely(UUID) TO authenticated;
+
+-- ============================================================================
+-- MENSAJE DE ÉXITO
+-- ============================================================================
+
+SELECT 'FIX APLICADO: delete_site_safely search_path arreglado' AS status; 

@@ -54,7 +54,7 @@ const TaskSchema = z.object({
   scheduled_date: z.string(),
   completed_date: z.string().optional().nullable(),
   amount: z.number().optional().nullable(),
-  assignee: z.string().uuid().optional().nullable(),
+  assignee: z.string().transform((val) => val === "" ? null : val).pipe(z.string().uuid().optional().nullable()),
   notes: z.string().optional().nullable(),
   site_id: z.string().uuid(),
 })

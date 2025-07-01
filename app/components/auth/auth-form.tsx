@@ -312,6 +312,13 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         return
       }
 
+      // Clear any existing auth state to prevent PKCE conflicts
+      console.log('🧹 Clearing auth state before Google OAuth to prevent PKCE conflicts')
+      await supabase.auth.signOut({ scope: 'local' })
+      
+      // Small delay to ensure state is cleared
+      await new Promise(resolve => setTimeout(resolve, 100))
+
       // Pre-authenticate with Google before redirect
       const response = await fetch('/api/auth/google-pre-auth', {
         method: 'POST',
@@ -330,6 +337,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         throw new Error(result.error || 'Failed to initiate Google authentication')
       }
 
+      console.log('🔄 Starting Google OAuth flow with clean state')
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -337,16 +345,26 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
-          }
+          },
+          skipBrowserRedirect: false
         }
       })
 
       if (error) {
+        console.error('🚫 Google OAuth error:', error)
         throw error
       }
+      
+      console.log('✅ Google OAuth initiated successfully')
     } catch (error: any) {
       console.error('Google sign in error:', error)
-      setErrorMessage(error.message || 'Failed to sign in with Google. Please try again.')
+      
+      // Handle PKCE-specific errors with user-friendly messages
+      if (error.message && error.message.includes('code verifier')) {
+        setErrorMessage('Authentication session expired. Please try signing in with Google again.')
+      } else {
+        setErrorMessage(error.message || 'Failed to sign in with Google. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -638,8 +656,8 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         </Form>
       )}
       
-      {/* Divider */}
-      {!waitlistSuccess && authMode !== 'reset_password' && (
+      {/* Divider - TEMPORARILY HIDDEN */}
+      {false && !waitlistSuccess && authMode !== 'reset_password' && (
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <Separator className="w-full" />
@@ -650,8 +668,8 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         </div>
       )}
       
-      {/* Google sign in button */}
-      {!waitlistSuccess && authMode !== 'reset_password' && (
+      {/* Google sign in button - TEMPORARILY HIDDEN */}
+      {false && !waitlistSuccess && authMode !== 'reset_password' && (
         <Button 
           type="button" 
           variant="outline" 
@@ -696,8 +714,8 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             </button>
           )}
           
-          {/* Helper text for mixed authentication methods */}
-          {authMode === 'sign_in' && (
+          {/* Helper text for mixed authentication methods - TEMPORARILY HIDDEN */}
+          {false && authMode === 'sign_in' && (
             <p className="text-xs text-muted-foreground">
               💡 If you signed up with Google, please use the Google button above
             </p>

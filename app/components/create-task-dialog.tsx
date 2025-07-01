@@ -40,9 +40,10 @@ const TASK_STAGES = [
 
 interface CreateTaskDialogProps {
   trigger?: React.ReactNode
+  onTaskCreated?: () => void
 }
 
-export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
+export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogProps) {
   const { currentSite } = useSite()
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -53,7 +54,7 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
     title: "",
     description: "",
     status: "pending",
-    priority: "medium",
+    priority: 2,
     site_id: currentSite?.id || "",
     type: "",
     stage: "",
@@ -63,18 +64,55 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
 
   useEffect(() => {
     async function fetchUsers() {
+      if (!currentSite) return
+
       const supabase = createClient()
-      const { data, error } = await supabase
+      
+      // Get both site owner and site members
+      const { data: ownerData, error: ownerError } = await supabase
         .from('profiles')
         .select('id, name')
-        .order('name')
+        .eq('id', currentSite.user_id)
+        .single()
 
-      if (error) {
-        console.error('Error fetching users:', error)
-        return
+      const { data: membersData, error: membersError } = await supabase
+        .from('site_members')
+        .select(`
+          profiles!inner (
+            id,
+            name
+          )
+        `)
+        .eq('site_id', currentSite.id)
+
+      if (ownerError && ownerError.code !== 'PGRST116') {
+        console.error('Error fetching site owner:', ownerError)
       }
 
-      setUsers(data || [])
+      if (membersError) {
+        console.error('Error fetching site members:', membersError)
+      }
+
+      // Combine owner and members
+      const allUsers = []
+      
+      // Add owner if found
+      if (ownerData) {
+        allUsers.push(ownerData)
+      }
+      
+      // Add members if found
+      if (membersData) {
+        const memberProfiles = membersData.map((member: any) => member.profiles).filter((profile: any) => profile)
+        allUsers.push(...memberProfiles)
+      }
+
+      // Remove duplicates (in case owner is also in members table) and sort
+      const uniqueUsers = allUsers.filter((user, index, self) => 
+        index === self.findIndex(u => u.id === user.id)
+      ).sort((a, b) => a.name.localeCompare(b.name))
+
+      setUsers(uniqueUsers)
     }
 
     async function fetchLeads() {
@@ -107,11 +145,18 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
 
     setIsSubmitting(true)
     try {
-      const result = await createTask({
+      // Clean the data - convert empty strings to undefined for optional fields
+      const cleanedData = {
         ...formData,
-        due_date: date,
+        scheduled_date: date,
         site_id: currentSite.id,
-      })
+        lead_id: formData.lead_id || undefined,
+        assignee: formData.assignee || undefined,
+        type: formData.type || undefined,
+        stage: formData.stage || undefined,
+      }
+
+      const result = await createTask(cleanedData)
 
       if (result.error) {
         throw new Error(result.error)
@@ -123,7 +168,7 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
         title: "",
         description: "",
         status: "pending",
-        priority: "medium",
+        priority: 2,
         site_id: currentSite.id,
         type: "",
         stage: "",
@@ -131,6 +176,16 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
         lead_id: ""
       })
       setDate(new Date())
+      
+      // Emit custom event for task creation
+      const event = new CustomEvent('task:created', {
+        detail: { task: result.data }
+      })
+      window.dispatchEvent(event)
+      
+      if (onTaskCreated) {
+        onTaskCreated()
+      }
     } catch (error) {
       console.error("Error creating task:", error)
       toast.error(error instanceof Error ? error.message : "Failed to create task")
@@ -202,18 +257,18 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
               <div className="grid gap-2">
                 <Label>Priority</Label>
                 <Select
-                  value={formData.priority}
-                  onValueChange={(value: "low" | "medium" | "high") =>
-                    setFormData({ ...formData, priority: value })
+                  value={formData.priority.toString()}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, priority: parseInt(value) })
                   }
                 >
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="1">Low</SelectItem>
+                    <SelectItem value="2">Medium</SelectItem>
+                    <SelectItem value="3">High</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -308,8 +363,8 @@ export function CreateTaskDialog({ trigger }: CreateTaskDialogProps) {
                 <Label>Assigned To</Label>
                 <Combobox
                   options={users.map(user => ({ value: user.id, label: user.name }))}
-                  value={formData.assigned_to || ""}
-                  onValueChange={(value) => setFormData({ ...formData, assigned_to: value })}
+                  value={formData.assignee || ""}
+                  onValueChange={(value) => setFormData({ ...formData, assignee: value })}
                   placeholder="Select user"
                   emptyMessage="No users found"
                   icon={<Users className="h-4 w-4" />}

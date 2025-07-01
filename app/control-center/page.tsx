@@ -20,6 +20,7 @@ import { ClipboardList } from "@/app/components/ui/icons"
 import { toast } from "react-hot-toast"
 import { getUserData } from "@/app/services/user-service"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import React from "react"
 
 interface ExtendedTask extends Task {
   leadName?: string
@@ -122,89 +123,142 @@ export default function ControlCenterPage() {
       if (!currentSite) return
 
       const supabase = createClient()
-      const { data: profiles, error } = await supabase
+      
+      // Get both site owner and site members
+      const { data: ownerData, error: ownerError } = await supabase
         .from('profiles')
         .select('id, name')
-        .order('name')
+        .eq('id', currentSite.user_id)
+        .single()
 
-      if (error) {
-        console.error('Error fetching users:', error)
-        return
+      const { data: membersData, error: membersError } = await supabase
+        .from('site_members')
+        .select(`
+          profiles!inner (
+            id,
+            name
+          )
+        `)
+        .eq('site_id', currentSite.id)
+
+      if (ownerError && ownerError.code !== 'PGRST116') {
+        console.error('Error fetching site owner:', ownerError)
       }
 
-      console.log('Fetched users:', profiles)
-      setUsers(profiles || [])
+      if (membersError) {
+        console.error('Error fetching site members:', membersError)
+      }
+
+      // Combine owner and members
+      const allUsers = []
+      
+      // Add owner if found
+      if (ownerData) {
+        allUsers.push(ownerData)
+      }
+      
+      // Add members if found
+      if (membersData) {
+        const memberProfiles = membersData.map((member: any) => member.profiles).filter((profile: any) => profile)
+        allUsers.push(...memberProfiles)
+      }
+
+      // Remove duplicates (in case owner is also in members table) and sort
+      const uniqueUsers = allUsers.filter((user, index, self) => 
+        index === self.findIndex(u => u.id === user.id)
+      ).sort((a, b) => a.name.localeCompare(b.name))
+
+      console.log('Fetched users:', uniqueUsers)
+      setUsers(uniqueUsers)
     }
 
     fetchUsers()
   }, [currentSite])
 
   // Fetch tasks with user data and comments count
+  const fetchTasks = React.useCallback(async () => {
+    if (!currentSite) return
+
+    setIsLoading(true)
+    const supabase = createClient()
+
+    try {
+      // Get tasks with comments count
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          leads:lead_id (
+            id,
+            name
+          ),
+          comments_count:task_comments(count)
+        `)
+        .eq('site_id', currentSite.id)
+        .order('priority', { ascending: false })
+        .order('scheduled_date', { ascending: true })
+
+      if (tasksError) throw tasksError
+
+      // Enrich tasks with user data
+      const enrichedTasks = await Promise.all(
+        tasksData.map(async (task) => {
+          let assigneeName = undefined
+          if (task.assignee) {
+            const userData = await getUserData(task.assignee)
+            assigneeName = userData?.name
+          }
+
+          return {
+            ...task,
+            leadName: task.leads?.name,
+            assigneeName,
+            comments_count: task.comments_count?.[0]?.count || 0
+          }
+        })
+      )
+
+      setTasks(enrichedTasks)
+
+      // Extract unique task types from the fetched tasks
+      const uniqueTypes = Array.from(new Set(
+        enrichedTasks
+          .map(task => task.type)
+          .filter(type => type && type.trim() !== '')
+      )).sort()
+      
+      console.log('Dynamic task types found:', uniqueTypes)
+      setTaskTypes(uniqueTypes)
+
+    } catch (error) {
+      console.error('Error fetching tasks:', error)
+      toast.error("Failed to load tasks")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentSite])
+
+  // Refresh tasks function that can be called from dialogs
+  const refreshTasks = React.useCallback(() => {
+    fetchTasks()
+  }, [fetchTasks])
+
   useEffect(() => {
-    const fetchTasks = async () => {
-      if (!currentSite) return
+    fetchTasks()
+  }, [fetchTasks])
 
-      setIsLoading(true)
-      const supabase = createClient()
-
-      try {
-        // Get tasks with comments count
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            leads:lead_id (
-              id,
-              name
-            ),
-            comments_count:task_comments(count)
-          `)
-          .eq('site_id', currentSite.id)
-          .order('priority', { ascending: false })
-          .order('scheduled_date', { ascending: true })
-
-        if (tasksError) throw tasksError
-
-        // Enrich tasks with user data
-        const enrichedTasks = await Promise.all(
-          tasksData.map(async (task) => {
-            let assigneeName = undefined
-            if (task.assignee) {
-              const userData = await getUserData(task.assignee)
-              assigneeName = userData?.name
-            }
-
-            return {
-              ...task,
-              leadName: task.leads?.name,
-              assigneeName,
-              comments_count: task.comments_count?.[0]?.count || 0
-            }
-          })
-        )
-
-        setTasks(enrichedTasks)
-
-        // Extract unique task types from the fetched tasks
-        const uniqueTypes = Array.from(new Set(
-          enrichedTasks
-            .map(task => task.type)
-            .filter(type => type && type.trim() !== '')
-        )).sort()
-        
-        console.log('Dynamic task types found:', uniqueTypes)
-        setTaskTypes(uniqueTypes)
-
-      } catch (error) {
-        console.error('Error fetching tasks:', error)
-        toast.error("Failed to load tasks")
-      } finally {
-        setIsLoading(false)
-      }
+  // Listen for task creation events
+  useEffect(() => {
+    const handleTaskCreated = () => {
+      refreshTasks()
     }
 
-    fetchTasks()
-  }, [currentSite])
+    window.addEventListener('task:created', handleTaskCreated)
+
+    return () => {
+      window.removeEventListener('task:created', handleTaskCreated)
+    }
+  }, [refreshTasks])
 
   // Fetch categories
   useEffect(() => {
