@@ -13,6 +13,7 @@ import { MenuAvatar, MenuAvatarFallback, MenuAvatarImage } from "../ui/menu-avat
 import { cn } from "@/lib/utils"
 import { Check, Users, PlusCircle } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
+import { useAuth } from "@/app/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Site } from "@/app/context/SiteContext"
@@ -25,13 +26,17 @@ interface SiteSelectorProps {
 
 export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   const { sites, currentSite, setCurrentSite, isLoading, refreshSites } = useSite()
+  const { user } = useAuth()
   const router = useRouter()
   const [isMounted, setIsMounted] = useState(false)
   const [filter, setFilter] = useState<'all' | 'owned' | 'shared'>('all')
   
-  // Separate sites into owned and shared
-  const ownedSites = sites.filter(site => site.user_id === currentSite?.user_id)
-  const sharedSites = sites.filter(site => site.user_id !== currentSite?.user_id)
+  // Get current user ID from auth session
+  const currentUserId = user?.id
+  
+  // Separate sites into owned and shared using the current user ID from auth
+  const ownedSites = sites.filter(site => site.user_id === currentUserId)
+  const sharedSites = sites.filter(site => site.user_id !== currentUserId)
   
   // Filtered sites based on selection
   const filteredSites = filter === 'all' 
@@ -206,56 +211,62 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                   )}
                 </div>
               ) : (
-                filteredSites.map((site) => {
-                  const isSelected = site.id === currentSite?.id
-                  const isShared = site.user_id !== currentSite?.user_id
-                  
-                  return (
-                    <DropdownMenuItem
-                      key={site.id}
-                      className={cn(
-                        "flex items-center gap-2 p-2 w-full relative",
-                        isSelected && "bg-accent"
-                      )}
-                      onClick={() => {
-                        setCurrentSite(site)
-                        // Solo redirigir al dashboard si estamos en una ruta anidada que lo requiera
-                        const currentPath = window.location.pathname
-                        const pathSegments = currentPath.split('/').filter(Boolean)
-                        
-                        // Rutas que no requieren redirección al cambiar de sitio
-                        const safeRoutes = ['settings', 'billing', 'dashboard', 'content', 'sales', 'marketing']
-                        
-                        // Si estamos en una ruta anidada que no es segura, redirigir al dashboard
-                        if (pathSegments.length >= 2 && !safeRoutes.includes(pathSegments[0])) {
-                          router.push("/dashboard")
-                        }
-                      }}
-                    >
-                      <MenuAvatar className="h-6 w-6 flex-shrink-0">
-                        {site.logo_url ? (
-                          <MenuAvatarImage src={site.logo_url} alt={site.name} />
-                        ) : (
-                          <MenuAvatarFallback className="text-xs">
-                            {getInitials(site.name)}
-                          </MenuAvatarFallback>
+                <div className="space-y-1">
+                  {filteredSites.map((site) => {
+                    const isSelected = site.id === currentSite?.id
+                    const isShared = site.user_id !== currentUserId
+                    
+                    return (
+                      <DropdownMenuItem
+                        key={site.id}
+                        className={cn(
+                          "flex items-center gap-2 p-2 w-full relative rounded-sm",
+                          isSelected && "bg-accent"
                         )}
-                      </MenuAvatar>
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm font-medium truncate">{site.name}</span>
-                        <span className="text-xs text-muted-foreground truncate">
-                          {site.url || "No URL"}
-                          {isShared && (
-                            <span className="ml-1 text-xs text-blue-500">(Shared)</span>
+                        onClick={() => {
+                          setCurrentSite(site)
+                          // Solo redirigir al dashboard si estamos en una ruta anidada que lo requiera
+                          const currentPath = window.location.pathname
+                          const pathSegments = currentPath.split('/').filter(Boolean)
+                          
+                          // Rutas que no requieren redirección al cambiar de sitio
+                          const safeRoutes = ['settings', 'billing', 'dashboard', 'content', 'sales', 'marketing']
+                          
+                          // Si estamos en una ruta anidada que no es segura, redirigir al dashboard
+                          if (pathSegments.length >= 2 && !safeRoutes.includes(pathSegments[0])) {
+                            router.push("/dashboard")
+                          }
+                        }}
+                      >
+                        <MenuAvatar className="h-6 w-6 flex-shrink-0">
+                          {site.logo_url ? (
+                            <MenuAvatarImage src={site.logo_url} alt={site.name} />
+                          ) : (
+                            <MenuAvatarFallback className="text-xs">
+                              {getInitials(site.name)}
+                            </MenuAvatarFallback>
                           )}
-                        </span>
-                      </div>
-                      {isSelected && (
-                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                      )}
-                    </DropdownMenuItem>
-                  )
-                })
+                        </MenuAvatar>
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-medium truncate">{site.name}</span>
+                            {isShared && (
+                              <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-md flex-shrink-0">
+                                Shared
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {site.url || "No URL"}
+                          </span>
+                        </div>
+                        {isSelected && (
+                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                        )}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </div>
               )}
               
               <div className="h-px bg-border my-1" />

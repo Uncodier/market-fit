@@ -54,88 +54,7 @@ import HardBreak from '@tiptap/extension-hard-break'
 import { Card, CardContent } from "@/app/components/ui/card"
 import { markdownToHTML, processMarkdownText } from "@/app/content/utils"
 
-// Function to convert HTML back to markdown
-const htmlToMarkdown = (html: string): string => {
-  if (!html) return '';
-  
-  try {
-    // Create a temporary element to parse HTML
-    const tempElement = document.createElement('div');
-    tempElement.innerHTML = html;
-    
-    // Function to convert DOM node to markdown
-    const nodeToMarkdown = (node: Node): string => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        return node.textContent || '';
-      }
-      
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node as Element;
-        const children = Array.from(element.childNodes).map(nodeToMarkdown).join('');
-        
-        switch (element.tagName.toLowerCase()) {
-          case 'h1':
-            return `# ${children}\n\n`;
-          case 'h2':
-            return `## ${children}\n\n`;
-          case 'h3':
-            return `### ${children}\n\n`;
-          case 'h4':
-            return `#### ${children}\n\n`;
-          case 'h5':
-            return `##### ${children}\n\n`;
-          case 'h6':
-            return `###### ${children}\n\n`;
-          case 'p':
-            return `${children}\n\n`;
-          case 'strong':
-          case 'b':
-            return `**${children}**`;
-          case 'em':
-          case 'i':
-            return `*${children}*`;
-          case 'ul':
-            return `${children}\n`;
-          case 'ol':
-            return `${children}\n`;
-          case 'li':
-            return `- ${children}\n`;
-          case 'blockquote':
-            return `> ${children}\n\n`;
-          case 'code':
-            return `\`${children}\``;
-          case 'pre':
-            return `\`\`\`\n${children}\n\`\`\`\n\n`;
-          case 'br':
-            return '\n';
-          case 'a':
-            const href = element.getAttribute('href');
-            return href ? `[${children}](${href})` : children;
-          case 'img':
-            const src = element.getAttribute('src');
-            const alt = element.getAttribute('alt') || '';
-            return src ? `![${alt}](${src})` : '';
-          default:
-            return children;
-        }
-      }
-      
-      return '';
-    };
-    
-    const markdown = nodeToMarkdown(tempElement);
-    
-    // Clean up extra newlines
-    return markdown
-      .replace(/\n{3,}/g, '\n\n') // Replace 3+ newlines with 2
-      .trim();
-    
-  } catch (error) {
-    console.error("Error converting HTML to markdown:", error);
-    // Fallback: strip HTML tags
-    return html.replace(/<[^>]*>/g, '').trim();
-  }
-}
+
 import { createClient } from "@/lib/supabase/client"
 import { startExperiment, stopExperiment, setExperimentStatus } from "../actions"
 import { Separator } from "@/app/components/ui/separator"
@@ -163,6 +82,19 @@ import "../styles/editor.css"
 
 import { Experiment } from "./types"
 import { MenuBar, ExperimentDetails } from "./components"
+import { 
+  handleExperimentSegmentChanges, 
+  loadExperimentWithSegments, 
+  updateExperimentData,
+  type SegmentChange
+} from "./utils/experiment-operations"
+import { htmlToMarkdown } from "./utils/editor-utils"
+import {
+  handleExperimentStatusChange,
+  handleExperimentDeletion,
+  handleStartExperiment as handleStart,
+  handleStopExperiment as handleStop
+} from "./utils/experiment-handlers"
 
 const ExperimentStatusBar = ({ 
   currentStatus, 
@@ -569,47 +501,12 @@ export default function ExperimentDetailPage() {
         throw new Error(error.message)
       }
 
-      // Process segment changes if any
+      // Process segment changes if any using optimized function
       if (pendingSegmentChanges) {
-        console.log("Processing segment changes:", pendingSegmentChanges);
+        const segmentResult = await handleExperimentSegmentChanges(experiment, pendingSegmentChanges);
         
-        // 1. Remove segments that were deleted
-        if (pendingSegmentChanges.removedSegmentIds.length > 0) {
-          console.log("Removing segments:", pendingSegmentChanges.removedSegmentIds);
-          
-          const { error: removeError } = await supabase
-            .from('experiment_segments')
-            .delete()
-            .eq('experiment_id', experiment.id)
-            .in('segment_id', pendingSegmentChanges.removedSegmentIds);
-            
-          if (removeError) {
-            console.error("Error removing segments:", removeError);
-          }
-        }
-        
-        // 2. Add new segments
-        const existingSegmentIds = experiment.segments.map(s => s.id);
-        const newSegments = pendingSegmentChanges.pendingSegments.filter(
-          s => !existingSegmentIds.includes(s.id) && !pendingSegmentChanges.removedSegmentIds.includes(s.id)
-        );
-        
-        if (newSegments.length > 0) {
-          console.log("Adding new segments:", newSegments);
-          
-          const { error: addError } = await supabase
-            .from('experiment_segments')
-            .insert(
-              newSegments.map(segment => ({
-                experiment_id: experiment.id,
-                segment_id: segment.id,
-                participants: 0
-              }))
-            );
-            
-          if (addError) {
-            console.error("Error adding segments:", addError);
-          }
+        if (!segmentResult.success) {
+          throw new Error(segmentResult.error || "Failed to update segments");
         }
         
         // Reset segment changes

@@ -36,6 +36,11 @@ const formatPeriodType = (periodType: string): string => {
 
 // Format currency
 const formatCurrency = (amount: number, currency = "USD") => {
+  // Handle invalid numbers (NaN, null, undefined, etc.)
+  if (amount == null || isNaN(amount) || !isFinite(amount)) {
+    return "$0";
+  }
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,

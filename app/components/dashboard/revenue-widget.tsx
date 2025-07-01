@@ -5,8 +5,8 @@ import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { useWidgetContext } from "@/app/context/WidgetContext";
+import { useRequestController } from "@/app/hooks/useRequestController";
 
 interface RevenueWidgetProps {
   segmentId?: string;
@@ -15,26 +15,10 @@ interface RevenueWidgetProps {
 }
 
 interface RevenueData {
-  totalSales: {
-    actual: number;
-    previous: number;
-    percentChange: number;
-    formattedActual: string;
-    formattedPrevious: string;
-  };
+  actual: number;
+  percentChange: number;
   periodType: string;
-  noData?: boolean;
-  isDemoData?: boolean;
 }
-
-// Format currency
-const formatCurrency = (amount: number, currency = "USD") => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    maximumFractionDigits: 0
-  }).format(amount);
-};
 
 // Format period type for display
 const formatPeriodType = (periodType: string): string => {
@@ -48,6 +32,21 @@ const formatPeriodType = (periodType: string): string => {
   }
 };
 
+// Format currency for display
+const formatCurrency = (value: number): string => {
+  // Handle invalid numbers (NaN, null, undefined, etc.)
+  if (value == null || isNaN(value) || !isFinite(value)) {
+    return "$0";
+  }
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
 export function RevenueWidget({ 
   segmentId = "all",
   startDate: propStartDate,
@@ -56,13 +55,11 @@ export function RevenueWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
+  const { fetchWithController } = useRequestController();
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
-  const [hasNoData, setHasNoData] = useState(false);
-  const [isDemoData, setIsDemoData] = useState(false);
-  const { fetchWithController, cancelAllRequests } = useRequestController();
 
   // Update local state when props change
   useEffect(() => {
@@ -75,31 +72,19 @@ export function RevenueWidget({
   }, [propStartDate, propEndDate]);
 
   useEffect(() => {
-    let isMounted = true;
-    
     const fetchRevenue = async () => {
-      // Global widget protection - simpler and more reliable
+      // Global widget protection
       if (!shouldExecuteWidgets) {
         console.log("[RevenueWidget] Widget execution disabled by context");
         return;
       }
-      
+
       if (!currentSite || currentSite.id === "default") return;
       
-      if (isMounted) {
-        setIsLoading(true);
-        setHasNoData(false);
-        setIsDemoData(false);
-      }
-      
+      setIsLoading(true);
       try {
-        // Validate dates - don't allow future dates
-        const now = new Date();
-        const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
-        const validEndDate = endDate > now ? now : endDate;
-        
-        const start = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
-        const end = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
         params.append("segmentId", segmentId);
@@ -110,87 +95,55 @@ export function RevenueWidget({
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
-        console.log("[RevenueWidget] Fetching revenue data with params:", Object.fromEntries(params.entries()));
-        
         const response = await fetchWithController(`/api/revenue?${params.toString()}`);
-        // Check if request was aborted or component unmounted
-        if (response === null || !isMounted) {
-          console.log("[RevenueWidget] Request was cancelled or component unmounted");
-          return; // Exit early, don't update state for cancelled requests
+        
+        // Handle null response (aborted request)
+        if (response === null) {
+          console.log("[RevenueWidget] Request was aborted");
+          return;
         }
         
         if (!response.ok) {
           throw new Error('Failed to fetch revenue data');
         }
         const data = await response.json();
-        
-        if (isMounted) {
-          setRevenue(data);
-          setHasNoData(!!data.noData);
-          setIsDemoData(!!data.isDemoData);
-        }
+        setRevenue(data);
       } catch (error) {
-        // Ignore AbortError as it's handled in the fetchWithController
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          console.log("[RevenueWidget] Request was aborted");
-          return;
+        // Only log non-abort errors
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error("Error fetching revenue:", error);
         }
-        
-        console.error("Error fetching revenue:", error);
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
     fetchRevenue();
-    
-    return () => {
-      isMounted = false;
-      cancelAllRequests();
-    };
-  }, [
-    shouldExecuteWidgets,
-    segmentId, 
-    startDate, 
-    endDate, 
-    currentSite?.id,
-    user?.id
-  ]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
-    // Cancel any in-flight requests before changing dates
-    cancelAllRequests();
     setStartDate(start);
     setEndDate(end);
   };
 
-  const formattedValue = revenue ? `$${revenue.totalSales.formattedActual}` : "$0";
-  
-  const changeValue = revenue?.totalSales?.percentChange || 0;
-  const safeChangeValue = isNaN(changeValue) ? 0 : changeValue;
-  const changeText = hasNoData 
-    ? "No change"
-    : `${safeChangeValue.toFixed(1)}% from ${formatPeriodType(revenue?.periodType || "monthly")}`;
-  const isPositiveChange = safeChangeValue > 0;
+  const formattedValue = revenue ? formatCurrency(revenue.actual) : "$0";
+  const changeText = `${revenue?.percentChange || 0}% from ${formatPeriodType(revenue?.periodType || "monthly")}`;
+  const isPositiveChange = (revenue?.percentChange || 0) > 0;
   
   return (
-    <div data-widget="revenue">
-      <BaseKpiWidget
-        title="Total Revenue"
-        tooltipText={`Total revenue across ${segmentId === "all" ? "all segments" : "selected segment"}`}
-        value={formattedValue}
-        changeText={isDemoData ? `${changeText} (Demo data)` : changeText}
-        isPositiveChange={isPositiveChange}
-        isLoading={isLoading}
-        showDatePicker={!propStartDate && !propEndDate}
-        startDate={startDate}
-        endDate={endDate}
-        onDateChange={handleDateChange}
-        segmentBadge={segmentId !== "all"}
-      />
-    </div>
+    <BaseKpiWidget
+      title="Revenue"
+      tooltipText="Total revenue for the selected period"
+      value={formattedValue}
+      changeText={changeText}
+      isPositiveChange={isPositiveChange}
+      isLoading={isLoading}
+      showDatePicker={!propStartDate && !propEndDate}
+      startDate={startDate}
+      endDate={endDate}
+      onDateChange={handleDateChange}
+      segmentBadge={segmentId !== "all"}
+    />
   );
 } 

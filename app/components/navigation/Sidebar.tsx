@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutGrid,
   FlaskConical,
-  ClipboardList,
+  CheckSquare,
   Users,
   User,
   MessageSquare,
@@ -88,7 +88,7 @@ const humanInTheLoopItems = [
   {
     title: "Requirements",
     href: "/requirements",
-    icon: ClipboardList,
+    icon: CheckSquare,
   },
   {
     title: "Experiments",
@@ -152,8 +152,8 @@ const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: bo
   }
   
   return (
-    <div className="px-3 py-2">
-      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+    <div className="px-3" style={{ paddingTop: '7.2px', paddingBottom: '7.2px' }}>
+      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2" style={{ fontSize: '10.8px' }}>
         <span className="text-sm">{getEmoji(title)}</span>
         {title}
       </h3>
@@ -213,7 +213,7 @@ export function Sidebar({
 
       {/* Navigation Items - Scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="py-6">
+        <div style={{ paddingTop: '21.6px', paddingBottom: '21.6px' }}>
           {/* Main Navigation Items */}
           <div className="space-y-1 px-3">
             {mainNavigationItems.map((item) => (
@@ -229,7 +229,7 @@ export function Sidebar({
           </div>
 
           {/* Human in the Loop Category */}
-          <div className="mt-6">
+          <div style={{ marginTop: '21.6px' }}>
             <CategoryHeader title="Human in the Loop" isCollapsed={isCollapsed} />
             <div className="space-y-1 px-3">
               {humanInTheLoopItems.map((item) => (
@@ -246,7 +246,7 @@ export function Sidebar({
           </div>
 
           {/* Automatic Category */}
-          <div className="mt-6">
+          <div style={{ marginTop: '21.6px' }}>
             <CategoryHeader title="Automatic" isCollapsed={isCollapsed} />
             <div className="space-y-1 px-3">
               {automaticItems.map((item) => (
@@ -268,9 +268,11 @@ export function Sidebar({
       <div className="flex-none border-t border-border">
         <ConfigurationSection className="px-3" isCollapsed={isCollapsed} />
         <div className={cn(
-          "border-t border-border px-3 py-4",
+          "border-t border-border px-3",
           isCollapsed && "flex justify-center"
-        )}>
+        )}
+        style={{ paddingTop: '14.4px', paddingBottom: '14.4px' }}
+        >
           <MenuItem
             href="/profile"
             icon={User}
@@ -279,7 +281,7 @@ export function Sidebar({
             avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
             isActive={pathname.startsWith('/profile')}
             isCollapsed={isCollapsed}
-            className="![padding-top:28px] ![padding-bottom:28px]"
+            className="![padding-top:25.2px] ![padding-bottom:25.2px]"
           >
             {!isCollapsed && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           </MenuItem>

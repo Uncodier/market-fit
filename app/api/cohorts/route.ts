@@ -25,7 +25,7 @@ async function getSegmentDetails(supabase: any, segmentId: string): Promise<Segm
       .from("segments")
       .select("id, name, audience, engagement, icp, is_active")
       .eq("id", segmentId)
-      .single();
+      .maybeSingle();
       
     if (error || !data) {
       console.error(`[getSegmentDetails] Error fetching segment ${segmentId}:`, error);
@@ -49,7 +49,7 @@ async function verifySegmentForSite(supabase: any, segmentId: string, siteId: st
       .eq("id", segmentId)
       .eq("site_id", siteId)
       .eq("is_active", true)
-      .single();
+      .maybeSingle();
       
     return !error && data != null;
   } catch (error) {
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
       .from("sites")
       .select("id")
       .eq("id", siteId)
-      .single();
+      .maybeSingle();
       
     if (siteError || !siteData) {
       console.error(`[Cohorts API] Site not found: ${siteId}`, siteError);

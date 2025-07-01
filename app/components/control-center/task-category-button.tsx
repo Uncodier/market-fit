@@ -23,10 +23,23 @@ export function TaskCategoryButton({
         isSelected && "bg-primary/10"
       )}
       onClick={onClick}
+      style={{
+        paddingTop: '7.2px',
+        paddingBottom: '7.2px',
+        paddingLeft: '10.8px',
+        paddingRight: '10.8px',
+        height: '35px',
+        fontSize: '12.6px'
+      }}
     >
       <div
-        className="mr-2 h-3 w-3 rounded-full"
-        style={{ backgroundColor: category.color || "#666" }}
+        className="rounded-full"
+        style={{ 
+          backgroundColor: category.color || "#666",
+          marginRight: '7.2px',
+          height: '10.8px',
+          width: '10.8px'
+        }}
       />
       <span className="truncate">{category.name}</span>
     </Button>

@@ -6,6 +6,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
+import { useRequestController } from "@/app/hooks/useRequestController";
 
 interface ActiveUsersWidgetProps {
   segmentId?: string;
@@ -39,6 +40,7 @@ export function ActiveUsersWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
+  const { fetchWithController } = useRequestController();
   const [activeUsers, setActiveUsers] = useState<ActiveUsersData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -56,24 +58,18 @@ export function ActiveUsersWidget({
 
   useEffect(() => {
     const fetchActiveUsers = async () => {
-      // Global widget protection - simpler and more reliable
+      // Global widget protection
       if (!shouldExecuteWidgets) {
         console.log("[ActiveUsersWidget] Widget execution disabled by context");
         return;
       }
-      
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
       try {
-        // Validate dates - don't allow future dates
-        const now = new Date();
-        const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
-        const validEndDate = endDate > now ? now : endDate;
-        
-        console.log("[ActiveUsersWidget] Fetching for site:", currentSite.id);
-        const start = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
-        const end = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
         params.append("segmentId", segmentId);
@@ -84,23 +80,31 @@ export function ActiveUsersWidget({
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
-        console.log("[ActiveUsersWidget] Requesting data with params:", Object.fromEntries(params.entries()));
+        const response = await fetchWithController(`/api/active-users?${params.toString()}`);
         
-        const response = await fetch(`/api/active-users?${params.toString()}`);
+        // Handle null response (aborted request)
+        if (response === null) {
+          console.log("[ActiveUsersWidget] Request was aborted");
+          return;
+        }
+        
         if (!response.ok) {
           throw new Error('Failed to fetch active users data');
         }
         const data = await response.json();
         setActiveUsers(data);
       } catch (error) {
-        console.error("Error fetching active users:", error);
+        // Only log non-abort errors
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error("Error fetching active users:", error);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchActiveUsers();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -108,25 +112,23 @@ export function ActiveUsersWidget({
     setEndDate(end);
   };
 
-  const formattedValue = activeUsers ? activeUsers.actual.toLocaleString() : "0";
+  const formattedValue = activeUsers?.actual?.toString() || "0";
   const changeText = `${activeUsers?.percentChange || 0}% from ${formatPeriodType(activeUsers?.periodType || "monthly")}`;
   const isPositiveChange = (activeUsers?.percentChange || 0) > 0;
   
   return (
-    <div data-widget="active-users">
-      <BaseKpiWidget
-        title="Active Clients"
-        tooltipText="Clients active in the selected time period"
-        value={formattedValue}
-        changeText={changeText}
-        isPositiveChange={isPositiveChange}
-        isLoading={isLoading}
-        showDatePicker={!propStartDate && !propEndDate}
-        startDate={startDate}
-        endDate={endDate}
-        onDateChange={handleDateChange}
-        segmentBadge={segmentId !== "all"}
-      />
-    </div>
+    <BaseKpiWidget
+      title="Active Users"
+      tooltipText="Number of active users in the selected period"
+      value={formattedValue}
+      changeText={changeText}
+      isPositiveChange={isPositiveChange}
+      isLoading={isLoading}
+      showDatePicker={!propStartDate && !propEndDate}
+      startDate={startDate}
+      endDate={endDate}
+      onDateChange={handleDateChange}
+      segmentBadge={segmentId !== "all"}
+    />
   );
 } 

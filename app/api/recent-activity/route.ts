@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         .from('sites')
         .select('id, name')
         .eq('id', siteId)
-        .single();
+        .maybeSingle();
 
       if (siteError && siteError.code !== 'PGRST116') {
         console.error(`❌ Error checking site: ${siteError.message}`);

@@ -894,13 +894,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Crear un nuevo sitio
   const handleCreateSite = async (newSite: Omit<Site, 'id' | 'created_at' | 'updated_at'>): Promise<Site> => {
     try {
+      console.log("CREATE SITE: Starting site creation process")
       setIsLoading(true);
       
       // Ensure user is authenticated
+      console.log("CREATE SITE: Checking authentication")
       const { data: { session } } = await supabaseRef.current.auth.getSession();
       if (!session) throw new Error("User not authenticated");
       
       // Crear el nuevo sitio en la base de datos
+      console.log("CREATE SITE: Creating site in database")
       const now = new Date().toISOString();
       const { data: createdSiteData, error: createError } = await supabaseRef.current
         .from('sites')
@@ -917,8 +920,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
         })
         .select()
       
-      if (createError) throw createError;
+      if (createError) {
+        console.log("CREATE SITE: Database error during site creation:", createError)
+        throw createError;
+      }
       if (!createdSiteData || createdSiteData.length === 0) throw new Error("Could not create site");
+      
+      console.log("CREATE SITE: Site created successfully in database")
       
       // Iniciar con un sitio vacío
       const createdSite = {
@@ -928,6 +936,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       // Crear configuración inicial si el sitio se creó correctamente
       if (createdSite && createdSite.id) {
+        console.log("CREATE SITE: Creating initial settings")
         // Usar los settings que se pasaron en newSite, o valores por defecto
         const settingsToSave: Partial<SiteSettings> = {
           site_id: createdSite.id,
@@ -943,21 +952,34 @@ export function SiteProvider({ children }: SiteProviderProps) {
           
           // Actualizar el objeto createdSite con los settings guardados
           createdSite.settings = settingsToSave as SiteSettings;
+          console.log("CREATE SITE: Initial settings created successfully")
         } catch (settingsError) {
-          console.error("Error creating initial settings:", settingsError);
+          console.error("CREATE SITE: Error creating initial settings:", settingsError);
+          // Continue even if settings fail - the site was created successfully
         }
       }
       
+      console.log("CREATE SITE: Reloading sites list")
       await loadSites() // Recargar los sitios
       
       // Si es el primer sitio, lo establecemos como actual
       if (sites.length === 0) {
+        console.log("CREATE SITE: Setting as current site (first site)")
         await handleSetCurrentSite(createdSite);
       }
       
+      console.log("CREATE SITE: Site creation process completed successfully")
       return createdSite
     } catch (err) {
-      console.error("Error creating site:", err)
+      // Improved error logging to handle Supabase errors properly
+      console.error("Error creating site:")
+      console.error("Error type:", typeof err)
+      console.error("Error message:", (err as any)?.message || 'No message')
+      console.error("Error code:", (err as any)?.code || 'No code')
+      console.error("Error details:", (err as any)?.details || 'No details')
+      console.error("Full error object:", JSON.stringify(err, null, 2))
+      console.error("Error stack:", (err as any)?.stack || 'No stack')
+      
       setError(err instanceof Error ? err : new Error(String(err)))
       throw err
     } finally {

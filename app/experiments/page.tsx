@@ -387,10 +387,8 @@ export default function ExperimentsPage() {
     setFilteredExperiments(filtered)
   }, [searchQuery, experiments])
 
-  // Memoize fetchExperiments to avoid recreations on each render
+  // Fetch experiments for the current site
   const fetchExperiments = useCallback(async () => {
-    if (initialFetchDone) return;
-    
     // If no site is selected, don't fetch experiments
     if (!currentSite) {
       setIsLoadingData(false);
@@ -493,7 +491,6 @@ export default function ExperimentsPage() {
       
       setExpandedRows(expandedRowsObj);
       setActiveExperiments(activeExperimentsObj);
-      setInitialFetchDone(true);
     } catch (error) {
       console.error("Error:", error)
       toast({
@@ -504,7 +501,7 @@ export default function ExperimentsPage() {
     } finally {
       setIsLoadingData(false)
     }
-  }, [toast, initialFetchDone, currentSite])
+  }, [toast, currentSite])
 
   // Fetch segments and campaigns for experiment creation
   const fetchSegmentsAndCampaigns = useCallback(async () => {
@@ -547,15 +544,20 @@ export default function ExperimentsPage() {
     }
   }, [currentSite]);
 
-  // Effect for initial loading of data
+  // Effect to fetch data when site changes or component mounts
   useEffect(() => {
-    fetchExperiments()
-  }, [fetchExperiments])
+    if (!initialFetchDone && currentSite) {
+      fetchExperiments()
+      setInitialFetchDone(true)
+    }
+  }, [currentSite, initialFetchDone, fetchExperiments])
 
   // Fetch segments and campaigns when site changes
   useEffect(() => {
-    fetchSegmentsAndCampaigns();
-  }, [fetchSegmentsAndCampaigns]);
+    if (currentSite) {
+      fetchSegmentsAndCampaigns();
+    }
+  }, [currentSite, fetchSegmentsAndCampaigns]);
 
   // Reset initialFetchDone when site changes to trigger a new fetch
   useEffect(() => {

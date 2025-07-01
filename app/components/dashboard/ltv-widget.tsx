@@ -6,6 +6,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
+import { useRequestController } from "@/app/hooks/useRequestController";
 
 interface LTVWidgetProps {
   segmentId?: string;
@@ -33,6 +34,11 @@ const formatPeriodType = (periodType: string): string => {
 
 // Format currency for display
 const formatCurrency = (value: number): string => {
+  // Handle invalid numbers (NaN, null, undefined, etc.)
+  if (value == null || isNaN(value) || !isFinite(value)) {
+    return "$0";
+  }
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -49,6 +55,7 @@ export function LTVWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
+  const { fetchWithController } = useRequestController();
   const [ltv, setLtv] = useState<LTVData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -76,13 +83,8 @@ export function LTVWidget({
       
       setIsLoading(true);
       try {
-        // Validate dates - don't allow future dates
-        const now = new Date();
-        const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
-        const validEndDate = endDate > now ? now : endDate;
-        
-        const start = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
-        const end = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
         params.append("segmentId", segmentId);
@@ -95,21 +97,31 @@ export function LTVWidget({
         
         console.log("[LTVWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
-        const response = await fetch(`/api/ltv?${params.toString()}`);
+        const response = await fetchWithController(`/api/ltv?${params.toString()}`);
+        
+        // Handle null response (aborted request)
+        if (response === null) {
+          console.log("[LTVWidget] Request was aborted");
+          return;
+        }
+        
         if (!response.ok) {
           throw new Error('Failed to fetch LTV data');
         }
         const data = await response.json();
         setLtv(data);
       } catch (error) {
-        console.error("Error fetching LTV:", error);
+        // Only log non-abort errors
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error("Error fetching LTV:", error);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchLtv();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

@@ -23,15 +23,24 @@ export function CategoriesSidebar({
 
   return (
     <aside className="fixed left-0 top-0 w-64 h-full border-r bg-background">
-      <div className="h-[71px] border-b flex items-center px-6">
-        <h2 className="text-lg font-semibold">Categories</h2>
+      <div className="border-b flex items-center" style={{ height: '64px', paddingLeft: '21.6px', paddingRight: '21.6px' }}>
+        <h2 className="font-semibold" style={{ fontSize: '16.2px' }}>Categories</h2>
       </div>
-      <ScrollArea className="h-[calc(100vh-71px)]">
-        <div className="p-4">
+      <ScrollArea style={{ height: 'calc(100vh - 64px)' }}>
+        <div style={{ padding: '14.4px' }}>
           <Button
             variant="ghost"
-            className="w-full justify-start mb-2"
+            className="w-full justify-start"
             onClick={() => onSelectCategory(null)}
+            style={{
+              paddingTop: '7.2px',
+              paddingBottom: '7.2px',
+              paddingLeft: '10.8px',
+              paddingRight: '10.8px',
+              height: '35px',
+              fontSize: '12.6px',
+              marginBottom: '7.2px'
+            }}
           >
             All Tasks
           </Button>

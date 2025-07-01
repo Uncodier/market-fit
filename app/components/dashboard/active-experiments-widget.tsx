@@ -6,6 +6,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
+import { useRequestController } from "@/app/hooks/useRequestController";
 
 interface ActiveExperimentsWidgetProps {
   startDate?: Date;
@@ -37,6 +38,7 @@ export function ActiveExperimentsWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
+  const { fetchWithController } = useRequestController();
   const [activeExperiments, setActiveExperiments] = useState<ActiveExperimentsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -86,14 +88,24 @@ export function ActiveExperimentsWidget({
         
         console.log("[ActiveExperimentsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
-        const response = await fetch(`/api/active-experiments?${params.toString()}`);
+        const response = await fetchWithController(`/api/active-experiments?${params.toString()}`);
+        
+        // Handle null response (aborted request)
+        if (response === null) {
+          console.log("[ActiveExperimentsWidget] Request was aborted");
+          return;
+        }
+        
         if (!response.ok) {
           throw new Error('Failed to fetch active experiments data');
         }
         const data = await response.json();
         setActiveExperiments(data);
       } catch (error) {
-        console.error("Error fetching active experiments:", error);
+        // Only log non-abort errors
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error("Error fetching active experiments:", error);
+        }
         setHasError(true);
       } finally {
         setIsLoading(false);
@@ -101,7 +113,7 @@ export function ActiveExperimentsWidget({
     };
 
     fetchActiveExperiments();
-  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user, fetchWithController]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

@@ -145,7 +145,7 @@ async function findOrCreateKpi(
       .from("kpis")
       .select("*")
       .eq("id", kpiId)
-      .single();
+      .maybeSingle();
     
     if (!idError && existingKpiById) {
       console.log(`Found existing KPI by ID: ${existingKpiById.id}`);
@@ -200,7 +200,7 @@ async function findOrCreateKpi(
       .from("kpis")
       .upsert(newKpi)
       .select()
-      .single();
+      .maybeSingle();
     
     if (insertError) {
       console.error("Error inserting KPI:", insertError);

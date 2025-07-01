@@ -87,7 +87,7 @@ export function TaskSidebar({
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
       />
-      <div className="h-[calc(100vh-64px)] overflow-hidden pt-[71px]">
+      <div className="h-[calc(100vh-64px)] overflow-hidden" style={{ paddingTop: '64px' }}>
         <ScrollArea className={cn(
           "h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60"
         )}>
@@ -111,22 +111,29 @@ export function TaskSidebar({
               <>
                 {/* Categories Section */}
                 {categories.length > 0 && (
-                  <div className="p-1">
+                  <div style={{ padding: '3.6px' }}>
                     <div className="space-y-0.5">
                       {categories.map((category) => (
                         <button
                           key={category.id}
                           onClick={() => onSelectItem(`category-${category.id}`)}
                           className={cn(
-                            "w-full text-left py-2 px-3 rounded-md transition-colors text-sm",
+                            "w-full text-left rounded-md transition-colors",
                             selectedItem === `category-${category.id}`
                               ? "bg-primary/15 text-primary"
                               : "hover:bg-accent/20"
                           )}
+                          style={{ 
+                            paddingTop: '7.2px', 
+                            paddingBottom: '7.2px', 
+                            paddingLeft: '10.8px', 
+                            paddingRight: '10.8px',
+                            fontSize: '12.6px'
+                          }}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{getCategoryIcon(category)}</span>
+                            <div className="flex items-center" style={{ gap: '7.2px' }}>
+                              <span style={{ fontSize: '16.2px' }}>{getCategoryIcon(category)}</span>
                               <span>{category.name}</span>
                             </div>
                             <Badge variant="outline">
@@ -141,9 +148,9 @@ export function TaskSidebar({
 
                 {/* Types Section */}
                 {taskTypes.length > 0 && (
-                  <div className="p-1">
-                    <div className="px-3 py-2">
-                      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <div style={{ padding: '3.6px' }}>
+                    <div style={{ paddingLeft: '10.8px', paddingRight: '10.8px', paddingTop: '14.4px', paddingBottom: '7.2px' }}>
+                      <div className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider" style={{ gap: '7.2px', fontSize: '10.8px' }}>
                         <span>Task Types</span>
                       </div>
                     </div>
@@ -152,15 +159,22 @@ export function TaskSidebar({
                       <button
                         onClick={() => onSelectItem("all")}
                         className={cn(
-                          "w-full text-left py-2 px-3 rounded-md transition-colors text-sm",
+                          "w-full text-left rounded-md transition-colors",
                           selectedItem === "all"
                             ? "bg-primary/15 text-primary"
                             : "hover:bg-accent/20"
                         )}
+                        style={{ 
+                          paddingTop: '7.2px', 
+                          paddingBottom: '7.2px', 
+                          paddingLeft: '10.8px', 
+                          paddingRight: '10.8px',
+                          fontSize: '12.6px'
+                        }}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4" />
+                          <div className="flex items-center" style={{ gap: '7.2px' }}>
+                            <Check className="h-4 w-4" style={{ height: '14.4px', width: '14.4px' }} />
                             <span>All Tasks</span>
                           </div>
                           <Badge variant="outline">
@@ -174,15 +188,22 @@ export function TaskSidebar({
                           key={type}
                           onClick={() => onSelectItem(`type-${type}`)}
                           className={cn(
-                            "w-full text-left py-2 px-3 rounded-md transition-colors text-sm",
+                            "w-full text-left rounded-md transition-colors",
                             selectedItem === `type-${type}`
                               ? "bg-primary/15 text-primary"
                               : "hover:bg-accent/20"
                           )}
+                          style={{ 
+                            paddingTop: '7.2px', 
+                            paddingBottom: '7.2px', 
+                            paddingLeft: '10.8px', 
+                            paddingRight: '10.8px',
+                            fontSize: '12.6px'
+                          }}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{getTypeEmoji(type)}</span>
+                            <div className="flex items-center" style={{ gap: '7.2px' }}>
+                              <span style={{ fontSize: '16.2px' }}>{getTypeEmoji(type)}</span>
                               <span className="capitalize">{type.replace('_', ' ')}</span>
                             </div>
                             <Badge variant="outline">

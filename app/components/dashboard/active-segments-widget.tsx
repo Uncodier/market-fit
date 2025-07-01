@@ -6,6 +6,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
+import { useRequestController } from "@/app/hooks/useRequestController";
 
 interface ActiveSegmentsWidgetProps {
   startDate?: Date;
@@ -37,6 +38,7 @@ export function ActiveSegmentsWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
+  const { fetchWithController } = useRequestController();
   const [activeSegments, setActiveSegments] = useState<ActiveSegmentsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -67,14 +69,8 @@ export function ActiveSegmentsWidget({
       setHasError(false);
       
       try {
-        // Validate dates - don't allow future dates
-        const now = new Date();
-        const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
-        const validEndDate = endDate > now ? now : endDate;
-        
-        console.log("[ActiveSegmentsWidget] Fetching for site:", currentSite.id, currentSite.name);
-        const start = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
-        const end = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
+        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
+        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
         params.append("siteId", currentSite.id);
@@ -87,7 +83,14 @@ export function ActiveSegmentsWidget({
         const apiUrl = `/api/active-segments?${params.toString()}`;
         console.log("[ActiveSegmentsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
-        const response = await fetch(apiUrl);
+        const response = await fetchWithController(apiUrl);
+        
+        // Handle null response (aborted request)
+        if (response === null) {
+          console.log("[ActiveSegmentsWidget] Request was aborted");
+          return;
+        }
+        
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Error ${response.status}: ${errorText}`);
@@ -107,15 +110,18 @@ export function ActiveSegmentsWidget({
           setHasError(true);
         }
       } catch (error) {
-        console.error("[ActiveSegmentsWidget] Error:", error);
-        setHasError(true);
+        // Only log non-abort errors
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error("[ActiveSegmentsWidget] Error:", error);
+          setHasError(true);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchActiveSegments();
-  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user, fetchWithController]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

@@ -80,21 +80,21 @@ export function MenuItem({
     <>
       <div className={cn(
         "flex items-center justify-center safari-icon-fix",
-        isCollapsed ? "w-full" : "w-[25px]",
-        "h-[25px]",
+        isCollapsed ? "w-full" : "w-[23px]",
+        "h-[23px]",
         isSettingsLink ? "safari-settings-icon" : "",
         href === "/settings" || href.includes("settings") ? "settings-icon-container" : "",
         href === "/notifications" ? "notifications-icon-container" : ""
       )}>
         {customIcon ? customIcon : avatarUrl ? (
-          <MenuAvatar className="h-8 w-8">
+          <MenuAvatar className="h-7 w-7">
             <MenuAvatarImage src={avatarUrl} alt={title} />
             <MenuAvatarFallback>
               {title.split(' ').map(word => word[0]).join('').toUpperCase()}
             </MenuAvatarFallback>
           </MenuAvatar>
         ) : Icon && (
-          <Icon className="h-[20px] w-[20px] shrink-0" />
+          <Icon className="h-[18px] w-[18px] shrink-0" />
         )}
       </div>
       
@@ -103,13 +103,16 @@ export function MenuItem({
           "flex flex-col min-w-0",
           isCollapsed ? "hidden" : "flex"
         )}
+        style={{ fontSize: '12.6px' }}
       >
         <span className="truncate">{title}</span>
         {subtitle && (
           <span className={cn(
-            "text-xs truncate",
+            "truncate",
             isActive ? "text-white/70" : "text-gray-400"
-          )}>
+          )}
+          style={{ fontSize: '10.8px' }}
+          >
             {subtitle}
           </span>
         )}
@@ -127,13 +130,21 @@ export function MenuItem({
       href={href}
       className={cn(
         className,
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors relative group",
+        "flex items-center rounded-md text-sm transition-colors relative group",
         isActive
           ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-        isCollapsed ? "justify-center h-[39px]" : "justify-start h-[39px]",
+        isCollapsed ? "justify-center h-[35px] w-[35px]" : "justify-start h-[35px]",
         isSettingsLink ? "safari-settings-link" : ""
       )}
+      style={{ 
+        paddingLeft: isCollapsed ? '0px' : '10.8px', 
+        paddingRight: isCollapsed ? '0px' : '10.8px', 
+        paddingTop: isCollapsed ? '0px' : '7.2px', 
+        paddingBottom: isCollapsed ? '0px' : '7.2px',
+        gap: isCollapsed ? '0px' : '10.8px',
+        fontSize: '12.6px'
+      }}
       onClick={onClick}
     >
       {isCollapsed ? (

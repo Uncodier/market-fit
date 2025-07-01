@@ -6,6 +6,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
+import { useRequestController } from "@/app/hooks/useRequestController";
 
 interface CPLWidgetProps {
   segmentId?: string;
@@ -33,6 +34,11 @@ const formatPeriodType = (periodType: string): string => {
 
 // Format currency for display
 const formatCurrency = (value: number): string => {
+  // Handle invalid numbers (NaN, null, undefined, etc.)
+  if (value == null || isNaN(value) || !isFinite(value)) {
+    return "$0";
+  }
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -49,6 +55,7 @@ export function CPLWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
+  const { fetchWithController } = useRequestController();
   const [cpl, setCpl] = useState<CPLData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -88,21 +95,31 @@ export function CPLWidget({
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
-        const response = await fetch(`/api/cpl?${params.toString()}`);
+        const response = await fetchWithController(`/api/cpl?${params.toString()}`);
+        
+        // Handle null response (aborted request)
+        if (response === null) {
+          console.log("[CPLWidget] Request was aborted");
+          return;
+        }
+        
         if (!response.ok) {
           throw new Error('Failed to fetch CPL data');
         }
         const data = await response.json();
         setCpl(data);
       } catch (error) {
-        console.error("Error fetching CPL:", error);
+        // Only log non-abort errors
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error("Error fetching CPL:", error);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchCpl();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

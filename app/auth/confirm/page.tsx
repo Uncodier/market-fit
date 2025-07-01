@@ -107,6 +107,19 @@ function ConfirmContent() {
 
           console.log('✅ Email confirmed successfully:', data)
           
+          // Ensure we have a valid session after confirmation
+          if (!data.session) {
+            console.warn('⚠️ No session found after email confirmation, attempting to refresh session')
+            // Try to refresh the session
+            const { data: refreshedSession } = await supabase.auth.getSession()
+            if (!refreshedSession.session) {
+              setState('error')
+              setMessage('Email confirmed but failed to establish session. Please try signing in manually.')
+              return
+            }
+            console.log('✅ Session refreshed successfully after confirmation')
+          }
+          
           // Process referral code if present in user metadata
           const user = data.user
           const referralCode = user?.raw_user_meta_data?.referral_code
@@ -152,13 +165,23 @@ function ConfirmContent() {
             const decodedRedirect = decodeURIComponent(redirectTo)
             setState('redirect')
             setMessage('Email confirmed! Redirecting...')
+            
+            // Give the auth state some time to update before redirecting
             setTimeout(() => {
+              console.log('🔄 Redirecting to:', decodedRedirect)
               window.location.href = decodedRedirect
-            }, 1500)
+            }, 2000)
           } else {
-            setState('success')
-            setMessage('Email confirmed successfully!')
-            setRedirectUrl('/dashboard')
+            // User is confirmed and has password set, redirect automatically to dashboard
+            console.log('✅ Email confirmed, user authenticated, redirecting to dashboard')
+            setState('redirect')
+            setMessage('Email confirmed successfully! Redirecting to dashboard...')
+            
+            // Give the auth state time to update before redirecting
+            setTimeout(() => {
+              console.log('🔄 Redirecting to dashboard')
+              window.location.href = '/dashboard'
+            }, 2000)
           }
         }
 

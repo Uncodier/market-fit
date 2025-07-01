@@ -150,7 +150,7 @@ export function useAuth() {
           identifyUserInChat(session?.user || null, supabase)
           
           // Si el usuario acaba de iniciar sesión, redirigir a la página adecuada
-          if (currentPath.startsWith('/auth')) {
+          if (currentPath.startsWith('/auth') && currentPath !== '/auth/confirm') {
             // Obtener el returnTo desde la URL
             const url = new URL(window.location.href)
             const returnTo = url.searchParams.get('returnTo') || '/dashboard'
@@ -162,8 +162,9 @@ export function useAuth() {
             }, 100)
           }
         } else if (event === 'SIGNED_OUT') {
-          // Si el usuario cerró sesión y no está en la página de autenticación, redirigir a login
-          if (!currentPath.startsWith('/auth') && !currentPath.startsWith('/api')) {
+          // Solo redirigir a auth si no estamos ya en páginas de auth o api
+          // Y evitar redirecciones cuando estamos en confirmación
+          if (!currentPath.startsWith('/auth') && !currentPath.startsWith('/api') && currentPath !== '/') {
             console.log('[Auth Debug] User signed out, redirecting to auth page')
             router.push('/auth')
           }

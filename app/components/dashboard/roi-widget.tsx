@@ -6,6 +6,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
+import { useRequestController } from "@/app/hooks/useRequestController";
 
 interface ROIWidgetProps {
   segmentId?: string;
@@ -15,6 +16,7 @@ interface ROIWidgetProps {
 
 interface ROIData {
   actual: number;
+  unit: string;
   percentChange: number;
   periodType: string;
 }
@@ -39,6 +41,7 @@ export function ROIWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
+  const { fetchWithController } = useRequestController();
   const [roi, setRoi] = useState<ROIData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -78,21 +81,31 @@ export function ROIWidget({
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
-        const response = await fetch(`/api/roi?${params.toString()}`);
+        const response = await fetchWithController(`/api/roi?${params.toString()}`);
+        
+        // Handle null response (aborted request)
+        if (response === null) {
+          console.log("[ROIWidget] Request was aborted");
+          return;
+        }
+        
         if (!response.ok) {
           throw new Error('Failed to fetch ROI data');
         }
         const data = await response.json();
         setRoi(data);
       } catch (error) {
-        console.error("Error fetching ROI:", error);
+        // Only log non-abort errors
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error("Error fetching ROI:", error);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchRoi();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -100,7 +113,7 @@ export function ROIWidget({
     setEndDate(end);
   };
 
-  const formattedValue = roi ? `${roi.actual}%` : "0%";
+  const formattedValue = roi ? `${roi.actual}${roi.unit}` : "0%";
   const changeText = `${roi?.percentChange || 0}% from ${formatPeriodType(roi?.periodType || "monthly")}`;
   const isPositiveChange = (roi?.percentChange || 0) > 0;
   

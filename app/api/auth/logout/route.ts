@@ -32,9 +32,10 @@ export async function GET(request: Request) {
     // Cerrar sesión en Supabase
     await supabase.auth.signOut({ scope: 'global' })
     
-    // Limpiar cookies
+    // Limpiar cookies - await the cookies function first
+    const cookieStore = await cookies()
     SUPABASE_COOKIES.forEach(cookieName => {
-      cookies().delete(cookieName)
+      cookieStore.delete(cookieName)
     })
     
     // Crear respuesta con redirección usando Response nativa

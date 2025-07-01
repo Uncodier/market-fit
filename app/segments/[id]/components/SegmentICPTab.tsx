@@ -472,16 +472,7 @@ export function SegmentICPTab({ segment, activeSection }: SegmentICPTabProps) {
       <EmptyState
         icon={<Users className="h-12 w-12 text-primary/60" />}
         title="No ICP Profile Available"
-        description="There's no Ideal Customer Profile data for this segment yet. Generate an ICP to better understand your audience's demographics, psychographics, and behavior."
-        action={
-          <Button 
-            variant="default" 
-            className="flex items-center gap-2"
-          >
-            <Users className="h-4 w-4" />
-            Generate ICP Profile with AI
-          </Button>
-        }
+        description="There's no Ideal Customer Profile data for this segment yet."
       />
     );
   }
