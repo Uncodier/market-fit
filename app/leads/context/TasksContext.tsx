@@ -100,10 +100,46 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
         throw new Error('No site selected')
       }
       
-      const result = await createTaskAction({
-        ...taskData,
+      // Validate required fields before processing
+      if (!taskData.lead_id) {
+        throw new Error('Lead ID is required')
+      }
+      if (!taskData.title) {
+        throw new Error('Title is required')
+      }
+      if (!taskData.type) {
+        throw new Error('Type is required')
+      }
+      if (!taskData.stage) {
+        throw new Error('Stage is required')
+      }
+      if (!taskData.status) {
+        throw new Error('Status is required')
+      }
+      if (!taskData.scheduled_date) {
+        throw new Error('Scheduled date is required')
+      }
+
+      // Filter data to match backend TaskSchema expectations
+      const backendTaskData = {
+        lead_id: taskData.lead_id,
+        title: taskData.title,
+        description: taskData.description || null,
+        type: taskData.type,
+        stage: taskData.stage,
+        status: taskData.status,
+        scheduled_date: taskData.scheduled_date,
+        completed_date: null,
+        amount: taskData.amount || null,
+        assignee: taskData.assignee || "", // Transform handles empty string -> null
+        notes: taskData.notes || null,
         site_id: currentSite.id
-      })
+      }
+
+      // Debug log to see what data is being sent
+      console.log('Sending task data to backend:', backendTaskData)
+      
+      const result = await createTaskAction(backendTaskData)
       
       if (result.error) {
         throw new Error(result.error)
