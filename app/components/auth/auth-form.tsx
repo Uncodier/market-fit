@@ -266,15 +266,6 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           // User needs to confirm email
           console.log('User created successfully, confirmation email sent to:', values.email)
           setErrorMessage(`✅ Account created successfully! We've sent a confirmation email to ${values.email}. Please check your email and click the confirmation link to complete your setup. After confirming, you can sign in with your credentials.`)
-          
-          // After a delay, switch to sign-in mode to make it clear what to do next
-          setTimeout(() => {
-            setAuthMode('sign_in')
-            setErrorMessage('Email confirmed? You can now sign in with your credentials.')
-            if (onAuthTypeChange) {
-              onAuthTypeChange('signin')
-            }
-          }, 5000)
         }
       } else {
         // Sign in existing user
@@ -292,10 +283,8 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           console.log('Sign in successful, user authenticated:', data.user.email)
           console.log('Session established, redirecting to:', finalReturnTo)
           
-          // Give a moment for the auth state to update before redirecting
-          setTimeout(() => {
-            window.location.href = finalReturnTo
-          }, 500)
+          // Redirect immediately without timeout
+          window.location.href = finalReturnTo
         } else if (data.user && !data.session) {
           console.warn('User exists but no session created, this may indicate email not confirmed')
           setErrorMessage('Account found but not fully activated. Please check your email for a confirmation link, or contact support if you need help.')

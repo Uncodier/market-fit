@@ -156,10 +156,8 @@ export function useAuth() {
             const returnTo = url.searchParams.get('returnTo') || '/dashboard'
             console.log('[Auth Debug] User signed in, redirecting to:', returnTo)
             
-            // Retrasar ligeramente la redirección para asegurar que los estados se actualicen
-            setTimeout(() => {
-              router.push(returnTo)
-            }, 100)
+            // Redirigir inmediatamente
+            router.push(returnTo)
           }
         } else if (event === 'SIGNED_OUT') {
           // Solo redirigir a auth si no estamos ya en páginas de auth o api

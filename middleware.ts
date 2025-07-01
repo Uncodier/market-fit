@@ -10,7 +10,18 @@ const PROTECTED_ROUTES = [
   '/profile',
   '/settings',
   '/experiments',
-  '/segments'
+  '/segments',
+  '/campaigns',
+  '/leads',
+  '/sales',
+  '/agents',
+  '/control-center',
+  '/content',
+  '/billing',
+  '/checkout',
+  '/requirements',
+  '/notifications',
+  '/costs'
 ]
 
 // Define las rutas de autenticación
@@ -67,29 +78,42 @@ export async function middleware(req: NextRequest) {
             return req.cookies.get(name)?.value
           },
           set(name, value, options) {
-            res.cookies.set(name, value, options)
+            res.cookies.set(name, value, {
+              ...options,
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production'
+            })
           },
           remove(name, options) {
-            res.cookies.set(name, '', { ...options, maxAge: 0 })
+            res.cookies.set(name, '', { 
+              ...options, 
+              maxAge: 0,
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production'
+            })
           }
         }
       }
     )
     
-    // Verificar la sesión
+    // Verificar la sesión usando getUser() que es más seguro
     const {
-      data: { session },
-      error: sessionError
-    } = await supabase.auth.getSession()
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser()
 
-    if (sessionError) {
-      console.error('Middleware session error:', sessionError.message)
+    if (userError) {
+      console.error('Middleware auth error:', userError.message)
     }
+
+    // También obtener la sesión para casos donde la necesitemos
+    const { data: { session } } = await supabase.auth.getSession()
 
     console.log('Middleware check:', {
       path,
       hasSession: !!session,
-      userId: session?.user?.id?.substring(0, 8) + '...' || 'none'
+      hasUser: !!user,
+      userId: user?.id?.substring(0, 8) + '...' || 'undefined...'
     })
 
     // Obtener la ruta actual
@@ -102,7 +126,7 @@ export async function middleware(req: NextRequest) {
       }
       
       // Si el usuario está autenticado y no está en una página de flujo de auth, redirigir al dashboard o returnTo
-      if (session) {
+      if (user) {
         const returnTo = req.nextUrl.searchParams.get('returnTo') || '/dashboard'
         console.log('Middleware: Authenticated user on auth page, redirecting to:', returnTo)
         const redirectUrl = new URL(returnTo, req.url)
@@ -114,8 +138,8 @@ export async function middleware(req: NextRequest) {
 
     // Si es una ruta protegida
     if (PROTECTED_ROUTES.some(route => path.startsWith(route))) {
-      // Si no hay sesión, redirigir a auth con returnTo
-      if (!session) {
+      // Si no hay usuario autenticado, redirigir a auth con returnTo
+      if (!user) {
         console.log('Middleware: Protected route without session, redirecting to auth. Path:', path)
         const redirectUrl = new URL('/auth', req.url)
         redirectUrl.searchParams.set('returnTo', path)
