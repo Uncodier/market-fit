@@ -703,40 +703,66 @@ export default function LeadsPage() {
   const getFilteredLeads = (status: string) => {
     if (!dbLeads) return []
     
-    // First filter by status
     let filtered = dbLeads
+    
+    // First apply tab-based status filter
     if (status !== "all") {
       filtered = filtered.filter(lead => lead.status === status)
     }
     
-    // Then filter by search query if it exists
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(lead => 
-        lead.name.toLowerCase().includes(query) || 
-        lead.email.toLowerCase().includes(query) || 
-        (lead.company && lead.company.toLowerCase().includes(query)) ||
-        (lead.position && lead.position.toLowerCase().includes(query)) ||
-        (lead.phone && lead.phone.toLowerCase().includes(query)) ||
-        (lead.origin && lead.origin.toLowerCase().includes(query))
-      )
-    }
-    
-    // Apply advanced filters
+    // Apply advanced status filters only if we're on "all" tab
+    // or if the advanced filters include the current tab status
     if (filters.status.length > 0) {
-      filtered = filtered.filter(lead => filters.status.includes(lead.status))
+      if (status === "all") {
+        filtered = filtered.filter(lead => filters.status.includes(lead.status))
+      } else {
+        // On specific tab, only apply advanced status filter if it includes current status
+        if (filters.status.includes(status)) {
+          // Keep current filter, as the tab status is already included
+        } else {
+          // Advanced status filter doesn't include current tab status, return empty
+          return []
+        }
+      }
     }
     
+    // Apply segment filters
     if (filters.segments.length > 0) {
       filtered = filtered.filter(lead => 
         lead.segment_id && filters.segments.includes(lead.segment_id)
       )
     }
     
+    // Apply origin filters
     if (filters.origin.length > 0) {
       filtered = filtered.filter(lead => 
         lead.origin && filters.origin.includes(lead.origin)
       )
+    }
+    
+    // Apply search query filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(lead => {
+        // Get company name using same logic as LeadsTable
+        let companyName = "-"
+        if (lead.companies && lead.companies.name) {
+          companyName = lead.companies.name
+        } else if (lead.company && typeof lead.company === 'object' && lead.company.name) {
+          companyName = lead.company.name
+        } else if (typeof lead.company === 'string') {
+          companyName = lead.company
+        }
+        
+        return (
+          lead.name.toLowerCase().includes(query) || 
+          lead.email.toLowerCase().includes(query) || 
+          (companyName && companyName !== "-" && companyName.toLowerCase().includes(query)) ||
+          (lead.position && lead.position.toLowerCase().includes(query)) ||
+          (lead.phone && lead.phone.toLowerCase().includes(query)) ||
+          (lead.origin && lead.origin.toLowerCase().includes(query))
+        )
+      })
     }
     
     return filtered
@@ -945,7 +971,7 @@ export default function LeadsPage() {
         segments={segments}
       />
       
-      <Tabs defaultValue={activeTab} className="h-full space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full space-y-6">
         <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
