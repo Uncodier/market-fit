@@ -134,12 +134,14 @@ export default function ControlCenterPage() {
       const { data: membersData, error: membersError } = await supabase
         .from('site_members')
         .select(`
-          profiles!inner (
+          user_id,
+          profiles:user_id (
             id,
             name
           )
         `)
         .eq('site_id', currentSite.id)
+        .not('user_id', 'is', null)
 
       if (ownerError && ownerError.code !== 'PGRST116') {
         console.error('Error fetching site owner:', ownerError)
