@@ -5,3 +5,4 @@ credentials:
   username: sergio.prado@me.com
 project_id: U60j4oWDJS0sa6Z77mTz
 project_name: market-fit
+x-vercel-protection-bypass: "7v2SjyaiElSqRPygE4rZQn4Nuaq55cHm"
