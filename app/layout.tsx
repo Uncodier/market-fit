@@ -65,7 +65,7 @@ export default function RootLayout({
                           allowAnonymousMessages: false,
                           position: "bottom-right",
                           title: "Customer and Tech Support",
-                          welcomeMessage: "Welcome to app! How can we assist you today?"
+                          welcomeMessage: "Welcome to Makret Fit! How can we assist you today?"
                         }
                       });
                     }

@@ -43,7 +43,14 @@ const identifyUserInChat = async (user: User | null, supabaseClient: any, retryC
         .single()
 
       if (error) {
-        console.warn('[MarketFit Chat] Could not fetch profile from database, using auth user data')
+        console.warn('[MarketFit Chat] Could not fetch profile from database:', error)
+        console.warn('[MarketFit Chat] Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        console.warn('[MarketFit Chat] Using auth user data instead')
       }
 
       // Preparar datos del usuario para MarketFit
