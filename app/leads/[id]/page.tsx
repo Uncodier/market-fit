@@ -231,8 +231,8 @@ export default function LeadDetailPage() {
   
   // Handler for status change
   const handleStatusChange = (status: "new" | "contacted" | "qualified" | "converted" | "lost") => {
-    if (status === "converted") {
-      // Show attribution modal for conversion
+    if (status === "converted" || status === "lost") {
+      // Show attribution modal for conversion or loss
       setPendingStatus(status)
       setShowAttributionModal(true)
     } else {
@@ -333,13 +333,16 @@ export default function LeadDetailPage() {
       </Tabs>
 
       {/* Attribution Modal */}
-      <AttributionModal
-        isOpen={showAttributionModal}
-        onOpenChange={setShowAttributionModal}
-        leadName={lead?.name || ""}
-        onConfirm={handleAttributionConfirm}
-        onCancel={handleAttributionCancel}
-      />
+      {pendingStatus && (pendingStatus === "converted" || pendingStatus === "lost") && (
+        <AttributionModal
+          isOpen={showAttributionModal}
+          onOpenChange={setShowAttributionModal}
+          leadName={lead?.name || ""}
+          statusType={pendingStatus}
+          onConfirm={handleAttributionConfirm}
+          onCancel={handleAttributionCancel}
+        />
+      )}
     </div>
   )
 }

@@ -811,8 +811,8 @@ export default function LeadsPage() {
     const lead = dbLeads.find(l => l.id === leadId)
     if (!lead) return
     
-    // Si el nuevo status es "converted", mostrar el modal de atribución
-    if (newStatus === "converted") {
+    // Si el nuevo status es "converted" o "lost", mostrar el modal de atribución
+    if (newStatus === "converted" || newStatus === "lost") {
       setPendingStatusChange({
         leadId,
         leadName: lead.name,
@@ -925,13 +925,16 @@ export default function LeadsPage() {
     <LeadsContext.Provider value={{ segments }}>
     <div className="flex-1 p-0">
       {/* Attribution Modal */}
-      <AttributionModal
-        isOpen={showAttributionModal}
-        onOpenChange={setShowAttributionModal}
-        leadName={pendingStatusChange?.leadName || ""}
-        onConfirm={handleAttributionConfirm}
-        onCancel={handleAttributionCancel}
-      />
+      {pendingStatusChange && (pendingStatusChange.newStatus === "converted" || pendingStatusChange.newStatus === "lost") && (
+        <AttributionModal
+          isOpen={showAttributionModal}
+          onOpenChange={setShowAttributionModal}
+          leadName={pendingStatusChange.leadName}
+          statusType={pendingStatusChange.newStatus as "converted" | "lost"}
+          onConfirm={handleAttributionConfirm}
+          onCancel={handleAttributionCancel}
+        />
+      )}
       
       {/* Modal de filtros */}
       <LeadFilterModal
