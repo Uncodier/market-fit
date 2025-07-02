@@ -1,0 +1,11 @@
+name: Segment Analysis View
+page: segments/:id
+page_path: app/segments/[id]/page.tsx
+task: Viewing detailed segment analysis
+steps:
+- Navigate to specific segment detail page
+- Verify segment details tab loads correctly
+- Switch to analysis tab
+- Verify charts and metrics load with data
+- Switch to ICP tab and verify profile information
+expected_result: Segment details and analysis should be displayed with charts

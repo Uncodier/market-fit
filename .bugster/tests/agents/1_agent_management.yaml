@@ -1,11 +1,11 @@
 name: Agent Management
 page: agents
 page_path: app/agents/page.tsx
-task: View and manage AI agents
+task: Viewing and interacting with agents
 steps:
 - Navigate to agents page
-- Verify agent cards display correctly
-- Switch between list and canvas view
-- Click on an agent to view details
-- Verify agent details page loads with correct information
-expected_result: Agent list displays and agent details can be accessed
+- Verify agents load in grid/list view
+- Click on agent to view details
+- Toggle between different view modes
+- Verify agent activities are displayed
+expected_result: Agents should be displayed with interaction options

@@ -1,0 +1,11 @@
+name: Experiment Management
+page: experiments
+page_path: app/experiments/page.tsx
+task: Viewing and creating experiments
+steps:
+- Navigate to experiments page
+- Verify experiment list loads correctly
+- Click 'Create Experiment' button
+- Fill in experiment details in dialog
+- Submit and verify new experiment appears in list
+expected_result: Experiments should be displayed with creation option

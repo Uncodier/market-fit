@@ -1,0 +1,11 @@
+name: Agent Detail View
+page: agents/:id
+page_path: app/agents/[id]/page.tsx
+task: Viewing and configuring agent details
+steps:
+- Navigate to specific agent detail page
+- Verify agent information loads correctly
+- Toggle agent tools and verify state changes
+- Upload context file for agent
+- Verify file appears in context files list
+expected_result: Agent details should be displayed with configuration options

@@ -1,11 +1,11 @@
 name: Sales Detail View
 page: sales/:id
 page_path: app/sales/[id]/page.tsx
-task: View detailed sales information
+task: Viewing and managing sale details
 steps:
-- Navigate to sales page
-- Click on a specific sale record
-- Verify sale details display correctly
-- Register payment using payment button if applicable
-- Verify payment status updates correctly
-expected_result: Sales details display correctly
+- Navigate to specific sale detail page
+- Verify sale information loads correctly
+- Click 'Register Payment' button
+- Complete payment form and submit
+- Verify payment status updates in sale details
+expected_result: Sale details should be displayed with order management options

@@ -1,11 +1,11 @@
 name: Experiment Detail View
 page: experiments/:id
 page_path: app/experiments/[id]/page.tsx
-task: View and manage experiment details
+task: Viewing and managing experiment details
 steps:
-- Navigate to experiments page
-- Click on a specific experiment
-- Verify experiment details display correctly
-- Start or stop experiment using status controls
-- Verify experiment status updates correctly
-expected_result: Experiment details display correctly and can be updated
+- Navigate to specific experiment detail page
+- Verify experiment details load correctly
+- Edit experiment content using rich text editor
+- Save changes and verify update
+- Change experiment status and verify update
+expected_result: Experiment details should be displayed with editor and status controls

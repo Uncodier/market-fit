@@ -1,0 +1,11 @@
+name: Login Authentication
+page: auth
+page_path: app/auth/page.tsx
+task: User authentication with email
+steps:
+- Navigate to the auth page
+- Enter valid email address in the email input field
+- Click the submit button
+- Verify confirmation email is sent
+- Verify user is redirected to dashboard after confirming email
+expected_result: User should be authenticated and redirected to the dashboard

@@ -1,0 +1,11 @@
+name: Dashboard Overview Loading
+page: dashboard
+page_path: app/dashboard/page.tsx
+task: Loading and displaying dashboard metrics
+steps:
+- Navigate to dashboard page
+- Verify date range selector is visible
+- Verify revenue widget loads with data
+- Verify segment distribution chart loads
+- Change date range selection and verify data updates
+expected_result: Dashboard should load with all widgets and data visible

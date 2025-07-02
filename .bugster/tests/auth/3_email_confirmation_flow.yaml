@@ -1,0 +1,10 @@
+name: Email Confirmation Flow
+page: auth/confirm
+page_path: app/auth/confirm/page.tsx
+task: Confirming email address
+steps:
+- Navigate to the confirmation page with valid token
+- Wait for automatic confirmation process
+- Verify success state is displayed
+- Verify redirect to dashboard occurs automatically
+expected_result: User's email should be confirmed and redirected to appropriate page

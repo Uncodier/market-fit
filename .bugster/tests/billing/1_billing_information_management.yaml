@@ -1,0 +1,11 @@
+name: Billing Information Management
+page: billing
+page_path: app/billing/page.tsx
+task: Viewing and updating billing information
+steps:
+- Navigate to billing page
+- Verify billing information loads correctly
+- Switch to payment history tab
+- Verify payment records are displayed
+- Update billing information and save changes
+expected_result: Billing information should be displayed with payment history

@@ -1,11 +1,11 @@
 name: User Profile Management
 page: profile
 page_path: app/profile/page.tsx
-task: Update user profile information
+task: Updating user profile information
 steps:
 - Navigate to profile page
-- Verify current profile information displays
-- Update name, email, and other fields
+- Verify profile information loads correctly
 - Upload new profile image
-- Save changes and verify they persist after page reload
-expected_result: Profile information is updated and saved
+- Update profile fields and preferences
+- Save changes and verify updates are reflected
+expected_result: Profile changes should be saved and reflected immediately

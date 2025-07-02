@@ -1,11 +1,11 @@
 name: Lead Management List View
 page: leads
 page_path: app/leads/page.tsx
-task: View and filter leads list
+task: Viewing and filtering leads
 steps:
 - Navigate to leads page
-- Verify leads table displays with correct columns
+- Verify leads table loads with data
 - Use search input to filter leads by name
-- Apply status filter using filter dropdown
-- Verify filtered results match the applied criteria
-expected_result: Leads are displayed and filterable
+- Apply status filter from dropdown
+- Verify filtered results match criteria
+expected_result: Leads should be displayed in a table with filtering options

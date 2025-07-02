@@ -1,0 +1,11 @@
+name: Segment Management
+page: segments
+page_path: app/segments/page.tsx
+task: Viewing and creating customer segments
+steps:
+- Navigate to segments page
+- Verify existing segments are displayed
+- Click 'Create Segment' button
+- Fill in segment details in dialog
+- Submit and verify new segment appears in list
+expected_result: Segments should be displayed with creation option

@@ -1,0 +1,11 @@
+name: Chat Interface
+page: chat
+page_path: app/chat/page.tsx
+task: Interacting with chat interface
+steps:
+- Navigate to chat page
+- Verify chat interface loads correctly
+- Type message in chat input
+- Send message and verify it appears in chat
+- Verify response is received and displayed
+expected_result: Messages should be sent and received correctly

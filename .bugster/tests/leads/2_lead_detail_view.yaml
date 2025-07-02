@@ -1,11 +1,11 @@
 name: Lead Detail View
 page: leads/:id
 page_path: app/leads/[id]/page.tsx
-task: View detailed lead information
+task: Viewing detailed lead information
 steps:
-- Navigate to leads page
-- Click on a lead from the table
-- Verify lead details display correctly
-- Switch between different tabs (Journey, Sales, Conversations)
-- Verify information in each tab loads correctly
-expected_result: Lead details page displays all information correctly
+- Navigate to specific lead detail page
+- Verify lead details load correctly
+- Switch between information tabs
+- Verify sales information is displayed
+- Verify conversations history is visible
+expected_result: Lead details should be displayed with all relevant information
