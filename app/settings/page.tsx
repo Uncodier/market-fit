@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
+import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
 import { useSite } from "../context/SiteContext"
 import { useTheme } from "../context/ThemeContext"
 import { type Site, type SiteSettings } from "../context/SiteContext"
@@ -146,11 +147,44 @@ export default function SettingsPage() {
   const [formKey, setFormKey] = useState(0)
   const [confirmationName, setConfirmationName] = useState("")
 
-  // Update form key only when the site ID actually changes (new site selected)
+  // Simple refresh prevention specifically for settings page
+  useSimpleRefreshPrevention()
+
+  // Debug log para verificar el estado de prevención
   useEffect(() => {
-    if (currentSite?.id) {
+    const logPreventionStatus = () => {
+      const preventRefresh = sessionStorage.getItem('preventAutoRefresh')
+      const justBecameVisible = sessionStorage.getItem('JUST_BECAME_VISIBLE')
+      const justGainedFocus = sessionStorage.getItem('JUST_GAINED_FOCUS')
+      
+      console.log('🔍 Settings page prevention status:', {
+        preventRefresh: preventRefresh === 'true',
+        justBecameVisible: justBecameVisible === 'true',
+        justGainedFocus: justGainedFocus === 'true'
+      })
+    }
+    
+    // Log initial status
+    logPreventionStatus()
+    
+    // Log status every few seconds for debugging
+    const interval = setInterval(logPreventionStatus, 3000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  // Update form key only when the site ID actually changes (new site selected)
+  // Use a ref to track the previous site ID to prevent unnecessary form resets
+  const prevSiteIdRef = useRef<string | null>(null)
+  
+  useEffect(() => {
+    if (currentSite?.id && currentSite.id !== prevSiteIdRef.current) {
       console.log("Settings: Site ID changed, updating formKey for site:", currentSite.id);
+      console.log("Settings: Previous site ID was:", prevSiteIdRef.current);
       setFormKey(prev => prev + 1)
+      prevSiteIdRef.current = currentSite.id
+    } else if (currentSite && currentSite.id === prevSiteIdRef.current) {
+      console.log("Settings: Same site ID, not updating formKey:", currentSite.id);
     }
   }, [currentSite?.id])
 

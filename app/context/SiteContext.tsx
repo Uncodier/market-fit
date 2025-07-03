@@ -592,7 +592,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   useEffect(() => {
     if (!isMounted || !supabaseRef.current) return
     
-    loadSites()
+    loadSites() // Initial load is always allowed
     
     // Safety timeout to ensure loading state is resolved
     const loadingTimeout = setTimeout(() => {
@@ -610,7 +610,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED', session: any) => {
         if (event === 'SIGNED_IN') {
           console.log('User signed in, loading sites...')
-          loadSites()
+          loadSitesWithPrevention()
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out, clearing sites...')
           setSites([])
@@ -621,6 +621,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
           } catch (e) {
             console.error("Error removing currentSiteId from localStorage:", e)
           }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Token refresh happens automatically when window regains focus
+          // Don't reload sites to prevent interrupting user work on settings page
+          console.log('Token refreshed - no action needed, prevention in place')
         }
       }
     )
@@ -651,11 +655,11 @@ export function SiteProvider({ children }: SiteProviderProps) {
           if (payload.eventType === 'INSERT') {
             // Only reload if this is a new site for current user
             console.log('New site created, reloading sites list');
-            loadSites();
+            loadSitesWithPrevention();
           } else if (payload.eventType === 'DELETE') {
             // Only reload if the deleted site affects current user
             console.log('Site deleted, reloading sites list');
-            loadSites();
+            loadSitesWithPrevention();
           } else if (payload.eventType === 'UPDATE') {
             // For updates, be very selective - only reload if it's the current site AND it's a significant change
             const newRecord = payload.new as Site;
@@ -668,7 +672,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
               
               if (significantChanges) {
                 console.log('Significant site update detected, reloading');
-                loadSites();
+                loadSitesWithPrevention();
               }
             }
           }
@@ -723,6 +727,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = async (site: Site) => {
+    
+    // Skip if we're setting the same site (avoid unnecessary reloads on focus changes)
+    if (currentSite && site && currentSite.id === site.id) {
+      console.log("SiteContext: Same site being set, skipping reload:", site.id);
+      return;
+    }
     
     // Solo guardar si es un sitio válido y no es el 'default'
     if (site && site.id) {
@@ -960,7 +970,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       console.log("CREATE SITE: Reloading sites list")
-      await loadSites() // Recargar los sitios
+      await loadSitesWithPrevention() // Recargar los sitios
       
       // Si es el primer sitio, lo establecemos como actual
       if (sites.length === 0) {
@@ -1301,6 +1311,40 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
   };
 
+  // Función auxiliar para verificar si debemos prevenir refresh
+  const shouldPreventRefresh = () => {
+    if (typeof window === 'undefined') return false
+    const preventRefresh = sessionStorage.getItem('preventAutoRefresh')
+    const justBecameVisible = sessionStorage.getItem('JUST_BECAME_VISIBLE')
+    const justGainedFocus = sessionStorage.getItem('JUST_GAINED_FOCUS')
+    
+    return preventRefresh === 'true' || justBecameVisible === 'true' || justGainedFocus === 'true'
+  }
+
+  // Función auxiliar para verificar si estamos en settings
+  const isOnSettingsPage = () => {
+    if (typeof window === 'undefined') return false
+    return window.location.pathname === '/settings'
+  }
+
+  // Wrapper para loadSites que respeta la prevención de refresh
+  const loadSitesWithPrevention = async () => {
+    if (shouldPreventRefresh() || isOnSettingsPage()) {
+      console.log('🚫 SiteContext: loadSites prevented - user is on settings page or refresh prevention is active')
+      return
+    }
+    return loadSites()
+  }
+
+  // Wrapper para refreshSites que respeta la prevención de refresh
+  const refreshSitesWithPrevention = async () => {
+    if (shouldPreventRefresh() || isOnSettingsPage()) {
+      console.log('🚫 SiteContext: refreshSites prevented - user is on settings page or refresh prevention is active')
+      return
+    }
+    return loadSites()
+  }
+
   // Valor del contexto
   const value = {
     sites,
@@ -1311,7 +1355,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     updateSite: handleUpdateSite,
     createSite: handleCreateSite,
     deleteSite: handleDeleteSite,
-    refreshSites: loadSites,
+    refreshSites: loadSitesWithPrevention,
     updateSettings: handleUpdateSettings,
     getSettings: handleGetSettings,
     updateBilling,

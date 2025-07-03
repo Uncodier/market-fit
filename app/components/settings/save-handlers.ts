@@ -355,10 +355,22 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
     
     console.log("SAVE 13: Todo el proceso completado con éxito");
     
-    // Refresh site data to get updated values
-    console.log("SAVE 14: Refreshing sites data...");
-    await refreshSites();
-    console.log("SAVE 15: Sites data refreshed successfully");
+    // Check if we should prevent refresh based on current flags
+    const shouldPreventRefresh = () => {
+      if (typeof window === 'undefined') return false
+      const preventRefresh = sessionStorage.getItem('preventAutoRefresh')
+      const justBecameVisible = sessionStorage.getItem('JUST_BECAME_VISIBLE')
+      const justGainedFocus = sessionStorage.getItem('JUST_GAINED_FOCUS')
+      
+      return preventRefresh === 'true' || justBecameVisible === 'true' || justGainedFocus === 'true'
+    }
+    
+    if (shouldPreventRefresh()) {
+      console.log("SAVE 14: Settings saved successfully, skipping sites refresh to prevent reload");
+    } else {
+      console.log("SAVE 14: Settings saved successfully, refreshing sites data");
+      await refreshSites();
+    }
     
     toast.success("Settings saved successfully");
   } catch (error) {

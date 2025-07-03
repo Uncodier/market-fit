@@ -126,4 +126,64 @@ export function getAutoRefreshPreventionReason(): string | null {
   if (typeof window === 'undefined') return null
   
   return sessionStorage.getItem('preventAutoRefreshReason')
+}
+
+/**
+ * Simple and robust refresh prevention hook
+ */
+export function useSimpleRefreshPrevention() {
+  const { shouldPreventRefresh, isCreateEditRoute } = usePreventRefresh()
+  const pathname = usePathname()
+  
+  useEffect(() => {
+    if (!shouldPreventRefresh) return
+    
+    // Store the prevention state
+    sessionStorage.setItem('preventAutoRefresh', 'true')
+    sessionStorage.setItem('preventAutoRefreshReason', isCreateEditRoute ? 'create-edit-page' : 'unknown-route')
+    
+    console.log(`🚫 Simple refresh prevention enabled for: ${pathname}`)
+    
+    // Simple approach: just prevent the visibility change actions
+    const handleVisibilityChange = (e: Event) => {
+      if (document.visibilityState === 'visible') {
+        console.log('🚫 Window became visible - settings form protected')
+        // Set a flag to prevent any auto-refresh actions
+        sessionStorage.setItem('JUST_BECAME_VISIBLE', 'true')
+        
+        // Clear the flag after a short delay
+        setTimeout(() => {
+          sessionStorage.removeItem('JUST_BECAME_VISIBLE')
+        }, 1000)
+      }
+    }
+    
+    const handleWindowFocus = (e: Event) => {
+      console.log('🚫 Window focus detected - settings form protected')
+      sessionStorage.setItem('JUST_GAINED_FOCUS', 'true')
+      
+      // Clear the flag after a short delay
+      setTimeout(() => {
+        sessionStorage.removeItem('JUST_GAINED_FOCUS')
+      }, 1000)
+    }
+    
+    // Add event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true })
+    window.addEventListener('focus', handleWindowFocus, { passive: true })
+    
+    return () => {
+      // Cleanup
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleWindowFocus)
+      
+      // Clean up session storage
+      sessionStorage.removeItem('preventAutoRefresh')
+      sessionStorage.removeItem('preventAutoRefreshReason')
+      sessionStorage.removeItem('JUST_BECAME_VISIBLE')
+      sessionStorage.removeItem('JUST_GAINED_FOCUS')
+    }
+  }, [pathname, shouldPreventRefresh, isCreateEditRoute])
+  
+  return { shouldPreventRefresh, isCreateEditRoute }
 } 

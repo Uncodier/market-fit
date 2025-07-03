@@ -439,8 +439,8 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
         form.setValue("channels.email.status", "synced");
         toast.success("Email configuration saved successfully");
         
-        // Clear the password field in the form and replace with placeholder
-        form.setValue("channels.email.password", "");
+        // Replace password field with security indicator
+        form.setValue("channels.email.password", "STORED_SECURELY");
         
         // Automatically test connection after successful save
         setTimeout(() => {
@@ -496,14 +496,15 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
     try {
       const email = form.getValues("channels.email.email");
       const password = form.getValues("channels.email.password");
+      const emailStatus = form.getValues("channels.email.status");
 
       if (!email) {
         toast.error("Please enter email address before testing connection");
         return;
       }
 
-      // If we have saved credentials (password shows as STORED_SECURELY), use them for testing
-      if (password === "STORED_SECURELY") {
+      // If we have saved credentials (status is synced), use them for testing
+      if (emailStatus === "synced") {
         const emailConfig = {
           site_id: siteId,
           use_saved_credentials: true,
@@ -551,7 +552,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       }
 
       // If no saved credentials, use form password
-      if (!password) {
+      if (!password || password === "STORED_SECURELY") {
         toast.error("Please enter password or save credentials securely before testing connection");
         return;
       }
