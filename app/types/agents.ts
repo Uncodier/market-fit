@@ -20,9 +20,6 @@ export interface AgentActivity {
   id: string
   name: string
   description: string
-  estimatedTime: string // Duration in minutes or a range like "5-10 min"
-  successRate: number
-  executions: number
   status: "available" | "in_progress" | "deprecated"
 }
 

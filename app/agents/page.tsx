@@ -429,7 +429,8 @@ function AgentsPageContent() {
     console.log('Is mk1 + Create Marketing Campaign?', activity.id === "mk1" && activity.name === "Create Marketing Campaign");
     console.log('Is ct1 + Content Calendar Creation?', activity.id === "ct1" && activity.name === "Content Calendar Creation");
     console.log('Is gl6 + Daily Stand Up?', activity.id === "gl6" && activity.name === "Daily Stand Up");
-    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1", 'gl6?', activity.id === "gl6");
+    console.log('Is sl3 + Lead Generation?', activity.id === "sl3" && activity.name === "Lead Generation");
+    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1", 'gl6?', activity.id === "gl6", 'sl3?', activity.id === "sl3");
     
     if (activity.id === "cs4" && activity.name === "Answer Emails") {
       try {
@@ -716,6 +717,55 @@ function AgentsPageContent() {
           : typeof error === 'string' 
           ? error 
           : 'An error occurred while generating daily stand up report';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
+    } else if (activity.id === "sl3" && activity.name === "Lead Generation") {
+      console.log('✅ MATCHED: Lead Generation activity detected!');
+      try {
+        console.log('Calling leadGeneration workflow for Sales/CRM Specialist agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Generating leads and identifying potential customers...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Use the same pattern as syncEmails - call external API server
+        const { apiClient } = await import('@/app/services/api-client-service');
+        
+        const response = await apiClient.post('/api/workflow/leadGeneration', {
+          site_id: currentSite.id
+        });
+        
+        if (response.success) {
+          setActivityState(activity.id, 'success', 'Lead generation completed successfully!');
+          toast?.success?.(`Lead generation completed successfully!`);
+          console.log('LeadGeneration workflow completed successfully:', response.data);
+        } else {
+          const errorMessage = typeof response.error === 'string' 
+            ? response.error 
+            : response.error?.message 
+            ? String(response.error.message)
+            : 'Failed to generate leads';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('LeadGeneration workflow failed:', response.error);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Lead Generation activity:', error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : typeof error === 'string' 
+          ? error 
+          : 'An error occurred while generating leads';
         setActivityState(activity.id, 'error', errorMessage);
         toast?.error?.(errorMessage);
       }

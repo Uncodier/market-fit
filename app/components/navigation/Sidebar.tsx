@@ -90,11 +90,6 @@ const humanInTheLoopItems = [
     href: "/requirements",
     icon: CheckSquare,
   },
-  {
-    title: "Experiments",
-    href: "/experiments", 
-    icon: FlaskConical,
-  },
 ]
 
 // Automatic category
