@@ -51,6 +51,9 @@ export const siteOnboardingSchema = z.object({
   locations: z.array(z.object({
     name: z.string().min(1, "Name is required"),
     address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional(),
     country: z.string().optional()
   })).optional().default([]),
   // Company info

@@ -54,12 +54,26 @@ export default function RootLayout({
                   
                   script.onload = function() {
                     if (window.MarketFit && typeof window.MarketFit.init === 'function') {
+                      // Detect theme function
+                      function detectTheme() {
+                        const isDark = 
+                          document.documentElement.classList.contains('dark') ||
+                          document.body.classList.contains('dark') ||
+                          document.documentElement.getAttribute('data-theme') === 'dark' ||
+                          document.body.getAttribute('data-theme') === 'dark' ||
+                          window.matchMedia('(prefers-color-scheme: dark)').matches;
+                        
+                        return isDark ? 'dark' : 'default';
+                      }
+                      
+                      // Initialize with detected theme
                       window.MarketFit.init({
                         siteId: "9be0a6a2-5567-41bf-ad06-cb4014f0faf2",
                         trackVisitors: true,
                         trackActions: true,
                         recordScreen: true,
                         debug: false,
+                        theme: detectTheme(),
                         chat: {
                           enabled: true,
                           allowAnonymousMessages: false,
@@ -68,6 +82,28 @@ export default function RootLayout({
                           welcomeMessage: "Welcome to Makret Fit! How can we assist you today?"
                         }
                       });
+                      
+                      // Function to update theme after initialization
+                      function updateWidgetTheme() {
+                        const currentTheme = detectTheme();
+                        if (window.MarketFit && typeof window.MarketFit.setTheme === 'function') {
+                          window.MarketFit.setTheme(currentTheme);
+                        }
+                      }
+                      
+                      // Watch for theme changes
+                      const observer = new MutationObserver(updateWidgetTheme);
+                      observer.observe(document.documentElement, { 
+                        attributes: true, 
+                        attributeFilter: ['class', 'data-theme'] 
+                      });
+                      observer.observe(document.body, { 
+                        attributes: true, 
+                        attributeFilter: ['class', 'data-theme'] 
+                      });
+                      
+                      // Listen for system theme changes
+                      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateWidgetTheme);
                     }
                   };
                   

@@ -367,7 +367,7 @@ export function SiteOnboarding({
 
   const addLocation = () => {
     const current = form.getValues("locations") || []
-    form.setValue("locations", [...current, { name: "", address: "", country: "" }])
+    form.setValue("locations", [...current, { name: "", address: "", city: "", state: "", zip: "", country: "" }])
   }
 
   const removeLocation = (index: number) => {
@@ -779,16 +779,32 @@ export function SiteOnboarding({
                                     </FormItem>
                                   )}
                                 />
-                                <div className="grid md:grid-cols-2 gap-4">
+                                <FormField
+                                  control={form.control}
+                                  name={`locations.${index}.address`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Address</FormLabel>
+                                      <FormControl>
+                                        <Input 
+                                          placeholder="Street address"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <div className="grid md:grid-cols-3 gap-4">
                                   <FormField
                                     control={form.control}
-                                    name={`locations.${index}.address`}
+                                    name={`locations.${index}.city`}
                                     render={({ field }) => (
                                       <FormItem>
-                                        <FormLabel>Address</FormLabel>
+                                        <FormLabel>City</FormLabel>
                                         <FormControl>
                                           <Input 
-                                            placeholder="Street address"
+                                            placeholder="City"
                                             {...field}
                                           />
                                         </FormControl>
@@ -798,13 +814,29 @@ export function SiteOnboarding({
                                   />
                                   <FormField
                                     control={form.control}
-                                    name={`locations.${index}.country`}
+                                    name={`locations.${index}.state`}
                                     render={({ field }) => (
                                       <FormItem>
-                                        <FormLabel>Country</FormLabel>
+                                        <FormLabel>State/Province</FormLabel>
                                         <FormControl>
                                           <Input 
-                                            placeholder="Country"
+                                            placeholder="State/Province"
+                                            {...field}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name={`locations.${index}.zip`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>ZIP/Postal Code</FormLabel>
+                                        <FormControl>
+                                          <Input 
+                                            placeholder="ZIP/Postal Code"
                                             {...field}
                                           />
                                         </FormControl>
@@ -813,6 +845,22 @@ export function SiteOnboarding({
                                     )}
                                   />
                                 </div>
+                                <FormField
+                                  control={form.control}
+                                  name={`locations.${index}.country`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Country</FormLabel>
+                                      <FormControl>
+                                        <Input 
+                                          placeholder="Country"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
                               </div>
                               <div className="flex justify-end mt-4">
                                 <Button

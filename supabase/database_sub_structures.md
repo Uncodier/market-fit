@@ -306,7 +306,10 @@ Business locations and office information.
   {
     "id": "location_1",
     "name": "Headquarters",
-    "address": "123 Business Ave, City, State 12345",
+    "address": "123 Business Ave",
+    "city": "New York",
+    "state": "NY",
+    "zip": "10001",
     "country": "USA",
     "type": "office",
     "coordinates": {
