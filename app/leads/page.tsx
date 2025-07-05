@@ -37,7 +37,15 @@ import { safeReload } from "@/app/utils/safe-reload"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
 // Cache de etapas para cada lead
+// Este cache se invalida automáticamente cuando se ejecutan acciones AI
 const leadJourneyStagesCache: Record<string, string> = {};
+
+// Función para limpiar completamente el cache (útil para debugging)
+const clearJourneyStageCache = () => {
+  Object.keys(leadJourneyStagesCache).forEach(key => {
+    delete leadJourneyStagesCache[key];
+  });
+};
 
 // Colores para las etapas del journey
 const JOURNEY_STAGE_COLORS: Record<string, string> = {
@@ -64,6 +72,8 @@ interface LeadsTableProps {
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
   onLeadClick: (lead: Lead) => void
+  forceReload: number
+  invalidateJourneyStageCache: (leadId: string) => void
 }
 
 function LeadsTable({ 
@@ -73,7 +83,9 @@ function LeadsTable({
   totalLeads,
   onPageChange,
   onItemsPerPageChange,
-  onLeadClick
+  onLeadClick,
+  forceReload,
+  invalidateJourneyStageCache
 }: LeadsTableProps) {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalLeads / itemsPerPage)
@@ -90,6 +102,21 @@ function LeadsTable({
     return leads.map(lead => lead.id).sort().join(',')
   }, [leads])
   
+  // Estado para trackear qué leads están siendo recargados
+  const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
+  
+  // Función para limpiar todo el cache y forzar recarga completa
+  const clearAllJourneyStageCache = () => {
+    clearJourneyStageCache()
+    setLeadJourneyStages({})
+    // Esta función ya no es necesaria en el componente LeadsTable
+    // porque forceReload se maneja desde el componente padre
+  }
+  
+
+  
+
+  
   // Cargar etapas del journey para cada lead
   useEffect(() => {
     const fetchJourneyStagesForLeads = async () => {
@@ -102,7 +129,7 @@ function LeadsTable({
       const leadIds = leads.map(lead => lead.id)
       const allLeadsInCache = leadIds.every(id => leadJourneyStagesCache[id])
       
-      if (allLeadsInCache) {
+      if (allLeadsInCache && forceReload === 0) {
         // Si todos están en cache, usar los valores cacheados sin mostrar loading
         const stages: Record<string, string> = {}
         leads.forEach(lead => {
@@ -115,7 +142,8 @@ function LeadsTable({
       
       // Solo mostrar loading si realmente necesitamos hacer la consulta
       const uncachedLeads = leads.filter(lead => !leadJourneyStagesCache[lead.id])
-      if (uncachedLeads.length === 0) {
+      
+      if (uncachedLeads.length === 0 && forceReload === 0) {
         setIsLoadingJourneyStages(false)
         return
       }
@@ -135,12 +163,12 @@ function LeadsTable({
         const supabase = createClient()
         const uncachedLeadIds = uncachedLeads.map(lead => lead.id)
         
-        // Obtener todas las tasks completadas solo de leads no cacheados
+        // Obtener todas las tasks completadas o en progreso de leads no cacheados
         const { data: allTasks, error } = await supabase
           .from('tasks')
-          .select('lead_id, stage, status')
+          .select('lead_id, stage, status, created_at, title, type')
           .in('lead_id', uncachedLeadIds)
-          .eq('status', 'completed')
+          .in('status', ['completed', 'in_progress'])
           .eq('site_id', currentSite.id)
         
         if (error) {
@@ -194,10 +222,21 @@ function LeadsTable({
       
       setLeadJourneyStages(stages)
       setIsLoadingJourneyStages(false)
+      
+      // Limpiar leads que ya no están siendo recargados
+      setReloadingLeads(prev => {
+        const newSet = new Set(prev)
+        Object.keys(stages).forEach(leadId => {
+          if (stages[leadId]) {
+            newSet.delete(leadId)
+          }
+        })
+        return newSet
+      })
     }
     
     fetchJourneyStagesForLeads()
-  }, [leadsKey, currentSite?.id]) // Usar leadsKey en lugar de leads para evitar re-renders innecesarios
+  }, [leadsKey, currentSite?.id, forceReload]) // Agregar forceReload como dependencia
   
   // Función para llamar API de research
   const handleLeadResearch = async (leadId: string) => {
@@ -219,6 +258,16 @@ function LeadsTable({
           setSuccessActions(prev => ({ ...prev, [leadId]: null }))
         }, 2000)
         toast.success("Lead research initiated successfully")
+        
+        // Invalidar cache y forzar recarga para reflejar cambios
+        setTimeout(() => {
+          invalidateJourneyStageCache(leadId)
+        }, 1000)
+        
+        // Verificar y refrescar nuevamente después de más tiempo (las APIs externas pueden tomar tiempo)
+        setTimeout(() => {
+          invalidateJourneyStageCache(leadId)
+        }, 5000)
       } else {
         throw new Error(response.error?.message || 'Failed to initiate lead research')
       }
@@ -250,6 +299,16 @@ function LeadsTable({
           setSuccessActions(prev => ({ ...prev, [leadId]: null }))
         }, 2000)
         toast.success("Lead follow-up initiated successfully")
+        
+        // Invalidar cache y forzar recarga para reflejar cambios
+        setTimeout(() => {
+          invalidateJourneyStageCache(leadId)
+        }, 1000)
+        
+        // Verificar y refrescar nuevamente después de más tiempo (las APIs externas pueden tomar tiempo)
+        setTimeout(() => {
+          invalidateJourneyStageCache(leadId)
+        }, 5000)
       } else {
         throw new Error(response.error?.message || 'Failed to initiate lead follow-up')
       }
@@ -261,10 +320,7 @@ function LeadsTable({
     }
   }
   
-  // Debug logs
-  console.log('Leads:', leads)
-  console.log('Segments:', segments)
-  console.log('Journey Stages:', leadJourneyStages)
+
   
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
@@ -326,8 +382,6 @@ function LeadsTable({
         <TableBody>
             {leads.length > 0 ? (
               leads.map((lead) => {
-                // Debug log for each lead
-                console.log('Rendering lead:', lead)
                 return (
                   <TableRow 
                     key={lead.id}
@@ -356,7 +410,7 @@ function LeadsTable({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {isLoadingJourneyStages ? (
+                      {isLoadingJourneyStages || reloadingLeads.has(lead.id) ? (
                         <Skeleton className="h-5 w-16 rounded-full" />
                       ) : (
                         <Badge className={`${JOURNEY_STAGE_COLORS[leadJourneyStages[lead.id] || 'not_contacted']}`}>
@@ -422,6 +476,7 @@ function LeadsTable({
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
+
                       </div>
                     </TableCell>
                   </TableRow>
@@ -610,8 +665,24 @@ export default function LeadsPage() {
     newStatus: string
   } | null>(null)
   
+  // Estado para forzar recarga de journey stages
+  const [forceReload, setForceReload] = useState(0)
+  
+  // Función para invalidar cache y forzar recarga
+  const invalidateJourneyStageCache = (leadId: string) => {
+    delete leadJourneyStagesCache[leadId]
+    setForceReload(prev => prev + 1)
+  }
+  
+  // Función para verificar todos los leads y sus journey stages
+
+  
   // Initialize command+k hook
   useCommandK()
+  
+
+  
+
   
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
@@ -698,6 +769,12 @@ export default function LeadsPage() {
     loadLeads()
     loadSegments()
     loadCampaigns()
+    
+    // Invalidar cache de journey stages cuando se carga un nuevo site
+    // para asegurar que los datos estén actualizados
+    if (currentSite?.id) {
+      setForceReload(prev => prev + 1)
+    }
   }, [currentSite])
   
   const getFilteredLeads = (status: string) => {
@@ -1033,6 +1110,8 @@ export default function LeadsPage() {
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}
                       onLeadClick={handleLeadClick}
+                      forceReload={forceReload}
+                      invalidateJourneyStageCache={invalidateJourneyStageCache}
                     />
                   ) : (
                     <KanbanView 
@@ -1056,6 +1135,8 @@ export default function LeadsPage() {
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}
                       onLeadClick={handleLeadClick}
+                      forceReload={forceReload}
+                      invalidateJourneyStageCache={invalidateJourneyStageCache}
                     />
                   ) : (
                     <KanbanView 
@@ -1079,6 +1160,8 @@ export default function LeadsPage() {
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}
                       onLeadClick={handleLeadClick}
+                      forceReload={forceReload}
+                      invalidateJourneyStageCache={invalidateJourneyStageCache}
                     />
                   ) : (
                     <KanbanView 
@@ -1102,6 +1185,8 @@ export default function LeadsPage() {
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}
                       onLeadClick={handleLeadClick}
+                      forceReload={forceReload}
+                      invalidateJourneyStageCache={invalidateJourneyStageCache}
                     />
                   ) : (
                     <KanbanView 
@@ -1125,6 +1210,8 @@ export default function LeadsPage() {
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}
                       onLeadClick={handleLeadClick}
+                      forceReload={forceReload}
+                      invalidateJourneyStageCache={invalidateJourneyStageCache}
                     />
                   ) : (
                     <KanbanView 
@@ -1148,6 +1235,8 @@ export default function LeadsPage() {
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}
                       onLeadClick={handleLeadClick}
+                      forceReload={forceReload}
+                      invalidateJourneyStageCache={invalidateJourneyStageCache}
                     />
                   ) : (
                     <KanbanView 
