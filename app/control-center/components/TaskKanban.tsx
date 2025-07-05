@@ -248,32 +248,38 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                 onClick={() => onTaskClick(task)}
                               >
                                 <CardContent className="p-3">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex gap-3 items-start">
+                                  <div className="flex items-start justify-between min-w-0">
+                                    <div className="flex gap-3 items-start min-w-0 flex-1">
                                       {task.leadName && (
-                                        <Avatar className="h-[39px] w-[39px] border border-primary/10 relative z-[1]">
+                                        <Avatar className="h-[39px] w-[39px] border border-primary/10 relative z-[1] flex-shrink-0">
                                           <AvatarFallback className="bg-primary/10">
                                             {getLeadInitials(task.leadName)}
                                           </AvatarFallback>
                                         </Avatar>
                                       )}
-                                      <div className="flex flex-col">
+                                      <div className="flex flex-col min-w-0 flex-1">
                                         <h3 className="text-sm font-medium line-clamp-1 mb-1">{task.title}</h3>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
                                           {task.assigneeName && (
                                             <>
-                                              <span className="text-xs text-muted-foreground">{task.assigneeName}</span>
-                                              <span className="text-xs text-muted-foreground">•</span>
+                                              <span className="text-xs text-muted-foreground flex-shrink-0">{task.assigneeName}</span>
+                                              <span className="text-xs text-muted-foreground flex-shrink-0">•</span>
                                             </>
                                           )}
-                                          <span className="text-xs text-muted-foreground">
+                                          {task.leadName && (
+                                            <>
+                                              <span className="text-xs text-muted-foreground truncate flex-grow min-w-0">{task.leadName}</span>
+                                              <span className="text-xs text-muted-foreground flex-shrink-0">•</span>
+                                            </>
+                                          )}
+                                          <span className="text-xs text-muted-foreground flex-shrink-0 min-w-[60px] truncate">
                                             {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
                                           </span>
                                         </div>
                                       </div>
                                     </div>
                                     {task.serial_id && (
-                                      <div className="font-mono text-xs text-muted-foreground">
+                                      <div className="font-mono text-xs text-muted-foreground flex-shrink-0 ml-2">
                                         {getSerialNumber(task.serial_id)}
                                       </div>
                                     )}
