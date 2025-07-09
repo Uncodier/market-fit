@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { siteFormSchema, type SiteFormValues, getFocusModeConfig } from "./form-schema"
 import { GeneralSection } from "./GeneralSection"
 import { CompanySection } from "./CompanySection"
+import { BrandingSection } from "./BrandingSection"
 import { MarketingSection } from "./MarketingSection"
 import { SocialSection } from "./SocialSection"
 import { ChannelsSection } from "./ChannelsSection"
@@ -175,6 +176,34 @@ export function SiteForm({
         billing_city: "",
         billing_postal_code: "",
         billing_country: ""
+      },
+      branding: initialData?.branding || {
+        purpose: "",
+        values: "",
+        personality: "",
+        tone_of_voice: "",
+        positioning: "",
+        unique_value_proposition: "",
+        primary_color: "#000000",
+        secondary_color: "#666666",
+        accent_color: "#e0ff17",
+        success_color: "#22c55e",
+        warning_color: "#f59e0b",
+        error_color: "#ef4444",
+        background_color: "#ffffff",
+        surface_color: "#f8fafc",
+        primary_font: "",
+        secondary_font: "",
+        font_size_scale: "medium",
+        communication_style: "friendly",
+        personality_traits: [],
+        forbidden_words: [],
+        preferred_phrases: [],
+        logo_variations: [],
+        do_list: [],
+        dont_list: [],
+        emotions_to_evoke: [],
+        brand_archetype: undefined
       }
     }
   })
@@ -492,6 +521,10 @@ export function SiteForm({
 
           {renderCard("company",
             <CompanySection active={true} />
+          )}
+
+          {renderCard("branding",
+            <BrandingSection active={true} />
           )}
 
           {renderCard("marketing",

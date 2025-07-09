@@ -302,6 +302,82 @@ export const siteFormSchema = z.object({
     values: z.string().optional(),
     differentiators: z.string().optional(),
   }),
+  // Branding fields
+  branding: z.object({
+    // Brand Pyramid (Traditional Structure)
+    brand_essence: z.string().optional(), // Core essence - "Who are we?"
+    brand_personality: z.string().optional(), // Personality traits
+    brand_benefits: z.string().optional(), // Emotional and functional benefits
+    brand_attributes: z.string().optional(), // Product/service features
+    brand_values: z.string().optional(), // Company values
+    brand_promise: z.string().optional(), // Brand promise to customers
+    
+    // Color Palette
+    primary_color: z.string().optional().default("#000000"),
+    secondary_color: z.string().optional().default("#666666"),
+    accent_color: z.string().optional().default("#e0ff17"),
+    success_color: z.string().optional().default("#22c55e"),
+    warning_color: z.string().optional().default("#f59e0b"),
+    error_color: z.string().optional().default("#ef4444"),
+    background_color: z.string().optional().default("#ffffff"),
+    surface_color: z.string().optional().default("#f8fafc"),
+    
+    // Typography
+    primary_font: z.string().optional(),
+    secondary_font: z.string().optional(),
+    font_size_scale: z.enum(["small", "medium", "large"]).optional().default("medium"),
+    
+    // Voice and Tone
+    communication_style: z.enum(["formal", "casual", "friendly", "professional", "playful"]).optional().default("friendly"),
+    personality_traits: z.array(z.string()).optional().default([]),
+    forbidden_words: z.array(z.string()).optional().default([]),
+    preferred_phrases: z.array(z.string()).optional().default([]),
+    
+    // Brand Assets
+    logo_variations: z.array(z.object({
+      name: z.string(),
+      url: z.string().optional(),
+      usage: z.string().optional() // e.g., "light backgrounds", "dark backgrounds", "social media"
+    })).optional().default([]),
+    
+    // Brand Guidelines
+    do_list: z.array(z.string()).optional().default([]),
+    dont_list: z.array(z.string()).optional().default([]),
+    
+    // Emotional Attributes
+    emotions_to_evoke: z.array(z.string()).optional().default([]),
+    brand_archetype: z.enum([
+      "innocent", "sage", "explorer", "outlaw", "magician", "hero", 
+      "lover", "jester", "everyman", "caregiver", "ruler", "creator"
+    ]).optional(),
+  }).optional().default({
+    brand_essence: "",
+    brand_personality: "",
+    brand_benefits: "",
+    brand_attributes: "",
+    brand_values: "",
+    brand_promise: "",
+    primary_color: "#000000",
+    secondary_color: "#666666",
+    accent_color: "#e0ff17",
+    success_color: "#22c55e",
+    warning_color: "#f59e0b",
+    error_color: "#ef4444",
+    background_color: "#ffffff",
+    surface_color: "#f8fafc",
+    primary_font: "",
+    secondary_font: "",
+    font_size_scale: "medium",
+    communication_style: "friendly",
+    personality_traits: [],
+    forbidden_words: [],
+    preferred_phrases: [],
+    logo_variations: [],
+    do_list: [],
+    dont_list: [],
+    emotions_to_evoke: [],
+    brand_archetype: undefined
+  }),
 })
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>

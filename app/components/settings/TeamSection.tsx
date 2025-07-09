@@ -33,9 +33,9 @@ interface TeamSectionProps {
 }
 
 const TEAM_ROLES = [
-  { value: "view", label: "Viewer (View only)", siteMemberRole: "collaborator" },
-  { value: "create", label: "Editor (Create and edit)", siteMemberRole: "marketing" },
-  { value: "delete", label: "Manager (Full access)", siteMemberRole: "marketing" },
+  { value: "view", label: "Viewer (View only)", siteMemberRole: "marketing" },
+  { value: "create", label: "Editor (Create and edit)", siteMemberRole: "collaborator" },
+  { value: "delete", label: "Manager (Full access)", siteMemberRole: "collaborator" },
   { value: "admin", label: "Admin (Owner privileges)", siteMemberRole: "admin" }
 ]
 
@@ -59,8 +59,8 @@ const siteMemberToFormMember = (member: SiteMember): FormTeamMember => {
   let formRole: TeamRole = "view";
   switch (member.role) {
     case "admin": formRole = "admin"; break;
-    case "marketing": formRole = "create"; break;
-    case "collaborator": formRole = "view"; break;
+    case "marketing": formRole = "view"; break;        // Viewer role -> SELECT only
+    case "collaborator": formRole = "create"; break;   // Editor role -> SELECT, INSERT, UPDATE
     case "owner": formRole = "admin"; break; // Owner shows as admin in form
   }
 

@@ -115,6 +115,38 @@ export interface SiteSettings {
       status?: "not_configured" | "pending" | "active"
     }
   } | null
+  branding?: {
+    brand_essence?: string
+    brand_personality?: string
+    brand_benefits?: string
+    brand_attributes?: string
+    brand_values?: string
+    brand_promise?: string
+    primary_color?: string
+    secondary_color?: string
+    accent_color?: string
+    success_color?: string
+    warning_color?: string
+    error_color?: string
+    background_color?: string
+    surface_color?: string
+    primary_font?: string
+    secondary_font?: string
+    font_size_scale?: "small" | "medium" | "large"
+    communication_style?: "formal" | "casual" | "friendly" | "professional" | "playful"
+    personality_traits?: string[]
+    forbidden_words?: string[]
+    preferred_phrases?: string[]
+    logo_variations?: Array<{
+      name: string
+      url?: string
+      usage?: string
+    }>
+    do_list?: string[]
+    dont_list?: string[]
+    emotions_to_evoke?: string[]
+    brand_archetype?: "innocent" | "sage" | "explorer" | "outlaw" | "magician" | "hero" | "lover" | "jester" | "everyman" | "caregiver" | "ruler" | "creator"
+  } | null
   // allowed_domains is handled in a separate table, not in settings
   // allowed_domains?: Array<{
   //   id?: string
@@ -829,6 +861,34 @@ export function SiteProvider({ children }: SiteProviderProps) {
                     account_sid: "",
                     status: "not_configured"
                   }
+                }),
+                branding: parseJsonField(settingsData.branding, {
+                  purpose: "",
+                  values: "",
+                  personality: "",
+                  tone_of_voice: "",
+                  positioning: "",
+                  unique_value_proposition: "",
+                  primary_color: "#000000",
+                  secondary_color: "#666666",
+                  accent_color: "#e0ff17",
+                  success_color: "#22c55e",
+                  warning_color: "#f59e0b",
+                  error_color: "#ef4444",
+                  background_color: "#ffffff",
+                  surface_color: "#f8fafc",
+                  primary_font: "",
+                  secondary_font: "",
+                  font_size_scale: "medium",
+                  communication_style: "friendly",
+                  personality_traits: [],
+                  forbidden_words: [],
+                  preferred_phrases: [],
+                  logo_variations: [],
+                  do_list: [],
+                  dont_list: [],
+                  emotions_to_evoke: [],
+                  brand_archetype: undefined
                 })
                 // allowed_domains is handled in a separate table, not in settings
               }
@@ -1182,6 +1242,39 @@ export function SiteProvider({ children }: SiteProviderProps) {
         } catch (goalsSerializeError) {
           console.error("Error al serializar goals:", goalsSerializeError);
         }
+      }
+      
+      // Handle branding field
+      if (settings.branding !== undefined) {
+        console.log("UPDATE SETTINGS: Procesando campo branding:", settings.branding);
+        formattedSettings.branding = typeof settings.branding === 'object' ? settings.branding : {
+          brand_essence: "",
+          brand_personality: "",
+          brand_benefits: "",
+          brand_attributes: "",
+          brand_values: "",
+          brand_promise: "",
+          primary_color: "#000000",
+          secondary_color: "#666666",
+          accent_color: "#e0ff17",
+          success_color: "#22c55e",
+          warning_color: "#f59e0b",
+          error_color: "#ef4444",
+          background_color: "#ffffff",
+          surface_color: "#f8fafc",
+          primary_font: "",
+          secondary_font: "",
+          font_size_scale: "medium",
+          communication_style: "friendly",
+          personality_traits: [],
+          forbidden_words: [],
+          preferred_phrases: [],
+          logo_variations: [],
+          do_list: [],
+          dont_list: [],
+          emotions_to_evoke: [],
+          brand_archetype: undefined
+        };
       }
       
       console.log("UPDATE SETTINGS 6: Enviando datos a Supabase");

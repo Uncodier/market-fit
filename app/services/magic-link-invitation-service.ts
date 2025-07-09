@@ -136,18 +136,18 @@ export async function processTeamInvitation(invitationData: {
     }
 
     // Map invitation role to site member role
-    let siteMemberRole: 'admin' | 'marketing' | 'collaborator' = 'collaborator'
+    let siteMemberRole: 'admin' | 'marketing' | 'collaborator' = 'marketing'
     switch (invitationData.role) {
       case 'admin':
         siteMemberRole = 'admin'
         break
       case 'create':
       case 'delete':
-        siteMemberRole = 'marketing'
+        siteMemberRole = 'collaborator'  // Editor role -> SELECT, INSERT, UPDATE
         break
       case 'view':
       default:
-        siteMemberRole = 'collaborator'
+        siteMemberRole = 'marketing'     // Viewer role -> SELECT only
         break
     }
 

@@ -232,7 +232,35 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
         yearly: goals.yearly || "", 
         fiveYear: goals.fiveYear || "",
         tenYear: goals.tenYear || ""
-      } // Use the validated goals object with correct field names
+      }, // Use the validated goals object with correct field names
+      branding: data.branding || {
+        brand_essence: "",
+        brand_personality: "",
+        brand_benefits: "",
+        brand_attributes: "",
+        brand_values: "",
+        brand_promise: "",
+        primary_color: "#000000",
+        secondary_color: "#666666",
+        accent_color: "#e0ff17",
+        success_color: "#22c55e",
+        warning_color: "#f59e0b",
+        error_color: "#ef4444",
+        background_color: "#ffffff",
+        surface_color: "#f8fafc",
+        primary_font: "",
+        secondary_font: "",
+        font_size_scale: "medium",
+        communication_style: "friendly",
+        personality_traits: [],
+        forbidden_words: [],
+        preferred_phrases: [],
+        logo_variations: [],
+        do_list: [],
+        dont_list: [],
+        emotions_to_evoke: [],
+        brand_archetype: undefined
+      }
     };
     
     // Handle secure token storage if new values are provided

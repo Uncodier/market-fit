@@ -258,6 +258,7 @@ export default function SettingsPage() {
               <TabsList>
                 <TabsTrigger value="general">General Settings</TabsTrigger>
                 <TabsTrigger value="company">Company</TabsTrigger>
+                <TabsTrigger value="branding">Branding</TabsTrigger>
                 <TabsTrigger value="marketing">Marketing</TabsTrigger>
                 <TabsTrigger value="social">Social Networks</TabsTrigger>
                 <TabsTrigger value="channels">Channels</TabsTrigger>
@@ -292,6 +293,7 @@ export default function SettingsPage() {
             <TabsList className="flex">
               <TabsTrigger value="general" className="whitespace-nowrap">General Settings</TabsTrigger>
               <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
+              <TabsTrigger value="branding" className="whitespace-nowrap">Branding</TabsTrigger>
               <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
               <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger>
               <TabsTrigger value="channels" className="whitespace-nowrap">Channels</TabsTrigger>

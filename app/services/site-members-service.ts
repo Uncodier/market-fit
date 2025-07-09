@@ -35,12 +35,12 @@ interface ExistingSiteMember {
 
 const mapTeamRoleToSiteMemberRole = (role: 'view' | 'create' | 'delete' | 'admin'): 'collaborator' | 'marketing' | 'admin' => {
   switch(role) {
-    case 'view': return 'collaborator';
+    case 'view': return 'marketing';  // Viewer role -> SELECT only
     case 'create': 
     case 'delete': 
-      return 'marketing';
-    case 'admin': return 'admin';
-    default: return 'collaborator';
+      return 'collaborator';         // Editor role -> SELECT, INSERT, UPDATE
+    case 'admin': return 'admin';    // Admin role -> SELECT, INSERT, UPDATE
+    default: return 'marketing';     // Default to viewer
   }
 }
 
@@ -119,8 +119,8 @@ export const siteMembersService = {
       let invitationRole: string = 'view';
       switch (member.role) {
         case 'admin': invitationRole = 'admin'; break;
-        case 'marketing': invitationRole = 'create'; break;
-        case 'collaborator': invitationRole = 'view'; break;
+        case 'marketing': invitationRole = 'view'; break;        // Viewer role -> SELECT only
+        case 'collaborator': invitationRole = 'create'; break;   // Editor role -> SELECT, INSERT, UPDATE
         default: invitationRole = 'view'; break;
       }
       

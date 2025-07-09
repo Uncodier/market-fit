@@ -431,11 +431,14 @@ export default function TimelineTab({ task }: TimelineTabProps) {
   const detectUrlsInText = (text: string) => {
     if (!text || typeof text !== 'string') return []
     
-    // Multiple regex patterns to catch different URL formats
+    // Improved regex patterns to catch different URL formats without cutting them
     const urlPatterns = [
-      /https?:\/\/[^\s<>"']+/gi,  // URLs with protocol
-      /www\.[^\s<>"']+/gi,        // www. URLs
-      /[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s<>"']*)?/gi  // domain.tld URLs
+      // URLs with protocol - capture until whitespace or end of string, but preserve query params and fragments
+      /https?:\/\/[^\s<>"'\[\](){}\|\\^`]+/gi,
+      // www. URLs - more comprehensive pattern
+      /www\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*[^\s<>"'\[\](){}\|\\^`]*/gi,
+      // domain.tld URLs - improved pattern for complete URLs
+      /[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(?:\/[^\s<>"'\[\](){}\|\\^`]*)?/gi
     ]
     
     const allMatches = []
@@ -449,8 +452,13 @@ export default function TimelineTab({ task }: TimelineTabProps) {
     const uniqueUrls = Array.from(new Set(allMatches))
     
     return uniqueUrls.map(url => {
-      // Remove trailing punctuation
-      let cleanedUrl = url.replace(/[.,;:!?)\]}>]*$/, '')
+      // Only remove trailing punctuation that is clearly not part of the URL
+      // Be more conservative to avoid cutting legitimate URL parts
+      let cleanedUrl = url.replace(/[.,;:!?)\]}>]+$/, '')
+      
+      // Remove trailing punctuation only if it's followed by whitespace or end of string
+      // This helps preserve URLs like example.com/path?param=value.html
+      cleanedUrl = cleanedUrl.replace(/[.,;:!?)\]}>](?=\s|$)/g, '')
       
       // Add protocol if missing
       if (!cleanedUrl.match(/^https?:\/\//)) {
@@ -462,7 +470,7 @@ export default function TimelineTab({ task }: TimelineTabProps) {
       // Basic validation: must have at least a domain with TLD
       try {
         const urlObj = new URL(url)
-        return urlObj.hostname.includes('.')
+        return urlObj.hostname.includes('.') && urlObj.hostname.length > 3
       } catch {
         return false
       }
@@ -512,6 +520,7 @@ export default function TimelineTab({ task }: TimelineTabProps) {
 
       const urls = detectUrlsInText(newComment)
       console.log('Detected URLs:', urls) // Debug log
+      console.log('Original comment text:', newComment) // Debug log
       
       if (urls.length > 0 && !ctaUrl.trim()) {
         // Only auto-populate if CTA URL is empty to avoid overwriting user input

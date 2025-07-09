@@ -286,7 +286,36 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       differentiators: ""
     },
     // Add business_hours
-    business_hours: business_hours
+    business_hours: business_hours,
+    // Add branding data (with migration from old field names to new ones)
+    branding: {
+      brand_essence: (site.settings?.branding as any)?.brand_essence || (site.settings?.branding as any)?.purpose || "",
+      brand_personality: (site.settings?.branding as any)?.brand_personality || (site.settings?.branding as any)?.personality || "",
+      brand_benefits: (site.settings?.branding as any)?.brand_benefits || "",
+      brand_attributes: (site.settings?.branding as any)?.brand_attributes || "",
+      brand_values: (site.settings?.branding as any)?.brand_values || (site.settings?.branding as any)?.values || "",
+      brand_promise: (site.settings?.branding as any)?.brand_promise || "",
+      primary_color: site.settings?.branding?.primary_color || "#000000",
+      secondary_color: site.settings?.branding?.secondary_color || "#666666",
+      accent_color: site.settings?.branding?.accent_color || "#e0ff17",
+      success_color: site.settings?.branding?.success_color || "#22c55e",
+      warning_color: site.settings?.branding?.warning_color || "#f59e0b",
+      error_color: site.settings?.branding?.error_color || "#ef4444",
+      background_color: site.settings?.branding?.background_color || "#ffffff",
+      surface_color: site.settings?.branding?.surface_color || "#f8fafc",
+      primary_font: site.settings?.branding?.primary_font || "",
+      secondary_font: site.settings?.branding?.secondary_font || "",
+      font_size_scale: site.settings?.branding?.font_size_scale || "medium",
+      communication_style: site.settings?.branding?.communication_style || "friendly",
+      personality_traits: site.settings?.branding?.personality_traits || [],
+      forbidden_words: site.settings?.branding?.forbidden_words || [],
+      preferred_phrases: site.settings?.branding?.preferred_phrases || [],
+      logo_variations: site.settings?.branding?.logo_variations || [],
+      do_list: site.settings?.branding?.do_list || [],
+      dont_list: site.settings?.branding?.dont_list || [],
+      emotions_to_evoke: site.settings?.branding?.emotions_to_evoke || [],
+      brand_archetype: site.settings?.branding?.brand_archetype
+    }
   }
   
   console.log("🔍 ADAPT: Final adapted data:", result);

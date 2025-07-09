@@ -430,7 +430,8 @@ function AgentsPageContent() {
     console.log('Is ct1 + Content Calendar Creation?', activity.id === "ct1" && activity.name === "Content Calendar Creation");
     console.log('Is gl6 + Daily Stand Up?', activity.id === "gl6" && activity.name === "Daily Stand Up");
     console.log('Is sl3 + Lead Generation?', activity.id === "sl3" && activity.name === "Lead Generation");
-    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1", 'gl6?', activity.id === "gl6", 'sl3?', activity.id === "sl3");
+    console.log('Is ux1 + Website Analysis?', activity.id === "ux1" && activity.name === "Website Analysis");
+    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1", 'gl6?', activity.id === "gl6", 'sl3?', activity.id === "sl3", 'ux1?', activity.id === "ux1");
     
     if (activity.id === "cs4" && activity.name === "Answer Emails") {
       try {
@@ -766,6 +767,67 @@ function AgentsPageContent() {
           : typeof error === 'string' 
           ? error 
           : 'An error occurred while generating leads';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
+    } else if (activity.id === "ux1" && activity.name === "Website Analysis") {
+      console.log('✅ MATCHED: Website Analysis activity detected!');
+      try {
+        console.log('Calling analyzeSiteWorkflow for UX Designer agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Analyzing website usability and user experience...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Verify that the site has a URL
+        if (!currentSite.url) {
+          setActivityState(activity.id, 'error', 'Site URL is missing. Please add a URL to your site in the settings.');
+          toast?.error?.("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+          return;
+        }
+        
+        // Use the same pattern as other workflows - call external API server
+        const { apiClient } = await import('@/app/services/api-client-service');
+        
+        const response = await apiClient.post('/api/workflow/analyzeSite', {
+          user_id: user.id,
+          site_id: currentSite.id,
+          url: currentSite.url,
+          provider: "openai",
+          modelId: "gpt-4o",
+          includeScreenshot: true
+        });
+        
+        if (response.success) {
+          setActivityState(activity.id, 'success', 'Website analysis completed successfully!');
+          toast?.success?.(`Website analysis completed successfully!`);
+          console.log('AnalyzeSite workflow completed successfully:', response.data);
+        } else {
+          const errorMessage = typeof response.error === 'string' 
+            ? response.error 
+            : response.error?.message 
+            ? String(response.error.message)
+            : 'Failed to analyze website';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('AnalyzeSite workflow failed:', response.error);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Website Analysis activity:', error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : typeof error === 'string' 
+          ? error 
+          : 'An error occurred while analyzing website';
         setActivityState(activity.id, 'error', errorMessage);
         toast?.error?.(errorMessage);
       }
