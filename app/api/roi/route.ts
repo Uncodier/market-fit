@@ -183,11 +183,23 @@ async function findOrCreateKpi(
       return { kpi: existingKpi[0], created: false };
     }
     
-    // Only create KPI if we have a user ID
-    if (!kpiParams.userId) {
-      console.log("Skipping KPI creation: no user ID provided");
-      return { kpi: null, created: false };
-    }
+          // Only create KPI if we have a user ID
+      if (!kpiParams.userId) {
+        console.log("Skipping KPI creation: no user ID provided");
+        return { kpi: null, created: false };
+      }
+      
+      // Validate that the site exists before creating KPI
+      const { data: siteExists, error: siteError } = await supabase
+        .from('sites')
+        .select('id')
+        .eq('id', kpiParams.siteId)
+        .single();
+      
+      if (siteError || !siteExists) {
+        console.log(`Skipping KPI creation: site ${kpiParams.siteId} does not exist`);
+        return { kpi: null, created: false };
+      }
     
     // Prepare KPI data with our deterministic ID
     const trend = kpiParams.previousValue !== undefined ? 
@@ -279,6 +291,13 @@ export async function GET(request: NextRequest) {
     endDate: endDateStr 
   });
   
+  // Log if this is a real request or test
+  if (siteId && siteId !== '12345678-1234-1234-1234-123456789012') {
+    console.log('[ROI API] 🔥 REAL REQUEST DETECTED with siteId:', siteId);
+  } else {
+    console.log('[ROI API] 🧪 Test request detected');
+  }
+  
   try {
     // Usar el cliente de servicio con permisos elevados para evitar restricciones RLS
     const supabase = createServiceApiClient();
@@ -321,7 +340,7 @@ export async function GET(request: NextRequest) {
     // STEP 1: Get all campaign transactions
     let campaignQuery = supabase
       .from('campaigns')
-      .select('id, budget, created_at')
+      .select('id, budget, created_at, metadata')
       .eq('site_id', siteId)
       .gte('created_at', periodStart.toISOString())
       .lte('created_at', periodEnd.toISOString());
@@ -375,22 +394,54 @@ export async function GET(request: NextRequest) {
     }
     
     // STEP 3: Get sales data to calculate revenue
-    let salesQuery = supabase
+    // Try sale_date first, then fallback to created_at
+    const saleDateStart = format(periodStart, 'yyyy-MM-dd');
+    const saleDateEnd = format(periodEnd, 'yyyy-MM-dd');
+    
+    // First try with sale_date
+    let salesQuerySaleDate = supabase
       .from('sales')
-      .select('id, amount, created_at, status, lead_id')
+      .select('id, amount, created_at, status, lead_id, sale_date')
       .eq('site_id', siteId)
-      .gte('created_at', periodStart.toISOString())
-      .lte('created_at', periodEnd.toISOString());
+      .gte('sale_date', saleDateStart)
+      .lte('sale_date', saleDateEnd);
+    
+    // If segmentId is provided and not 'all', filter by segment
+    if (segmentId && segmentId !== 'all') {
+      salesQuerySaleDate = salesQuerySaleDate.eq('segment_id', segmentId);
+    }
+    
+    const { data: salesSaleDate, error: salesErrorSaleDate } = await salesQuerySaleDate;
+    
+    // If sale_date query fails or returns no data, fallback to created_at
+    let sales = salesSaleDate;
+    let salesError = salesErrorSaleDate;
+    
+    if (salesErrorSaleDate || !salesSaleDate || salesSaleDate.length === 0) {
+      console.log('[ROI API] Using created_at fallback for current period sales query');
+      
+      let salesQuery = supabase
+        .from('sales')
+        .select('id, amount, created_at, status, lead_id, sale_date')
+        .eq('site_id', siteId)
+        .gte('created_at', periodStart.toISOString())
+        .lte('created_at', periodEnd.toISOString());
+      
+      // If segmentId is provided and not 'all', filter by segment
+      if (segmentId && segmentId !== 'all') {
+        salesQuery = salesQuery.eq('segment_id', segmentId);
+      }
+      
+      const result = await salesQuery;
+      sales = result.data;
+      salesError = result.error;
+    } else {
+      console.log('[ROI API] Using sale_date for current period sales query');
+    }
     
     // Debug: Imprimir la consulta exacta para diagnosticar problemas
     console.log(`[ROI API] Sales query range: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
     
-    // If segmentId is provided and not 'all', filter by segment
-    if (segmentId && segmentId !== 'all') {
-      salesQuery = salesQuery.eq('segment_id', segmentId);
-    }
-    
-    const { data: sales, error: salesError } = await salesQuery;
     
     if (salesError) {
       console.error('[ROI API] Error fetching sales:', salesError);
@@ -420,8 +471,15 @@ export async function GET(request: NextRequest) {
     let roiValue = 0;
     let alternativeRoiValue = null;
     
-    // Sum all campaign budgets (costs)
+    // Sum campaign budgets ONLY for paid campaigns (costs)
     const totalCampaignBudget = campaigns?.reduce((sum, campaign) => {
+      // Only count budget if campaign is marked as paid in metadata
+      const isPaid = campaign.metadata?.payment_status?.status === 'paid';
+      if (!isPaid) {
+        console.log(`[ROI API] Skipping non-paid campaign budget (Campaign: ${campaign.id})`);
+        return sum;
+      }
+      
       // Access the allocated property from the budget object
       const budgetAmount = campaign.budget?.allocated || 0;
       
@@ -433,7 +491,7 @@ export async function GET(request: NextRequest) {
       
       // Asegurar que es positivo
       const validBudgetAmount = Math.max(0, budgetAmount);
-      console.log(`[ROI API] Campaign ID ${campaign.id}: budget amount = ${validBudgetAmount}`);
+      console.log(`[ROI API] Including paid campaign budget: $${validBudgetAmount} (Campaign: ${campaign.id})`);
       
       return sum + validBudgetAmount;
     }, 0) || 0;
@@ -543,6 +601,10 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     
+    console.log(`[ROI API] userId: ${userId}, skipKpiCreation: ${skipKpiCreation}`);
+    
+    // Always calculate the previous period properly, don't depend on userId for comparison
+    let foundPreviousKpi = false;
     if (userId && !skipKpiCreation) {
       // First try to find existing KPI for previous period
       const { kpi: prevKpi } = await findOrCreateKpi(
@@ -564,12 +626,19 @@ export async function GET(request: NextRequest) {
       if (prevKpi) {
         // If we found an existing KPI, use its value
         previousValue = prevKpi.value;
+        foundPreviousKpi = true;
         console.log(`[ROI API] Found previous KPI with value: ${previousValue}%`);
-      } else {
+      }
+    }
+    
+    // If no previous KPI found or no userId, calculate from scratch
+    if (!foundPreviousKpi) {
+      console.log(`[ROI API] 🔄 Calculating previous period ROI from scratch...`);
+      console.log(`[ROI API] Previous period range: ${prevPeriodStart.toISOString()} to ${prevPeriodEnd.toISOString()}`);
         // Calculate previous period ROI
         let prevCampaignQuery = supabase
           .from('campaigns')
-          .select('id, budget')
+          .select('id, budget, metadata')
           .eq('site_id', siteId)
           .gte('created_at', prevPeriodStart.toISOString())
           .lte('created_at', prevPeriodEnd.toISOString());
@@ -582,19 +651,50 @@ export async function GET(request: NextRequest) {
         const { data: prevCampaigns } = await prevCampaignQuery;
         
         // Get previous period sales
-        let prevSalesQuery = supabase
+        // Try sale_date first, then fallback to created_at
+        const prevSaleDateStart = format(prevPeriodStart, 'yyyy-MM-dd');
+        const prevSaleDateEnd = format(prevPeriodEnd, 'yyyy-MM-dd');
+        
+        // First try with sale_date
+        let prevSalesQuerySaleDate = supabase
           .from('sales')
-          .select('id, amount, created_at, status')
+          .select('id, amount, created_at, status, sale_date')
           .eq('site_id', siteId)
-          .gte('created_at', prevPeriodStart.toISOString())
-          .lte('created_at', prevPeriodEnd.toISOString());
+          .gte('sale_date', prevSaleDateStart)
+          .lte('sale_date', prevSaleDateEnd);
         
         // If segmentId is provided, filter by segment
         if (segmentId && segmentId !== 'all') {
-          prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
+          prevSalesQuerySaleDate = prevSalesQuerySaleDate.eq('segment_id', segmentId);
         }
         
-        const { data: prevSales, error: prevSalesError } = await prevSalesQuery;
+        const { data: prevSalesSaleDate, error: prevSalesErrorSaleDate } = await prevSalesQuerySaleDate;
+        
+        // If sale_date query fails or returns no data, fallback to created_at
+        let prevSales = prevSalesSaleDate;
+        let prevSalesError = prevSalesErrorSaleDate;
+        
+        if (prevSalesErrorSaleDate || !prevSalesSaleDate || prevSalesSaleDate.length === 0) {
+          console.log('[ROI API] Using created_at fallback for previous period sales query');
+          
+          let prevSalesQuery = supabase
+            .from('sales')
+            .select('id, amount, created_at, status, sale_date')
+            .eq('site_id', siteId)
+            .gte('created_at', prevPeriodStart.toISOString())
+            .lte('created_at', prevPeriodEnd.toISOString());
+          
+          // If segmentId is provided, filter by segment
+          if (segmentId && segmentId !== 'all') {
+            prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
+          }
+          
+          const result = await prevSalesQuery;
+          prevSales = result.data;
+          prevSalesError = result.error;
+        } else {
+          console.log('[ROI API] Using sale_date for previous period sales query');
+        }
         
         if (prevSalesError) {
           console.error('[ROI API] Error fetching previous sales:', prevSalesError);
@@ -605,10 +705,18 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        // Calculate previous period costs and revenue
+        // Calculate previous period costs and revenue - only for paid campaigns
         const prevTotalCampaignBudget = prevCampaigns?.reduce((sum, campaign) => {
+          // Only count budget if campaign is marked as paid in metadata
+          const isPaid = campaign.metadata?.payment_status?.status === 'paid';
+          if (!isPaid) {
+            console.log(`[ROI API] Skipping previous non-paid campaign budget (Campaign: ${campaign.id})`);
+            return sum;
+          }
+          
           // Access the allocated property from the budget object
           const budgetAmount = campaign.budget?.allocated || 0;
+          console.log(`[ROI API] Including previous paid campaign budget: $${budgetAmount} (Campaign: ${campaign.id})`);
           return sum + budgetAmount;
         }, 0) || 0;
         
@@ -685,53 +793,59 @@ export async function GET(request: NextRequest) {
           console.log(`[ROI API] Using previous default ROI: 0%`);
         }
         
-        // Store the previous period ROI
-        await findOrCreateKpi(
+        // Store the previous period ROI (only if userId exists)
+        if (userId && !skipKpiCreation) {
+          await findOrCreateKpi(
+            supabase,
+            supabaseAdmin,
+            {
+              siteId,
+              userId,
+              segmentId: segmentId !== 'all' ? segmentId : null,
+              periodStart: prevPeriodStart,
+              periodEnd: prevPeriodEnd,
+              type: "roi",
+              name: "Return on Investment",
+              value: previousValue,
+              previousValue: undefined
+            }
+          );
+        }
+      }
+      
+      // Create or update the current period KPI (only if userId exists)
+      let currentKpi = null;
+      if (userId && !skipKpiCreation) {
+        const kpiResult = await findOrCreateKpi(
           supabase,
           supabaseAdmin,
           {
             siteId,
             userId,
             segmentId: segmentId !== 'all' ? segmentId : null,
-            periodStart: prevPeriodStart,
-            periodEnd: prevPeriodEnd,
+            periodStart: periodStart,
+            periodEnd: periodEnd,
             type: "roi",
             name: "Return on Investment",
-            value: previousValue,
-            previousValue: undefined
+            value: roiValue,
+            previousValue
           }
         );
+        currentKpi = kpiResult.kpi;
       }
       
-      // Create or update the current period KPI
-      const { kpi: currentKpi } = await findOrCreateKpi(
-        supabase,
-        supabaseAdmin,
-        {
-          siteId,
-          userId,
-          segmentId: segmentId !== 'all' ? segmentId : null,
-          periodStart: periodStart,
-          periodEnd: periodEnd,
-          type: "roi",
-          name: "Return on Investment",
-          value: roiValue,
-          previousValue
-        }
-      );
-      
-      if (currentKpi) {
-        // Use the stored trend value if available
-        percentChange = currentKpi.trend;
-      } else {
-        // Calculate trend if KPI creation failed
-        percentChange = calculateTrend(roiValue, previousValue);
-      }
-    } else {
-      // If no userId or skipping KPI creation, just calculate trend
-      previousValue = roiValue * 0.9; // Default assumption
+      // Calculate trend - ALWAYS recalculate to ensure accuracy
       percentChange = calculateTrend(roiValue, previousValue);
-    }
+      console.log(`[ROI API] 📊 Calculated trend: current=${roiValue}%, previous=${previousValue}%, trend=${percentChange}%`);
+      
+      // Update the stored KPI with the correct trend if it exists
+      if (currentKpi && currentKpi.trend !== percentChange) {
+        console.log(`[ROI API] 🔄 Updating stored KPI trend from ${currentKpi.trend}% to ${percentChange}%`);
+        // Note: The KPI will be updated with the correct trend on next creation/update
+      }
+    
+    // Final logging before response
+    console.log(`[ROI API] 🎯 FINAL CALCULATION: current=${roiValue}%, previous=${previousValue}%, change=${percentChange}%`);
     
     const responseData = {
       actual: roiValue,

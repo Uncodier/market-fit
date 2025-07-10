@@ -246,6 +246,9 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
     );
   }
 
+  // Remove the incorrect logic that confused cohort count with current week
+  // There's no need to mark any week as "current" in cohort analysis
+
   return (
     <div className="space-y-8">
       {/* Sales Cohort Table - Only show if we have sales data */}
@@ -258,12 +261,14 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
                 <TableRow>
                   <TableHead>Cohort</TableHead>
                   {Array.from({ length: 8 }).map((_, i) => (
-                    <TableHead key={i} className="text-center">Week {i + 1}</TableHead>
+                    <TableHead key={i} className="text-center">
+                      Week {i + 1}
+                    </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {salesCohortData.map((row) => (
+                {[...salesCohortData].reverse().map((row) => (
                   <TableRow key={row.cohort}>
                     <TableCell className="font-medium">{row.cohort}</TableCell>
                     {Array.from({ length: 8 }).map((_, i) => {
@@ -275,8 +280,7 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
                           style={{ 
                             background: value > 0 ? getGradientBackground(value, isDarkMode) : 'transparent',
                             color: value > 0 ? 'white' : undefined,
-                            textShadow: value > 0 ? '0px 0px 2px rgba(0, 0, 0, 0.3)' : undefined,
-                            borderRadius: value > 0 ? '0.2rem' : undefined
+                            textShadow: value > 0 ? '0px 0px 2px rgba(0, 0, 0, 0.3)' : undefined
                           }}
                         >
                           {value > 0 ? `${value}%` : ''}
@@ -301,12 +305,14 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
                 <TableRow>
                   <TableHead>Cohort</TableHead>
                   {Array.from({ length: 8 }).map((_, i) => (
-                    <TableHead key={i} className="text-center">Week {i + 1}</TableHead>
+                    <TableHead key={i} className="text-center">
+                      Week {i + 1}
+                    </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {usageCohortData.map((row) => (
+                {[...usageCohortData].reverse().map((row) => (
                   <TableRow key={row.cohort}>
                     <TableCell className="font-medium">{row.cohort}</TableCell>
                     {Array.from({ length: 8 }).map((_, i) => {
@@ -318,8 +324,7 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
                           style={{ 
                             background: value > 0 ? getGradientBackground(value, isDarkMode) : 'transparent',
                             color: value > 0 ? 'white' : undefined,
-                            textShadow: value > 0 ? '0px 0px 2px rgba(0, 0, 0, 0.3)' : undefined,
-                            borderRadius: value > 0 ? '0.2rem' : undefined
+                            textShadow: value > 0 ? '0px 0px 2px rgba(0, 0, 0, 0.3)' : undefined
                           }}
                         >
                           {value > 0 ? `${value}%` : ''}

@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { HelpCircle } from "@/app/components/ui/icons"
 import { useAuth } from "@/app/hooks/use-auth"
 import { CohortTables } from "@/app/components/dashboard/cohort-tables"
+
+import { LeadsCohortTables } from "@/app/components/dashboard/leads-cohort-tables"
 import { useState, useEffect, useCallback } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { getSegments } from "@/app/segments/actions"
@@ -22,7 +24,7 @@ import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { RevenueWidget } from "@/app/components/dashboard/revenue-widget"
 import { ActiveUsersWidget } from "@/app/components/dashboard/active-users-widget"
 import { ActiveSegmentsWidget } from "@/app/components/dashboard/active-segments-widget"
-import { ActiveExperimentsWidget } from "@/app/components/dashboard/active-experiments-widget"
+import { ActiveCampaignsWidget } from "@/app/components/dashboard/active-campaigns-widget"
 import { LTVWidget } from "@/app/components/dashboard/ltv-widget"
 import { ROIWidget } from "@/app/components/dashboard/roi-widget"
 import { CACWidget } from "@/app/components/dashboard/cac-widget"
@@ -41,9 +43,10 @@ export default function DashboardPage() {
   const [isLoadingSegments, setIsLoadingSegments] = useState(false)
   const { cancelAllRequests } = useRequestController()
   
-  // Initialize dates and range type with safe values (one month ago to today)
+  // Initialize dates and range type with safe values (one month ago to today) - ENHANCED
   const today = new Date()
   const oneMonthAgo = subMonths(today, 1)
+  console.log(`[Dashboard] Initial state dates: ${format(oneMonthAgo, 'yyyy-MM-dd')} - ${format(today, 'yyyy-MM-dd')}`);
   const [selectedRangeType, setSelectedRangeType] = useState<string>("This month")
   const [dateRange, setDateRange] = useState<{ startDate: Date; endDate: Date }>({
     startDate: oneMonthAgo,
@@ -71,94 +74,81 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Validates dates to ensure they're not in the future
+  // Validates dates to ensure they're not in the future - ENHANCED
   const validateDates = useCallback((startDate: Date, endDate: Date) => {
     const now = new Date();
     const currentYear = now.getFullYear();
     
+    console.log(`[Dashboard] validateDates called with: ${format(startDate, 'yyyy-MM-dd')} - ${format(endDate, 'yyyy-MM-dd')}`);
+    
     try {
-      // Strict validation against future dates
-      let safeStartDate;
-      let safeEndDate;
+      // FORCE dates to be in the past - no exceptions
+      let safeStartDate = subMonths(now, 1); // Default to one month ago
+      let safeEndDate = now; // Default to today
       
       // Ensure we have valid Date objects
       if (!(startDate instanceof Date) || isNaN(startDate.getTime())) {
         console.error("[Dashboard] Invalid start date:", startDate);
-        safeStartDate = subMonths(now, 1);
+        // Use defaults already set above
       } else {
-        safeStartDate = startDate;
+        // Check if the provided date is reasonable (not in future, not more than 2 years in past)
+        const twoYearsAgo = subMonths(now, 24);
+        
+        if (startDate <= now && startDate >= twoYearsAgo) {
+          safeStartDate = startDate;
+        } else {
+          console.warn(`[Dashboard] Start date out of reasonable range: ${format(startDate, 'yyyy-MM-dd')}, using one month ago`);
+          // Keep the default
+        }
       }
       
       if (!(endDate instanceof Date) || isNaN(endDate.getTime())) {
         console.error("[Dashboard] Invalid end date:", endDate);
-        safeEndDate = now;
+        // Use defaults already set above
       } else {
-        safeEndDate = endDate;
-      }
-      
-      // First check for wrong years
-      if (safeStartDate.getFullYear() > currentYear) {
-        console.warn(`[Dashboard] Future year detected in start date: ${format(safeStartDate, 'yyyy-MM-dd')} (year: ${safeStartDate.getFullYear()}, current: ${currentYear})`);
-        
-        // Create corrected date in the current year
-        const fixedStartDate = new Date(safeStartDate);
-        fixedStartDate.setFullYear(currentYear);
-        
-        // If it's still in the future after fixing the year, move back one year
-        if (fixedStartDate > now) {
-          fixedStartDate.setFullYear(currentYear - 1);
+        // End date must be today or in the past
+        if (endDate <= now) {
+          safeEndDate = endDate;
+        } else {
+          console.warn(`[Dashboard] End date is in the future: ${format(endDate, 'yyyy-MM-dd')}, using today`);
+          // Keep the default (today)
         }
-        
-        safeStartDate = fixedStartDate;
-        console.log(`[Dashboard] Corrected start date year to: ${format(safeStartDate, 'yyyy-MM-dd')}`);
       }
       
-      if (safeEndDate.getFullYear() > currentYear) {
-        console.warn(`[Dashboard] Future year detected in end date: ${format(safeEndDate, 'yyyy-MM-dd')} (year: ${safeEndDate.getFullYear()}, current: ${currentYear})`);
-        
-        // For end date, just use today
-        safeEndDate = now;
-        console.log(`[Dashboard] Corrected end date to today: ${format(safeEndDate, 'yyyy-MM-dd')}`);
-      }
-      
-      // More aggressive check for future dates - force dates to be in the past
-      if (isFuture(safeStartDate)) {
-        console.warn(`[Dashboard] Future start date detected (${format(safeStartDate, 'yyyy-MM-dd')}), using one month ago instead`);
-        safeStartDate = subMonths(now, 1);
-      }
-      
-      if (isFuture(safeEndDate)) {
-        console.warn(`[Dashboard] Future end date detected (${format(safeEndDate, 'yyyy-MM-dd')}), using today instead`);
-        safeEndDate = now;
-      }
-      
-      // If start date is after end date, adjust to proper range
+      // Final safety check - if start date is after end date, adjust
       if (safeStartDate > safeEndDate) {
         console.warn(`[Dashboard] Start date after end date, creating proper range`);
         safeStartDate = subMonths(safeEndDate, 1);
       }
       
-      console.log(`[Dashboard] Validated date range: ${format(safeStartDate, 'yyyy-MM-dd')} - ${format(safeEndDate, 'yyyy-MM-dd')}`);
+      console.log(`[Dashboard] Final validated date range: ${format(safeStartDate, 'yyyy-MM-dd')} - ${format(safeEndDate, 'yyyy-MM-dd')}`);
       return { startDate: safeStartDate, endDate: safeEndDate };
     } catch (error) {
       console.error("[Dashboard] Date validation error:", error);
       // Return absolutely safe defaults
-      return { 
+      const safeDefaults = { 
         startDate: subMonths(now, 1),
         endDate: now
       };
+      console.log(`[Dashboard] Using error fallback dates: ${format(safeDefaults.startDate, 'yyyy-MM-dd')} - ${format(safeDefaults.endDate, 'yyyy-MM-dd')}`);
+      return safeDefaults;
     }
   }, []);
 
-  // Handle date range change
+  // Handle date range change - ENHANCED
   const handleDateRangeChange = useCallback((startDate: Date, endDate: Date) => {
+    console.log(`[Dashboard] handleDateRangeChange called with: ${format(startDate, 'yyyy-MM-dd')} - ${format(endDate, 'yyyy-MM-dd')}`);
+    
     try {
-      // Validate and possibly adjust the dates - simplified but stricter validation
+      // ALWAYS validate dates before using them
       const validatedDates = validateDates(startDate, endDate);
+      
+      console.log(`[Dashboard] After validation: ${format(validatedDates.startDate, 'yyyy-MM-dd')} - ${format(validatedDates.endDate, 'yyyy-MM-dd')}`);
       
       // Avoid unnecessary state updates if no real changes
       if (isSameDay(validatedDates.startDate, dateRange.startDate) && 
           isSameDay(validatedDates.endDate, dateRange.endDate)) {
+        console.log(`[Dashboard] No changes detected, skipping update`);
         return;
       }
       
@@ -169,15 +159,17 @@ export default function DashboardPage() {
       setDateRange(validatedDates);
       determineRangeType(validatedDates.startDate, validatedDates.endDate);
       
-      console.log(`[Dashboard] Date range changed to: ${format(validatedDates.startDate, 'yyyy-MM-dd')} - ${format(validatedDates.endDate, 'yyyy-MM-dd')}`);
+      console.log(`[Dashboard] Date range state updated to: ${format(validatedDates.startDate, 'yyyy-MM-dd')} - ${format(validatedDates.endDate, 'yyyy-MM-dd')}`);
     } catch (error) {
       console.error("[Dashboard] Error handling date range change:", error);
       // Set to safe defaults if anything fails
       const now = new Date();
-      setDateRange({
+      const safeDefaults = {
         startDate: subMonths(now, 1),
         endDate: now
-      });
+      };
+      console.log(`[Dashboard] Using error fallback in handleDateRangeChange: ${format(safeDefaults.startDate, 'yyyy-MM-dd')} - ${format(safeDefaults.endDate, 'yyyy-MM-dd')}`);
+      setDateRange(safeDefaults);
     }
   }, [cancelAllRequests, dateRange, determineRangeType, validateDates]);
 
@@ -217,7 +209,7 @@ export default function DashboardPage() {
     }
   }, [isInitialized, dateRange.startDate, dateRange.endDate, cancelAllRequests, determineRangeType]);
 
-  // Initialize date range when the component mounts
+  // Initialize date range when the component mounts - ENHANCED
   useEffect(() => {
     // Ensure we only run this initialization once
     if (!isInitialized) {
@@ -229,29 +221,35 @@ export default function DashboardPage() {
         const safeStartDate = subMonths(now, 1);
         const safeEndDate = now;
         
-        console.log(`[Dashboard] Using safe initial date range: ${format(safeStartDate, 'yyyy-MM-dd')} - ${format(safeEndDate, 'yyyy-MM-dd')}`);
+        console.log(`[Dashboard] Initial safe date range: ${format(safeStartDate, 'yyyy-MM-dd')} - ${format(safeEndDate, 'yyyy-MM-dd')}`);
         
-        // Set the state directly with safe values
-        setDateRange({
-          startDate: safeStartDate,
-          endDate: safeEndDate
-        });
+        // ALWAYS validate even the initial safe dates
+        const validatedDates = validateDates(safeStartDate, safeEndDate);
         
-        // Determine the range type based on these safe values
-        determineRangeType(safeStartDate, safeEndDate);
+        console.log(`[Dashboard] After validation of initial dates: ${format(validatedDates.startDate, 'yyyy-MM-dd')} - ${format(validatedDates.endDate, 'yyyy-MM-dd')}`);
+        
+        // Set the state with validated values
+        setDateRange(validatedDates);
+        
+        // Determine the range type based on these validated values
+        determineRangeType(validatedDates.startDate, validatedDates.endDate);
         setIsInitialized(true);
+        
+        console.log(`[Dashboard] Dashboard initialized with date range: ${format(validatedDates.startDate, 'yyyy-MM-dd')} - ${format(validatedDates.endDate, 'yyyy-MM-dd')}`);
       } catch (error) {
         console.error("[Dashboard] Error initializing date range:", error);
         // Fallback to safe defaults in case of any error
         const now = new Date();
-        setDateRange({
+        const fallbackDates = {
           startDate: subMonths(now, 1),
           endDate: now
-        });
+        };
+        console.log(`[Dashboard] Using initialization fallback: ${format(fallbackDates.startDate, 'yyyy-MM-dd')} - ${format(fallbackDates.endDate, 'yyyy-MM-dd')}`);
+        setDateRange(fallbackDates);
         setIsInitialized(true);
       }
     }
-  }, [isInitialized, determineRangeType]);
+  }, [isInitialized, determineRangeType, validateDates]);
 
   useEffect(() => {
     const loadSegments = async () => {
@@ -389,7 +387,7 @@ export default function DashboardPage() {
                     startDate={dateRange.startDate}
                     endDate={dateRange.endDate}
                   />
-                  <ActiveExperimentsWidget
+                  <ActiveCampaignsWidget
                     startDate={dateRange.startDate}
                     endDate={dateRange.endDate}
                   />
@@ -432,9 +430,6 @@ export default function DashboardPage() {
                   <Card className="col-span-1">
                     <CardHeader>
                       <CardTitle>Recent commercial activity</CardTitle>
-                      <CardDescription>
-                        Completed lead tasks and user interactions.
-                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="min-h-[200px]">
@@ -527,7 +522,7 @@ export default function DashboardPage() {
                     <CardHeader>
                       <CardTitle>Cohort Analysis</CardTitle>
                       <CardDescription>
-                        Weekly retention metrics for sales and usage cohorts.
+                        Week-to-week retention metrics for sales and usage cohorts (standardized).
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -538,6 +533,22 @@ export default function DashboardPage() {
                       />
                     </CardContent>
                   </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Lead Cohort Analysis</CardTitle>
+                      <CardDescription>
+                        Week-to-week lead retention metrics - tracking lead engagement over time (standardized).
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <LeadsCohortTables
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                      />
+                    </CardContent>
+                  </Card>
+
                 </div>
               </>
             )}

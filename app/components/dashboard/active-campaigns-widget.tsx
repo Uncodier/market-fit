@@ -8,13 +8,12 @@ import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
 
-interface ActiveUsersWidgetProps {
-  segmentId?: string;
+interface ActiveCampaignsWidgetProps {
   startDate?: Date;
   endDate?: Date;
 }
 
-interface PaidActiveUsersData {
+interface ActiveCampaignsData {
   actual: number;
   percentChange: number;
   periodType: string;
@@ -32,17 +31,17 @@ const formatPeriodType = (periodType: string): string => {
   }
 };
 
-export function ActiveUsersWidget({ 
-  segmentId = "all",
+export function ActiveCampaignsWidget({ 
   startDate: propStartDate,
   endDate: propEndDate
-}: ActiveUsersWidgetProps) {
+}: ActiveCampaignsWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
   const { fetchWithController } = useRequestController();
-  const [activeUsers, setActiveUsers] = useState<PaidActiveUsersData | null>(null);
+  const [activeCampaigns, setActiveCampaigns] = useState<ActiveCampaignsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
@@ -57,22 +56,29 @@ export function ActiveUsersWidget({
   }, [propStartDate, propEndDate]);
 
   useEffect(() => {
-    const fetchActiveUsers = async () => {
+    const fetchActiveCampaigns = async () => {
       // Global widget protection
       if (!shouldExecuteWidgets) {
-        console.log("[PaidActiveUsersWidget] Widget execution disabled by context");
+        console.log("[ActiveCampaignsWidget] Widget execution disabled by context");
         return;
       }
 
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
+      setHasError(false);
+      
       try {
-        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
-        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
+        // Validate dates - don't allow future dates
+        const now = new Date();
+        const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
+        const validEndDate = endDate > now ? now : endDate;
+        
+        console.log("[ActiveCampaignsWidget] Fetching for site:", currentSite.id);
+        const start = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
+        const end = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
-        params.append("segmentId", segmentId);
         params.append("siteId", currentSite.id);
         if (user?.id) {
           params.append("userId", user.id);
@@ -80,31 +86,34 @@ export function ActiveUsersWidget({
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
-        const response = await fetchWithController(`/api/active-users?${params.toString()}`);
+        console.log("[ActiveCampaignsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
+        
+        const response = await fetchWithController(`/api/active-campaigns?${params.toString()}`);
         
         // Handle null response (aborted request)
         if (response === null) {
-          console.log("[PaidActiveUsersWidget] Request was aborted");
+          console.log("[ActiveCampaignsWidget] Request was aborted");
           return;
         }
         
         if (!response.ok) {
-          throw new Error('Failed to fetch paid active users data');
+          throw new Error('Failed to fetch active campaigns data');
         }
         const data = await response.json();
-        setActiveUsers(data);
+        setActiveCampaigns(data);
       } catch (error) {
         // Only log non-abort errors
         if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error("Error fetching paid active users:", error);
+          console.error("Error fetching active campaigns:", error);
         }
+        setHasError(true);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchActiveUsers();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
+    fetchActiveCampaigns();
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user, fetchWithController]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {
@@ -112,14 +121,14 @@ export function ActiveUsersWidget({
     setEndDate(end);
   };
 
-  const formattedValue = activeUsers?.actual?.toString() || "0";
-  const changeText = `${activeUsers?.percentChange || 0}% from ${formatPeriodType(activeUsers?.periodType || "monthly")}`;
-  const isPositiveChange = (activeUsers?.percentChange || 0) > 0;
+  const formattedValue = activeCampaigns ? activeCampaigns.actual.toString() : "0";
+  const changeText = `${activeCampaigns?.percentChange || 0}% from ${formatPeriodType(activeCampaigns?.periodType || "monthly")}`;
+  const isPositiveChange = (activeCampaigns?.percentChange || 0) > 0;
   
   return (
     <BaseKpiWidget
-      title="Paid Active Users"
-      tooltipText="Number of unique users who made purchases in the selected period"
+      title="Active Campaigns"
+      tooltipText="Campaigns running in the selected time period"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}
@@ -128,7 +137,6 @@ export function ActiveUsersWidget({
       startDate={startDate}
       endDate={endDate}
       onDateChange={handleDateChange}
-      segmentBadge={segmentId !== "all"}
     />
   );
 } 

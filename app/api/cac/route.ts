@@ -304,7 +304,7 @@ export async function GET(request: NextRequest) {
     // STEP 1: Get all campaign transactions
     let campaignQuery = supabase
       .from('campaigns')
-      .select('id, budget')
+      .select('id, budget, metadata')
       .eq('site_id', siteId)
       .gte('created_at', standardizedStart.toISOString())
       .lte('created_at', standardizedEnd.toISOString());
@@ -381,23 +381,56 @@ export async function GET(request: NextRequest) {
     
     // STEP 2: Obtener ventas con lead_id como principal fuente de conversiones
     // En lugar de consultar leads convertidos, vamos directamente a sales
-    let salesQuery = supabase
+    // Try sale_date first, then fallback to created_at
+    const saleDateStart = format(standardizedStart, 'yyyy-MM-dd');
+    const saleDateEnd = format(standardizedEnd, 'yyyy-MM-dd');
+    
+    // First try with sale_date
+    let salesQuerySaleDate = supabase
       .from('sales')
-      .select('id, lead_id, amount, created_at, status')
+      .select('id, lead_id, amount, created_at, status, sale_date')
       .eq('site_id', siteId)
-      .gte('created_at', standardizedStart.toISOString())
-      .lte('created_at', standardizedEnd.toISOString())
+      .gte('sale_date', saleDateStart)
+      .lte('sale_date', saleDateEnd)
       .not('lead_id', 'is', null); // Solo ventas asociadas a leads
       
     // If segmentId is provided, filter by segment
     if (segmentId && segmentId !== 'all') {
-      salesQuery = salesQuery.eq('segment_id', segmentId);
+      salesQuerySaleDate = salesQuerySaleDate.eq('segment_id', segmentId);
+    }
+    
+    const { data: salesSaleDate, error: salesErrorSaleDate } = await salesQuerySaleDate;
+    
+    // If sale_date query fails or returns no data, fallback to created_at
+    let sales = salesSaleDate;
+    let salesError = salesErrorSaleDate;
+    
+    if (salesErrorSaleDate || !salesSaleDate || salesSaleDate.length === 0) {
+      console.log('[CAC API] Using created_at fallback for sales query');
+      
+      let salesQuery = supabase
+        .from('sales')
+        .select('id, lead_id, amount, created_at, status, sale_date')
+        .eq('site_id', siteId)
+        .gte('created_at', standardizedStart.toISOString())
+        .lte('created_at', standardizedEnd.toISOString())
+        .not('lead_id', 'is', null); // Solo ventas asociadas a leads
+        
+      // If segmentId is provided, filter by segment
+      if (segmentId && segmentId !== 'all') {
+        salesQuery = salesQuery.eq('segment_id', segmentId);
+      }
+      
+      const result = await salesQuery;
+      sales = result.data;
+      salesError = result.error;
+    } else {
+      console.log('[CAC API] Using sale_date for sales query');
     }
     
     // Log the sales query range
     console.log(`[CAC API] Sales query range: ${standardizedStart.toISOString()} to ${standardizedEnd.toISOString()}`);
     
-    const { data: sales, error: salesError } = await salesQuery;
     
     if (salesError) {
       console.error('[CAC API] Error fetching sales:', salesError);
@@ -452,11 +485,18 @@ export async function GET(request: NextRequest) {
       return sum + (transaction.amount || 0);
     }, 0) || 0;
     
-    // Sum all campaign budgets (como respaldo si no hay transacciones)
+    // Sum campaign budgets ONLY for paid campaigns (como respaldo si no hay transacciones)
     const totalCampaignBudget = campaigns?.reduce((sum, campaign) => {
-      // Access the allocated property from the budget object
-      const budgetAmount = campaign.budget?.allocated || 0;
-      return sum + budgetAmount;
+      // Only count budget if campaign is marked as paid in metadata
+      const isPaid = campaign.metadata?.payment_status?.status === 'paid';
+      if (isPaid) {
+        const budgetAmount = campaign.budget?.allocated || 0;
+        console.log(`[CAC API] Including paid campaign budget: $${budgetAmount} (Campaign: ${campaign.id})`);
+        return sum + budgetAmount;
+      } else {
+        console.log(`[CAC API] Skipping non-paid campaign budget (Campaign: ${campaign.id})`);
+        return sum;
+      }
     }, 0) || 0;
     
     console.log(`[CAC API] Total campaign budget: $${totalCampaignBudget}, Total transaction costs: $${totalTransactionCosts}, Conversion count: ${conversionCount}`);
@@ -525,7 +565,7 @@ export async function GET(request: NextRequest) {
         // Calculate previous period CAC
         let prevCampaignQuery = supabase
           .from('campaigns')
-          .select('id, budget')
+          .select('id, budget, metadata')
           .eq('site_id', siteId)
           .gte('created_at', standardizedPrevStart.toISOString())
           .lte('created_at', standardizedPrevEnd.toISOString());
@@ -557,20 +597,50 @@ export async function GET(request: NextRequest) {
         }
         
         // Obtener ventas con lead_id para el periodo anterior
-        let prevSalesQuery = supabase
+        // Try sale_date first, then fallback to created_at
+        const prevSaleDateStart = format(standardizedPrevStart, 'yyyy-MM-dd');
+        const prevSaleDateEnd = format(standardizedPrevEnd, 'yyyy-MM-dd');
+        
+        // First try with sale_date
+        let prevSalesQuerySaleDate = supabase
           .from('sales')
-          .select('id, lead_id, amount')
+          .select('id, lead_id, amount, sale_date')
           .eq('site_id', siteId)
-          .gte('created_at', standardizedPrevStart.toISOString())
-          .lte('created_at', standardizedPrevEnd.toISOString())
+          .gte('sale_date', prevSaleDateStart)
+          .lte('sale_date', prevSaleDateEnd)
           .not('lead_id', 'is', null); // Solo ventas asociadas a leads
           
         // If segmentId is provided, filter by segment
         if (segmentId && segmentId !== 'all') {
-          prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
+          prevSalesQuerySaleDate = prevSalesQuerySaleDate.eq('segment_id', segmentId);
         }
         
-        const { data: prevSales } = await prevSalesQuery;
+        const { data: prevSalesSaleDate, error: prevSalesErrorSaleDate } = await prevSalesQuerySaleDate;
+        
+        // If sale_date query fails or returns no data, fallback to created_at
+        let prevSales = prevSalesSaleDate;
+        
+        if (prevSalesErrorSaleDate || !prevSalesSaleDate || prevSalesSaleDate.length === 0) {
+          console.log('[CAC API] Using created_at fallback for previous period sales query');
+          
+          let prevSalesQuery = supabase
+            .from('sales')
+            .select('id, lead_id, amount, sale_date')
+            .eq('site_id', siteId)
+            .gte('created_at', standardizedPrevStart.toISOString())
+            .lte('created_at', standardizedPrevEnd.toISOString())
+            .not('lead_id', 'is', null); // Solo ventas asociadas a leads
+            
+          // If segmentId is provided, filter by segment
+          if (segmentId && segmentId !== 'all') {
+            prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
+          }
+          
+          const result = await prevSalesQuery;
+          prevSales = result.data;
+        } else {
+          console.log('[CAC API] Using sale_date for previous period sales query');
+        }
         
         // Contar ventas únicas por lead_id para no duplicar conversiones
         const prevUniqueLeadIds = new Set(prevSales?.map(sale => sale.lead_id) || []);
@@ -580,11 +650,18 @@ export async function GET(request: NextRequest) {
           console.log(`[CAC API] Previous period: Found ${prevSalesCount} unique leads with sales`);
         }
         
-        // Sum previous campaign budgets
+        // Sum previous campaign budgets ONLY for paid campaigns
         const prevTotalCampaignBudget = prevCampaigns?.reduce((sum, campaign) => {
-          // Access the allocated property from the budget object
-          const budgetAmount = campaign.budget?.allocated || 0;
-          return sum + budgetAmount;
+          // Only count budget if campaign is marked as paid in metadata
+          const isPaid = campaign.metadata?.payment_status?.status === 'paid';
+          if (isPaid) {
+            const budgetAmount = campaign.budget?.allocated || 0;
+            console.log(`[CAC API] Including previous paid campaign budget: $${budgetAmount} (Campaign: ${campaign.id})`);
+            return sum + budgetAmount;
+          } else {
+            console.log(`[CAC API] Skipping previous non-paid campaign budget (Campaign: ${campaign.id})`);
+            return sum;
+          }
         }, 0) || 0;
         
         // Sum previous transaction costs

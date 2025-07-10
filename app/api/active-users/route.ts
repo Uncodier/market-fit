@@ -1,6 +1,6 @@
-import { createApiClient } from "@/lib/supabase/server-client";
+import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
 import { NextResponse } from "next/server";
-import { format, subDays, startOfDay, endOfDay, endOfMonth, startOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, startOfWeek, endOfWeek } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, endOfMonth, startOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, startOfWeek, endOfWeek, isAfter, isFuture } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { KpiData } from "@/app/types";
 import { createClient } from "@supabase/supabase-js";
@@ -299,8 +299,10 @@ export async function GET(request: Request) {
   const { periodStart: standardizedPrevStart, periodEnd: standardizedPrevEnd } = standardizePeriodDates(prevStart, prevEnd);
   
   try {
-    // Use regular client for reading data
-    const supabase = createApiClient();
+    // Use service client for reading data (same as Sales API)
+    const supabase = createServiceApiClient();
+    
+    console.log(`[PaidActiveUsersAPI] Using service client (same as Sales API that works)`);
     
     // Create admin client for writing data
     const supabaseAdmin = createClient(
@@ -484,6 +486,7 @@ export async function GET(request: Request) {
 }
 
 // Helper function to fetch previous period active users
+// Helper function to fetch previous period paid active users
 async function fetchPreviousPeriodActiveUsers(
   supabase: any,
   siteId: string,
@@ -492,152 +495,85 @@ async function fetchPreviousPeriodActiveUsers(
   endDate: Date
 ): Promise<{ value: number | null, error: any, hasEvidence: boolean }> {
   try {
-    console.log("[ActiveUsersAPI] Fetching previous period data from:", format(startDate, "yyyy-MM-dd"), "to:", format(endDate, "yyyy-MM-dd"));
+    console.log("[PaidActiveUsersAPI] Fetching previous period data from:", format(startDate, "yyyy-MM-dd"), "to:", format(endDate, "yyyy-MM-dd"));
 
-    // Set para almacenar IDs de leads únicos
-    const uniqueLeadIds = new Set<string>();
-    // Variable para contar ventas anónimas (sin lead_id)
-    let anonymousSalesCount = 0;
-
-    // 1. Primero obtenemos los visitor_id de las sesiones (sin filtrar por segment)
-    const { data: sessionsData, error: sessionsError } = await supabase
-      .from("session_events")
-      .select("visitor_id, created_at")
-      .eq("site_id", siteId)
-      .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"))
-      .limit(10000);
+    // SIMPLIFIED APPROACH: Usar la misma lógica que Sales API que funciona
+    // Usar created_at con formato ISO string (igual que Sales API)
+    const formattedStartDate = startDate.toISOString();
+    const formattedEndDate = endDate.toISOString();
     
-    if (sessionsError) {
-      console.error("Error fetching previous period sessions:", sessionsError);
-      return { value: null, error: sessionsError, hasEvidence: false };
+    console.log(`[PaidActiveUsersAPI] Querying sales with created_at from ${formattedStartDate} to ${formattedEndDate}`);
+    
+    // Build query exactly like Sales API
+    let salesQuery = supabase
+      .from("sales")
+      .select("lead_id, id, created_at, amount")
+      .eq("site_id", siteId)
+      .eq("status", "completed")
+      .gte("created_at", formattedStartDate)
+      .lte("created_at", formattedEndDate);
+    
+    // Apply segment filter if provided and not 'all'
+    if (segmentId && segmentId !== "all") {
+      console.log(`[PaidActiveUsersAPI] Adding segment filter for segment: ${segmentId}`);
+      salesQuery = salesQuery.eq("segment_id", segmentId);
     }
     
-    // Recolectar visitor_ids únicos
-    const uniqueVisitorIds = new Set<string>();
-    sessionsData?.forEach((session: { visitor_id?: string }) => {
-      if (session.visitor_id) {
-        uniqueVisitorIds.add(session.visitor_id);
+    const { data: salesData, error: salesError } = await salesQuery;
+    
+    console.log(`[PaidActiveUsersAPI] Query executed for previous period`);
+    
+    if (salesError) {
+      console.error("Error fetching previous period sales:", salesError);
+      return { value: null, error: salesError, hasEvidence: false };
+    }
+    
+    if (!salesData || salesData.length === 0) {
+      console.log("[PaidActiveUsersAPI] No sales found in previous period");
+      return { value: 0, error: null, hasEvidence: false };
+    }
+    
+    console.log("[PaidActiveUsersAPI] Previous period total sales found:", salesData.length);
+    
+    // Log sample data for debugging (like Sales API)
+    if (salesData && salesData.length > 0) {
+      console.log(`[PaidActiveUsersAPI] Previous period first sale:`, salesData[0]);
+      console.log(`[PaidActiveUsersAPI] Previous period last sale:`, salesData[salesData.length - 1]);
+      
+      // Calculate total revenue for comparison
+      const totalRevenue = salesData.reduce((sum: number, sale: any) => sum + (Number(sale.amount) || 0), 0);
+      console.log(`[PaidActiveUsersAPI] Previous period total revenue: ${totalRevenue}`);
+    }
+    
+    // Contar lead_ids únicos (solo los que NO son null)
+    const uniqueLeadIds = new Set<string>();
+    let salesWithLeadId = 0;
+    let salesWithoutLeadId = 0;
+    
+    salesData.forEach((sale: any) => {
+      if (sale.lead_id) {
+        uniqueLeadIds.add(sale.lead_id);
+        salesWithLeadId++;
+      } else {
+        salesWithoutLeadId++;
       }
     });
     
-    console.log("[ActiveUsersAPI] Found unique visitors from sessions:", uniqueVisitorIds.size);
+    const totalPaidActiveUsers = uniqueLeadIds.size;
+    console.log("[PaidActiveUsersAPI] Previous period breakdown:");
+    console.log("- Total sales:", salesData.length);
+    console.log("- Sales with lead_id:", salesWithLeadId);
+    console.log("- Sales without lead_id:", salesWithoutLeadId);
+    console.log("- Unique lead_ids (paid active users):", totalPaidActiveUsers);
     
-    // Si hay visitors, obtenemos los leads asociados
-    if (uniqueVisitorIds.size > 0) {
-      // Convertir el Set en un array para la consulta
-      const visitorIdsArray = Array.from(uniqueVisitorIds);
-      
-      // Obtenemos los leads asociados a esos visitors
-      const { data: visitorData, error: visitorError } = await supabase
-        .from("visitors")
-        .select("lead_id")
-        .in("id", visitorIdsArray)
-        .not("lead_id", "is", null);
-      
-      if (visitorError) {
-        console.error("Error fetching visitor leads:", visitorError);
-        return { value: null, error: visitorError, hasEvidence: uniqueVisitorIds.size > 0 };
-      }
-      
-      // Agregar lead_ids de visitors a nuestro Set de leads únicos
-      visitorData?.forEach((visitor: { lead_id?: string }) => {
-        if (visitor.lead_id) {
-          uniqueLeadIds.add(visitor.lead_id);
-        }
-      });
-      
-      console.log("[ActiveUsersAPI] Found unique leads from visitors:", uniqueLeadIds.size);
-    }
-    
-    // 2. Obtenemos todas las ventas en el periodo seleccionado
-    const { data: salesData, error: salesError } = await supabase
-      .from("sales")
-      .select("lead_id, id")
-      .eq("site_id", siteId)
-      .eq("status", "completed")
-      .gte("sale_date", format(startDate, "yyyy-MM-dd"))
-      .lte("sale_date", format(endOfDay(endDate), "yyyy-MM-dd"));
-    
-    if (salesError) {
-      console.error("Error fetching sales:", salesError);
-      return { value: null, error: salesError, hasEvidence: uniqueVisitorIds.size > 0 };
-    }
-    
-    // Determine if we have evidence of activity, even if values are 0
-    const hasEvidence = (sessionsData && sessionsData.length > 0) || 
-                        (salesData && salesData.length > 0);
-    
-    if (salesData && salesData.length > 0) {
-      // Separamos ventas con lead_id de las anónimas
-      const salesWithLeads = salesData.filter((sale: { lead_id?: string, id: string }) => sale.lead_id);
-      
-      // Solo contamos ventas anónimas si se solicita explícitamente datos de demostración
-      anonymousSalesCount = 0;
-      
-      if (salesData.length - salesWithLeads.length > 0) {
-        console.log("[ActiveUsersAPI] Ignoring anonymous sales (without lead_id):", salesData.length - salesWithLeads.length);
-      }
-      
-      // Agregar lead_ids de ventas a nuestro Set de leads únicos
-      salesWithLeads.forEach((sale: { lead_id?: string, id: string }) => {
-        if (sale.lead_id) {
-          uniqueLeadIds.add(sale.lead_id);
-        }
-      });
-      
-      console.log("[ActiveUsersAPI] Found unique leads from sales:", salesWithLeads.length);
-      if (anonymousSalesCount > 0) {
-        console.log("[ActiveUsersAPI] Counting anonymous sales (without lead_id):", anonymousSalesCount);
-      }
-    }
-    
-    console.log("[ActiveUsersAPI] Total combined unique leads:", uniqueLeadIds.size);
-    
-    // Si estamos filtrando por segmento, necesitamos verificar qué leads pertenecen a ese segmento
-    if (segmentId && segmentId !== "all" && uniqueLeadIds.size > 0) {
-      console.log("[ActiveUsersAPI] Filtering leads by segment:", segmentId);
-      
-      const leadIdsArray = Array.from(uniqueLeadIds);
-      
-      // Consultar qué leads están en el segmento especificado usando la columna segment_id en leads
-      const { data: leadSegmentData, error: leadSegmentError } = await supabase
-        .from("leads")
-        .select("id")
-        .in("id", leadIdsArray)
-        .eq("segment_id", segmentId);
-      
-      if (leadSegmentError) {
-        console.error("Error fetching lead segments:", leadSegmentError);
-        return { value: null, error: leadSegmentError, hasEvidence };
-      }
-      
-      // Contar solo los leads que están en el segmento
-      const segmentLeadIds = new Set<string>();
-      leadSegmentData?.forEach((item: { id: string }) => {
-        if (item.id) {
-          segmentLeadIds.add(item.id);
-        }
-      });
-      
-      console.log("[ActiveUsersAPI] Previous period unique leads in segment:", segmentLeadIds.size);
-      
-      // Cuando filtramos por segmento, no contamos ventas anónimas porque no podemos
-      // saber si pertenecen a ese segmento
-      return { value: segmentLeadIds.size, error: null, hasEvidence };
-    }
-    
-    // Total de clientes: leads identificados + ventas anónimas
-    const totalActiveClients = uniqueLeadIds.size + anonymousSalesCount;
-    console.log("[ActiveUsersAPI] Previous period total active clients:", totalActiveClients);
-    return { value: totalActiveClients, error: null, hasEvidence };
+    return { value: totalPaidActiveUsers, error: null, hasEvidence: true };
   } catch (err) {
-    console.error("Exception fetching previous period active users:", err);
+    console.error("Exception fetching previous period paid active users:", err);
     return { value: null, error: err, hasEvidence: false };
   }
 }
 
-// Helper function to fetch current period active users
+// Helper function to fetch current period paid active users
 async function fetchCurrentPeriodActiveUsers(
   supabase: any,
   siteId: string,
@@ -646,147 +582,80 @@ async function fetchCurrentPeriodActiveUsers(
   endDate: Date
 ): Promise<{ value: number | null, error: any, hasEvidence: boolean }> {
   try {
-    console.log("[ActiveUsersAPI] Fetching current period data from:", format(startDate, "yyyy-MM-dd"), "to:", format(endDate, "yyyy-MM-dd"));
+    console.log("[PaidActiveUsersAPI] Fetching current period data from:", format(startDate, "yyyy-MM-dd"), "to:", format(endDate, "yyyy-MM-dd"));
 
-    // Set para almacenar IDs de leads únicos
-    const uniqueLeadIds = new Set<string>();
-    // Variable para contar ventas anónimas (sin lead_id)
-    let anonymousSalesCount = 0;
-
-    // 1. Primero obtenemos los visitor_id de las sesiones (sin filtrar por segment)
-    const { data: sessionsData, error: sessionsError } = await supabase
-      .from("session_events")
-      .select("visitor_id, created_at")
-      .eq("site_id", siteId)
-      .gte("created_at", format(startDate, "yyyy-MM-dd"))
-      .lte("created_at", format(endOfDay(endDate), "yyyy-MM-dd'T'23:59:59.999'Z'"))
-      .limit(10000);
+    // SIMPLIFIED APPROACH: Usar la misma lógica que Sales API que funciona
+    // Usar created_at con formato ISO string (igual que Sales API)
+    const formattedStartDate = startDate.toISOString();
+    const formattedEndDate = endDate.toISOString();
     
-    if (sessionsError) {
-      console.error("Error fetching current period sessions:", sessionsError);
-      return { value: null, error: sessionsError, hasEvidence: false };
-    }
+    console.log(`[PaidActiveUsersAPI] Querying sales with created_at from ${formattedStartDate} to ${formattedEndDate}`);
     
-    // Recolectar visitor_ids únicos
-    const uniqueVisitorIds = new Set<string>();
-    sessionsData?.forEach((session: { visitor_id?: string }) => {
-      if (session.visitor_id) {
-        uniqueVisitorIds.add(session.visitor_id);
-      }
-    });
-    
-    console.log("[ActiveUsersAPI] Found unique visitors from sessions:", uniqueVisitorIds.size);
-    
-    // Si hay visitors, obtenemos los leads asociados
-    if (uniqueVisitorIds.size > 0) {
-      // Convertir el Set en un array para la consulta
-      const visitorIdsArray = Array.from(uniqueVisitorIds);
-      
-      // Obtenemos los leads asociados a esos visitors
-      const { data: visitorData, error: visitorError } = await supabase
-        .from("visitors")
-        .select("lead_id")
-        .in("id", visitorIdsArray)
-        .not("lead_id", "is", null);
-      
-      if (visitorError) {
-        console.error("Error fetching visitor leads:", visitorError);
-        return { value: null, error: visitorError, hasEvidence: uniqueVisitorIds.size > 0 };
-      }
-      
-      // Agregar lead_ids de visitors a nuestro Set de leads únicos
-      visitorData?.forEach((visitor: { lead_id?: string }) => {
-        if (visitor.lead_id) {
-          uniqueLeadIds.add(visitor.lead_id);
-        }
-      });
-      
-      console.log("[ActiveUsersAPI] Found unique leads from visitors:", uniqueLeadIds.size);
-    }
-    
-    // 2. Obtenemos todas las ventas en el periodo seleccionado
-    const { data: salesData, error: salesError } = await supabase
+    // Build query exactly like Sales API
+    let salesQuery = supabase
       .from("sales")
-      .select("lead_id, id")
+      .select("lead_id, id, created_at, amount")
       .eq("site_id", siteId)
       .eq("status", "completed")
-      .gte("sale_date", format(startDate, "yyyy-MM-dd"))
-      .lte("sale_date", format(endOfDay(endDate), "yyyy-MM-dd"));
+      .gte("created_at", formattedStartDate)
+      .lte("created_at", formattedEndDate);
+    
+    // Apply segment filter if provided and not 'all'
+    if (segmentId && segmentId !== "all") {
+      console.log(`[PaidActiveUsersAPI] Adding segment filter for segment: ${segmentId}`);
+      salesQuery = salesQuery.eq("segment_id", segmentId);
+    }
+    
+    const { data: salesData, error: salesError } = await salesQuery;
+    
+    console.log(`[PaidActiveUsersAPI] Query executed for current period`);
     
     if (salesError) {
       console.error("Error fetching sales:", salesError);
-      return { value: null, error: salesError, hasEvidence: uniqueVisitorIds.size > 0 };
+      return { value: null, error: salesError, hasEvidence: false };
     }
     
-    // Determine if we have evidence of activity, even if values are 0
-    const hasEvidence = (sessionsData && sessionsData.length > 0) || 
-                        (salesData && salesData.length > 0);
+    if (!salesData || salesData.length === 0) {
+      console.log("[PaidActiveUsersAPI] No sales found in period");
+      return { value: 0, error: null, hasEvidence: false };
+    }
     
+    console.log("[PaidActiveUsersAPI] Total sales found:", salesData.length);
+    
+    // Log sample data for debugging (like Sales API)
     if (salesData && salesData.length > 0) {
-      // Separamos ventas con lead_id de las anónimas
-      const salesWithLeads = salesData.filter((sale: { lead_id?: string, id: string }) => sale.lead_id);
+      console.log(`[PaidActiveUsersAPI] First sale:`, salesData[0]);
+      console.log(`[PaidActiveUsersAPI] Last sale:`, salesData[salesData.length - 1]);
       
-      // Solo contamos ventas anónimas si se solicita explícitamente datos de demostración
-      anonymousSalesCount = 0;
-      
-      if (salesData.length - salesWithLeads.length > 0) {
-        console.log("[ActiveUsersAPI] Ignoring anonymous sales (without lead_id):", salesData.length - salesWithLeads.length);
-      }
-      
-      // Agregar lead_ids de ventas a nuestro Set de leads únicos
-      salesWithLeads.forEach((sale: { lead_id?: string, id: string }) => {
-        if (sale.lead_id) {
-          uniqueLeadIds.add(sale.lead_id);
-        }
-      });
-      
-      console.log("[ActiveUsersAPI] Found unique leads from sales:", salesWithLeads.length);
-      if (anonymousSalesCount > 0) {
-        console.log("[ActiveUsersAPI] Counting anonymous sales (without lead_id):", anonymousSalesCount);
-      }
+      // Calculate total revenue for comparison
+      const totalRevenue = salesData.reduce((sum: number, sale: any) => sum + (Number(sale.amount) || 0), 0);
+      console.log(`[PaidActiveUsersAPI] Total revenue in period: ${totalRevenue}`);
     }
     
-    console.log("[ActiveUsersAPI] Total combined unique leads:", uniqueLeadIds.size);
+    // Contar lead_ids únicos (solo los que NO son null)
+    const uniqueLeadIds = new Set<string>();
+    let salesWithLeadId = 0;
+    let salesWithoutLeadId = 0;
     
-    // Si estamos filtrando por segmento, necesitamos verificar qué leads pertenecen a ese segmento
-    if (segmentId && segmentId !== "all" && uniqueLeadIds.size > 0) {
-      console.log("[ActiveUsersAPI] Filtering leads by segment:", segmentId);
-      
-      const leadIdsArray = Array.from(uniqueLeadIds);
-      
-      // Consultar qué leads están en el segmento especificado usando la columna segment_id en leads
-      const { data: leadSegmentData, error: leadSegmentError } = await supabase
-        .from("leads")
-        .select("id")
-        .in("id", leadIdsArray)
-        .eq("segment_id", segmentId);
-      
-      if (leadSegmentError) {
-        console.error("Error fetching lead segments:", leadSegmentError);
-        return { value: null, error: leadSegmentError, hasEvidence };
+    salesData.forEach((sale: any) => {
+      if (sale.lead_id) {
+        uniqueLeadIds.add(sale.lead_id);
+        salesWithLeadId++;
+      } else {
+        salesWithoutLeadId++;
       }
-      
-      // Contar solo los leads que están en el segmento
-      const segmentLeadIds = new Set<string>();
-      leadSegmentData?.forEach((item: { id: string }) => {
-        if (item.id) {
-          segmentLeadIds.add(item.id);
-        }
-      });
-      
-      console.log("[ActiveUsersAPI] Current period unique leads in segment:", segmentLeadIds.size);
-      
-      // Cuando filtramos por segmento, no contamos ventas anónimas porque no podemos
-      // saber si pertenecen a ese segmento
-      return { value: segmentLeadIds.size, error: null, hasEvidence };
-    }
+    });
     
-    // Total de clientes: leads identificados + ventas anónimas
-    const totalActiveClients = uniqueLeadIds.size + anonymousSalesCount;
-    console.log("[ActiveUsersAPI] Current period total active clients:", totalActiveClients);
-    return { value: totalActiveClients, error: null, hasEvidence };
+    const totalPaidActiveUsers = uniqueLeadIds.size;
+    console.log("[PaidActiveUsersAPI] Current period breakdown:");
+    console.log("- Total sales:", salesData.length);
+    console.log("- Sales with lead_id:", salesWithLeadId);
+    console.log("- Sales without lead_id:", salesWithoutLeadId);
+    console.log("- Unique lead_ids (paid active users):", totalPaidActiveUsers);
+    
+    return { value: totalPaidActiveUsers, error: null, hasEvidence: true };
   } catch (err) {
-    console.error("Exception fetching current period active users:", err);
+    console.error("Exception fetching current period paid active users:", err);
     return { value: null, error: err, hasEvidence: false };
   }
 } 

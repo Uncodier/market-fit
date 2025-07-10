@@ -107,7 +107,16 @@ export function RevenueWidget({
           throw new Error('Failed to fetch revenue data');
         }
         const data = await response.json();
-        setRevenue(data);
+        
+        // Extract the relevant data from totalSales object
+        const revenueData = {
+          actual: data.totalSales?.actual || 0,
+          percentChange: data.totalSales?.percentChange || 0,
+          periodType: data.periodType || "monthly"
+        };
+        
+        console.log("[RevenueWidget] Processed data:", revenueData);
+        setRevenue(revenueData);
       } catch (error) {
         // Only log non-abort errors
         if (!(error instanceof DOMException && error.name === 'AbortError')) {

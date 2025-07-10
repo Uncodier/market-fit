@@ -76,21 +76,52 @@ export async function GET(request: NextRequest) {
     else if (daysDiff <= 92) periodType = "quarterly";
     else periodType = "yearly";
 
-    // Fetch sales for current period
-    let salesQuery = supabase
+    // Fetch sales for current period - Try sale_date first, then fallback to created_at
+    // Format dates for sale_date field (DATE type)
+    const startDateStr = format(startDate, 'yyyy-MM-dd');
+    const endDateStr = format(endDate, 'yyyy-MM-dd');
+    
+    // First try with sale_date
+    let salesQuerySaleDate = supabase
       .from('sales')
       .select('*')
       .eq('site_id', siteId)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
+      .gte('sale_date', startDateStr)
+      .lte('sale_date', endDateStr)
       .eq('status', 'completed');
     
     // Apply segment filter if provided and not 'all'
     if (segmentId && segmentId !== 'all') {
-      salesQuery = salesQuery.eq('segment_id', segmentId);
+      salesQuerySaleDate = salesQuerySaleDate.eq('segment_id', segmentId);
     }
     
-    const { data: currentSalesData, error: currentSalesError } = await salesQuery;
+    const { data: currentSalesDataSaleDate, error: currentSalesErrorSaleDate } = await salesQuerySaleDate;
+    
+    // If sale_date query fails or returns no data, fallback to created_at
+    let currentSalesData = currentSalesDataSaleDate;
+    let currentSalesError = currentSalesErrorSaleDate;
+    
+    if (currentSalesErrorSaleDate || !currentSalesDataSaleDate || currentSalesDataSaleDate.length === 0) {
+      console.log('[Revenue API] Using created_at fallback for current period');
+      
+      let salesQuery = supabase
+        .from('sales')
+        .select('*')
+        .eq('site_id', siteId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .eq('status', 'completed');
+      
+      if (segmentId && segmentId !== 'all') {
+        salesQuery = salesQuery.eq('segment_id', segmentId);
+      }
+      
+      const result = await salesQuery;
+      currentSalesData = result.data;
+      currentSalesError = result.error;
+    } else {
+      console.log('[Revenue API] Using sale_date for current period');
+    }
     
     if (currentSalesError) {
       console.error('Error fetching current sales:', currentSalesError);
@@ -100,20 +131,50 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Fetch sales for previous period
-    let prevSalesQuery = supabase
+    // Fetch sales for previous period - Try sale_date first, then fallback to created_at
+    const prevStartDateStr = format(previousPeriodStart, 'yyyy-MM-dd');
+    const prevEndDateStr = format(previousPeriodEnd, 'yyyy-MM-dd');
+    
+    // First try with sale_date
+    let prevSalesQuerySaleDate = supabase
       .from('sales')
       .select('*')
       .eq('site_id', siteId)
-      .gte('created_at', previousPeriodStart.toISOString())
-      .lte('created_at', previousPeriodEnd.toISOString())
+      .gte('sale_date', prevStartDateStr)
+      .lte('sale_date', prevEndDateStr)
       .eq('status', 'completed');
     
     if (segmentId && segmentId !== 'all') {
-      prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
+      prevSalesQuerySaleDate = prevSalesQuerySaleDate.eq('segment_id', segmentId);
     }
     
-    const { data: prevSalesData, error: prevSalesError } = await prevSalesQuery;
+    const { data: prevSalesDataSaleDate, error: prevSalesErrorSaleDate } = await prevSalesQuerySaleDate;
+    
+    // If sale_date query fails or returns no data, fallback to created_at
+    let prevSalesData = prevSalesDataSaleDate;
+    let prevSalesError = prevSalesErrorSaleDate;
+    
+    if (prevSalesErrorSaleDate || !prevSalesDataSaleDate || prevSalesDataSaleDate.length === 0) {
+      console.log('[Revenue API] Using created_at fallback for previous period');
+      
+      let prevSalesQuery = supabase
+        .from('sales')
+        .select('*')
+        .eq('site_id', siteId)
+        .gte('created_at', previousPeriodStart.toISOString())
+        .lte('created_at', previousPeriodEnd.toISOString())
+        .eq('status', 'completed');
+      
+      if (segmentId && segmentId !== 'all') {
+        prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
+      }
+      
+      const result = await prevSalesQuery;
+      prevSalesData = result.data;
+      prevSalesError = result.error;
+    } else {
+      console.log('[Revenue API] Using sale_date for previous period');
+    }
     
     if (prevSalesError) {
       console.error('Error fetching previous sales:', prevSalesError);
@@ -408,10 +469,13 @@ export async function GET(request: NextRequest) {
       const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
       const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
       
-      // Filter sales for this month
+      // Filter sales for this month - use sale_date if available, otherwise created_at
       const monthOnlineSales = currentSales
         .filter(sale => {
-          const saleDate = new Date(sale.created_at);
+          // Use sale_date if available, otherwise fallback to created_at
+          const saleDate = sale.sale_date 
+            ? new Date(sale.sale_date) 
+            : new Date(sale.created_at);
           return sale.source === 'online' && 
                  saleDate >= monthStart && 
                  saleDate <= monthEnd;
@@ -420,7 +484,10 @@ export async function GET(request: NextRequest) {
         
       const monthRetailSales = currentSales
         .filter(sale => {
-          const saleDate = new Date(sale.created_at);
+          // Use sale_date if available, otherwise fallback to created_at
+          const saleDate = sale.sale_date 
+            ? new Date(sale.sale_date) 
+            : new Date(sale.created_at);
           return sale.source === 'retail' && 
                  saleDate >= monthStart && 
                  saleDate <= monthEnd;

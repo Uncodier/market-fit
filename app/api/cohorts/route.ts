@@ -97,21 +97,10 @@ export async function GET(request: Request) {
     const startDate = startDateParam ? new Date(startDateParam) : subDays(new Date(), 30);
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
     
-    // Determinar el periodo apropiado basado en el rango de fechas
-    const daysDifference = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    let periodType = 'day';
+    // Cohorts always use weekly periods - date range only affects data scope
+    const periodType = 'week'; // Always weekly for consistent cohort analysis
     
-    if (daysDifference > 180) {
-      periodType = 'quarter'; // Trimestre para rangos mayores a 6 meses
-    } else if (daysDifference > 60) {
-      periodType = 'month'; // Mes para rangos mayores a 2 meses
-    } else if (daysDifference > 14) {
-      periodType = 'week'; // Semana para rangos mayores a 2 semanas
-    } else {
-      periodType = 'day'; // Día para rangos cortos
-    }
-    
-    console.log(`[Cohorts API] Periodo determinado: ${periodType} basado en un rango de ${daysDifference} días`);
+    console.log(`[Cohorts API] Using ${periodType} periods (always weekly for cohorts)`);
     
     // Comprobar si hay ventas sin lead_id asignado
     let salesQuery = supabase
@@ -201,82 +190,36 @@ export async function GET(request: Request) {
     // Generar los periodos para el análisis de cohortes
     let cohortPeriods: { cohort: string, date: Date }[] = [];
     
-    // Función para formatear el periodo según el tipo
+    // Función para formatear el periodo - always weekly for cohorts
     const formatPeriod = (date: Date) => {
-      switch (periodType) {
-        case 'day':
-          return formatDate(date, "dd MMM");
-        case 'week':
-          return `W${formatDate(date, "w")} ${formatDate(date, "yyyy")}`;
-        case 'month':
-          return formatDate(date, "MMM yyyy");
-        case 'quarter':
-          const quarter = Math.floor(date.getMonth() / 3) + 1;
-          return `Q${quarter} ${formatDate(date, "yyyy")}`;
-        default:
-          return formatDate(date, "MMM yyyy");
-      }
+      return `W${formatDate(date, "w")} ${formatDate(date, "yyyy")}`;
     };
-    
-    // Generar periodos para los últimos 8 intervalos
+
+    // Generar periodos para las últimas 8 semanas - always weekly for cohorts
     for (let i = 0; i < 8; i++) {
-      let date;
-      switch (periodType) {
-        case 'day':
-          date = subDays(now, i);
-          break;
-        case 'week':
-          date = subDays(now, i * 7);
-          break;
-        case 'month':
-          date = subMonths(now, i);
-          break;
-        case 'quarter':
-          date = subMonths(now, i * 3);
-          break;
-        default:
-          date = subMonths(now, i);
-      }
+      const date = subDays(now, i * 7); // Always weekly intervals
       
       cohortPeriods.push({
         cohort: formatPeriod(date),
         date
       });
     }
-    
+
     console.log(`[Cohorts API] Generated ${cohortPeriods.length} cohort periods: ${cohortPeriods.map(p => p.cohort).join(', ')}`);
-    
+
     // Organizar las ventas por periodo y por lead
     const salesByPeriod = new Map<string, Set<string>>();
-    
+
     // Para cada periodo, guardamos el conjunto de leads que compraron
     for (const sale of salesData) {
       const saleDate = new Date(sale.created_at);
-      let periodKey;
-      
-      // Determinar a qué periodo pertenece esta venta
-      switch (periodType) {
-        case 'day':
-          periodKey = formatDate(saleDate, "dd MMM");
-          break;
-        case 'week':
-          periodKey = `W${formatDate(saleDate, "w")} ${formatDate(saleDate, "yyyy")}`;
-          break;
-        case 'month':
-          periodKey = formatDate(saleDate, "MMM yyyy");
-          break;
-        case 'quarter':
-          const quarter = Math.floor(saleDate.getMonth() / 3) + 1;
-          periodKey = `Q${quarter} ${formatDate(saleDate, "yyyy")}`;
-          break;
-        default:
-          periodKey = formatDate(saleDate, "MMM yyyy");
-      }
-      
+      // Always use weekly period format for cohorts
+      const periodKey = `W${formatDate(saleDate, "w")} ${formatDate(saleDate, "yyyy")}`;
+
       if (!salesByPeriod.has(periodKey)) {
         salesByPeriod.set(periodKey, new Set<string>());
       }
-      
+
       const leadSet = salesByPeriod.get(periodKey)!;
       leadSet.add(sale.lead_id);
     }
@@ -294,7 +237,7 @@ export async function GET(request: Request) {
       if (!hasDataForPeriod) {
         return {
           cohort: cohortKey,
-          periods: Array(8 - cohortIndex).fill(0).map((_, i) => i === 0 ? null : 0)
+          periods: Array(cohortIndex + 1).fill(0).map((_, i) => i === 0 ? null : 0)
         };
       }
       
@@ -303,7 +246,8 @@ export async function GET(request: Request) {
       const originalCount = cohortLeads.size;
       
       // Para cada periodo posterior, calcular cuántos leads repitieron
-      const periods = Array.from({ length: 8 - cohortIndex }).map((_, periodIndex) => {
+      // Older cohorts (higher cohortIndex) should show more periods of retention data
+      const periods = Array.from({ length: cohortIndex + 1 }).map((_, periodIndex) => {
         // Primer valor siempre es 100% para el periodo 0 (el periodo de cohorte mismo)
         if (periodIndex === 0) return 100;
         
@@ -385,84 +329,8 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Error in cohorts API:", error);
     
-    // Generamos datos de demostración para el caso de error
-    // Meses para las cohortes
-    const cohortMonths = ["Jan 2023", "Feb 2023", "Mar 2023", "Apr 2023", 
-                         "May 2023", "Jun 2023", "Jul 2023", "Aug 2023"];
-    
-    // Datos de cohorte de ventas por defecto
-    const salesCohorts = [
-      {
-        cohort: "Jan 2023",
-        weeks: [100, 85, 72, 68, 65, 63, 61, 60]
-      },
-      {
-        cohort: "Feb 2023",
-        weeks: [100, 82, 70, 65, 62, 60, 58]
-      },
-      {
-        cohort: "Mar 2023",
-        weeks: [100, 88, 76, 72, 69, 67]
-      },
-      {
-        cohort: "Apr 2023",
-        weeks: [100, 87, 75, 71, 68]
-      },
-      {
-        cohort: "May 2023",
-        weeks: [100, 86, 74, 70]
-      },
-      {
-        cohort: "Jun 2023",
-        weeks: [100, 89, 77]
-      },
-      {
-        cohort: "Jul 2023",
-        weeks: [100, 90]
-      },
-      {
-        cohort: "Aug 2023",
-        weeks: [100]
-      }
-    ];
-    
-    // Datos de cohorte de uso por defecto
-    const usageCohorts = [
-      {
-        cohort: "Jan 2023",
-        weeks: [100, 78, 65, 55, 48, 42, 38, 35]
-      },
-      {
-        cohort: "Feb 2023",
-        weeks: [100, 80, 68, 58, 50, 45, 42]
-      },
-      {
-        cohort: "Mar 2023",
-        weeks: [100, 82, 70, 60, 53, 48]
-      },
-      {
-        cohort: "Apr 2023",
-        weeks: [100, 83, 72, 62, 56]
-      },
-      {
-        cohort: "May 2023",
-        weeks: [100, 84, 73, 64]
-      },
-      {
-        cohort: "Jun 2023",
-        weeks: [100, 85, 75]
-      },
-      {
-        cohort: "Jul 2023",
-        weeks: [100, 87]
-      },
-      {
-        cohort: "Aug 2023",
-        weeks: [100]
-      }
-    ];
-    
-    console.log("[Cohorts API] Returning default data due to error");
-    return NextResponse.json({ salesCohorts, usageCohorts });
+    // Don't return demo data - return empty to show actual no-data state
+    console.log("[Cohorts API] Returning empty data due to error");
+    return NextResponse.json({ salesCohorts: [], usageCohorts: [] });
   }
 } 

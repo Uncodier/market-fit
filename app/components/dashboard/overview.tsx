@@ -346,6 +346,11 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
     return new Intl.NumberFormat('es-ES').format(num)
   }
 
+  // Formato de números con prefijo de dólares
+  const formatCurrency = (num: number) => {
+    return `$${new Intl.NumberFormat('es-ES').format(num)}`
+  }
+
   if (isLoading) {
     return (
       <div className="w-full h-[350px] flex flex-col pl-4 overflow-hidden">
@@ -418,11 +423,11 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
       <div className="flex flex-1 relative">
         {/* Eje Y con valores */}
         <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-between py-4">
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatNumber(maxValue)}</div>
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatNumber(Math.round(maxValue * 0.75))}</div>
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatNumber(Math.round(maxValue * 0.5))}</div>
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatNumber(Math.round(maxValue * 0.25))}</div>
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>0</div>
+          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(maxValue)}</div>
+          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.75))}</div>
+          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.5))}</div>
+          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.25))}</div>
+          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>$0</div>
         </div>
 
         {/* Líneas de guía horizontales */}
@@ -479,7 +484,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
                   >
                     <p className={`font-semibold ${isDarkMode ? "text-slate-100" : "text-gray-900"}`}>{item.name}</p>
                     <p className={isDarkMode ? "text-indigo-300" : "text-indigo-600"}>
-                      <span className="font-medium">Total:</span> {formatNumber(item.total || 0)}
+                      <span className="font-medium">Total:</span> {formatCurrency(item.total || 0)}
                     </p>
                   </div>
                 )}
