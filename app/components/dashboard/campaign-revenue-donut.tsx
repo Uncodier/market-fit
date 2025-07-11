@@ -264,9 +264,9 @@ export function CampaignRevenueDonut({
   }
   
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center pie-chart-container">
       {showTotalRevenue && (
-        <div className="text-2xl font-bold mb-2">
+        <div className="text-2xl font-bold mb-2 donut-title-animate">
           {formatCurrency(totalRevenue)}
         </div>
       )}
@@ -311,6 +311,11 @@ export function CampaignRevenueDonut({
               fill={`url(#campaign-slice-gradient-${index})`}
               stroke="white"
               strokeWidth="1"
+              className="donut-slice-animate"
+              style={{
+                transformOrigin: `${center}px ${center}px`,
+                animationDelay: `${index * 0.05}s`
+              }}
             />
           ))}
           
@@ -328,7 +333,10 @@ export function CampaignRevenueDonut({
                   fontSize={campaignData.length === 1 ? "16" : "12"}
                   fontWeight="bold"
                   fill="white"
-                  className={campaignData.length === 1 ? "text-base" : "text-xs"}
+                  className={`${campaignData.length === 1 ? "text-base" : "text-xs"} donut-label-animate`}
+                  style={{
+                    animationDelay: `${index * 0.05 + 0.1}s`
+                  }}
                 >
                   {slice.formattedPercentage}
                 </text>
@@ -351,7 +359,9 @@ export function CampaignRevenueDonut({
               : slice.textAnchor;
             
             return (
-              <g key={`label-group-${index}`}>
+              <g key={`label-group-${index}`} className="donut-external-label-animate" style={{
+                animationDelay: `${index * 0.05 + 0.1}s`
+              }}>
                 {/* Connector line - ocultar para un solo sector */}
                 {campaignData.length > 1 && (
                   <line
@@ -396,6 +406,88 @@ export function CampaignRevenueDonut({
           })}
         </svg>
       </div>
+      
+      {/* CSS Animations */}
+      <style jsx>{`
+        @keyframes donut-slice-enter {
+          from {
+            transform: scale(0) rotate(0deg);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes donut-title-enter {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes donut-label-enter {
+          from {
+            opacity: 0;
+            transform: scale(0.8);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        @keyframes donut-external-label-enter {
+          from {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes pie-chart-fade-in {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        .pie-chart-container {
+          animation: pie-chart-fade-in 0.3s ease-out forwards;
+        }
+        
+        .donut-title-animate {
+          animation: donut-title-enter 0.3s ease-out forwards;
+          opacity: 0;
+        }
+        
+        .donut-slice-animate {
+          animation: donut-slice-enter 0.4s ease-out forwards;
+          opacity: 0;
+        }
+        
+        .donut-label-animate {
+          animation: donut-label-enter 0.3s ease-out forwards;
+          opacity: 0;
+        }
+        
+        .donut-external-label-animate {
+          animation: donut-external-label-enter 0.3s ease-out forwards;
+          opacity: 0;
+        }
+      `}</style>
     </div>
   )
 }

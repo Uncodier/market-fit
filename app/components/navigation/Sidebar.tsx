@@ -29,34 +29,30 @@ import Image from "next/image"
 import { useAuth } from "@/app/hooks/use-auth"
 
 // Add Cpu icon for AI representation
-const Cpu = ({ className = "", size = 18, ...props }: { className?: string, size?: number, [key: string]: any }) => (
-  <div 
-    className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
-    style={{ 
-      width: size, 
-      height: size, 
-      display: 'inline-flex',  // Explicit display style for Safari
-      alignItems: 'center',    // Explicit alignment for Safari
-      justifyContent: 'center', // Explicit justification for Safari
-      position: 'relative',    // Explicit position for Safari
-      ...props.style 
-    }}
-    onClick={props.onClick}
-    aria-hidden={props["aria-hidden"] ?? true}
+const Cpu = ({ className = "", ...props }: { className?: string, [key: string]: any }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    width="18" 
+    height="18" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className={className}
+    {...props}
   >
-    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-      <rect x="9" y="9" width="6" height="6" />
-      <line x1="9" y1="1" x2="9" y2="4" />
-      <line x1="15" y1="1" x2="15" y2="4" />
-      <line x1="9" y1="20" x2="9" y2="23" />
-      <line x1="15" y1="20" x2="15" y2="23" />
-      <line x1="20" y1="9" x2="23" y2="9" />
-      <line x1="20" y1="14" x2="23" y2="14" />
-      <line x1="1" y1="9" x2="4" y2="9" />
-      <line x1="1" y1="14" x2="4" y2="14" />
-    </svg>
-  </div>
+    <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+    <rect x="9" y="9" width="6" height="6" />
+    <line x1="9" y1="1" x2="9" y2="4" />
+    <line x1="15" y1="1" x2="15" y2="4" />
+    <line x1="9" y1="20" x2="9" y2="23" />
+    <line x1="15" y1="20" x2="15" y2="23" />
+    <line x1="20" y1="9" x2="23" y2="9" />
+    <line x1="20" y1="14" x2="23" y2="14" />
+    <line x1="1" y1="9" x2="4" y2="9" />
+    <line x1="1" y1="14" x2="4" y2="14" />
+  </svg>
 )
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -210,7 +206,10 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div style={{ paddingTop: '21.6px', paddingBottom: '21.6px' }}>
           {/* Main Navigation Items */}
-          <div className="space-y-1 px-3">
+          <div className={cn(
+            "space-y-1",
+            isCollapsed ? "px-[14px]" : "px-3"
+          )}>
             {mainNavigationItems.map((item) => (
               <MenuItem
                 key={item.href}
@@ -226,7 +225,10 @@ export function Sidebar({
           {/* Human in the Loop Category */}
           <div style={{ marginTop: '21.6px' }}>
             <CategoryHeader title="Human in the Loop" isCollapsed={isCollapsed} />
-            <div className="space-y-1 px-3">
+            <div className={cn(
+              "space-y-1",
+              isCollapsed ? "px-[14px]" : "px-3"
+            )}>
               {humanInTheLoopItems.map((item) => (
                 <MenuItem
                   key={item.href}
@@ -243,7 +245,10 @@ export function Sidebar({
           {/* Automatic Category */}
           <div style={{ marginTop: '21.6px' }}>
             <CategoryHeader title="Automatic" isCollapsed={isCollapsed} />
-            <div className="space-y-1 px-3">
+            <div className={cn(
+              "space-y-1",
+              isCollapsed ? "px-[14px]" : "px-3"
+            )}>
               {automaticItems.map((item) => (
                 <MenuItem
                   key={item.href}
@@ -261,10 +266,12 @@ export function Sidebar({
 
       {/* Bottom Section - Fixed */}
       <div className="flex-none border-t border-border">
-        <ConfigurationSection className="px-3" isCollapsed={isCollapsed} />
+        <ConfigurationSection className={cn(
+          isCollapsed ? "px-[14px]" : "px-3"
+        )} isCollapsed={isCollapsed} />
         <div className={cn(
-          "border-t border-border px-3",
-          isCollapsed && "flex justify-center"
+          "border-t border-border",
+          isCollapsed ? "px-[14px] flex justify-center" : "px-3"
         )}
         style={{ paddingTop: '14.4px', paddingBottom: '14.4px' }}
         >

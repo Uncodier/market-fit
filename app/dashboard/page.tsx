@@ -8,6 +8,7 @@ import { SegmentDonut } from "@/app/components/dashboard/segment-donut"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { CostReports } from "@/app/components/dashboard/cost-reports"
 import { SalesReports } from "@/app/components/dashboard/sales-reports"
+import { TrafficReports } from "@/app/components/dashboard/traffic-reports"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { HelpCircle } from "@/app/components/ui/icons"
@@ -308,6 +309,7 @@ export default function DashboardPage() {
                 <TabsList>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                  <TabsTrigger value="traffic">Traffic</TabsTrigger>
                   <TabsTrigger value="costs">Cost Reports</TabsTrigger>
                   <TabsTrigger value="sales">Sales Reports</TabsTrigger>
                 </TabsList>
@@ -551,6 +553,16 @@ export default function DashboardPage() {
 
                 </div>
               </>
+            )}
+          </TabsContent>
+          <TabsContent value="traffic" className="space-y-4">
+            {activeTab === "traffic" && currentSite && (
+              <TrafficReports 
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                segmentId={selectedSegment}
+                siteId={currentSite.id}
+              />
             )}
           </TabsContent>
           <TabsContent value="costs" className="space-y-4">

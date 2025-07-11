@@ -75,7 +75,7 @@ export function CostCategoryChart({ data }: CostCategoryChartProps) {
   }
 
   return (
-    <div className="w-full h-[300px]">
+    <div className="w-full h-[300px] pie-chart-container">
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           {/* Definición de gradientes para los sectores */}
@@ -105,7 +105,10 @@ export function CostCategoryChart({ data }: CostCategoryChartProps) {
             dataKey="value"
             nameKey="name"
             labelLine={false}
-            isAnimationActive={false}
+            isAnimationActive={true}
+            animationBegin={0}
+            animationDuration={400}
+            animationEasing="ease-out"
           >
             {chartData.map((entry, index) => (
               <Cell 
@@ -126,6 +129,24 @@ export function CostCategoryChart({ data }: CostCategoryChartProps) {
           />
         </PieChart>
       </ResponsiveContainer>
+      
+      {/* CSS Animations */}
+      <style jsx>{`
+        @keyframes pie-chart-fade-in {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        .pie-chart-container {
+          animation: pie-chart-fade-in 0.3s ease-out forwards;
+        }
+      `}</style>
     </div>
   )
 } 

@@ -441,9 +441,9 @@ export function SegmentDonut({
   }
   
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center pie-chart-container">
       {showTotal && (
-        <div className="text-xl font-bold mb-1">
+        <div className="text-xl font-bold mb-1 donut-title-animate">
           {formatValues ? formatCurrency(totalValue) : totalValue}
         </div>
       )}
@@ -500,14 +500,15 @@ export function SegmentDonut({
                 fill={`url(#slice-gradient-${index})`}
                 stroke="white"
                 strokeWidth="1"
-                className="transition-all duration-200"
+                className="transition-all duration-200 donut-slice-animate"
                 style={{
                   opacity: hoveredIndex === null || hoveredIndex === index ? 1 : 0.5,
                   cursor: "pointer",
                   transform: isHovered 
                     ? `translate(${translateX}px, ${translateY}px) scale(${scaleFactor})` 
                     : "translate(0, 0) scale(1)",
-                  transformOrigin: `${center}px ${center}px`
+                  transformOrigin: `${center}px ${center}px`,
+                  animationDelay: `${index * 0.05}s`
                 }}
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
@@ -536,12 +537,13 @@ export function SegmentDonut({
                   fontSize={data.length === 1 ? "14" : "10"}
                   fontWeight={isHovered ? "bold" : "medium"}
                   fill="white"
-                  className={`${data.length === 1 ? "text-sm" : "text-xs"} transition-all duration-200`}
+                  className={`${data.length === 1 ? "text-sm" : "text-xs"} transition-all duration-200 donut-label-animate`}
                   style={{
                     opacity: hoveredIndex === null || hoveredIndex === index ? 1 : 0.5,
                     transform: isHovered 
                       ? `translate(${translateX}px, ${translateY}px)` 
-                      : "translate(0, 0)"
+                      : "translate(0, 0)",
+                    animationDelay: `${index * 0.05 + 0.1}s`
                   }}
                 >
                   {slice.formattedPercentage}
@@ -572,11 +574,12 @@ export function SegmentDonut({
             return (
               <g 
                 key={`label-group-${index}`}
-                className="transition-all duration-200"
+                className="transition-all duration-200 donut-external-label-animate"
                 style={{
                   opacity: hoveredIndex === null || hoveredIndex === index ? 1 : 0.5,
                   cursor: "pointer",
-                  fontWeight: isHovered ? "bold" : "normal"
+                  fontWeight: isHovered ? "bold" : "normal",
+                  animationDelay: `${index * 0.05 + 0.1}s`
                 }}
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
@@ -625,6 +628,88 @@ export function SegmentDonut({
           })}
         </svg>
       </div>
+      
+      {/* CSS Animations */}
+      <style jsx>{`
+        @keyframes donut-slice-enter {
+          from {
+            transform: scale(0) rotate(0deg);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes donut-title-enter {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes donut-label-enter {
+          from {
+            opacity: 0;
+            transform: scale(0.8);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        @keyframes donut-external-label-enter {
+          from {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes pie-chart-fade-in {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        .pie-chart-container {
+          animation: pie-chart-fade-in 0.3s ease-out forwards;
+        }
+        
+        .donut-title-animate {
+          animation: donut-title-enter 0.3s ease-out forwards;
+          opacity: 0;
+        }
+        
+        .donut-slice-animate {
+          animation: donut-slice-enter 0.4s ease-out forwards;
+          opacity: 0;
+        }
+        
+        .donut-label-animate {
+          animation: donut-label-enter 0.3s ease-out forwards;
+          opacity: 0;
+        }
+        
+        .donut-external-label-animate {
+          animation: donut-external-label-enter 0.3s ease-out forwards;
+          opacity: 0;
+        }
+      `}</style>
     </div>
   )
 } 

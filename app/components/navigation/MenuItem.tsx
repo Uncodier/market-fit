@@ -80,7 +80,7 @@ export function MenuItem({
     <>
       <div className={cn(
         "flex items-center justify-center safari-icon-fix",
-        isCollapsed ? "w-full" : "w-[23px]",
+        isCollapsed ? "w-[35px]" : "w-[23px]",
         "h-[23px]",
         isSettingsLink ? "safari-settings-icon" : "",
         href === "/settings" || href.includes("settings") ? "settings-icon-container" : "",

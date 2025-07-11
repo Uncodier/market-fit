@@ -43,6 +43,11 @@ export function SalesDistributionChart({ data, isLoading, dataReady }: SalesDist
     ? ['#818CF8', '#A5B4FC', '#C7D2FE', '#DDD6FE', '#F5D0FE', '#FBCFE8'] 
     : ['#6366F1', '#8B5CF6', '#EC4899', '#F97316', '#14B8A6', '#06B6D4'];
 
+  // Lighter versions of colors for gradients
+  const LIGHT_COLORS = isDarkMode
+    ? ['#A5B4FC', '#C7D2FE', '#DDD6FE', '#F5D0FE', '#FBCFE8', '#FDE68A']
+    : ['#818CF8', '#A78BFA', '#F472B6', '#FB923C', '#2DD4BF', '#3B82F6'];
+
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -112,9 +117,26 @@ export function SalesDistributionChart({ data, isLoading, dataReady }: SalesDist
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="w-full h-[300px]">
+        <div className="w-full h-[300px] pie-chart-container">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
+              {/* Gradient definitions */}
+              <defs>
+                {COLORS.map((color, index) => (
+                  <radialGradient
+                    key={`gradient-${index}`}
+                    id={`salesDistributionGradient-${index}`}
+                    cx="50%"
+                    cy="50%"
+                    r="70%"
+                    fx="50%"
+                    fy="50%"
+                  >
+                    <stop offset="0%" stopColor={LIGHT_COLORS[index]} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={color} stopOpacity={1} />
+                  </radialGradient>
+                ))}
+              </defs>
               <Pie
                 data={data}
                 cx="50%"
@@ -125,12 +147,15 @@ export function SalesDistributionChart({ data, isLoading, dataReady }: SalesDist
                 dataKey="amount"
                 nameKey="category"
                 labelLine={false}
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationBegin={0}
+                animationDuration={400}
+                animationEasing="ease-out"
               >
                 {data.map((entry, index) => (
                   <Cell 
                     key={`cell-${index}`} 
-                    fill={COLORS[index % COLORS.length]} 
+                    fill={`url(#salesDistributionGradient-${index % COLORS.length})`}
                     stroke={isDarkMode ? '#1E293B' : '#fff'}
                     strokeWidth={2}
                   />
@@ -150,6 +175,24 @@ export function SalesDistributionChart({ data, isLoading, dataReady }: SalesDist
             </PieChart>
           </ResponsiveContainer>
         </div>
+        
+        {/* CSS Animations */}
+        <style jsx>{`
+          @keyframes pie-chart-fade-in {
+            from {
+              opacity: 0;
+              transform: scale(0.9);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+          
+          .pie-chart-container {
+            animation: pie-chart-fade-in 0.3s ease-out forwards;
+          }
+        `}</style>
       </CardContent>
     </Card>
   );
