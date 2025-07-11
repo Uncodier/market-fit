@@ -2,6 +2,7 @@ import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
 import { type Site } from "../../context/SiteContext"
 import { secureTokensService } from "../../services/secure-tokens-service"
+import { createClient } from "@/lib/supabase/client"
 
 interface SaveOptions {
   currentSite: Site
@@ -416,14 +417,72 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
   }
 }
 
-export const handleCacheAndRebuild = async (setIsSaving: (saving: boolean) => void) => {
+export const handleCacheAndRebuild = async (setIsSaving: (saving: boolean) => void, currentSite?: Site, user?: any) => {
   try {
     setIsSaving(true)
-    // Aquí iría la lógica para borrar caché y reconstruir experimentos
-    toast.success("Cache cleared and experiments rebuilt successfully")
+    
+    if (!currentSite?.id || !user?.id) {
+      toast.error("Missing site or user information")
+      return
+    }
+
+    if (!currentSite.url) {
+      toast.error("Site URL is missing. Please add a URL to your site in the settings.")
+      return
+    }
+
+    // Step 1: Delete all analysis records for the current site
+    const supabase = createClient()
+    console.log("Deleting analysis records for site:", currentSite.id)
+    
+    const { error: deleteError } = await supabase
+      .from('analysis')
+      .delete()
+      .eq('site_id', currentSite.id)
+    
+    if (deleteError) {
+      console.error("Error deleting analysis records:", deleteError)
+      toast.error("Failed to clear analysis cache")
+      return
+    }
+    
+    console.log("Analysis records deleted successfully")
+    
+    // Step 2: Call the siteAnalysis workflow
+    console.log("Starting siteAnalysis workflow for site:", currentSite.id)
+    
+    const { apiClient } = await import('@/app/services/api-client-service')
+    
+    const response = await apiClient.post('/api/workflow/analyzeSite', {
+      user_id: user.id,
+      site_id: currentSite.id,
+      url: currentSite.url,
+      provider: "openai",
+      modelId: "gpt-4o",
+      includeScreenshot: true
+    })
+    
+    if (response.success) {
+      console.log('SiteAnalysis workflow completed successfully:', response.data)
+      toast.success("Cache cleared and site analysis completed successfully")
+    } else {
+      const errorMessage = typeof response.error === 'string' 
+        ? response.error 
+        : response.error?.message 
+        ? String(response.error.message)
+        : 'Failed to run site analysis'
+      console.error('SiteAnalysis workflow failed:', response.error)
+      toast.error(`Cache cleared but analysis failed: ${errorMessage}`)
+    }
+    
   } catch (error) {
-    console.error(error)
-    toast.error("Error clearing cache and rebuilding experiments")
+    console.error("Error in cache and rebuild:", error)
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : typeof error === 'string' 
+      ? error 
+      : 'An error occurred while clearing cache and rebuilding'
+    toast.error(errorMessage)
   } finally {
     setIsSaving(false)
   }

@@ -25,6 +25,7 @@ import { type SiteFormValues } from "../components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
 import { handleSave, handleCacheAndRebuild, handleDeleteSite } from "../components/settings/save-handlers"
 import { Input } from "../components/ui/input"
+import { useAuthContext } from "../components/auth/auth-provider"
 
 function SettingsFormSkeleton() {
   return (
@@ -141,6 +142,7 @@ function SettingsFormSkeleton() {
 export default function SettingsPage() {
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
   const { theme } = useTheme()
+  const { user } = useAuthContext()
   const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("general")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -203,7 +205,7 @@ export default function SettingsPage() {
 
   // Wrapper functions for other handlers
   const onCacheAndRebuild = async () => {
-    await handleCacheAndRebuild(setIsSaving)
+    await handleCacheAndRebuild(setIsSaving, currentSite || undefined, user)
   }
 
   const onDeleteSite = async () => {
