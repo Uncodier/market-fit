@@ -125,7 +125,7 @@ export function SessionEventsChart({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <CardTitle>Page Visits vs Unique Visitors</CardTitle>
           <div className="h-8 flex items-center space-x-3">
@@ -140,8 +140,8 @@ export function SessionEventsChart({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="w-full h-[350px] flex flex-col overflow-hidden">
+        <CardContent className="flex-1 flex flex-col">
+          <div className="w-full h-full flex flex-col overflow-hidden">
             {/* Legend skeleton */}
             <div className="flex justify-center items-center space-x-6 pb-4 pt-2">
               <div className="flex items-center space-x-2">
@@ -234,8 +234,8 @@ export function SessionEventsChart({
 
   if (error) {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+      <Card className="flex flex-col">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
           <CardTitle>Page Visits vs Unique Visitors</CardTitle>
           <div className="h-8 flex items-center">
             <div className="text-2xl font-bold">
@@ -243,8 +243,8 @@ export function SessionEventsChart({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="text-red-500 text-center py-8">
+        <CardContent className="flex-1 flex flex-col items-center justify-center">
+          <div className="text-red-500 text-center">
             Error: {error}
           </div>
         </CardContent>
@@ -253,8 +253,8 @@ export function SessionEventsChart({
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+    <Card className="flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
         <CardTitle>Page Visits vs Unique Visitors</CardTitle>
         <div className="h-8 flex items-center space-x-4">
           <div className="text-sm text-muted-foreground">
@@ -265,16 +265,18 @@ export function SessionEventsChart({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 flex flex-col">
         {data.length === 0 || (totalPageVisits === 0 && totalUniqueVisitors === 0) ? (
-          <EmptyCard
-            icon={<BarChartIcon className="h-10 w-10 text-muted-foreground" />}
-            title="No Events Found"
-            description="No page visits recorded for this time period"
-            variant="fancy"
-          />
+          <div className="flex-1 flex items-center justify-center">
+            <EmptyCard
+              icon={<BarChartIcon className="h-10 w-10 text-muted-foreground" />}
+              title="No Events Found"
+              description="No page visits recorded for this time period"
+              variant="fancy"
+            />
+          </div>
         ) : (
-          <div className="h-[350px]">
+          <div className="flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={data}

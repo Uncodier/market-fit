@@ -262,10 +262,10 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
       if (intervalType === 'day') {
       // For days, center around the selected range
       const centerDay = new Date((start.getTime() + end.getTime()) / 2)
-      const startInterval = addDays(centerDay, -Math.floor(count / 2))
+      const startInterval = startOfDay(addDays(centerDay, -Math.floor(count / 2)))
         
       for (let i = 0; i < count; i++) {
-        const intervalStart = addDays(startInterval, i)
+        const intervalStart = startOfDay(addDays(startInterval, i))
         const intervalEnd = endOfDay(intervalStart)
         const rangeEnd = addDays(intervalStart, 1)
         const name = `${format(intervalStart, 'd')}-${format(rangeEnd, 'd')} ${format(intervalStart, 'MMM')}`
@@ -279,10 +279,10 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
       } else if (intervalType === 'week') {
       // For weeks, center around the selected range
       const centerDay = new Date((start.getTime() + end.getTime()) / 2)
-      const startInterval = addDays(centerDay, -Math.floor(count / 2) * 7)
+      const startInterval = startOfDay(addDays(centerDay, -Math.floor(count / 2) * 7))
         
       for (let i = 0; i < count; i++) {
-        const intervalStart = addDays(startInterval, i * 7)
+        const intervalStart = startOfDay(addDays(startInterval, i * 7))
         const intervalEnd = endOfDay(addDays(intervalStart, 6))
         const rangeEnd = addDays(intervalStart, 6)
         const name = `${format(intervalStart, 'd')}-${format(rangeEnd, 'd')} ${format(intervalStart, 'MMM')}`
@@ -341,6 +341,8 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   // Encuentra el valor máximo para calcular las alturas relativas
   const maxValue = Math.max(...chartData.map(item => item.total || 0))
   
+
+  
   // Formato de números para mostrar de forma legible
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('es-ES').format(num)
@@ -353,7 +355,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
 
   if (isLoading) {
     return (
-      <div className="w-full h-[350px] flex flex-col pl-4 overflow-hidden">
+      <div className="w-full h-full flex flex-col pl-4 overflow-hidden">
         {/* Esqueleto para el eje Y con valores */}
         <div className="flex flex-1 relative">
           <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-between py-4">
@@ -403,9 +405,11 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   // Check if there's no data or all values are null
   const hasData = chartData.length > 0 && chartData.some(item => item.total !== null);
   
+
+  
   if (!hasData) {
     return (
-      <div className="w-full h-[350px] flex items-center justify-center">
+      <div className="w-full h-full flex items-center justify-center">
         <EmptyCard
           icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
           title="No data available"
@@ -418,7 +422,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   }
 
   return (
-    <div className="w-full h-[350px] flex flex-col pl-4">
+    <div className="w-full h-full flex flex-col pl-4">
       {/* Agregar ejes Y con valores */}
       <div className="flex flex-1 relative">
         {/* Eje Y con valores */}

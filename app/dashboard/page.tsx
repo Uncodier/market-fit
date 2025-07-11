@@ -414,13 +414,13 @@ export default function DashboardPage() {
                     endDate={dateRange.endDate}
                   />
                 </div>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
-                  <Card className="col-span-1">
-                    <CardHeader>
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2 h-[500px]">
+                  <Card className="col-span-1 flex flex-col">
+                    <CardHeader className="flex-shrink-0">
                       <CardTitle>Overview</CardTitle>
                     </CardHeader>
-                    <CardContent className="pl-2">
-                      <div className="min-h-[350px]">
+                    <CardContent className="pl-2 flex-1 flex flex-col">
+                      <div className="flex-1">
                         <Overview 
                           startDate={dateRange.startDate}
                           endDate={dateRange.endDate}
@@ -429,12 +429,12 @@ export default function DashboardPage() {
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="col-span-1">
-                    <CardHeader>
+                  <Card className="col-span-1 flex flex-col">
+                    <CardHeader className="flex-shrink-0">
                       <CardTitle>Recent commercial activity</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="min-h-[200px]">
+                    <CardContent className="flex-1 flex flex-col">
+                      <div className="flex-1">
                         <RecentActivity 
                           limit={5}
                           startDate={dateRange.startDate}

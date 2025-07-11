@@ -37,7 +37,7 @@ export function OverviewClient() {
   }
 
   return (
-    <div className="w-full h-[350px]">
+    <div className="w-full h-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}

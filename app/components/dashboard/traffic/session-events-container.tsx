@@ -76,7 +76,7 @@ export function SessionEventsContainer({ siteId, startDate, endDate }: SessionEv
   }, [siteId, startDate, endDate]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px]">
       <SessionEventsChart 
         siteId={siteId}
         startDate={startDate}
