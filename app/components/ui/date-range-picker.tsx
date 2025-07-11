@@ -33,114 +33,51 @@ export function CalendarDateRangePicker({
   const validateDates = useCallback((startDate: Date, endDate: Date) => {
     const now = new Date();
     const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentDay = now.getDate();
     
-    // CRITICAL DEBUG: Log validation input
-    console.log(`[DateRangePicker] CRITICAL DEBUG - validateDates called with:`);
+    console.log(`[DateRangePicker] CRITICAL DEBUG - validateDates input:`);
     console.log(`[DateRangePicker] - startDate: ${startDate.toISOString()}`);
     console.log(`[DateRangePicker] - endDate: ${endDate.toISOString()}`);
     console.log(`[DateRangePicker] - startDate year: ${startDate.getFullYear()}`);
     console.log(`[DateRangePicker] - endDate year: ${endDate.getFullYear()}`);
     console.log(`[DateRangePicker] - current year: ${currentYear}`);
+    console.log(`[DateRangePicker] - current date: ${now.toISOString()}`);
     
-    try {
-      // First ensure we have valid Date objects - if not, use safe defaults
-      let validStartDate;
-      let validEndDate;
-      
-      // Handle possible strings or timestamp inputs
-      if (typeof startDate === 'string' || typeof startDate === 'number') {
-        try {
-          validStartDate = new Date(startDate);
-          if (!isValid(validStartDate)) {
-            console.error("[DateRangePicker] Invalid start date from string/number:", startDate);
-            validStartDate = subMonths(now, 1);
-          }
-        } catch (e) {
-          console.error("[DateRangePicker] Error parsing start date:", e);
-          validStartDate = subMonths(now, 1);
-        }
-      } else {
-        validStartDate = startDate instanceof Date && isValid(startDate) 
-          ? new Date(startDate) // Create a new date object to avoid reference issues
-          : subMonths(now, 1);
-      }
-      
-      if (typeof endDate === 'string' || typeof endDate === 'number') {
-        try {
-          validEndDate = new Date(endDate);
-          if (!isValid(validEndDate)) {
-            console.error("[DateRangePicker] Invalid end date from string/number:", endDate);
-            validEndDate = now;
-          }
-        } catch (e) {
-          console.error("[DateRangePicker] Error parsing end date:", e);
-          validEndDate = now;
-        }
-      } else {
-        validEndDate = endDate instanceof Date && isValid(endDate)
-          ? new Date(endDate) // Create a new date object to avoid reference issues
-          : now;
-      }
-      
-      // Detect extreme future dates or incorrect years
-      if (validStartDate.getFullYear() > currentYear) {
-        console.error(`[DateRangePicker] Future year detected in start date: ${validStartDate.toISOString()} (year: ${validStartDate.getFullYear()}, current: ${currentYear})`);
-        
-        // Create a corrected date in the current year
-        const fixedDate = new Date(validStartDate);
-        fixedDate.setFullYear(currentYear);
-        
-        // If it's still in the future, use last year
-        if (fixedDate > now) {
-          fixedDate.setFullYear(currentYear - 1);
-        }
-        
-        validStartDate = fixedDate;
-        console.log(`[DateRangePicker] Corrected start date to: ${validStartDate.toISOString()}`);
-      }
-      
-      if (validEndDate.getFullYear() > currentYear) {
-        console.error(`[DateRangePicker] Future year detected in end date: ${validEndDate.toISOString()} (year: ${validEndDate.getFullYear()}, current: ${currentYear})`);
-        
-        // For end date, we'll just use today
-        validEndDate = now;
-        console.log(`[DateRangePicker] Corrected end date to today: ${validEndDate.toISOString()}`);
-      }
-      
-      // Then validate against future dates
-      if (isFuture(validStartDate)) {
-        console.log(`[DateRangePicker] Start date is in the future (${format(validStartDate, 'yyyy-MM-dd')}), using one month ago`);
-        validStartDate = subMonths(now, 1);
-      }
-      
-      if (isFuture(validEndDate)) {
-        console.log(`[DateRangePicker] End date is in the future (${format(validEndDate, 'yyyy-MM-dd')}), using today`);
-        validEndDate = now;
-      }
-      
-      // Final safety check for range validity
-      if (validStartDate > validEndDate) {
-        console.log(`[DateRangePicker] Invalid range (start after end), using default range`);
-        validStartDate = subMonths(now, 1);
-        validEndDate = now;
-      }
-      
-      // CRITICAL DEBUG: Log validation output
-      console.log(`[DateRangePicker] CRITICAL DEBUG - validateDates output:`);
-      console.log(`[DateRangePicker] - validStartDate: ${validStartDate.toISOString()}`);
-      console.log(`[DateRangePicker] - validEndDate: ${validEndDate.toISOString()}`);
-      console.log(`[DateRangePicker] - validStartDate year: ${validStartDate.getFullYear()}`);
-      console.log(`[DateRangePicker] - validEndDate year: ${validEndDate.getFullYear()}`);
-      
-      return { validStartDate, validEndDate };
-    } catch (error) {
-      console.error("[DateRangePicker] Error in date validation:", error);
-      // Return safe defaults if any error occurs
-      return {
-        validStartDate: subMonths(now, 1),
-        validEndDate: now
-      };
+    let validStartDate = new Date(startDate);
+    let validEndDate = new Date(endDate);
+    
+    // Check if dates are actually in the future (beyond today)
+    if (validStartDate > now) {
+      console.warn(`[DateRangePicker] Start date is in the future: ${validStartDate.toISOString()}, using one month ago`);
+      validStartDate = subMonths(now, 1);
     }
+    
+    if (validEndDate > now) {
+      console.warn(`[DateRangePicker] End date is in the future: ${validEndDate.toISOString()}, using today`);
+      validEndDate = now;
+    }
+    
+    // Ensure start date is not after end date
+    if (validStartDate > validEndDate) {
+      console.warn(`[DateRangePicker] Start date is after end date, adjusting start date`);
+      validStartDate = subMonths(validEndDate, 1);
+    }
+    
+    // Final validation to ensure dates are reasonable (not more than 2 years in the past)
+    const twoYearsAgo = subMonths(now, 24);
+    if (validStartDate < twoYearsAgo) {
+      console.warn(`[DateRangePicker] Start date is too far in the past: ${validStartDate.toISOString()}, using two years ago`);
+      validStartDate = twoYearsAgo;
+    }
+    
+    console.log(`[DateRangePicker] CRITICAL DEBUG - validateDates output:`);
+    console.log(`[DateRangePicker] - validStartDate: ${validStartDate.toISOString()}`);
+    console.log(`[DateRangePicker] - validEndDate: ${validEndDate.toISOString()}`);
+    console.log(`[DateRangePicker] - validStartDate year: ${validStartDate.getFullYear()}`);
+    console.log(`[DateRangePicker] - validEndDate year: ${validEndDate.getFullYear()}`);
+    
+    return { validStartDate, validEndDate };
   }, []);
   
   // Validate on initial render

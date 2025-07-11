@@ -27,6 +27,7 @@ interface TrafficData {
   referrals: any[];
   regions: any[];
   devices: any[];
+  browsers: any[];
 }
 
 export function TrafficReports({ 
@@ -44,7 +45,8 @@ export function TrafficReports({
     pages: [],
     referrals: [],
     regions: [],
-    devices: []
+    devices: [],
+    browsers: []
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,8 +131,9 @@ export function TrafficReports({
       console.log(`[TrafficReports] Final safe dates for API - startDate: ${startDateStr}, endDate: ${endDateStr}`);
       
       // CRITICAL: Additional check to prevent any future years from being sent
-      if (startDateStr.startsWith('2025') || endDateStr.startsWith('2025')) {
-        console.error(`[TrafficReports] CRITICAL: Future year detected in final dates! startDate: ${startDateStr}, endDate: ${endDateStr}`);
+      const currentYearStr = currentYear.toString();
+      if (parseInt(startDateStr.split('-')[0]) > currentYear || parseInt(endDateStr.split('-')[0]) > currentYear) {
+        console.error(`[TrafficReports] CRITICAL: Future year detected in final dates! startDate: ${startDateStr}, endDate: ${endDateStr}, current year: ${currentYear}`);
         console.error(`[TrafficReports] Stack trace:`, new Error().stack);
         // Force reset to safe values
         safeStartDate = subDays(now, 30);
@@ -145,11 +148,15 @@ export function TrafficReports({
         params.append("startDate", format(safeStartDate, 'yyyy-MM-dd'));
         params.append("endDate", format(safeEndDate, 'yyyy-MM-dd'));
         
-        // Additional validation of the constructed URL
+        // Additional validation of the constructed URL - check for actual future years only
         const urlParams = params.toString();
-        if (urlParams.includes('2025')) {
+        const urlStartYear = parseInt(urlParams.match(/startDate=(\d{4})/)?.[1] || '0');
+        const urlEndYear = parseInt(urlParams.match(/endDate=(\d{4})/)?.[1] || '0');
+        
+        if (urlStartYear > currentYear || urlEndYear > currentYear) {
           console.error(`[TrafficReports] CRITICAL: Future year detected in URL params for ${endpoint}!`);
           console.error(`[TrafficReports] URL params: ${urlParams}`);
+          console.error(`[TrafficReports] Start year: ${urlStartYear}, End year: ${urlEndYear}, Current year: ${currentYear}`);
           throw new Error(`Future year detected in API parameters: ${urlParams}`);
         }
         
@@ -190,7 +197,7 @@ export function TrafficReports({
 
       try {
         // Define endpoints and fetch data
-        const endpoints = ["pages", "referrals", "regions", "devices"];
+        const endpoints = ["pages", "referrals", "regions", "devices", "browsers"];
         const results = [];
 
         for (let i = 0; i < endpoints.length; i++) {
@@ -231,7 +238,8 @@ export function TrafficReports({
           pages: [],
           referrals: [],
           regions: [],
-          devices: []
+          devices: [],
+          browsers: []
         };
 
         results.forEach((result: any) => {
@@ -339,20 +347,20 @@ export function TrafficReports({
         
         <Card className="col-span-1">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Traffic Sources</CardTitle>
+            <CardTitle className="text-base">Browsers</CardTitle>
             <CardDescription className="text-xs">
-              Where your visitors come from
+              Most popular browsers used to visit
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             <TrafficPieChart
-              endpoint="referrals"
-              title="Traffic Sources"
-              emptyText="No referral data available"
+              endpoint="browsers"
+              title="Browsers"
+              emptyText="No browser data available"
               segmentId={segmentId}
               startDate={startDate}
               endDate={endDate}
-              preloadedData={dataLoaded ? trafficData.referrals : undefined}
+              preloadedData={dataLoaded ? trafficData.browsers : undefined}
               isLoading={isLoading}
               error={error}
               skipApiCall={true}

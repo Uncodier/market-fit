@@ -115,9 +115,10 @@ export default function DashboardPage() {
     const currentYear = now.getFullYear();
     
     console.log(`[Dashboard] validateDates called with: ${format(startDate, 'yyyy-MM-dd')} - ${format(endDate, 'yyyy-MM-dd')}`);
+    console.log(`[Dashboard] Current year: ${currentYear}, today: ${format(now, 'yyyy-MM-dd')}`);
     
     try {
-      // FORCE dates to be in the past - no exceptions
+      // Use today's date as the baseline, not the current year
       let safeStartDate = subMonths(now, 1); // Default to one month ago
       let safeEndDate = now; // Default to today
       
@@ -129,10 +130,14 @@ export default function DashboardPage() {
         // Check if the provided date is reasonable (not in future, not more than 2 years in past)
         const twoYearsAgo = subMonths(now, 24);
         
+        // Use actual date comparison instead of year comparison
         if (startDate <= now && startDate >= twoYearsAgo) {
           safeStartDate = startDate;
+        } else if (startDate > now) {
+          console.warn(`[Dashboard] Start date is in the future: ${format(startDate, 'yyyy-MM-dd')}, using one month ago`);
+          // Keep the default
         } else {
-          console.warn(`[Dashboard] Start date out of reasonable range: ${format(startDate, 'yyyy-MM-dd')}, using one month ago`);
+          console.warn(`[Dashboard] Start date is too old: ${format(startDate, 'yyyy-MM-dd')}, using one month ago`);
           // Keep the default
         }
       }
@@ -215,9 +220,10 @@ export default function DashboardPage() {
       const now = new Date();
       let needsReset = false;
       
-      // Check if either date is in the future
-      if (isFuture(dateRange.startDate) || isFuture(dateRange.endDate)) {
+      // Check if either date is actually in the future (beyond today)
+      if (dateRange.startDate > now || dateRange.endDate > now) {
         console.error(`[Dashboard] Future dates detected in initialized state: ${format(dateRange.startDate, 'yyyy-MM-dd')} - ${format(dateRange.endDate, 'yyyy-MM-dd')}`);
+        console.error(`[Dashboard] Current date: ${format(now, 'yyyy-MM-dd')}`);
         needsReset = true;
       }
       

@@ -152,18 +152,19 @@ export function SessionEventsReferrers({
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="flex flex-col">
+      <CardHeader className="flex-shrink-0">
         <CardTitle>Top Referrers</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 flex flex-col">
         {data.length === 0 ? (
-          <EmptyCard
-            icon={<ExternalLink className="h-10 w-10 text-muted-foreground" />}
-            title="No Referrers Found"
-            description="No referrer data available for page visits in this time period"
-            variant="fancy"
-          />
+          <div className="flex-1 w-full h-full flex items-center justify-center">
+            <EmptyCard
+              icon={<ExternalLink className="h-10 w-10 text-muted-foreground" />}
+              title="No Referrers Found"
+              description="No referrer data available for page visits in this time period"
+            />
+          </div>
         ) : (
           <Table>
             <TableHeader>

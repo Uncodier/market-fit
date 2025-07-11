@@ -253,13 +253,14 @@ export function TrafficPieChart({
 
   if (hasError || data.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center">
+      <div className="h-64 w-full flex items-center justify-center">
         <EmptyCard 
           icon={<PieChart className="h-6 w-6 text-muted-foreground" />}
           title="No data"
           description={emptyText}
           variant="fancy"
           showShadow={false}
+          className="w-full h-full border-none shadow-none"
           contentClassName="py-6"
         />
       </div>

@@ -19,7 +19,7 @@ import React from "react"
 import { Separator } from "@/app/components/ui/separator"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
-import { format } from "date-fns"
+import { format, subDays, startOfMonth, isWithinInterval, parseISO } from "date-fns"
 import { Sale } from "@/app/types"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Label } from "@/app/components/ui/label"
@@ -30,6 +30,7 @@ import { KanbanView } from "./components/KanbanView"
 import { CreateSaleDialog } from "./components/CreateSaleDialog"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 
 // Constants
 const NO_SEGMENT = "no_segment"
@@ -430,6 +431,10 @@ export default function SalesPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [viewType, setViewType] = useState<ViewType>("table")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [dateRange, setDateRange] = useState({
+    startDate: subDays(new Date(), 30),
+    endDate: new Date()
+  })
   const { currentSite } = useSite()
   const router = useRouter()
   
@@ -511,6 +516,12 @@ export default function SalesPage() {
     setCurrentPage(1)
   }
 
+  // Date range change handler
+  const handleDateRangeChange = (startDate: Date, endDate: Date) => {
+    setDateRange({ startDate, endDate })
+    setCurrentPage(1)
+  }
+
   // Create sale success handler
   const handleCreateSuccess = () => {
     loadSales()
@@ -528,7 +539,7 @@ export default function SalesPage() {
     }
   }, [])
 
-  // Filter sales based on status and search query
+  // Filter sales based on status, search query, and date range
   const getFilteredSales = (status: string) => {
     if (!sales) return []
     
@@ -537,6 +548,20 @@ export default function SalesPage() {
     if (status !== "all") {
       filtered = filtered.filter(sale => sale.status === status)
     }
+    
+    // Then filter by date range
+    filtered = filtered.filter(sale => {
+      try {
+        const saleDate = parseISO(sale.saleDate)
+        return isWithinInterval(saleDate, {
+          start: dateRange.startDate,
+          end: dateRange.endDate
+        })
+      } catch (error) {
+        console.error("Error parsing sale date:", error)
+        return true // Include sale if date parsing fails
+      }
+    })
     
     // Then filter by search query if it exists
     if (searchQuery.trim()) {
@@ -567,10 +592,10 @@ export default function SalesPage() {
     setCurrentPage(page)
   }
 
-  // Reset page when tab changes
+  // Reset page when tab changes or date range changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab])
+  }, [activeTab, dateRange])
 
   // Items per page change handler
   function handleItemsPerPageChange(value: string) {
@@ -649,13 +674,13 @@ export default function SalesPage() {
             <div className="px-16 pt-0">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
-                                      <TabsList>
-                      <TabsTrigger value="all" className="text-sm font-medium">All Sales</TabsTrigger>
-                      <TabsTrigger value="pending" className="text-sm font-medium">Pending</TabsTrigger>
-                      <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
-                      <TabsTrigger value="cancelled" className="text-sm font-medium">Cancelled</TabsTrigger>
-                      <TabsTrigger value="refunded" className="text-sm font-medium">Refunded</TabsTrigger>
-                    </TabsList>
+                  <TabsList>
+                    <TabsTrigger value="all" className="text-sm font-medium">All Sales</TabsTrigger>
+                    <TabsTrigger value="pending" className="text-sm font-medium">Pending</TabsTrigger>
+                    <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
+                    <TabsTrigger value="cancelled" className="text-sm font-medium">Cancelled</TabsTrigger>
+                    <TabsTrigger value="refunded" className="text-sm font-medium">Refunded</TabsTrigger>
+                  </TabsList>
                   <div className="relative w-64">
                     <Input 
                       data-command-k-input
@@ -669,6 +694,12 @@ export default function SalesPage() {
                       <span className="text-xs">⌘</span>K
                     </kbd>
                   </div>
+                  <CalendarDateRangePicker 
+                    onRangeChange={handleDateRangeChange} 
+                    initialStartDate={dateRange.startDate}
+                    initialEndDate={dateRange.endDate}
+                    key={`date-range-${format(dateRange.startDate, 'yyyy-MM-dd')}-${format(dateRange.endDate, 'yyyy-MM-dd')}`}
+                  />
                 </div>
                 <div className="ml-auto flex items-center gap-4">
                   <ViewSelector currentView={viewType} onViewChange={setViewType} />

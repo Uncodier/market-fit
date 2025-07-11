@@ -267,12 +267,11 @@ export function SessionEventsChart({
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
         {data.length === 0 || (totalPageVisits === 0 && totalUniqueVisitors === 0) ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 w-full h-full flex items-center justify-center">
             <EmptyCard
               icon={<BarChartIcon className="h-10 w-10 text-muted-foreground" />}
               title="No Events Found"
               description="No page visits recorded for this time period"
-              variant="fancy"
             />
           </div>
         ) : (
