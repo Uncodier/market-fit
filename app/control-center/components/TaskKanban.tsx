@@ -261,28 +261,32 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                         <h3 className="text-sm font-medium line-clamp-1 mb-1">{task.title}</h3>
                                         <div className="flex items-center gap-2 min-w-0">
                                           {task.assigneeName && (
-                                            <>
-                                              <span className="text-xs text-muted-foreground flex-shrink-0">{task.assigneeName}</span>
-                                              <span className="text-xs text-muted-foreground flex-shrink-0">•</span>
-                                            </>
+                                            <span className="text-xs text-muted-foreground flex-shrink-0">{task.assigneeName}</span>
                                           )}
                                           {task.leadName && (
-                                            <>
-                                              <span className="text-xs text-muted-foreground truncate flex-grow min-w-0">{task.leadName}</span>
-                                              <span className="text-xs text-muted-foreground flex-shrink-0">•</span>
-                                            </>
+                                            <span className="text-xs text-muted-foreground truncate flex-grow min-w-0">{task.leadName}</span>
                                           )}
-                                          <span className="text-xs text-muted-foreground flex-shrink-0 min-w-[60px] truncate">
-                                            {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
-                                          </span>
                                         </div>
                                       </div>
                                     </div>
-                                    {task.serial_id && (
-                                      <div className="font-mono text-xs text-muted-foreground flex-shrink-0 ml-2">
-                                        {getSerialNumber(task.serial_id)}
+                                    <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
+                                      {task.serial_id && (
+                                        <div className="font-mono text-xs text-muted-foreground">
+                                          {getSerialNumber(task.serial_id)}
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground min-w-[60px] text-right">
+                                          {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
+                                        </span>
+                                        {task.comments_count ? (
+                                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <MessageSquare className="h-3.5 w-3.5" />
+                                            <span>{task.comments_count}</span>
+                                          </div>
+                                        ) : null}
                                       </div>
-                                    )}
+                                    </div>
                                   </div>
 
                                   <p className="text-xs text-muted-foreground mt-2 mb-2 line-clamp-2 min-h-[0.5rem]">
@@ -298,12 +302,6 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                         {getStageDisplayName(task.stage)}
                                       </Badge>
                                     )}
-                                    {task.comments_count ? (
-                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                        <MessageSquare className="h-3.5 w-3.5" />
-                                        <span>{task.comments_count}</span>
-                                      </div>
-                                    ) : null}
                                   </div>
                                 </CardContent>
                               </Card>
