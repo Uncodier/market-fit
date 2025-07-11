@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
@@ -67,16 +67,18 @@ export function TrafficPieChart({
   const radius = 80;
   const innerRadius = 48;
 
-  // Theme-adaptive color palette
-  const colors = isDarkMode ? [
-    "#818CF8", "#A5B4FC", "#C7D2FE", "#DDD6FE", "#F5D0FE",
-    "#FBCFE8", "#FDE68A", "#FCD34D", "#A78BFA", "#60A5FA"
-  ] : [
-    "#6366F1", "#8B5CF6", "#EC4899", "#F97316", "#14B8A6",
-    "#06B6D4", "#84CC16", "#F59E0B", "#EF4444", "#3B82F6"
-  ];
+  // FIXED: Memoize colors to prevent infinite re-renders
+  const colors = useMemo(() => {
+    return isDarkMode ? [
+      "#818CF8", "#A5B4FC", "#C7D2FE", "#DDD6FE", "#F5D0FE",
+      "#FBCFE8", "#FDE68A", "#FCD34D", "#A78BFA", "#60A5FA"
+    ] : [
+      "#6366F1", "#8B5CF6", "#EC4899", "#F97316", "#14B8A6",
+      "#06B6D4", "#84CC16", "#F59E0B", "#EF4444", "#3B82F6"
+    ];
+  }, [isDarkMode]);
 
-  // Process preloaded data
+  // Process preloaded data - FIXED: Remove colors from dependencies
   useEffect(() => {
     if (preloadedData !== undefined) {
       console.log(`[TrafficPieChart:${endpoint}] Using preloaded data, skipping API call:`, preloadedData);
@@ -205,7 +207,7 @@ export function TrafficPieChart({
 
     console.log(`[TrafficPieChart:${endpoint}] WARNING: Making individual API call - this should not happen if batching works correctly`);
     fetchData();
-  }, [shouldExecuteWidgets, currentSite, user, startDate, endDate, segmentId, endpoint, fetchWithController, onTotalUpdate, preloadedData, skipApiCall]);
+  }, [shouldExecuteWidgets, currentSite, user, startDate, endDate, segmentId, endpoint, fetchWithController, onTotalUpdate, preloadedData, skipApiCall, colors]);
 
   // Calculate angles for pie slices
   const createPieSlice = (item: DataItem, index: number, startAngle: number, endAngle: number) => {
@@ -264,7 +266,7 @@ export function TrafficPieChart({
     );
   }
 
-  let currentAngle = -90; // Start from top
+  let currentAngle = -90;
 
   return (
     <div className="w-full h-64 relative pie-chart-container">

@@ -47,12 +47,46 @@ export default function DashboardPage() {
   // Initialize dates and range type with safe values (one month ago to today) - ENHANCED
   const today = new Date()
   const oneMonthAgo = subMonths(today, 1)
+  
+  // CRITICAL DEBUG: Add extensive logging to track date generation
+  console.log(`[Dashboard] CRITICAL DEBUG - System date info:`);
+  console.log(`[Dashboard] - today.getFullYear(): ${today.getFullYear()}`);
+  console.log(`[Dashboard] - today.getMonth(): ${today.getMonth()}`);
+  console.log(`[Dashboard] - today.getDate(): ${today.getDate()}`);
+  console.log(`[Dashboard] - today.toString(): ${today.toString()}`);
+  console.log(`[Dashboard] - today.toISOString(): ${today.toISOString()}`);
+  console.log(`[Dashboard] - oneMonthAgo.toISOString(): ${oneMonthAgo.toISOString()}`);
+  console.log(`[Dashboard] - Date.now(): ${Date.now()}`);
+  console.log(`[Dashboard] - new Date().getTime(): ${new Date().getTime()}`);
+  
   console.log(`[Dashboard] Initial state dates: ${format(oneMonthAgo, 'yyyy-MM-dd')} - ${format(today, 'yyyy-MM-dd')}`);
   const [selectedRangeType, setSelectedRangeType] = useState<string>("This month")
   const [dateRange, setDateRange] = useState<{ startDate: Date; endDate: Date }>({
     startDate: oneMonthAgo,
     endDate: today
   })
+  
+  // CRITICAL DEBUG: Monitor when dateRange changes
+  useEffect(() => {
+    console.log(`[Dashboard] CRITICAL DEBUG - dateRange changed:`);
+    console.log(`[Dashboard] - startDate: ${dateRange.startDate.toISOString()}`);
+    console.log(`[Dashboard] - endDate: ${dateRange.endDate.toISOString()}`);
+    console.log(`[Dashboard] - startDate year: ${dateRange.startDate.getFullYear()}`);
+    console.log(`[Dashboard] - endDate year: ${dateRange.endDate.getFullYear()}`);
+    console.log(`[Dashboard] - current year: ${new Date().getFullYear()}`);
+    
+    // Check if dates are in the future
+    const now = new Date();
+    if (dateRange.startDate > now || dateRange.endDate > now) {
+      console.error(`[Dashboard] CRITICAL DEBUG - Future dates detected in state!`);
+      console.error(`[Dashboard] - startDate > now: ${dateRange.startDate > now}`);
+      console.error(`[Dashboard] - endDate > now: ${dateRange.endDate > now}`);
+      
+      // Find the stack trace to understand where this is coming from
+      console.error(`[Dashboard] Stack trace:`, new Error().stack);
+    }
+  }, [dateRange.startDate, dateRange.endDate]);
+  
   const [formattedTotal, setFormattedTotal] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
   const [isInitialized, setIsInitialized] = useState(false)

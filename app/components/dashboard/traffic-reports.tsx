@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { SessionsWidget } from "@/app/components/dashboard/traffic/visits-widget";
 import { UniqueVisitorsWidget } from "@/app/components/dashboard/traffic/unique-visitors-widget";
@@ -38,7 +38,7 @@ export function TrafficReports({
   const { shouldExecuteWidgets } = useWidgetContext();
   const { fetchWithController } = useRequestController();
   const { currentSite } = useSite();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   
   const [trafficData, setTrafficData] = useState<TrafficData>({
     pages: [],
@@ -49,61 +49,178 @@ export function TrafficReports({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // Add retry counter to prevent infinite loops
+  const retryCountRef = useRef(0);
+  const maxRetries = 2;
+  const lastParamsRef = useRef<string>("");
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchAllTrafficData = async () => {
+      // CRITICAL: Wait for authentication to complete before making API calls
+      if (isAuthLoading) {
+        console.log(`[TrafficReports] Waiting for authentication to complete...`);
+        return;
+      }
+      
       if (!shouldExecuteWidgets || !currentSite || currentSite.id === "default" || !startDate || !endDate) {
         setIsLoading(false);
         setDataLoaded(true);
         return;
       }
 
-      setIsLoading(true);
-      setError(null);
-      setDataLoaded(false);
+      // If we don't have a valid user after auth is complete, show error
+      if (!user || !user.id) {
+        console.error(`[TrafficReports] No user or user ID available after authentication. user:`, user);
+        setError("Authentication required - please log in to view traffic data");
+        setIsLoading(false);
+        setDataLoaded(true);
+        return;
+      }
+
+      // CRITICAL: Validate dates to prevent future dates from being sent to API
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      
+      // Create safe copies of dates
+      let safeStartDate = new Date(startDate);
+      let safeEndDate = new Date(endDate);
+      
+      // Log the original dates for debugging
+      console.log(`[TrafficReports] Original dates - startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
+      console.log(`[TrafficReports] Current date for comparison: ${now.toISOString()}`);
+      
+      // Detect and fix future years
+      if (safeStartDate.getFullYear() > currentYear) {
+        console.error(`[TrafficReports] Future year detected in startDate: ${safeStartDate.getFullYear()}, current year: ${currentYear}`);
+        safeStartDate = subDays(now, 30); // Use 30 days ago as fallback
+      }
+      
+      if (safeEndDate.getFullYear() > currentYear) {
+        console.error(`[TrafficReports] Future year detected in endDate: ${safeEndDate.getFullYear()}, current year: ${currentYear}`);
+        safeEndDate = now; // Use today as fallback
+      }
+      
+      // Validate against future dates
+      if (safeStartDate > now) {
+        console.warn(`[TrafficReports] Start date is in the future: ${safeStartDate.toISOString()}, using 30 days ago`);
+        safeStartDate = subDays(now, 30);
+      }
+      
+      if (safeEndDate > now) {
+        console.warn(`[TrafficReports] End date is in the future: ${safeEndDate.toISOString()}, using today`);
+        safeEndDate = now;
+      }
+      
+      // Ensure start date is before end date
+      if (safeStartDate > safeEndDate) {
+        console.warn(`[TrafficReports] Start date is after end date, correcting`);
+        safeStartDate = subDays(safeEndDate, 30);
+      }
+      
+      console.log(`[TrafficReports] Validated dates - startDate: ${safeStartDate.toISOString()}, endDate: ${safeEndDate.toISOString()}`);
+      
+      // Additional validation: Check and log the final dates that will be sent to API
+      const startDateStr = format(safeStartDate, 'yyyy-MM-dd');
+      const endDateStr = format(safeEndDate, 'yyyy-MM-dd');
+      
+      console.log(`[TrafficReports] Final safe dates for API - startDate: ${startDateStr}, endDate: ${endDateStr}`);
+      
+      // CRITICAL: Additional check to prevent any future years from being sent
+      if (startDateStr.startsWith('2025') || endDateStr.startsWith('2025')) {
+        console.error(`[TrafficReports] CRITICAL: Future year detected in final dates! startDate: ${startDateStr}, endDate: ${endDateStr}`);
+        console.error(`[TrafficReports] Stack trace:`, new Error().stack);
+        // Force reset to safe values
+        safeStartDate = subDays(now, 30);
+        safeEndDate = now;
+      }
+
+      // Build API parameters with validated dates
+      const buildParams = (endpoint: string) => {
+        const params = new URLSearchParams();
+        params.append("siteId", currentSite.id);
+        params.append("userId", user.id);
+        params.append("startDate", format(safeStartDate, 'yyyy-MM-dd'));
+        params.append("endDate", format(safeEndDate, 'yyyy-MM-dd'));
+        
+        // Additional validation of the constructed URL
+        const urlParams = params.toString();
+        if (urlParams.includes('2025')) {
+          console.error(`[TrafficReports] CRITICAL: Future year detected in URL params for ${endpoint}!`);
+          console.error(`[TrafficReports] URL params: ${urlParams}`);
+          throw new Error(`Future year detected in API parameters: ${urlParams}`);
+        }
+        
+        return urlParams;
+      };
+
+      // Add retry protection to prevent infinite loops
+      const currentParams = JSON.stringify({ 
+        siteId: currentSite.id, 
+        userId: user.id, 
+        startDate: format(safeStartDate, 'yyyy-MM-dd'), 
+        endDate: format(safeEndDate, 'yyyy-MM-dd') 
+      });
+      
+      if (currentParams === lastParamsRef.current) {
+        retryCountRef.current++;
+        console.log(`[TrafficReports] Retry attempt ${retryCountRef.current} for same parameters`);
+        if (retryCountRef.current >= maxRetries) {
+          console.error(`[TrafficReports] Max retries reached, aborting request`);
+          setError("Max retries reached - please refresh the page");
+          setIsLoading(false);
+          setDataLoaded(true);
+          return;
+        }
+      } else {
+        retryCountRef.current = 0;
+        lastParamsRef.current = currentParams;
+      }
+
+      console.log(`[TrafficReports] Fetching traffic data with params: ${currentParams}`);
+
+      // Set loading state
+      if (isMounted) {
+        setIsLoading(true);
+        setError(null);
+        setDataLoaded(false);
+      }
 
       try {
-        const start = format(startDate, "yyyy-MM-dd");
-        const end = format(endDate, "yyyy-MM-dd");
-
-        const baseParams = new URLSearchParams();
-        baseParams.append("siteId", currentSite.id);
-        if (user?.id) {
-          baseParams.append("userId", user.id);
-        }
-        baseParams.append("startDate", start);
-        baseParams.append("endDate", end);
-        if (segmentId && segmentId !== "all") {
-          baseParams.append("segmentId", segmentId);
-        }
-
-        console.log("[TrafficReports] Fetching COMBINED traffic data to prevent individual calls:", baseParams.toString());
-
-        // Make single combined call instead of multiple individual calls
-        const endpoints = ['pages', 'referrals', 'regions', 'devices'];
-        
-        // Fetch all data sequentially with small delays to prevent overload
+        // Define endpoints and fetch data
+        const endpoints = ["pages", "referrals", "regions", "devices"];
         const results = [];
+
         for (let i = 0; i < endpoints.length; i++) {
           const endpoint = endpoints[i];
+          
           try {
+            const urlParams = buildParams(endpoint);
+            
             console.log(`[TrafficReports] Fetching ${endpoint} data...`);
-            const response = await fetchWithController(`/api/traffic/${endpoint}?${baseParams.toString()}`);
-            
+            const response = await fetchWithController(`/api/traffic/${endpoint}?${urlParams}`);
+
             if (response === null) {
-              results.push({ endpoint, data: [] });
-              continue;
+              console.log(`[TrafficReports] Request for ${endpoint} was aborted`);
+              return;
             }
+
             if (!response.ok) {
-              throw new Error(`Failed to fetch ${endpoint}`);
+              const errorText = await response.text();
+              console.error(`[TrafficReports] Error fetching ${endpoint}: ${response.status} ${errorText}`);
+              throw new Error(`Error ${response.status}: ${errorText}`);
             }
-            const result = await response.json();
-            results.push({ endpoint, data: result.data || [] });
-            
-            // Small delay between calls
-            if (i < endpoints.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 100));
-            }
+
+            const responseData = await response.json();
+            console.log(`[TrafficReports] ${endpoint} data received:`, responseData);
+
+            results.push({
+              endpoint,
+              data: responseData.data || []
+            });
+
           } catch (error) {
             console.error(`Error fetching ${endpoint}:`, error);
             results.push({ endpoint, data: [] });
@@ -121,20 +238,52 @@ export function TrafficReports({
           newTrafficData[result.endpoint as keyof TrafficData] = result.data;
         });
 
-        setTrafficData(newTrafficData);
-        setDataLoaded(true);
-        console.log("[TrafficReports] All traffic data loaded successfully:", newTrafficData);
+        if (isMounted) {
+          setTrafficData(newTrafficData);
+          setDataLoaded(true);
+          console.log("[TrafficReports] All traffic data loaded successfully:", newTrafficData);
+        }
       } catch (error) {
         console.error("[TrafficReports] Error fetching traffic data:", error);
-        setError(error instanceof Error ? error.message : 'Failed to fetch traffic data');
-        setDataLoaded(true);
+        if (isMounted) {
+          setError(error instanceof Error ? error.message : 'Failed to fetch traffic data');
+          setDataLoaded(true);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchAllTrafficData();
-  }, [shouldExecuteWidgets, currentSite, user, startDate, endDate, segmentId, fetchWithController]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [shouldExecuteWidgets, currentSite, user, startDate, endDate, segmentId, fetchWithController, isAuthLoading]);
+
+  // Show loading state while authentication is in progress
+  if (isAuthLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -21,10 +21,26 @@ export function CalendarDateRangePicker({
   initialStartDate = startOfMonth(new Date()),
   initialEndDate = new Date(),
 }: DateRangePickerProps) {
+  // CRITICAL DEBUG: Log initial props
+  console.log(`[DateRangePicker] CRITICAL DEBUG - Component initialized with:`);
+  console.log(`[DateRangePicker] - initialStartDate: ${initialStartDate.toISOString()}`);
+  console.log(`[DateRangePicker] - initialEndDate: ${initialEndDate.toISOString()}`);
+  console.log(`[DateRangePicker] - initialStartDate year: ${initialStartDate.getFullYear()}`);
+  console.log(`[DateRangePicker] - initialEndDate year: ${initialEndDate.getFullYear()}`);
+  console.log(`[DateRangePicker] - current year: ${new Date().getFullYear()}`);
+  
   // More robust date validation to ensure no future dates
   const validateDates = useCallback((startDate: Date, endDate: Date) => {
     const now = new Date();
     const currentYear = now.getFullYear();
+    
+    // CRITICAL DEBUG: Log validation input
+    console.log(`[DateRangePicker] CRITICAL DEBUG - validateDates called with:`);
+    console.log(`[DateRangePicker] - startDate: ${startDate.toISOString()}`);
+    console.log(`[DateRangePicker] - endDate: ${endDate.toISOString()}`);
+    console.log(`[DateRangePicker] - startDate year: ${startDate.getFullYear()}`);
+    console.log(`[DateRangePicker] - endDate year: ${endDate.getFullYear()}`);
+    console.log(`[DateRangePicker] - current year: ${currentYear}`);
     
     try {
       // First ensure we have valid Date objects - if not, use safe defaults
@@ -37,16 +53,16 @@ export function CalendarDateRangePicker({
           validStartDate = new Date(startDate);
           if (!isValid(validStartDate)) {
             console.error("[DateRangePicker] Invalid start date from string/number:", startDate);
-            validStartDate = startOfMonth(now);
+            validStartDate = subMonths(now, 1);
           }
         } catch (e) {
           console.error("[DateRangePicker] Error parsing start date:", e);
-          validStartDate = startOfMonth(now);
+          validStartDate = subMonths(now, 1);
         }
       } else {
         validStartDate = startDate instanceof Date && isValid(startDate) 
           ? new Date(startDate) // Create a new date object to avoid reference issues
-          : startOfMonth(now);
+          : subMonths(now, 1);
       }
       
       if (typeof endDate === 'string' || typeof endDate === 'number') {
@@ -93,8 +109,8 @@ export function CalendarDateRangePicker({
       
       // Then validate against future dates
       if (isFuture(validStartDate)) {
-        console.log(`[DateRangePicker] Start date is in the future (${format(validStartDate, 'yyyy-MM-dd')}), using current month start`);
-        validStartDate = startOfMonth(now);
+        console.log(`[DateRangePicker] Start date is in the future (${format(validStartDate, 'yyyy-MM-dd')}), using one month ago`);
+        validStartDate = subMonths(now, 1);
       }
       
       if (isFuture(validEndDate)) {
@@ -105,16 +121,23 @@ export function CalendarDateRangePicker({
       // Final safety check for range validity
       if (validStartDate > validEndDate) {
         console.log(`[DateRangePicker] Invalid range (start after end), using default range`);
-        validStartDate = startOfMonth(now);
+        validStartDate = subMonths(now, 1);
         validEndDate = now;
       }
+      
+      // CRITICAL DEBUG: Log validation output
+      console.log(`[DateRangePicker] CRITICAL DEBUG - validateDates output:`);
+      console.log(`[DateRangePicker] - validStartDate: ${validStartDate.toISOString()}`);
+      console.log(`[DateRangePicker] - validEndDate: ${validEndDate.toISOString()}`);
+      console.log(`[DateRangePicker] - validStartDate year: ${validStartDate.getFullYear()}`);
+      console.log(`[DateRangePicker] - validEndDate year: ${validEndDate.getFullYear()}`);
       
       return { validStartDate, validEndDate };
     } catch (error) {
       console.error("[DateRangePicker] Error in date validation:", error);
       // Return safe defaults if any error occurs
       return {
-        validStartDate: startOfMonth(now),
+        validStartDate: subMonths(now, 1),
         validEndDate: now
       };
     }
@@ -122,6 +145,12 @@ export function CalendarDateRangePicker({
   
   // Validate on initial render
   const { validStartDate, validEndDate } = validateDates(initialStartDate, initialEndDate);
+  
+  // CRITICAL DEBUG: Log validated initial dates
+  console.log(`[DateRangePicker] CRITICAL DEBUG - After initial validation:`);
+  console.log(`[DateRangePicker] - validStartDate: ${validStartDate.toISOString()}`);
+  console.log(`[DateRangePicker] - validEndDate: ${validEndDate.toISOString()}`);
+  
   const [startDate, setStartDate] = useState<Date>(validStartDate);
   const [endDate, setEndDate] = useState<Date>(validEndDate);
   
@@ -144,7 +173,7 @@ export function CalendarDateRangePicker({
       console.error("[DateRangePicker] Error updating dates:", error);
       // Use safe fallbacks in case of error
       const now = new Date();
-      setStartDate(startOfMonth(now));
+      setStartDate(subMonths(now, 1));
       setEndDate(now);
     }
   }, [initialStartDate, initialEndDate, startDate, endDate, validateDates]);
@@ -156,6 +185,26 @@ export function CalendarDateRangePicker({
       try {
         // Final validation before calling parent
         const { validStartDate, validEndDate } = validateDates(startDate, endDate);
+        
+        // CRITICAL DEBUG: Log before calling parent callback
+        console.log(`[DateRangePicker] CRITICAL DEBUG - About to call parent callback:`);
+        console.log(`[DateRangePicker] - validStartDate: ${validStartDate.toISOString()}`);
+        console.log(`[DateRangePicker] - validEndDate: ${validEndDate.toISOString()}`);
+        console.log(`[DateRangePicker] - validStartDate year: ${validStartDate.getFullYear()}`);
+        console.log(`[DateRangePicker] - validEndDate year: ${validEndDate.getFullYear()}`);
+        
+        // Check if we're about to send future dates
+        const now = new Date();
+        if (validStartDate > now || validEndDate > now) {
+          console.error(`[DateRangePicker] CRITICAL ERROR - About to send future dates to parent!`);
+          console.error(`[DateRangePicker] - validStartDate > now: ${validStartDate > now}`);
+          console.error(`[DateRangePicker] - validEndDate > now: ${validEndDate > now}`);
+          console.error(`[DateRangePicker] - Stack trace:`, new Error().stack);
+          
+          // Don't send future dates to parent
+          return;
+        }
+        
         console.log(`[DateRangePicker] Notifying parent of date range: ${format(validStartDate, 'yyyy-MM-dd')} - ${format(validEndDate, 'yyyy-MM-dd')}`);
         onRangeChange(validStartDate, validEndDate);
       } catch (error) {
@@ -167,6 +216,13 @@ export function CalendarDateRangePicker({
   // Handle date range selection with strict validation
   const handleRangeSelect = (start: Date, end: Date) => {
     try {
+      // CRITICAL DEBUG: Log incoming range selection
+      console.log(`[DateRangePicker] CRITICAL DEBUG - handleRangeSelect called with:`);
+      console.log(`[DateRangePicker] - start: ${start.toISOString()}`);
+      console.log(`[DateRangePicker] - end: ${end.toISOString()}`);
+      console.log(`[DateRangePicker] - start year: ${start.getFullYear()}`);
+      console.log(`[DateRangePicker] - end year: ${end.getFullYear()}`);
+      
       const { validStartDate, validEndDate } = validateDates(start, end);
       
       console.log(`[DateRangePicker] User selected range: ${format(validStartDate, 'yyyy-MM-dd')} - ${format(validEndDate, 'yyyy-MM-dd')}`);
@@ -175,6 +231,11 @@ export function CalendarDateRangePicker({
       setEndDate(validEndDate);
       
       if (onRangeChange) {
+        // CRITICAL DEBUG: Log before calling parent in handleRangeSelect
+        console.log(`[DateRangePicker] CRITICAL DEBUG - handleRangeSelect about to call parent:`);
+        console.log(`[DateRangePicker] - validStartDate: ${validStartDate.toISOString()}`);
+        console.log(`[DateRangePicker] - validEndDate: ${validEndDate.toISOString()}`);
+        
         onRangeChange(validStartDate, validEndDate);
       }
     } catch (error) {
