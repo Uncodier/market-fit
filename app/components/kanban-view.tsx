@@ -21,6 +21,9 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { createClient } from "@/utils/supabase/client"
 import { apiClient } from "@/app/services/api-client-service"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { assignLeadToUser } from "@/app/leads/actions"
+import { useAuth } from "@/app/hooks/use-auth"
+import { Sparkles, User as UserIcon } from "@/app/components/ui/icons"
 
 // Definimos los tipos de estado de los leads
 const LEAD_STATUSES = [
@@ -66,6 +69,8 @@ interface KanbanViewProps {
   onLeadClick: (lead: Lead) => void
   filters?: LeadFilters
   onOpenFilters?: () => void
+  onUpdateLead?: (leadId: string, updates: Partial<Lead>) => void // Add callback for lead updates
+  userData?: Record<string, { name: string, avatar_url: string | null }>
 }
 
 // Cache de etapas para cada lead
@@ -77,13 +82,17 @@ export function KanbanView({
   segments, 
   onLeadClick,
   filters,
-  onOpenFilters
+  onOpenFilters,
+  onUpdateLead,
+  userData
 }: KanbanViewProps) {
   const { currentSite } = useSite()
+  const { user } = useAuth()
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
   const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false) // Iniciamos en false
   const [loadingActions, setLoadingActions] = useState<Record<string, 'research' | 'followup' | null>>({})
   const [successActions, setSuccessActions] = useState<Record<string, 'research' | 'followup' | null>>({})
+  const [assigningLeads, setAssigningLeads] = useState<Record<string, boolean>>({})
   
   // Crear una key estable basada en los IDs de los leads para evitar re-renders innecesarios
   const leadsKey = useMemo(() => {
@@ -304,6 +313,36 @@ export function KanbanView({
       setLoadingActions(prev => ({ ...prev, [leadId]: null }))
     }
   }
+
+  // Función para asignar un lead al usuario actual
+  const handleAssignLead = async (leadId: string) => {
+    if (!user?.id || !currentSite?.id) {
+      toast.error("User not authenticated or site not selected")
+      return
+    }
+
+    setAssigningLeads(prev => ({ ...prev, [leadId]: true }))
+    
+    try {
+      const result = await assignLeadToUser(leadId, user.id, currentSite.id)
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      toast.success("Lead assigned successfully")
+      
+      // Actualizar el lead localmente para reflejar el cambio inmediatamente
+      onUpdateLead?.(leadId, { assignee_id: user.id })
+      
+    } catch (error) {
+      console.error('Error assigning lead:', error)
+      toast.error("Failed to assign lead")
+    } finally {
+      setAssigningLeads(prev => ({ ...prev, [leadId]: false }))
+    }
+  }
   
   // Actualizamos los leads cuando cambia la prop leads
   React.useEffect(() => {
@@ -456,7 +495,9 @@ export function KanbanView({
                                     </div>
                                     {/* AI Actions Footer */}
                                     <div className="flex items-center justify-between pt-2 pb-2 border-t border-gray-100 dark:border-gray-800">
-                                      <span className="text-xs text-gray-500 font-medium">AI Actions</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 font-medium">AI Actions</span>
+                                      </div>
                                       <div className="flex gap-1">
                                         <TooltipProvider>
                                           <Tooltip>
@@ -516,6 +557,58 @@ export function KanbanView({
                                             </TooltipContent>
                                           </Tooltip>
                                         </TooltipProvider>
+                                        {/* Assignee action button - only show if no assignee */}
+                                        {!lead.assignee_id && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                                                  disabled={assigningLeads[lead.id]}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    e.preventDefault()
+                                                    handleAssignLead(lead.id)
+                                                  }}
+                                                >
+                                                  {assigningLeads[lead.id] ? (
+                                                    <Loader className="h-3 w-3" />
+                                                  ) : (
+                                                    <Sparkles className="h-3 w-3" />
+                                                  )}
+                                                  <span className="sr-only">Assign to me</span>
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>Assign to me</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                        {/* Assignee indicator - at the end */}
+                                        {lead.assignee_id && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <div className="flex items-center space-x-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md">
+                                                  <UserIcon className="h-3 w-3" />
+                                                  <span className="text-xs font-medium">
+                                                    {lead.assignee_id === user?.id 
+                                                      ? 'You' 
+                                                      : userData?.[lead.assignee_id]?.name || 'Assigned'}
+                                                  </span>
+                                                </div>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>Assigned to {lead.assignee_id === user?.id 
+                                                  ? 'you' 
+                                                  : userData?.[lead.assignee_id]?.name || 'team member'}</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
                                       </div>
                                     </div>
                                   </CardContent>

@@ -29,12 +29,16 @@ import { Campaign } from "@/app/types"
 import { JOURNEY_STAGES } from "@/app/leads/types"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { assignLeadToUser } from "@/app/leads/actions"
+import { useAuth } from "@/app/hooks/use-auth"
+import { Sparkles, User as UserIcon } from "@/app/components/ui/icons"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
 import { createClient } from "@/utils/supabase/client"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
 import { safeReload } from "@/app/utils/safe-reload"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { useUserData } from "@/app/hooks/use-user-data"
 
 // Cache de etapas para cada lead
 // Este cache se invalida automáticamente cuando se ejecutan acciones AI
@@ -58,11 +62,11 @@ const JOURNEY_STAGE_COLORS: Record<string, string> = {
   not_contacted: 'bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200'
 }
 
-// Obtener el nombre legible de una etapa
-const getJourneyStageName = (stageId: string) => {
-  if (stageId === "not_contacted") return "Unaware"
-  return JOURNEY_STAGES.find(stage => stage.id === stageId)?.label || "Unknown"
-}
+  // Obtener el nombre legible de una etapa
+  const getJourneyStageName = (stageId: string) => {
+    if (stageId === "not_contacted") return "Unaware"
+    return JOURNEY_STAGES.find(stage => stage.id === stageId)?.label || "Unknown"
+  }
 
 interface LeadsTableProps {
   leads: Lead[]
@@ -74,6 +78,8 @@ interface LeadsTableProps {
   onLeadClick: (lead: Lead) => void
   forceReload: number
   invalidateJourneyStageCache: (leadId: string) => void
+  onUpdateLead?: (leadId: string, updates: Partial<Lead>) => void
+  userData: Record<string, { name: string, avatar_url: string | null }>
 }
 
 function LeadsTable({ 
@@ -85,17 +91,21 @@ function LeadsTable({
   onItemsPerPageChange,
   onLeadClick,
   forceReload,
-  invalidateJourneyStageCache
+  invalidateJourneyStageCache,
+  onUpdateLead,
+  userData
 }: LeadsTableProps) {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalLeads / itemsPerPage)
   const { segments } = useLeadsContext()
   const { currentSite } = useSite()
+  const { user } = useAuth()
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
   const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false) // Iniciamos en false y solo activamos cuando sea necesario
   const [loadingActions, setLoadingActions] = useState<Record<string, 'research' | 'followup' | null>>({})
   const [successActions, setSuccessActions] = useState<Record<string, 'research' | 'followup' | null>>({})
+  const [assigningLeads, setAssigningLeads] = useState<Record<string, boolean>>({})
   
   // Crear una key estable basada en los IDs de los leads para evitar re-renders innecesarios
   const leadsKey = useMemo(() => {
@@ -319,6 +329,39 @@ function LeadsTable({
       setLoadingActions(prev => ({ ...prev, [leadId]: null }))
     }
   }
+
+  // Función para asignar un lead al usuario actual
+  const handleAssignLead = async (leadId: string) => {
+    if (!user?.id || !currentSite?.id) {
+      toast.error("User not authenticated or site not selected")
+      return
+    }
+
+    setAssigningLeads(prev => ({ ...prev, [leadId]: true }))
+    
+    try {
+      const result = await assignLeadToUser(leadId, user.id, currentSite.id)
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      toast.success("Lead assigned successfully")
+      
+      // Actualizar el lead localmente para reflejar el cambio inmediatamente
+      onUpdateLead?.(leadId, { assignee_id: user.id })
+      
+      // Forzar recarga para actualizar la UI
+      invalidateJourneyStageCache(leadId)
+      
+    } catch (error) {
+      console.error('Error assigning lead:', error)
+      toast.error("Failed to assign lead")
+    } finally {
+      setAssigningLeads(prev => ({ ...prev, [leadId]: false }))
+    }
+  }
   
 
   
@@ -376,6 +419,7 @@ function LeadsTable({
             <TableHead className="w-[260px] min-w-[140px] max-w-[260px]">Segment</TableHead>
             <TableHead className="w-[130px] min-w-[100px] max-w-[130px]">Status</TableHead>
             <TableHead className="w-[130px] min-w-[110px] max-w-[130px]">Journey Stage</TableHead>
+            <TableHead className="w-[120px] min-w-[100px] max-w-[120px]">Assignee</TableHead>
             <TableHead className="w-[120px] min-w-[100px] max-w-[120px] text-right">AI Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -417,6 +461,59 @@ function LeadsTable({
                           {getJourneyStageName(leadJourneyStages[lead.id] || 'not_contacted')}
                         </Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        {lead.assignee_id ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md">
+                                  <UserIcon className="h-3 w-3" />
+                                  <span className="text-xs font-medium">
+                                    {lead.assignee_id === user?.id 
+                                      ? 'You' 
+                                      : userData[lead.assignee_id]?.name || 'Assigned'}
+                                  </span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Assigned to {lead.assignee_id === user?.id 
+                                  ? 'you' 
+                                  : userData[lead.assignee_id]?.name || 'team member'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                                  disabled={assigningLeads[lead.id]}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    handleAssignLead(lead.id)
+                                  }}
+                                >
+                                  {assigningLeads[lead.id] ? (
+                                    <Loader className="h-3 w-3 mr-1" />
+                                  ) : (
+                                    <Sparkles className="h-3 w-3 mr-1" />
+                                  )}
+                                  <span>AI</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Assign to me</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -484,7 +581,7 @@ function LeadsTable({
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <EmptyCard
                     icon={<Users className="h-16 w-16 text-muted-foreground" />}
                     title="No leads found"
@@ -593,6 +690,9 @@ function LeadsTableSkeleton() {
             <TableHead className="w-[130px] min-w-[110px] max-w-[130px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
+            <TableHead className="w-[120px] min-w-[100px] max-w-[120px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
             <TableHead className="text-right w-[120px] min-w-[100px] max-w-[120px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
@@ -612,6 +712,9 @@ function LeadsTableSkeleton() {
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-24 rounded-full" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-5 w-24 rounded-full" />
@@ -667,6 +770,15 @@ export default function LeadsPage() {
   
   // Estado para forzar recarga de journey stages
   const [forceReload, setForceReload] = useState(0)
+  
+  // Get unique assignee IDs from leads
+  const assigneeIds = useMemo(() => {
+    const ids = dbLeads.map(lead => lead.assignee_id).filter(Boolean) as string[]
+    return Array.from(new Set(ids))
+  }, [dbLeads])
+  
+  // Fetch user data for assignees
+  const { userData } = useUserData(assigneeIds)
   
   // Función para invalidar cache y forzar recarga
   const invalidateJourneyStageCache = (leadId: string) => {
@@ -842,6 +954,13 @@ export default function LeadsPage() {
       })
     }
     
+    // Sort by created_at descending (newest first)
+    filtered = filtered.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime()
+      const dateB = new Date(b.created_at).getTime()
+      return dateB - dateA
+    })
+    
     return filtered
   }
   
@@ -901,6 +1020,17 @@ export default function LeadsPage() {
       toast.error("Error creating lead")
       return { error: "Error creating lead" }
     }
+  }
+
+  // Función para actualizar un lead localmente
+  const handleUpdateLead = (leadId: string, updates: Partial<Lead>) => {
+    setDbLeads(prevLeads => 
+      prevLeads.map(lead => 
+        lead.id === leadId 
+          ? { ...lead, ...updates }
+          : lead
+      )
+    )
   }
 
   // Función para manejar cambios en el buscador
@@ -1112,6 +1242,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       forceReload={forceReload}
                       invalidateJourneyStageCache={invalidateJourneyStageCache}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   ) : (
                     <KanbanView 
@@ -1121,6 +1253,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       filters={filters}
                       onOpenFilters={handleOpenFilterModal}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   )}
                 </TabsContent>
@@ -1137,6 +1271,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       forceReload={forceReload}
                       invalidateJourneyStageCache={invalidateJourneyStageCache}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   ) : (
                     <KanbanView 
@@ -1146,6 +1282,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       filters={filters}
                       onOpenFilters={handleOpenFilterModal}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   )}
                 </TabsContent>
@@ -1162,6 +1300,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       forceReload={forceReload}
                       invalidateJourneyStageCache={invalidateJourneyStageCache}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   ) : (
                     <KanbanView 
@@ -1171,6 +1311,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       filters={filters}
                       onOpenFilters={handleOpenFilterModal}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   )}
                 </TabsContent>
@@ -1187,6 +1329,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       forceReload={forceReload}
                       invalidateJourneyStageCache={invalidateJourneyStageCache}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   ) : (
                     <KanbanView 
@@ -1196,6 +1340,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       filters={filters}
                       onOpenFilters={handleOpenFilterModal}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   )}
                 </TabsContent>
@@ -1212,6 +1358,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       forceReload={forceReload}
                       invalidateJourneyStageCache={invalidateJourneyStageCache}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   ) : (
                     <KanbanView 
@@ -1221,6 +1369,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       filters={filters}
                       onOpenFilters={handleOpenFilterModal}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   )}
                 </TabsContent>
@@ -1237,6 +1387,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       forceReload={forceReload}
                       invalidateJourneyStageCache={invalidateJourneyStageCache}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   ) : (
                     <KanbanView 
@@ -1246,6 +1398,8 @@ export default function LeadsPage() {
                       onLeadClick={handleLeadClick}
                       filters={filters}
                       onOpenFilters={handleOpenFilterModal}
+                      onUpdateLead={handleUpdateLead}
+                      userData={userData}
                     />
                   )}
                 </TabsContent>

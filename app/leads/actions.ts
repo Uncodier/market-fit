@@ -64,6 +64,7 @@ const LeadSchema = z.object({
       is_market_fit_influenced: z.boolean(),
       notes: z.string().optional(),
     }).nullable().optional(),
+    assignee_id: z.string().nullable().optional(),
   })).nullable(),
   error: z.string().optional()
 })
@@ -132,6 +133,7 @@ const SingleLeadSchema = z.object({
       is_market_fit_influenced: z.boolean(),
       notes: z.string().optional(),
     }).nullable().optional(),
+    assignee_id: z.string().nullable().optional(),
   }).nullable(),
   error: z.string().optional()
 })
@@ -188,6 +190,7 @@ const CreateLeadSchema = z.object({
     zipcode: z.string().optional(),
     country: z.string().optional(),
   }).optional(),
+  assignee_id: z.string().optional().nullable(),
 })
 
 export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
@@ -252,6 +255,7 @@ const UpdateLeadSchema = z.object({
     is_market_fit_influenced: z.boolean(),
     notes: z.string().optional(),
   }).optional().nullable(),
+  assignee_id: z.string().optional().nullable(),
 })
 
 export type UpdateLeadInput = z.infer<typeof UpdateLeadSchema>
@@ -285,6 +289,7 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
         social_networks,
         address,
         attribution,
+        assignee_id,
         companies(name)
       `)
       .eq('id', id)
@@ -334,6 +339,7 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         social_networks,
         address,
         attribution,
+        assignee_id,
         companies(name)
       `)
       .eq('site_id', site_id)
@@ -378,6 +384,7 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
         social_networks,
         address,
         attribution,
+        assignee_id,
         companies(name)
       `)
       .eq('campaign_id', campaign_id)
@@ -696,5 +703,58 @@ export async function exportLeads(siteId: string) {
   } catch (error) {
     console.error('Error exporting leads:', error)
     return { error: 'Failed to export leads' }
+  }
+}
+
+/**
+ * Assign a lead to the currently authenticated user
+ */
+export async function assignLeadToUser(leadId: string, userId: string, siteId: string): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const supabase = await createClient()
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error("Error getting authenticated user:", authError)
+      return { error: "Authentication error" }
+    }
+
+    if (!user) {
+      return { error: "User not authenticated" }
+    }
+    
+    // Verify that the lead exists and belongs to the site
+    const { data: lead, error: leadError } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", leadId)
+      .eq("site_id", siteId)
+      .single()
+    
+    if (leadError) {
+      console.error("Error verifying lead:", leadError)
+      return { error: "Lead not found or access denied" }
+    }
+    
+    // Update the lead with the assignee
+    const { error } = await supabase
+      .from("leads")
+      .update({ 
+        assignee_id: userId,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", leadId)
+    
+    if (error) {
+      console.error("Error assigning lead:", error)
+      return { error: `Error assigning lead: ${error.message}` }
+    }
+    
+    return { success: true }
+  } catch (error) {
+    console.error("Error in assignLeadToUser:", error)
+    return { error: "Error assigning lead" }
   }
 } 

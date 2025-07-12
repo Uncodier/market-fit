@@ -65,6 +65,7 @@ export interface Lead {
   } | null
   notes: string | null
   attribution?: AttributionData | null
+  assignee_id?: string | null
 }
 
 export interface LeadFilters {

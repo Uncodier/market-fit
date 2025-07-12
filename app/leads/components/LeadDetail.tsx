@@ -1,8 +1,10 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Badge } from "@/app/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/app/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
 import {
   User,
   MessageSquare,
@@ -17,7 +19,10 @@ import {
   ExternalLink,
   Trash2,
   Search,
-  Mail
+  Mail,
+  Users,
+  Check,
+  ChevronDown
 } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Target } from "@/app/components/ui/target-icon"
@@ -38,6 +43,13 @@ import { Lead, STATUS_STYLES, Segment } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
+import { useAuth } from "@/app/hooks/use-auth"
+import { assignLeadToUser } from "@/app/leads/actions"
+import { siteMembersService, SiteMember } from "@/app/services/site-members-service"
+import { cn } from "@/lib/utils"
+
+// Type for active site members with guaranteed user_id
+type ActiveSiteMember = SiteMember & { user_id: string }
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -74,6 +86,7 @@ interface LeadDetailProps {
 
 export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead, hideStatus = false, onStatusChange }: LeadDetailProps) {
   const { currentSite } = useSite()
+  const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -82,6 +95,42 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     research: false,
     followup: false
   })
+  const [teamMembers, setTeamMembers] = useState<ActiveSiteMember[]>([])
+  const [loadingTeamMembers, setLoadingTeamMembers] = useState(false)
+  const [assigningLead, setAssigningLead] = useState(false)
+  const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false)
+  const [assigneeSearch, setAssigneeSearch] = useState("")
+  
+  // Create combined list with AI Team option + team members (same structure as CompanySelector)
+  const allAssigneeOptions = [
+    // AI Team option
+    {
+      id: 'ai_team',
+      name: 'AI Team',
+      email: null,
+      position: null,
+      isAITeam: true,
+      isSelected: !lead.assignee_id,
+      isCurrentUser: false
+    },
+    // Team members
+    ...teamMembers.map(member => ({
+      id: member.user_id,
+      name: member.name || member.email,
+      email: member.email,
+      position: member.position,
+      isAITeam: false,
+      isSelected: lead.assignee_id === member.user_id,
+      isCurrentUser: member.user_id === user?.id
+    }))
+  ]
+  
+  // Filter options based on search (same logic as CompanySelector)
+  const filteredAssigneeOptions = allAssigneeOptions.filter(option => {
+    if (!assigneeSearch) return true
+    return option.name.toLowerCase().includes(assigneeSearch.toLowerCase())
+  })
+
   const [editForm, setEditForm] = useState<Omit<Lead, "id" | "created_at">>({
     name: lead.name,
     email: lead.email,
@@ -122,8 +171,114 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     },
     address: lead.address || { street: "", city: "", state: "", zipcode: "", country: "" },
     notes: lead.notes || null,
-    attribution: lead.attribution || null
+    attribution: lead.attribution || null,
+    assignee_id: lead.assignee_id || null
   })
+
+  // Load team members when component mounts
+  useEffect(() => {
+    if (currentSite?.id) {
+      loadTeamMembers()
+    }
+  }, [currentSite?.id])
+
+  // Clear search when dropdown closes
+  useEffect(() => {
+    if (!assigneeDropdownOpen) {
+      setAssigneeSearch("")
+    }
+  }, [assigneeDropdownOpen])
+
+  // Load team members function
+  const loadTeamMembers = async () => {
+    if (!currentSite?.id) return
+    
+    setLoadingTeamMembers(true)
+    try {
+      const members = await siteMembersService.getMembers(currentSite.id)
+      // Only include active members who have user_id (are registered)
+      const activeMembers = members.filter(member => member.status === 'active' && member.user_id) as ActiveSiteMember[]
+      setTeamMembers(activeMembers)
+    } catch (error) {
+      console.error('Error loading team members:', error)
+      toast.error('Failed to load team members')
+    } finally {
+      setLoadingTeamMembers(false)
+    }
+  }
+
+  // Function to assign lead to a team member
+  const handleAssignToMember = async (memberId: string) => {
+    if (!currentSite?.id) {
+      toast.error('No site selected')
+      return
+    }
+
+    setAssigningLead(true)
+    try {
+      const result = await assignLeadToUser(lead.id, memberId, currentSite.id)
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      toast.success('Lead assigned successfully')
+      
+      // Update the lead locally
+      await onUpdateLead(lead.id, { assignee_id: memberId })
+      
+      // Update the edit form state
+      setEditForm(prev => ({ ...prev, assignee_id: memberId }))
+      
+      setAssigneeDropdownOpen(false)
+      setAssigneeSearch("") // Clear search when closing
+    } catch (error) {
+      console.error('Error assigning lead:', error)
+      toast.error('Failed to assign lead')
+    } finally {
+      setAssigningLead(false)
+    }
+  }
+
+  // Function to unassign lead
+  const handleUnassignLead = async () => {
+    if (!currentSite?.id) {
+      toast.error('No site selected')
+      return
+    }
+
+    setAssigningLead(true)
+    try {
+      // Unassign by setting assignee_id to null
+      await onUpdateLead(lead.id, { assignee_id: null })
+      
+      toast.success('Lead unassigned successfully')
+      
+      // Update the edit form state
+      setEditForm(prev => ({ ...prev, assignee_id: null }))
+      
+      setAssigneeDropdownOpen(false)
+      setAssigneeSearch("") // Clear search when closing
+    } catch (error) {
+      console.error('Error unassigning lead:', error)
+      toast.error('Failed to unassign lead')
+    } finally {
+      setAssigningLead(false)
+    }
+  }
+
+  // Function to get assignee name
+  const getAssigneeName = (assigneeId: string | null) => {
+    if (!assigneeId) return 'AI Team'
+    
+    if (assigneeId === user?.id) return 'You'
+    
+    const member = teamMembers.find(m => m.user_id === assigneeId)
+    return member?.name || member?.email || 'Team Member'
+  }
+
+
   
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
@@ -496,6 +651,104 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                 />
               </TabsContent>
             </Tabs>
+          </div>
+        </div>
+        
+        {/* Assignment Section */}
+        <div className="bg-muted/40 rounded-lg p-4 border border-border/30 min-w-0">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider truncate">
+            Assignment
+          </h3>
+          
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="bg-primary/10 rounded-md flex items-center justify-center flex-shrink-0" style={{ width: '48px', height: '48px' }}>
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground mb-2">Assigned to</p>
+              <Popover open={assigneeDropdownOpen} onOpenChange={setAssigneeDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={assigneeDropdownOpen}
+                    className="w-full justify-between h-10"
+                    disabled={loadingTeamMembers || assigningLead}
+                  >
+                    {assigningLead ? (
+                      <div className="flex items-center">
+                        <Loader className="h-4 w-4 mr-2" />
+                        Assigning...
+                      </div>
+                    ) : (
+                      <>
+                        <span className="truncate">{getAssigneeName(lead.assignee_id || null)}</span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command shouldFilter={false}>
+                    <CommandInput 
+                      placeholder="Search team members..." 
+                      value={assigneeSearch}
+                      onValueChange={setAssigneeSearch}
+                    />
+                    <CommandList>
+                      {filteredAssigneeOptions.length === 0 && (
+                        <CommandEmpty>
+                          <div className="text-center py-4">
+                            <p className="text-sm text-muted-foreground">No team members found.</p>
+                          </div>
+                        </CommandEmpty>
+                      )}
+                      <CommandGroup>
+                        {loadingTeamMembers ? (
+                          <div className="relative flex select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none opacity-50">
+                            <Loader className="h-4 w-4 mr-2" />
+                            Loading...
+                          </div>
+                        ) : (
+                          filteredAssigneeOptions.map((option) => (
+                            <div
+                              key={option.id}
+                              className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                              onClick={() => !assigningLead && (
+                                option.isAITeam 
+                                  ? handleUnassignLead()
+                                  : handleAssignToMember(option.id)
+                              )}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  option.isSelected ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium">
+                                  {option.isAITeam 
+                                    ? 'AI Team' 
+                                    : (option.isCurrentUser ? 'You' : option.name)
+                                  }
+                                </p>
+                                {!option.isAITeam && option.name !== option.email && option.email && (
+                                  <p className="text-xs text-muted-foreground">{option.email}</p>
+                                )}
+                                {!option.isAITeam && option.position && (
+                                  <p className="text-xs text-muted-foreground">{option.position}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </div>
         

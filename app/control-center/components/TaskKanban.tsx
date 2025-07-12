@@ -242,7 +242,7 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                             >
                               <Card
                                 className={cn(
-                                  "mb-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px]",
+                                  "mb-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] relative",
                                   snapshot.isDragging && "shadow-lg"
                                 )}
                                 onClick={() => onTaskClick(task)}
@@ -279,12 +279,6 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                         <span className="text-xs text-muted-foreground min-w-[60px] text-right">
                                           {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
                                         </span>
-                                        {task.comments_count ? (
-                                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                            <MessageSquare className="h-3.5 w-3.5" />
-                                            <span>{task.comments_count}</span>
-                                          </div>
-                                        ) : null}
                                       </div>
                                     </div>
                                   </div>
@@ -303,6 +297,14 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                       </Badge>
                                     )}
                                   </div>
+
+                                  {/* Comment icon positioned in bottom right corner */}
+                                  {task.comments_count ? (
+                                    <div className="absolute bottom-2 right-2 flex items-center gap-1 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md border border-border/40">
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                      <span>{task.comments_count}</span>
+                                    </div>
+                                  ) : null}
                                 </CardContent>
                               </Card>
                             </div>
