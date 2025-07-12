@@ -698,7 +698,6 @@ export default function SalesPage() {
                     onRangeChange={handleDateRangeChange} 
                     initialStartDate={dateRange.startDate}
                     initialEndDate={dateRange.endDate}
-                    key={`date-range-${format(dateRange.startDate, 'yyyy-MM-dd')}-${format(dateRange.endDate, 'yyyy-MM-dd')}`}
                   />
                 </div>
                 <div className="ml-auto flex items-center gap-4">

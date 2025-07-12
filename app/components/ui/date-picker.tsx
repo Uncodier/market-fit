@@ -69,12 +69,18 @@ export function DatePicker({
     minutes: date.getMinutes()
   })
   
-  // Update currentMonth when date changes - solo si cambia significativamente
+  // Update currentMonth when date changes - prevent loops with useRef
+  const lastProcessedDateRef = React.useRef<Date | null>(null);
+  
   React.useEffect(() => {
-    if (!isSameMonth(currentMonth, date)) {
-      setCurrentMonth(new Date(date));
+    // Only update if date actually changed and is different from last processed
+    if (!lastProcessedDateRef.current || !isSameDay(lastProcessedDateRef.current, date)) {
+      if (!isSameMonth(currentMonth, date)) {
+        setCurrentMonth(new Date(date));
+      }
+      lastProcessedDateRef.current = new Date(date);
     }
-  }, [date]); // Remove currentMonth from dependencies to avoid conflicts
+  }, [date, currentMonth]);
 
   // Update selected time when date changes from outside
   React.useEffect(() => {
@@ -84,9 +90,8 @@ export function DatePicker({
     });
   }, [date]);
   
-  // Force re-render when currentMonth changes
+  // Simplified force update without logging
   React.useEffect(() => {
-    console.log('Current month changed to:', format(currentMonth, "MMMM yyyy"))
     setForceUpdate(prev => prev + 1)
   }, [currentMonth])
   
@@ -179,8 +184,6 @@ export function DatePicker({
   
   // Use useMemo to force re-calculation when currentMonth changes
   const days = React.useMemo(() => {
-    console.log('Recalculating calendar days for month:', format(currentMonth, "MMMM yyyy"), 'forceUpdate:', forceUpdate)
-    
     // Get the first day of the month
     const monthStart = startOfMonth(currentMonth)
     // Get the last day of the month
@@ -200,7 +203,6 @@ export function DatePicker({
   const prevMonth = React.useCallback((e: React.MouseEvent) => {
     if (isNavigating) return
     
-    console.log('Previous month button clicked')
     e.preventDefault()
     e.stopPropagation()
     
@@ -219,7 +221,6 @@ export function DatePicker({
     }
     
     const newDate = new Date(newYear, newMonth, 1)
-    console.log('Navigating to previous month:', currentMonth.toDateString(), '->', newDate.toDateString())
     
     // Force update the state
     setCurrentMonth(newDate)
@@ -233,7 +234,6 @@ export function DatePicker({
   const nextMonth = React.useCallback((e: React.MouseEvent) => {
     if (isNavigating) return
     
-    console.log('Next month button clicked')
     e.preventDefault()
     e.stopPropagation()
     
@@ -252,7 +252,6 @@ export function DatePicker({
     }
     
     const newDate = new Date(newYear, newMonth, 1)
-    console.log('Navigating to next month:', currentMonth.toDateString(), '->', newDate.toDateString())
     
     // Force update the state
     setCurrentMonth(newDate)
@@ -533,7 +532,6 @@ export function DatePicker({
       if (onRangeSelect) {
         // Notificar solo si hay cambios reales
         if (!isSameDay(start, date) || !endDate || !isSameDay(end, endDate)) {
-          console.log(`[DatePicker] Preset selected: ${event.label}, range: ${format(start, 'yyyy-MM-dd')} - ${format(end, 'yyyy-MM-dd')}`);
           onRangeSelect(start, end);
         }
       }
@@ -629,7 +627,6 @@ export function DatePicker({
                   className="font-medium text-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded px-2 py-1"
                   onClick={() => {
                     // Optional: could add month/year picker functionality here
-                    console.log('Month/year clicked:', format(currentMonth, "MMMM yyyy"))
                   }}
                 >
                   {format(currentMonth, "MMMM yyyy")}

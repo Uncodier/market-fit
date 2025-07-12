@@ -135,10 +135,32 @@ export async function deleteSite(id: string): Promise<void> {
       site_id_param: id
     })
     
-    if (error) throw new SiteServiceError(`Error deleting site: ${error.message}`)
+    if (error) {
+      console.error('Supabase RPC error:', error)
+      
+      // Provide more specific error messages based on error details
+      let errorMessage = error.message
+      
+      if (error.code === 'PGRST202') {
+        errorMessage = "Database function 'delete_site_safely' not found. Please contact support."
+      } else if (error.code === 'PGRST301') {
+        errorMessage = "Database function error. Please contact support."
+      } else if (error.message.includes('Permission denied')) {
+        errorMessage = "You don't have permission to delete this site"
+      } else if (error.message.includes('Authentication required')) {
+        errorMessage = "Please log in to delete this site"
+      } else if (error.message.includes('Site not found')) {
+        errorMessage = "Site not found or already deleted"
+      }
+      
+      throw new SiteServiceError(errorMessage)
+    }
   } catch (error) {
-    return error instanceof SiteServiceError 
-      ? Promise.reject(error) 
-      : Promise.reject(new SiteServiceError(`Error deleting site with ID: ${id}`))
+    if (error instanceof SiteServiceError) {
+      return Promise.reject(error)
+    }
+    
+    console.error('Unexpected error in deleteSite:', error)
+    return Promise.reject(new SiteServiceError(`Unexpected error deleting site with ID: ${id}`))
   }
 } 

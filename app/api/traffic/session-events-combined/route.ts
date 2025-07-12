@@ -98,13 +98,10 @@ export async function GET(request: NextRequest) {
     const chartData = Array.from(eventsByDay.entries()).map(([date, pageVisits]) => {
       const uniqueVisitors = visitorsByDay.get(date)?.size || 0;
       
-      // Data correction: if we have unique visitors but no page visits,
-      // page visits should be at least equal to unique visitors
-      const correctedPageVisits = Math.max(pageVisits, uniqueVisitors);
-      
+      // No artificial correction - use actual counts
       return {
         date,
-        pageVisits: correctedPageVisits,
+        pageVisits: pageVisits, // Use actual page visits count
         uniqueVisitors,
         label: new Date(date).toLocaleDateString('en-US', { 
           month: 'short', 
@@ -113,57 +110,56 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Process referrers data (same as before)
-    const referrerCounts = new Map<string, number>();
+    // Process referrers data with proper normalization
+    const referrerCounts = new Map<string, { count: number; fullUrl: string }>();
     
     allEvents?.forEach((event: any) => {
       if (event.referrer) {
-        const referrer = event.referrer;
-        referrerCounts.set(referrer, (referrerCounts.get(referrer) || 0) + 1);
+        let referrer = event.referrer;
+        let normalizedReferrer = referrer;
+        
+        // Extract domain and normalize
+        try {
+          const url = new URL(referrer);
+          normalizedReferrer = url.hostname;
+          // Remove www. prefix for consistency
+          if (normalizedReferrer.startsWith('www.')) {
+            normalizedReferrer = normalizedReferrer.substring(4);
+          }
+        } catch {
+          // If not a valid URL, keep as is
+          normalizedReferrer = referrer;
+        }
+        
+        // Group by normalized referrer, but keep track of a sample full URL
+        if (!referrerCounts.has(normalizedReferrer)) {
+          referrerCounts.set(normalizedReferrer, { count: 0, fullUrl: referrer });
+        }
+        referrerCounts.get(normalizedReferrer)!.count += 1;
       }
     });
 
     // Convert to array and sort by count
     const referrersArray = Array.from(referrerCounts.entries())
-      .map(([referrer, count]) => {
-        // Extract domain from referrer URL
-        let domain = referrer;
-        try {
-          const url = new URL(referrer);
-          domain = url.hostname;
-        } catch {
-          // If not a valid URL, keep as is
-        }
-
-        return {
-          referrer: domain,
-          count,
-          percentage: (allEvents?.length || 0) > 0 ? ((count / (allEvents?.length || 0)) * 100).toFixed(1) : '0.0',
-          fullUrl: referrer
-        };
-      })
+      .map(([referrer, data]) => ({
+        referrer,
+        count: data.count,
+        percentage: (allEvents?.length || 0) > 0 ? ((data.count / (allEvents?.length || 0)) * 100).toFixed(1) : '0.0',
+        fullUrl: data.fullUrl
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, referrersLimit);
 
-    // Calculate totals with data correction
+    // Calculate totals - use actual counts without artificial correction
     const totalUniqueVisitors = new Set(visitorSessions?.map(s => s.visitor_id) || []).size;
-    const rawTotalPageVisits = allEvents?.length || 0;
+    const totalPageVisits = allEvents?.length || 0; // Use actual page visits count
     
-    // Apply the same correction to totals: page visits should be at least equal to unique visitors
-    const totalPageVisits = Math.max(rawTotalPageVisits, totalUniqueVisitors);
-    
-    // Log data correction if applied
-    if (totalPageVisits > rawTotalPageVisits) {
-      console.log(`[Data Correction] Adjusted page visits from ${rawTotalPageVisits} to ${totalPageVisits} to match unique visitors count`);
-    }
-
     console.log('Combined data processed:', {
       totalPageVisits,
       totalUniqueVisitors,
       chartDays: chartData.length,
       uniqueReferrers: referrerCounts.size,
-      topReferrers: referrersArray.slice(0, 3),
-      dataCorrectionApplied: totalPageVisits > rawTotalPageVisits
+      topReferrers: referrersArray.slice(0, 3)
     });
 
     return NextResponse.json({

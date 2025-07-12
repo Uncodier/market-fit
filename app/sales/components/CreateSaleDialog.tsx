@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { toast } from "sonner"
 import { createSale } from "@/app/sales/actions"
 import { useSite } from "@/app/context/SiteContext"
@@ -23,7 +24,7 @@ interface FormData {
   amount: number
   status: 'pending' | 'completed' | 'cancelled' | 'refunded'
   source: 'retail' | 'online'
-  saleDate: string
+  saleDate: Date
   paymentMethod: string
 }
 
@@ -37,7 +38,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
     amount: 0,
     status: "pending",
     source: "retail",
-    saleDate: new Date().toISOString().split('T')[0],
+    saleDate: new Date(),
     paymentMethod: "cash"
   })
 
@@ -49,6 +50,13 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
     }))
   }
 
+  const handleDateChange = (date: Date) => {
+    setFormData(prev => ({
+      ...prev,
+      saleDate: date
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!currentSite?.id) return
@@ -57,6 +65,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
     try {
       const result = await createSale({
         ...formData,
+        saleDate: formData.saleDate.toISOString(),
         amount_due: formData.amount, // Set initial amount_due equal to amount
         siteId: currentSite.id,
         campaignId: null // No campaign selected by default
@@ -226,15 +235,14 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
               <Label htmlFor="saleDate" className="text-right">
                 Date
               </Label>
-              <Input
-                id="saleDate"
-                name="saleDate"
-                type="date"
-                value={formData.saleDate}
-                onChange={handleChange}
-                className="col-span-3"
-                required
-              />
+              <div className="col-span-3">
+                <DatePicker
+                  date={formData.saleDate}
+                  setDate={handleDateChange}
+                  className="w-full"
+                  mode="default"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>

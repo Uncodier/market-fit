@@ -510,8 +510,26 @@ export const handleDeleteSite = async (
     
     toast.success("Site deleted successfully")
   } catch (error) {
-    console.error(error)
-    toast.error("Error deleting site")
+    console.error("Error deleting site:", error)
+    
+    // Improved error handling with more specific messages
+    let errorMessage = "Error deleting site"
+    
+    if (error instanceof Error) {
+      if (error.message.includes("Permission denied")) {
+        errorMessage = "You don't have permission to delete this site"
+      } else if (error.message.includes("Authentication required")) {
+        errorMessage = "Please log in to delete this site"
+      } else if (error.message.includes("Site not found")) {
+        errorMessage = "Site not found or already deleted"
+      } else if (error.message.includes("delete_site_safely")) {
+        errorMessage = "Database function error. Please contact support."
+      } else {
+        errorMessage = error.message
+      }
+    }
+    
+    toast.error(errorMessage)
     setIsSaving(false)
     setShowDeleteDialog(false)
   }

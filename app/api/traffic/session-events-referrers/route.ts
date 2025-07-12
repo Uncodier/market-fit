@@ -49,19 +49,42 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Group by referrer and count occurrences
-    const referrerCounts = allEvents.reduce((acc: Record<string, number>, event) => {
-      const referrer = event.referrer || 'Direct';
-      acc[referrer] = (acc[referrer] || 0) + 1;
+    // Group by referrer and count occurrences - NORMALIZE referrers by domain
+    const referrerCounts = allEvents.reduce((acc: Record<string, { count: number; fullUrl: string }>, event) => {
+      let referrer = event.referrer || 'Direct';
+      let normalizedReferrer = referrer;
+      
+      // If it's a URL, extract the domain
+      if (referrer !== 'Direct' && referrer) {
+        try {
+          const url = new URL(referrer);
+          normalizedReferrer = url.hostname;
+          // Remove www. prefix for consistency
+          if (normalizedReferrer.startsWith('www.')) {
+            normalizedReferrer = normalizedReferrer.substring(4);
+          }
+        } catch (e) {
+          // If URL parsing fails, use the original referrer
+          normalizedReferrer = referrer;
+        }
+      }
+      
+      // Group by normalized referrer, but keep track of a sample full URL
+      if (!acc[normalizedReferrer]) {
+        acc[normalizedReferrer] = { count: 0, fullUrl: referrer };
+      }
+      acc[normalizedReferrer].count += 1;
+      
       return acc;
     }, {});
 
     // Convert to array format and sort by count
     const referrerData = Object.entries(referrerCounts)
-      .map(([referrer, count]) => ({
+      .map(([referrer, data]) => ({
         referrer,
-        count: count as number,
-        percentage: Number(((count as number / allEvents.length) * 100).toFixed(1))
+        count: data.count,
+        percentage: Number(((data.count / allEvents.length) * 100).toFixed(1)),
+        fullUrl: data.fullUrl
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
