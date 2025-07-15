@@ -118,6 +118,17 @@ export default function CompanyDetailPage() {
     setEditForm(prev => prev ? { ...prev, [field]: value } : null)
   }
 
+  const handleAddressUpdate = (field: keyof NonNullable<Company['address']>, value: string) => {
+    if (!editForm) return
+    setEditForm(prev => prev ? { 
+      ...prev, 
+      address: {
+        ...prev.address,
+        [field]: value
+      }
+    } : null)
+  }
+
   const handleShare = () => {
     if (typeof window !== 'undefined') {
       navigator.clipboard.writeText(window.location.href)
@@ -503,9 +514,18 @@ export default function CompanyDetailPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-muted-foreground mb-[5px]">Street</p>
-                          <p className="text-sm font-medium break-words">
-                            {company?.address?.street || "Not specified"}
-                          </p>
+                          {isEditing ? (
+                            <Input
+                              value={editForm?.address?.street || ""}
+                              onChange={(e) => handleAddressUpdate('street', e.target.value)}
+                              placeholder="123 Main Street"
+                              className="h-12 text-sm"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium break-words">
+                              {company?.address?.street || "Not specified"}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -516,9 +536,18 @@ export default function CompanyDetailPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-muted-foreground mb-[5px]">City</p>
-                          <p className="text-sm font-medium truncate">
-                            {company?.address?.city || "Not specified"}
-                          </p>
+                          {isEditing ? (
+                            <Input
+                              value={editForm?.address?.city || ""}
+                              onChange={(e) => handleAddressUpdate('city', e.target.value)}
+                              placeholder="New York"
+                              className="h-12 text-sm"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium truncate">
+                              {company?.address?.city || "Not specified"}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -529,9 +558,18 @@ export default function CompanyDetailPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-muted-foreground mb-[5px]">State</p>
-                          <p className="text-sm font-medium truncate">
-                            {company?.address?.state || "Not specified"}
-                          </p>
+                          {isEditing ? (
+                            <Input
+                              value={editForm?.address?.state || ""}
+                              onChange={(e) => handleAddressUpdate('state', e.target.value)}
+                              placeholder="NY"
+                              className="h-12 text-sm"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium truncate">
+                              {company?.address?.state || "Not specified"}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -542,9 +580,18 @@ export default function CompanyDetailPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-muted-foreground mb-[5px]">Zip Code</p>
-                          <p className="text-sm font-medium truncate">
-                            {company?.address?.zipcode || "Not specified"}
-                          </p>
+                          {isEditing ? (
+                            <Input
+                              value={editForm?.address?.zipcode || ""}
+                              onChange={(e) => handleAddressUpdate('zipcode', e.target.value)}
+                              placeholder="10001"
+                              className="h-12 text-sm"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium truncate">
+                              {company?.address?.zipcode || "Not specified"}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -555,9 +602,18 @@ export default function CompanyDetailPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-muted-foreground mb-[5px]">Country</p>
-                          <p className="text-sm font-medium truncate">
-                            {company?.address?.country || "Not specified"}
-                          </p>
+                          {isEditing ? (
+                            <Input
+                              value={editForm?.address?.country || ""}
+                              onChange={(e) => handleAddressUpdate('country', e.target.value)}
+                              placeholder="United States"
+                              className="h-12 text-sm"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium truncate">
+                              {company?.address?.country || "Not specified"}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

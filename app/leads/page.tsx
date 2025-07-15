@@ -39,12 +39,12 @@ import { AttributionModal } from "@/app/leads/components/AttributionModal"
 import { safeReload } from "@/app/utils/safe-reload"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useUserData } from "@/app/hooks/use-user-data"
+import { GroupedLeadsTable } from "@/app/leads/components/grouped-leads-table"
 
 // Cache de etapas para cada lead
-// Este cache se invalida automáticamente cuando se ejecutan acciones AI
 const leadJourneyStagesCache: Record<string, string> = {};
 
-// Función para limpiar completamente el cache (útil para debugging)
+// Función para limpiar completamente el cache
 const clearJourneyStageCache = () => {
   Object.keys(leadJourneyStagesCache).forEach(key => {
     delete leadJourneyStagesCache[key];
@@ -62,87 +62,381 @@ const JOURNEY_STAGE_COLORS: Record<string, string> = {
   not_contacted: 'bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200'
 }
 
-  // Obtener el nombre legible de una etapa
-  const getJourneyStageName = (stageId: string) => {
-    if (stageId === "not_contacted") return "Unaware"
-    return JOURNEY_STAGES.find(stage => stage.id === stageId)?.label || "Unknown"
-  }
+// Orden de las etapas del journey (más avanzado = índice más alto)
+const JOURNEY_STAGE_ORDER = [
+  'not_contacted',
+  'awareness', 
+  'consideration', 
+  'decision', 
+  'purchase', 
+  'retention', 
+  'referral'
+]
 
-interface LeadsTableProps {
-  leads: Lead[]
-  currentPage: number
-  itemsPerPage: number
-  totalLeads: number
-  onPageChange: (page: number) => void
-  onItemsPerPageChange: (value: string) => void
-  onLeadClick: (lead: Lead) => void
-  forceReload: number
-  invalidateJourneyStageCache: (leadId: string) => void
-  onUpdateLead?: (leadId: string, updates: Partial<Lead>) => void
-  userData: Record<string, { name: string, avatar_url: string | null }>
+// Función para obtener el nombre de la compañía
+const getCompanyName = (lead: Lead) => {
+  if (lead.companies && lead.companies.name) {
+    return lead.companies.name
+  }
+  if (lead.company && typeof lead.company === 'object' && lead.company.name) {
+    return lead.company.name
+  }
+  if (typeof lead.company === 'string') {
+    return lead.company
+  }
+  // Si no hay compañía, usar el nombre del lead como "compañía"
+  return lead.name
 }
 
-function LeadsTable({ 
-  leads,
-  currentPage,
-  itemsPerPage,
-  totalLeads,
-  onPageChange,
-  onItemsPerPageChange,
-  onLeadClick,
-  forceReload,
-  invalidateJourneyStageCache,
-  onUpdateLead,
-  userData
-}: LeadsTableProps) {
-  const indexOfFirstItem = (currentPage - 1) * itemsPerPage
-  const totalPages = Math.ceil(totalLeads / itemsPerPage)
-  const { segments } = useLeadsContext()
-  const { currentSite } = useSite()
-  const { user } = useAuth()
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
-  const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false) // Iniciamos en false y solo activamos cuando sea necesario
-  const [loadingActions, setLoadingActions] = useState<Record<string, 'research' | 'followup' | null>>({})
-  const [successActions, setSuccessActions] = useState<Record<string, 'research' | 'followup' | null>>({})
-  const [assigningLeads, setAssigningLeads] = useState<Record<string, boolean>>({})
-  
-  // Crear una key estable basada en los IDs de los leads para evitar re-renders innecesarios
-  const leadsKey = useMemo(() => {
-    return leads.map(lead => lead.id).sort().join(',')
-  }, [leads])
-  
-  // Estado para trackear qué leads están siendo recargados
-  const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
-  
-  // Función para limpiar todo el cache y forzar recarga completa
-  const clearAllJourneyStageCache = () => {
-    clearJourneyStageCache()
-    setLeadJourneyStages({})
-    // Esta función ya no es necesaria en el componente LeadsTable
-    // porque forceReload se maneja desde el componente padre
+// Función para obtener una clave única por empresa
+const getCompanyKey = (lead: Lead) => {
+  // Si hay compañía real, usar el nombre de la compañía
+  if ((lead.companies && lead.companies.name) || 
+      (lead.company && typeof lead.company === 'object' && lead.company.name) ||
+      (typeof lead.company === 'string')) {
+    const companyName = getCompanyName(lead)
+    return companyName.toLowerCase().trim()
   }
   
+  // Si no hay compañía, usar el ID del lead para asegurar unicidad
+  return `lead_${lead.id}`
+}
 
+// Interfaz para representar una empresa agrupada
+interface CompanyGroup {
+  companyName: string
+  companyKey: string
+  leads: Lead[]
+  mostAdvancedLead: Lead
+  mostAdvancedStage: string
+  leadCount: number
+  isExpanded: boolean
+}
+
+// Función para determinar el lead más avanzado de una empresa
+const getMostAdvancedLead = (leads: Lead[], journeyStages: Record<string, string>): Lead => {
+  if (!leads || leads.length === 0) throw new Error('No leads provided to getMostAdvancedLead')
   
+  return leads.reduce((mostAdvanced, currentLead) => {
+    const currentStage = journeyStages[currentLead.id] || 'not_contacted'
+    const advancedStage = journeyStages[mostAdvanced.id] || 'not_contacted'
+    
+    const currentIndex = JOURNEY_STAGE_ORDER.indexOf(currentStage)
+    const advancedIndex = JOURNEY_STAGE_ORDER.indexOf(advancedStage)
+    
+    // Si el lead actual tiene una etapa más avanzada, lo seleccionamos
+    if (currentIndex > advancedIndex) {
+      return currentLead
+    }
+    
+    // Si tienen la misma etapa, seleccionar el más reciente
+    if (currentIndex === advancedIndex) {
+      return new Date(currentLead.created_at) > new Date(mostAdvanced.created_at) ? currentLead : mostAdvanced
+    }
+    
+    return mostAdvanced
+  })
+}
 
+// Función para agrupar leads por empresa
+const groupLeadsByCompany = (leads: Lead[], journeyStages: Record<string, string>, expandedCompanies: Record<string, boolean>): CompanyGroup[] => {
+  if (!leads || !Array.isArray(leads)) return []
+  
+  const groups: Record<string, CompanyGroup> = {}
+  
+  leads.forEach(lead => {
+    const companyKey = getCompanyKey(lead)
+    const companyName = getCompanyName(lead)
+    
+    if (!groups[companyKey]) {
+      groups[companyKey] = {
+        companyName,
+        companyKey,
+        leads: [],
+        mostAdvancedLead: lead,
+        mostAdvancedStage: journeyStages[lead.id] || 'not_contacted',
+        leadCount: 0,
+        isExpanded: expandedCompanies[companyKey] || false
+      }
+    }
+    
+    groups[companyKey].leads.push(lead)
+    groups[companyKey].leadCount = groups[companyKey].leads.length
+  })
+  
+  // Determinar el lead más avanzado para cada empresa y ordenar leads por fecha
+  Object.values(groups).forEach(group => {
+    // Ordenar leads dentro del grupo del más nuevo al más viejo
+    group.leads.sort((a, b) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+    
+    group.mostAdvancedLead = getMostAdvancedLead(group.leads, journeyStages)
+    group.mostAdvancedStage = journeyStages[group.mostAdvancedLead.id] || 'not_contacted'
+  })
+  
+  return Object.values(groups).sort((a, b) => {
+    // Ordenar por fecha del lead más reciente primero (para que empresas con leads nuevos aparezcan arriba)
+    const aNewestDate = new Date(a.leads[0].created_at).getTime() // Ya están ordenados del más nuevo al más viejo
+    const bNewestDate = new Date(b.leads[0].created_at).getTime()
+    
+    if (aNewestDate !== bNewestDate) {
+      return bNewestDate - aNewestDate // Más reciente primero
+    }
+    
+    // Si tienen la misma fecha más reciente, ordenar por etapa más avanzada
+    const aStageIndex = JOURNEY_STAGE_ORDER.indexOf(a.mostAdvancedStage)
+    const bStageIndex = JOURNEY_STAGE_ORDER.indexOf(b.mostAdvancedStage)
+    
+    if (aStageIndex !== bStageIndex) {
+      return bStageIndex - aStageIndex // Más avanzado primero
+    }
+    
+    // Si tienen la misma etapa, ordenar por fecha de creación del lead más avanzado
+    return new Date(b.mostAdvancedLead.created_at).getTime() - new Date(a.mostAdvancedLead.created_at).getTime()
+  })
+}
+
+// Obtener el nombre legible de una etapa
+const getJourneyStageName = (stageId: string) => {
+  if (stageId === "not_contacted") return "Unaware"
+  return JOURNEY_STAGES.find(stage => stage.id === stageId)?.label || "Unknown"
+}
+
+// Contexto para manejar los segmentos
+interface LeadsContextType {
+  segments: Array<{ id: string; name: string }>
+}
+
+const LeadsContext = React.createContext<LeadsContextType>({
+  segments: []
+})
+
+const useLeadsContext = () => React.useContext(LeadsContext)
+
+// Componente Skeleton para carga de la tabla de leads
+function LeadsTableSkeleton() {
+  return (
+    <Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="min-w-[250px] w-[300px]">
+              <Skeleton className="h-4 w-24" />
+            </TableHead>
+            <TableHead className="min-w-[200px] w-[250px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="w-[200px] min-w-[140px] max-w-[200px]">
+              <Skeleton className="h-4 w-20" />
+            </TableHead>
+            <TableHead className="w-[130px] min-w-[100px] max-w-[130px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="w-[130px] min-w-[110px] max-w-[130px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="w-[120px] min-w-[100px] max-w-[120px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="text-right w-[120px] min-w-[100px] max-w-[120px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array(5).fill(0).map((_, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-24 rounded-full" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-24 rounded-full" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-24 rounded-full" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <div className="flex items-center justify-between px-6 py-4 border-t">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-8 rounded" />
+          <Skeleton className="h-8 w-24 rounded" />
+          <Skeleton className="h-8 w-8 rounded" />
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+export default function LeadsPage() {
+  const router = useRouter()
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [activeTab, setActiveTab] = useState("all")
+  const [dbLeads, setDbLeads] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true)
+  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [viewType, setViewType] = useState<ViewType>("table")
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [filters, setFilters] = useState<LeadFilters>({
+    status: [],
+    segments: [],
+    origin: []
+  })
+  const { currentSite } = useSite()
+  const [showAttributionModal, setShowAttributionModal] = useState(false)
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    leadId: string
+    leadName: string
+    newStatus: string
+  } | null>(null)
+  
+  // Estado para forzar recarga de journey stages
+  const [forceReload, setForceReload] = useState(0)
+  
+  // Estado para manejar la expansión/colapso de empresas
+  const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({})
+  
+  // Estado para journey stages
+  const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
+  const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false)
+  const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
+  
+  // Get unique assignee IDs from leads
+  const assigneeIds = useMemo(() => {
+    const ids = dbLeads.map(lead => lead.assignee_id).filter(Boolean) as string[]
+    return Array.from(new Set(ids))
+  }, [dbLeads])
+  
+  // Fetch user data for assignees
+  const { userData } = useUserData(assigneeIds)
+  
+  // Función para invalidar cache y forzar recarga
+  const invalidateJourneyStageCache = (leadId: string) => {
+    delete leadJourneyStagesCache[leadId]
+    setForceReload(prev => prev + 1)
+  }
+  
+  // Initialize command+k hook
+  useCommandK()
+  
+  // Función para cargar leads desde la base de datos
+  const loadLeads = async () => {
+    if (!currentSite?.id) return
+
+    setLoading(true)
+    try {
+      const result = await getLeads(currentSite.id)
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      // Asegurarse de que todos los leads tienen todos los campos de la interfaz Lead
+      const normalizedLeads = result.leads?.map(lead => ({
+        ...lead,
+        origin: lead.origin || null
+      })) || []
+      
+      setDbLeads(normalizedLeads)
+    } catch (error) {
+      console.error("Error loading leads:", error)
+      toast.error("Error loading leads")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Cargar leads y datos relacionados
+  useEffect(() => {
+    async function loadSegments() {
+      if (!currentSite?.id) return
+      
+      try {
+        const response = await getSegments(currentSite.id)
+        if (response.error) {
+          console.error(response.error)
+          return
+        }
+        
+        if (response.segments) {
+          setSegments(response.segments.map(s => ({ id: s.id, name: s.name })))
+        }
+      } catch (error) {
+        console.error("Error loading segments:", error)
+      }
+    }
+    
+    async function loadCampaigns() {
+      if (!currentSite?.id) return
+      
+      try {
+        const result = await getCampaigns(currentSite.id)
+        
+        if (result.error) {
+          console.error(result.error)
+          return
+        }
+        
+        setCampaigns(result.data || [])
+      } catch (error) {
+        console.error("Error loading campaigns:", error)
+      }
+    }
+
+    loadLeads()
+    loadSegments()
+    loadCampaigns()
+    
+    // Invalidar cache de journey stages cuando se carga un nuevo site
+    if (currentSite?.id) {
+      setForceReload(prev => prev + 1)
+    }
+  }, [currentSite])
   
   // Cargar etapas del journey para cada lead
   useEffect(() => {
     const fetchJourneyStagesForLeads = async () => {
-      if (!currentSite?.id || leads.length === 0) {
+      if (!currentSite?.id || dbLeads.length === 0) {
         setIsLoadingJourneyStages(false)
         return
       }
       
       // Verificar si todos los leads ya están en cache
-      const leadIds = leads.map(lead => lead.id)
+      const leadIds = dbLeads.map(lead => lead.id)
       const allLeadsInCache = leadIds.every(id => leadJourneyStagesCache[id])
       
       if (allLeadsInCache && forceReload === 0) {
         // Si todos están en cache, usar los valores cacheados sin mostrar loading
         const stages: Record<string, string> = {}
-        leads.forEach(lead => {
+        dbLeads.forEach(lead => {
           stages[lead.id] = leadJourneyStagesCache[lead.id]
         })
         setLeadJourneyStages(stages)
@@ -151,7 +445,7 @@ function LeadsTable({
       }
       
       // Solo mostrar loading si realmente necesitamos hacer la consulta
-      const uncachedLeads = leads.filter(lead => !leadJourneyStagesCache[lead.id])
+      const uncachedLeads = dbLeads.filter(lead => !leadJourneyStagesCache[lead.id])
       
       if (uncachedLeads.length === 0 && forceReload === 0) {
         setIsLoadingJourneyStages(false)
@@ -162,7 +456,7 @@ function LeadsTable({
       const stages: Record<string, string> = {}
       
       // Primero, llenar con datos del cache
-      leads.forEach(lead => {
+      dbLeads.forEach(lead => {
         if (leadJourneyStagesCache[lead.id]) {
           stages[lead.id] = leadJourneyStagesCache[lead.id]
         }
@@ -246,651 +540,11 @@ function LeadsTable({
     }
     
     fetchJourneyStagesForLeads()
-  }, [leadsKey, currentSite?.id, forceReload]) // Agregar forceReload como dependencia
+  }, [dbLeads, currentSite?.id, forceReload])
   
-  // Función para llamar API de research
-  const handleLeadResearch = async (leadId: string) => {
-    setLoadingActions(prev => ({ ...prev, [leadId]: 'research' }))
-    
-    try {
-      // Use the same pattern as leadFollowUp - call external API server
-      const { apiClient } = await import('@/app/services/api-client-service')
-      
-      const response = await apiClient.post('/api/workflow/leadResearch', {
-        lead_id: leadId,
-        user_id: currentSite?.user_id,
-        site_id: currentSite?.id
-      })
-      
-      if (response.success) {
-        setSuccessActions(prev => ({ ...prev, [leadId]: 'research' }))
-        setTimeout(() => {
-          setSuccessActions(prev => ({ ...prev, [leadId]: null }))
-        }, 2000)
-        toast.success("Lead research initiated successfully")
-        
-        // Invalidar cache y forzar recarga para reflejar cambios
-        setTimeout(() => {
-          invalidateJourneyStageCache(leadId)
-        }, 1000)
-        
-        // Verificar y refrescar nuevamente después de más tiempo (las APIs externas pueden tomar tiempo)
-        setTimeout(() => {
-          invalidateJourneyStageCache(leadId)
-        }, 5000)
-      } else {
-        throw new Error(response.error?.message || 'Failed to initiate lead research')
-      }
-    } catch (error) {
-      console.error('Error calling lead research API:', error)
-      toast.error("Failed to initiate lead research")
-    } finally {
-      setLoadingActions(prev => ({ ...prev, [leadId]: null }))
-    }
-  }
-
-  // Función para llamar API de follow up
-  const handleLeadFollowUp = async (leadId: string) => {
-    setLoadingActions(prev => ({ ...prev, [leadId]: 'followup' }))
-    
-    try {
-      // Use the same pattern as leadFollowUp - call external API server
-      const { apiClient } = await import('@/app/services/api-client-service')
-      
-      const response = await apiClient.post('/api/workflow/leadFollowUp', {
-        lead_id: leadId,
-        user_id: currentSite?.user_id,
-        site_id: currentSite?.id
-      })
-      
-      if (response.success) {
-        setSuccessActions(prev => ({ ...prev, [leadId]: 'followup' }))
-        setTimeout(() => {
-          setSuccessActions(prev => ({ ...prev, [leadId]: null }))
-        }, 2000)
-        toast.success("Lead follow-up initiated successfully")
-        
-        // Invalidar cache y forzar recarga para reflejar cambios
-        setTimeout(() => {
-          invalidateJourneyStageCache(leadId)
-        }, 1000)
-        
-        // Verificar y refrescar nuevamente después de más tiempo (las APIs externas pueden tomar tiempo)
-        setTimeout(() => {
-          invalidateJourneyStageCache(leadId)
-        }, 5000)
-      } else {
-        throw new Error(response.error?.message || 'Failed to initiate lead follow-up')
-      }
-    } catch (error) {
-      console.error('Error calling lead follow-up API:', error)
-      toast.error("Failed to initiate lead follow-up")
-    } finally {
-      setLoadingActions(prev => ({ ...prev, [leadId]: null }))
-    }
-  }
-
-  // Función para asignar un lead al usuario actual
-  const handleAssignLead = async (leadId: string) => {
-    if (!user?.id || !currentSite?.id) {
-      toast.error("User not authenticated or site not selected")
-      return
-    }
-
-    setAssigningLeads(prev => ({ ...prev, [leadId]: true }))
-    
-    try {
-      const result = await assignLeadToUser(leadId, user.id, currentSite.id)
-      
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      
-      toast.success("Lead assigned successfully")
-      
-      // Actualizar el lead localmente para reflejar el cambio inmediatamente
-      onUpdateLead?.(leadId, { assignee_id: user.id })
-      
-      // Forzar recarga para actualizar la UI
-      invalidateJourneyStageCache(leadId)
-      
-    } catch (error) {
-      console.error('Error assigning lead:', error)
-      toast.error("Failed to assign lead")
-    } finally {
-      setAssigningLeads(prev => ({ ...prev, [leadId]: false }))
-    }
-  }
-  
-
-  
-  // Función para obtener el nombre del segmento
-  const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return "No Segment"
-    if (!segments || !Array.isArray(segments)) return "Unknown Segment"
-    const segment = segments.find(s => s.id === segmentId)
-    return segment?.name || "Unknown Segment"
-  }
-
-  // Función para truncar texto largo
-  const truncateText = (text: any, maxLength: number = 15) => {
-    if (!text) return "-"
-    if (typeof text === 'object') {
-      if (text.name) return String(text.name)
-      return "-"
-    }
-    const stringValue = String(text)
-    if (stringValue.length <= maxLength) return stringValue
-    return `${stringValue.substring(0, maxLength)}...`
-  }
-
-  // Función para obtener el nombre de la compañía
-  const getCompanyName = (lead: Lead) => {
-    // Si existe companies (joined data), usar eso
-    if (lead.companies && lead.companies.name) {
-      return lead.companies.name
-    }
-    // Fallback al campo company existente
-    if (lead.company && typeof lead.company === 'object' && lead.company.name) {
-      return lead.company.name
-    }
-    if (typeof lead.company === 'string') {
-      return lead.company
-    }
-    return "-"
-  }
-
-  const statusStyles = {
-    new: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
-    contacted: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200", 
-    qualified: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
-    converted: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
-    lost: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
-  }
-  
-  return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-[300px] w-[350px]">Name</TableHead>
-            <TableHead className="w-[280px] min-w-[150px] max-w-[280px]">Company</TableHead>
-            <TableHead className="w-[260px] min-w-[140px] max-w-[260px]">Segment</TableHead>
-            <TableHead className="w-[130px] min-w-[100px] max-w-[130px]">Status</TableHead>
-            <TableHead className="w-[130px] min-w-[110px] max-w-[130px]">Journey Stage</TableHead>
-            <TableHead className="w-[120px] min-w-[100px] max-w-[120px]">Assignee</TableHead>
-            <TableHead className="w-[120px] min-w-[100px] max-w-[120px] text-right">AI Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-            {leads.length > 0 ? (
-              leads.map((lead) => {
-                return (
-                  <TableRow 
-                    key={lead.id}
-                    className={`group hover:bg-muted/50 transition-colors cursor-pointer ${selectedLead?.id === lead.id ? 'bg-primary/10 hover:bg-primary/15' : ''}`}
-                    onClick={() => onLeadClick(lead)}
-                  >
-                    <TableCell>
-                      <div className="space-y-0.5">
-                        <p className="font-medium text-sm line-clamp-2" title={String(lead.name || '')}>{String(lead.name || '')}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2" title={String(lead.email || '')}>{String(lead.email || '')}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      <div className="line-clamp-2" title={getCompanyName(lead)}>
-                        {getCompanyName(lead)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      <div className="line-clamp-2" title={getSegmentName(lead.segment_id)}>
-                        {getSegmentName(lead.segment_id)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${statusStyles[lead.status]}`}>
-                        {String(lead.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {isLoadingJourneyStages || reloadingLeads.has(lead.id) ? (
-                        <Skeleton className="h-5 w-16 rounded-full" />
-                      ) : (
-                        <Badge className={`${JOURNEY_STAGE_COLORS[leadJourneyStages[lead.id] || 'not_contacted']}`}>
-                          {getJourneyStageName(leadJourneyStages[lead.id] || 'not_contacted')}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        {lead.assignee_id ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md">
-                                  <UserIcon className="h-3 w-3" />
-                                  <span className="text-xs font-medium">
-                                    {lead.assignee_id === user?.id 
-                                      ? 'You' 
-                                      : userData[lead.assignee_id]?.name || 'Assigned'}
-                                  </span>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Assigned to {lead.assignee_id === user?.id 
-                                  ? 'you' 
-                                  : userData[lead.assignee_id]?.name || 'team member'}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50"
-                                  disabled={assigningLeads[lead.id]}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    e.preventDefault()
-                                    handleAssignLead(lead.id)
-                                  }}
-                                >
-                                  {assigningLeads[lead.id] ? (
-                                    <Loader className="h-3 w-3 mr-1" />
-                                  ) : (
-                                    <Sparkles className="h-3 w-3 mr-1" />
-                                  )}
-                                  <span>AI</span>
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Assign to me</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={loadingActions[lead.id] === 'research'}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleLeadResearch(lead.id)
-                                }}
-                                className={`${successActions[lead.id] === 'research' ? 'bg-green-100 text-green-700' : ''}`}
-                              >
-                                {loadingActions[lead.id] === 'research' ? (
-                                  <Loader className="h-4 w-4" />
-                                ) : successActions[lead.id] === 'research' ? (
-                                  <CheckCircle2 className="h-4 w-4" />
-                                ) : (
-                                  <Search className="h-4 w-4" />
-                                )}
-                                <span className="sr-only">Lead Research</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Research lead</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={loadingActions[lead.id] === 'followup'}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleLeadFollowUp(lead.id)
-                                }}
-                                className={`${successActions[lead.id] === 'followup' ? 'bg-green-100 text-green-700' : ''}`}
-                              >
-                                {loadingActions[lead.id] === 'followup' ? (
-                                  <Loader className="h-4 w-4" />
-                                ) : successActions[lead.id] === 'followup' ? (
-                                  <CheckCircle2 className="h-4 w-4" />
-                                ) : (
-                                  <Mail className="h-4 w-4" />
-                                )}
-                                <span className="sr-only">Lead Follow Up</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Intelligent follow-up</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  <EmptyCard
-                    icon={<Users className="h-16 w-16 text-muted-foreground" />}
-                    title="No leads found"
-                    description="There are no leads to display."
-                  />
-                </TableCell>
-              </TableRow>
-            )}
-        </TableBody>
-      </Table>
-      <div className="flex items-center justify-between px-6 py-4 border-t">
-        <div className="flex items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{Math.min(indexOfFirstItem + 1, totalLeads)}</span> to <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalLeads)}</span> of <span className="font-medium">{totalLeads}</span> leads
-          </p>
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={onItemsPerPageChange}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={itemsPerPage.toString()} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {[5, 10, 20, 50].map((value) => (
-                <SelectItem key={value} value={value.toString()}>
-                  {value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Previous page</span>
-          </Button>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant="ghost"
-                size="sm"
-                onClick={() => onPageChange(page)}
-                className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                  currentPage === page 
-                    ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                    : "text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                {page}
-              </Button>
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages || totalPages === 0}
-            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-          >
-            <ChevronRight className="h-4 w-4" />
-            <span className="sr-only">Next page</span>
-          </Button>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-// Contexto para manejar los segmentos
-interface LeadsContextType {
-  segments: Array<{ id: string; name: string }>
-}
-
-const LeadsContext = React.createContext<LeadsContextType>({
-  segments: []
-})
-
-const useLeadsContext = () => React.useContext(LeadsContext)
-
-// Componente Skeleton para carga de la tabla de leads
-function LeadsTableSkeleton() {
-  return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-[300px] w-[350px]">
-              <Skeleton className="h-4 w-24" />
-            </TableHead>
-            <TableHead className="w-[280px] min-w-[150px] max-w-[280px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[260px] min-w-[140px] max-w-[260px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[130px] min-w-[100px] max-w-[130px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[130px] min-w-[110px] max-w-[130px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[120px] min-w-[100px] max-w-[120px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="text-right w-[120px] min-w-[100px] max-w-[120px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array(5).fill(0).map((_, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                <div className="space-y-1.5">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-24 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-24 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-24 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <div className="flex items-center justify-between px-6 py-4 border-t">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-24 rounded" />
-          <Skeleton className="h-8 w-8 rounded" />
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-export default function LeadsPage() {
-  const router = useRouter()
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [activeTab, setActiveTab] = useState("all")
-  const [dbLeads, setDbLeads] = useState<Lead[]>([])
-  const [loading, setLoading] = useState(true)
-  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [viewType, setViewType] = useState<ViewType>("table")
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  const [filters, setFilters] = useState<LeadFilters>({
-    status: [],
-    segments: [],
-    origin: []
-  })
-  const { currentSite } = useSite()
-  const [showAttributionModal, setShowAttributionModal] = useState(false)
-  const [pendingStatusChange, setPendingStatusChange] = useState<{
-    leadId: string
-    leadName: string
-    newStatus: string
-  } | null>(null)
-  
-  // Estado para forzar recarga de journey stages
-  const [forceReload, setForceReload] = useState(0)
-  
-  // Get unique assignee IDs from leads
-  const assigneeIds = useMemo(() => {
-    const ids = dbLeads.map(lead => lead.assignee_id).filter(Boolean) as string[]
-    return Array.from(new Set(ids))
-  }, [dbLeads])
-  
-  // Fetch user data for assignees
-  const { userData } = useUserData(assigneeIds)
-  
-  // Función para invalidar cache y forzar recarga
-  const invalidateJourneyStageCache = (leadId: string) => {
-    delete leadJourneyStagesCache[leadId]
-    setForceReload(prev => prev + 1)
-  }
-  
-  // Función para verificar todos los leads y sus journey stages
-
-  
-  // Initialize command+k hook
-  useCommandK()
-  
-
-  
-
-  
-  // Función para obtener el nombre del segmento
-  const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return "No Segment"
-    if (!segments || !Array.isArray(segments)) return "Unknown Segment"
-    const segment = segments.find(s => s.id === segmentId)
-    return segment?.name || "Unknown Segment"
-  }
-  
-  // Estilos para los diferentes estados
-  const statusStyles = {
-    new: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
-    contacted: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200", 
-    qualified: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200",
-    converted: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
-    lost: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
-  }
-  
-  // Función para cargar leads desde la base de datos
-  const loadLeads = async () => {
-    if (!currentSite?.id) return
-
-    setLoading(true)
-    try {
-      const result = await getLeads(currentSite.id)
-      
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      
-      // Asegurarse de que todos los leads tienen todos los campos de la interfaz Lead
-      const normalizedLeads = result.leads?.map(lead => ({
-        ...lead,
-        origin: lead.origin || null // Asegurarnos que origin esté definido
-      })) || []
-      
-      setDbLeads(normalizedLeads)
-    } catch (error) {
-      console.error("Error loading leads:", error)
-      toast.error("Error loading leads")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Cargar leads desde la base de datos
-  useEffect(() => {
-    async function loadSegments() {
-      if (!currentSite?.id) return
-      
-      try {
-        const response = await getSegments(currentSite.id)
-        if (response.error) {
-          console.error(response.error)
-          return
-        }
-        
-        if (response.segments) {
-          setSegments(response.segments.map(s => ({ id: s.id, name: s.name })))
-        }
-      } catch (error) {
-        console.error("Error loading segments:", error)
-      }
-    }
-    
-    async function loadCampaigns() {
-      if (!currentSite?.id) return
-      
-      try {
-        const result = await getCampaigns(currentSite.id)
-        
-        if (result.error) {
-          console.error(result.error)
-          return
-        }
-        
-        setCampaigns(result.data || [])
-      } catch (error) {
-        console.error("Error loading campaigns:", error)
-      }
-    }
-
-    loadLeads()
-    loadSegments()
-    loadCampaigns()
-    
-    // Invalidar cache de journey stages cuando se carga un nuevo site
-    // para asegurar que los datos estén actualizados
-    if (currentSite?.id) {
-      setForceReload(prev => prev + 1)
-    }
-  }, [currentSite])
-  
+  // Función para obtener leads filtrados
   const getFilteredLeads = (status: string) => {
-    if (!dbLeads) return []
+    if (!dbLeads || !Array.isArray(dbLeads)) return []
     
     let filtered = dbLeads
     
@@ -900,16 +554,13 @@ export default function LeadsPage() {
     }
     
     // Apply advanced status filters only if we're on "all" tab
-    // or if the advanced filters include the current tab status
     if (filters.status.length > 0) {
       if (status === "all") {
         filtered = filtered.filter(lead => filters.status.includes(lead.status))
       } else {
-        // On specific tab, only apply advanced status filter if it includes current status
         if (filters.status.includes(status)) {
-          // Keep current filter, as the tab status is already included
+          // Keep current filter
         } else {
-          // Advanced status filter doesn't include current tab status, return empty
           return []
         }
       }
@@ -933,20 +584,12 @@ export default function LeadsPage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       filtered = filtered.filter(lead => {
-        // Get company name using same logic as LeadsTable
-        let companyName = "-"
-        if (lead.companies && lead.companies.name) {
-          companyName = lead.companies.name
-        } else if (lead.company && typeof lead.company === 'object' && lead.company.name) {
-          companyName = lead.company.name
-        } else if (typeof lead.company === 'string') {
-          companyName = lead.company
-        }
+        const companyName = getCompanyName(lead)
         
         return (
           lead.name.toLowerCase().includes(query) || 
           lead.email.toLowerCase().includes(query) || 
-          (companyName && companyName !== "-" && companyName.toLowerCase().includes(query)) ||
+          (companyName && companyName.toLowerCase().includes(query)) ||
           (lead.position && lead.position.toLowerCase().includes(query)) ||
           (lead.phone && lead.phone.toLowerCase().includes(query)) ||
           (lead.origin && lead.origin.toLowerCase().includes(query))
@@ -954,7 +597,7 @@ export default function LeadsPage() {
       })
     }
     
-    // Sort by created_at descending (newest first)
+    // Sort by created_at descending (newest first - más nuevo al más viejo)
     filtered = filtered.sort((a, b) => {
       const dateA = new Date(a.created_at).getTime()
       const dateB = new Date(b.created_at).getTime()
@@ -965,12 +608,13 @@ export default function LeadsPage() {
   }
   
   const filteredLeads = getFilteredLeads(activeTab)
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage)
   
-  // Calcular los leads que se mostrarán en la página actual
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentLeads = filteredLeads.slice(indexOfFirstItem, indexOfLastItem)
+  // Agrupar leads por empresa
+  const companyGroups = useMemo(() => {
+    return groupLeadsByCompany(filteredLeads || [], leadJourneyStages || {}, expandedCompanies || {})
+  }, [filteredLeads, leadJourneyStages, expandedCompanies])
+  
+  const totalPages = Math.ceil((companyGroups?.length || 0) / itemsPerPage)
   
   // Funciones para cambiar de página
   function handlePageChange(page: number) {
@@ -986,6 +630,14 @@ export default function LeadsPage() {
   function handleItemsPerPageChange(value: string) {
     setItemsPerPage(Number(value))
     setCurrentPage(1)
+  }
+  
+  // Función para manejar la expansión/colapso de empresas
+  const handleToggleCompanyExpansion = (companyKey: string) => {
+    setExpandedCompanies(prev => ({
+      ...prev,
+      [companyKey]: !prev[companyKey]
+    }))
   }
   
   // Función para crear un nuevo lead
@@ -1036,7 +688,7 @@ export default function LeadsPage() {
   // Función para manejar cambios en el buscador
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
-    setCurrentPage(1) // Reset a la primera página cuando se busca
+    setCurrentPage(1)
   }
 
   // Función para actualizar el estado de un lead (para la vista Kanban)
@@ -1072,7 +724,6 @@ export default function LeadsPage() {
         status: newStatus as any,
         origin: lead.origin,
         site_id: currentSite?.id || "",
-        // Preserve existing attribution data unless explicitly provided
         ...(lead.attribution && !attribution && { attribution: lead.attribution })
       }
 
@@ -1135,7 +786,7 @@ export default function LeadsPage() {
   // Función para aplicar filtros
   const handleApplyFilters = (newFilters: LeadFilters) => {
     setFilters(newFilters)
-    setCurrentPage(1) // Reset a la primera página cuando se aplican filtros
+    setCurrentPage(1)
   }
   
   // Función para limpiar todos los filtros
@@ -1184,7 +835,7 @@ export default function LeadsPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList>
-                  <TabsTrigger value="all" className="text-sm font-medium">All Leads</TabsTrigger>
+                  <TabsTrigger value="all" className="text-sm font-medium">All Companies</TabsTrigger>
                   <TabsTrigger value="new" className="text-sm font-medium">New</TabsTrigger>
                   <TabsTrigger value="contacted" className="text-sm font-medium">Contacted</TabsTrigger>
                   <TabsTrigger value="qualified" className="text-sm font-medium">Qualified</TabsTrigger>
@@ -1194,7 +845,7 @@ export default function LeadsPage() {
                 <div className="relative w-64">
                   <Input 
                     data-command-k-input
-                    placeholder="Search leads..." 
+                    placeholder="Search companies and leads..." 
                     className="w-full" 
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     value={searchQuery}
@@ -1230,13 +881,15 @@ export default function LeadsPage() {
               <LeadsTableSkeleton />
             ) : (
               <>
-                <TabsContent value="all" className="space-y-4">
+                {["all", "new", "contacted", "qualified", "converted", "lost"].map(tabValue => (
+                  <TabsContent key={tabValue} value={tabValue} className="space-y-4">
                   {viewType === "table" ? (
-                    <LeadsTable
-                      leads={currentLeads}
+                      <GroupedLeadsTable
+                        companyGroups={companyGroups}
                       currentPage={currentPage}
                       itemsPerPage={itemsPerPage}
                       totalLeads={filteredLeads.length}
+                        totalCompanies={companyGroups.length}
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}
                       onLeadClick={handleLeadClick}
@@ -1244,6 +897,11 @@ export default function LeadsPage() {
                       invalidateJourneyStageCache={invalidateJourneyStageCache}
                       onUpdateLead={handleUpdateLead}
                       userData={userData}
+                        onToggleCompanyExpansion={handleToggleCompanyExpansion}
+                      segments={segments}
+                        leadJourneyStages={leadJourneyStages}
+                        isLoadingJourneyStages={isLoadingJourneyStages}
+                        reloadingLeads={reloadingLeads}
                     />
                   ) : (
                     <KanbanView 
@@ -1258,151 +916,7 @@ export default function LeadsPage() {
                     />
                   )}
                 </TabsContent>
-                
-                <TabsContent value="new" className="space-y-4">
-                  {viewType === "table" ? (
-                    <LeadsTable
-                      leads={currentLeads}
-                      currentPage={currentPage}
-                      itemsPerPage={itemsPerPage}
-                      totalLeads={filteredLeads.length}
-                      onPageChange={handlePageChange}
-                      onItemsPerPageChange={handleItemsPerPageChange}
-                      onLeadClick={handleLeadClick}
-                      forceReload={forceReload}
-                      invalidateJourneyStageCache={invalidateJourneyStageCache}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  ) : (
-                    <KanbanView 
-                      leads={filteredLeads}
-                      onUpdateLeadStatus={handleUpdateLeadStatus}
-                      segments={segments}
-                      onLeadClick={handleLeadClick}
-                      filters={filters}
-                      onOpenFilters={handleOpenFilterModal}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="contacted" className="space-y-4">
-                  {viewType === "table" ? (
-                    <LeadsTable
-                      leads={currentLeads}
-                      currentPage={currentPage}
-                      itemsPerPage={itemsPerPage}
-                      totalLeads={filteredLeads.length}
-                      onPageChange={handlePageChange}
-                      onItemsPerPageChange={handleItemsPerPageChange}
-                      onLeadClick={handleLeadClick}
-                      forceReload={forceReload}
-                      invalidateJourneyStageCache={invalidateJourneyStageCache}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  ) : (
-                    <KanbanView 
-                      leads={filteredLeads}
-                      onUpdateLeadStatus={handleUpdateLeadStatus}
-                      segments={segments}
-                      onLeadClick={handleLeadClick}
-                      filters={filters}
-                      onOpenFilters={handleOpenFilterModal}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="qualified" className="space-y-4">
-                  {viewType === "table" ? (
-                    <LeadsTable
-                      leads={currentLeads}
-                      currentPage={currentPage}
-                      itemsPerPage={itemsPerPage}
-                      totalLeads={filteredLeads.length}
-                      onPageChange={handlePageChange}
-                      onItemsPerPageChange={handleItemsPerPageChange}
-                      onLeadClick={handleLeadClick}
-                      forceReload={forceReload}
-                      invalidateJourneyStageCache={invalidateJourneyStageCache}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  ) : (
-                    <KanbanView 
-                      leads={filteredLeads}
-                      onUpdateLeadStatus={handleUpdateLeadStatus}
-                      segments={segments}
-                      onLeadClick={handleLeadClick}
-                      filters={filters}
-                      onOpenFilters={handleOpenFilterModal}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="converted" className="space-y-4">
-                  {viewType === "table" ? (
-                    <LeadsTable
-                      leads={currentLeads}
-                      currentPage={currentPage}
-                      itemsPerPage={itemsPerPage}
-                      totalLeads={filteredLeads.length}
-                      onPageChange={handlePageChange}
-                      onItemsPerPageChange={handleItemsPerPageChange}
-                      onLeadClick={handleLeadClick}
-                      forceReload={forceReload}
-                      invalidateJourneyStageCache={invalidateJourneyStageCache}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  ) : (
-                    <KanbanView 
-                      leads={filteredLeads}
-                      onUpdateLeadStatus={handleUpdateLeadStatus}
-                      segments={segments}
-                      onLeadClick={handleLeadClick}
-                      filters={filters}
-                      onOpenFilters={handleOpenFilterModal}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="lost" className="space-y-4">
-                  {viewType === "table" ? (
-                    <LeadsTable
-                      leads={currentLeads}
-                      currentPage={currentPage}
-                      itemsPerPage={itemsPerPage}
-                      totalLeads={filteredLeads.length}
-                      onPageChange={handlePageChange}
-                      onItemsPerPageChange={handleItemsPerPageChange}
-                      onLeadClick={handleLeadClick}
-                      forceReload={forceReload}
-                      invalidateJourneyStageCache={invalidateJourneyStageCache}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  ) : (
-                    <KanbanView 
-                      leads={filteredLeads}
-                      onUpdateLeadStatus={handleUpdateLeadStatus}
-                      segments={segments}
-                      onLeadClick={handleLeadClick}
-                      filters={filters}
-                      onOpenFilters={handleOpenFilterModal}
-                      onUpdateLead={handleUpdateLead}
-                      userData={userData}
-                    />
-                  )}
-                </TabsContent>
+                ))}
               </>
             )}
           </div>
