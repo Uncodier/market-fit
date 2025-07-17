@@ -302,32 +302,32 @@ function SalesTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-24" />
-            </TableHead>
-            <TableHead className="whitespace-nowrap">
+            <TableHead className="w-[250px]">
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="whitespace-nowrap">
+            <TableHead>
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="whitespace-nowrap">
+            <TableHead>
+              <Skeleton className="h-4 w-20" />
+            </TableHead>
+            <TableHead>
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="w-[150px]">
+            <TableHead>
               <Skeleton className="h-4 w-16" />
             </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
+            <TableHead>
+              <Skeleton className="h-4 w-12" />
             </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
+            <TableHead>
+              <Skeleton className="h-4 w-14" />
             </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
+            <TableHead>
+              <Skeleton className="h-4 w-12" />
             </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
+            <TableHead className="text-right">
+              <Skeleton className="h-4 w-16 ml-auto" />
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -337,7 +337,7 @@ function SalesTableSkeleton() {
               <TableCell>
                 <div className="space-y-1.5">
                   <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
+                  <Skeleton className="h-3 w-24" />
                 </div>
               </TableCell>
               <TableCell>
@@ -353,16 +353,19 @@ function SalesTableSkeleton() {
                 <Skeleton className="h-4 w-20" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-5 w-24 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-14 rounded-full" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Skeleton className="h-8 w-8 rounded" />
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
               </TableCell>
             </TableRow>
           ))}
@@ -371,10 +374,13 @@ function SalesTableSkeleton() {
       <div className="flex items-center justify-between px-6 py-4 border-t">
         <div className="flex items-center gap-4">
           <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-8 w-16 rounded" />
         </div>
         <div className="flex items-center gap-2">
           <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-24 rounded" />
+          <Skeleton className="h-8 w-8 rounded" />
+          <Skeleton className="h-8 w-8 rounded" />
+          <Skeleton className="h-8 w-8 rounded" />
           <Skeleton className="h-8 w-8 rounded" />
         </div>
       </div>
