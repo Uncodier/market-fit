@@ -587,8 +587,8 @@ export default function LeadsPage() {
         const companyName = getCompanyName(lead)
         
         return (
-          lead.name.toLowerCase().includes(query) || 
-          lead.email.toLowerCase().includes(query) || 
+          (lead.name && lead.name.toLowerCase().includes(query)) || 
+          (lead.email && lead.email.toLowerCase().includes(query)) || 
           (companyName && companyName.toLowerCase().includes(query)) ||
           (lead.position && lead.position.toLowerCase().includes(query)) ||
           (lead.phone && lead.phone.toLowerCase().includes(query)) ||
@@ -845,7 +845,7 @@ export default function LeadsPage() {
                 <div className="relative w-64">
                   <Input 
                     data-command-k-input
-                    placeholder="Search companies and leads..." 
+                    placeholder="search" 
                     className="w-full" 
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     value={searchQuery}
@@ -856,8 +856,7 @@ export default function LeadsPage() {
                   </kbd>
                 </div>
                 <Button variant="outline" onClick={handleOpenFilterModal}>
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filter
+                  <Filter className="h-4 w-4" />
                 </Button>
               </div>
               <div className="ml-auto flex items-center gap-4">

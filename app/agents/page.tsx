@@ -429,9 +429,10 @@ function AgentsPageContent() {
     console.log('Is mk1 + Create Marketing Campaign?', activity.id === "mk1" && activity.name === "Create Marketing Campaign");
     console.log('Is ct1 + Content Calendar Creation?', activity.id === "ct1" && activity.name === "Content Calendar Creation");
     console.log('Is gl6 + Daily Stand Up?', activity.id === "gl6" && activity.name === "Daily Stand Up");
+    console.log('Is gl7 + Assign Leads?', activity.id === "gl7" && activity.name === "Assign Leads");
     console.log('Is sl3 + Lead Generation?', activity.id === "sl3" && activity.name === "Lead Generation");
     console.log('Is ux1 + Website Analysis?', activity.id === "ux1" && activity.name === "Website Analysis");
-    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1", 'gl6?', activity.id === "gl6", 'sl3?', activity.id === "sl3", 'ux1?', activity.id === "ux1");
+    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1", 'gl6?', activity.id === "gl6", 'gl7?', activity.id === "gl7", 'sl3?', activity.id === "sl3", 'ux1?', activity.id === "ux1");
     
     if (activity.id === "cs4" && activity.name === "Answer Emails") {
       try {
@@ -828,6 +829,55 @@ function AgentsPageContent() {
           : typeof error === 'string' 
           ? error 
           : 'An error occurred while analyzing website';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
+    } else if (activity.id === "gl7" && activity.name === "Assign Leads") {
+      console.log('✅ MATCHED: Assign Leads activity detected!');
+      try {
+        console.log('Calling assignLeads workflow for Growth Lead/Manager agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Assigning leads to team members...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Use the same pattern as other workflows - call external API server
+        const { apiClient } = await import('@/app/services/api-client-service');
+        
+        const response = await apiClient.post('/api/workflow/assignLeads', {
+          site_id: currentSite.id
+        });
+        
+        if (response.success) {
+          setActivityState(activity.id, 'success', 'Leads assigned successfully!');
+          toast?.success?.(`Leads assigned successfully!`);
+          console.log('AssignLeads workflow completed successfully:', response.data);
+        } else {
+          const errorMessage = typeof response.error === 'string' 
+            ? response.error 
+            : response.error?.message 
+            ? String(response.error.message)
+            : 'Failed to assign leads';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('AssignLeads workflow failed:', response.error);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Assign Leads activity:', error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : typeof error === 'string' 
+          ? error 
+          : 'An error occurred while assigning leads';
         setActivityState(activity.id, 'error', errorMessage);
         toast?.error?.(errorMessage);
       }

@@ -96,9 +96,10 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing 
     onCompanyChange(null)
   }
 
-  const filteredCompanies = companies.filter(company =>
-    company.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredCompanies = companies.filter(company => {
+    if (!search) return true
+    return company.name.toLowerCase().includes(search.toLowerCase())
+  })
 
   if (!isEditing) {
     return (
@@ -131,18 +132,20 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing 
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[400px] p-0">
-              <Command>
+              <Command shouldFilter={false}>
                 <CommandInput
                   placeholder="Search companies..."
                   value={search}
                   onValueChange={setSearch}
                 />
                 <CommandList>
-                  <CommandEmpty>
-                    <div className="text-center py-4">
-                      <p className="text-sm text-muted-foreground">No companies found.</p>
-                    </div>
-                  </CommandEmpty>
+                  {filteredCompanies.length === 0 && (
+                    <CommandEmpty>
+                      <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground">No companies found.</p>
+                      </div>
+                    </CommandEmpty>
+                  )}
                   <CommandGroup>
                     {filteredCompanies.map((company) => (
                       <div

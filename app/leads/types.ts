@@ -45,15 +45,15 @@ export interface Lead {
   birthday: string | null
   language: string | null
   social_networks: {
-    linkedin?: string
-    twitter?: string
-    facebook?: string
-    instagram?: string
-    tiktok?: string
-    youtube?: string
-    whatsapp?: string
-    pinterest?: string
-    [key: string]: string | undefined
+    linkedin?: string | null
+    twitter?: string | null
+    facebook?: string | null
+    instagram?: string | null
+    tiktok?: string | null
+    youtube?: string | null
+    whatsapp?: string | null
+    pinterest?: string | null
+    [key: string]: string | null | undefined
   } | null
   address: {
     street?: string

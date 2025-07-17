@@ -126,6 +126,12 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
           name: "Daily Stand Up",
           description: "Generate comprehensive daily team progress report with insights and next steps",
           status: "available"
+        },
+        {
+          id: "gl7",
+          name: "Assign Leads",
+          description: "Automatically assign leads to appropriate team members based on criteria and workload",
+          status: "available"
         }
       ];
     case "Data Analyst":

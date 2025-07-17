@@ -21,6 +21,9 @@ export interface AgentActivity {
   name: string
   description: string
   status: "available" | "in_progress" | "deprecated"
+  estimatedTime?: string
+  successRate?: number
+  executions?: number
 }
 
 export type AgentType = Agent["type"]

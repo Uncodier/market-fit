@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client"
 import { z } from "zod"
 import { findOrCreateCompany } from "@/app/companies/actions"
+import { Lead } from "./types"
 
 // Definir el schema de respuesta
 const LeadSchema = z.object({
@@ -40,14 +41,14 @@ const LeadSchema = z.object({
     birthday: z.string().nullable(),
     language: z.string().nullable(),
     social_networks: z.object({
-      linkedin: z.string().optional(),
-      twitter: z.string().optional(),
-      facebook: z.string().optional(),
-      instagram: z.string().optional(),
-      tiktok: z.string().optional(),
-      youtube: z.string().optional(),
-      whatsapp: z.string().optional(),
-      pinterest: z.string().optional(),
+      linkedin: z.string().optional().nullable(),
+      twitter: z.string().optional().nullable(),
+      facebook: z.string().optional().nullable(),
+      instagram: z.string().optional().nullable(),
+      tiktok: z.string().optional().nullable(),
+      youtube: z.string().optional().nullable(),
+      whatsapp: z.string().optional().nullable(),
+      pinterest: z.string().optional().nullable(),
     }).nullable(),
     address: z.object({
       street: z.string().optional(),
@@ -109,14 +110,14 @@ const SingleLeadSchema = z.object({
     birthday: z.string().nullable(),
     language: z.string().nullable(),
     social_networks: z.object({
-      linkedin: z.string().optional(),
-      twitter: z.string().optional(),
-      facebook: z.string().optional(),
-      instagram: z.string().optional(),
-      tiktok: z.string().optional(),
-      youtube: z.string().optional(),
-      whatsapp: z.string().optional(),
-      pinterest: z.string().optional(),
+      linkedin: z.string().optional().nullable(),
+      twitter: z.string().optional().nullable(),
+      facebook: z.string().optional().nullable(),
+      instagram: z.string().optional().nullable(),
+      tiktok: z.string().optional().nullable(),
+      youtube: z.string().optional().nullable(),
+      whatsapp: z.string().optional().nullable(),
+      pinterest: z.string().optional().nullable(),
     }).nullable(),
     address: z.object({
       street: z.string().optional(),
@@ -174,14 +175,14 @@ const CreateLeadSchema = z.object({
   birthday: z.string().optional(),
   language: z.string().optional(),
   social_networks: z.object({
-    linkedin: z.string().optional(),
-    twitter: z.string().optional(),
-    facebook: z.string().optional(),
-    instagram: z.string().optional(),
-    tiktok: z.string().optional(),
-    youtube: z.string().optional(),
-    whatsapp: z.string().optional(),
-    pinterest: z.string().optional(),
+    linkedin: z.string().optional().nullable(),
+    twitter: z.string().optional().nullable(),
+    facebook: z.string().optional().nullable(),
+    instagram: z.string().optional().nullable(),
+    tiktok: z.string().optional().nullable(),
+    youtube: z.string().optional().nullable(),
+    whatsapp: z.string().optional().nullable(),
+    pinterest: z.string().optional().nullable(),
   }).optional(),
   address: z.object({
     street: z.string().optional(),
@@ -231,14 +232,14 @@ const UpdateLeadSchema = z.object({
   birthday: z.string().optional().nullable(),
   language: z.string().optional().nullable(),
   social_networks: z.object({
-    linkedin: z.string().optional(),
-    twitter: z.string().optional(),
-    facebook: z.string().optional(),
-    instagram: z.string().optional(),
-    tiktok: z.string().optional(),
-    youtube: z.string().optional(),
-    whatsapp: z.string().optional(),
-    pinterest: z.string().optional(),
+    linkedin: z.string().optional().nullable(),
+    twitter: z.string().optional().nullable(),
+    facebook: z.string().optional().nullable(),
+    instagram: z.string().optional().nullable(),
+    tiktok: z.string().optional().nullable(),
+    youtube: z.string().optional().nullable(),
+    whatsapp: z.string().optional().nullable(),
+    pinterest: z.string().optional().nullable(),
   }).optional().nullable(),
   address: z.object({
     street: z.string().optional(),
@@ -703,6 +704,123 @@ export async function exportLeads(siteId: string) {
   } catch (error) {
     console.error('Error exporting leads:', error)
     return { error: 'Failed to export leads' }
+  }
+}
+
+export async function importLeads(leads: Partial<Lead>[], siteId: string) {
+  try {
+    const supabase = await createClient()
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error("Error getting authenticated user:", authError)
+      return { 
+        success: false, 
+        count: 0, 
+        errors: ['Authentication error: ' + authError.message] 
+      }
+    }
+
+    if (!user) {
+      return { 
+        success: false, 
+        count: 0, 
+        errors: ['User not authenticated'] 
+      }
+    }
+    
+    const errors: string[] = []
+    const createdLeads: Lead[] = []
+    
+    // Process leads in batches to avoid overwhelming the database
+    const batchSize = 50
+    for (let i = 0; i < leads.length; i += batchSize) {
+      const batch = leads.slice(i, i + batchSize)
+      
+      // Prepare batch data
+      const batchData = batch.map((lead, index) => {
+        // Validate required fields
+        if (!lead.name || !lead.email) {
+          errors.push(`Row ${i + index + 1}: Name and email are required`)
+          return null
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(lead.email)) {
+          errors.push(`Row ${i + index + 1}: Invalid email format`)
+          return null
+        }
+        
+        // Validate status
+        const validStatuses = ['new', 'contacted', 'qualified', 'converted', 'lost']
+        if (lead.status && !validStatuses.includes(lead.status as string)) {
+          errors.push(`Row ${i + index + 1}: Invalid status "${lead.status}"`)
+          return null
+        }
+        
+        return {
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone || null,
+          company: typeof lead.company === 'string' ? { name: lead.company } : lead.company || null,
+          position: lead.position || null,
+          segment_id: lead.segment_id || null,
+          status: (lead.status as "new" | "contacted" | "qualified" | "converted" | "lost") || 'new',
+          origin: lead.origin || null,
+          notes: lead.notes || null,
+          birthday: lead.birthday || null,
+          language: lead.language || null,
+          social_networks: lead.social_networks || null,
+          address: lead.address || null,
+          site_id: siteId,
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      }).filter(Boolean)
+      
+      if (batchData.length > 0) {
+        // Insert batch
+        const { data, error } = await supabase
+          .from('leads')
+          .insert(batchData)
+          .select()
+        
+        if (error) {
+          // Handle unique constraint violations separately
+          if (error.code === '23505' && error.message.includes('email')) {
+            // Extract row information from error if possible
+            errors.push(`Batch ${Math.floor(i/batchSize) + 1}: Duplicate email(s) found`)
+          } else {
+            errors.push(`Batch ${Math.floor(i/batchSize) + 1}: ${error.message}`)
+          }
+        } else if (data) {
+          createdLeads.push(...data)
+        }
+      }
+    }
+    
+    // Return results
+    if (createdLeads.length === 0 && errors.length > 0) {
+      return { success: false, count: 0, errors }
+    }
+    
+    return { 
+      success: true, 
+      count: createdLeads.length, 
+      errors: errors.length > 0 ? errors : undefined 
+    }
+    
+  } catch (error) {
+    console.error('Error importing leads:', error)
+    return { 
+      success: false, 
+      count: 0, 
+      errors: [`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`] 
+    }
   }
 }
 

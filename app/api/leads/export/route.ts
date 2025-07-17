@@ -43,11 +43,31 @@ export async function GET(request: NextRequest) {
       Segment: lead.segments?.name || 'No Segment',
       Origin: lead.origin || '',
       Created: new Date(lead.created_at).toLocaleDateString(),
-      Notes: lead.notes || ''
+      Notes: lead.notes || '',
+      Birthday: lead.birthday || '',
+      Language: lead.language || '',
+      'Address - Street': lead.address?.street || '',
+      'Address - City': lead.address?.city || '',
+      'Address - State': lead.address?.state || '',
+      'Address - ZIP Code': lead.address?.zipcode || '',
+      'Address - Country': lead.address?.country || '',
+      LinkedIn: lead.social_networks?.linkedin || '',
+      Twitter: lead.social_networks?.twitter || '',
+      Facebook: lead.social_networks?.facebook || '',
+      Instagram: lead.social_networks?.instagram || '',
+      TikTok: lead.social_networks?.tiktok || '',
+      YouTube: lead.social_networks?.youtube || '',
+      WhatsApp: lead.social_networks?.whatsapp || '',
+      Pinterest: lead.social_networks?.pinterest || ''
     }))
 
     // Convert to CSV
-    const fields = ['Name', 'Email', 'Phone', 'Company', 'Position', 'Status', 'Segment', 'Origin', 'Created', 'Notes']
+    const fields = [
+      'Name', 'Email', 'Phone', 'Company', 'Position', 'Status', 'Segment', 'Origin', 'Created', 'Notes',
+      'Birthday', 'Language',
+      'Address - Street', 'Address - City', 'Address - State', 'Address - ZIP Code', 'Address - Country',
+      'LinkedIn', 'Twitter', 'Facebook', 'Instagram', 'TikTok', 'YouTube', 'WhatsApp', 'Pinterest'
+    ]
     const parser = new Parser({ fields })
     const csv = parser.parse(csvData)
     

@@ -2,7 +2,8 @@ import { createSegment } from "@/app/segments/actions"
 import { createExperiment, type ExperimentFormValues } from "@/app/experiments/actions"
 import { createAsset } from "@/app/assets/actions"
 import { createRequirement } from "@/app/requirements/actions"
-import { createLead } from "@/app/leads/actions"
+import { createLead, importLeads } from "@/app/leads/actions"
+import { Lead } from "@/app/leads/types"
 import { createCampaign } from "@/app/campaigns/actions/campaigns/create"
 import { buildSegmentsWithAI, buildExperimentsWithAI, buildCampaignsWithAI, buildContentWithAI } from "@/app/services/ai-service"
 import { Button } from "../ui/button"
@@ -11,6 +12,7 @@ import { CreateExperimentDialog } from "../create-experiment-dialog"
 import { UploadAssetDialog } from "../upload-asset-dialog"
 import { CreateRequirementDialog } from "../create-requirement-dialog"
 import { CreateLeadDialog } from "../create-lead-dialog"
+import { ImportLeadsDialog } from "../leads/import-leads-dialog"
 import { CreateContentDialog } from "@/app/content/components"
 import { CreateCampaignDialog } from "../create-campaign-dialog"
 import { CreateTaskDialog } from "../create-task-dialog"
@@ -27,7 +29,8 @@ import {
   FlaskConical, 
   Download, 
   Users, 
-  FileText
+  FileText,
+  UploadCloud
 } from "@/app/components/ui/icons"
 import { subMonths, format } from "date-fns"
 import { safeReload } from "../../utils/safe-reload"
@@ -689,6 +692,30 @@ export function TopBarActions({
     }
   }
 
+  const handleImportLeads = async (leads: Partial<Lead>[]) => {
+    if (!currentSite?.id) {
+      return { success: false, count: 0, errors: ['No site selected'] }
+    }
+
+    try {
+      const result = await importLeads(leads, currentSite.id)
+      
+      if (result.success) {
+        // Recargar la página para mostrar los nuevos leads
+        safeReload(false, 'Leads imported successfully')
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error importing leads:', error)
+      return { 
+        success: false, 
+        count: 0, 
+        errors: ['Failed to import leads'] 
+      }
+    }
+  }
+
   const handleCreateCampaign = async (values: any): Promise<{ data?: any; error?: string }> => {
     try {
       const response = await createCampaign(values);
@@ -927,6 +954,16 @@ The success of this experiment will be measured by:
       {isLeadsPage && (
         currentSite ? (
           <>
+            <ImportLeadsDialog 
+              segments={segments.length > 0 ? segments : propSegments || []}
+              onImportLeads={handleImportLeads}
+              trigger={
+                <Button variant="outline">
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                  Import
+                </Button>
+              }
+            />
             <Button 
               variant="outline"
               onClick={async () => {

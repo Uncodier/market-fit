@@ -55,6 +55,15 @@ const growthLeadActivities: AgentActivity[] = [
     successRate: 96,
     executions: 78,
     status: "available"
+  },
+  {
+    id: "gl7",
+    name: "Assign Leads",
+    description: "Automatically assign leads to appropriate team members based on criteria and workload",
+    estimatedTime: "5-10 min",
+    successRate: 94,
+    executions: 145,
+    status: "available"
   }
 ];
 
