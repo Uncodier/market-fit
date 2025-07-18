@@ -112,10 +112,24 @@ export default function TeleprompterPage() {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [showPreview, setShowPreview] = useState(true)
   
+  // Video preview dragging state
+  const [previewPosition, setPreviewPosition] = useState(() => {
+    // Start centered horizontally, below top controls
+    if (typeof window !== 'undefined') {
+      const previewWidth = 192 // w-48 = 12rem = 192px
+      const centerX = (window.innerWidth - previewWidth) / 2
+      return { x: Math.max(10, centerX), y: 64 }
+    }
+    return { x: 0, y: 64 }
+  })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const videoPreviewRef = useRef<HTMLVideoElement>(null)
+  const previewContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadContent()
@@ -132,6 +146,50 @@ export default function TeleprompterPage() {
       }, 2000) // Delay to avoid interfering with page load
     }
   }, [])
+
+  // Clean up when component unmounts
+  useEffect(() => {
+    return () => {
+      cleanupRecording()
+    }
+  }, [])
+
+  // Handle drag events
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.addEventListener('touchmove', handleTouchMove, { passive: false })
+      document.addEventListener('touchend', handleTouchEnd)
+      
+      // Add cursor style to body while dragging
+      document.body.style.cursor = 'grabbing'
+      document.body.style.userSelect = 'none'
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+        document.removeEventListener('touchmove', handleTouchMove)
+        document.removeEventListener('touchend', handleTouchEnd)
+        
+        // Reset cursor and user select
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+    }
+     }, [isDragging, dragOffset])
+
+  // Handle window resize to keep preview visible
+  useEffect(() => {
+    const handleResize = () => {
+      if (isStreamValid(stream) && showPreview) {
+        setPreviewPosition(prev => constrainPosition(prev.x, prev.y))
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [stream, showPreview])
 
   useEffect(() => {
     // Hide controls after 3 seconds of inactivity
@@ -332,6 +390,138 @@ export default function TeleprompterPage() {
     return { supported: true, error: null }
   }
 
+  const isStreamValid = (stream: MediaStream | null): boolean => {
+    return !!(stream && stream.active && stream.getVideoTracks().length > 0)
+  }
+
+  // Video preview dragging functions
+  const constrainPosition = (x: number, y: number) => {
+    const previewWidth = 192 // w-48 = 12rem = 192px
+    const previewHeight = 144 // h-36 = 9rem = 144px
+    const margin = 10 // Small margin from edges
+    
+    const maxX = window.innerWidth - previewWidth - margin
+    const maxY = window.innerHeight - previewHeight - margin
+    
+    return {
+      x: Math.max(margin, Math.min(maxX, x)),
+      y: Math.max(margin, Math.min(maxY, y))
+    }
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!previewContainerRef.current) return
+    
+    setIsDragging(true)
+    const rect = previewContainerRef.current.getBoundingClientRect()
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    })
+    
+    // Prevent text selection while dragging
+    e.preventDefault()
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return
+    
+    const newPosition = constrainPosition(
+      e.clientX - dragOffset.x,
+      e.clientY - dragOffset.y
+    )
+    
+    setPreviewPosition(newPosition)
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+    
+    // Optional: Snap to edges if close enough
+    const snapDistance = 20
+    const currentPos = previewPosition
+    
+    let snappedX = currentPos.x
+    let snappedY = currentPos.y
+    
+    // Snap to left edge
+    if (currentPos.x < snapDistance) {
+      snappedX = 10
+    }
+    // Snap to right edge
+    else if (currentPos.x > window.innerWidth - 192 - snapDistance - 10) {
+      snappedX = window.innerWidth - 192 - 10
+    }
+    
+    // Snap to top edge (below controls)
+    if (currentPos.y < 64 + snapDistance) {
+      snappedY = 64
+    }
+    // Snap to bottom edge
+    else if (currentPos.y > window.innerHeight - 144 - snapDistance - 10) {
+      snappedY = window.innerHeight - 144 - 10
+    }
+    
+    if (snappedX !== currentPos.x || snappedY !== currentPos.y) {
+      setPreviewPosition({ x: snappedX, y: snappedY })
+    }
+  }
+
+  // Touch event handlers for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!previewContainerRef.current) return
+    
+    const touch = e.touches[0]
+    setIsDragging(true)
+    const rect = previewContainerRef.current.getBoundingClientRect()
+    setDragOffset({
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    })
+    
+    e.preventDefault()
+  }
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!isDragging) return
+    
+    const touch = e.touches[0]
+    const newPosition = constrainPosition(
+      touch.clientX - dragOffset.x,
+      touch.clientY - dragOffset.y
+    )
+    
+    setPreviewPosition(newPosition)
+    e.preventDefault()
+  }
+
+  const handleTouchEnd = () => {
+    setIsDragging(false)
+    
+    // Optional: Snap to edges if close enough (same logic as mouse)
+    const snapDistance = 20
+    const currentPos = previewPosition
+    
+    let snappedX = currentPos.x
+    let snappedY = currentPos.y
+    
+    if (currentPos.x < snapDistance) {
+      snappedX = 10
+    } else if (currentPos.x > window.innerWidth - 192 - snapDistance - 10) {
+      snappedX = window.innerWidth - 192 - 10
+    }
+    
+    if (currentPos.y < 64 + snapDistance) {
+      snappedY = 64
+    } else if (currentPos.y > window.innerHeight - 144 - snapDistance - 10) {
+      snappedY = window.innerHeight - 144 - 10
+    }
+    
+    if (snappedX !== currentPos.x || snappedY !== currentPos.y) {
+      setPreviewPosition({ x: snappedX, y: snappedY })
+    }
+  }
+
   const cleanupRecording = () => {
     try {
       // Stop all tracks if stream exists and is valid
@@ -397,12 +587,77 @@ export default function TeleprompterPage() {
         }
       })
       
+      console.log("MediaStream obtained:", mediaStream)
+      console.log("Video tracks:", mediaStream.getVideoTracks().length)
+      console.log("Audio tracks:", mediaStream.getAudioTracks().length)
+      
       setStream(mediaStream)
       
-      // Show preview in video element
+      // Show preview in video element with enhanced error handling
       if (videoPreviewRef.current) {
-        videoPreviewRef.current.srcObject = mediaStream
-        videoPreviewRef.current.play()
+        const videoElement = videoPreviewRef.current
+        
+        // Add event listeners for debugging
+        const handleLoadedMetadata = () => {
+          console.log("Video metadata loaded successfully")
+          console.log("Video dimensions:", videoElement.videoWidth, "x", videoElement.videoHeight)
+        }
+        
+        const handlePlay = () => {
+          console.log("Video started playing")
+        }
+        
+        const handleError = (e: Event) => {
+          console.error("Video element error:", e)
+          const target = e.target as HTMLVideoElement
+          if (target.error) {
+            console.error("Video error details:", target.error.message, target.error.code)
+          }
+        }
+        
+        const handleLoadStart = () => {
+          console.log("Video load started")
+        }
+        
+        // Add event listeners
+        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata)
+        videoElement.addEventListener('play', handlePlay)
+        videoElement.addEventListener('error', handleError)
+        videoElement.addEventListener('loadstart', handleLoadStart)
+        
+        // Cleanup function for event listeners
+        const cleanup = () => {
+          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata)
+          videoElement.removeEventListener('play', handlePlay)
+          videoElement.removeEventListener('error', handleError)
+          videoElement.removeEventListener('loadstart', handleLoadStart)
+        }
+        
+        try {
+          console.log("Setting srcObject to video element")
+          videoElement.srcObject = mediaStream
+          
+          // Try to play with more robust error handling
+          const playPromise = videoElement.play()
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                console.log("Video play promise resolved successfully")
+              })
+              .catch((error) => {
+                console.error("Video play promise rejected:", error)
+                
+                // Try alternative approach if autoplay fails
+                if (error.name === 'NotAllowedError') {
+                  console.log("Autoplay blocked, will try manual play")
+                  toast.info("Click on the video preview to start playback")
+                }
+              })
+          }
+        } catch (error) {
+          console.error("Error setting video srcObject:", error)
+          cleanup()
+        }
       }
       
       const recorder = new MediaRecorder(mediaStream)
@@ -709,25 +964,79 @@ export default function TeleprompterPage() {
       style={{ backgroundColor: settings.backgroundColor }}
     >
       {/* Video Preview */}
-      {stream && showPreview && stream.active && (
-        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 pointer-events-auto z-10">
-          <div className="relative bg-black/80 backdrop-blur-sm rounded-lg border border-white/20 overflow-hidden">
+      {isStreamValid(stream) && showPreview && (
+        <div 
+          ref={previewContainerRef}
+          className={cn(
+            "absolute pointer-events-auto z-10 transition-all duration-200",
+            isDragging ? "shadow-2xl scale-105" : "shadow-lg hover:shadow-xl"
+          )}
+          style={{
+            left: `${previewPosition.x}px`,
+            top: `${previewPosition.y}px`,
+            cursor: isDragging ? 'grabbing' : 'grab',
+            transition: isDragging ? 'none' : 'left 0.3s ease-out, top 0.3s ease-out, transform 0.2s ease-out, box-shadow 0.2s ease-out'
+          }}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+        >
+                     <div className={cn(
+             "group relative bg-black/80 backdrop-blur-sm rounded-lg border overflow-hidden transition-all duration-200",
+             isDragging ? "border-blue-400/50 bg-black/90" : "border-white/20 hover:border-white/30"
+           )}>
+            {/* Drag handle */}
+            <div className={cn(
+              "absolute top-0 left-0 right-0 h-6 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20 transition-opacity duration-200",
+              isDragging || showControls ? "opacity-100" : "opacity-0 hover:opacity-100"
+            )}>
+              <div className="flex space-x-0.5">
+                <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+                <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+                <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+                <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+                <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+                <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+              </div>
+            </div>
+            
             <video
               ref={videoPreviewRef}
               autoPlay
               muted
               playsInline
-              className="w-48 h-36 object-cover"
+              className="w-48 h-36 object-cover pointer-events-none select-none"
               style={{ transform: 'scaleX(-1)' }} // Mirror the preview
+              onLoadedMetadata={(e) => {
+                const video = e.target as HTMLVideoElement
+                console.log("Video preview loaded:", video.videoWidth, "x", video.videoHeight)
+              }}
+              onPlay={() => console.log("Video preview playing")}
+              onError={(e) => {
+                const video = e.target as HTMLVideoElement
+                console.error("Video preview error:", video.error)
+              }}
+              onLoadStart={() => console.log("Video preview load started")}
+              onCanPlay={() => console.log("Video preview can play")}
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                // Allow manual play if autoplay fails on double click
+                const video = videoPreviewRef.current
+                if (video && video.paused) {
+                  video.play().catch(console.error)
+                }
+              }}
             />
             
             {/* Preview controls */}
-            <div className="absolute top-2 right-2 flex gap-1">
+            <div className="absolute top-7 right-2 flex gap-1 z-30">
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => setShowPreview(false)}
-                className="h-6 w-6 p-0 bg-black/50 text-white border-white/20 hover:bg-black/70"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowPreview(false)
+                }}
+                className="h-6 w-6 p-0 bg-black/50 text-white border-white/20 hover:bg-black/70 pointer-events-auto"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -740,12 +1049,37 @@ export default function TeleprompterPage() {
                 <span className="text-white text-xs font-medium">REC</span>
               </div>
             )}
+            
+            {/* Video status indicator */}
+            {isStreamValid(stream) && (
+              <div className="absolute bottom-2 left-2 flex items-center gap-1">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-white text-xs">Live</span>
+              </div>
+            )}
+            
+            {/* Drag hint */}
+            {!isDragging && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="text-white/80 text-xs text-center bg-black/70 px-3 py-2 rounded-md backdrop-blur-sm border border-white/20">
+                  <div className="flex items-center gap-2">
+                    <div className="flex space-x-0.5">
+                      <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+                      <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+                      <div className="w-1 h-1 bg-white/60 rounded-full"></div>
+                    </div>
+                    <span>Drag to move</span>
+                  </div>
+                  <div className="text-white/60 text-xs mt-1">Double-click to play</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Show preview button when hidden and camera is active */}
-      {stream && stream.active && !showPreview && (
+      {isStreamValid(stream) && !showPreview && (
         <div className="absolute top-16 left-1/2 transform -translate-x-1/2 pointer-events-auto z-10">
           <Button
             variant="secondary"
