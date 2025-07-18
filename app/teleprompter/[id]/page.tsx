@@ -394,6 +394,140 @@ export default function TeleprompterPage() {
     return !!(stream && stream.active && stream.getVideoTracks().length > 0)
   }
 
+  const setupVideoPreview = (mediaStream: MediaStream) => {
+    if (!videoPreviewRef.current) {
+      console.warn("Video preview ref not available")
+      return
+    }
+
+    const videoElement = videoPreviewRef.current
+    
+    // Add event listeners for debugging and monitoring
+    const handleLoadedMetadata = () => {
+      console.log("Video metadata loaded successfully")
+      console.log("Video dimensions:", videoElement.videoWidth, "x", videoElement.videoHeight)
+      
+      // Force a re-render to ensure the preview shows
+      if (videoElement.srcObject && !videoElement.paused) {
+        console.log("Video should be playing now")
+      }
+    }
+    
+    const handlePlay = () => {
+      console.log("Video started playing")
+      toast.success("Camera preview is now active", { duration: 2000 })
+    }
+    
+    const handleError = (e: Event) => {
+      console.error("Video element error:", e)
+      const target = e.target as HTMLVideoElement
+      if (target.error) {
+        console.error("Video error details:", target.error.message, target.error.code)
+        toast.error("Video preview error: " + target.error.message)
+      }
+    }
+    
+    const handleLoadStart = () => {
+      console.log("Video load started")
+    }
+
+    const handleCanPlay = () => {
+      console.log("Video can play - attempting to start playback")
+      if (videoElement.paused) {
+        videoElement.play().catch(error => {
+          console.error("Manual play failed:", error)
+          if (error.name === 'NotAllowedError') {
+            toast.info("Click on the video preview to enable playback")
+          }
+        })
+      }
+    }
+
+    const handleTimeUpdate = () => {
+      // This will fire when video is actually playing
+      if (!videoElement.dataset.playingLogged) {
+        console.log("Video is actually playing (timeupdate event)")
+        videoElement.dataset.playingLogged = "true"
+      }
+    }
+    
+    // Clean up any existing listeners first
+    const removeListeners = () => {
+      videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      videoElement.removeEventListener('play', handlePlay)
+      videoElement.removeEventListener('error', handleError)
+      videoElement.removeEventListener('loadstart', handleLoadStart)
+      videoElement.removeEventListener('canplay', handleCanPlay)
+      videoElement.removeEventListener('timeupdate', handleTimeUpdate)
+    }
+
+    // Remove existing listeners if any
+    removeListeners()
+    
+    // Add event listeners
+    videoElement.addEventListener('loadedmetadata', handleLoadedMetadata)
+    videoElement.addEventListener('play', handlePlay)
+    videoElement.addEventListener('error', handleError)
+    videoElement.addEventListener('loadstart', handleLoadStart)
+    videoElement.addEventListener('canplay', handleCanPlay)
+    videoElement.addEventListener('timeupdate', handleTimeUpdate)
+    
+    try {
+      console.log("Setting srcObject to video element")
+      
+      // Reset any existing state
+      videoElement.dataset.playingLogged = ""
+      
+      // Set the stream
+      videoElement.srcObject = mediaStream
+      
+      // Multiple strategies to ensure playback
+      const attemptPlay = async () => {
+        try {
+          // Wait a bit for the stream to be ready
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          console.log("Attempting to play video...")
+          const playPromise = videoElement.play()
+          
+          if (playPromise !== undefined) {
+            await playPromise
+            console.log("Video play promise resolved successfully")
+          }
+        } catch (error: any) {
+          console.error("Video play promise rejected:", error)
+          
+          if (error.name === 'NotAllowedError') {
+            console.log("Autoplay blocked by browser policy")
+            toast.info("Click on the video preview to start playback", { duration: 5000 })
+          } else if (error.name === 'AbortError') {
+            console.log("Play was aborted, will retry...")
+            // Retry after a short delay
+            setTimeout(() => {
+              if (videoElement.paused && videoElement.srcObject) {
+                videoElement.play().catch(console.error)
+              }
+            }, 500)
+          } else {
+            console.error("Other video play error:", error)
+            toast.error("Video preview error: " + error.message)
+          }
+        }
+      }
+
+      // Try to play immediately
+      attemptPlay()
+      
+      // Also try when metadata is loaded (fallback)
+      videoElement.addEventListener('loadedmetadata', attemptPlay, { once: true })
+      
+    } catch (error) {
+      console.error("Error setting video srcObject:", error)
+      toast.error("Failed to setup video preview")
+      removeListeners()
+    }
+  }
+
   // Video preview dragging functions
   const constrainPosition = (x: number, y: number) => {
     const previewWidth = 192 // w-48 = 12rem = 192px
@@ -593,72 +727,8 @@ export default function TeleprompterPage() {
       
       setStream(mediaStream)
       
-      // Show preview in video element with enhanced error handling
-      if (videoPreviewRef.current) {
-        const videoElement = videoPreviewRef.current
-        
-        // Add event listeners for debugging
-        const handleLoadedMetadata = () => {
-          console.log("Video metadata loaded successfully")
-          console.log("Video dimensions:", videoElement.videoWidth, "x", videoElement.videoHeight)
-        }
-        
-        const handlePlay = () => {
-          console.log("Video started playing")
-        }
-        
-        const handleError = (e: Event) => {
-          console.error("Video element error:", e)
-          const target = e.target as HTMLVideoElement
-          if (target.error) {
-            console.error("Video error details:", target.error.message, target.error.code)
-          }
-        }
-        
-        const handleLoadStart = () => {
-          console.log("Video load started")
-        }
-        
-        // Add event listeners
-        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata)
-        videoElement.addEventListener('play', handlePlay)
-        videoElement.addEventListener('error', handleError)
-        videoElement.addEventListener('loadstart', handleLoadStart)
-        
-        // Cleanup function for event listeners
-        const cleanup = () => {
-          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata)
-          videoElement.removeEventListener('play', handlePlay)
-          videoElement.removeEventListener('error', handleError)
-          videoElement.removeEventListener('loadstart', handleLoadStart)
-        }
-        
-        try {
-          console.log("Setting srcObject to video element")
-          videoElement.srcObject = mediaStream
-          
-          // Try to play with more robust error handling
-          const playPromise = videoElement.play()
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                console.log("Video play promise resolved successfully")
-              })
-              .catch((error) => {
-                console.error("Video play promise rejected:", error)
-                
-                // Try alternative approach if autoplay fails
-                if (error.name === 'NotAllowedError') {
-                  console.log("Autoplay blocked, will try manual play")
-                  toast.info("Click on the video preview to start playback")
-                }
-              })
-          }
-        } catch (error) {
-          console.error("Error setting video srcObject:", error)
-          cleanup()
-        }
-      }
+      // Setup video preview with enhanced error handling
+      setupVideoPreview(mediaStream)
       
       const recorder = new MediaRecorder(mediaStream)
       setMediaRecorder(recorder)
@@ -720,10 +790,8 @@ export default function TeleprompterPage() {
           })
           setStream(fallbackStream)
           
-          if (videoPreviewRef.current) {
-            videoPreviewRef.current.srcObject = fallbackStream
-            videoPreviewRef.current.play()
-          }
+          // Setup video preview with fallback stream
+          setupVideoPreview(fallbackStream)
           
           const recorder = new MediaRecorder(fallbackStream)
           setMediaRecorder(recorder)
@@ -825,6 +893,14 @@ export default function TeleprompterPage() {
       toast.success("Recording stopped")
     }
   }
+
+  // Effect to handle stream changes and setup video preview
+  useEffect(() => {
+    if (isStreamValid(stream) && videoPreviewRef.current && stream) {
+      console.log("Stream updated, setting up video preview")
+      setupVideoPreview(stream)
+    }
+  }, [stream])
 
   useEffect(() => {
     return () => {
@@ -1004,8 +1080,23 @@ export default function TeleprompterPage() {
               autoPlay
               muted
               playsInline
-              className="w-48 h-36 object-cover pointer-events-none select-none"
+              className="w-48 h-36 object-cover cursor-pointer select-none"
               style={{ transform: 'scaleX(-1)' }} // Mirror the preview
+              onClick={(e) => {
+                e.stopPropagation()
+                // Allow manual play if autoplay fails
+                const video = videoPreviewRef.current
+                if (video && video.paused) {
+                  console.log("Manual play triggered by click")
+                  video.play().then(() => {
+                    console.log("Manual play successful")
+                    toast.success("Video preview started", { duration: 2000 })
+                  }).catch(error => {
+                    console.error("Manual play failed:", error)
+                    toast.error("Could not start video preview")
+                  })
+                }
+              }}
               onLoadedMetadata={(e) => {
                 const video = e.target as HTMLVideoElement
                 console.log("Video preview loaded:", video.videoWidth, "x", video.videoHeight)
@@ -1017,14 +1108,6 @@ export default function TeleprompterPage() {
               }}
               onLoadStart={() => console.log("Video preview load started")}
               onCanPlay={() => console.log("Video preview can play")}
-              onDoubleClick={(e) => {
-                e.stopPropagation()
-                // Allow manual play if autoplay fails on double click
-                const video = videoPreviewRef.current
-                if (video && video.paused) {
-                  video.play().catch(console.error)
-                }
-              }}
             />
             
             {/* Preview controls */}
@@ -1058,7 +1141,7 @@ export default function TeleprompterPage() {
               </div>
             )}
             
-            {/* Drag hint */}
+            {/* Drag hint and play overlay */}
             {!isDragging && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <div className="text-white/80 text-xs text-center bg-black/70 px-3 py-2 rounded-md backdrop-blur-sm border border-white/20">
@@ -1070,7 +1153,16 @@ export default function TeleprompterPage() {
                     </div>
                     <span>Drag to move</span>
                   </div>
-                  <div className="text-white/60 text-xs mt-1">Double-click to play</div>
+                  <div className="text-white/60 text-xs mt-1">Click to play if paused</div>
+                </div>
+              </div>
+            )}
+
+            {/* Video paused overlay */}
+            {isStreamValid(stream) && videoPreviewRef.current?.paused && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+                <div className="bg-white/90 rounded-full p-3">
+                  <Play className="h-6 w-6 text-black" />
                 </div>
               </div>
             )}

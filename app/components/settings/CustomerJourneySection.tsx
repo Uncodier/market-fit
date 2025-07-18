@@ -162,7 +162,7 @@ export function CustomerJourneySection({ active }: CustomerJourneySectionProps) 
         </CardHeader>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {customerJourneyStages.map((stage) => (
           <Card key={stage.id} className={`border transition-all duration-200 hover:shadow-lg ${stage.color}`}>
             <CardHeader className="pb-4">
