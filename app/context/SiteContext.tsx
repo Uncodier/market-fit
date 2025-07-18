@@ -147,6 +147,38 @@ export interface SiteSettings {
     emotions_to_evoke?: string[]
     brand_archetype?: "innocent" | "sage" | "explorer" | "outlaw" | "magician" | "hero" | "lover" | "jester" | "everyman" | "caregiver" | "ruler" | "creator"
   } | null
+  customer_journey?: {
+    awareness?: {
+      metrics?: string[]
+      actions?: string[]
+      tactics?: string[]
+    }
+    consideration?: {
+      metrics?: string[]
+      actions?: string[]
+      tactics?: string[]
+    }
+    decision?: {
+      metrics?: string[]
+      actions?: string[]
+      tactics?: string[]
+    }
+    purchase?: {
+      metrics?: string[]
+      actions?: string[]
+      tactics?: string[]
+    }
+    retention?: {
+      metrics?: string[]
+      actions?: string[]
+      tactics?: string[]
+    }
+    referral?: {
+      metrics?: string[]
+      actions?: string[]
+      tactics?: string[]
+    }
+  } | null
   // allowed_domains is handled in a separate table, not in settings
   // allowed_domains?: Array<{
   //   id?: string
@@ -785,6 +817,11 @@ export function SiteProvider({ children }: SiteProviderProps) {
           
           // Si tenemos settings, los agregamos al sitio
           if (settingsData) {
+            console.log("HANDLE SET CURRENT SITE: Loaded settings data:", {
+              siteId: site.id,
+              hasCustomerJourney: !!settingsData.customer_journey,
+              customerJourneyKeys: settingsData.customer_journey ? Object.keys(settingsData.customer_journey) : []
+            });
             
             let parsedGoals = {
               quarterly: '',
@@ -889,6 +926,14 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   dont_list: [],
                   emotions_to_evoke: [],
                   brand_archetype: undefined
+                }),
+                customer_journey: parseJsonField(settingsData.customer_journey, {
+                  awareness: { metrics: [], actions: [], tactics: [] },
+                  consideration: { metrics: [], actions: [], tactics: [] },
+                  decision: { metrics: [], actions: [], tactics: [] },
+                  purchase: { metrics: [], actions: [], tactics: [] },
+                  retention: { metrics: [], actions: [], tactics: [] },
+                  referral: { metrics: [], actions: [], tactics: [] }
                 })
                 // allowed_domains is handled in a separate table, not in settings
               }
@@ -1100,6 +1145,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       if (error && error.code !== 'PGRST116') throw error // PGRST116 means no rows returned
       
+      console.log("GET SETTINGS: Loaded settings data:", {
+        siteId,
+        hasCustomerJourney: !!data?.customer_journey,
+        customerJourneyKeys: data?.customer_journey ? Object.keys(data.customer_journey) : []
+      });
+      
       return data || null
     } catch (err) {
       console.error("Error getting settings:", err)
@@ -1244,6 +1295,19 @@ export function SiteProvider({ children }: SiteProviderProps) {
         }
       }
       
+      // Handle customer_journey field
+      if (settings.customer_journey !== undefined) {
+        console.log("UPDATE SETTINGS: Processing customer_journey field:", settings.customer_journey);
+        formattedSettings.customer_journey = typeof settings.customer_journey === 'object' ? settings.customer_journey : {
+          awareness: { metrics: [], actions: [], tactics: [] },
+          consideration: { metrics: [], actions: [], tactics: [] },
+          decision: { metrics: [], actions: [], tactics: [] },
+          purchase: { metrics: [], actions: [], tactics: [] },
+          retention: { metrics: [], actions: [], tactics: [] },
+          referral: { metrics: [], actions: [], tactics: [] }
+        };
+      }
+
       // Handle branding field
       if (settings.branding !== undefined) {
         console.log("UPDATE SETTINGS: Procesando campo branding:", settings.branding);

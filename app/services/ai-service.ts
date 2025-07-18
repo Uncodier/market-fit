@@ -25,6 +25,7 @@ export interface BuildSegmentsParams {
   includeScreenshot?: boolean;
   user_id: string;
   site_id: string;
+  segment_id?: string;
 }
 
 // Variable para controlar si hay una petición en curso
@@ -197,9 +198,10 @@ export async function buildSegmentsICPWithAI(params: BuildSegmentsParams): Promi
       provider: params.provider || "openai",
       modelId: params.modelId || "gpt-4o",
       includeScreenshot: params.includeScreenshot !== false,
-      // Incluir user_id y site_id directamente en el objeto principal
+      // Incluir user_id, site_id y segment_id directamente en el objeto principal
       user_id: params.user_id,
       site_id: params.site_id,
+      segment_id: params.segment_id,
       // Metadatos adicionales si son necesarios
       metadata: {
         // Cualquier otro metadato que se necesite

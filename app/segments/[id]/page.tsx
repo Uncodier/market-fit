@@ -42,7 +42,7 @@ import { LoadingState } from "./components/LoadingState"
 import { ErrorState } from "./components/ErrorState"
 import { AIActionModal, AIActionIcon } from "@/app/components/ui/ai-action-modal"
 import { notFound } from "next/navigation"
-import { buildSegmentsWithAI } from "@/app/services/ai-service"
+import { buildSegmentsICPWithAI } from "@/app/services/ai-service"
 import { toast } from "sonner"
 import { safeReload } from "@/app/utils/safe-reload"
 import { SegmentStatusWidget } from "./components/SegmentStatusWidget"
@@ -769,15 +769,17 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       console.log("Analyzing segment with params:", {
         user_id: user.id,
         site_id: currentSite.id,
+        segment_id: segment.id,
         mode: "analyze",
         url: currentSite.url,
         segmentCount: 3
       });
 
-      // Call the AI service to analyze the segment (using general workflow)
-      const result = await buildSegmentsWithAI({
+      // Call the AI service to analyze the segment ICP
+      const result = await buildSegmentsICPWithAI({
         user_id: user.id,
         site_id: currentSite.id,
+        segment_id: segment.id,
         mode: "analyze",
         url: currentSite.url,
         segmentCount: 3
@@ -852,6 +854,7 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       console.log("Generating topics with params:", {
         user_id: user.id,
         site_id: currentSite.id,
+        segment_id: segment.id,
         mode: "analyze",
         analysisType: "topics",
         url: currentSite.url,
@@ -859,9 +862,10 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       });
 
       // Call the AI service to get topics
-      const result = await buildSegmentsWithAI({
+      const result = await buildSegmentsICPWithAI({
         user_id: user.id,
         site_id: currentSite.id,
+        segment_id: segment.id,
         mode: "analyze",
         analysisType: "topics",
         url: currentSite.url,

@@ -804,6 +804,7 @@ CREATE TABLE public.settings (
   channels jsonb DEFAULT '[]'::jsonb,
   business_hours jsonb DEFAULT '[]'::jsonb,
   branding jsonb DEFAULT NULL,
+  customer_journey jsonb DEFAULT '{"awareness": {"metrics": [], "actions": [], "tactics": []}, "consideration": {"metrics": [], "actions": [], "tactics": []}, "decision": {"metrics": [], "actions": [], "tactics": []}, "purchase": {"metrics": [], "actions": [], "tactics": []}, "retention": {"metrics": [], "actions": [], "tactics": []}, "referral": {"metrics": [], "actions": [], "tactics": []}}'::jsonb,
   CONSTRAINT settings_pkey PRIMARY KEY (id),
   CONSTRAINT fk_command_settings FOREIGN KEY (command_id) REFERENCES public.commands(id),
   CONSTRAINT settings_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.sites(id)
@@ -811,6 +812,7 @@ CREATE TABLE public.settings (
 
 -- Comments on columns
 COMMENT ON COLUMN public.settings.branding IS 'Brand identity information including: brand pyramid (essence, personality, benefits, attributes, values, promise), color palette, typography, voice/tone, communication style, brand assets, and guidelines';
+COMMENT ON COLUMN public.settings.customer_journey IS 'Customer journey configuration with metrics, actions, and tactics for each stage: awareness, consideration, decision, purchase, retention, and referral';
 CREATE TABLE public.site_members (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   site_id uuid NOT NULL,

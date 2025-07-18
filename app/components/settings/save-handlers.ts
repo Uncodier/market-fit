@@ -50,19 +50,20 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       // Extract all the settings fields explicitly to avoid any tracking contamination
       about, company_size, industry, products, services, locations, 
       business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels, 
-      social_media, company
+      social_media, company, customer_journey
     } = data;
     
     // Create settingsData object explicitly without any tracking fields
     const settingsData = {
       about, company_size, industry, products, services, locations,
       business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels,
-      social_media, company
+      social_media, company, customer_journey
     };
     
     console.log("SAVE 3: Datos extraídos del formulario:", {
       site: { name, url, description },
-      settings: { goals: rawGoals, about: settingsData.about }
+      settings: { goals: rawGoals, about: settingsData.about },
+      customer_journey: customer_journey
     });
     
     // Guardar inmediatamente el focusMode en localStorage para asegurar que persista
@@ -261,6 +262,14 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
         dont_list: [],
         emotions_to_evoke: [],
         brand_archetype: undefined
+      },
+      customer_journey: customer_journey || {
+        awareness: { metrics: [], actions: [], tactics: [] },
+        consideration: { metrics: [], actions: [], tactics: [] },
+        decision: { metrics: [], actions: [], tactics: [] },
+        purchase: { metrics: [], actions: [], tactics: [] },
+        retention: { metrics: [], actions: [], tactics: [] },
+        referral: { metrics: [], actions: [], tactics: [] }
       }
     };
     

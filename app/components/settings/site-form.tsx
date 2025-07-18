@@ -11,6 +11,7 @@ import { GeneralSection } from "./GeneralSection"
 import { CompanySection } from "./CompanySection"
 import { BrandingSection } from "./BrandingSection"
 import { MarketingSection } from "./MarketingSection"
+import { CustomerJourneySection } from "./CustomerJourneySection"
 import { SocialSection } from "./SocialSection"
 import { ChannelsSection } from "./ChannelsSection"
 import { TeamSection } from "./TeamSection"
@@ -204,6 +205,14 @@ export function SiteForm({
         dont_list: [],
         emotions_to_evoke: [],
         brand_archetype: undefined
+      },
+      customer_journey: initialData?.customer_journey || {
+        awareness: { metrics: [], actions: [], tactics: [] },
+        consideration: { metrics: [], actions: [], tactics: [] },
+        decision: { metrics: [], actions: [], tactics: [] },
+        purchase: { metrics: [], actions: [], tactics: [] },
+        retention: { metrics: [], actions: [], tactics: [] },
+        referral: { metrics: [], actions: [], tactics: [] }
       }
     }
   })
@@ -529,6 +538,10 @@ export function SiteForm({
 
           {renderCard("marketing",
             <MarketingSection active={true} />
+          )}
+
+          {renderCard("customer-journey",
+            <CustomerJourneySection active={true} />
           )}
 
           {renderCard("social",

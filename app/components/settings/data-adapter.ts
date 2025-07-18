@@ -315,6 +315,38 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       dont_list: site.settings?.branding?.dont_list || [],
       emotions_to_evoke: site.settings?.branding?.emotions_to_evoke || [],
       brand_archetype: site.settings?.branding?.brand_archetype
+    },
+    customer_journey: {
+      awareness: {
+        metrics: site.settings?.customer_journey?.awareness?.metrics || [],
+        actions: site.settings?.customer_journey?.awareness?.actions || [],
+        tactics: site.settings?.customer_journey?.awareness?.tactics || []
+      },
+      consideration: {
+        metrics: site.settings?.customer_journey?.consideration?.metrics || [],
+        actions: site.settings?.customer_journey?.consideration?.actions || [],
+        tactics: site.settings?.customer_journey?.consideration?.tactics || []
+      },
+      decision: {
+        metrics: site.settings?.customer_journey?.decision?.metrics || [],
+        actions: site.settings?.customer_journey?.decision?.actions || [],
+        tactics: site.settings?.customer_journey?.decision?.tactics || []
+      },
+      purchase: {
+        metrics: site.settings?.customer_journey?.purchase?.metrics || [],
+        actions: site.settings?.customer_journey?.purchase?.actions || [],
+        tactics: site.settings?.customer_journey?.purchase?.tactics || []
+      },
+      retention: {
+        metrics: site.settings?.customer_journey?.retention?.metrics || [],
+        actions: site.settings?.customer_journey?.retention?.actions || [],
+        tactics: site.settings?.customer_journey?.retention?.tactics || []
+      },
+      referral: {
+        metrics: site.settings?.customer_journey?.referral?.metrics || [],
+        actions: site.settings?.customer_journey?.referral?.actions || [],
+        tactics: site.settings?.customer_journey?.referral?.tactics || []
+      }
     }
   }
   

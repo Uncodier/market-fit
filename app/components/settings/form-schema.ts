@@ -378,6 +378,47 @@ export const siteFormSchema = z.object({
     emotions_to_evoke: [],
     brand_archetype: undefined
   }),
+  
+  // Customer Journey Configuration
+  customer_journey: z.object({
+    awareness: z.object({
+      metrics: z.array(z.string()).optional().default([]),
+      actions: z.array(z.string()).optional().default([]),
+      tactics: z.array(z.string()).optional().default([])
+    }).optional().default({}),
+    consideration: z.object({
+      metrics: z.array(z.string()).optional().default([]),
+      actions: z.array(z.string()).optional().default([]),
+      tactics: z.array(z.string()).optional().default([])
+    }).optional().default({}),
+    decision: z.object({
+      metrics: z.array(z.string()).optional().default([]),
+      actions: z.array(z.string()).optional().default([]),
+      tactics: z.array(z.string()).optional().default([])
+    }).optional().default({}),
+    purchase: z.object({
+      metrics: z.array(z.string()).optional().default([]),
+      actions: z.array(z.string()).optional().default([]),
+      tactics: z.array(z.string()).optional().default([])
+    }).optional().default({}),
+    retention: z.object({
+      metrics: z.array(z.string()).optional().default([]),
+      actions: z.array(z.string()).optional().default([]),
+      tactics: z.array(z.string()).optional().default([])
+    }).optional().default({}),
+    referral: z.object({
+      metrics: z.array(z.string()).optional().default([]),
+      actions: z.array(z.string()).optional().default([]),
+      tactics: z.array(z.string()).optional().default([])
+    }).optional().default({})
+  }).optional().default({
+    awareness: { metrics: [], actions: [], tactics: [] },
+    consideration: { metrics: [], actions: [], tactics: [] },
+    decision: { metrics: [], actions: [], tactics: [] },
+    purchase: { metrics: [], actions: [], tactics: [] },
+    retention: { metrics: [], actions: [], tactics: [] },
+    referral: { metrics: [], actions: [], tactics: [] }
+  }),
 })
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>
