@@ -140,7 +140,8 @@ import {
   FileVideo,
   PlayCircle,
   Globe,
-  LayoutGrid
+  LayoutGrid,
+  Maximize // Add Maximize icon for teleprompter
 } from "@/app/components/ui/icons"
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -183,7 +184,9 @@ const MenuBar = ({
   isSaving, 
   onDelete, 
   activeTab,
-  hasChanges
+  hasChanges,
+  contentType,
+  onTeleprompter
 }: { 
   editor: any, 
   instructionsEditor: any,
@@ -191,7 +194,9 @@ const MenuBar = ({
   isSaving: boolean,
   onDelete: () => void,
   activeTab: 'copy' | 'instructions',
-  hasChanges: boolean
+  hasChanges: boolean,
+  contentType?: string,
+  onTeleprompter?: () => void
 }) => {
   const currentEditor = activeTab === 'copy' ? editor : instructionsEditor
   
@@ -221,6 +226,20 @@ const MenuBar = ({
             </>
           )}
         </Button>
+        
+        {/* Add Teleprompter button for video content */}
+        {contentType === 'video' && (
+          <Button
+            variant="secondary"
+            size="default"
+            onClick={onTeleprompter}
+            className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+          >
+            <Maximize className="h-4 w-4" />
+            Teleprompter
+          </Button>
+        )}
+        
         <div className="w-px h-6 bg-border mx-1" />
         <Button
           variant="ghost"
@@ -1682,6 +1701,11 @@ export default function ContentDetailPage() {
             onDelete={handleDeleteContent}
             activeTab={activeTab}
             hasChanges={hasUnsavedChanges()}
+            contentType={content?.type}
+            onTeleprompter={() => {
+              // Navigate to teleprompter page
+              router.push(`/teleprompter/${content.id}`)
+            }}
           />
         </div>
         <div className="flex-1 overflow-auto">
