@@ -179,12 +179,12 @@ export function SiteForm({
         billing_country: ""
       },
       branding: initialData?.branding || {
-        purpose: "",
-        values: "",
-        personality: "",
-        tone_of_voice: "",
-        positioning: "",
-        unique_value_proposition: "",
+        brand_essence: "",
+        brand_personality: "",
+        brand_benefits: "",
+        brand_attributes: "",
+        brand_values: "",
+        brand_promise: "",
         primary_color: "#000000",
         secondary_color: "#666666",
         accent_color: "#e0ff17",
@@ -519,10 +519,7 @@ export function SiteForm({
 
   return (
     <FormProvider {...form}>
-      <form id={id} onSubmit={(e) => {
-        console.log("Form Submit Event Triggered", e);
-        form.handleSubmit(handleSubmit)(e);
-      }} className="space-y-12">
+      <form id={id} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-12">
         <div className="space-y-12">
           {renderCard("general", 
             <GeneralSection active={true} />

@@ -307,7 +307,8 @@ export default function LeadsPage() {
   const [filters, setFilters] = useState<LeadFilters>({
     status: [],
     segments: [],
-    origin: []
+    origin: [],
+    journeyStages: []
   })
   const { currentSite } = useSite()
   const [showAttributionModal, setShowAttributionModal] = useState(false)
@@ -580,6 +581,14 @@ export default function LeadsPage() {
       )
     }
     
+    // Apply journey stage filters
+    if (filters.journeyStages.length > 0) {
+      filtered = filtered.filter(lead => {
+        const leadStage = leadJourneyStages[lead.id] || 'not_contacted'
+        return filters.journeyStages.includes(leadStage)
+      })
+    }
+    
     // Apply search query filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
@@ -611,8 +620,16 @@ export default function LeadsPage() {
   
   // Agrupar leads por empresa
   const companyGroups = useMemo(() => {
-    return groupLeadsByCompany(filteredLeads || [], leadJourneyStages || {}, expandedCompanies || {})
-  }, [filteredLeads, leadJourneyStages, expandedCompanies])
+    const groups = groupLeadsByCompany(filteredLeads || [], leadJourneyStages || {}, expandedCompanies || {})
+    
+    // Log what companies are being shown on the page
+    console.log(`📊 Page: Showing ${groups.length} companies for tab "${activeTab}"`)
+    groups.forEach((group, index) => {
+      console.log(`📊 Page Company ${index + 1}: "${group.companyName}" (${group.leadCount} leads, stage: ${group.mostAdvancedStage})`)
+    })
+    
+    return groups
+  }, [filteredLeads, leadJourneyStages, expandedCompanies, activeTab])
   
   const totalPages = Math.ceil((companyGroups?.length || 0) / itemsPerPage)
   
@@ -794,7 +811,8 @@ export default function LeadsPage() {
     setFilters({
       status: [],
       segments: [],
-      origin: []
+      origin: [],
+      journeyStages: []
     })
     setSearchQuery("")
     setCurrentPage(1)

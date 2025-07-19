@@ -30,6 +30,7 @@ export interface LeadFilters {
   status: string[]
   segments: string[]
   origin: string[]
+  journeyStages: string[]
 }
 
 interface LeadFilterModalProps {
@@ -40,6 +41,7 @@ interface LeadFilterModalProps {
   segments: Array<{ id: string; name: string }>
   statusOptions?: string[]
   originOptions?: string[]
+  journeyStageOptions?: Array<{ id: string; label: string }>
 }
 
 export function LeadFilterModal({
@@ -49,20 +51,31 @@ export function LeadFilterModal({
   onApplyFilters,
   segments,
   statusOptions = ["new", "contacted", "qualified", "converted", "lost"],
-  originOptions = ["website", "referral", "social", "email", "phone", "other"]
+  originOptions = ["website", "referral", "social", "email", "phone", "other"],
+  journeyStageOptions = [
+    { id: "not_contacted", label: "Unaware" },
+    { id: "awareness", label: "Awareness" },
+    { id: "consideration", label: "Consideration" },
+    { id: "decision", label: "Decision" },
+    { id: "purchase", label: "Purchase" },
+    { id: "retention", label: "Retention" },
+    { id: "referral", label: "Referral" }
+  ]
 }: LeadFilterModalProps) {
   // Estado local para los filtros
   const [localFilters, setLocalFilters] = useState<LeadFilters>({
     status: [...filters.status],
     segments: [...filters.segments],
-    origin: [...filters.origin]
+    origin: [...filters.origin],
+    journeyStages: [...(filters.journeyStages || [])]
   })
   
   // Estado para las secciones expandidas
   const [expandedSections, setExpandedSections] = useState({
     status: true,
     segments: true,
-    origin: true
+    origin: true,
+    journeyStages: true
   })
   
   // Función para cambiar el estado de una sección
@@ -123,13 +136,31 @@ export function LeadFilterModal({
       }
     })
   }
+
+  // Función para manejar cambios en el journey stage
+  const handleJourneyStageChange = (value: string) => {
+    setLocalFilters(prev => {
+      if (prev.journeyStages.includes(value)) {
+        return {
+          ...prev,
+          journeyStages: prev.journeyStages.filter(stage => stage !== value)
+        }
+      } else {
+        return {
+          ...prev,
+          journeyStages: [...prev.journeyStages, value]
+        }
+      }
+    })
+  }
   
   // Función para resetear los filtros
   const handleResetFilters = () => {
     setLocalFilters({
       status: [],
       segments: [],
-      origin: []
+      origin: [],
+      journeyStages: []
     })
   }
   
@@ -141,7 +172,7 @@ export function LeadFilterModal({
   
   // Función para obtener el total de filtros activos
   const getTotalActiveFilters = () => {
-    return localFilters.status.length + localFilters.segments.length + localFilters.origin.length
+    return localFilters.status.length + localFilters.segments.length + localFilters.origin.length + localFilters.journeyStages.length
   }
   
   // Función para obtener el icono del estado
@@ -193,6 +224,50 @@ export function LeadFilterModal({
         return "bg-green-100 text-green-700 hover:bg-green-100 border-green-200"
       case "lost":
         return "bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
+      default:
+        return "bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200"
+    }
+  }
+
+  // Función para obtener el icono del journey stage
+  const getJourneyStageIcon = (stage: string) => {
+    switch (stage) {
+      case "not_contacted":
+        return <Users className="h-4 w-4 text-gray-500" />
+      case "awareness":
+        return <Globe className="h-4 w-4 text-blue-500" />
+      case "consideration":
+        return <Tag className="h-4 w-4 text-yellow-500" />
+      case "decision":
+        return <CheckCircle2 className="h-4 w-4 text-purple-500" />
+      case "purchase":
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />
+      case "retention":
+        return <CheckCircle2 className="h-4 w-4 text-indigo-500" />
+      case "referral":
+        return <Users className="h-4 w-4 text-pink-500" />
+      default:
+        return <Tag className="h-4 w-4" />
+    }
+  }
+
+  // Función para obtener la clase del badge de journey stage
+  const getJourneyStageBadgeClass = (stage: string) => {
+    switch (stage) {
+      case "not_contacted":
+        return "bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200"
+      case "awareness":
+        return "bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200"
+      case "consideration":
+        return "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-yellow-200"
+      case "decision":
+        return "bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200"
+      case "purchase":
+        return "bg-green-100 text-green-700 hover:bg-green-100 border-green-200"
+      case "retention":
+        return "bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-indigo-200"
+      case "referral":
+        return "bg-pink-100 text-pink-700 hover:bg-pink-100 border-pink-200"
       default:
         return "bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200"
     }
@@ -347,6 +422,52 @@ export function LeadFilterModal({
                       >
                         {getOriginIcon(origin)}
                         <span className="capitalize">{origin}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Journey Stage Filter */}
+          <div className="border rounded-lg">
+            <div 
+              className="flex items-center justify-between p-3 cursor-pointer"
+              onClick={() => toggleSection('journeyStages')}
+            >
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-medium">Journey Stage</h3>
+                {localFilters.journeyStages.length > 0 && (
+                  <Badge variant="outline" className="ml-2">
+                    {localFilters.journeyStages.length}
+                  </Badge>
+                )}
+              </div>
+              {expandedSections.journeyStages ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            
+            {expandedSections.journeyStages && (
+              <div className="px-3 py-[10px] border-t">
+                <div className="grid grid-cols-1 gap-2">
+                  {journeyStageOptions.map(stage => (
+                    <div key={stage.id} className="flex items-center space-x-2">
+                      <Switch 
+                        id={`journey-${stage.id}`}
+                        checked={localFilters.journeyStages.includes(stage.id)}
+                        onCheckedChange={() => handleJourneyStageChange(stage.id)}
+                      />
+                      <Label 
+                        htmlFor={`journey-${stage.id}`}
+                        className="flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {getJourneyStageIcon(stage.id)}
+                        <span>{stage.label}</span>
                       </Label>
                     </div>
                   ))}

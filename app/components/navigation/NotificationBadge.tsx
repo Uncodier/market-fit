@@ -3,7 +3,7 @@
 import { Badge } from "@/app/components/ui/badge"
 import { useNotifications } from "@/app/notifications/context/NotificationsContext"
 
-export function NotificationBadge() {
+export function NotificationBadge({ isActive = false }: { isActive?: boolean }) {
   const { notifications } = useNotifications()
   
   // Count unread notifications using the correct field name
@@ -16,7 +16,11 @@ export function NotificationBadge() {
   
   return (
     <Badge 
-      className="h-5 min-w-[20px] px-1.5 text-xs font-semibold bg-yellow-400 text-primary hover:bg-yellow-500 border-transparent"
+      className={`h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent hover:bg-yellow-500 ${
+        isActive 
+          ? "bg-yellow-400 text-black dark:bg-yellow-400 dark:text-black" 
+          : "bg-yellow-400 text-muted-foreground dark:bg-yellow-400 dark:text-black"
+      }`}
     >
       {unreadCount > 99 ? "99+" : unreadCount}
     </Badge>

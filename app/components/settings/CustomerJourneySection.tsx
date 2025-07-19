@@ -104,9 +104,9 @@ function StageInputs({ stageId, fieldType, title, placeholder }: StageInputsProp
           variant="outline"
           size="sm"
           onClick={addItem}
-          className="h-7 px-2 text-xs"
+          className="h-9 px-3 text-sm"
         >
-          <Plus className="h-3 w-3 mr-1" />
+          <Plus className="h-4 w-4 mr-1" />
           Add
         </Button>
       </div>
@@ -117,16 +117,16 @@ function StageInputs({ stageId, fieldType, title, placeholder }: StageInputsProp
             <Input
               {...control.register(`customer_journey.${stageId}.${fieldType}.${index}` as any)}
               placeholder={placeholder}
-              className="flex-1 h-8 text-sm"
+              className="flex-1 h-12 text-sm"
             />
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => removeItem(index)}
-              className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400"
+              className="h-12 w-12 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         ))}

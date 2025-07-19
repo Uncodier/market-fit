@@ -72,6 +72,7 @@ export interface LeadFilters {
   status: string[]
   segments: string[]
   origin: string[]
+  journeyStages: string[]
 }
 
 export interface Segment {

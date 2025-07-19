@@ -59,6 +59,7 @@ export interface LeadFilters {
   status: string[]
   segments: string[]
   origin: string[]
+  journeyStages: string[]
   searchQuery?: string
 }
 

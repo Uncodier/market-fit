@@ -1191,7 +1191,7 @@ export default function TeleprompterPage() {
         className="h-full overflow-y-auto scrollbar-hide"
         style={{ 
           padding: `${settings.padding}px`,
-          paddingTop: `${settings.padding + 100}px`, // Extra padding for initial position
+          paddingTop: `${settings.padding + 200}px`, // Extra padding for initial position and video preview
           paddingBottom: `${settings.padding + 100}px`, // Extra padding for final position
           scrollBehavior: 'auto' // Disable CSS smooth scrolling to let our animation handle it
         }}

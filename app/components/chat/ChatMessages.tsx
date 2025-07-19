@@ -77,7 +77,26 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         .rpc('get_performance_status', { command_id: commandId });
       
       if (error) {
-        console.error('Error fetching performance status:', error);
+        // Debug: Log the actual error structure to understand it better
+        console.debug('Performance status error details:', {
+          error,
+          errorKeys: Object.keys(error),
+          errorType: typeof error,
+          hasMessage: !!error.message,
+          hasCode: !!error.code,
+          errorString: JSON.stringify(error)
+        });
+        
+        // Check if it's a function not found error (common when RPC doesn't exist)
+        if (error.message?.includes('function') || 
+            error.code === '42883' || 
+            error.code === 'PGRST202' ||
+            Object.keys(error).length === 0 ||
+            (typeof error === 'object' && !error.message && !error.code)) {
+          console.warn('Performance tracking RPC function not available - feature disabled');
+          return;
+        }
+        console.warn('Error fetching performance status:', error);
         return;
       }
       
@@ -92,7 +111,10 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         setPerformance(bitmask);
       }
     } catch (error) {
-      console.error('Error in fetchPerformanceStatus:', error);
+      // Improve error logging with more context
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorDetails = error && typeof error === 'object' ? JSON.stringify(error) : String(error);
+      console.warn(`Performance tracking unavailable for command ${commandId}: ${errorMessage}`, errorDetails);
     }
   };
 
@@ -110,8 +132,14 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         .rpc('set_like', { command_id: commandId });
       
       if (error) {
-        console.error('Error setting like:', error);
-        toast.error("Failed to save like");
+        // Check if it's a function not found error
+        if (error.message?.includes('function') || error.code === '42883') {
+          console.warn('Performance tracking not available - like feature disabled');
+          toast.error("Like feature temporarily unavailable");
+        } else {
+          console.error('Error setting like:', error);
+          toast.error("Failed to save like");
+        }
       } else {
         // Actualizar el estado local
         setPerformance((prev) => {
@@ -121,8 +149,9 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         toast.success("Like saved successfully");
       }
     } catch (error) {
-      console.error('Error in handleLike:', error);
-      toast.error("Failed to save like");
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`Like feature unavailable: ${errorMessage}`);
+      toast.error("Like feature temporarily unavailable");
     } finally {
       setIsLoading(false);
     }
@@ -142,8 +171,14 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         .rpc('set_dislike', { command_id: commandId });
       
       if (error) {
-        console.error('Error setting dislike:', error);
-        toast.error("Failed to save dislike");
+        // Check if it's a function not found error
+        if (error.message?.includes('function') || error.code === '42883') {
+          console.warn('Performance tracking not available - dislike feature disabled');
+          toast.error("Dislike feature temporarily unavailable");
+        } else {
+          console.error('Error setting dislike:', error);
+          toast.error("Failed to save dislike");
+        }
       } else {
         // Actualizar el estado local
         setPerformance((prev) => {
@@ -153,8 +188,9 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         toast.success("Dislike saved successfully");
       }
     } catch (error) {
-      console.error('Error in handleDislike:', error);
-      toast.error("Failed to save dislike");
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`Dislike feature unavailable: ${errorMessage}`);
+      toast.error("Dislike feature temporarily unavailable");
     } finally {
       setIsLoading(false);
     }
@@ -174,8 +210,14 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         .rpc('toggle_flag', { command_id: commandId });
       
       if (error) {
-        console.error('Error toggling flag:', error);
-        toast.error("Failed to save flag");
+        // Check if it's a function not found error
+        if (error.message?.includes('function') || error.code === '42883') {
+          console.warn('Performance tracking not available - flag feature disabled');
+          toast.error("Flag feature temporarily unavailable");
+        } else {
+          console.error('Error toggling flag:', error);
+          toast.error("Failed to save flag");
+        }
       } else {
         // Actualizar el estado local
         setPerformance((prev) => {
@@ -185,8 +227,9 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
         toast.success("Flag saved successfully");
       }
     } catch (error) {
-      console.error('Error in handleFlag:', error);
-      toast.error("Failed to save flag");
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`Flag feature unavailable: ${errorMessage}`);
+      toast.error("Flag feature temporarily unavailable");
     } finally {
       setIsLoading(false);
     }

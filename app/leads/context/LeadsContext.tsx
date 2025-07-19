@@ -23,7 +23,7 @@ const LeadsContext = createContext<LeadsContextType>({
   leads: [],
   segments: [],
   loading: false,
-  filters: { status: [], segments: [], origin: [] },
+  filters: { status: [], segments: [], origin: [], journeyStages: [] },
   searchQuery: "",
   updateFilters: () => {},
   updateSearchQuery: () => {},
@@ -46,7 +46,8 @@ export function LeadsProvider({ children }: LeadsProviderProps) {
   const [filters, setFilters] = useState<LeadFilters>({
     status: [],
     segments: [],
-    origin: []
+    origin: [],
+    journeyStages: []
   })
   const [searchQuery, setSearchQuery] = useState("")
   const { currentSite } = useSite()
@@ -119,7 +120,8 @@ export function LeadsProvider({ children }: LeadsProviderProps) {
     setFilters({
       status: [],
       segments: [],
-      origin: []
+      origin: [],
+      journeyStages: []
     })
     setSearchQuery("")
   }

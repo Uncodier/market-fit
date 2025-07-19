@@ -166,7 +166,7 @@ export function MenuItem({
             </Tooltip>
           </TooltipProvider>
           {children && (
-            <div className="absolute -top-1 -right-1 z-10">{children}</div>
+            <div className="absolute -top-1 -right-[0.65rem] z-10">{children}</div>
           )}
         </>
       ) : (

@@ -24,6 +24,10 @@ import { usePathname } from "next/navigation"
 import { ConfigurationSection } from "./ConfigurationSection"
 import { MenuItem } from "./MenuItem"
 import { SiteSelector } from "./SiteSelector"
+import { LeadsBadge } from "./LeadsBadge"
+import { ControlCenterBadge } from "./ControlCenterBadge"
+import { ContentBadge } from "./ContentBadge"
+import { RequirementsBadge, CampaignsBadge } from "./RequirementsBadge"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/app/hooks/use-auth"
@@ -237,7 +241,17 @@ export function Sidebar({
                   title={item.title}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={isCollapsed}
-                />
+                >
+                  {item.title === "Control Center" && (
+                    <ControlCenterBadge isActive={pathname.startsWith("/control-center")} />
+                  )}
+                  {item.title === "Content" && (
+                    <ContentBadge isActive={pathname.startsWith("/content")} />
+                  )}
+                  {item.title === "Requirements" && (
+                    <RequirementsBadge isActive={pathname.startsWith("/requirements")} />
+                  )}
+                </MenuItem>
               ))}
             </div>
           </div>
@@ -257,7 +271,14 @@ export function Sidebar({
                   title={item.title}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={isCollapsed}
-                />
+                >
+                  {item.title === "Leads" && (
+                    <LeadsBadge isActive={pathname.startsWith("/leads")} />
+                  )}
+                  {item.title === "Campaigns" && (
+                    <CampaignsBadge isActive={pathname.startsWith("/campaigns")} />
+                  )}
+                </MenuItem>
               ))}
             </div>
           </div>

@@ -234,7 +234,7 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
               className={isSettings ? "setting-parent-item" : ""}
             >
               {item.title === "Notifications" && (
-                <NotificationBadge />
+                <NotificationBadge isActive={pathname.startsWith("/notifications")} />
               )}
             </MenuItem>
             

@@ -68,29 +68,44 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
 
       const supabase = createClient()
       
-      // Get both site owner and site members
+      // Get site owner
       const { data: ownerData, error: ownerError } = await supabase
         .from('profiles')
         .select('id, name')
         .eq('id', currentSite.user_id)
         .single()
 
-      const { data: membersData, error: membersError } = await supabase
-        .from('site_members')
-        .select(`
-          profiles!inner (
-            id,
-            name
-          )
-        `)
-        .eq('site_id', currentSite.id)
-
       if (ownerError && ownerError.code !== 'PGRST116') {
         console.error('Error fetching site owner:', ownerError)
       }
 
-      if (membersError) {
-        console.error('Error fetching site members:', membersError)
+      // Get site members - first get the member records
+      const { data: siteMembers, error: siteMembersError } = await supabase
+        .from('site_members')
+        .select('user_id')
+        .eq('site_id', currentSite.id)
+        .eq('status', 'active')
+        .not('user_id', 'is', null)
+
+      if (siteMembersError) {
+        console.error('Error fetching site members:', siteMembersError)
+      }
+
+      // Get profiles for site members
+      let memberProfiles: Array<{ id: string; name: string }> = []
+      if (siteMembers && siteMembers.length > 0) {
+        const memberUserIds = siteMembers.map((m: { user_id: string }) => m.user_id)
+        
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', memberUserIds)
+
+        if (profilesError) {
+          console.error('Error fetching member profiles:', profilesError)
+        } else {
+          memberProfiles = profilesData || []
+        }
       }
 
       // Combine owner and members
@@ -101,11 +116,8 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
         allUsers.push(ownerData)
       }
       
-      // Add members if found
-      if (membersData) {
-        const memberProfiles = membersData.map((member: any) => member.profiles).filter((profile: any) => profile)
-        allUsers.push(...memberProfiles)
-      }
+      // Add members
+      allUsers.push(...memberProfiles)
 
       // Remove duplicates (in case owner is also in members table) and sort
       const uniqueUsers = allUsers.filter((user, index, self) => 
