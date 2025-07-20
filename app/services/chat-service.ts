@@ -252,14 +252,22 @@ async function getUserData(userId: string): Promise<{ name: string, avatar_url: 
 }
 
 /**
- * Get all conversations for a site
+ * Get all conversations for a site with pagination
  */
-export async function getConversations(siteId: string): Promise<ConversationListItem[]> {
+export async function getConversations(
+  siteId: string, 
+  page: number = 1, 
+  pageSize: number = 20
+): Promise<ConversationListItem[]> {
   try {
-    console.log(`🔍 DEBUG: getConversations called for site: ${siteId}`);
+    console.log(`🔍 DEBUG: getConversations called for site: ${siteId}, page: ${page}, pageSize: ${pageSize}`);
     const supabase = createClient();
     
-    // Primero obtenemos las conversaciones
+    // Calculate pagination
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    
+    // Primero obtenemos las conversaciones con paginación
     const { data: conversations, error: conversationsError } = await supabase
       .from("conversations")
       .select(`
@@ -280,6 +288,7 @@ export async function getConversations(siteId: string): Promise<ConversationList
       .eq("site_id", siteId)
       .eq("is_archived", false)
       .order("last_message_at", { ascending: false })
+      .range(from, to)
 
     if (conversationsError) {
       console.error("Error fetching conversations:", conversationsError)
@@ -287,11 +296,11 @@ export async function getConversations(siteId: string): Promise<ConversationList
     }
 
     if (!conversations || conversations.length === 0) {
-      console.log('🔍 DEBUG: No conversations found for site', siteId);
+      console.log(`🔍 DEBUG: No conversations found for site ${siteId}, page ${page}`);
       return []
     }
     
-    console.log(`🔍 DEBUG: Retrieved ${conversations.length} conversations from database`);
+    console.log(`🔍 DEBUG: Retrieved ${conversations.length} conversations from database for page ${page}`);
     console.log('🔍 DEBUG: First conversation titles:', conversations.slice(0, 3).map((c: any) => c.title));
     
     // Obtenemos los IDs de los agentes

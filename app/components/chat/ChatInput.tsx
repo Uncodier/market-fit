@@ -1,66 +1,113 @@
 "use client"
 
-import React, { FormEvent, useCallback, useRef } from "react"
+import React, { FormEvent, useCallback, useRef, useMemo, memo } from "react"
 import { Button } from "@/app/components/ui/button"
-import { Textarea } from "@/app/components/ui/textarea"
+import { OptimizedTextarea } from "@/app/components/ui/optimized-textarea"
 import * as Icons from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { useLayout } from "@/app/context/LayoutContext"
+import { ChannelSelector } from "./ChannelSelector"
+import { useChannelSelector } from "@/app/hooks/useChannelSelector"
+import { useLayoutDimensions } from "@/app/hooks/useLayoutDimensions"
 
 interface ChatInputProps {
-  message: string
+  message?: string // Optional for uncontrolled mode
   setMessage: (message: string) => void
+  handleMessageChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  textareaRef?: React.MutableRefObject<HTMLTextAreaElement | null>
   isLoading: boolean
   handleSendMessage: (e: FormEvent) => Promise<void>
   handleKeyDown: (e: React.KeyboardEvent) => void
   conversationId?: string
   isChatListCollapsed?: boolean
+  leadData?: {
+    id: string
+    email?: string
+    phone?: string
+  } | null
+  isAgentOnlyConversation?: boolean
 }
 
-export function ChatInput({
+// Memoize the ChatInput component to prevent unnecessary re-renders
+export const ChatInput = memo(function ChatInput({
   message,
   setMessage,
+  handleMessageChange,
+  textareaRef: externalRef,
   isLoading,
   handleSendMessage,
   handleKeyDown,
   conversationId,
-  isChatListCollapsed = false
+  isChatListCollapsed = false,
+  leadData,
+  isAgentOnlyConversation = false
 }: ChatInputProps) {
   const { isLayoutCollapsed } = useLayout()
+  const internalRef = useRef<HTMLTextAreaElement>(null)
   
-  // Calculate dimensions for fixed positioning
-  // Sidebar: 256px (expanded) or 64px (collapsed)
-  // Chat list: 319px (expanded) or 0px (collapsed)
-  // These values should match the layout in chat page
-  const sidebarWidth = isLayoutCollapsed ? 64 : 256 // Dynamic based on layout state
-  const chatListWidth = isChatListCollapsed ? 0 : 319 // Dynamic based on chat list state
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // Combine external ref with internal ref
+  const setTextareaRef = useCallback((element: HTMLTextAreaElement | null) => {
+    internalRef.current = element
+    if (externalRef) {
+      externalRef.current = element
+    }
+  }, [externalRef])
   
-  // Handle input changes directly without debounce for better responsiveness
+  // Use optimized layout dimensions hook
+  const { containerStyle } = useLayoutDimensions({
+    isLayoutCollapsed,
+    isChatListCollapsed
+  })
+  
+  // Channel selector hook - now optimized
+  const {
+    selectedChannel,
+    setSelectedChannel,
+    availableChannels,
+    isUpdatingChannel
+  } = useChannelSelector({
+    conversationId,
+    leadData,
+    isAgentOnlyConversation
+  })
+  
+  // CRITICAL: Direct handler to prevent character loss
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(e.target.value)
-  }, [setMessage])
+    // Always use the direct message change handler if available
+    if (handleMessageChange) {
+      handleMessageChange(e)
+    } else {
+      // Fallback to direct state update
+      setMessage(e.target.value)
+    }
+  }, [handleMessageChange, setMessage])
   
-  // Optimized keyboard handler to prevent conflicts and improve responsiveness
+  // Optimized keyboard handler
   const handleKeyDownInternal = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // For better performance, handle common cases locally first
+    // Handle Tab normally for accessibility
     if (e.key === 'Tab') {
-      // Let tab work normally for accessibility
       return
     }
     
-    // Let the parent handle the complex logic
+    // Delegate complex logic to parent
     handleKeyDown(e)
   }, [handleKeyDown])
   
-  // Memoize the form submit handler
+  // Memoize form submit handler
   const handleSubmit = useCallback((e: FormEvent) => {
     e.preventDefault()
     handleSendMessage(e)
   }, [handleSendMessage])
   
-  // Check if a conversation is selected
-  const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-")
+  // Memoize conversation validation
+  const hasSelectedConversation = useMemo(() => {
+    return conversationId && conversationId !== "" && !conversationId.startsWith("new-")
+  }, [conversationId])
+  
+  // Memoize send button state - for uncontrolled mode, always enabled when not loading
+  const canSend = useMemo(() => {
+    return !isLoading
+  }, [isLoading])
   
   // If no conversation is selected, don't render the input
   if (!hasSelectedConversation) {
@@ -72,32 +119,40 @@ export function ChatInput({
       className={cn(
         "fixed bottom-0 py-4 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10"
       )}
-      style={{
-        left: `${sidebarWidth + chatListWidth}px`,
-        right: '0px',
-        maxWidth: `calc(100vw - ${sidebarWidth + chatListWidth}px)`
-      }}
+      style={containerStyle}
     >
       <div className="px-12">
         <form onSubmit={handleSubmit} className="relative">
           <div className="relative">
-            <Textarea
-              ref={textareaRef}
-              value={message}
+            <OptimizedTextarea
+              ref={setTextareaRef}
               onChange={handleChange}
               onKeyDown={handleKeyDownInternal}
               placeholder="Message..."
-              className="resize-none h-[135px] w-full py-5 pl-[60px] pr-[60px] rounded-2xl border border-input bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
+              className="resize-none min-h-[135px] w-full py-5 pl-[60px] pr-[60px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
               disabled={isLoading}
               style={{
                 lineHeight: '1.5',
-                overflowY: 'auto',
+                overflowY: 'hidden',
                 wordWrap: 'break-word',
-                paddingBottom: '50px', // Espacio adicional en la parte inferior
-                backdropFilter: 'blur(10px)'
+                paddingBottom: '50px',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                height: '135px' // Initial height, will be auto-adjusted
               }}
             />
-            {/* Botones de acciones a la izquierda */}
+            
+            {/* Channel selector centered */}
+            <div className="absolute bottom-[15px] left-1/2 transform -translate-x-1/2 flex items-center justify-center">
+              <ChannelSelector
+                selectedChannel={selectedChannel}
+                onChannelChange={setSelectedChannel}
+                availableChannels={availableChannels}
+                isUpdating={isUpdatingChannel}
+              />
+            </div>
+            
+            {/* Action buttons on the left (currently hidden) */}
             <div className="absolute bottom-[15px] left-[15px] flex space-x-1 hidden">
               <Button 
                 type="button" 
@@ -121,14 +176,17 @@ export function ChatInput({
               </Button>
             </div>
             
-            {/* Botón de enviar a la derecha */}
+            {/* Send button on the right */}
             <div className="absolute bottom-[15px] right-[15px]">
               <Button 
                 type="submit" 
                 size="icon"
                 variant="ghost"
-                disabled={isLoading || !message.trim()}
-                className={`rounded-xl h-[39px] w-[39px] text-primary hover:text-primary/90 transition-colors hover:bg-muted ${!message.trim() ? 'opacity-50' : 'opacity-100'}`}
+                disabled={!canSend}
+                className={cn(
+                  "rounded-xl h-[39px] w-[39px] text-primary hover:text-primary/90 transition-colors hover:bg-muted",
+                  canSend ? "opacity-100" : "opacity-50"
+                )}
               >
                 {isLoading ? (
                   <Icons.Loader className="h-5 w-5 animate-spin" />
@@ -143,4 +201,16 @@ export function ChatInput({
       </div>
     </div>
   )
-} 
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo
+  // For uncontrolled textarea, ignore message prop changes
+  return (
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.conversationId === nextProps.conversationId &&
+    prevProps.isChatListCollapsed === nextProps.isChatListCollapsed &&
+    prevProps.isAgentOnlyConversation === nextProps.isAgentOnlyConversation &&
+    prevProps.handleMessageChange === nextProps.handleMessageChange &&
+    prevProps.textareaRef === nextProps.textareaRef &&
+    JSON.stringify(prevProps.leadData) === JSON.stringify(nextProps.leadData)
+  )
+}) 

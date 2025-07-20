@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState, Suspense, useCallback, useMemo } from "react"
+import "@/app/styles/chat-optimizations.css"
 import { useSearchParams, useRouter } from "next/navigation"
 import { agents } from "@/app/data/mock-agents"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
@@ -24,6 +25,9 @@ import { useLeadData } from "@/app/hooks/useLeadData"
 import { useChatMessages } from "@/app/hooks/useChatMessages"
 import { useChatOperations } from "@/app/hooks/useChatOperations"
 import { useApiRequestTracker } from "@/app/hooks/useApiRequestTracker"
+import { useOptimizedMessageState } from "@/app/hooks/useOptimizedMessageState"
+// import { useSimpleMessageState } from "@/app/hooks/useSimpleMessageState" // For testing
+import { useOptimizedKeyboardHandler } from "@/app/hooks/useOptimizedKeyboardHandler"
 
 export default function ChatPage() {
   return (
@@ -40,8 +44,10 @@ function ChatPageContent() {
   const agentId = searchParams.get("agentId") || ""
   const agentName = searchParams.get("agentName") || "Agent"
   const conversationId = searchParams.get("conversationId") || ""
-  const [message, setMessage] = useState("")
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null)
+  
+  // Optimized message state management - debounced re-renders
+  const { message, setMessage, messageRef, clearMessage, handleMessageChange, textareaRef } = useOptimizedMessageState()
   const { user } = useAuthContext()
   const { currentSite } = useSite()
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
@@ -108,35 +114,28 @@ function ChatPageContent() {
     }
   }, [chatMessages, isAgentResponding])
 
-  // Wrapper function for the form submission - optimized with useCallback
+  // Uncontrolled message submission using ref
   const handleSendMessageSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (message.trim()) {
-      await handleSendMessage(message)
-      setMessage("")
+    const currentMessage = messageRef.current.trim()
+    
+    if (currentMessage) {
+      await handleSendMessage(currentMessage)
+      clearMessage()
       
-      // Forzar scroll al final después de enviar un mensaje, sincronizado con la animación
+      // Scroll to bottom after sending message
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
       }, 150)
     }
-  }, [message, handleSendMessage, setMessage])
+  }, [handleSendMessage, clearMessage, messageRef])
 
-  // Handle keyboard shortcuts for sending messages - optimized with useCallback
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Send with Enter (without Shift)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      if (message.trim() && !isLoading) {
-        handleSendMessageSubmit(e as unknown as React.FormEvent)
-      }
-    }
-    
-    // Special case for multiline text: allow Shift+Enter
-    if (e.key === 'Enter' && e.shiftKey && !e.ctrlKey) {
-      // Don't prevent default to allow line break
-    }
-  }, [message, isLoading, handleSendMessageSubmit])
+  // Use optimized keyboard handler
+  const { handleKeyDown } = useOptimizedKeyboardHandler({
+    messageRef,
+    isLoading,
+    onSendMessage: handleSendMessageSubmit
+  })
 
   // Load agent data when agentId changes
   useEffect(() => {
@@ -484,13 +483,16 @@ function ChatPageContent() {
         {/* Message input area */}
         {hasSelectedConversation && (
           <ChatInput 
-            message={message}
             setMessage={setMessage}
+            handleMessageChange={handleMessageChange}
+            textareaRef={textareaRef}
             isLoading={isLoading}
             handleSendMessage={handleSendMessageSubmit}
             handleKeyDown={handleKeyDown}
             conversationId={conversationId}
             isChatListCollapsed={isChatListCollapsed}
+            leadData={leadData}
+            isAgentOnlyConversation={isAgentOnlyConversation}
           />
         )}
       </div>

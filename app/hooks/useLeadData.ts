@@ -71,7 +71,9 @@ export function useLeadData(conversationId: string, siteId?: string) {
         name: lead.name || "Unknown",
         type: "Lead",
         status: "Online",
-        avatarUrl: "/avatars/visitor-default.png" // Fallback image
+        avatarUrl: "/avatars/visitor-default.png", // Fallback image
+        email: lead.email,
+        phone: lead.phone
       })
       
     } catch (error) {

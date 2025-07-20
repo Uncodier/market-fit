@@ -308,7 +308,7 @@ export function SessionEventsChart({
                 <Tooltip 
                   formatter={(value, name) => [
                     value, 
-                    name === 'pageVisits' ? 'Page Visits' : 'Unique Visitors'
+                    name
                   ]}
                   labelFormatter={(label) => `Date: ${label}`}
                   labelStyle={{ fontWeight: 'bold', color: colors.tooltipText }}

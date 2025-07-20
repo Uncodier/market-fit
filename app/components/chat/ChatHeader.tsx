@@ -160,40 +160,6 @@ export function ChatHeader({
             <div className="transition-transform duration-300 ease-in-out">
               <div className="flex items-center gap-2">
                 <h2 className="font-medium text-lg">{displayAgentName}</h2>
-                <span className="text-xs text-muted-foreground transition-colors duration-300">
-                  {(() => {
-                    // Determinar el color según el estado
-                    let statusColor = "bg-amber-500"; // Default color
-                    let statusText = "Offline";
-                    
-                    if (currentAgent?.status) {
-                      statusText = currentAgent.status.charAt(0).toUpperCase() + currentAgent.status.slice(1);
-                      
-                      switch(currentAgent.status) {
-                        case 'active':
-                          statusColor = "bg-green-500";
-                          statusText = "Online";
-                          break;
-                        case 'learning':
-                          statusColor = "bg-blue-500";
-                          break;
-                        case 'error':
-                          statusColor = "bg-red-500";
-                          break;
-                        case 'inactive':
-                          statusColor = "bg-amber-500";
-                          break;
-                      }
-                    }
-                    
-                    return (
-                      <span className="flex items-center gap-1.5">
-                        <span className={`h-1.5 w-1.5 rounded-full ${statusColor} transition-colors duration-300`}></span> 
-                        {statusText}
-                      </span>
-                    );
-                  })()}
-                </span>
               </div>
             </div>
           </div>
@@ -213,11 +179,6 @@ export function ChatHeader({
                     <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-amber-500/10 text-amber-600 border-amber-500/20">
                       {leadData.type}
                     </Badge>
-                    <span className="text-xs text-muted-foreground transition-colors duration-300">
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 transition-colors duration-300"></span> {leadData.status}
-                      </span>
-                    </span>
                   </Link>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -225,11 +186,6 @@ export function ChatHeader({
                     <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300">
                       Visitor
                     </Badge>
-                    <span className="text-xs text-muted-foreground transition-colors duration-300">
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 transition-colors duration-300"></span> Online
-                      </span>
-                    </span>
                   </div>
                 )}
               </div>

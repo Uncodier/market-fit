@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Badge } from "@/app/components/ui/badge"
@@ -47,6 +48,8 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { assignLeadToUser } from "@/app/leads/actions"
 import { siteMembersService, SiteMember } from "@/app/services/site-members-service"
 import { cn } from "@/lib/utils"
+import { createConversation } from "@/app/services/chat-service"
+import { createClient } from "@/utils/supabase/client"
 
 // Type for active site members with guaranteed user_id
 type ActiveSiteMember = SiteMember & { user_id: string }
@@ -87,13 +90,15 @@ interface LeadDetailProps {
 export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead, hideStatus = false, onStatusChange }: LeadDetailProps) {
   const { currentSite } = useSite()
   const { user } = useAuth()
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [loadingActions, setLoadingActions] = useState<{ research: boolean; followup: boolean }>({
+  const [loadingActions, setLoadingActions] = useState<{ research: boolean; followup: boolean; newConversation: boolean }>({
     research: false,
-    followup: false
+    followup: false,
+    newConversation: false
   })
   const [teamMembers, setTeamMembers] = useState<ActiveSiteMember[]>([])
   const [loadingTeamMembers, setLoadingTeamMembers] = useState(false)
@@ -364,6 +369,59 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
       setLoadingActions(prev => ({ ...prev, followup: false }))
     }
   }
+
+  // Function to create a new conversation with the Customer Support agent
+  const handleNewConversation = async () => {
+    if (!currentSite?.id || !user?.id) {
+      toast.error('No site selected or user not authenticated')
+      return
+    }
+
+    setLoadingActions(prev => ({ ...prev, newConversation: true }))
+    try {
+      const supabase = createClient()
+      
+      // Find the Customer Support agent for this site
+      const { data: agent, error: agentError } = await supabase
+        .from('agents')
+        .select('id, name')
+        .eq('site_id', currentSite.id)
+        .eq('role', 'Customer Support')
+        .single()
+
+      if (agentError || !agent) {
+        console.error('Customer Support agent not found:', agentError)
+        toast.error('Customer Support agent not found for this site')
+        return
+      }
+
+      // Create conversation with the Customer Support agent and lead
+      const conversation = await createConversation(
+        currentSite.id,
+        user.id,
+        agent.id,
+        `Chat with ${lead.name}`,
+        {
+          lead_id: lead.id,
+          channel: 'web'
+        }
+      )
+
+      if (conversation) {
+        toast.success('Conversation created successfully')
+        // Navigate to chat with proper URL format
+        const url = `/chat?conversationId=${conversation.id}&agentId=${agent.id}&agentName=${encodeURIComponent(agent.name)}`
+        router.push(url)
+      } else {
+        toast.error('Failed to create conversation')
+      }
+    } catch (error) {
+      console.error('Error creating conversation:', error)
+      toast.error('Failed to create conversation')
+    } finally {
+      setLoadingActions(prev => ({ ...prev, newConversation: false }))
+    }
+  }
   
   // Función para guardar los cambios
   const handleSaveChanges = async () => {
@@ -504,6 +562,18 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                     <Pencil className="h-4 w-4" />
                     <span className="ml-2">Edit Lead</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleNewConversation}
+                    disabled={loadingActions.newConversation}
+                    className="flex items-center justify-between"
+                  >
+                    {loadingActions.newConversation ? (
+                      <Loader className="h-4 w-4" />
+                    ) : (
+                      <MessageSquare className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">New Conversation</span>
+                  </DropdownMenuItem>
                   {onDeleteLead && (
                     <>
                       <DropdownMenuSeparator />
@@ -568,6 +638,18 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                   <DropdownMenuItem onClick={() => setIsEditing(true)} className="flex items-center justify-between">
                     <Pencil className="h-4 w-4" />
                     <span className="ml-2">Edit Lead</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleNewConversation}
+                    disabled={loadingActions.newConversation}
+                    className="flex items-center justify-between"
+                  >
+                    {loadingActions.newConversation ? (
+                      <Loader className="h-4 w-4" />
+                    ) : (
+                      <MessageSquare className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">New Conversation</span>
                   </DropdownMenuItem>
                   {onDeleteLead && (
                     <>

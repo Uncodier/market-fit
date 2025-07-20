@@ -1,0 +1,117 @@
+/* Advanced CSS optimizations for chat performance */
+
+/* GPU acceleration and smooth animations */
+.chat-input-container {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000;
+}
+
+/* Optimize textarea for smooth typing */
+.optimized-textarea {
+  /* Force GPU acceleration */
+  transform: translateZ(0);
+  will-change: scroll-position, contents;
+  backface-visibility: hidden;
+  
+  /* Optimize for text rendering */
+  font-kerning: auto;
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Improve scrolling performance */
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  
+  /* Optimize repaints */
+  contain: layout style paint;
+}
+
+/* Message list optimizations */
+.chat-messages-container {
+  /* Enable hardware acceleration for scrolling */
+  transform: translateZ(0);
+  will-change: scroll-position;
+  
+  /* Optimize scrolling */
+  overflow-anchor: auto;
+  overscroll-behavior: contain;
+  
+  /* Improve rendering performance */
+  contain: layout style;
+}
+
+/* Individual message optimizations */
+.chat-message {
+  /* Optimize individual message rendering */
+  contain: layout style paint;
+  will-change: transform, opacity;
+  
+  /* Improve text rendering */
+  font-kerning: auto;
+  text-rendering: optimizeSpeed;
+}
+
+/* Animation performance optimizations */
+.chat-transition {
+  /* Use GPU for animations */
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  
+  /* Optimize animation curves */
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Channel selector optimizations */
+.channel-selector {
+  /* Optimize for quick interactions */
+  contain: layout style;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Loading states optimization */
+.typing-indicator {
+  /* Optimize animation performance */
+  contain: layout style paint;
+  will-change: transform;
+  animation-fill-mode: both;
+  animation-play-state: running;
+}
+
+/* Layout optimization for collapsed states */
+.chat-list-collapsed {
+  /* Optimize layout shifts */
+  contain: size layout style;
+  will-change: width, opacity;
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .optimized-textarea,
+  .chat-message {
+    /* Better text rendering on high DPI */
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .chat-transition,
+  .typing-indicator {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  .optimized-textarea {
+    /* Optimize for dark backgrounds */
+    color-scheme: dark;
+  }
+} 

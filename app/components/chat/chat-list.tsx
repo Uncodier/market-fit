@@ -4,27 +4,19 @@ import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { Search, PlusCircle, MessageSquare, Trash2, Globe, Mail } from "@/app/components/ui/icons"
-import { WhatsAppIcon } from "@/app/components/ui/social-icons"
+import { Search, MessageSquare } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { Input } from "@/app/components/ui/input"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ConversationListItem } from "@/app/types/chat"
 import { getConversations } from "../../services/chat-service"
-import { formatDistanceToNow, format } from "date-fns"
+import { format } from "date-fns"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { createClient } from "@/lib/supabase/client"
-import * as Icons from "@/app/components/ui/icons"
-import { 
-  DropdownMenu, 
-  DropdownMenuTrigger, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator 
-} from "@/app/components/ui/dropdown-menu"
 import { RenameConversationModal } from "./RenameConversationModal"
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { ConversationItem } from "./ConversationItem"
 
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
@@ -70,39 +62,7 @@ function formatMessageDate(date: Date) {
   return format(date, "d MMM yyyy");
 }
 
-// Función para truncar texto con longitud máxima
-function truncateText(text: string, maxLength: number) {
-  if (!text) return "";
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-}
 
-function getDefaultMessage(title: string): string {
-  if (title.toLowerCase().includes("could not process")) {
-    return "Could not process target due to unexpected error";
-  }
-  
-  if (title.toLowerCase().includes("lamento mucho")) {
-    return "Lamento mucho la espera y las molestias causadas";
-  }
-  
-  return "No response generated";
-}
-
-// Función para obtener el icono del canal
-function getChannelIcon(channel: 'web' | 'email' | 'whatsapp' | undefined) {
-  const iconChannel = channel || 'web'; // Default to web if not specified
-  
-  switch (iconChannel) {
-    case 'whatsapp':
-      return <WhatsAppIcon size={15} className="text-muted-foreground/60" />;
-    case 'email':
-      return <Mail className="text-muted-foreground/60" style={{ width: '15px', height: '15px' }} />;
-    case 'web':
-    default:
-      return <Globe className="text-muted-foreground/60" style={{ width: '15px', height: '15px' }} />;
-  }
-}
 
 export function ChatList({
   siteId,
@@ -119,6 +79,12 @@ export function ChatList({
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasEmptyResult, setHasEmptyResult] = useState(false)
   const { isDarkMode } = useTheme()
+  
+  // Pagination states - similar to commands-panel.tsx
+  const [currentPage, setCurrentPage] = useState(1)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  
   // Reference for the subscription
   const subscriptionRef = useRef<any>(null);
   // Reference to store the current selected conversation ID
@@ -142,72 +108,100 @@ export function ChatList({
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId]);
 
+  // Load conversations with pagination - similar to commands-panel.tsx
+  const loadConversations = async (page: number = 1, append: boolean = false) => {
+    if (!siteId) {
+      console.log('🔍 DEBUG: Cannot load conversations - no siteId provided');
+      return;
+    }
+    
+    console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}, page: ${page}, append: ${append}`);
+    
+    // Solo mostrar el esqueleto en la primera carga
+    const isFirstLoad = isFirstLoadRef.current && page === 1;
+    if (isFirstLoad) {
+      console.log('🔍 DEBUG: First load - showing skeleton');
+      setIsLoading(true);
+      // Establecer que ya no es la primera carga
+      isFirstLoadRef.current = false;
+    } else if (page > 1) {
+      console.log('🔍 DEBUG: Loading more - showing loading more state');
+      setIsLoadingMore(true);
+    }
+    
+    try {
+      // Request conversations from server with pagination
+      const result = await getConversations(siteId, page, 20) // 20 conversations per page
+      console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations for page ${page}`);
+      
+      if (result.length > 0) {
+        if (append) {
+          setConversations(prev => [...prev, ...result])
+        } else {
+          setConversations(result)
+        }
+        
+        // If we got less than 20 items, we've reached the end
+        setHasMore(result.length === 20)
+        setHasEmptyResult(false)
+        setIsInitialLoad(false)
+      } else {
+        if (!append) {
+          setConversations([])
+          setHasEmptyResult(true)
+        }
+        setHasMore(false)
+        setIsInitialLoad(false)
+      }
+      
+      // Solo aplicar el retraso para la primera carga
+      if (isFirstLoad) {
+        // Pequeño retraso antes de ocultar el esqueleto para evitar parpadeos
+        setTimeout(() => {
+          setIsLoading(false)
+        }, 300)
+      }
+    } catch (error) {
+      console.error("Error loading conversations:", error)
+      if (!append) {
+        setHasEmptyResult(true)
+        setIsInitialLoad(false)
+      }
+      setIsLoading(false)
+      setHasMore(false)
+    } finally {
+      if (!isFirstLoad) {
+        setIsLoadingMore(false)
+      }
+      console.log('🔍 DEBUG: loadConversations completed');
+    }
+  }
+
+  // Handle load more - similar to commands-panel.tsx
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    await loadConversations(nextPage, true);
+  };
+
   useEffect(() => {
     let active = true
     
-    const loadConversations = async () => {
-      if (!siteId) {
-        console.log('🔍 DEBUG: Cannot load conversations - no siteId provided');
-        return;
-      }
-      
-      console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}`);
-      
-      // Solo mostrar el esqueleto en la primera carga
-      const isFirstLoad = isFirstLoadRef.current;
-      if (isFirstLoad) {
-        console.log('🔍 DEBUG: First load - showing skeleton');
-        setIsLoading(true);
-        // Establecer que ya no es la primera carga
-        isFirstLoadRef.current = false;
-      } else {
-        console.log('🔍 DEBUG: Not first load - skipping skeleton');
-      }
-      
-      try {
-        // Request conversations from server
-        const result = await getConversations(siteId)
-        console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations`);
-        
-        if (active) {
-          setConversations(result)
-          setHasEmptyResult(result.length === 0)
-          setIsInitialLoad(false)
-          
-          // Solo aplicar el retraso para la primera carga
-          if (isFirstLoad) {
-            // Pequeño retraso antes de ocultar el esqueleto para evitar parpadeos
-            setTimeout(() => {
-              if (active) {
-                setIsLoading(false)
-              }
-            }, 300)
-          }
-        }
-      } catch (error) {
-        console.error("Error loading conversations:", error)
-        if (active) {
-          setHasEmptyResult(true)
-          setIsInitialLoad(false)
-          setIsLoading(false)
-        }
-      } finally {
-        if (active && !isFirstLoad) {
-          // Si no es la primera carga, asegurarse de que isLoading sea false
-          setIsLoading(false)
-        }
-        console.log('🔍 DEBUG: loadConversations completed');
-      }
-    }
-
-    loadConversations()
+    // Reset pagination state when siteId changes
+    setCurrentPage(1)
+    setHasMore(true)
+    
+    const loadInitialConversations = () => loadConversations(1, false)
+    
+    loadInitialConversations()
     
     // Store the loadConversations function in the ref
-    loadConversationsRef.current = loadConversations;
+    loadConversationsRef.current = loadInitialConversations;
     
     // Solo ejecutar onLoadConversations si la prop existe, evitando ejecutarlo si no es necesario
     if (onLoadConversations) {
-      onLoadConversations(loadConversations);
+      onLoadConversations(loadInitialConversations);
     }
     
     // Set up real-time subscription for conversations
@@ -676,109 +670,30 @@ export function ChatList({
           <div className="h-full overflow-auto pt-[71px]">
             <div className="w-[320px] pb-[200px]">
               {filteredConversations.map(conversation => (
-                <div
+                <ConversationItem
                   key={conversation.id}
-                  className={cn(
-                    "w-full text-left py-3 px-4 rounded-none transition-colors border-b border-border/30",
-                    "hover:bg-accent/20 group",
-                    selectedConversationId === conversation.id && 
-                      isDarkMode 
-                        ? "bg-primary/15" 
-                        : selectedConversationId === conversation.id && 
-                          "bg-primary/10"
-                  )}
-                  style={{ 
-                    width: '320px', 
-                    maxWidth: '320px', 
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => handleSelectConversation(conversation)}
-                >
-                  <div
-                    className="w-full text-left"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      display: 'block'
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={cn(
-                        "font-medium text-sm truncate",
-                        "max-w-[90%]",
-                        selectedConversationId === conversation.id && "text-primary"
-                      )}>
-                        {truncateText(conversation.title || "Untitled Conversation", 35)}
-                      </span>
-                    </div>
-                    <div className={cn(
-                      "text-xs truncate",
-                      selectedConversationId === conversation.id ? "text-muted-foreground" : "text-muted-foreground/80"
-                    )}>
-                      {truncateText(conversation.lastMessage || getDefaultMessage(conversation.title || ""), 50)}
-                    </div>
-                    <div className="flex justify-between items-center mt-0.5">
-                      <div className={cn(
-                        "text-[11px] flex items-center gap-1",
-                        selectedConversationId === conversation.id ? "text-primary/70" : "text-muted-foreground/70"
-                      )}>
-                        {getChannelIcon(conversation.channel)}
-                        <span>{conversation.agentName || "No Agent Name"}</span>
-                        {!conversation.agentName && <span className="text-red-500">!</span>}
-                        {conversation.leadName && <span> · {conversation.leadName}</span>}
-                      </div>
-                      <span className={cn(
-                        "text-[11px] whitespace-nowrap flex-shrink-0",
-                        selectedConversationId === conversation.id ? "text-primary/70" : "text-muted-foreground/70"
-                      )}>
-                        {conversation.timestamp ? formatMessageDate(conversation.timestamp) : ""}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Dropdown Menu */}
-                  <div 
-                    className="absolute right-2 top-2 transition-opacity duration-150 ease-in-out opacity-0 group-hover:opacity-100 z-10"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-7 w-7 p-0" aria-label="More options">
-                          <Icons.MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem 
-                          onClick={() => openRenameModal(conversation)}
-                          className="cursor-pointer"
-                        >
-                          <Icons.Pencil className="mr-2 h-4 w-4" />
-                          <span>Rename</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => archiveConversation(conversation.id)}
-                          className="cursor-pointer"
-                        >
-                          <Icons.Archive className="mr-2 h-4 w-4" />
-                          <span>Archive</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => openDeleteModal(conversation)}
-                          className="cursor-pointer text-destructive focus:text-destructive"
-                        >
-                          <Icons.Trash2 className="mr-2 h-4 w-4" />
-                          <span>Delete</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
+                  conversation={conversation}
+                  isSelected={selectedConversationId === conversation.id}
+                  onSelect={() => handleSelectConversation(conversation)}
+                  onRename={() => openRenameModal(conversation)}
+                  onArchive={() => archiveConversation(conversation.id)}
+                  onDelete={() => openDeleteModal(conversation)}
+                />
               ))}
+              
+              {/* Load More Button - similar to commands-table.tsx */}
+              {hasMore && (
+                <div className="flex justify-center py-4 px-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="w-full max-w-[280px]"
+                  >
+                    {isLoadingMore ? "Loading..." : "Load More"}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
