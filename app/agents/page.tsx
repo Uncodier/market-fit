@@ -881,6 +881,55 @@ function AgentsPageContent() {
         setActivityState(activity.id, 'error', errorMessage);
         toast?.error?.(errorMessage);
       }
+    } else if (activity.id === "sl1" && activity.name === "Lead Follow-up Management") {
+      console.log('✅ MATCHED: Lead Follow-up Management activity detected!');
+      try {
+        console.log('Calling leadFollowUpManagement workflow for Sales/CRM Specialist agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Managing lead follow-up sequences...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Use the same pattern as other workflows - call external API server
+        const { apiClient } = await import('@/app/services/api-client-service');
+        
+        const response = await apiClient.post('/api/workflow/leadFollowUpManagement', {
+          site_id: currentSite.id
+        });
+        
+        if (response.success) {
+          setActivityState(activity.id, 'success', 'Lead follow-up management completed successfully!');
+          toast?.success?.(`Lead follow-up management completed successfully!`);
+          console.log('LeadFollowUpManagement workflow completed successfully:', response.data);
+        } else {
+          const errorMessage = typeof response.error === 'string' 
+            ? response.error 
+            : response.error?.message 
+            ? String(response.error.message)
+            : 'Failed to manage lead follow-ups';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('LeadFollowUpManagement workflow failed:', response.error);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Lead Follow-up Management activity:', error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : typeof error === 'string' 
+          ? error 
+          : 'An error occurred while managing lead follow-ups';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
     } else {
       // For other activities, just show they're not available yet
       console.log(`Activity "${activity.name}" is not available yet`);

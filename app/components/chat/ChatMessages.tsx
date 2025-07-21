@@ -15,6 +15,8 @@ import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { MessageSquare } from "@/app/components/ui/icons"
+import { DelayTimer } from "./DelayTimer"
+import { EditMessageModal } from "./EditMessageModal"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -367,6 +369,41 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   // Use theme context for dark mode detection
   const { isDarkMode } = useTheme()
+  
+  // State for edit message modal
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null)
+
+  // Function to handle editing a message
+  const handleEditMessage = (message: ChatMessage) => {
+    setEditingMessage(message)
+    setEditModalOpen(true)
+  }
+
+  // Function to save edited message
+  const handleSaveEditedMessage = async (messageId: string, newText: string) => {
+    // TODO: Implement message update logic
+    // This would typically update the message in the database
+    console.log("Updating message:", messageId, "with text:", newText)
+    
+    // For now, just update locally (this should be replaced with actual API call)
+    // In a real implementation, you would make an API call to update the message
+    toast.success("Message editing feature will be implemented with backend integration")
+  }
+
+  // Function to get estimated send time
+  const getEstimatedSendTime = (message: ChatMessage) => {
+    if (!message.metadata?.delay_timer) return null
+    
+    const delayTimer = message.metadata.delay_timer
+    const endTime = typeof delayTimer === 'string' ? new Date(delayTimer).getTime() : delayTimer
+    
+    return new Date(endTime).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  }
 
   // Check if a conversation is selected
   const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
@@ -504,9 +541,13 @@ export function ChatMessages({
                             </Avatar>
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
-                          <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9"
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 ${
+                            msg.metadata?.status === "pending" ? "opacity-60" : ""
+                          }`}
                             style={{ 
-                              backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
+                              backgroundColor: msg.metadata?.status === "pending" 
+                                ? (isDarkMode ? '#2a2a3a' : '#f8f8f8')
+                                : (isDarkMode ? '#2d2d3d' : '#f0f0f5'),
                               border: 'none', 
                               boxShadow: 'none', 
                               outline: 'none',
@@ -516,8 +557,42 @@ export function ChatMessages({
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
-                            <div className="flex items-center justify-between mt-1.5">
+                            <div className="flex items-center justify-between mt-1.5 group">
                               <div className="flex items-center gap-2">
+                                {msg.metadata?.status === "pending" && (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-amber-500">
+                                            <Icons.Clock className="h-3 w-3 mr-1" />
+                                            {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Sending..."}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Message is being sent</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={() => handleEditMessage(msg)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
+                                            type="button"
+                                          >
+                                            <Icons.Pencil className="h-3 w-3 mr-1" />
+                                            Edit
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Edit message before sending</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </>
+                                )}
                                 {msg.metadata?.command_status === "failed" && (
                                   <>
                                     <TooltipProvider>
@@ -576,9 +651,13 @@ export function ChatMessages({
                             </Avatar>
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
-                          <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9"
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
+                            msg.metadata?.status === "pending" ? "opacity-60" : ""
+                          }`}
                             style={{ 
-                              backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
+                              backgroundColor: msg.metadata?.status === "pending" 
+                                ? (isDarkMode ? '#2a2a3a' : '#f8f8f8')
+                                : (isDarkMode ? '#2d2d3d' : '#f0f0f5'),
                               border: 'none', 
                               boxShadow: 'none', 
                               outline: 'none',
@@ -588,8 +667,42 @@ export function ChatMessages({
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
-                            <div className="flex items-center justify-between mt-1.5">
+                            <div className="flex items-center justify-between mt-1.5 group">
                               <div className="flex items-center gap-2">
+                                {msg.metadata?.status === "pending" && (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-amber-500">
+                                            <Icons.Clock className="h-3 w-3 mr-1" />
+                                            {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Sending..."}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Message is being sent</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={() => handleEditMessage(msg)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
+                                            type="button"
+                                          >
+                                            <Icons.Pencil className="h-3 w-3 mr-1" />
+                                            Edit
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Edit message before sending</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </>
+                                )}
                                 {msg.metadata?.command_status === "failed" && (
                                   <>
                                     <TooltipProvider>
@@ -636,12 +749,22 @@ export function ChatMessages({
                       ) : (msg.role === "agent" || msg.role === "assistant") ? (
                         <div className="max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
-                            <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={agentName} />
-                              <AvatarFallback className="bg-primary/10">
-                                {agentName.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="relative">
+                              <Avatar className="h-7 w-7 border border-primary/10">
+                                <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={agentName} />
+                                <AvatarFallback className="bg-primary/10">
+                                  {agentName.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {/* Timer circular para mensajes pendientes */}
+                              {msg.metadata?.status === "pending" && (msg.metadata?.delay_timer || msg.metadata?.custom_data?.delay_timer) && (
+                                <DelayTimer 
+                                  delayTimer={msg.metadata.delay_timer || msg.metadata.custom_data.delay_timer}
+                                  className="absolute -inset-0.5"
+                                  size={32}
+                                />
+                              )}
+                            </div>
                             <span className="text-sm font-medium text-primary">{agentName}</span>
                           </div>
                           <div className="ml-9">
@@ -684,9 +807,13 @@ export function ChatMessages({
                             </Avatar>
                             <span className="text-sm font-medium text-amber-600 dark:text-amber-500">{leadData?.name || "Visitor"}</span>
                           </div>
-                          <div className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9"
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
+                            msg.metadata?.status === "pending" ? "opacity-60" : ""
+                          }`}
                             style={{ 
-                              backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
+                              backgroundColor: msg.metadata?.status === "pending" 
+                                ? (isDarkMode ? '#2a2a3a' : '#f8f8f8')
+                                : (isDarkMode ? '#2d2d3d' : '#f0f0f5'),
                               border: 'none', 
                               boxShadow: 'none', 
                               outline: 'none',
@@ -696,8 +823,42 @@ export function ChatMessages({
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
-                            <div className="flex items-center justify-between mt-1.5">
+                            <div className="flex items-center justify-between mt-1.5 group">
                               <div className="flex items-center gap-2">
+                                {msg.metadata?.status === "pending" && (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-amber-500">
+                                            <Icons.Clock className="h-3 w-3 mr-1" />
+                                            {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Sending..."}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Message is being sent</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={() => handleEditMessage(msg)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
+                                            type="button"
+                                          >
+                                            <Icons.Pencil className="h-3 w-3 mr-1" />
+                                            Edit
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Edit message before sending</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </>
+                                )}
                                 {msg.metadata?.command_status === "failed" && (
                                   <>
                                     <TooltipProvider>
@@ -743,9 +904,13 @@ export function ChatMessages({
                         </div>
                       ) : (
                         <div 
-                          className="max-w-[calc(100%-240px)] rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground"
+                          className={`max-w-[calc(100%-240px)] rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ${
+                            msg.metadata?.status === "pending" ? "opacity-60" : ""
+                          }`}
                           style={{ 
-                            backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
+                            backgroundColor: msg.metadata?.status === "pending" 
+                              ? (isDarkMode ? '#2a2a3a' : '#f8f8f8')
+                              : (isDarkMode ? '#2d2d3d' : '#f0f0f5'),
                             border: 'none', 
                             boxShadow: 'none', 
                             outline: 'none',
@@ -755,8 +920,42 @@ export function ChatMessages({
                           <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
                             <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                           </div>
-                          <div className="flex items-center justify-between mt-1.5">
+                          <div className="flex items-center justify-between mt-1.5 group">
                             <div className="flex items-center gap-2">
+                              {msg.metadata?.status === "pending" && (
+                                <>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center text-xs text-amber-500">
+                                          <Icons.Clock className="h-3 w-3 mr-1" />
+                                          {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Sending..."}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Message is being sent</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          onClick={() => handleEditMessage(msg)}
+                                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
+                                          type="button"
+                                        >
+                                          <Icons.Pencil className="h-3 w-3 mr-1" />
+                                          Edit
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Edit message before sending</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </>
+                              )}
                               {msg.metadata?.command_status === "failed" && (
                                 <>
                                   <TooltipProvider>
@@ -824,6 +1023,14 @@ export function ChatMessages({
         {/* Elemento de referencia para el scroll automático - desplazado del fondo para mejor visualización */}
         <div ref={messagesEndRef} className="pt-4 pb-8"></div>
       </div>
+      
+      {/* Edit Message Modal */}
+      <EditMessageModal
+        isOpen={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        message={editingMessage}
+        onSave={handleSaveEditedMessage}
+      />
     </div>
   )
 } 

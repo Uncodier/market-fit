@@ -68,16 +68,31 @@ export class ApiClientService {
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type');
 
+    // Read response body as text first to avoid "body stream already read" error
+    let responseText: string;
+    try {
+      responseText = await response.text();
+    } catch (error) {
+      console.error('Failed to read response text:', error);
+      return {
+        success: false,
+        error: {
+          message: 'Failed to read server response',
+          details: error
+        },
+        status: response.status
+      };
+    }
+
     if (!response.ok) {
       // If the response is HTML (error page)
       if (contentType && contentType.includes('text/html')) {
-        const htmlContent = await response.text();
-        console.error('Server returned HTML:', htmlContent);
+        console.error('Server returned HTML:', responseText);
         return {
           success: false,
           error: {
             message: 'Server returned an HTML error page instead of JSON',
-            details: { htmlContent: htmlContent.substring(0, 500) }
+            details: { htmlContent: responseText.substring(0, 500) }
           },
           status: response.status
         };
@@ -85,7 +100,7 @@ export class ApiClientService {
 
       // Try to parse as JSON, but handle text responses too
       try {
-        const errorData = await response.json();
+        const errorData = JSON.parse(responseText);
         return {
           success: false,
           error: {
@@ -96,13 +111,12 @@ export class ApiClientService {
           status: response.status
         };
       } catch (parseError) {
-        const textContent = await response.text();
-        console.error('Server returned:', textContent);
+        console.error('Server returned non-JSON error:', responseText);
         return {
           success: false,
           error: {
             message: `Server error: ${response.status} ${response.statusText}`,
-            details: { textContent: textContent.substring(0, 500) }
+            details: { textContent: responseText.substring(0, 500) }
           },
           status: response.status
         };
@@ -111,7 +125,7 @@ export class ApiClientService {
 
     // Success response
     try {
-      const data = await response.json();
+      const data = JSON.parse(responseText);
       
       // Check if the response has a success field
       if (typeof data.success === 'boolean' && !data.success) {
@@ -134,10 +148,9 @@ export class ApiClientService {
       };
     } catch (parseError) {
       // If can't parse as JSON, return as text
-      const textContent = await response.text();
       return {
         success: true,
-        data: textContent as T,
+        data: responseText as T,
         status: response.status
       };
     }

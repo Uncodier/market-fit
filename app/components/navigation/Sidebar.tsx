@@ -28,6 +28,7 @@ import { LeadsBadge } from "./LeadsBadge"
 import { ControlCenterBadge } from "./ControlCenterBadge"
 import { ContentBadge } from "./ContentBadge"
 import { RequirementsBadge, CampaignsBadge } from "./RequirementsBadge"
+import { ChatsBadge } from "./ChatsBadge"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/app/hooks/use-auth"
@@ -277,6 +278,9 @@ export function Sidebar({
                   )}
                   {item.title === "Campaigns" && (
                     <CampaignsBadge isActive={pathname.startsWith("/campaigns")} />
+                  )}
+                  {item.title === "Chats" && (
+                    <ChatsBadge isActive={pathname.startsWith("/chat")} />
                   )}
                 </MenuItem>
               ))}

@@ -593,12 +593,15 @@ export async function getLeadConversations(siteId: string, leadId: string) {
   try {
     const supabase = await createClient();
 
-    // Fetch conversations from the database with specific filters
+    // Fetch conversations from the database with specific filters including channel and status
     const { data, error } = await supabase
       .from("conversations")
       .select(`
         id,
         title,
+        channel,
+        custom_data,
+        status,
         last_message_at,
         created_at,
         messages (
@@ -625,6 +628,9 @@ export async function getLeadConversations(siteId: string, leadId: string) {
     const conversations = data.map((item: {
       id: string
       title: string | null
+      channel: string | null
+      custom_data: any
+      status: string | null
       last_message_at: string | null
       created_at: string
       messages?: Array<{
@@ -638,13 +644,24 @@ export async function getLeadConversations(siteId: string, leadId: string) {
         ? item.messages[item.messages.length - 1].content 
         : '';
       
+      // Get channel from direct field or custom_data, default to 'web'
+      let channel = item.channel || item.custom_data?.channel || 'web';
+      
+      // Normalize website_chat to web since they are the same
+      if (channel === 'website_chat') {
+        channel = 'web';
+      }
+      
+      // Get status from database, default to 'active'
+      const status = item.status || 'active';
+      
       return {
         id: item.id,
-        type: 'chat',
+        channel: channel as 'web' | 'email' | 'whatsapp',
         subject: item.title || 'No Subject',
         message: lastMessageContent || '',
         date: item.last_message_at || item.created_at,
-        status: 'sent' // Valor por defecto ya que las conversaciones no tienen status
+        status: status as 'pending' | 'active' | 'closed' | 'archived'
       };
     });
 

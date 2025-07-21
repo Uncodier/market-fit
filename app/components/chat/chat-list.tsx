@@ -302,7 +302,8 @@ export function ChatList({
                           agentId: payload.new.agent_id || conv.agentId,
                           agentName: details.agentName,
                           leadName: details.leadName,
-                          channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web'
+                          channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web',
+                          status: payload.new.status || conv.status || 'active'
                         } 
                       : conv
                   )
@@ -320,7 +321,8 @@ export function ChatList({
                           ...conv, 
                           title: payload.new.title || conv.title,
                           timestamp: new Date(payload.new.updated_at || new Date()),
-                          lastMessage: payload.new.last_message || conv.lastMessage
+                          lastMessage: payload.new.last_message || conv.lastMessage,
+                          status: payload.new.status || conv.status || 'active'
                         } 
                       : conv
                   )
@@ -365,7 +367,8 @@ export function ChatList({
                 timestamp: new Date(payload.new.updated_at || payload.new.created_at || new Date()),
                 unreadCount: 0,
                 messageCount: 0,
-                channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web'
+                channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web',
+                status: payload.new.status || 'active'
               };
               
               // Añadir la nueva conversación al principio de la lista
@@ -483,6 +486,10 @@ export function ChatList({
       (conv.lastMessage && conv.lastMessage.toLowerCase().includes(searchLower))
     )
   })
+
+  // Separar conversaciones pendientes del resto
+  const pendingConversations = filteredConversations.filter(conv => conv.status === 'pending')
+  const otherConversations = filteredConversations.filter(conv => conv.status !== 'pending')
 
   // Determinar si mostrar el estado vacío después de la búsqueda
   const showEmptyState = !isLoading && (
@@ -669,17 +676,53 @@ export function ChatList({
         ) : (
           <div className="h-full overflow-auto pt-[71px]">
             <div className="w-[320px] pb-[200px]">
-              {filteredConversations.map(conversation => (
-                <ConversationItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  isSelected={selectedConversationId === conversation.id}
-                  onSelect={() => handleSelectConversation(conversation)}
-                  onRename={() => openRenameModal(conversation)}
-                  onArchive={() => archiveConversation(conversation.id)}
-                  onDelete={() => openDeleteModal(conversation)}
-                />
-              ))}
+              {/* Pending Conversations Section */}
+              {pendingConversations.length > 0 && (
+                <div className="mb-2">
+                  <div className={cn(
+                    "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-0 z-10",
+                    isDarkMode ? "bg-background/95 text-muted-foreground" : "bg-white/95 text-muted-foreground"
+                  )} style={{ backdropFilter: 'blur(10px)' }}>
+                    Pending ({pendingConversations.length})
+                  </div>
+                  {pendingConversations.map(conversation => (
+                    <ConversationItem
+                      key={conversation.id}
+                      conversation={conversation}
+                      isSelected={selectedConversationId === conversation.id}
+                      onSelect={() => handleSelectConversation(conversation)}
+                      onRename={() => openRenameModal(conversation)}
+                      onArchive={() => archiveConversation(conversation.id)}
+                      onDelete={() => openDeleteModal(conversation)}
+                    />
+                  ))}
+                </div>
+              )}
+              
+              {/* Other Conversations Section */}
+              {otherConversations.length > 0 && (
+                <div>
+                  {pendingConversations.length > 0 && (
+                    <div className={cn(
+                      "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-0 z-10",
+                      isDarkMode ? "bg-background/95 text-muted-foreground" : "bg-white/95 text-muted-foreground"
+                    )} style={{ backdropFilter: 'blur(10px)' }}>
+                      Active Conversations
+                    </div>
+                  )}
+                  {otherConversations.map(conversation => (
+                    <ConversationItem
+                      key={conversation.id}
+                      conversation={conversation}
+                      isSelected={selectedConversationId === conversation.id}
+                      onSelect={() => handleSelectConversation(conversation)}
+                      onRename={() => openRenameModal(conversation)}
+                      onArchive={() => archiveConversation(conversation.id)}
+                      onDelete={() => openDeleteModal(conversation)}
+                    />
+                  ))}
+                </div>
+              )}
               
               {/* Load More Button - similar to commands-table.tsx */}
               {hasMore && (

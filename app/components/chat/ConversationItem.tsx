@@ -118,13 +118,17 @@ export function ConversationItem({
         }}
       >
         <div className="flex items-center justify-between mb-1">
-          <span className={cn(
-            "font-medium text-sm truncate",
-            "max-w-[90%]",
-            isSelected && "text-primary"
-          )}>
-            {truncateText(conversation.title || "Untitled Conversation", 35)}
-          </span>
+          <div className="flex items-center gap-2 max-w-[90%]">
+            {conversation.status === 'pending' && (
+              <div className="flex-shrink-0 w-2 h-2 bg-yellow-500 rounded-full" />
+            )}
+            <span className={cn(
+              "font-medium text-sm truncate",
+              isSelected && "text-primary"
+            )}>
+              {truncateText(conversation.title || "Untitled Conversation", 35)}
+            </span>
+          </div>
         </div>
         <div className={cn(
           "text-xs truncate",

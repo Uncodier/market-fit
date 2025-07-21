@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react"
 import { Card } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { MessageSquare, Mail, Phone } from "@/app/components/ui/icons"
+import { MessageSquare, Mail, Globe } from "@/app/components/ui/icons"
+import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Button } from "@/app/components/ui/button"
+import { Badge } from "@/app/components/ui/badge"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
@@ -15,30 +17,38 @@ import { safeReload } from "@/app/utils/safe-reload"
 // Types for conversations from the database
 interface DatabaseConversation {
   id: string
-  type: 'email' | 'call' | 'chat'
+  channel: 'web' | 'email' | 'whatsapp'
   subject: string
   message: string
   date: string
-  status: 'sent' | 'received' | 'scheduled'
+  status: 'pending' | 'active' | 'closed' | 'archived'
 }
 
 // Types for conversations displayed in the UI
 interface Conversation {
   id: string
-  type: 'email' | 'call' | 'chat'
+  channel: 'web' | 'email' | 'whatsapp'
   subject: string
   message: string
   date: string
-  status: 'sent' | 'received' | 'scheduled'
+  status: 'pending' | 'active' | 'closed' | 'archived'
   agentId?: string
   agentName?: string
 }
 
-// Type icons for conversations
-const TYPE_ICONS = {
+// Channel icons for conversations - using the same icons as chat system
+const CHANNEL_ICONS = {
+  web: <Globe className="h-4 w-4 text-blue-500/70" />,
   email: <Mail className="h-4 w-4" />,
-  call: <Phone className="h-4 w-4" />,
-  chat: <MessageSquare className="h-4 w-4" />,
+  whatsapp: <WhatsAppIcon size={16} className="h-4 w-4" />,
+}
+
+// Status styles for conversation status badges
+const STATUS_STYLES = {
+  pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
+  active: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
+  closed: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
+  archived: "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200"
 }
 
 interface ConversationsViewProps {
@@ -76,9 +86,9 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
           // La acción ya devuelve los datos en el formato correcto que necesitamos
           setConversations(result.conversations.map((conv: DatabaseConversation) => ({
             ...conv,
-            // Asegurar que los tipos se ajusten a la interfaz esperada
-            type: conv.type as 'email' | 'call' | 'chat',
-            status: conv.status as 'sent' | 'received' | 'scheduled',
+            // Asegurar que los canales se ajusten a la interfaz esperada
+            channel: conv.channel as 'web' | 'email' | 'whatsapp',
+            status: conv.status as 'pending' | 'active' | 'closed' | 'archived',
             // Guardar el agent_id y agent_name si están disponibles
             agentId: (conv as any).agent_id || undefined,
             agentName: (conv as any).agent_name || undefined
@@ -87,7 +97,7 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
           console.log(`No conversations found for lead ${leadId}`)
           setConversations([])
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error loading conversations:", error)
         if (isMounted) {
           toast.error("Failed to load conversations");
@@ -172,7 +182,8 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[120px]">Date</TableHead>
-              <TableHead className="w-[100px]">Type</TableHead>
+              <TableHead className="w-[100px]">Channel</TableHead>
+              <TableHead className="w-[100px]">Status</TableHead>
               <TableHead className="w-[200px]">Subject</TableHead>
               <TableHead>Message</TableHead>
             </TableRow>
@@ -184,11 +195,12 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
                 <TableRow key={index}>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-full" /></TableCell>
                 </TableRow>
               ))
-            ) : conversations.length > 0 ? (
+            ) : (
               // Conversations data
               conversations.map((conversation) => (
                 <TableRow 
@@ -201,9 +213,14 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {TYPE_ICONS[conversation.type]}
-                      <span className="capitalize">{conversation.type}</span>
+                      {CHANNEL_ICONS[conversation.channel]}
+                      <span className="capitalize">{conversation.channel}</span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={`${STATUS_STYLES[conversation.status]}`}>
+                      {conversation.status}
+                    </Badge>
                   </TableCell>
                   <TableCell className="font-medium">
                     {conversation.subject}
@@ -213,13 +230,6 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
                   </TableCell>
                 </TableRow>
               ))
-            ) : (
-              // This should never show as we use EmptyCard above, but keeping as fallback
-              <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
-                  No conversations found.
-                </TableCell>
-              </TableRow>
             )}
           </TableBody>
         </Table>

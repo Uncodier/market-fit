@@ -278,6 +278,7 @@ export async function getConversations(
         last_message_at,
         created_at,
         custom_data,
+        status,
         messages (
           content,
           created_at,
@@ -379,7 +380,12 @@ export async function getConversations(
       
       // Extract channel from custom_data or default to 'web'
       const customData = conv.custom_data || {};
-      const channel = customData.channel || 'web';
+      let channel = customData.channel || 'web';
+      
+      // Normalize website_chat to web since they are the same
+      if (channel === 'website_chat') {
+        channel = 'web';
+      }
       
       return {
         id: conv.id || "",
@@ -390,7 +396,8 @@ export async function getConversations(
         lastMessage,
         timestamp: new Date(messageDate),
         messageCount: conv.messages?.length || 0,
-        channel: (channel as 'web' | 'email' | 'whatsapp') || 'web'
+        channel: (channel as 'web' | 'email' | 'whatsapp') || 'web',
+        status: conv.status || 'active'
       }
     })
   } catch (error) {

@@ -169,6 +169,11 @@ export function useChannelSelector({
           conversationChannel = conversation.custom_data.channel as Channel
         }
         
+        // Normalize website_chat to web since they are the same
+        if (conversationChannel === 'website_chat' as any) {
+          conversationChannel = 'web'
+        }
+        
         // Only set the channel if it's available for this conversation
         if (availableChannels.includes(conversationChannel)) {
           setSelectedChannelState(conversationChannel)

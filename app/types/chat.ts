@@ -23,6 +23,7 @@ export interface ConversationListItem {
   messageCount?: number
   leadName?: string
   channel?: 'web' | 'email' | 'whatsapp'
+  status?: 'pending' | 'active' | 'closed' | 'archived'
 }
 
 export interface ChatMessage {
@@ -30,7 +31,12 @@ export interface ChatMessage {
   role: "user" | "agent" | "assistant" | "team_member" | "visitor" | "system"
   text: string
   timestamp: Date
-  metadata?: Record<string, any>
+  metadata?: {
+    command_status?: "failed" | "pending" | "success"
+    error_message?: string
+    status?: "pending" | "sent" | "delivered" | "failed"
+    [key: string]: any
+  }
   // Información del remitente (para retrocompatibilidad en la UI)
   sender_id?: string
   sender_name?: string
