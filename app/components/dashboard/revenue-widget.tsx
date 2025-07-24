@@ -115,7 +115,7 @@ export function RevenueWidget({
           periodType: data.periodType || "monthly"
         };
         
-        console.log("[RevenueWidget] Processed data:", revenueData);
+
         setRevenue(revenueData);
       } catch (error) {
         // Only log non-abort errors

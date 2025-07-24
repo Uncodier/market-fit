@@ -104,7 +104,6 @@ export function CACWidget({
         
         // Handle null response (aborted request)
         if (response === null) {
-          console.log("[CACWidget] Request was aborted");
           return;
         }
         

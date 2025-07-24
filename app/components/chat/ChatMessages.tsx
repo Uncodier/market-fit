@@ -527,7 +527,7 @@ export function ChatMessages({
                       } animate-slide-in-fade`}
                     >
                       {msg.role === "team_member" && !isAgentOnlyConversation ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)]">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
                               <AvatarImage src={msg.sender_avatar || `/avatars/user-default.png`} alt={msg.sender_name || "Team Member"} style={{ objectFit: 'cover' }} />
@@ -557,7 +557,7 @@ export function ChatMessages({
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
-                            <div className="flex items-center justify-between mt-1.5 group">
+                            <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
                                   <>
@@ -637,7 +637,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : msg.role === "team_member" && isAgentOnlyConversation ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
                               <AvatarImage src={msg.sender_avatar || `/avatars/user-default.png`} alt={msg.sender_name || "Team Member"} style={{ objectFit: 'cover' }} />
@@ -667,7 +667,7 @@ export function ChatMessages({
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
-                            <div className="flex items-center justify-between mt-1.5 group">
+                            <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
                                   <>
@@ -797,7 +797,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "user" || msg.role === "visitor") ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
                               <AvatarImage src={leadData?.avatarUrl || "/avatars/visitor-default.png"} alt={leadData?.name || "Visitor"} />
@@ -823,7 +823,7 @@ export function ChatMessages({
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
                               <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                             </div>
-                            <div className="flex items-center justify-between mt-1.5 group">
+                            <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
                                   <>
@@ -904,7 +904,7 @@ export function ChatMessages({
                         </div>
                       ) : (
                         <div 
-                          className={`max-w-[calc(100%-240px)] rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ${
+                          className={`max-w-[calc(100%-240px)] rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground group ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                           style={{ 
@@ -920,7 +920,7 @@ export function ChatMessages({
                           <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
                             <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                           </div>
-                          <div className="flex items-center justify-between mt-1.5 group">
+                          <div className="flex items-center justify-between mt-1.5">
                             <div className="flex items-center gap-2">
                               {msg.metadata?.status === "pending" && (
                                 <>

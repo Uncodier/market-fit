@@ -62,12 +62,9 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
         }
 
         if (!leads || leads.length === 0) {
-          console.log('Badge: No leads found')
           setNewCompaniesCount(0)
           return
         }
-
-        console.log(`Badge: Processing ${leads.length} leads`)
 
         // Get journey stages for all leads to find "unaware" ones
         const leadIds = leads.map(lead => lead.id)
@@ -77,8 +74,6 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
           .in('lead_id', leadIds)
           .in('status', ['completed', 'in_progress'])
           .eq('site_id', currentSite.id)
-
-        console.log(`Badge: Found ${tasks?.length || 0} tasks`)
 
         // Group tasks by lead_id and find the highest stage for each lead
         const stageOrder = ["referral", "retention", "purchase", "decision", "consideration", "awareness"]
@@ -106,8 +101,6 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
             
             leadStages[lead.id] = highestStage
           }
-          
-          console.log(`Badge: Lead ${lead.id} (${lead.name || 'No name'}) - Status: ${lead.status}, Journey: ${leadStages[lead.id]}`)
         })
 
         // Group leads by company
@@ -121,8 +114,6 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
           companiesByKey[companyKey].push(lead)
         })
         
-        console.log(`Badge: Found ${Object.keys(companiesByKey).length} companies`)
-        
         // Count companies that have at least one "new" lead (matches what users see in New tab)
         const relevantCompanies = new Set<string>()
         
@@ -130,22 +121,12 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
           // Check if company has at least one "new" lead
           const hasNewLead = companyLeads.some(lead => lead.status === 'new')
           
-          const newLeads = companyLeads.filter(lead => lead.status === 'new')
-          const unawareLeads = companyLeads.filter(lead => leadStages[lead.id] === "not_contacted")
-          
-          console.log(`Badge: Company "${companyKey}" - Total leads: ${companyLeads.length}, New leads: ${newLeads.length}, Unaware leads: ${unawareLeads.length}`)
-          console.log(`Badge: Company "${companyKey}" - hasNewLead: ${hasNewLead}`)
-          
           // Company counts ONLY if it has at least one new lead (matches New tab filter)
           if (hasNewLead) {
             relevantCompanies.add(companyKey)
-            console.log(`✅ Badge: Counting company "${companyKey}" (Reason: has new leads)`)
-          } else {
-            console.log(`❌ Badge: NOT counting company "${companyKey}" (Reason: no new leads)`)
           }
         })
         
-        console.log(`🎯 Badge FINAL COUNT: ${relevantCompanies.size} companies`)
         setNewCompaniesCount(relevantCompanies.size)
 
       } catch (error) {

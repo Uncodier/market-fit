@@ -455,8 +455,8 @@ export function KanbanView({
                                   onClick={(e) => handleCardClick(e, lead)}
                                 >
                                   <CardHeader className="px-3 h-[50px] flex flex-row items-center justify-between">
-                                    <div className="flex-1 truncate">
-                                      <CardTitle className="text-sm font-medium">
+                                    <div className="flex-1 min-w-0">
+                                      <CardTitle className="text-sm font-medium truncate" title={lead.name}>
                                         {lead.name}
                                       </CardTitle>
                                     </div>
@@ -474,22 +474,22 @@ export function KanbanView({
                                   </CardHeader>
                                   <div className="border-t border-gray-100 dark:border-gray-800 mx-3"></div>
                                   <CardContent className="p-3 pt-2 pb-0">
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate" title={lead.email}>
                                       {lead.email}
                                     </div>
                                     {lead.phone && (
-                                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate" title={lead.phone}>
                                         {lead.phone}
                                       </div>
                                     )}
                                       {getCompanyName(lead) && (
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate" title={getCompanyName(lead) || ''}>
                                           {getCompanyName(lead)}
                                         </div>
                                       )}
                                     <div className="flex items-center justify-between mt-2 mb-3">
                                       {lead.segment_id && (
-                                        <Badge variant="secondary" className="text-xs">
+                                        <Badge variant="secondary" className="text-xs truncate max-w-[200px]" title={getSegmentName(lead.segment_id)}>
                                           {getSegmentName(lead.segment_id)}
                                         </Badge>
                                       )}

@@ -101,7 +101,6 @@ export function LTVWidget({
         
         // Handle null response (aborted request)
         if (response === null) {
-          console.log("[LTVWidget] Request was aborted");
           return;
         }
         

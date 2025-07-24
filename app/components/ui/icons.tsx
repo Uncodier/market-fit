@@ -660,6 +660,16 @@ export const TrendingUp = ({ className = "", size = 20, ...props }: IconProps) =
   </IconWrapper>
 )
 
+// TrendingDown
+export const TrendingDown = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+      <polyline points="17 18 23 18 23 12" />
+    </svg>
+  </IconWrapper>
+)
+
 // PanelLeftClose - Icono para cerrar/colapsar un panel lateral
 export const PanelLeftClose = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>

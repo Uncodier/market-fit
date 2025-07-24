@@ -97,7 +97,7 @@ export function ActiveSegmentsWidget({
         }
         
         const data = await response.json();
-        console.log("[ActiveSegmentsWidget] Response:", data);
+
         
         if (data && typeof data.actual !== 'undefined') {
           setActiveSegments({

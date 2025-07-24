@@ -27,7 +27,6 @@ import { StatusBar } from "../components/StatusBar"
 
 // Status colors for sales
 const STATUS_STYLES = {
-  draft: "bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200",
   pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200",
   completed: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200",
   cancelled: "bg-red-50 text-red-700 hover:bg-red-100 border-red-200",
@@ -646,7 +645,7 @@ export default function SaleDetailPage() {
     try {
       const updatedSale: Sale = {
         ...sale,
-        status: newStatus as "draft" | "pending" | "completed" | "cancelled" | "refunded"
+        status: newStatus as "pending" | "completed" | "cancelled" | "refunded"
       };
       
       const result = await updateSale(currentSite.id, updatedSale);

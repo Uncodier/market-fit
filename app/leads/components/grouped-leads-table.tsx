@@ -324,8 +324,8 @@ export function GroupedLeadsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[250px] w-[300px]">Company</TableHead>
-            <TableHead className="min-w-[200px] w-[250px]">Leads</TableHead>
+            <TableHead className="min-w-[250px] w-[300px] max-w-[300px]">Company</TableHead>
+            <TableHead className="min-w-[200px] w-[250px] max-w-[250px]">Leads</TableHead>
             <TableHead className="w-[200px] min-w-[140px] max-w-[200px]">Segment / Position</TableHead>
             <TableHead className="w-[130px] min-w-[100px] max-w-[130px]">Status</TableHead>
             <TableHead className="w-[130px] min-w-[110px] max-w-[130px]">Journey Stage</TableHead>
@@ -350,13 +350,13 @@ export function GroupedLeadsTable({
                     }
                   }}
                 >
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
+                  <TableCell className="min-w-[250px] w-[300px] max-w-[300px] overflow-hidden">
+                    <div className="flex items-center space-x-3 min-w-0">
                       {group.leadCount > 1 && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 p-0"
+                          className="h-6 w-6 p-0 flex-shrink-0"
                           onClick={(e) => {
                             e.stopPropagation()
                             onToggleCompanyExpansion(group.companyKey)
@@ -369,30 +369,30 @@ export function GroupedLeadsTable({
                           )}
                         </Button>
                       )}
-                      <div className="space-y-0.5">
-                        <p className="font-medium text-sm">{group.companyName}</p>
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate" title={group.companyName}>{group.companyName}</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="min-w-[200px] w-[250px] max-w-[250px] overflow-hidden">
                     {group.leadCount === 1 ? (
-                      <div className="space-y-0.5">
+                      <div className="space-y-0.5 min-w-0 flex-1">
                         {/* Si tiene company real, mostrar nombre del lead */}
                         {((group.mostAdvancedLead.companies && group.mostAdvancedLead.companies.name) || 
                           (group.mostAdvancedLead.company && typeof group.mostAdvancedLead.company === 'object' && group.mostAdvancedLead.company.name) ||
                           (typeof group.mostAdvancedLead.company === 'string')) ? (
                           <>
-                            <p className="text-sm font-medium">{group.mostAdvancedLead.name}</p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm font-medium truncate" title={group.mostAdvancedLead.name}>{group.mostAdvancedLead.name}</p>
+                            <p className="text-sm text-muted-foreground truncate" title={group.mostAdvancedLead.email || group.mostAdvancedLead.phone || '-'}>
                               {group.mostAdvancedLead.email || group.mostAdvancedLead.phone || '-'}
                             </p>
                           </>
                         ) : (
                           <>
-                            <p className="text-sm font-medium">
+                            <p className="text-sm font-medium truncate" title={group.mostAdvancedLead.email || group.mostAdvancedLead.phone || '-'}>
                               {group.mostAdvancedLead.email || group.mostAdvancedLead.phone || '-'}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground truncate" title={group.mostAdvancedLead.email ? (group.mostAdvancedLead.phone || '-') : '-'}>
                               {group.mostAdvancedLead.email ? (group.mostAdvancedLead.phone || '-') : '-'}
                             </p>
                           </>
@@ -406,17 +406,17 @@ export function GroupedLeadsTable({
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">
-                    <div className="line-clamp-2" title={getSegmentName(group.mostAdvancedLead.segment_id)}>
+                  <TableCell className="font-medium w-[200px] min-w-[140px] max-w-[200px] overflow-hidden">
+                    <div className="line-clamp-1 min-w-0" title={getSegmentName(group.mostAdvancedLead.segment_id)}>
                       {getSegmentName(group.mostAdvancedLead.segment_id)}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[130px] min-w-[100px] max-w-[130px] overflow-hidden">
                     <Badge className={`${statusStyles[group.mostAdvancedLead.status]}`}>
                       {String(group.mostAdvancedLead.status)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[130px] min-w-[110px] max-w-[130px] overflow-hidden">
                     {isLoadingJourneyStages || reloadingLeads.has(group.mostAdvancedLead.id) ? (
                       <Skeleton className="h-5 w-16 rounded-full" />
                     ) : (
@@ -425,15 +425,15 @@ export function GroupedLeadsTable({
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
+                  <TableCell className="w-[120px] min-w-[100px] max-w-[120px] overflow-hidden">
+                    <div className="flex items-center min-w-0">
                       {group.mostAdvancedLead.assignee_id ? (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md">
-                                <UserIcon className="h-3 w-3" />
-                                <span className="text-xs font-medium">
+                              <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md min-w-0">
+                                <UserIcon className="h-3 w-3 flex-shrink-0" />
+                                <span className="text-xs font-medium truncate">
                                   {group.mostAdvancedLead.assignee_id === user?.id 
                                     ? 'You' 
                                     : userData[group.mostAdvancedLead.assignee_id]?.name || 'Assigned'}
@@ -478,7 +478,7 @@ export function GroupedLeadsTable({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right w-[120px] min-w-[100px] max-w-[120px] overflow-hidden">
                     <div className="flex justify-end gap-2">
                       <TooltipProvider>
                         <Tooltip>
@@ -549,26 +549,26 @@ export function GroupedLeadsTable({
                     }`}
                     onClick={() => onLeadClick(lead)}
                   >
-                    <TableCell className="pl-12">
+                    <TableCell className="pl-12 min-w-[250px] w-[300px] max-w-[300px] overflow-hidden">
                       {/* Celda vacía para la columna Company */}
                     </TableCell>
-                    <TableCell>
-                      <div className="space-y-0.5">
-                        <p className="font-medium text-sm line-clamp-2" title={String(lead.name || '')}>{String(lead.name || '')}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2" title={String(lead.email || '')}>{String(lead.email || '')}</p>
+                    <TableCell className="min-w-[200px] w-[250px] max-w-[250px] overflow-hidden">
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <p className="font-medium text-sm line-clamp-1" title={String(lead.name || '')}>{String(lead.name || '')}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1" title={String(lead.email || '')}>{String(lead.email || '')}</p>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      <div className="line-clamp-2" title={lead.position || 'No position'}>
+                    <TableCell className="font-medium w-[200px] min-w-[140px] max-w-[200px] overflow-hidden">
+                      <div className="line-clamp-1 min-w-0" title={lead.position || 'No position'}>
                         {lead.position || '-'}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[130px] min-w-[100px] max-w-[130px] overflow-hidden">
                       <Badge className={`${statusStyles[lead.status]}`}>
                         {String(lead.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[130px] min-w-[110px] max-w-[130px] overflow-hidden">
                       {isLoadingJourneyStages || reloadingLeads.has(lead.id) ? (
                         <Skeleton className="h-5 w-16 rounded-full" />
                       ) : (
@@ -577,15 +577,15 @@ export function GroupedLeadsTable({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
+                    <TableCell className="w-[120px] min-w-[100px] max-w-[120px] overflow-hidden">
+                      <div className="flex items-center min-w-0">
                         {lead.assignee_id ? (
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md">
-                                  <UserIcon className="h-3 w-3" />
-                                  <span className="text-xs font-medium">
+                                <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md min-w-0">
+                                  <UserIcon className="h-3 w-3 flex-shrink-0" />
+                                  <span className="text-xs font-medium truncate">
                                     {lead.assignee_id === user?.id 
                                       ? 'You' 
                                       : userData[lead.assignee_id]?.name || 'Assigned'}
@@ -630,7 +630,7 @@ export function GroupedLeadsTable({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right w-[120px] min-w-[100px] max-w-[120px] overflow-hidden">
                       <div className="flex justify-end gap-2">
                         <TooltipProvider>
                           <Tooltip>

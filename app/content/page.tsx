@@ -48,7 +48,7 @@ import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { EmptyState } from "@/app/components/ui/empty-state"
+
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
 import { useRouter } from "next/navigation"
 import { CreateContentDialog } from "./components"
@@ -56,6 +56,7 @@ import { getContentTypeName, getSegmentName, getContentTypeIconClass, getCampaig
 import { StarRating } from "@/app/components/ui/rating"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { safeReload } from "@/app/utils/safe-reload"
+import { TrendsSection, TrendsColumn } from "@/app/components/trends"
 
 // Definimos los tipos de estado del contenido
 const CONTENT_STATUSES = [
@@ -895,14 +896,35 @@ function ContentTable({
   campaigns: Array<{ id: string; title: string }>
   onRatingChange?: (contentId: string, rating: number) => void
 }) {
-  const indexOfFirstItem = (currentPage - 1) * itemsPerPage
-  const totalPages = Math.ceil(totalContent / itemsPerPage)
+  // State for individual pagination per status
+  const [statusPages, setStatusPages] = useState<Record<string, number>>(() => {
+    const initialPages: Record<string, number> = {}
+    CONTENT_STATUSES.forEach(status => {
+      initialPages[status.id] = 1
+    })
+    return initialPages
+  })
   
-  // Función para truncar texto largo
-  const truncateText = (text: string | null, maxLength: number = 30) => {
-    if (!text || text.length <= maxLength) return text
-    return `${text.substring(0, maxLength)}...`
-  }
+  const [statusItemsPerPage, setStatusItemsPerPage] = useState(5) // Smaller per-section pagination
+  
+  // Group content items by status
+  const groupedContent = React.useMemo(() => {
+    const groups: Record<string, ContentItem[]> = {}
+    
+    // Initialize all statuses with empty arrays
+    CONTENT_STATUSES.forEach(status => {
+      groups[status.id] = []
+    })
+    
+    // Group content items by status
+    contentItems.forEach(item => {
+      if (groups[item.status]) {
+        groups[item.status].push(item)
+      }
+    })
+    
+    return groups
+  }, [contentItems])
 
   const handleRatingChange = (contentId: string, rating: number) => {
     // Call parent callback if provided
@@ -927,202 +949,303 @@ function ContentTable({
       toast.error("Failed to update rating");
     });
   };
+
+  const handleStatusPageChange = (statusId: string, page: number) => {
+    setStatusPages(prev => ({
+      ...prev,
+      [statusId]: page
+    }))
+  }
+
+  const handleStatusItemsPerPageChange = (value: string) => {
+    setStatusItemsPerPage(parseInt(value))
+    // Reset all status pages to 1 when changing items per page
+    const resetPages: Record<string, number> = {}
+    CONTENT_STATUSES.forEach(status => {
+      resetPages[status.id] = 1
+    })
+    setStatusPages(resetPages)
+  }
+
+  // Function to get paginated items for a specific status
+  const getPaginatedStatusItems = (statusId: string, statusItems: ContentItem[]) => {
+    const currentPage = statusPages[statusId] || 1
+    const startIndex = (currentPage - 1) * statusItemsPerPage
+    const endIndex = startIndex + statusItemsPerPage
+    return statusItems.slice(startIndex, endIndex)
+  }
+
+  // Function to get total pages for a status
+  const getStatusTotalPages = (statusItems: ContentItem[]) => {
+    return Math.ceil(statusItems.length / statusItemsPerPage)
+  }
   
   return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-[200px]">Title</TableHead>
-            <TableHead className="w-[100px] min-w-[100px] max-w-[100px]">Type</TableHead>
-            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
-            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Campaign</TableHead>
-            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Status</TableHead>
-            <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Performance</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {contentItems.length > 0 ? (
-            contentItems.map((content) => (
-              <TableRow 
-                key={content.id}
-                className="group hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => onContentClick(content)}
-              >
-                <TableCell>
-                  <div className="space-y-0.5">
-                    <p className="font-medium text-sm line-clamp-2" title={content.title}>{content.title}</p>
-                    {content.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2" title={content.description}>{content.description}</p>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
+    <div className="space-y-6">
+      {CONTENT_STATUSES.map(status => {
+        const statusItems = groupedContent[status.id] || []
+        
+        if (statusItems.length === 0) return null
+        
+        const paginatedItems = getPaginatedStatusItems(status.id, statusItems)
+        const totalPages = getStatusTotalPages(statusItems)
+        const currentPage = statusPages[status.id] || 1
+        const startIndex = (currentPage - 1) * statusItemsPerPage
+        
+        return (
+          <div key={status.id} className="space-y-3">
+            {/* Status Header */}
+            <div className="flex items-center gap-3 px-1">
+              <h3 className="text-lg font-semibold text-foreground">{status.name}</h3>
+              <Badge variant="outline" className="text-sm">
+                {statusItems.length} {statusItems.length === 1 ? 'item' : 'items'}
+              </Badge>
+            </div>
+            
+            {/* Status Table */}
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[200px]">Title</TableHead>
+                    <TableHead className="w-[100px] min-w-[100px] max-w-[100px]">Type</TableHead>
+                    <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
+                    <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Campaign</TableHead>
+                    <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Performance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedItems.map((content) => (
+                    <TableRow 
+                      key={content.id}
+                      className="group hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => onContentClick(content)}
+                    >
+                      <TableCell>
+                        <div className="space-y-0.5">
+                          <p className="font-medium text-sm line-clamp-2" title={content.title}>{content.title}</p>
+                          {content.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2" title={content.description}>{content.description}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.type)}`} style={{ width: '24px', height: '24px' }}>
+                            {CONTENT_TYPE_ICONS[content.type]}
+                          </div>
+                          <span className="text-sm">{getContentTypeName(content.type)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="line-clamp-2" title={getSegmentName(content.segment_id, segments)}>
+                          {getSegmentName(content.segment_id, segments)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="line-clamp-2" title={getCampaignName(content.campaign_id, campaigns)}>
+                          {getCampaignName(content.campaign_id, campaigns)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div onClick={(e) => e.stopPropagation()} className="scale-75 origin-left">
+                          <StarRating 
+                            rating={content.performance_rating}
+                            onRatingChange={(rating) => handleRatingChange(content.id, rating)}
+                            readonly={false}
+                            size="sm"
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {/* Individual Status Pagination */}
+              {statusItems.length > statusItemsPerPage && (
+                <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/20">
                   <div className="flex items-center gap-2">
-                    <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.type)}`} style={{ width: '24px', height: '24px' }}>
-                      {CONTENT_TYPE_ICONS[content.type]}
-                    </div>
-                    <span className="text-sm">{getContentTypeName(content.type)}</span>
+                    <p className="text-sm text-muted-foreground">
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                      <span className="font-medium">
+                        {Math.min(startIndex + statusItemsPerPage, statusItems.length)}
+                      </span>{" "}
+                      of <span className="font-medium">{statusItems.length}</span> items
+                    </p>
                   </div>
-                </TableCell>
-                <TableCell className="font-medium">
-                  <div className="line-clamp-2" title={getSegmentName(content.segment_id, segments)}>
-                    {getSegmentName(content.segment_id, segments)}
-                  </div>
-                </TableCell>
-                <TableCell className="font-medium">
-                  <div className="line-clamp-2" title={getCampaignName(content.campaign_id, campaigns)}>
-                    {getCampaignName(content.campaign_id, campaigns)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={STATUS_COLORS[content.status]}>
-                    {content.status.charAt(0).toUpperCase() + content.status.slice(1)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div onClick={(e) => e.stopPropagation()} className="scale-75 origin-left">
-                    <StarRating 
-                      rating={content.performance_rating}
-                      onRatingChange={(rating) => handleRatingChange(content.id, rating)}
-                      readonly={false}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
                       size="sm"
-                    />
+                      onClick={() => handleStatusPageChange(status.id, currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Previous page</span>
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let page = i + 1
+                        if (totalPages > 5) {
+                          if (currentPage > 3) {
+                            page = currentPage - 2 + i
+                            if (page > totalPages) page = totalPages - 4 + i
+                          }
+                        }
+                        if (page < 1 || page > totalPages) return null
+                        return (
+                          <Button
+                            key={page}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleStatusPageChange(status.id, page)}
+                            className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                              currentPage === page 
+                                ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                                : "text-muted-foreground hover:bg-muted/50"
+                            }`}
+                          >
+                            {page}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleStatusPageChange(status.id, currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                      <span className="sr-only">Next page</span>
+                    </Button>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
-                No content found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      <div className="flex items-center justify-between px-4 py-2 border-t">
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{" "}
-            <span className="font-medium">
-              {Math.min(indexOfFirstItem + itemsPerPage, totalContent)}
-            </span>{" "}
-            of <span className="font-medium">{totalContent}</span> results
-          </p>
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={onItemsPerPageChange}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={itemsPerPage.toString()} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="20">20</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Previous page</span>
-          </Button>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant="ghost"
-                size="sm"
-                onClick={() => onPageChange(page)}
-                className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                  currentPage === page 
-                    ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                    : "text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                {page}
-              </Button>
-            ))}
+                </div>
+              )}
+            </Card>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || totalPages === 0}
-            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-          >
-            <ChevronRight className="h-4 w-4" />
-            <span className="sr-only">Next page</span>
-          </Button>
-        </div>
-      </div>
-    </Card>
+        )
+      })}
+      
+      {/* Global Settings */}
+      {contentItems.length > 0 && (
+        <Card className="mt-6">
+          <div className="flex items-center justify-between px-4 py-2">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">
+                Total: <span className="font-medium">{totalContent}</span> content items
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Items per section:</span>
+              <Select
+                value={statusItemsPerPage.toString()}
+                onValueChange={handleStatusItemsPerPageChange}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={statusItemsPerPage.toString()} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
   )
 }
 
 function ContentTableSkeleton() {
   return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[45%]">Title</TableHead>
-            <TableHead className="w-[12%]">Type</TableHead>
-            <TableHead className="w-[10%]">Segment</TableHead>
-            <TableHead className="w-[10%]">Status</TableHead>
-            <TableHead className="w-[8%]">Created</TableHead>
-            <TableHead className="w-[10%]">Performance</TableHead>
-            <TableHead className="w-[5%] text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <TableRow key={i}>
-              <TableCell>
-                <div className="space-y-0.5">
-                  <Skeleton className="h-5 w-full max-w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
+    <div className="space-y-6">
+      {/* Simulate multiple status sections */}
+      {Array.from({ length: 3 }).map((_, statusIndex) => (
+        <div key={statusIndex} className="space-y-3">
+          {/* Status Header Skeleton */}
+          <div className="flex items-center gap-3 px-1">
+            <Skeleton className="h-7 w-24" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+          
+          {/* Status Table Skeleton */}
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[200px]">Title</TableHead>
+                  <TableHead className="w-[100px] min-w-[100px] max-w-[100px]">Type</TableHead>
+                  <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
+                  <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Campaign</TableHead>
+                  <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Performance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="space-y-0.5">
+                        <Skeleton className="h-5 w-full max-w-[250px]" />
+                        <Skeleton className="h-4 w-[200px]" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-6 w-6 rounded-md" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            
+            {/* Individual Status Pagination Skeleton */}
+            <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-[180px]" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-8 w-8 rounded-md" />
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-8 w-8 rounded-md" />
+                  ))}
                 </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-6 w-6 rounded-md" />
-                  <Skeleton className="h-4 w-20" />
-                </div>
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-6 w-16 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell className="text-right">
-                <Skeleton className="h-8 w-8 rounded-md ml-auto" />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <div className="flex items-center justify-between px-4 py-2 border-t">
-        <Skeleton className="h-8 w-[250px]" />
-        <Skeleton className="h-8 w-[200px]" />
-      </div>
-    </Card>
+                <Skeleton className="h-8 w-8 rounded-md" />
+              </div>
+            </div>
+          </Card>
+        </div>
+      ))}
+      
+      {/* Global Settings Skeleton */}
+      <Card className="mt-6">
+        <div className="flex items-center justify-between px-4 py-2">
+          <Skeleton className="h-4 w-[180px]" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-[120px]" />
+            <Skeleton className="h-8 w-[70px]" />
+          </div>
+        </div>
+      </Card>
+    </div>
   )
 }
 
@@ -1595,6 +1718,7 @@ export default function ContentPage() {
     if (!currentSite?.id) return
 
     try {
+      console.log(`📊 [Content] Loading segments for site: ${currentSite.id}`)
       const { segments, error } = await getSegments(currentSite.id)
       
       if (error) {
@@ -1603,6 +1727,7 @@ export default function ContentPage() {
       }
       
       if (segments) {
+        console.log(`📊 [Content] Loaded ${segments.length} segments:`, segments.map(s => s.name).join(', '))
         setSegments(segments.map(segment => ({
           id: segment.id,
           name: segment.name,
@@ -1638,9 +1763,6 @@ export default function ContentPage() {
   const updateFilteredContent = (search: string, currentFilters: ContentFilters, items = contentItems) => {
     const searchLower = search.toLowerCase()
     
-    // Debug para verificar si tenemos elementos de contenido
-    console.log("Content items to filter:", items.length);
-    
     const filtered = items.filter(item => {
       // Filtrar por término de búsqueda
       const matchesSearch = search === '' || 
@@ -1661,9 +1783,6 @@ export default function ContentPage() {
       
       return matchesSearch && matchesStatus && matchesType && matchesSegment
     })
-    
-    // Debug para verificar resultados filtrados
-    console.log("Filtered content items:", filtered.length);
     
     setFilteredContent(filtered)
   }
@@ -1760,33 +1879,7 @@ export default function ContentPage() {
     )
   }
 
-  const emptyState = (
-    <EmptyState
-      icon={<FileText className="h-12 w-12 text-primary/60" />}
-      title="No content yet"
-      description="Create and manage your content for different segments and channels."
-      features={[
-        {
-          title: "Content Types",
-          items: [
-            "Blog posts",
-            "Newsletters",
-            "Social media",
-            "Landing pages"
-          ]
-        },
-        {
-          title: "Workflow",
-          items: [
-            "Draft to published",
-            "Segment targeting",
-            "Performance tracking"
-          ]
-        }
-      ]}
-      hint='Click "New Content" to create your first content item'
-    />
-  )
+
 
   return (
     <div className="h-full flex flex-col">
@@ -1850,8 +1943,7 @@ export default function ContentPage() {
                   size="sm"
                   onClick={() => setIsFiltersDialogOpen(true)}
                 >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filters
+                  <Filter className="h-4 w-4" />
                   {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
                     <Badge variant="secondary" className="ml-2">
                       {filters.status.length + filters.type.length + filters.segments.length}
@@ -1869,13 +1961,28 @@ export default function ContentPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4">
-          <div className="px-8">
-            <TabsContent value="all" className="space-y-4">
+        <div className="p-8 space-y-6">
+          {/* Trends Section - Only for Table View */}
+          {viewType === 'table' && (
+            <div className="px-8">
+              <TrendsSection segments={segments} currentSiteId={currentSite?.id} displayMode="table" />
+            </div>
+          )}
+          
+          {/* Main Content Layout */}
+          <div className={viewType === 'kanban' ? "flex gap-4" : "px-8"}>
+            {/* Left Sidebar - Trends Column (Only for Kanban View) */}
+            {viewType === 'kanban' && (
+              <div className="mt-2">
+                <TrendsColumn segments={segments} currentSiteId={currentSite?.id} />
+              </div>
+            )}
+            
+            {/* Main Content Area */}
+            <div className={viewType === 'kanban' ? "flex-1 min-w-0" : ""}>
+              <TabsContent value="all" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.length === 0 ? (
-                emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
                   contentItems={filteredContent}
@@ -1905,8 +2012,6 @@ export default function ContentPage() {
             <TabsContent value="blog_post" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.filter(item => item.type === 'blog_post').length === 0 ? (
-                emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
                   contentItems={filteredContent.filter(item => item.type === 'blog_post')}
@@ -1936,8 +2041,6 @@ export default function ContentPage() {
             <TabsContent value="video" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.filter(item => item.type === 'video').length === 0 ? (
-                emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
                   contentItems={filteredContent.filter(item => item.type === 'video')}
@@ -1967,8 +2070,6 @@ export default function ContentPage() {
             <TabsContent value="social_post" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.filter(item => item.type === 'social_post').length === 0 ? (
-                emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
                   contentItems={filteredContent.filter(item => item.type === 'social_post')}
@@ -1998,8 +2099,6 @@ export default function ContentPage() {
             <TabsContent value="ad" className="space-y-4">
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
-              ) : filteredContent.filter(item => item.type === 'ad').length === 0 ? (
-                emptyState
               ) : viewType === 'kanban' ? (
                 <ContentKanban 
                   contentItems={filteredContent.filter(item => item.type === 'ad')}
@@ -2025,6 +2124,7 @@ export default function ContentPage() {
                 />
               )}
             </TabsContent>
+            </div>
           </div>
         </div>
       </Tabs>

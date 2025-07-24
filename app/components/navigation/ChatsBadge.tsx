@@ -34,7 +34,6 @@ export function ChatsBadge({ isActive = false }: { isActive?: boolean }) {
         }
 
         const count = conversations?.length || 0
-        console.log(`ChatsBadge: Found ${count} pending conversations for site ${currentSite.id}`)
         setPendingConversationsCount(count)
 
       } catch (error) {

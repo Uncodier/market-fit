@@ -169,22 +169,35 @@ export default function LeadDetailPage() {
     }
     
     try {
-      // Make sure the required fields are present, including company
+      // Build updateData with explicit handling for null/empty values
       const updateData: any = {
         id,
-        name: data.name || lead.name || "",
-        email: data.email || lead.email || "",
-        status: data.status || lead.status || "new",
-        company: data.company || lead.company || { name: "" }, // Ensure company is always included
         site_id: currentSite.id,
       }
       
-      // Add other fields from data, excluding attribution unless it's complete
+      // Handle each field explicitly to allow null/empty values
       Object.entries(data).forEach(([key, value]) => {
-        if (key !== 'attribution' && key !== 'id' && value !== undefined) {
-          updateData[key] = value
+        if (key !== 'id' && key !== 'attribution') {
+          // Allow explicit null/empty values
+          if (value !== undefined) {
+            updateData[key] = value
+          }
         }
       })
+      
+      // Ensure required fields have fallback values only if not explicitly provided
+      if (updateData.name === undefined) {
+        updateData.name = lead.name || ""
+      }
+      if (updateData.email === undefined) {
+        updateData.email = lead.email || ""
+      }
+      if (updateData.status === undefined) {
+        updateData.status = lead.status || "new"
+      }
+      if (updateData.company === undefined) {
+        updateData.company = lead.company || { name: "" }
+      }
       
       // Only include attribution if it's explicitly provided and complete
       if (data.attribution) {
@@ -199,7 +212,7 @@ export default function LeadDetailPage() {
       }
       
       // Update lead in local state
-      setLead(prev => prev ? { ...prev, ...data } : null)
+      setLead((prev: Lead | null) => prev ? { ...prev, ...data } : null)
       
       toast.success("Lead updated successfully")
     } catch (error) {

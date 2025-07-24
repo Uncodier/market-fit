@@ -70,7 +70,6 @@ const identifyUserInChat = async (user: User | null, supabaseClient: any, retryC
     } else {
       // Si MarketFit no está disponible aún, esperar un poco y reintentar
       if (retryCount < maxRetries) {
-        console.log(`[MarketFit Chat] MarketFit not ready, retrying in 1 second... (${retryCount + 1}/${maxRetries})`)
         setTimeout(() => {
           identifyUserInChat(user, supabaseClient, retryCount + 1)
         }, 1000)

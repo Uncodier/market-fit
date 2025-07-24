@@ -200,7 +200,7 @@ const groupLeadsByCompany = (leads: Lead[], journeyStages: Record<string, string
 // Obtener el nombre legible de una etapa
 const getJourneyStageName = (stageId: string) => {
   if (stageId === "not_contacted") return "Unaware"
-  return JOURNEY_STAGES.find(stage => stage.id === stageId)?.label || "Unknown"
+  return JOURNEY_STAGES.find((stage: { id: string; label: string }) => stage.id === stageId)?.label || "Unknown"
 }
 
 // Contexto para manejar los segmentos

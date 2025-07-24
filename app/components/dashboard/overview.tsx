@@ -155,12 +155,9 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         
         // Check if the response has the new format with a data field and debug info
         if (responseJson.data && Array.isArray(responseJson.data)) {
-          console.log(`[Overview] Received ${responseJson.data.length} sales records`);
-          console.log(`[Overview] Debug info from API:`, responseJson.debug);
           salesData = responseJson.data;
         } else if (Array.isArray(responseJson)) {
           // Handle old format for backward compatibility
-          console.log(`[Overview] Received ${responseJson.length} sales records (old format)`);
           salesData = responseJson;
         } else {
           console.error(`[Overview] Unexpected API response format:`, responseJson);
@@ -170,21 +167,8 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         // If component unmounted during fetch, don't continue
         if (!isMounted) return;
         
-        // Log first few sales for debugging
-        if (salesData.length > 0) {
-          console.log(`[Overview] First 3 sales:`, salesData.slice(0, 3));
-        } else {
-          console.log(`[Overview] No sales data returned for the period`);
-        }
-        
         // Generate intervals based on the type
-        console.log(`[Overview] Generating ${TOTAL_INTERVALS} intervals of type '${intervalType}'`);
         const intervals = generateIntervals(safeStartDate, safeEndDate, intervalType, TOTAL_INTERVALS);
-        console.log(`[Overview] Generated intervals:`, intervals.map(i => ({
-          name: i.name,
-          startDate: format(i.startDate, 'yyyy-MM-dd'),
-          endDate: format(i.endDate, 'yyyy-MM-dd')
-        })));
         
         // Map sales to intervals
         const data = intervals.map(interval => {
@@ -196,10 +180,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
             return saleDate >= intervalStart && saleDate <= intervalEnd;
           });
           
-          // Log for debugging
-          if (salesInInterval.length > 0) {
-            console.log(`[Overview] Interval '${name}' has ${salesInInterval.length} sales`);
-          }
+
           
           // Sum amounts
           const total = salesInInterval.reduce((sum, sale) => 
@@ -212,15 +193,8 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
           };
         });
         
-        // Log overview of chart data
-        console.log(`[Overview] Generated chart data:`, data.map(item => ({
-          name: item.name,
-          total: item.total
-        })));
-        
         if (isMounted) {
           setChartData(data);
-          console.log(`[Overview] Chart data set with ${data.length} intervals`);
         }
       } catch (error) {
         // Ignore AbortError as it's expected during cleanup

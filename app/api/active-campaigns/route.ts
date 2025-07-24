@@ -283,28 +283,30 @@ export async function GET(request: NextRequest) {
     console.log(`[ActiveCampaignsAPI] Checking if site has any campaigns at all...`);
     const { data: allCampaigns, error: allCampaignsError } = await supabase
       .from('campaigns')
-      .select('id, title, created_at, metadata')
+      .select('id, title, created_at, metadata, status')
       .eq('site_id', siteId)
+      .eq('status', 'active') // Only get active campaigns
       .order('created_at', { ascending: false })
       .limit(10);
     
     if (allCampaignsError) {
       console.error('[ActiveCampaignsAPI] Error checking all campaigns:', allCampaignsError);
     } else {
-      console.log(`[ActiveCampaignsAPI] Found ${allCampaigns?.length || 0} total campaigns for site`);
+      console.log(`[ActiveCampaignsAPI] Found ${allCampaigns?.length || 0} active campaigns for site`);
       if (allCampaigns && allCampaigns.length > 0) {
-        console.log(`[ActiveCampaignsAPI] Sample campaigns:`, allCampaigns.slice(0, 3));
-        console.log(`[ActiveCampaignsAPI] Oldest campaign:`, allCampaigns[allCampaigns.length - 1]);
-        console.log(`[ActiveCampaignsAPI] Newest campaign:`, allCampaigns[0]);
+        console.log(`[ActiveCampaignsAPI] Sample active campaigns:`, allCampaigns.slice(0, 3));
+        console.log(`[ActiveCampaignsAPI] Oldest active campaign:`, allCampaigns[allCampaigns.length - 1]);
+        console.log(`[ActiveCampaignsAPI] Newest active campaign:`, allCampaigns[0]);
       }
     }
     
-    // Query campaigns created in current period for comparison
-    console.log(`[ActiveCampaignsAPI] Querying campaigns created during ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+    // Query active campaigns in current period for comparison
+    console.log(`[ActiveCampaignsAPI] Querying active campaigns during ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
     const { data: currentCampaigns, error: currentError } = await supabase
       .from('campaigns')
-      .select('id, title, created_at, metadata')
+      .select('id, title, created_at, metadata, status')
       .eq('site_id', siteId)
+      .eq('status', 'active') // Only count active campaigns
       .gte('created_at', periodStart.toISOString())
       .lte('created_at', periodEnd.toISOString());
     
@@ -313,13 +315,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch current campaigns' }, { status: 500 });
     }
     
-    console.log(`[ActiveCampaignsAPI] Found ${currentCampaigns?.length || 0} campaigns created in current period`);
+    console.log(`[ActiveCampaignsAPI] Found ${currentCampaigns?.length || 0} active campaigns created in current period`);
     
-    // Query campaigns for previous period
+    // Query active campaigns for previous period
     const { data: previousCampaigns, error: previousError } = await supabase
       .from('campaigns')
-      .select('id, title, created_at, metadata')
+      .select('id, title, created_at, metadata, status')
       .eq('site_id', siteId)
+      .eq('status', 'active') // Only count active campaigns
       .gte('created_at', previousPeriodStart.toISOString())
       .lte('created_at', previousPeriodEnd.toISOString());
     

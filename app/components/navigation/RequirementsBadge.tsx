@@ -31,8 +31,6 @@ export function RequirementsBadge({ isActive = false }: { isActive?: boolean }) 
           return
         }
 
-        console.log('🔍 All requirements:', requirements?.length || 0)
-
         // Count only requirements that are in backlog and pending:
         // - status = 'backlog' (not yet started)
         // - completion_status = 'pending' (not completed)
@@ -42,16 +40,9 @@ export function RequirementsBadge({ isActive = false }: { isActive?: boolean }) 
           
           const shouldCount = isBacklog && isPending
           
-          if (shouldCount) {
-            console.log('✅ Counting backlog pending:', req.id.slice(-6), req.status, req.completion_status)
-          } else {
-            console.log('❌ Excluding (not backlog+pending):', req.id.slice(-6), req.status, req.completion_status)
-          }
-          
           return shouldCount
         })
 
-        console.log('🎯 Backlog pending count:', backlogPendingRequirements.length)
         setBacklogPendingCount(backlogPendingRequirements.length)
 
       } catch (error) {

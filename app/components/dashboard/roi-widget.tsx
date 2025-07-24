@@ -85,7 +85,6 @@ export function ROIWidget({
         
         // Handle null response (aborted request)
         if (response === null) {
-          console.log("[ROIWidget] Request was aborted");
           return;
         }
         

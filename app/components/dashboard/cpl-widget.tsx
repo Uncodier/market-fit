@@ -99,7 +99,6 @@ export function CPLWidget({
         
         // Handle null response (aborted request)
         if (response === null) {
-          console.log("[CPLWidget] Request was aborted");
           return;
         }
         

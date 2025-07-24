@@ -10,11 +10,12 @@ interface CampaignInfo {
 
 async function getCampaignsForSite(supabase: any, siteId: string): Promise<CampaignInfo[]> {
   try {
-    // Use the passed service client
+    // Use the passed service client and only get active campaigns
     const { data, error } = await supabase
       .from("campaigns")
       .select("id, title, type")
       .eq("site_id", siteId)
+      .eq("status", "active") // Only get active campaigns
       .order("created_at", { ascending: false });
       
     if (error) {
@@ -22,10 +23,10 @@ async function getCampaignsForSite(supabase: any, siteId: string): Promise<Campa
       return [];
     }
     
-    console.log(`[getCampaignsForSite] Found ${data?.length || 0} campaigns for site ${siteId}`);
+    console.log(`[getCampaignsForSite] Found ${data?.length || 0} active campaigns for site ${siteId}`);
     return data || [];
   } catch (error) {
-    console.error("Error fetching campaigns for site:", error);
+    console.error("Error fetching active campaigns for site:", error);
     return [];
   }
 }

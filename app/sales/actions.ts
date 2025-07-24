@@ -146,8 +146,8 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
       amount: updatedSale.amount,
       amount_due: updatedSale.amount_due,
       status: updatedSale.status,
-      lead_id: updatedSale.leadId,
-      segment_id: updatedSale.segmentId,
+      lead_id: updatedSale.leadId || null, // Ensure null instead of undefined
+      segment_id: updatedSale.segmentId || null, // Ensure null instead of undefined
       source: updatedSale.source,
       payments: updatedSale.payments,
     };

@@ -200,7 +200,7 @@ export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
 const UpdateLeadSchema = z.object({
   id: z.string().min(1, "ID is required"),
   name: z.string().optional(),
-  email: z.string().email().optional(),
+  email: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
   phone: z.string().optional().nullable(),
   company: z.union([
     z.string(),

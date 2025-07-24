@@ -130,14 +130,15 @@ export async function GET(request: Request) {
     
     console.log(`[Campaign Revenue API] Ventas encontradas para procesar: ${salesData.length}`);
     
-    // Obtenemos todas las campañas para tener sus nombres
+    // Obtenemos todas las campañas activas para tener sus nombres
     const { data: campaignsData, error: campaignsError } = await supabase
       .from("campaigns")
       .select("id, title, type")
+      .eq("status", "active") // Only get active campaigns
       .order("title");
       
     if (campaignsError) {
-      console.error(`[Campaign Revenue API] Error al consultar campañas:`, campaignsError);
+      console.error(`[Campaign Revenue API] Error al consultar campañas activas:`, campaignsError);
     }
     
     // Crear un mapa de campañas para lookups rápidos
@@ -146,7 +147,7 @@ export async function GET(request: Request) {
       campaignsData.forEach(campaign => {
         campaignsMap.set(campaign.id, campaign);
       });
-      console.log(`[Campaign Revenue API] Encontradas ${campaignsData.length} campañas en la DB`);
+      console.log(`[Campaign Revenue API] Encontradas ${campaignsData.length} campañas activas en la DB`);
     }
     
     // Agrupar por campaign_id

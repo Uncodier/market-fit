@@ -68,8 +68,8 @@ export function DetailsTab({
           <p className="text-xs text-muted-foreground mb-[5px] truncate">Email</p>
           {isEditing ? (
             <Input
-              value={editForm.email}
-              onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+              value={editForm.email || ""}
+              onChange={(e) => setEditForm({...editForm, email: e.target.value || null})}
               className="h-12 text-sm"
               placeholder="email@example.com"
             />
