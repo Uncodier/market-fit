@@ -153,7 +153,7 @@ export function ChatHeader({
                 {IconComponent ? (
                   <IconComponent className="h-6 w-6 transition-transform duration-200" aria-hidden={true} />
                 ) : (
-                  displayAgentName.charAt(0)
+                  displayAgentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
                 )}
               </AvatarFallback>
             </Avatar>
@@ -195,7 +195,7 @@ export function ChatHeader({
                 <Avatar className="h-12 w-12 border-2 border-amber-500/20 transition-transform duration-300 ease-in-out">
                   <AvatarImage src={leadData.avatarUrl} alt={leadData.name} />
                   <AvatarFallback className="bg-amber-500/10 text-amber-600">
-                    {leadData.name.split(' ').map((name: string) => name[0]).join('')}
+                    {leadData.name.split(' ').map((name: string) => name[0]).join('').substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
               </Link>

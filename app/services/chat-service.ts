@@ -257,18 +257,19 @@ async function getUserData(userId: string): Promise<{ name: string, avatar_url: 
 export async function getConversations(
   siteId: string, 
   page: number = 1, 
-  pageSize: number = 20
+  pageSize: number = 20,
+  channelFilter?: 'all' | 'web' | 'email' | 'whatsapp'
 ): Promise<ConversationListItem[]> {
   try {
-    console.log(`🔍 DEBUG: getConversations called for site: ${siteId}, page: ${page}, pageSize: ${pageSize}`);
+    console.log(`🔍 DEBUG: getConversations called for site: ${siteId}, page: ${page}, pageSize: ${pageSize}, channelFilter: ${channelFilter || 'none'}`);
     const supabase = createClient();
     
     // Calculate pagination
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
     
-    // Primero obtenemos las conversaciones con paginación
-    const { data: conversations, error: conversationsError } = await supabase
+    // Build the base query
+    let query = supabase
       .from("conversations")
       .select(`
         id,
@@ -288,6 +289,19 @@ export async function getConversations(
       `)
       .eq("site_id", siteId)
       .eq("is_archived", false)
+
+    // Apply channel filter if specified
+    if (channelFilter && channelFilter !== 'all') {
+      if (channelFilter === 'web') {
+        // For web, include both 'web' and 'website_chat' as they are the same, plus null values (default to web)
+        query = query.or(`custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`)
+      } else {
+        query = query.eq(`custom_data->>channel`, channelFilter)
+      }
+    }
+
+    // Apply ordering and pagination
+    const { data: conversations, error: conversationsError } = await query
       .order("last_message_at", { ascending: false })
       .range(from, to)
 

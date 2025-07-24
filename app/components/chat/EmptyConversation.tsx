@@ -25,7 +25,7 @@ export function EmptyConversation({
             alt={agentName} 
           />
           <AvatarFallback className="bg-primary/10">
-            {agentName.charAt(0)}
+            {agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
           </AvatarFallback>
         </Avatar>
       </div>

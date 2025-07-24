@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
@@ -17,6 +17,7 @@ import { RenameConversationModal } from "./RenameConversationModal"
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ConversationItem } from "./ConversationItem"
+import { ChannelFilter } from "./ChannelFilter"
 
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
@@ -78,6 +79,7 @@ export function ChatList({
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasEmptyResult, setHasEmptyResult] = useState(false)
+  const [channelFilter, setChannelFilter] = useState<'all' | 'web' | 'email' | 'whatsapp'>('all')
   const { isDarkMode } = useTheme()
   
   // Pagination states - similar to commands-panel.tsx
@@ -109,13 +111,13 @@ export function ChatList({
   }, [selectedConversationId]);
 
   // Load conversations with pagination - similar to commands-panel.tsx
-  const loadConversations = async (page: number = 1, append: boolean = false) => {
+  const loadConversations = useCallback(async (page: number = 1, append: boolean = false) => {
     if (!siteId) {
       console.log('🔍 DEBUG: Cannot load conversations - no siteId provided');
       return;
     }
     
-    console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}, page: ${page}, append: ${append}`);
+    console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}, page: ${page}, append: ${append}, filter: ${channelFilter}`);
     
     // Solo mostrar el esqueleto en la primera carga
     const isFirstLoad = isFirstLoadRef.current && page === 1;
@@ -130,8 +132,8 @@ export function ChatList({
     }
     
     try {
-      // Request conversations from server with pagination
-      const result = await getConversations(siteId, page, 20) // 20 conversations per page
+      // Request conversations from server with pagination and channel filter
+      const result = await getConversations(siteId, page, 20, channelFilter) // 20 conversations per page
       console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations for page ${page}`);
       
       if (result.length > 0) {
@@ -175,7 +177,7 @@ export function ChatList({
       }
       console.log('🔍 DEBUG: loadConversations completed');
     }
-  }
+  }, [siteId, channelFilter])
 
   // Handle load more - similar to commands-panel.tsx
   const handleLoadMore = async () => {
@@ -478,7 +480,22 @@ export function ChatList({
     }
   }, [siteId, onLoadConversations])
 
+  // Reset conversations and reload when channel filter changes
+  useEffect(() => {
+    if (siteId) {
+      console.log(`🔍 DEBUG: Channel filter changed to: ${channelFilter}, reloading conversations`);
+      // Reset pagination state
+      setCurrentPage(1)
+      setHasMore(true)
+      // Reset isFirstLoadRef so skeleton shows on filter change
+      isFirstLoadRef.current = true
+      // Load conversations with new filter
+      loadConversations(1, false)
+    }
+  }, [channelFilter, siteId, loadConversations])
+
   const filteredConversations = conversations.filter(conv => {
+    // Only filter by search query since channel filtering is done at query level
     const searchLower = searchQuery.toLowerCase()
     return (
       (conv.title && conv.title.toLowerCase().includes(searchLower)) ||
@@ -652,30 +669,36 @@ export function ChatList({
       </div>
       
       <div className="h-[calc(100vh-71px)] overflow-hidden flex-grow">
-        {isLoading ? (
-          <div className="h-full overflow-auto pt-[71px]">
-            <div className="w-[320px]">
-              {Array(5).fill(0).map((_, index) => (
-                <ConversationSkeleton key={index} />
-              ))}
-            </div>
-          </div>
-        ) : showEmptyState ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="w-full max-w-[280px] px-4">
-              <EmptyCard
-                icon={<MessageSquare className="h-10 w-10 text-muted-foreground" />}
-                title="No conversations"
-                description="Start a new conversation with an agent to see it here."
-                variant="fancy"
-                showShadow={false}
-                contentClassName="py-8"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="h-full overflow-auto pt-[71px]">
-            <div className="w-[320px] pb-[200px]">
+        <div className="h-full overflow-auto pt-[71px]">
+          <div className="w-[320px]">
+            {/* Channel Filter - always visible */}
+            <ChannelFilter
+              selectedFilter={channelFilter}
+              onFilterChange={setChannelFilter}
+            />
+            
+            {isLoading ? (
+              <div className="pb-[200px]">
+                {Array(5).fill(0).map((_, index) => (
+                  <ConversationSkeleton key={index} />
+                ))}
+              </div>
+            ) : showEmptyState ? (
+              <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+                <div className="w-full max-w-[280px] px-4">
+                  <EmptyCard
+                    icon={<MessageSquare className="h-10 w-10 text-muted-foreground" />}
+                    title="No conversations"
+                    description="Start a new conversation with an agent to see it here."
+                    variant="fancy"
+                    showShadow={false}
+                    contentClassName="py-8"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="pb-[200px]">
+              
               {/* Pending Conversations Section */}
               {pendingConversations.length > 0 && (
                 <div className="mb-2">
@@ -737,9 +760,10 @@ export function ChatList({
                   </Button>
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
       
       {/* Modal para renombrar conversación */}

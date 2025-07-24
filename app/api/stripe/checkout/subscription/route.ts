@@ -60,13 +60,40 @@ export async function POST(request: NextRequest) {
       customerId = customer.id
 
       // Update billing record with customer ID
-      await supabase.rpc('upsert_billing', {
+      console.log('Attempting to create/update billing record for siteId:', siteId)
+      console.log('Customer ID:', customerId)
+      console.log('Plan:', plan)
+      
+      const { data: billingResult, error: billingError } = await supabase.rpc('upsert_billing', {
         p_site_id: siteId,
         p_stripe_customer_id: customerId,
         p_plan: plan,
         p_auto_renew: true,
         p_credits_available: 0
       })
+
+      console.log('Billing upsert result:', billingResult)
+      
+      if (billingError) {
+        console.error('Error creating billing record:', billingError)
+        return NextResponse.json(
+          { error: `Failed to create billing record: ${billingError.message}` },
+          { status: 500 }
+        )
+      }
+
+      // Verify the billing record was created/updated
+      const { data: verifyBilling, error: verifyError } = await supabase
+        .from('billing')
+        .select('*')
+        .eq('site_id', siteId)
+        .single()
+
+      if (verifyError) {
+        console.error('Error verifying billing record:', verifyError)
+      } else {
+        console.log('Billing record verified:', verifyBilling)
+      }
     }
 
     // Create checkout session for subscription

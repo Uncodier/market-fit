@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
@@ -74,6 +75,7 @@ const isPreviewable = (type: string) => {
 }
 
 export default function TimelineTab({ task }: TimelineTabProps) {
+  const router = useRouter()
   const { currentSite } = useSite()
   const { user } = useAuth()
   const [comments, setComments] = useState<TaskComment[]>([])
@@ -1026,7 +1028,10 @@ export default function TimelineTab({ task }: TimelineTabProps) {
             <div className="flex items-start space-x-4">
               <div className="flex -space-x-2">
                 {task?.leads && (
-                  <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background">
+                  <Avatar 
+                    className="h-10 w-10 shrink-0 ring-2 ring-background cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => task?.leads?.id && router.push(`/leads/${task.leads.id}`)}
+                  >
                     <AvatarFallback className="text-sm bg-primary/10">
                       {getInitials(task.leads.name)}
                     </AvatarFallback>
@@ -1058,9 +1063,12 @@ export default function TimelineTab({ task }: TimelineTabProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-medium leading-none">
+                  <button
+                    onClick={() => task?.leads?.id && router.push(`/leads/${task.leads.id}`)}
+                    className="text-sm font-medium leading-none hover:text-primary transition-colors cursor-pointer"
+                  >
                     {task?.leads?.name || 'Lead'}
-                  </p>
+                  </button>
                   <span className="text-muted-foreground text-sm">•</span>
                   <p className="text-sm text-muted-foreground">
                     Task assigned to {assigneeData?.name || 'Unassigned'}

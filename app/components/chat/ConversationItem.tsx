@@ -138,13 +138,14 @@ export function ConversationItem({
         </div>
         <div className="flex justify-between items-center mt-0.5">
           <div className={cn(
-            "text-[11px] flex items-center gap-1",
+            "text-[11px] flex items-center gap-1 truncate",
             isSelected ? "text-primary/70" : "text-muted-foreground/70"
           )}>
             {getChannelIcon(conversation.channel, !conversation.leadName && !!conversation.agentId)}
-            <span>{conversation.agentName || "No Agent Name"}</span>
-            {!conversation.agentName && <span className="text-red-500">!</span>}
-            {conversation.leadName && <span> · {conversation.leadName}</span>}
+            <span className="truncate">{truncateText(conversation.agentName || "No Agent Name", 15)}</span>
+            {!conversation.agentName && <span className="text-red-500 flex-shrink-0">!</span>}
+            {conversation.leadName && <span className="flex-shrink-0"> · </span>}
+            {conversation.leadName && <span className="truncate">{truncateText(conversation.leadName, 15)}</span>}
           </div>
           <span className={cn(
             "text-[11px] whitespace-nowrap flex-shrink-0",

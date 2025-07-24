@@ -17,6 +17,7 @@ import { EmptyState } from "@/app/components/ui/empty-state"
 import { MessageSquare } from "@/app/components/ui/icons"
 import { DelayTimer } from "./DelayTimer"
 import { EditMessageModal } from "./EditMessageModal"
+import { formatEmailForChat, isMimeMultipartMessage } from "@/app/utils/email-formatter"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -25,6 +26,24 @@ const formatDate = (date: Date) => {
     day: 'numeric',
     year: 'numeric'
   });
+};
+
+// Helper function to format message content (handles emails and regular text)
+const formatMessageContent = (text: string): string => {
+  // Debug logging for production
+  if (text && text.includes('Apple-Mail') && text.includes('Content-Type')) {
+    console.log('🔍 [formatMessageContent] Detected potential email content:', text.substring(0, 100) + '...')
+    console.log('🔍 [formatMessageContent] Is MIME multipart?', isMimeMultipartMessage(text))
+  }
+  
+  // Only format if it's clearly a MIME multipart email
+  if (isMimeMultipartMessage(text)) {
+    console.log('✅ [formatMessageContent] Processing MIME email...')
+    const formatted = formatEmailForChat(text, 'clean')
+    console.log('✅ [formatMessageContent] Formatted result:', formatted.substring(0, 100) + '...')
+    return formatted
+  }
+  return text
 };
 
 // Helper function to check if two dates are the same day
@@ -536,7 +555,7 @@ export function ChatMessages({
                                   ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : (msg.sender_id ? msg.sender_id.charAt(0).toUpperCase() : "T")}
+                                {msg.sender_name ? msg.sender_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
@@ -555,7 +574,7 @@ export function ChatMessages({
                             }}
                           >
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
-                              <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
@@ -646,7 +665,7 @@ export function ChatMessages({
                                   ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : (msg.sender_id ? msg.sender_id.charAt(0).toUpperCase() : "T")}
+                                {msg.sender_name ? msg.sender_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
@@ -665,7 +684,7 @@ export function ChatMessages({
                             }}
                           >
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
-                              <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
@@ -753,7 +772,7 @@ export function ChatMessages({
                               <Avatar className="h-7 w-7 border border-primary/10">
                                 <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={agentName} />
                                 <AvatarFallback className="bg-primary/10">
-                                  {agentName.charAt(0)}
+                                  {agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                                 </AvatarFallback>
                               </Avatar>
                               {/* Timer circular para mensajes pendientes */}
@@ -769,7 +788,7 @@ export function ChatMessages({
                           </div>
                           <div className="ml-9">
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
-                              <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                             </div>
                             
                             {/* Debug the command_id */}
@@ -802,7 +821,7 @@ export function ChatMessages({
                             <Avatar className="h-7 w-7 border border-amber-500/20">
                               <AvatarImage src={leadData?.avatarUrl || "/avatars/visitor-default.png"} alt={leadData?.name || "Visitor"} />
                               <AvatarFallback className="bg-amber-500/10 text-amber-600">
-                                {leadData?.name ? leadData.name.split(' ').map((n: string) => n[0]).join('') : "V"}
+                                {leadData?.name ? leadData.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2) : "V"}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm font-medium text-amber-600 dark:text-amber-500">{leadData?.name || "Visitor"}</span>
@@ -821,7 +840,7 @@ export function ChatMessages({
                             }}
                           >
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
-                              <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
@@ -918,7 +937,7 @@ export function ChatMessages({
                           }}
                         >
                           <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
-                            <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                            <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                           </div>
                           <div className="flex items-center justify-between mt-1.5">
                             <div className="flex items-center gap-2">

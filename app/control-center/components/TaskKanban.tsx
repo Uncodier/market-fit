@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
@@ -82,6 +83,7 @@ const getSerialNumber = (serialId: string) => {
 }
 
 export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanbanProps) {
+  const router = useRouter()
   const { currentSite } = useSite()
   const [localTasks, setLocalTasks] = React.useState(tasks)
 
@@ -250,8 +252,14 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                 <CardContent className="p-3">
                                   <div className="flex items-start justify-between min-w-0">
                                     <div className="flex gap-3 items-start min-w-0 flex-1">
-                                      {task.leadName && (
-                                        <Avatar className="h-[39px] w-[39px] border border-primary/10 relative z-[1] flex-shrink-0">
+                                      {task.leadName && task.lead_id && (
+                                        <Avatar 
+                                          className="h-[39px] w-[39px] border border-primary/10 relative z-[1] flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            router.push(`/leads/${task.lead_id}`)
+                                          }}
+                                        >
                                           <AvatarFallback className="bg-primary/10">
                                             {getLeadInitials(task.leadName)}
                                           </AvatarFallback>
@@ -263,8 +271,16 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                           {task.assigneeName && (
                                             <span className="text-xs text-muted-foreground flex-shrink-0">{task.assigneeName}</span>
                                           )}
-                                          {task.leadName && (
-                                            <span className="text-xs text-muted-foreground truncate flex-grow min-w-0">{task.leadName}</span>
+                                          {task.leadName && task.lead_id && (
+                                            <span 
+                                              className="text-xs text-muted-foreground truncate flex-grow min-w-0 cursor-pointer hover:text-primary transition-colors"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                router.push(`/leads/${task.lead_id}`)
+                                              }}
+                                            >
+                                              {task.leadName}
+                                            </span>
                                           )}
                                         </div>
                                       </div>
@@ -275,11 +291,6 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                           {getSerialNumber(task.serial_id)}
                                         </div>
                                       )}
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground min-w-[60px] text-right">
-                                          {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
-                                        </span>
-                                      </div>
                                     </div>
                                   </div>
 
@@ -298,13 +309,23 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                                     )}
                                   </div>
 
-                                  {/* Comment icon positioned in bottom right corner */}
-                                  {task.comments_count ? (
-                                    <div className="absolute bottom-2 right-2 flex items-center gap-1 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md border border-border/40">
-                                      <MessageSquare className="h-3.5 w-3.5" />
-                                      <span>{task.comments_count}</span>
+                                  {/* Bottom right corner info: time and comments */}
+                                  <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                                    {/* Time always displayed */}
+                                    <div className="flex items-center text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md border border-border/40">
+                                      <span className="min-w-[60px] text-right">
+                                        {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
+                                      </span>
                                     </div>
-                                  ) : null}
+                                    
+                                    {/* Comments if present */}
+                                    {task.comments_count ? (
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md border border-border/40">
+                                        <MessageSquare className="h-3.5 w-3.5" />
+                                        <span>{task.comments_count}</span>
+                                      </div>
+                                    ) : null}
+                                  </div>
                                 </CardContent>
                               </Card>
                             </div>
