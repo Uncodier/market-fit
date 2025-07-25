@@ -53,10 +53,16 @@ export function useLeadData(conversationId: string, siteId?: string) {
         return
       }
       
-      // Then get the lead data
+      // Then get the lead data with company information
       const { data: lead, error: leadError } = await supabase
         .from("leads")
-        .select("*")
+        .select(`
+          *,
+          companies (
+            id,
+            name
+          )
+        `)
         .eq("id", conversation.lead_id)
         .single()
         
@@ -65,7 +71,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
         return
       }
       
-      // Set the lead data
+      // Set the lead data with company information
       setLeadData({
         id: lead.id,
         name: lead.name || "Unknown",
@@ -73,7 +79,11 @@ export function useLeadData(conversationId: string, siteId?: string) {
         status: "Online",
         avatarUrl: "/avatars/visitor-default.png", // Fallback image
         email: lead.email,
-        phone: lead.phone
+        phone: lead.phone,
+        company: lead.companies ? {
+          id: lead.companies.id,
+          name: lead.companies.name
+        } : null
       })
       
     } catch (error) {

@@ -177,7 +177,11 @@ export function ChatHeader({
                   >
                     <h2 className="font-medium text-lg">{leadData.name}</h2>
                     <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-amber-500/10 text-amber-600 border-amber-500/20">
-                      {leadData.type}
+                      {leadData.company?.name 
+                        ? (leadData.company.name.length > 20 
+                           ? leadData.company.name.substring(0, 20) + "..." 
+                           : leadData.company.name)
+                        : leadData.type}
                     </Badge>
                   </Link>
                 ) : (

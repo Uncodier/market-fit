@@ -368,6 +368,7 @@ export function CampaignSales({ campaign }: { campaign: any }) {
                     type="date"
                     value={newSale.saleDate}
                     onChange={handleInputChange}
+                    max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
                 
@@ -595,6 +596,7 @@ export function CampaignSales({ campaign }: { campaign: any }) {
                 type="date"
                 value={editingSale?.saleDate || ""}
                 onChange={(e) => handleEditSaleChange("saleDate", e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
               />
             </div>
             

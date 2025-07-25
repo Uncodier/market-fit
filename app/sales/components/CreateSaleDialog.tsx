@@ -71,23 +71,23 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
     }
   }, [open, currentSite?.id])
 
-  // Update amount_due when status changes
-  useEffect(() => {
-    if (formData.status === "pending") {
-      setFormData(prev => ({
-        ...prev,
-        amount_due: 0
-      }))
-    } else {
-      // For other statuses, set amount_due to the full amount if it's currently 0
-      if (formData.amount_due === 0) {
-        setFormData(prev => ({
-          ...prev,
-          amount_due: prev.amount
-        }))
-      }
-    }
-  }, [formData.status, formData.amount])
+  // Remove the automatic amount_due manipulation - let user control it completely
+  // useEffect(() => {
+  //   if (formData.status === "pending") {
+  //     setFormData(prev => ({
+  //       ...prev,
+  //       amount_due: 0
+  //     }))
+  //   } else {
+  //     // For other statuses, set amount_due to the full amount if it's currently 0
+  //     if (formData.amount_due === 0) {
+  //       setFormData(prev => ({
+  //         ...prev,
+  //         amount_due: prev.amount
+  //       }))
+  //     }
+  //   }
+  // }, [formData.status, formData.amount])
 
   const loadLeadsAndSegments = async () => {
     if (!currentSite?.id) return
@@ -434,7 +434,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                   date={formData.saleDate}
                   setDate={handleDateChange}
                   className="w-full"
-                  mode="default"
+                  mode="report"
                 />
               </div>
             </div>

@@ -538,6 +538,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
                           type="date" 
                           value={newTransaction.date}
                           onChange={(e) => handleTransactionChange('date', e.target.value)}
+                          max={new Date().toISOString().split('T')[0]}
                         />
                       </div>
                       <div className="space-y-2">
@@ -779,6 +780,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
                 type="date" 
                 value={editingTransaction?.date || ""}
                 onChange={(e) => handleEditTransactionChange('date', e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
               />
             </div>
           </div>
