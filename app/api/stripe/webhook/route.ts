@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 // Maximum age for webhook events
-const MAX_EVENT_AGE_SECONDS = 5 * 60 // 5 minutes for new events
+const MAX_EVENT_AGE_SECONDS = 24 * 60 * 60 // 24 hours for new events
 const MAX_FAILED_EVENT_AGE_SECONDS = 3 * 24 * 60 * 60 // 3 days for retried events
 
 export async function POST(request: NextRequest) {
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   const eventAge = Math.floor(Date.now() / 1000) - event.created
   const isRetryOfFailedEvent = existingEvent?.status === 'failed'
   const maxAge = isRetryOfFailedEvent ? MAX_FAILED_EVENT_AGE_SECONDS : MAX_EVENT_AGE_SECONDS
-  const ageDescription = isRetryOfFailedEvent ? '3 days (retry)' : '5 minutes (new)'
+  const ageDescription = isRetryOfFailedEvent ? '3 days (retry)' : '24 hours (new)'
 
   if (eventAge > maxAge) {
     console.error('❌ Webhook event is too old:', {
