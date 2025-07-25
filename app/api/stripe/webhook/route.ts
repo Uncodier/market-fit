@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -9,8 +9,23 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 // Maximum age for webhook events
-const MAX_EVENT_AGE_SECONDS = 24 * 60 * 60 // 24 hours for new events
+const MAX_EVENT_AGE_SECONDS = 5 * 60 // 5 minutes for new events
 const MAX_FAILED_EVENT_AGE_SECONDS = 3 * 24 * 60 * 60 // 3 days for retried events
+
+/*
+ * Currently handling these Stripe events:
+ * ✅ checkout.session.completed - Credits purchase & initial subscription signup
+ * ✅ customer.subscription.created - New subscription creation
+ * ✅ customer.subscription.updated - Subscription changes (plan, status, etc.)
+ * ✅ customer.subscription.deleted - Subscription cancellation
+ * ✅ invoice.payment_succeeded - Recurring subscription payments
+ * 
+ * Additional events you might want to consider:
+ * - invoice.payment_failed - Handle failed recurring payments
+ * - customer.subscription.paused_collection.voided - Subscription pause/resume
+ * - payment_intent.payment_failed - Failed one-time payments (credits)
+ * - charge.dispute.created - Handle payment disputes/chargebacks
+ */
 
 export async function POST(request: NextRequest) {
   console.log('🚀 WEBHOOK STARTED - Stripe webhook received')
@@ -46,8 +61,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = await createClient()
-  console.log('🗄️ Supabase client created')
+  const supabase = await createServiceClient()
+  console.log('🗄️ Supabase service client created (bypassing RLS)')
 
   // Check if this event has already been processed (idempotency)
   console.log('🔍 Checking event status:', event.id)
@@ -76,7 +91,7 @@ export async function POST(request: NextRequest) {
   const eventAge = Math.floor(Date.now() / 1000) - event.created
   const isRetryOfFailedEvent = existingEvent?.status === 'failed'
   const maxAge = isRetryOfFailedEvent ? MAX_FAILED_EVENT_AGE_SECONDS : MAX_EVENT_AGE_SECONDS
-  const ageDescription = isRetryOfFailedEvent ? '3 days (retry)' : '24 hours (new)'
+  const ageDescription = isRetryOfFailedEvent ? '3 days (retry)' : '5 minutes (new)'
 
   if (eventAge > maxAge) {
     console.error('❌ Webhook event is too old:', {
@@ -461,6 +476,105 @@ export async function POST(request: NextRequest) {
           console.error('❌ Error processing invoice payment:', error)
           throw error // Re-throw to be caught by main error handler
         }
+      }
+      break
+
+    case 'invoice.payment_failed':
+      console.log('💸 Processing invoice.payment_failed')
+      const failedInvoice = event.data.object as any
+      
+      if (failedInvoice.subscription) {
+        try {
+          // Get the customer to find the associated site
+          const customer = await stripe.customers.retrieve(failedInvoice.customer as string) as any
+          const siteId = customer.metadata?.site_id
+          
+          if (!siteId) {
+            console.error('❌ No site_id found in customer metadata for failed payment')
+            break
+          }
+
+          console.log(`💸 Processing failed subscription payment: site=${siteId}, invoice=${failedInvoice.id}`)
+
+          // Record the failed payment
+          const failedPaymentData = {
+            site_id: siteId,
+            transaction_id: `stripe_invoice_${failedInvoice.id}`,
+            transaction_type: 'subscription',
+            amount: (failedInvoice.amount_due || 0) / 100,
+            currency: failedInvoice.currency?.toUpperCase() || 'USD',
+            status: 'failed',
+            payment_method: 'stripe',
+            details: {
+              stripe_invoice_id: failedInvoice.id,
+              stripe_subscription_id: failedInvoice.subscription,
+              stripe_customer_id: failedInvoice.customer,
+              failure_reason: failedInvoice.last_payment_error?.message || 'Payment failed'
+            }
+          }
+
+          const { data: paymentInsert, error: paymentError } = await supabase
+            .from('payments')
+            .insert(failedPaymentData)
+            .select()
+            .single()
+
+          if (paymentError) {
+            console.error('❌ Error recording failed payment:', paymentError)
+            throw new Error(`Failed to record failed payment: ${paymentError.message}`)
+          }
+
+          // You might want to disable the subscription or send notifications here
+          console.log(`⚠️ Recorded failed subscription payment for site ${siteId}`)
+          
+        } catch (error) {
+          console.error('❌ Error processing failed invoice payment:', error)
+          throw error
+        }
+      }
+      break
+
+    case 'payment_intent.payment_failed':
+      console.log('💸 Processing payment_intent.payment_failed (credits purchase)')
+      const failedPaymentIntent = event.data.object as any
+      
+      try {
+        console.log(`💸 Payment intent failed: ${failedPaymentIntent.id}`)
+        
+        // Record failed credit purchase if it has metadata
+        if (failedPaymentIntent.metadata?.site_id && failedPaymentIntent.metadata?.type === 'credits_purchase') {
+          const siteId = failedPaymentIntent.metadata.site_id
+          const credits = parseInt(failedPaymentIntent.metadata.credits || '0')
+          
+          const failedCreditPurchase = {
+            site_id: siteId,
+            transaction_id: `stripe_pi_${failedPaymentIntent.id}`,
+            transaction_type: 'credits_purchase',
+            amount: (failedPaymentIntent.amount || 0) / 100,
+            currency: failedPaymentIntent.currency?.toUpperCase() || 'USD',
+            status: 'failed',
+            payment_method: 'stripe',
+            details: {
+              stripe_payment_intent_id: failedPaymentIntent.id,
+              credits_requested: credits,
+              failure_reason: failedPaymentIntent.last_payment_error?.message || 'Payment failed'
+            }
+          }
+
+          const { error: paymentError } = await supabase
+            .from('payments')
+            .insert(failedCreditPurchase)
+
+          if (paymentError) {
+            console.error('❌ Error recording failed credit purchase:', paymentError)
+          } else {
+            console.log(`⚠️ Recorded failed credit purchase for site ${siteId}: ${credits} credits`)
+          }
+        }
+        
+      } catch (error) {
+        console.error('❌ Error processing failed payment intent:', error)
+        throw error
       }
       break
 
