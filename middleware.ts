@@ -32,7 +32,64 @@ const API_AUTH_ROUTES = [
   '/api/secure-tokens'
 ]
 
+// Define suspicious patterns that should be blocked immediately
+const SUSPICIOUS_PATTERNS = [
+  /\.php(\?|$)/i,
+  /\/wp-/i,
+  /\/admin/i,
+  /\/backend/i,
+  /\/scripts/i,
+  /\/server\/php/i,
+  /filemanager/i,
+  /upload/i,
+  /\.asp(\?|$)/i,
+  /\.jsp(\?|$)/i,
+  /\.cgi(\?|$)/i,
+  /\/cgi-bin/i,
+  /\/xmlrpc/i,
+  /\/phpmyadmin/i,
+  /\/mysql/i,
+  /\.env/i,
+  /\.git/i,
+  /\.sql/i,
+  /\/config\./i,
+  /\/setup/i,
+  /\/install/i
+]
+
+// Define known malicious file extensions and paths
+const MALICIOUS_EXTENSIONS = [
+  '.php', '.asp', '.aspx', '.jsp', '.cgi', '.pl', '.py', '.rb', '.sh'
+]
+
+function isSuspiciousRequest(path: string): boolean {
+  // Check for suspicious patterns
+  if (SUSPICIOUS_PATTERNS.some(pattern => pattern.test(path))) {
+    return true
+  }
+  
+  // Check for malicious extensions in non-API routes
+  if (!path.startsWith('/api/') && MALICIOUS_EXTENSIONS.some(ext => path.includes(ext))) {
+    return true
+  }
+  
+  // Check for directory traversal attempts
+  if (path.includes('..') || path.includes('%2e%2e')) {
+    return true
+  }
+  
+  return false
+}
+
 export async function middleware(req: NextRequest) {
+  const path = req.nextUrl.pathname
+  
+  // Block suspicious requests immediately
+  if (isSuspiciousRequest(path)) {
+    console.log('Middleware: Blocked suspicious request:', path)
+    return new NextResponse(null, { status: 404 })
+  }
+
   // Handle OPTIONS request for preflight checks (CORS)
   if (req.method === 'OPTIONS') {
     const response = new NextResponse(null, { status: 204 });
@@ -54,9 +111,6 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
     res.headers.set('Access-Control-Allow-Credentials', 'true');
-    
-    // Current path for route-specific handling
-    const path = req.nextUrl.pathname
     
     // Special handling for API auth routes
     const isApiAuthRoute = API_AUTH_ROUTES.some(route => path.startsWith(route))

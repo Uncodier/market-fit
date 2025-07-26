@@ -82,9 +82,15 @@ export async function GET(request: NextRequest) {
     const previousConversionRate = previousVisitorCount > 0 ? (previousLeadCount / previousVisitorCount) * 100 : 0;
     
     // Calculate percentage change
-    const percentChange = previousConversionRate > 0 
-      ? ((currentConversionRate - previousConversionRate) / previousConversionRate) * 100 
-      : 0;
+    let percentChange = 0;
+    if (previousConversionRate > 0) {
+      // Normal calculation when there's previous data
+      percentChange = ((currentConversionRate - previousConversionRate) / previousConversionRate) * 100;
+    } else if (currentConversionRate > 0) {
+      // If no previous data but current data exists, show 100% growth
+      percentChange = 100;
+    }
+    // If both are 0, percentChange remains 0
 
     const response = {
       actual: Math.round(currentConversionRate * 10) / 10,

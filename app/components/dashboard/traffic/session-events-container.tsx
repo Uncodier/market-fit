@@ -22,9 +22,10 @@ interface SessionEventsContainerProps {
   siteId: string;
   startDate: Date;
   endDate: Date;
+  segmentId?: string;
 }
 
-export function SessionEventsContainer({ siteId, startDate, endDate }: SessionEventsContainerProps) {
+export function SessionEventsContainer({ siteId, startDate, endDate, segmentId }: SessionEventsContainerProps) {
   const [chartData, setChartData] = useState<SessionEventData[]>([]);
   const [referrersData, setReferrersData] = useState<ReferrerData[]>([]);
   const [totals, setTotals] = useState<{pageVisits: number, uniqueVisitors: number}>({
@@ -49,9 +50,13 @@ export function SessionEventsContainer({ siteId, startDate, endDate }: SessionEv
         params.append('siteId', siteId);
         if (start) params.append('startDate', start);
         if (end) params.append('endDate', end);
+        if (segmentId && segmentId !== 'all') {
+          params.append('segmentId', segmentId);
+        }
         params.append('referrersLimit', '10');
         
         console.log('Fetching combined page visits data with params:', params.toString());
+        console.log('[SessionEventsContainer] Date range:', { startDate, endDate, segmentId });
         const response = await fetch(`/api/traffic/session-events-combined?${params.toString()}`);
         
         if (!response.ok) {
@@ -60,6 +65,7 @@ export function SessionEventsContainer({ siteId, startDate, endDate }: SessionEv
         
         const result = await response.json();
         console.log('Combined page visits response:', result);
+        console.log('[SessionEventsContainer] Totals received:', result.totals);
         
         setChartData(result.chartData || []);
         setReferrersData(result.referrersData || []);
@@ -73,7 +79,7 @@ export function SessionEventsContainer({ siteId, startDate, endDate }: SessionEv
     };
 
     fetchData();
-  }, [siteId, startDate, endDate]);
+  }, [siteId, startDate, endDate, segmentId]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px]">

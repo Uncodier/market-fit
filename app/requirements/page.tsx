@@ -1077,8 +1077,7 @@ export default function RequirementsPage() {
                   className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                 />
                 <Button variant="outline" onClick={handleOpenFilterModal}>
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filter
+                  <Filter className="h-4 w-4" />
                 </Button>
               </div>
               <div className="ml-auto flex items-center gap-4">
@@ -1088,7 +1087,7 @@ export default function RequirementsPage() {
                     <Badge variant="outline" className="rounded-full px-2 py-0">
                       {filters.priority.length + filters.completionStatus.length + filters.segments.length}
                     </Badge>
-                    <span className="ml-2">Clear filters</span>
+                    <span className="ml-2">Clear</span>
                   </Button>
                 )}
                 <ViewSelector currentView={viewMode} onViewChange={setViewMode} />

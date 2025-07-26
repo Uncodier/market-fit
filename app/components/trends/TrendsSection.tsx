@@ -192,7 +192,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
     const paginatedTrends = trends.slice(startIndex, endIndex)
 
     return (
-      <div className="space-y-4">
+      <>
         <Table>
           <TableHeader>
             <TableRow>
@@ -347,7 +347,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
     
     {/* Pagination Controls */}
     {trends.length > itemsPerPage && (
-      <div className="flex items-center justify-between px-4 py-2 border-t">
+      <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/20">
         <div className="flex items-center gap-2">
           <p className="text-sm text-muted-foreground">
             Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
@@ -363,11 +363,12 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
             <SelectTrigger className="h-8 w-[70px]">
               <SelectValue placeholder={itemsPerPage.toString()} />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="5">5</SelectItem>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="15">15</SelectItem>
-              <SelectItem value="20">20</SelectItem>
+            <SelectContent side="top">
+              {[5, 10, 15, 20].map((value) => (
+                <SelectItem key={value} value={value.toString()}>
+                  {value}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -383,31 +384,21 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
             <span className="sr-only">Previous page</span>
           </Button>
           <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              let page = i + 1
-              if (totalPages > 5) {
-                if (currentPage > 3) {
-                  page = currentPage - 2 + i
-                  if (page > totalPages) page = totalPages - 4 + i
-                }
-              }
-              if (page < 1 || page > totalPages) return null
-              return (
-                <Button
-                  key={page}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handlePageChange(page)}
-                  className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                    currentPage === page 
-                      ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                      : "text-muted-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  {page}
-                </Button>
-              )
-            })}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(page)}
+                className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
+                  currentPage === page 
+                    ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                    : "text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                {page}
+              </Button>
+            ))}
           </div>
           <Button
             variant="ghost"
@@ -422,12 +413,12 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
         </div>
       </div>
     )}
-  </div>
+  </>
   )
 }
 
   const renderTrendsTableSkeleton = () => (
-    <div className="space-y-4">
+    <>
       <Table>
         <TableHeader>
           <TableRow>
@@ -465,7 +456,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
       </Table>
       
       {/* Pagination Skeleton */}
-      <div className="flex items-center justify-between px-4 py-2 border-t">
+      <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/20">
         <div className="flex items-center gap-2">
           <Skeleton className="h-4 w-[180px]" />
           <Skeleton className="h-8 w-[70px]" />
@@ -480,7 +471,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
           <Skeleton className="h-8 w-8" />
         </div>
       </div>
-    </div>
+    </>
   )
 
   return (
@@ -572,13 +563,34 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
           </div>
         </CardHeader>
         
-        <CardContent className="pt-0">
-          {isLoading ? (
-            displayMode === 'table' ? renderTrendsTableSkeleton() : renderTrendsSkeleton()
+        {displayMode === 'table' ? (
+          isLoading ? (
+            renderTrendsTableSkeleton()
           ) : trends.length > 0 ? (
-            displayMode === 'table' ? (
-              renderTrendsTable()
-            ) : (
+            renderTrendsTable()
+          ) : (
+            <CardContent className="pt-0">
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="bg-muted/40 rounded-full flex items-center justify-center mb-4" style={{ width: '60px', height: '60px' }}>
+                  <TrendingUp className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="font-medium mb-2">No trends available</h3>
+                <p className="text-sm text-muted-foreground text-center mb-4">
+                  We couldn't fetch trending topics at the moment. 
+                  Please try refreshing or check back later.
+                </p>
+                <Button variant="outline" onClick={handleRefresh}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          )
+        ) : (
+          <CardContent className="pt-0">
+            {isLoading ? (
+              renderTrendsSkeleton()
+            ) : trends.length > 0 ? (
               <ScrollArea className="w-full">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-2">
                   {trends.map((trend) => (
@@ -590,24 +602,24 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
                   ))}
                 </div>
               </ScrollArea>
-            )
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8">
-              <div className="bg-muted/40 rounded-full flex items-center justify-center mb-4" style={{ width: '60px', height: '60px' }}>
-                <TrendingUp className="h-6 w-6 text-muted-foreground" />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="bg-muted/40 rounded-full flex items-center justify-center mb-4" style={{ width: '60px', height: '60px' }}>
+                  <TrendingUp className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="font-medium mb-2">No trends available</h3>
+                <p className="text-sm text-muted-foreground text-center mb-4">
+                  We couldn't fetch trending topics at the moment. 
+                  Please try refreshing or check back later.
+                </p>
+                <Button variant="outline" onClick={handleRefresh}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
               </div>
-              <h3 className="font-medium mb-2">No trends available</h3>
-              <p className="text-sm text-muted-foreground text-center mb-4">
-                We couldn't fetch trending topics at the moment. 
-                Please try refreshing or check back later.
-              </p>
-              <Button variant="outline" onClick={handleRefresh}>
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
-            </div>
-          )}
-        </CardContent>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       <TrendDetailModal

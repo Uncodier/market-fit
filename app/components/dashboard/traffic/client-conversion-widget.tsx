@@ -25,47 +25,39 @@ const formatPeriodType = (periodType: string): string => {
   }
 };
 
-interface LeadConversionData {
+interface ClientConversionData {
   actual: number;
   percentChange: number;
   periodType: string;
 }
 
-interface LeadConversionWidgetProps {
+interface ClientConversionWidgetProps {
   segmentId?: string;
   startDate?: Date;
   endDate?: Date;
 }
 
-export function LeadConversionWidget({ 
+export function ClientConversionWidget({ 
   segmentId = "all",
   startDate: propStartDate,
   endDate: propEndDate
-}: LeadConversionWidgetProps) {
+}: ClientConversionWidgetProps) {
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
   const { fetchWithController } = useRequestController();
-  const [leadConversion, setLeadConversion] = useState<LeadConversionData | null>(null);
+  const [conversionData, setConversionData] = useState<ClientConversionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
-
-  // Update local state when props change
-  useEffect(() => {
-    if (propStartDate) {
-      setStartDate(propStartDate);
-    }
-    if (propEndDate) {
-      setEndDate(propEndDate);
-    }
-  }, [propStartDate, propEndDate]);
+  
+  // Use the exact same dates as other widgets for consistency
+  const startDate = propStartDate || subDays(new Date(), 30);
+  const endDate = propEndDate || new Date();
 
   useEffect(() => {
-    const fetchLeadConversion = async () => {
+    const fetchClientConversion = async () => {
       // Global widget protection
       if (!shouldExecuteWidgets) {
-        console.log("[LeadConversionWidget] Widget execution disabled by context");
+        console.log("[ClientConversionWidget] Widget execution disabled by context");
         return;
       }
 
@@ -77,62 +69,60 @@ export function LeadConversionWidget({
         const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
-        params.append("segmentId", segmentId);
         params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
+        if (segmentId && segmentId !== "all") {
+          params.append("segmentId", segmentId);
+        }
         
-        const response = await fetchWithController(`/api/traffic/lead-conversion?${params.toString()}`);
+        console.log("[ClientConversionWidget] Fetching conversion data with params:", params.toString());
+        
+        const response = await fetchWithController(`/api/traffic/client-conversion?${params.toString()}`);
         
         // Handle null response (aborted request)
         if (response === null) {
-          console.log("[LeadConversionWidget] Request was aborted");
+          console.log("[ClientConversionWidget] Request was aborted");
           return;
         }
         
         if (!response.ok) {
-          throw new Error('Failed to fetch lead conversion data');
+          throw new Error('Failed to fetch client conversion data');
         }
+        
         const data = await response.json();
-        setLeadConversion(data);
+        console.log("[ClientConversionWidget] Data received:", data);
+        setConversionData(data);
+        
       } catch (error) {
         // Only log non-abort errors
         if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error("Error fetching lead conversion:", error);
+          console.error("Error fetching client conversion:", error);
         }
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchLeadConversion();
+    fetchClientConversion();
   }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
 
-  const formattedValue = leadConversion ? `${leadConversion.actual.toFixed(1)}%` : "0%";
-  const changeText = `${leadConversion?.percentChange || 0}% from ${formatPeriodType(leadConversion?.periodType || "monthly")}`;
-  const isPositiveChange = (leadConversion?.percentChange || 0) > 0;
-
-  // Handle date range selection
-  const handleDateChange = (start: Date, end: Date) => {
-    setStartDate(start);
-    setEndDate(end);
-  };
+  const formattedValue = conversionData ? `${conversionData.actual}%` : "0%";
+  const changeText = `${conversionData?.percentChange || 0}% from ${formatPeriodType(conversionData?.periodType || "monthly")}`;
+  const isPositiveChange = (conversionData?.percentChange || 0) > 0;
 
   return (
     <BaseKpiWidget
-      title="Visitor to Lead"
-      tooltipText="Percentage of visitors who become leads"
+      title="Lead to Client"
+      tooltipText="Percentage of leads that became clients (have at least one sale)"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}
       isLoading={isLoading}
-      showDatePicker={!propStartDate && !propEndDate}
+      showDatePicker={false}  // Always use parent dates for consistency
       startDate={startDate}
       endDate={endDate}
-      onDateChange={handleDateChange}
+      onDateChange={() => {}} // No-op since we use parent dates
       segmentBadge={segmentId !== "all"}
     />
   );

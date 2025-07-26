@@ -538,9 +538,9 @@ export default function DashboardPage() {
                 <div className="grid gap-4 grid-cols-1">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Cohort Analysis</CardTitle>
+                      <CardTitle>Client Cohort Analysis</CardTitle>
                       <CardDescription>
-                        Week-to-week retention metrics for sales and usage cohorts (standardized).
+                        Week-to-week retention metrics for users with at least 1 paid invoice (standardized).
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

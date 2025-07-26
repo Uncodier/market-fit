@@ -8,6 +8,7 @@ import { Search, MessageSquare } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { Input } from "@/app/components/ui/input"
 import { useTheme } from "@/app/context/ThemeContext"
+import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { ConversationListItem } from "@/app/types/chat"
 import { getConversations } from "../../services/chat-service"
 import { format } from "date-fns"
@@ -79,8 +80,53 @@ export function ChatList({
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasEmptyResult, setHasEmptyResult] = useState(false)
-  const [channelFilter, setChannelFilter] = useState<'all' | 'web' | 'email' | 'whatsapp'>('all')
+  const [combinedFilter, setCombinedFilter] = useState<'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai'>('all')
   const { isDarkMode } = useTheme()
+  const { user } = useAuthContext()
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
+  
+  // Load user avatar
+  useEffect(() => {
+    const fetchUserAvatar = async () => {
+      if (!user) return
+      
+      try {
+        const supabase = createClient()
+        
+        // First try to get the user's profile from the database using email
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('email', user.email)
+          .single()
+          
+        if (!error && profile && profile.avatar_url) {
+          setUserAvatarUrl(profile.avatar_url)
+          return
+        }
+        
+        // If no avatar in profile, try with user_metadata
+        if (user.user_metadata?.avatar_url) {
+          setUserAvatarUrl(user.user_metadata.avatar_url)
+          return
+        }
+        
+        // Try with identities if available
+        if (user.identities?.[0]?.identity_data?.avatar_url) {
+          setUserAvatarUrl(user.identities[0].identity_data.avatar_url)
+          return
+        }
+        
+        // If no avatar anywhere, use null (will show initials)
+        setUserAvatarUrl(null)
+      } catch (error) {
+        console.error("Error fetching user avatar:", error)
+        setUserAvatarUrl(null)
+      }
+    }
+    
+    fetchUserAvatar()
+  }, [user])
   
   // Pagination states - similar to commands-panel.tsx
   const [currentPage, setCurrentPage] = useState(1)
@@ -117,7 +163,7 @@ export function ChatList({
       return;
     }
     
-    console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}, page: ${page}, append: ${append}, filter: ${channelFilter}`);
+          console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}, page: ${page}, append: ${append}, filter: ${combinedFilter}`);
     
     // Solo mostrar el esqueleto en la primera carga
     const isFirstLoad = isFirstLoadRef.current && page === 1;
@@ -133,7 +179,11 @@ export function ChatList({
     
     try {
       // Request conversations from server with pagination and channel filter
-      const result = await getConversations(siteId, page, 20, channelFilter) // 20 conversations per page
+      // Separate combined filter into channel and assignee filters
+      const channelFilter = ['web', 'email', 'whatsapp'].includes(combinedFilter) ? combinedFilter as 'web' | 'email' | 'whatsapp' : 'all'
+      const assigneeFilter = ['assigned', 'ai'].includes(combinedFilter) ? combinedFilter as 'assigned' | 'ai' : 'all'
+      
+      const result = await getConversations(siteId, page, 20, channelFilter, assigneeFilter, user?.id) // 20 conversations per page
       console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations for page ${page}`);
       
       if (result.length > 0) {
@@ -177,7 +227,7 @@ export function ChatList({
       }
       console.log('🔍 DEBUG: loadConversations completed');
     }
-  }, [siteId, channelFilter])
+  }, [siteId, combinedFilter])
 
   // Handle load more - similar to commands-panel.tsx
   const handleLoadMore = async () => {
@@ -241,10 +291,11 @@ export function ChatList({
           
           // Obtener información del lead si existe lead_id
           let leadName = undefined;
+          let assigneeName = null;
           if (conversationData.lead_id) {
             const { data: lead, error: leadError } = await supabase
               .from("leads")
-              .select("name, company")
+              .select("name, company, assignee_id")
               .eq("id", conversationData.lead_id)
               .single();
             
@@ -254,6 +305,20 @@ export function ChatList({
                 : (typeof lead.company === 'string' ? lead.company : '');
               
               leadName = lead.name + (companyName ? ` (${companyName})` : '');
+              
+              // Si el lead tiene assignee_id, obtener información del assignee
+              if (lead.assignee_id) {
+                try {
+                  // Import getUserData dynamically to avoid circular dependencies
+                  const { getUserData } = await import('@/app/services/user-service');
+                  const assigneeData = await getUserData(lead.assignee_id);
+                  if (assigneeData) {
+                    assigneeName = assigneeData.name;
+                  }
+                } catch (error) {
+                  console.error("Error fetching assignee data for conversation list:", error);
+                }
+              }
             }
           }
           
@@ -261,7 +326,10 @@ export function ChatList({
           const customData = conversationData.custom_data || {};
           const channel = customData.channel || 'web';
           
-          return { agentName, leadName, channel };
+          // Use assignee name if available, otherwise use agent name
+          const finalAgentName = assigneeName || agentName;
+          
+          return { agentName: finalAgentName, leadName, channel };
         };
         
         // Un canal por tipo de evento, enfoque más tradicional
@@ -483,7 +551,7 @@ export function ChatList({
   // Reset conversations and reload when channel filter changes
   useEffect(() => {
     if (siteId) {
-      console.log(`🔍 DEBUG: Channel filter changed to: ${channelFilter}, reloading conversations`);
+      console.log(`🔍 DEBUG: Filter changed to: ${combinedFilter}, reloading conversations`);
       // Reset pagination state
       setCurrentPage(1)
       setHasMore(true)
@@ -492,7 +560,7 @@ export function ChatList({
       // Load conversations with new filter
       loadConversations(1, false)
     }
-  }, [channelFilter, siteId, loadConversations])
+  }, [combinedFilter, siteId, loadConversations])
 
   const filteredConversations = conversations.filter(conv => {
     // Only filter by search query since channel filtering is done at query level
@@ -671,10 +739,12 @@ export function ChatList({
       <div className="h-[calc(100vh-71px)] overflow-hidden flex-grow">
         <div className="h-full overflow-auto pt-[71px]">
           <div className="w-[320px]">
-            {/* Channel Filter - always visible */}
+            {/* Combined Filter - always visible */}
             <ChannelFilter
-              selectedFilter={channelFilter}
-              onFilterChange={setChannelFilter}
+              selectedFilter={combinedFilter}
+              onFilterChange={setCombinedFilter}
+              userAvatarUrl={userAvatarUrl}
+              userName={user?.user_metadata?.name || user?.email}
             />
             
             {isLoading ? (

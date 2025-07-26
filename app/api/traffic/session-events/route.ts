@@ -33,10 +33,12 @@ export async function GET(request: NextRequest) {
     });
 
     // Query session_events table with date filtering
+    // CRITICAL: Filter by event_type to count only actual page views, not all events
     const { data, error, count } = await supabase
       .from('session_events')
       .select('created_at', { count: 'exact' })
       .eq('site_id', siteId)
+      .eq('event_type', 'pageview')  // Only count actual page views
       .gte('created_at', startDate)
       .lte('created_at', endDate);
 

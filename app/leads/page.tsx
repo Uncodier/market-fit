@@ -883,7 +883,7 @@ export default function LeadsPage() {
                     <Badge variant="outline" className="rounded-full px-2 py-0">
                       {filters.status.length + filters.segments.length + filters.origin.length}
                     </Badge>
-                    <span className="ml-2">Clear filters</span>
+                    <span className="ml-2">Clear</span>
                   </Button>
                 )}
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />

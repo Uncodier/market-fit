@@ -48,18 +48,10 @@ export function UniqueVisitorsWidget({
   const { fetchWithController } = useRequestController();
   const [uniqueVisitors, setUniqueVisitors] = useState<UniqueVisitorsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
-
-  // Update local state when props change
-  useEffect(() => {
-    if (propStartDate) {
-      setStartDate(propStartDate);
-    }
-    if (propEndDate) {
-      setEndDate(propEndDate);
-    }
-  }, [propStartDate, propEndDate]);
+  
+  // Use the exact same dates as the chart for consistency
+  const startDate = propStartDate || subDays(new Date(), 30);
+  const endDate = propEndDate || new Date();
 
   useEffect(() => {
     const fetchUniqueVisitors = async () => {
@@ -77,15 +69,20 @@ export function UniqueVisitorsWidget({
         const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
         
         const params = new URLSearchParams();
-        params.append("segmentId", segmentId);
         params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
+        if (segmentId && segmentId !== "all") {
+          params.append("segmentId", segmentId);
+        }
+        params.append("referrersLimit", "1"); // Minimal data needed
         
-        const response = await fetchWithController(`/api/traffic/unique-visitors?${params.toString()}`);
+        console.log("[UniqueVisitorsWidget] Using combined endpoint for consistency");
+        console.log("[UniqueVisitorsWidget] Query params:", params.toString());
+        console.log("[UniqueVisitorsWidget] Date range:", { startDate, endDate, segmentId });
+        
+        // Use the SAME endpoint as the chart for 100% consistency
+        const response = await fetchWithController(`/api/traffic/session-events-combined?${params.toString()}`);
         
         // Handle null response (aborted request)
         if (response === null) {
@@ -96,8 +93,48 @@ export function UniqueVisitorsWidget({
         if (!response.ok) {
           throw new Error('Failed to fetch unique visitors data');
         }
+        
         const data = await response.json();
-        setUniqueVisitors(data);
+        console.log("[UniqueVisitorsWidget] Current period data received:", data.totals);
+        
+        // Calculate previous period for comparison
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        const periodLength = endDateObj.getTime() - startDateObj.getTime();
+        const previousStart = new Date(startDateObj.getTime() - periodLength);
+        const previousEnd = new Date(startDateObj.getTime());
+
+        // Fetch previous period data using same endpoint
+        const prevParams = new URLSearchParams();
+        prevParams.append("siteId", currentSite.id);
+        prevParams.append("startDate", format(previousStart, "yyyy-MM-dd"));
+        prevParams.append("endDate", format(previousEnd, "yyyy-MM-dd"));
+        if (segmentId && segmentId !== "all") {
+          prevParams.append("segmentId", segmentId);
+        }
+        prevParams.append("referrersLimit", "1");
+        
+        const prevResponse = await fetchWithController(`/api/traffic/session-events-combined?${prevParams.toString()}`);
+        
+        let previousUniqueVisitors = 0;
+        if (prevResponse && prevResponse.ok) {
+          const prevData = await prevResponse.json();
+          previousUniqueVisitors = prevData.totals?.uniqueVisitors || 0;
+        }
+        
+        const currentUniqueVisitors = data.totals?.uniqueVisitors || 0;
+        
+        // Calculate percentage change
+        const percentChange = previousUniqueVisitors > 0 
+          ? ((currentUniqueVisitors - previousUniqueVisitors) / previousUniqueVisitors) * 100 
+          : 0;
+
+        setUniqueVisitors({
+          actual: currentUniqueVisitors,
+          percentChange: Math.round(percentChange * 10) / 10,
+          periodType: "monthly"
+        });
+        
       } catch (error) {
         // Only log non-abort errors
         if (!(error instanceof DOMException && error.name === 'AbortError')) {
@@ -115,24 +152,18 @@ export function UniqueVisitorsWidget({
   const changeText = `${uniqueVisitors?.percentChange || 0}% from ${formatPeriodType(uniqueVisitors?.periodType || "monthly")}`;
   const isPositiveChange = (uniqueVisitors?.percentChange || 0) > 0;
 
-  // Handle date range selection
-  const handleDateChange = (start: Date, end: Date) => {
-    setStartDate(start);
-    setEndDate(end);
-  };
-
   return (
     <BaseKpiWidget
       title="Unique Visitors"
-      tooltipText="Number of unique visitors to your site"
+      tooltipText="Number of unique visitors who viewed pages on your site"
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}
       isLoading={isLoading}
-      showDatePicker={!propStartDate && !propEndDate}
+      showDatePicker={false}  // Always use parent dates for consistency
       startDate={startDate}
       endDate={endDate}
-      onDateChange={handleDateChange}
+      onDateChange={() => {}} // No-op since we use parent dates
       segmentBadge={segmentId !== "all"}
     />
   );

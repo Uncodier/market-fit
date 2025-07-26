@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getUserData } from '@/app/services/user-service'
 
 export function useLeadData(conversationId: string, siteId?: string) {
   const [leadData, setLeadData] = useState<any>(null)
@@ -70,8 +71,18 @@ export function useLeadData(conversationId: string, siteId?: string) {
         console.error("Error fetching lead data:", leadError)
         return
       }
+
+      // Get assignee information if assignee_id exists
+      let assigneeData = null
+      if (lead.assignee_id) {
+        try {
+          assigneeData = await getUserData(lead.assignee_id)
+        } catch (error) {
+          console.error("Error fetching assignee data:", error)
+        }
+      }
       
-      // Set the lead data with company information
+      // Set the lead data with company and assignee information
       setLeadData({
         id: lead.id,
         name: lead.name || "Unknown",
@@ -80,6 +91,12 @@ export function useLeadData(conversationId: string, siteId?: string) {
         avatarUrl: "/avatars/visitor-default.png", // Fallback image
         email: lead.email,
         phone: lead.phone,
+        assignee_id: lead.assignee_id,
+        assignee: assigneeData ? {
+          id: lead.assignee_id,
+          name: assigneeData.name,
+          avatar_url: assigneeData.avatar_url
+        } : null,
         company: lead.companies ? {
           id: lead.companies.id,
           name: lead.companies.name

@@ -117,7 +117,7 @@ export const ChatInput = memo(function ChatInput({
   return (
     <div 
       className={cn(
-        "fixed bottom-0 py-4 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10"
+        "fixed bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10"
       )}
       style={containerStyle}
     >

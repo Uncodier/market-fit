@@ -115,8 +115,21 @@ export function ChatHeader({
   // Get the appropriate icon component
   const IconComponent = getIconByRoleOrType()
   
-  // Determine final agent name to display (preferring currentAgent.name over prop)
-  const displayAgentName = currentAgent?.name || agentName || "Agent";
+  // Determine if we should show assignee instead of agent
+  const hasAssignee = !!(isLead && leadData?.assignee)
+  
+  // Determine what to display on the left side (agent or assignee)
+  const leftSideDisplayName = hasAssignee 
+    ? leadData.assignee.name 
+    : (currentAgent?.name || agentName || "Agent")
+  
+  const leftSideAvatar = hasAssignee 
+    ? leadData.assignee.avatar_url 
+    : `/avatars/agent-${agentId}.png`
+  
+  const leftSideAvatarFallback = hasAssignee
+    ? leadData.assignee.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
+    : (IconComponent ? null : leftSideDisplayName.split(' ').map((n: string) => n[0]).join('').substring(0, 2))
   
   // Check if a conversation is selected
   const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
@@ -134,7 +147,7 @@ export function ChatHeader({
         onPrivateDiscussion={handlePrivateDiscussion}
         showNewConversationButton={true}
         isLead={isLead}
-        agentName={displayAgentName}
+        agentName={leftSideDisplayName}
         agentId={agentId}
         leadName={isLead ? leadData?.name || "Lead" : "Visitor"}
         leadId={isLead ? leadData?.id || "" : ""}
@@ -144,22 +157,34 @@ export function ChatHeader({
       <div className={cn(
         "max-w-[calc(100%-240px)] mx-auto w-full flex items-center justify-between transition-all duration-300 ease-in-out"
       )}>
-        {/* Agent info - only shown when a conversation is selected */}
+        {/* Agent/Assignee info - only shown when a conversation is selected */}
         {hasSelectedConversation && (
           <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out">
-            <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out">
-              <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={displayAgentName} />
-              <AvatarFallback className="bg-primary/10">
-                {IconComponent ? (
+            <Avatar className={cn(
+              "h-12 w-12 border-2 transition-transform duration-300 ease-in-out",
+              hasAssignee ? "border-blue-500/20" : "border-primary/10"
+            )}>
+              <AvatarImage src={leftSideAvatar} alt={leftSideDisplayName} />
+              <AvatarFallback className={cn(
+                hasAssignee ? "bg-blue-500/10 text-blue-600" : "bg-primary/10"
+              )}>
+                {hasAssignee ? (
+                  leftSideAvatarFallback
+                ) : IconComponent ? (
                   <IconComponent className="h-6 w-6 transition-transform duration-200" aria-hidden={true} />
                 ) : (
-                  displayAgentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
+                  leftSideAvatarFallback
                 )}
               </AvatarFallback>
             </Avatar>
             <div className="transition-transform duration-300 ease-in-out">
               <div className="flex items-center gap-2">
-                <h2 className="font-medium text-lg">{displayAgentName}</h2>
+                <h2 className="font-medium text-lg">{leftSideDisplayName}</h2>
+                {hasAssignee && (
+                  <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                    Assigned
+                  </Badge>
+                )}
               </div>
             </div>
           </div>

@@ -43,11 +43,12 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     console.log(`[Segment Metrics API] Fetching metrics for segment: ${segmentId || 'ALL'}, site: ${siteId}`);
     
-    // 1. Get Visitors (unique visitors from session_events)
+    // 1. Get Visitors (unique visitors from session_events with pageview filter for consistency)
     let visitorsQuery = supabase
       .from("session_events")
       .select("visitor_id")
       .eq("site_id", siteId)
+      .eq("event_type", "pageview")  // Only count actual page views for consistency
       .not("visitor_id", "is", null);
 
     if (segmentId) {

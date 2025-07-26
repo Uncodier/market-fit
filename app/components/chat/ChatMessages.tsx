@@ -18,6 +18,8 @@ import { MessageSquare } from "@/app/components/ui/icons"
 import { DelayTimer } from "./DelayTimer"
 import { EditMessageModal } from "./EditMessageModal"
 import { formatEmailForChat, isMimeMultipartMessage } from "@/app/utils/email-formatter"
+import { useSite } from "@/app/context/SiteContext"
+import { useRef } from "react"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -386,6 +388,10 @@ export function ChatMessages({
   conversationId,
   onRetryMessage
 }: ChatMessagesProps) {
+  // Determine if we should show assignee instead of agent (same logic as ChatHeader)
+  const isLead = leadData !== null
+  const hasAssignee = !!(isLead && leadData?.assignee)
+
   // Use theme context for dark mode detection
   const { isDarkMode } = useTheme()
   
@@ -522,6 +528,8 @@ export function ChatMessages({
               />
             ) : (
               chatMessages.map((msg, index) => {
+
+
                 // Check if we need to show a date separator
                 const showDateSeparator = index > 0 && 
                   !isSameDay(
@@ -769,10 +777,22 @@ export function ChatMessages({
                         <div className="max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <div className="relative">
-                              <Avatar className="h-7 w-7 border border-primary/10">
-                                <AvatarImage src={`/avatars/agent-${agentId}.png`} alt={agentName} />
-                                <AvatarFallback className="bg-primary/10">
-                                  {agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                              <Avatar className={`h-7 w-7 border ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'border-blue-500/20' : 'border-primary/10'}`}>
+                                <AvatarImage 
+                                  src={(hasAssignee && msg.sender_id === leadData?.assignee?.id) 
+                                    ? leadData.assignee.avatar_url || `/avatars/user-default.png`
+                                    : `/avatars/agent-${agentId}.png`
+                                  } 
+                                  alt={(hasAssignee && msg.sender_id === leadData?.assignee?.id) 
+                                    ? leadData.assignee.name 
+                                    : agentName
+                                  } 
+                                />
+                                <AvatarFallback className={(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? "bg-blue-500/10 text-blue-600" : "bg-primary/10"}>
+                                  {((hasAssignee && msg.sender_id === leadData?.assignee?.id) 
+                                    ? leadData.assignee.name 
+                                    : agentName
+                                  ).split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                                 </AvatarFallback>
                               </Avatar>
                               {/* Timer circular para mensajes pendientes */}
@@ -784,7 +804,12 @@ export function ChatMessages({
                                 />
                               )}
                             </div>
-                            <span className="text-sm font-medium text-primary">{agentName}</span>
+                            <span className={`text-sm font-medium ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}`}>
+                              {(hasAssignee && msg.sender_id === leadData?.assignee?.id) 
+                                ? leadData.assignee.name 
+                                : agentName
+                              }
+                            </span>
                           </div>
                           <div className="ml-9">
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">

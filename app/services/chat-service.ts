@@ -258,7 +258,9 @@ export async function getConversations(
   siteId: string, 
   page: number = 1, 
   pageSize: number = 20,
-  channelFilter?: 'all' | 'web' | 'email' | 'whatsapp'
+  channelFilter?: 'all' | 'web' | 'email' | 'whatsapp',
+  assigneeFilter?: 'all' | 'assigned' | 'ai',
+  currentUserId?: string
 ): Promise<ConversationListItem[]> {
   try {
     console.log(`🔍 DEBUG: getConversations called for site: ${siteId}, page: ${page}, pageSize: ${pageSize}, channelFilter: ${channelFilter || 'none'}`);
@@ -285,6 +287,9 @@ export async function getConversations(
           created_at,
           role,
           user_id
+        ),
+        leads (
+          assignee_id
         )
       `)
       .eq("site_id", siteId)
@@ -315,14 +320,34 @@ export async function getConversations(
       return []
     }
     
+    // Apply assignee filter if specified
+    let filteredConversations = conversations;
+    if (assigneeFilter && assigneeFilter !== 'all' && currentUserId) {
+      filteredConversations = conversations.filter((conv: any) => {
+        const hasLead = conv.lead_id && conv.leads;
+        const assigneeId = hasLead ? conv.leads.assignee_id : null;
+        
+        if (assigneeFilter === 'assigned') {
+          // Show conversations where current user is assigned to the lead
+          return assigneeId === currentUserId;
+        } else if (assigneeFilter === 'ai') {
+          // Show conversations with no assignee (AI conversations)
+          return !assigneeId;
+        }
+        
+        return true;
+      });
+    }
+    
     console.log(`🔍 DEBUG: Retrieved ${conversations.length} conversations from database for page ${page}`);
-    console.log('🔍 DEBUG: First conversation titles:', conversations.slice(0, 3).map((c: any) => c.title));
+    console.log(`🔍 DEBUG: After assignee filter: ${filteredConversations.length} conversations`);
+    console.log('🔍 DEBUG: First conversation titles:', filteredConversations.slice(0, 3).map((c: any) => c.title));
     
     // Obtenemos los IDs de los agentes
-    const agentIds = conversations.map((conv: any) => conv.agent_id).filter(Boolean)
+    const agentIds = filteredConversations.map((conv: any) => conv.agent_id).filter(Boolean)
     
     // Obtenemos los IDs de leads
-    const leadIds = conversations.map((conv: any) => conv.lead_id).filter(Boolean)
+    const leadIds = filteredConversations.map((conv: any) => conv.lead_id).filter(Boolean)
     
     // Inicializamos los mapas de agentes y leads
     let agentsMap: Record<string, string> = {};
@@ -346,16 +371,50 @@ export async function getConversations(
       }
     }
     
-    // Si hay IDs de leads, obtenemos sus nombres
+    // Si hay IDs de leads, obtenemos sus nombres y assignees
+    let assigneesMap: Record<string, string> = {};
+    let leadAssigneeMap: Record<string, string> = {}; // Mapea lead_id -> assignee_id
+    
     if (leadIds.length > 0) {
       const { data: leads, error: leadsError } = await supabase
         .from("leads")
-        .select("id, name, company")
+        .select("id, name, company, assignee_id")
         .in("id", leadIds)
 
       if (leadsError) {
         console.error("Error fetching leads:", leadsError)
       } else {
+        // Obtener assignee IDs únicos
+        const assigneeIds = (leads || [])
+          .map((lead: any) => lead.assignee_id)
+          .filter(Boolean)
+          .filter((id: string, index: number, arr: string[]) => arr.indexOf(id) === index) // Remove duplicates
+
+        // Si hay assignees, obtener su información
+        if (assigneeIds.length > 0) {
+          try {
+            // Import getUserData dynamically to avoid circular dependencies
+            const { getUserData } = await import('@/app/services/user-service');
+            const assigneeDataPromises = assigneeIds.map(async (assigneeId: string) => {
+              try {
+                const userData = await getUserData(assigneeId);
+                return { id: assigneeId, name: userData?.name || `User ${assigneeId.substring(0, 8)}` };
+              } catch (error) {
+                console.error(`Error fetching assignee ${assigneeId}:`, error);
+                return { id: assigneeId, name: `User ${assigneeId.substring(0, 8)}` };
+              }
+            });
+            
+            const assigneeResults = await Promise.all(assigneeDataPromises);
+            assigneesMap = assigneeResults.reduce((map: Record<string, string>, assignee: any) => {
+              map[assignee.id] = assignee.name;
+              return map;
+            }, {});
+          } catch (error) {
+            console.error("Error loading assignee data:", error);
+          }
+        }
+
         // Creamos un mapa de leads para búsqueda rápida
         leadsMap = (leads || []).reduce((map: Record<string, string>, lead: any) => {
           const companyName = lead.company && typeof lead.company === 'object' && lead.company.name 
@@ -363,13 +422,19 @@ export async function getConversations(
             : (typeof lead.company === 'string' ? lead.company : '');
           
           map[lead.id] = lead.name + (companyName ? ` (${companyName})` : '');
+          
+          // Store lead -> assignee mapping
+          if (lead.assignee_id) {
+            leadAssigneeMap[lead.id] = lead.assignee_id;
+          }
+          
           return map;
         }, {});
       }
     }
 
     // Mapeamos las conversaciones con toda la información disponible
-    return conversations.map((conv: any) => {
+    return filteredConversations.map((conv: any) => {
       const lastMessage = conv.messages && conv.messages.length > 0
         ? conv.messages[conv.messages.length - 1].content
         : undefined
@@ -387,10 +452,17 @@ export async function getConversations(
         title = `Chat with ${leadName}`;
       }
       
-      // Get agent name with fallback
+      // Get agent name with fallback, but prioritize assignee if lead has one
       const agentId = conv.agent_id || "";
-      const agentName = agentsMap[agentId] || 
+      const assigneeId = leadId ? leadAssigneeMap[leadId] : null;
+      
+      let agentName = agentsMap[agentId] || 
         (agentId && agentId !== "" ? "Unknown Agent" : "Agent");
+      
+      // If lead has an assignee, use assignee name instead of agent name
+      if (assigneeId && assigneesMap[assigneeId]) {
+        agentName = assigneesMap[assigneeId];
+      }
       
       // Extract channel from custom_data or default to 'web'
       const customData = conv.custom_data || {};

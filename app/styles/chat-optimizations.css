@@ -6,6 +6,10 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000;
+  backdrop-filter: blur(14px);
+  padding: 0px;
+  margin-bottom: 16px;
+  margin-left: 1px;
 }
 
 /* Optimize textarea for smooth typing */

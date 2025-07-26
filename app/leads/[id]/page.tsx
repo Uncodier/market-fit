@@ -16,6 +16,7 @@ import { LeadDetail } from "@/app/leads/components/LeadDetail"
 import { JourneyView } from "@/app/leads/components/JourneyView"
 import { ConversationsView } from "@/app/leads/components/ConversationsView"
 import { SalesView } from "@/app/leads/components/SalesView"
+import { DigitalBehaviorView } from "@/app/leads/components/DigitalBehaviorView"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { LeadDetailSkeleton } from "@/app/leads/components/LeadDetailSkeleton"
@@ -293,6 +294,7 @@ export default function LeadDetailPage() {
                 <TabsTrigger value="journey">Customer Journey</TabsTrigger>
                 <TabsTrigger value="conversations">Conversations</TabsTrigger>
                 <TabsTrigger value="sales">Sales</TabsTrigger>
+                <TabsTrigger value="digital-behavior">Digital Behavior</TabsTrigger>
               </TabsList>
               
               {lead && (
@@ -320,6 +322,9 @@ export default function LeadDetailPage() {
                 </TabsContent>
                 <TabsContent value="sales" className="mt-0 pt-0">
                   <SalesView leadId={lead.id} />
+                </TabsContent>
+                <TabsContent value="digital-behavior" className="mt-0 pt-0">
+                  <DigitalBehaviorView leadId={lead.id} />
                 </TabsContent>
               </div>
               

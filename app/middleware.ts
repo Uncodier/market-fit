@@ -9,6 +9,55 @@ const ALLOWED_PUBLIC_PATHS = [
   '/auth/logout'
 ]
 
+// Define suspicious patterns that should be blocked immediately
+const SUSPICIOUS_PATTERNS = [
+  /\.php(\?|$)/i,
+  /\/wp-/i,
+  /\/admin/i,
+  /\/backend/i,
+  /\/scripts/i,
+  /\/server\/php/i,
+  /filemanager/i,
+  /upload/i,
+  /\.asp(\?|$)/i,
+  /\.jsp(\?|$)/i,
+  /\.cgi(\?|$)/i,
+  /\/cgi-bin/i,
+  /\/xmlrpc/i,
+  /\/phpmyadmin/i,
+  /\/mysql/i,
+  /\.env/i,
+  /\.git/i,
+  /\.sql/i,
+  /\/config\./i,
+  /\/setup/i,
+  /\/install/i
+]
+
+// Define known malicious file extensions and paths
+const MALICIOUS_EXTENSIONS = [
+  '.php', '.asp', '.aspx', '.jsp', '.cgi', '.pl', '.py', '.rb', '.sh'
+]
+
+function isSuspiciousRequest(path: string): boolean {
+  // Check for suspicious patterns
+  if (SUSPICIOUS_PATTERNS.some(pattern => pattern.test(path))) {
+    return true
+  }
+  
+  // Check for malicious extensions in non-API routes
+  if (!path.startsWith('/api/') && MALICIOUS_EXTENSIONS.some(ext => path.includes(ext))) {
+    return true
+  }
+  
+  // Check for directory traversal attempts
+  if (path.includes('..') || path.includes('%2e%2e')) {
+    return true
+  }
+  
+  return false
+}
+
 // IMPORTANTE: Excluir completamente recursos estáticos
 function isStaticOrResourceFile(pathname: string): boolean {
   return pathname.includes('/_next/') || 
@@ -36,6 +85,12 @@ const getCorsHeaders = (response: NextResponse) => {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  
+  // Block suspicious requests immediately
+  if (isSuspiciousRequest(pathname)) {
+    console.log('Middleware: Blocked suspicious request:', pathname)
+    return new NextResponse(null, { status: 404 })
+  }
   
   // Handle OPTIONS request for preflight checks (CORS)
   if (request.method === 'OPTIONS') {

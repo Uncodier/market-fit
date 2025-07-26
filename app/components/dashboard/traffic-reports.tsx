@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { SessionsWidget } from "@/app/components/dashboard/traffic/visits-widget";
-import { UniqueVisitorsWidget } from "@/app/components/dashboard/traffic/unique-visitors-widget";
+import { ClientConversionWidget } from "@/app/components/dashboard/traffic/client-conversion-widget";
 import { SessionTimeWidget } from "@/app/components/dashboard/traffic/session-time-widget";
 import { LeadConversionWidget } from "@/app/components/dashboard/traffic/lead-conversion-widget";
 import { TrafficPieChart } from "@/app/components/dashboard/traffic/traffic-pie-chart";
@@ -163,7 +163,7 @@ export function TrafficReports({
         return urlParams;
       };
 
-      // Add retry protection to prevent infinite loops
+      // Track current parameters for change detection
       const currentParams = JSON.stringify({ 
         siteId: currentSite.id, 
         userId: user.id, 
@@ -171,19 +171,11 @@ export function TrafficReports({
         endDate: format(safeEndDate, 'yyyy-MM-dd') 
       });
       
-      if (currentParams === lastParamsRef.current) {
-        retryCountRef.current++;
-        console.log(`[TrafficReports] Retry attempt ${retryCountRef.current} for same parameters`);
-        if (retryCountRef.current >= maxRetries) {
-          console.error(`[TrafficReports] Max retries reached, aborting request`);
-          setError("Max retries reached - please refresh the page");
-          setIsLoading(false);
-          setDataLoaded(true);
-          return;
-        }
-      } else {
+      // Reset retry counter only when parameters actually change
+      if (currentParams !== lastParamsRef.current) {
         retryCountRef.current = 0;
         lastParamsRef.current = currentParams;
+        console.log(`[TrafficReports] Parameters changed, reset retry counter`);
       }
 
       console.log(`[TrafficReports] Fetching traffic data with params: ${currentParams}`);
@@ -253,6 +245,26 @@ export function TrafficReports({
         }
       } catch (error) {
         console.error("[TrafficReports] Error fetching traffic data:", error);
+        
+        // Increment retry counter only on actual errors
+        retryCountRef.current++;
+        console.log(`[TrafficReports] Error occurred, retry attempt ${retryCountRef.current}/${maxRetries}`);
+        
+        if (retryCountRef.current >= maxRetries) {
+          console.error(`[TrafficReports] Max retries reached after ${maxRetries} attempts, aborting`);
+          if (isMounted) {
+            setError("Max retries reached - please refresh the page");
+            setDataLoaded(true);
+          }
+        } else {
+          // Don't set error on retry attempts, let it retry automatically
+          console.log(`[TrafficReports] Will retry in next useEffect cycle`);
+          if (isMounted) {
+            setDataLoaded(false); // Keep trying
+          }
+          return; // Exit early to allow retry
+        }
+        
         if (isMounted) {
           setError(error instanceof Error ? error.message : 'Failed to fetch traffic data');
           setDataLoaded(true);
@@ -302,17 +314,17 @@ export function TrafficReports({
           endDate={endDate}
           segmentId={segmentId}
         />
-        <UniqueVisitorsWidget
-          startDate={startDate}
-          endDate={endDate}
-          segmentId={segmentId}
-        />
         <SessionTimeWidget
           startDate={startDate}
           endDate={endDate}
           segmentId={segmentId}
         />
         <LeadConversionWidget
+          startDate={startDate}
+          endDate={endDate}
+          segmentId={segmentId}
+        />
+        <ClientConversionWidget
           startDate={startDate}
           endDate={endDate}
           segmentId={segmentId}
@@ -420,6 +432,7 @@ export function TrafficReports({
         siteId={siteId} 
         startDate={startDate}
         endDate={endDate}
+        segmentId={segmentId}
       />
     </div>
   );

@@ -345,6 +345,68 @@ export function KanbanView({
     }
   }
   
+  // Función para alternar asignación entre usuario actual y IA
+  const handleToggleAssignee = async (leadId: string) => {
+    if (!user?.id || !currentSite?.id) {
+      toast.error("User not authenticated or site not selected")
+      return
+    }
+
+    const lead = leads.find(l => l.id === leadId)
+    if (!lead) return
+
+    setAssigningLeads(prev => ({ ...prev, [leadId]: true }))
+    
+    try {
+      // Si el lead está asignado a mí, asignar a IA (null)
+      // Si no está asignado a mí, asignar a mí
+      const newAssigneeId = lead.assignee_id === user.id ? null : user.id
+      
+      if (newAssigneeId === null) {
+        // Asignar a IA usando updateLead
+        const result = await updateLead({
+          id: leadId,
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          company: lead.company,
+          position: lead.position,
+          segment_id: lead.segment_id,
+          status: lead.status,
+          origin: lead.origin,
+          site_id: currentSite.id,
+          assignee_id: null
+        })
+        
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+        
+        toast.success("Lead assigned to AI Team")
+      } else {
+        // Asignar a usuario actual
+        const result = await assignLeadToUser(leadId, user.id, currentSite.id)
+        
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+        
+        toast.success("Lead assigned to you")
+      }
+      
+      // Actualizar el lead localmente
+      onUpdateLead?.(leadId, { assignee_id: newAssigneeId })
+      
+    } catch (error) {
+      console.error('Error toggling assignee:', error)
+      toast.error("Failed to update assignee")
+    } finally {
+      setAssigningLeads(prev => ({ ...prev, [leadId]: false }))
+    }
+  }
+
   // Actualizamos los leads cuando cambia la prop leads
   React.useEffect(() => {
     setLeadsByStatus(getLeadsByStatus())
@@ -588,28 +650,57 @@ export function KanbanView({
                                             </Tooltip>
                                           </TooltipProvider>
                                         )}
-                                        {/* Assignee indicator - at the end */}
-                                        {lead.assignee_id && (
-                                          <TooltipProvider>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <div className="flex items-center space-x-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md">
-                                                  <UserIcon className="h-3 w-3" />
+                                        {/* Assignee indicator - always show */}
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              {lead.assignee_id ? (
+                                                <button
+                                                  className="flex items-center space-x-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                                                  disabled={assigningLeads[lead.id]}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    e.preventDefault()
+                                                    handleToggleAssignee(lead.id)
+                                                  }}
+                                                >
+                                                  {assigningLeads[lead.id] ? (
+                                                    <Loader className="h-3 w-3" />
+                                                  ) : (
+                                                    <UserIcon className="h-3 w-3" />
+                                                  )}
                                                   <span className="text-xs font-medium">
                                                     {lead.assignee_id === user?.id 
                                                       ? 'You' 
                                                       : userData?.[lead.assignee_id]?.name || 'Assigned'}
                                                   </span>
-                                                </div>
-                                              </TooltipTrigger>
-                                              <TooltipContent>
-                                                <p>Assigned to {lead.assignee_id === user?.id 
-                                                  ? 'you' 
-                                                  : userData?.[lead.assignee_id]?.name || 'team member'}</p>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
-                                        )}
+                                                </button>
+                                              ) : (
+                                                <button
+                                                  className="flex items-center space-x-1 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors cursor-pointer"
+                                                  disabled={assigningLeads[lead.id]}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    e.preventDefault()
+                                                    handleToggleAssignee(lead.id)
+                                                  }}
+                                                >
+                                                  {assigningLeads[lead.id] ? (
+                                                    <Loader className="h-3 w-3" />
+                                                  ) : (
+                                                    <Sparkles className="h-3 w-3" />
+                                                  )}
+                                                  <span className="text-xs font-medium">AI</span>
+                                                </button>
+                                              )}
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Click to {lead.assignee_id === user?.id 
+                                                ? 'assign to AI Team' 
+                                                : 'assign to me'}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
                                       </div>
                                     </div>
                                   </CardContent>

@@ -11,7 +11,7 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { Sparkles, User as UserIcon } from "@/app/components/ui/icons"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { assignLeadToUser } from "@/app/leads/actions"
+import { assignLeadToUser, updateLead } from "@/app/leads/actions"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
 import { Lead } from "@/app/leads/types"
@@ -285,6 +285,72 @@ export function GroupedLeadsTable({
     }
   }
 
+  // Función para alternar asignación entre usuario actual y IA
+  const handleToggleAssignee = async (leadId: string) => {
+    if (!user?.id || !currentSite?.id) {
+      toast.error("User not authenticated or site not selected")
+      return
+    }
+
+    const lead = companyGroups
+      .flatMap(group => group.leads)
+      .find(l => l.id === leadId)
+    
+    if (!lead) return
+
+    setAssigningLeads(prev => ({ ...prev, [leadId]: true }))
+    
+    try {
+      // Si el lead está asignado a mí, asignar a IA (null)
+      // Si no está asignado a mí, asignar a mí
+      const newAssigneeId = lead.assignee_id === user.id ? null : user.id
+      
+      if (newAssigneeId === null) {
+        // Asignar a IA usando updateLead
+        const result = await updateLead({
+          id: leadId,
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          company: lead.company,
+          position: lead.position,
+          segment_id: lead.segment_id,
+          status: lead.status,
+          origin: lead.origin,
+          site_id: currentSite.id,
+          assignee_id: null
+        })
+        
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+        
+        toast.success("Lead assigned to AI Team")
+      } else {
+        // Asignar a usuario actual
+        const result = await assignLeadToUser(leadId, user.id, currentSite.id)
+        
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+        
+        toast.success("Lead assigned to you")
+      }
+      
+      // Actualizar el lead localmente
+      onUpdateLead?.(leadId, { assignee_id: newAssigneeId })
+      invalidateJourneyStageCache(leadId)
+      
+    } catch (error) {
+      console.error('Error toggling assignee:', error)
+      toast.error("Failed to update assignee")
+    } finally {
+      setAssigningLeads(prev => ({ ...prev, [leadId]: false }))
+    }
+  }
+
   // Función para obtener el nombre del segmento
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return "No Segment"
@@ -431,19 +497,31 @@ export function GroupedLeadsTable({
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md min-w-0">
-                                <UserIcon className="h-3 w-3 flex-shrink-0" />
+                              <button
+                                className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md min-w-0 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                                disabled={assigningLeads[group.mostAdvancedLead.id]}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  e.preventDefault()
+                                  handleToggleAssignee(group.mostAdvancedLead.id)
+                                }}
+                              >
+                                {assigningLeads[group.mostAdvancedLead.id] ? (
+                                  <Loader className="h-3 w-3 flex-shrink-0" />
+                                ) : (
+                                  <UserIcon className="h-3 w-3 flex-shrink-0" />
+                                )}
                                 <span className="text-xs font-medium truncate">
                                   {group.mostAdvancedLead.assignee_id === user?.id 
                                     ? 'You' 
                                     : userData[group.mostAdvancedLead.assignee_id]?.name || 'Assigned'}
                                 </span>
-                              </div>
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Assigned to {group.mostAdvancedLead.assignee_id === user?.id 
-                                ? 'you' 
-                                : userData[group.mostAdvancedLead.assignee_id]?.name || 'team member'}</p>
+                              <p>Click to {group.mostAdvancedLead.assignee_id === user?.id 
+                                ? 'assign to AI Team' 
+                                : 'assign to me'}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -459,7 +537,7 @@ export function GroupedLeadsTable({
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   e.preventDefault()
-                                  handleAssignLead(group.mostAdvancedLead.id, group.leadCount > 1, group.leads)
+                                  handleToggleAssignee(group.mostAdvancedLead.id)
                                 }}
                               >
                                 {assigningLeads[group.mostAdvancedLead.id] ? (
@@ -471,7 +549,7 @@ export function GroupedLeadsTable({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{group.leadCount > 1 ? `Assign all ${group.leadCount} leads to me` : 'Assign to me'}</p>
+                              <p>Click to assign to me</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -583,19 +661,31 @@ export function GroupedLeadsTable({
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md min-w-0">
-                                  <UserIcon className="h-3 w-3 flex-shrink-0" />
+                                <button
+                                  className="flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md min-w-0 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                                  disabled={assigningLeads[lead.id]}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    handleToggleAssignee(lead.id)
+                                  }}
+                                >
+                                  {assigningLeads[lead.id] ? (
+                                    <Loader className="h-3 w-3 flex-shrink-0" />
+                                  ) : (
+                                    <UserIcon className="h-3 w-3 flex-shrink-0" />
+                                  )}
                                   <span className="text-xs font-medium truncate">
                                     {lead.assignee_id === user?.id 
                                       ? 'You' 
                                       : userData[lead.assignee_id]?.name || 'Assigned'}
                                   </span>
-                                </div>
+                                </button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Assigned to {lead.assignee_id === user?.id 
-                                  ? 'you' 
-                                  : userData[lead.assignee_id]?.name || 'team member'}</p>
+                                <p>Click to {lead.assignee_id === user?.id 
+                                  ? 'assign to AI Team' 
+                                  : 'assign to me'}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -611,7 +701,7 @@ export function GroupedLeadsTable({
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     e.preventDefault()
-                                    handleAssignLead(lead.id)
+                                    handleToggleAssignee(lead.id)
                                   }}
                                 >
                                   {assigningLeads[lead.id] ? (
@@ -623,7 +713,7 @@ export function GroupedLeadsTable({
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Assign to me</p>
+                                <p>Click to assign to me</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>

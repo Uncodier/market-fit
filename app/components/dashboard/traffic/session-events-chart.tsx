@@ -85,33 +85,24 @@ export function SessionEventsChart({
         params.append('siteId', siteId);
         if (start) params.append('startDate', start);
         if (end) params.append('endDate', end);
+        params.append('referrersLimit', '10');
         
-        console.log('Fetching page visits with params:', params.toString());
-        const response = await fetch(`/api/traffic/session-events?${params.toString()}`);
+        console.log('Fetching combined page visits data with params:', params.toString());
+        const response = await fetch(`/api/traffic/session-events-combined?${params.toString()}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch page visits data');
         }
         
         const result = await response.json();
-        console.log('Page visits response:', result);
+        console.log('Combined page visits response:', result);
         
-        // Transform old format to new format if needed
-        const transformedData = (result.data || []).map((item: any) => ({
-          date: item.date,
-          pageVisits: item.events || 0,
-          uniqueVisitors: 0, // Will be populated by combined API
-          label: item.label
-        }));
-        
-        setInternalData(transformedData);
-        setInternalTotals({
-          pageVisits: transformedData.reduce((sum: number, item: any) => sum + item.pageVisits, 0),
-          uniqueVisitors: 0
-        });
+        // Use the combined data directly
+        setInternalData(result.chartData || []);
+        setInternalTotals(result.totals || { pageVisits: 0, uniqueVisitors: 0 });
       } catch (err) {
         setInternalError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error fetching page visits:', err);
+        console.error('Error fetching combined page visits:', err);
       } finally {
         setInternalLoading(false);
       }
@@ -128,103 +119,77 @@ export function SessionEventsChart({
       <Card className="flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <CardTitle>Page Visits vs Unique Visitors</CardTitle>
-          <div className="h-8 flex items-center space-x-3">
-            {/* Skeleton for totals */}
-            <div className="flex items-center space-x-1">
-              <div className="h-4 w-6 bg-blue-200 dark:bg-blue-800 rounded animate-pulse"></div>
-              <div className="h-4 w-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
+              <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
             </div>
-            <div className="flex items-center space-x-1">
-              <div className="h-4 w-6 bg-green-200 dark:bg-green-800 rounded animate-pulse"></div>
-              <div className="h-4 w-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
+              <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
             </div>
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
-          <div className="w-full h-full flex flex-col overflow-hidden">
-            {/* Legend skeleton */}
-            <div className="flex justify-center items-center space-x-6 pb-4 pt-2">
-              <div className="flex items-center space-x-2">
-                <div className="h-3 w-3 bg-blue-300 dark:bg-blue-600 rounded-sm animate-pulse"></div>
-                <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="h-3 w-3 bg-green-300 dark:bg-green-600 rounded-sm animate-pulse"></div>
-                <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-              </div>
-            </div>
-
-            {/* Chart area */}
-            <div className="flex flex-1 relative pl-12">
-              {/* Y-axis skeleton */}
-              <div className="absolute left-0 top-0 bottom-8 w-10 flex flex-col justify-between py-2">
-                {[35, 28, 42, 31, 25].map((width, i) => (
-                  <div 
-                    key={i} 
-                    className="h-3 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"
-                    style={{ 
-                      width: `${width}px`,
-                      animationDelay: `${i * 0.1}s`
-                    }}
-                  ></div>
-                ))}
-              </div>
-
-              {/* Grid lines skeleton */}
-              <div className="absolute left-12 right-4 top-0 bottom-8 flex flex-col justify-between pointer-events-none">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="border-t w-full h-0 border-slate-100 dark:border-slate-600 opacity-50"></div>
-                ))}
-              </div>
-
-              {/* Dual bars skeleton */}
-              <div className="w-full ml-2 mr-4 h-full flex items-end justify-between pb-8">
-                {[65, 45, 80, 35, 70, 55, 90, 40, 60, 75].map((height, index) => (
-                  <div 
-                    key={index}
-                    className="flex space-x-1 h-full flex-col justify-end items-center"
-                    style={{ width: '8%' }}
-                  >
-                    {/* Page visits bar (blue) */}
-                    <div 
-                      className="bg-blue-200 dark:bg-blue-700 rounded-t-sm animate-pulse"
-                      style={{ 
-                        height: `${height}%`,
-                        width: '45%',
-                        animationDelay: `${index * 0.1}s`
-                      }}
-                    />
-                    {/* Unique visitors bar (green) */}
-                    <div 
-                      className="bg-green-200 dark:bg-green-700 rounded-t-sm animate-pulse"
-                      style={{ 
-                        height: `${Math.max(20, height - 15)}%`,
-                        width: '45%',
-                        animationDelay: `${index * 0.1 + 0.05}s`
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* X-axis labels skeleton */}
-            <div className="h-8 flex justify-between pl-12 pr-4">
-              {[30, 35, 28, 32, 40, 33, 29, 36, 31, 34].map((width, index) => (
-                <div 
-                  key={index} 
-                  className="flex justify-center"
-                  style={{ width: '8%' }}
-                >
-                  <div 
-                    className="h-3 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"
-                    style={{ 
-                      width: `${width}px`,
-                      animationDelay: `${index * 0.05 + 0.3}s`
-                    }}
-                  ></div>
+          <div className="flex-1">
+            {/* Simple skeleton that matches the actual chart structure */}
+            <div className="w-full h-full flex flex-col">
+              
+              {/* Legend skeleton - simple and clean */}
+              <div className="flex justify-center items-center space-x-6 pb-4 pt-2">
+                <div className="flex items-center space-x-2">
+                  <div className="h-3 w-3 bg-muted rounded-sm animate-pulse"></div>
+                  <div className="h-3 w-16 bg-muted rounded animate-pulse"></div>
                 </div>
-              ))}
+                <div className="flex items-center space-x-2">
+                  <div className="h-3 w-3 bg-muted rounded-sm animate-pulse"></div>
+                  <div className="h-3 w-20 bg-muted rounded animate-pulse"></div>
+                </div>
+              </div>
+
+              {/* Chart skeleton - mimics ResponsiveContainer structure */}
+              <div className="flex-1 relative">
+                
+                {/* Y-axis skeleton */}
+                <div className="absolute left-0 top-4 bottom-12 w-8 flex flex-col justify-between">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-3 w-6 bg-muted rounded animate-pulse"></div>
+                  ))}
+                </div>
+
+                {/* Chart area skeleton */}
+                <div className="ml-10 mr-4 h-full flex items-end justify-center pb-12 pt-4">
+                  <div className="w-full h-full flex items-end justify-between">
+                    {Array.from({ length: 7 }, (_, index) => (
+                      <div key={index} className="flex space-x-1 items-end h-full" style={{ width: '12%' }}>
+                        {/* Two bars side by side - no colors, just muted */}
+                        <div 
+                          className="bg-muted animate-pulse"
+                          style={{ 
+                            height: `${40 + (index * 10)}%`,
+                            width: '6px'
+                          }}
+                        />
+                        <div 
+                          className="bg-muted animate-pulse"
+                          style={{ 
+                            height: `${30 + (index * 8)}%`,
+                            width: '6px'
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* X-axis skeleton */}
+                <div className="absolute bottom-0 left-10 right-4 h-8 flex justify-between items-center">
+                  {Array.from({ length: 7 }, (_, index) => (
+                    <div key={index} className="h-3 w-8 bg-muted rounded animate-pulse"></div>
+                  ))}
+                </div>
+
+              </div>
             </div>
           </div>
         </CardContent>
@@ -236,7 +201,7 @@ export function SessionEventsChart({
     return (
       <Card className="flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
-          <CardTitle>Page Visits vs Unique Visitors</CardTitle>
+          <CardTitle className="text-base">Page Visits vs Unique Visitors</CardTitle>
           <div className="h-8 flex items-center">
             <div className="text-2xl font-bold">
               0
@@ -254,14 +219,16 @@ export function SessionEventsChart({
 
   return (
     <Card className="flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
-        <CardTitle>Page Visits vs Unique Visitors</CardTitle>
-        <div className="h-8 flex items-center space-x-4">
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-blue-600 dark:text-blue-400">PV:</span> {totalPageVisits.toLocaleString()}
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-base">Page Visits vs Unique Visitors</CardTitle>
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-2">
+            <div className="text-2xl font-bold">{totalPageVisits.toLocaleString()}</div>
+            <div className="text-sm text-muted-foreground">Page Visits</div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-green-600 dark:text-green-400">UV:</span> {totalUniqueVisitors.toLocaleString()}
+          <div className="flex items-center space-x-2">
+            <div className="text-2xl font-bold">{totalUniqueVisitors.toLocaleString()}</div>
+            <div className="text-sm text-muted-foreground">Unique Visitors</div>
           </div>
         </div>
       </CardHeader>
