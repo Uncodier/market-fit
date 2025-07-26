@@ -30,8 +30,9 @@ export function useChannelSelector({
   const { currentSite } = useSite()
   const [selectedChannel, setSelectedChannelState] = useState<Channel>(defaultChannel)
   const [isUpdatingChannel, setIsUpdatingChannel] = useState(false)
-  const lastConversationId = useRef<string | undefined>(undefined)
-  const isInitialized = useRef(false)
+
+  // Debug log para tracking
+  console.log(`[useChannelSelector] Hook called - conversationId: ${conversationId}, selectedChannel: ${selectedChannel}`)
 
   // Memoize site channels to avoid unnecessary recalculations
   const siteChannels = useMemo(() => 
@@ -43,8 +44,16 @@ export function useChannelSelector({
   const availableChannels = useMemo(() => {
     const channels: Channel[] = ['web'] // Web chat is always available
 
+    console.log(`[availableChannels] Calculating channels - selectedChannel: ${selectedChannel}, isAgentOnly: ${isAgentOnlyConversation}`)
+
     // Don't show other channels for agent-only conversations
     if (isAgentOnlyConversation) {
+      console.log(`[availableChannels] Agent-only conversation, only web available`)
+      // Always include the selected channel even for agent-only conversations
+      if (selectedChannel !== 'web' && !channels.includes(selectedChannel)) {
+        channels.push(selectedChannel)
+        console.log(`[availableChannels] Added conversation channel ${selectedChannel} to agent-only conversation`)
+      }
       return channels
     }
 
@@ -53,6 +62,13 @@ export function useChannelSelector({
         siteChannels.email.status === 'synced' &&
         leadData?.email) {
       channels.push('email')
+      console.log(`[availableChannels] Added email channel`)
+    } else {
+      console.log(`[availableChannels] Email not available:`, {
+        enabled: siteChannels?.email?.enabled,
+        status: siteChannels?.email?.status,
+        hasEmail: !!leadData?.email
+      })
     }
 
     // Check WhatsApp channel availability
@@ -60,10 +76,25 @@ export function useChannelSelector({
         siteChannels.whatsapp.status === 'active' &&
         leadData?.phone) {
       channels.push('whatsapp')
+      console.log(`[availableChannels] Added whatsapp channel`)
+    } else {
+      console.log(`[availableChannels] WhatsApp not available:`, {
+        enabled: siteChannels?.whatsapp?.enabled,
+        status: siteChannels?.whatsapp?.status,
+        hasPhone: !!leadData?.phone
+      })
     }
 
+    // IMPORTANT: Always include the conversation's selected channel if it's not already included
+    // This ensures the conversation's original channel is always available for selection
+    if (selectedChannel && !channels.includes(selectedChannel)) {
+      channels.push(selectedChannel)
+      console.log(`[availableChannels] Added conversation's channel ${selectedChannel} to available channels`)
+    }
+
+    console.log(`[availableChannels] Final channels:`, channels)
     return channels
-  }, [siteChannels, leadData?.email, leadData?.phone, isAgentOnlyConversation])
+  }, [siteChannels, leadData?.email, leadData?.phone, isAgentOnlyConversation, selectedChannel])
 
   // Enhanced setSelectedChannel with database update
   const setSelectedChannel = useCallback(async (channel: Channel) => {
@@ -131,20 +162,27 @@ export function useChannelSelector({
     }
   }, [availableChannels, selectedChannel, conversationId])
 
-  // Get conversation's channel from database - optimized to run only when needed
+  // Get conversation's channel from database - run immediately when conversationId is available
   useEffect(() => {
-    // Skip if no conversation ID, it's a new conversation, or we already processed this conversation
-    if (!conversationId || 
-        conversationId.startsWith("new-") || 
-        lastConversationId.current === conversationId) {
+    console.log(`[loadChannelEffect] conversationId: ${conversationId}`)
+    
+    // Skip if no conversation ID or it's a new conversation
+    if (!conversationId || (conversationId && conversationId.startsWith("new-"))) {
+      console.log(`[loadChannelEffect] Skipping - no conversation or new conversation`)
+      // Reset to default for new conversations
+      if (conversationId && conversationId.startsWith("new-")) {
+        setSelectedChannelState('web')
+      }
       return
     }
 
+    console.log(`[loadChannelEffect] Processing conversation ${conversationId} (always load)`)
     let isCancelled = false
-    lastConversationId.current = conversationId
 
     async function getConversationChannel() {
       try {
+        console.log(`[getConversationChannel] Loading channel for conversation: ${conversationId}`)
+        
         const { createClient } = await import("@/lib/supabase/client")
         const supabase = createClient()
         
@@ -153,6 +191,12 @@ export function useChannelSelector({
           .select("custom_data, channel")
           .eq("id", conversationId)
           .single()
+          
+        console.log(`[getConversationChannel] DB response for ${conversationId}:`, {
+          conversation,
+          error,
+          isCancelled
+        })
           
         // Don't update state if component was unmounted or conversation changed
         if (isCancelled || error) {
@@ -165,23 +209,24 @@ export function useChannelSelector({
         
         if (conversation.channel) {
           conversationChannel = conversation.channel as Channel
+          console.log(`[getConversationChannel] Found channel in direct field: ${conversationChannel}`)
         } else if (conversation.custom_data?.channel) {
           conversationChannel = conversation.custom_data.channel as Channel
+          console.log(`[getConversationChannel] Found channel in custom_data: ${conversationChannel}`)
+        } else {
+          console.log(`[getConversationChannel] No channel found in DB, defaulting to: ${conversationChannel}`)
         }
         
         // Normalize website_chat to web since they are the same
         if (conversationChannel === 'website_chat' as any) {
           conversationChannel = 'web'
+          console.log(`[getConversationChannel] Normalized website_chat to web`)
         }
         
-        // Only set the channel if it's available for this conversation
-        if (availableChannels.includes(conversationChannel)) {
-          setSelectedChannelState(conversationChannel)
-        } else {
-          // If the conversation's channel is not available, default to the first available
-          const firstAvailable = availableChannels[0] || 'web'
-          setSelectedChannelState(firstAvailable)
-        }
+        console.log(`📺 Channel loaded from conversation ${conversationId}: ${conversationChannel}`)
+        
+        // Set the channel from database
+        setSelectedChannelState(conversationChannel)
       } catch (error) {
         if (!isCancelled) {
           console.error("Error getting conversation channel:", error)
@@ -195,20 +240,19 @@ export function useChannelSelector({
     return () => {
       isCancelled = true
     }
-  }, [conversationId, availableChannels])
+  }, [conversationId])
 
-  // Ensure selected channel is always available - only run once on initialization or when channels change significantly
+  // Log current channel status for debugging
   useEffect(() => {
-    if (!isInitialized.current) {
-      isInitialized.current = true
-      return // Skip on first render to allow conversation channel to be loaded
-    }
+    console.log(`📺 Channel status:`, {
+      selectedChannel,
+      availableChannels,
+      conversationId,
+      isChannelAvailable: availableChannels.includes(selectedChannel)
+    })
+  }, [selectedChannel, availableChannels, conversationId])
 
-    if (!availableChannels.includes(selectedChannel)) {
-      const firstAvailable = availableChannels[0] || 'web'
-      setSelectedChannelState(firstAvailable)
-    }
-  }, [availableChannels, selectedChannel])
+
 
   return {
     selectedChannel,
