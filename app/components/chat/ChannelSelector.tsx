@@ -73,7 +73,7 @@ export const ChannelSelector = memo(function ChannelSelector({
                 {isUpdating && channel === selectedChannel ? (
                   <Icons.Loader className="h-4 w-4 animate-spin" />
                 ) : (
-                  <IconComponent className={`h-4 w-4 ${channel === 'web' ? 'text-blue-500/70' : ''}`} />
+                  <IconComponent className="h-4 w-4" />
                 )}
               </TabsTrigger>
             )

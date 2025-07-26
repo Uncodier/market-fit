@@ -23,7 +23,7 @@ const getFilterConfig = (userAvatarUrl?: string | null, userName?: string) => ({
     label: "All"
   },
   web: {
-    icon: ({ className }: { className?: string }) => <Icons.Globe className="h-2.5 w-2.5 text-blue-500" />,
+    icon: ({ className }: { className?: string }) => <Icons.Globe className="h-2.5 w-2.5 text-current" />,
     label: "Web"
   },
   email: {
