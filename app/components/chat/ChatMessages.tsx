@@ -443,13 +443,23 @@ export function ChatMessages({
     ),
     pre: ({ node, ...props }: any) => (
       <pre 
-        style={{ whiteSpace: 'pre-wrap', overflowX: 'auto' }} 
+        style={{ 
+          whiteSpace: 'pre-wrap', 
+          overflowX: 'auto',
+          wordBreak: 'break-word',
+          overflowWrap: 'break-word',
+          maxWidth: '100%'
+        }} 
         {...props} 
       />
     ),
     code: ({ node, ...props }: any) => (
       <code 
-        style={{ wordBreak: 'break-word' }} 
+        style={{ 
+          wordBreak: 'break-word',
+          overflowWrap: 'break-word',
+          whiteSpace: 'pre-wrap'
+        }} 
         {...props} 
       />
     ),
@@ -581,7 +591,7 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                               <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
@@ -691,7 +701,7 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                               <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
@@ -812,7 +822,7 @@ export function ChatMessages({
                             </span>
                           </div>
                           <div className="ml-9">
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                               <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                             </div>
                             
@@ -864,7 +874,7 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                               <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
@@ -961,7 +971,7 @@ export function ChatMessages({
                             filter: 'none' 
                           }}
                         >
-                          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words">
+                          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                             <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
                           </div>
                           <div className="flex items-center justify-between mt-1.5">

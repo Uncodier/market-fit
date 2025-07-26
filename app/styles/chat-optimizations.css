@@ -112,10 +112,77 @@
   }
 }
 
+/* Text wrapping and overflow optimizations */
+.chat-message-content {
+  /* Aggressive text wrapping for long content */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  
+  /* Ensure content never overflows */
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+  
+  /* Handle inline code and pre elements */
+  white-space: pre-wrap;
+  
+  /* Improve readability */
+  line-height: 1.6;
+  font-variant-ligatures: common-ligatures;
+}
+
+/* Specific handling for code blocks and preformatted text */
+.chat-message-content pre,
+.chat-message-content code {
+  /* Force wrapping in code blocks */
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  
+  /* Ensure code doesn't overflow */
+  max-width: 100% !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  
+  /* Add horizontal scroll only when necessary */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+/* Handle very long URLs and file paths */
+.chat-message-content a,
+.chat-message-content [href] {
+  word-break: break-all;
+  overflow-wrap: break-word;
+  hyphens: none;
+}
+
+/* Ensure tables and wide content are contained */
+.chat-message-content table {
+  max-width: 100%;
+  table-layout: fixed;
+  word-wrap: break-word;
+}
+
+.chat-message-content td,
+.chat-message-content th {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 0;
+}
+
 /* Dark mode optimizations */
 @media (prefers-color-scheme: dark) {
   .optimized-textarea {
     /* Optimize for dark backgrounds */
     color-scheme: dark;
+  }
+  
+  .chat-message-content pre,
+  .chat-message-content code {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   }
 } 
