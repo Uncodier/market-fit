@@ -18,6 +18,7 @@ import { MessageSquare } from "@/app/components/ui/icons"
 import { DelayTimer } from "./DelayTimer"
 import { EditMessageModal } from "./EditMessageModal"
 import { formatEmailForChat, isMimeMultipartMessage } from "@/app/utils/email-formatter"
+import { extractCleanText } from "@/app/utils/text-cleaning"
 import { useSite } from "@/app/context/SiteContext"
 import { useRef } from "react"
 
@@ -30,13 +31,55 @@ const formatDate = (date: Date) => {
   });
 };
 
-// Helper function to format message content (handles emails and regular text)
-const formatMessageContent = (text: string): string => {
-  // Debug logging for production
-  if (text && text.includes('Apple-Mail') && text.includes('Content-Type')) {
-    console.log('🔍 [formatMessageContent] Detected potential email content:', text.substring(0, 100) + '...')
-    console.log('🔍 [formatMessageContent] Is MIME multipart?', isMimeMultipartMessage(text))
+// Function to aggressively remove ALL HTML tags - ULTRA AGGRESSIVE VERSION
+const removeAllHtmlTags = (text: string): string => {
+  console.log('🔧 [removeAllHtmlTags] Input:', text.substring(0, 100) + '...')
+  
+  let cleaned = text
+  
+  // Method 1: Remove everything from < to > (including multiline)
+  cleaned = cleaned.replace(/<[^>]*>/g, '')
+  
+  // Method 2: If that fails, try character by character approach
+  if (cleaned.includes('<')) {
+    console.log('🔧 [removeAllHtmlTags] First method failed, trying character approach...')
+    let result = ''
+    let inTag = false
+    
+    for (let i = 0; i < cleaned.length; i++) {
+      const char = cleaned[i]
+      if (char === '<') {
+        inTag = true
+      } else if (char === '>') {
+        inTag = false
+      } else if (!inTag) {
+        result += char
+      }
+    }
+    cleaned = result
   }
+  
+  // Clean up multiple spaces and normalize whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim()
+  
+  console.log('🔧 [removeAllHtmlTags] Output:', cleaned.substring(0, 100) + '...')
+  return cleaned
+}
+
+// Helper function to format message content
+const formatMessageContent = (text: string, metadata?: any): string => {
+  console.log('🔍 [formatMessageContent] RAW MESSAGE:', text)
+  console.log('🔍 [formatMessageContent] METADATA:', metadata)
+  console.log('🔍 [formatMessageContent] Text type:', typeof text)
+  console.log('🔍 [formatMessageContent] Text length:', text?.length)
+  
+  // Check if text contains < character
+  const hasAngleBracket = text && text.includes('<')
+  console.log('🔍 [formatMessageContent] Has < character?', hasAngleBracket)
+  
+  // Check regex test result
+  const regexTest = text && /<[^>]+>/.test(text)
+  console.log('🔍 [formatMessageContent] Regex test result:', regexTest)
   
   // Only format if it's clearly a MIME multipart email
   if (isMimeMultipartMessage(text)) {
@@ -45,6 +88,16 @@ const formatMessageContent = (text: string): string => {
     console.log('✅ [formatMessageContent] Formatted result:', formatted.substring(0, 100) + '...')
     return formatted
   }
+  
+  // FORCE HTML CLEANING FOR DEBUG - removing condition temporarily
+  if (text && text.includes('<')) {
+    console.log('🧽 [formatMessageContent] FORCING HTML cleanup for debug...')
+    const cleaned = removeAllHtmlTags(text)
+    console.log('✨ [formatMessageContent] Cleaned HTML result:', cleaned.substring(0, 100) + '...')
+    return cleaned
+  }
+  
+  console.log('⚠️ [formatMessageContent] No HTML detected, returning original text')
   return text
 };
 
@@ -592,7 +645,7 @@ export function ChatMessages({
                             }}
                           >
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
@@ -702,7 +755,7 @@ export function ChatMessages({
                             }}
                           >
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
@@ -823,7 +876,7 @@ export function ChatMessages({
                           </div>
                           <div className="ml-9">
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
                             </div>
                             
                             {/* Debug the command_id */}
@@ -875,7 +928,7 @@ export function ChatMessages({
                             }}
                           >
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
@@ -972,7 +1025,7 @@ export function ChatMessages({
                           }}
                         >
                           <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                            <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text)}</ReactMarkdown>
+                            <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
                           </div>
                           <div className="flex items-center justify-between mt-1.5">
                             <div className="flex items-center gap-2">
