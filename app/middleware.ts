@@ -60,6 +60,20 @@ function isSuspiciousRequest(path: string): boolean {
 
 // IMPORTANTE: Excluir completamente recursos estáticos
 function isStaticOrResourceFile(pathname: string): boolean {
+  // SEO and standard web files that should be publicly accessible
+  const publicFiles = [
+    '/robots.txt',
+    '/sitemap.xml',
+    '/favicon.ico',
+    '/manifest.json',
+    '/apple-touch-icon.png',
+    '/browserconfig.xml'
+  ];
+  
+  if (publicFiles.includes(pathname)) {
+    return true;
+  }
+  
   return pathname.includes('/_next/') || 
          pathname.includes('/static/') ||
          pathname.startsWith('/__next') ||
@@ -175,7 +189,7 @@ export async function middleware(request: NextRequest) {
 // Configuración que excluye explícitamente recursos estáticos y rutas de API
 export const config = {
   matcher: [
-    // Excluir explícitamente recursos estáticos y API routes específicas
-    '/((?!_next/|static/|favicon|manifest.json|api/auth/logout).*)'
+    // Excluir explícitamente recursos estáticos, archivos SEO y API routes específicas
+    '/((?!_next/|static/|favicon|manifest.json|robots.txt|sitemap.xml|apple-touch-icon.png|browserconfig.xml|api/auth/logout).*)'
   ]
 } 

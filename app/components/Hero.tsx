@@ -160,7 +160,7 @@ const HeroSection: React.FC<SectionProps> = ({
         }
 
         .button-primary {
-          background: linear-gradient(123deg, #5967b5 -12%, #908eed 88%);
+          background: linear-gradient(123deg, rgb(89, 103, 181) -12%, rgb(144, 142, 237) 88.6903%);
           color: #fff;
           padding: 10px 20px;
           border-radius: 24px;

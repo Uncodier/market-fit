@@ -81,6 +81,29 @@ function isSuspiciousRequest(path: string): boolean {
   return false
 }
 
+// IMPORTANTE: Excluir completamente recursos estáticos y archivos SEO
+function isStaticOrResourceFile(pathname: string): boolean {
+  // SEO and standard web files that should be publicly accessible
+  const publicFiles = [
+    '/robots.txt',
+    '/sitemap.xml',
+    '/favicon.ico',
+    '/manifest.json',
+    '/apple-touch-icon.png',
+    '/browserconfig.xml'
+  ];
+  
+  if (publicFiles.includes(pathname)) {
+    return true;
+  }
+  
+  return pathname.includes('/_next/') || 
+         pathname.includes('/static/') ||
+         pathname.startsWith('/__next') ||
+         pathname.startsWith('/favicon') ||
+         /\.[a-z0-9]+$/i.test(pathname) // Cualquier archivo con extensión
+}
+
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname
   
@@ -88,6 +111,11 @@ export async function middleware(req: NextRequest) {
   if (isSuspiciousRequest(path)) {
     console.log('Middleware: Blocked suspicious request:', path)
     return new NextResponse(null, { status: 404 })
+  }
+
+  // NUNCA procesar recursos estáticos - siempre permitir acceso
+  if (isStaticOrResourceFile(path)) {
+    return NextResponse.next()
   }
 
   // Handle OPTIONS request for preflight checks (CORS)
@@ -228,8 +256,9 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - SEO files (robots.txt, sitemap.xml, etc.)
      * - api (API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.json|apple-touch-icon.png|browserconfig.xml|public).*)',
   ],
 } 

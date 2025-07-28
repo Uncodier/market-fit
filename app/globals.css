@@ -940,3 +940,18 @@ html.safari [class*="select-trigger"] svg {
 .bg-green-700 {
   background-color: #15803d;
 } 
+
+/* Primary gradient styles */
+.bg-gradient-primary {
+  background: linear-gradient(123deg, rgb(89, 103, 181) -12%, rgb(144, 142, 237) 88.6903%);
+}
+
+/* Primary button with gradient - applies to default variant */
+.inline-flex.items-center.justify-center[class*="min-w-[180px]"] {
+  background: linear-gradient(123deg, rgb(89, 103, 181) -12%, rgb(144, 142, 237) 88.6903%);
+}
+
+/* Navigation menu item active state gradient */
+.bg-primary {
+  background: linear-gradient(123deg, rgb(89, 103, 181) -12%, rgb(144, 142, 237) 88.6903%) !important;
+} 

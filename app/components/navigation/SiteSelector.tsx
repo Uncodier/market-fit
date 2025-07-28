@@ -221,7 +221,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                         key={site.id}
                         className={cn(
                           "flex items-center gap-2 p-2 w-full relative rounded-sm",
-                          isSelected && "bg-accent"
+                          isSelected && "bg-gradient-primary text-white"
                         )}
                         onClick={() => {
                           setCurrentSite(site)
