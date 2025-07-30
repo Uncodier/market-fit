@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 
 // Cache for user data to avoid redundant fetches
 const userCache: Record<string, { name: string, avatar_url: string | null }> = {}

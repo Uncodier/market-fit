@@ -431,8 +431,9 @@ function AgentsPageContent() {
     console.log('Is gl6 + Daily Stand Up?', activity.id === "gl6" && activity.name === "Daily Stand Up");
     console.log('Is gl7 + Assign Leads?', activity.id === "gl7" && activity.name === "Assign Leads");
     console.log('Is sl3 + Lead Generation?', activity.id === "sl3" && activity.name === "Lead Generation");
+    console.log('Is sl6 + Generate Key Accounts?', activity.id === "sl6" && activity.name === "Generate Key Accounts");
     console.log('Is ux1 + Website Analysis?', activity.id === "ux1" && activity.name === "Website Analysis");
-    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1", 'gl6?', activity.id === "gl6", 'gl7?', activity.id === "gl7", 'sl3?', activity.id === "sl3", 'ux1?', activity.id === "ux1");
+    console.log('Activity ID check - mk4?', activity.id === "mk4", 'mk1?', activity.id === "mk1", 'ct1?', activity.id === "ct1", 'gl6?', activity.id === "gl6", 'gl7?', activity.id === "gl7", 'sl3?', activity.id === "sl3", 'sl6?', activity.id === "sl6", 'ux1?', activity.id === "ux1");
     
     if (activity.id === "cs4" && activity.name === "Answer Emails") {
       try {
@@ -927,6 +928,55 @@ function AgentsPageContent() {
           : typeof error === 'string' 
           ? error 
           : 'An error occurred while managing lead follow-ups';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
+    } else if (activity.id === "sl6" && activity.name === "Generate Key Accounts") {
+      console.log('✅ MATCHED: Generate Key Accounts activity detected!');
+      try {
+        console.log('Calling keyAccountGeneration workflow for Sales/CRM Specialist agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Generating key account prospects...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Use the same pattern as other workflows - call external API server
+        const { apiClient } = await import('@/app/services/api-client-service');
+        
+        const response = await apiClient.post('/api/workflow/keyAccountGeneration', {
+          site_id: currentSite.id
+        });
+        
+        if (response.success) {
+          setActivityState(activity.id, 'success', 'Key account generation completed successfully!');
+          toast?.success?.(`Key account generation completed successfully!`);
+          console.log('KeyAccountGeneration workflow completed successfully:', response.data);
+        } else {
+          const errorMessage = typeof response.error === 'string' 
+            ? response.error 
+            : response.error?.message 
+            ? String(response.error.message)
+            : 'Failed to generate key accounts';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('KeyAccountGeneration workflow failed:', response.error);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Generate Key Accounts activity:', error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : typeof error === 'string' 
+          ? error 
+          : 'An error occurred while generating key accounts';
         setActivityState(activity.id, 'error', errorMessage);
         toast?.error?.(errorMessage);
       }

@@ -63,6 +63,7 @@ import { FocusModeStep } from "./steps/focus-mode-step"
 import { CompanyInfoStep } from "./steps/company-info-step"
 import { MarketingStep } from "./steps/marketing-step"
 import { ProductsServicesStep } from "./steps/products-services-step"
+import { LocationsOnboardingStep } from "./LocationsOnboardingStep"
 
 // Context
 import { useSite } from "../../context/SiteContext"
@@ -365,14 +366,135 @@ export function SiteOnboarding({
     setExpandedBusinessHours(newExpanded)
   }
 
+  // Helper function to ensure proper location structure
+  const normalizeLocation = (location: any) => ({
+    name: location.name || "",
+    address: location.address || "",
+    city: location.city || "",
+    state: location.state || "",
+    zip: location.zip || "",
+    country: location.country || "",
+    restrictions: {
+      enabled: location.restrictions?.enabled || false,
+      included_addresses: location.restrictions?.included_addresses || [],
+      excluded_addresses: location.restrictions?.excluded_addresses || []
+    }
+  })
+
   const addLocation = () => {
     const current = form.getValues("locations") || []
-    form.setValue("locations", [...current, { name: "", address: "", city: "", state: "", zip: "", country: "" }])
+    const newLocation = normalizeLocation({ name: "" })
+    form.setValue("locations", [...current, newLocation])
   }
 
   const removeLocation = (index: number) => {
     const current = form.getValues("locations") || []
     form.setValue("locations", current.filter((_, i) => i !== index))
+  }
+
+  // Regional restrictions handlers
+  const addIncludedAddress = (locationIndex: number) => {
+    const current = form.getValues("locations") || []
+    const newAddress = {
+      name: "",
+      address: "",
+      city: "",
+      state: "",
+      zip: "",
+      country: ""
+    }
+    const updatedLocations = [...current]
+    updatedLocations[locationIndex] = {
+      ...updatedLocations[locationIndex],
+      restrictions: {
+        ...updatedLocations[locationIndex].restrictions,
+        included_addresses: [...(updatedLocations[locationIndex].restrictions?.included_addresses || []), newAddress]
+      }
+    }
+    form.setValue("locations", updatedLocations)
+  }
+
+  const addExcludedAddress = (locationIndex: number) => {
+    const current = form.getValues("locations") || []
+    const newAddress = {
+      name: "",
+      address: "",
+      city: "",
+      state: "",
+      zip: "",
+      country: ""
+    }
+    const updatedLocations = [...current]
+    updatedLocations[locationIndex] = {
+      ...updatedLocations[locationIndex],
+      restrictions: {
+        ...updatedLocations[locationIndex].restrictions,
+        excluded_addresses: [...(updatedLocations[locationIndex].restrictions?.excluded_addresses || []), newAddress]
+      }
+    }
+    form.setValue("locations", updatedLocations)
+  }
+
+  const removeIncludedAddress = (locationIndex: number, addressIndex: number) => {
+    const current = form.getValues("locations") || []
+    const updatedLocations = [...current]
+    updatedLocations[locationIndex] = {
+      ...updatedLocations[locationIndex],
+      restrictions: {
+        ...updatedLocations[locationIndex].restrictions,
+        included_addresses: (updatedLocations[locationIndex].restrictions?.included_addresses || []).filter((_: any, i: number) => i !== addressIndex)
+      }
+    }
+    form.setValue("locations", updatedLocations)
+  }
+
+  const removeExcludedAddress = (locationIndex: number, addressIndex: number) => {
+    const current = form.getValues("locations") || []
+    const updatedLocations = [...current]
+    updatedLocations[locationIndex] = {
+      ...updatedLocations[locationIndex],
+      restrictions: {
+        ...updatedLocations[locationIndex].restrictions,
+        excluded_addresses: (updatedLocations[locationIndex].restrictions?.excluded_addresses || []).filter((_: any, i: number) => i !== addressIndex)
+      }
+    }
+    form.setValue("locations", updatedLocations)
+  }
+
+  const handleIncludedAddressUpdate = (locationIndex: number, addressIndex: number, field: string, value: string) => {
+    const current = form.getValues("locations") || []
+    const updatedLocations = [...current]
+    const updatedAddresses = [...(updatedLocations[locationIndex].restrictions?.included_addresses || [])]
+    updatedAddresses[addressIndex] = {
+      ...updatedAddresses[addressIndex],
+      [field]: value
+    }
+    updatedLocations[locationIndex] = {
+      ...updatedLocations[locationIndex],
+      restrictions: {
+        ...updatedLocations[locationIndex].restrictions,
+        included_addresses: updatedAddresses
+      }
+    }
+    form.setValue("locations", updatedLocations)
+  }
+
+  const handleExcludedAddressUpdate = (locationIndex: number, addressIndex: number, field: string, value: string) => {
+    const current = form.getValues("locations") || []
+    const updatedLocations = [...current]
+    const updatedAddresses = [...(updatedLocations[locationIndex].restrictions?.excluded_addresses || [])]
+    updatedAddresses[addressIndex] = {
+      ...updatedAddresses[addressIndex],
+      [field]: value
+    }
+    updatedLocations[locationIndex] = {
+      ...updatedLocations[locationIndex],
+      restrictions: {
+        ...updatedLocations[locationIndex].restrictions,
+        excluded_addresses: updatedAddresses
+      }
+    }
+    form.setValue("locations", updatedLocations)
   }
 
   const addMarketingChannel = () => {
@@ -749,145 +871,21 @@ export function SiteOnboarding({
                       )}
 
                       {currentStep === 4 && (
-                        <div className="space-y-4">
-                          <div className="text-center mb-4">
-                            <p className="text-sm text-muted-foreground">
-                              Add your company's physical locations. Commercial efforts will be prioritized in these areas.
-                            </p>
-                          </div>
-                          
-                          {form.watch("locations")?.map((_, index) => (
-                            <div key={index} className="p-4 border rounded-lg">
-                              <div className="grid grid-cols-1 gap-4">
-                                <FormField
-                                  control={form.control}
-                                  name={`locations.${index}.name`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Location Name</FormLabel>
-                                      <FormControl>
-                                        <div className="relative">
-                                          <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                          <Input 
-                                            className="pl-10" 
-                                            placeholder="e.g., HQ, Branch Office"
-                                            {...field}
-                                          />
-                                        </div>
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name={`locations.${index}.address`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Address</FormLabel>
-                                      <FormControl>
-                                        <Input 
-                                          placeholder="Street address"
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <div className="grid md:grid-cols-3 gap-4">
-                                  <FormField
-                                    control={form.control}
-                                    name={`locations.${index}.city`}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>City</FormLabel>
-                                        <FormControl>
-                                          <Input 
-                                            placeholder="City"
-                                            {...field}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name={`locations.${index}.state`}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>State/Province</FormLabel>
-                                        <FormControl>
-                                          <Input 
-                                            placeholder="State/Province"
-                                            {...field}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name={`locations.${index}.zip`}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>ZIP/Postal Code</FormLabel>
-                                        <FormControl>
-                                          <Input 
-                                            placeholder="ZIP/Postal Code"
-                                            {...field}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-                                <FormField
-                                  control={form.control}
-                                  name={`locations.${index}.country`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Country</FormLabel>
-                                      <FormControl>
-                                        <Input 
-                                          placeholder="Country"
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              <div className="flex justify-end mt-4">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeLocation(index)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-1" />
-                                  Remove
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                          
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full"
-                            onClick={addLocation}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add Location
-                          </Button>
-                        </div>
+                        <LocationsOnboardingStep
+                          locations={form.watch("locations") || []}
+                          onAddLocation={addLocation}
+                          onRemoveLocation={removeLocation}
+                          onAddIncludedAddress={addIncludedAddress}
+                          onAddExcludedAddress={addExcludedAddress}
+                          onRemoveIncludedAddress={removeIncludedAddress}
+                          onRemoveExcludedAddress={removeExcludedAddress}
+                          onIncludedAddressUpdate={handleIncludedAddressUpdate}
+                          onExcludedAddressUpdate={handleExcludedAddressUpdate}
+                        />
                       )}
+
+
+                        
 
                       {currentStep === 5 && (
                         <CompanyInfoStep form={form} />

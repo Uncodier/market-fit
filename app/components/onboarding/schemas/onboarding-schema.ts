@@ -54,7 +54,30 @@ export const siteOnboardingSchema = z.object({
     city: z.string().optional(),
     state: z.string().optional(),
     zip: z.string().optional(),
-    country: z.string().optional()
+    country: z.string().optional(),
+    restrictions: z.object({
+      enabled: z.boolean().optional().default(false),
+      included_addresses: z.array(z.object({
+        name: z.string().min(1, "Address name is required"),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zip: z.string().optional(),
+        country: z.string().optional()
+      })).optional().default([]),
+      excluded_addresses: z.array(z.object({
+        name: z.string().min(1, "Address name is required"),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zip: z.string().optional(),
+        country: z.string().optional()
+      })).optional().default([])
+    }).optional().default({
+      enabled: false,
+      included_addresses: [],
+      excluded_addresses: []
+    })
   })).optional().default([]),
   // Company info
   about: z.string().optional(),

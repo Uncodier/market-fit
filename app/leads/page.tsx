@@ -34,7 +34,7 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { Sparkles, User as UserIcon } from "@/app/components/ui/icons"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
-import { createClient } from "@/utils/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
 import { safeReload } from "@/app/utils/safe-reload"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
@@ -488,7 +488,7 @@ export default function LeadsPage() {
           const stageOrder = ["referral", "retention", "purchase", "decision", "consideration", "awareness"]
           
           // Agrupar tasks por lead_id
-          const tasksByLead = allTasks?.reduce((acc, task) => {
+          const tasksByLead = allTasks?.reduce((acc: Record<string, any[]>, task: any) => {
             if (!acc[task.lead_id]) acc[task.lead_id] = []
             acc[task.lead_id].push(task)
             return acc
@@ -503,7 +503,7 @@ export default function LeadsPage() {
             } else {
               // Encontrar la etapa más alta
               const highestStage = leadTasks
-                .sort((a, b) => {
+                .sort((a: any, b: any) => {
                   const aIndex = stageOrder.indexOf(a.stage)
                   const bIndex = stageOrder.indexOf(b.stage)
                   return aIndex - bIndex

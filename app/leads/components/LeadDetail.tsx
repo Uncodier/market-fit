@@ -95,10 +95,11 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
   const [isSaving, setIsSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [loadingActions, setLoadingActions] = useState<{ research: boolean; followup: boolean; newConversation: boolean }>({
+  const [loadingActions, setLoadingActions] = useState<{ research: boolean; followup: boolean; newConversation: boolean; invalidation: boolean }>({
     research: false,
     followup: false,
-    newConversation: false
+    newConversation: false,
+    invalidation: false
   })
   const [teamMembers, setTeamMembers] = useState<ActiveSiteMember[]>([])
   const [loadingTeamMembers, setLoadingTeamMembers] = useState(false)
@@ -370,6 +371,31 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     }
   }
 
+  // Función para llamar API de lead invalidation
+  const handleLeadInvalidation = async () => {
+    setLoadingActions(prev => ({ ...prev, invalidation: true }))
+    
+    try {
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
+      const response = await apiClient.post('/api/workflow/leadInvalidation', {
+        lead_id: lead.id,
+        site_id: currentSite?.id
+      })
+      
+      if (response.success) {
+        toast.success("Lead invalidation initiated successfully")
+      } else {
+        throw new Error(response.error?.message || 'Failed to initiate lead invalidation')
+      }
+    } catch (error) {
+      console.error('Error calling lead invalidation API:', error)
+      toast.error("Failed to initiate lead invalidation")
+    } finally {
+      setLoadingActions(prev => ({ ...prev, invalidation: false }))
+    }
+  }
+
   // Function to create a new conversation with the Customer Support agent
   const handleNewConversation = async () => {
     if (!currentSite?.id || !user?.id) {
@@ -558,6 +584,18 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                     )}
                     <span className="ml-2">Lead Follow Up</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleLeadInvalidation}
+                    disabled={loadingActions.invalidation}
+                    className="flex items-center justify-between"
+                  >
+                    {loadingActions.invalidation ? (
+                      <Loader className="h-4 w-4" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">Lead Invalidation</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsEditing(true)} className="flex items-center justify-between">
                     <Pencil className="h-4 w-4" />
                     <span className="ml-2">Edit Lead</span>
@@ -634,6 +672,18 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                       <Mail className="h-4 w-4" />
                     )}
                     <span className="ml-2">Lead Follow Up</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleLeadInvalidation}
+                    disabled={loadingActions.invalidation}
+                    className="flex items-center justify-between"
+                  >
+                    {loadingActions.invalidation ? (
+                      <Loader className="h-4 w-4" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">Lead Invalidation</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsEditing(true)} className="flex items-center justify-between">
                     <Pencil className="h-4 w-4" />

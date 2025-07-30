@@ -256,6 +256,15 @@ const salesActivities: AgentActivity[] = [
     successRate: 94,
     executions: 83,
     status: "available"
+  },
+  {
+    id: "sl6",
+    name: "Generate Key Accounts",
+    description: "Identify and generate high-value key account prospects for strategic business development",
+    estimatedTime: "30-35 min",
+    successRate: 88,
+    executions: 67,
+    status: "available"
   }
 ];
 
