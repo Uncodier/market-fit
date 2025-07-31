@@ -23,7 +23,8 @@ import {
   Mail,
   Users,
   Check,
-  ChevronDown
+  ChevronDown,
+  Home
 } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Target } from "@/app/components/ui/target-icon"
@@ -720,11 +721,21 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
             <Tabs defaultValue="details" className="w-full min-w-0">
               <div className="flex justify-center mb-4 overflow-x-auto">
                 <TabsList className="min-w-max">
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="company">Company</TabsTrigger>
-                  <TabsTrigger value="social_networks">Social Networks</TabsTrigger>
-                  <TabsTrigger value="address">Address</TabsTrigger>
-                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                  <TabsTrigger value="details">
+                    <User className="w-4 h-4" />
+                  </TabsTrigger>
+                  <TabsTrigger value="company">
+                    <Globe className="w-4 h-4" />
+                  </TabsTrigger>
+                  <TabsTrigger value="social_networks">
+                    <MessageSquare className="w-4 h-4" />
+                  </TabsTrigger>
+                  <TabsTrigger value="address">
+                    <Home className="w-4 h-4" />
+                  </TabsTrigger>
+                  <TabsTrigger value="notes">
+                    <FileText className="w-4 h-4" />
+                  </TabsTrigger>
                 </TabsList>
               </div>
               

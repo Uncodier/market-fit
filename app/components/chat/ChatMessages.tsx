@@ -21,6 +21,7 @@ import { formatEmailForChat, isMimeMultipartMessage } from "@/app/utils/email-fo
 import { extractCleanText } from "@/app/utils/text-cleaning"
 import { useSite } from "@/app/context/SiteContext"
 import { useRef } from "react"
+import { getConversationMessages } from "@/app/services/chat-service"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -120,6 +121,7 @@ interface ChatMessagesProps {
   leadData: any
   conversationId?: string
   onRetryMessage?: (failedMessage: ChatMessage) => Promise<void>
+  onMessagesUpdate?: (messages: ChatMessage[]) => void
 }
 
 // Message feedback widget component
@@ -439,7 +441,8 @@ export function ChatMessages({
   isAgentOnlyConversation,
   leadData,
   conversationId,
-  onRetryMessage
+  onRetryMessage,
+  onMessagesUpdate
 }: ChatMessagesProps) {
   // Determine if we should show assignee instead of agent (same logic as ChatHeader)
   const isLead = leadData !== null
@@ -460,13 +463,66 @@ export function ChatMessages({
 
   // Function to save edited message
   const handleSaveEditedMessage = async (messageId: string, newText: string) => {
-    // TODO: Implement message update logic
-    // This would typically update the message in the database
-    console.log("Updating message:", messageId, "with text:", newText)
-    
-    // For now, just update locally (this should be replaced with actual API call)
-    // In a real implementation, you would make an API call to update the message
-    toast.success("Message editing feature will be implemented with backend integration")
+    if (!messageId || !newText.trim()) {
+      toast.error("Message content cannot be empty")
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      
+      // Update the message in the database
+      const { error } = await supabase
+        .from("messages")
+        .update({ 
+          content: newText.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", messageId)
+
+      if (error) {
+        console.error("Error updating message:", error)
+        toast.error("Failed to update message")
+        return
+      }
+
+      console.log("Successfully updated message:", messageId)
+
+      // Update local state immediately for better UX
+      const updatedMessages = chatMessages.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, text: newText.trim() }
+          : msg
+      )
+
+      // If onMessagesUpdate callback is provided, use it to update parent state
+      if (onMessagesUpdate) {
+        onMessagesUpdate(updatedMessages)
+      }
+
+      // If we have a conversationId, also refresh from database to ensure consistency
+      if (conversationId && !conversationId.startsWith("new-")) {
+        try {
+          const refreshedMessages = await getConversationMessages(conversationId)
+          if (onMessagesUpdate && refreshedMessages.length > 0) {
+            onMessagesUpdate(refreshedMessages)
+          }
+        } catch (refreshError) {
+          console.error("Error refreshing messages:", refreshError)
+          // Don't show error to user for refresh, local update was successful
+        }
+      }
+
+      toast.success("Message updated successfully")
+      
+      // Close the edit modal
+      setEditModalOpen(false)
+      setEditingMessage(null)
+      
+    } catch (error) {
+      console.error("Unexpected error updating message:", error)
+      toast.error("An unexpected error occurred")
+    }
   }
 
   // Function to get estimated send time

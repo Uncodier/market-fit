@@ -23,20 +23,59 @@ import { secureTokensService } from "../../services/secure-tokens-service"
 
 // Twilio supported countries and regions
 const TWILIO_COUNTRIES = [
+  // North America
   { code: "US", name: "United States", hasCities: true },
   { code: "CA", name: "Canada", hasCities: true },
+  { code: "MX", name: "Mexico", hasCities: true },
+  // Europe
   { code: "GB", name: "United Kingdom", hasCities: true },
   { code: "DE", name: "Germany", hasCities: true },
   { code: "FR", name: "France", hasCities: true },
   { code: "IT", name: "Italy", hasCities: true },
   { code: "ES", name: "Spain", hasCities: true },
   { code: "NL", name: "Netherlands", hasCities: true },
+  { code: "SE", name: "Sweden", hasCities: true },
+  { code: "NO", name: "Norway", hasCities: true },
+  { code: "DK", name: "Denmark", hasCities: true },
+  { code: "FI", name: "Finland", hasCities: true },
+  { code: "PL", name: "Poland", hasCities: true },
+  { code: "CZ", name: "Czech Republic", hasCities: true },
+  { code: "AT", name: "Austria", hasCities: true },
+  { code: "CH", name: "Switzerland", hasCities: true },
+  { code: "BE", name: "Belgium", hasCities: true },
+  { code: "PT", name: "Portugal", hasCities: true },
+  { code: "IE", name: "Ireland", hasCities: true },
+  // Asia Pacific
   { code: "AU", name: "Australia", hasCities: true },
   { code: "SG", name: "Singapore", hasCities: false },
   { code: "JP", name: "Japan", hasCities: true },
-  { code: "BR", name: "Brazil", hasCities: true },
-  { code: "MX", name: "Mexico", hasCities: true },
+  { code: "HK", name: "Hong Kong", hasCities: true },
+  { code: "NZ", name: "New Zealand", hasCities: true },
+  { code: "MY", name: "Malaysia", hasCities: true },
+  { code: "TH", name: "Thailand", hasCities: true },
+  { code: "PH", name: "Philippines", hasCities: true },
+  { code: "ID", name: "Indonesia", hasCities: true },
+  { code: "TW", name: "Taiwan", hasCities: true },
+  { code: "KR", name: "South Korea", hasCities: true },
   { code: "IN", name: "India", hasCities: true },
+  // Middle East
+  { code: "AE", name: "United Arab Emirates", hasCities: true },
+  { code: "SA", name: "Saudi Arabia", hasCities: true },
+  { code: "IL", name: "Israel", hasCities: true },
+  // Americas
+  { code: "BR", name: "Brazil", hasCities: true },
+  { code: "AR", name: "Argentina", hasCities: true },
+  { code: "CL", name: "Chile", hasCities: true },
+  { code: "CO", name: "Colombia", hasCities: true },
+  { code: "PE", name: "Peru", hasCities: true },
+  { code: "UY", name: "Uruguay", hasCities: false },
+  { code: "PA", name: "Panama", hasCities: false },
+  { code: "CR", name: "Costa Rica", hasCities: false },
+  // Africa
+  { code: "ZA", name: "South Africa", hasCities: true },
+  { code: "NG", name: "Nigeria", hasCities: true },
+  { code: "KE", name: "Kenya", hasCities: false },
+  { code: "EG", name: "Egypt", hasCities: true },
 ]
 
 // Major cities available by country for new number selection
@@ -142,6 +181,110 @@ const INDIA_CITIES = [
   { code: "BAN", name: "Bangalore", region: "KA" },
   { code: "HYD", name: "Hyderabad", region: "TG" },
   { code: "CHE", name: "Chennai", region: "TN" },
+]
+
+const SWEDEN_CITIES = [
+  { code: "STO", name: "Stockholm" },
+  { code: "GOT", name: "Gothenburg" },
+  { code: "MAL", name: "Malmö" },
+  { code: "UPP", name: "Uppsala" },
+  { code: "VAS", name: "Västerås" },
+]
+
+const POLAND_CITIES = [
+  { code: "WAR", name: "Warsaw" },
+  { code: "KRA", name: "Krakow" },
+  { code: "WRO", name: "Wrocław" },
+  { code: "POZ", name: "Poznań" },
+  { code: "GDA", name: "Gdańsk" },
+]
+
+const ARGENTINA_CITIES = [
+  { code: "BUE", name: "Buenos Aires" },
+  { code: "COR", name: "Córdoba" },
+  { code: "ROS", name: "Rosario" },
+  { code: "MEN", name: "Mendoza" },
+  { code: "TUC", name: "Tucumán" },
+]
+
+const COLOMBIA_CITIES = [
+  { code: "BOG", name: "Bogotá" },
+  { code: "MED", name: "Medellín" },
+  { code: "CAL", name: "Cali" },
+  { code: "BAR", name: "Barranquilla" },
+  { code: "CAR", name: "Cartagena" },
+]
+
+const CHILE_CITIES = [
+  { code: "SCL", name: "Santiago" },
+  { code: "VAL", name: "Valparaíso" },
+  { code: "CON", name: "Concepción" },
+  { code: "ANT", name: "Antofagasta" },
+  { code: "TEM", name: "Temuco" },
+]
+
+const PERU_CITIES = [
+  { code: "LIM", name: "Lima" },
+  { code: "ARE", name: "Arequipa" },
+  { code: "TRU", name: "Trujillo" },
+  { code: "CHI", name: "Chiclayo" },
+  { code: "IQU", name: "Iquitos" },
+]
+
+const HONG_KONG_CITIES = [
+  { code: "HKI", name: "Hong Kong Island" },
+  { code: "KOW", name: "Kowloon" },
+  { code: "NT", name: "New Territories" },
+  { code: "TST", name: "Tsim Sha Tsui" },
+  { code: "CEN", name: "Central" },
+]
+
+const SOUTH_KOREA_CITIES = [
+  { code: "SEO", name: "Seoul" },
+  { code: "BUS", name: "Busan" },
+  { code: "INC", name: "Incheon" },
+  { code: "DAE", name: "Daegu" },
+  { code: "DAJ", name: "Daejeon" },
+]
+
+const UAE_CITIES = [
+  { code: "DUB", name: "Dubai" },
+  { code: "ABU", name: "Abu Dhabi" },
+  { code: "SHA", name: "Sharjah" },
+  { code: "AJM", name: "Ajman" },
+  { code: "RAK", name: "Ras Al Khaimah" },
+]
+
+const SAUDI_ARABIA_CITIES = [
+  { code: "RIY", name: "Riyadh" },
+  { code: "JED", name: "Jeddah" },
+  { code: "MEC", name: "Mecca" },
+  { code: "MED", name: "Medina" },
+  { code: "DAM", name: "Dammam" },
+]
+
+const ISRAEL_CITIES = [
+  { code: "TEL", name: "Tel Aviv" },
+  { code: "JER", name: "Jerusalem" },
+  { code: "HAI", name: "Haifa" },
+  { code: "BEE", name: "Beersheba" },
+  { code: "NET", name: "Netanya" },
+]
+
+const NEW_ZEALAND_CITIES = [
+  { code: "AUC", name: "Auckland" },
+  { code: "WEL", name: "Wellington" },
+  { code: "CHR", name: "Christchurch" },
+  { code: "HAM", name: "Hamilton" },
+  { code: "TAU", name: "Tauranga" },
+]
+
+const SOUTH_AFRICA_CITIES = [
+  { code: "JOH", name: "Johannesburg" },
+  { code: "CAP", name: "Cape Town" },
+  { code: "DUR", name: "Durban" },
+  { code: "PRT", name: "Pretoria" },
+  { code: "PEL", name: "Port Elizabeth" },
 ]
 
 const US_REGIONS = [
@@ -331,6 +474,32 @@ const getCitiesForCountry = (countryCode: string) => {
       return MEXICO_CITIES
     case "IN":
       return INDIA_CITIES
+    case "SE":
+      return SWEDEN_CITIES
+    case "PL":
+      return POLAND_CITIES
+    case "AR":
+      return ARGENTINA_CITIES
+    case "CO":
+      return COLOMBIA_CITIES
+    case "CL":
+      return CHILE_CITIES
+    case "PE":
+      return PERU_CITIES
+    case "HK":
+      return HONG_KONG_CITIES
+    case "KR":
+      return SOUTH_KOREA_CITIES
+    case "AE":
+      return UAE_CITIES
+    case "SA":
+      return SAUDI_ARABIA_CITIES
+    case "IL":
+      return ISRAEL_CITIES
+    case "NZ":
+      return NEW_ZEALAND_CITIES
+    case "ZA":
+      return SOUTH_AFRICA_CITIES
     default:
       return []
   }

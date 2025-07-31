@@ -478,6 +478,7 @@ function ChatPageContent() {
           leadData={leadData}
           conversationId={conversationId}
           onRetryMessage={handleRetryMessage}
+          onMessagesUpdate={setChatMessages}
         />
         
         {/* Message input area */}
