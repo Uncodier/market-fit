@@ -7,6 +7,7 @@ import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
 import { DollarSign, ShoppingCart, Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Printer, CreditCard, Eye } from "@/app/components/ui/icons"
+import { Pagination } from "@/app/components/ui/pagination"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -238,45 +239,11 @@ function SalesTable({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Previous page</span>
-          </Button>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant="ghost"
-                size="sm"
-                onClick={() => onPageChange(page)}
-                className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                  currentPage === page 
-                    ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                    : "text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                {page}
-              </Button>
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages || totalPages === 0}
-            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-          >
-            <ChevronRight className="h-4 w-4" />
-            <span className="sr-only">Next page</span>
-          </Button>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+        />
       </div>
     </Card>
   )

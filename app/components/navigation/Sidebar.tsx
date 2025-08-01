@@ -8,7 +8,7 @@ import {
   Users,
   User,
   MessageSquare,
-  ChevronRight,
+
   Home,
   FolderOpen,
   Bell,
@@ -17,10 +17,11 @@ import {
   Tag,
   CreditCard,
   DollarSign,
-  Rocket
+  Rocket,
+  LogOut
 } from "@/app/components/ui/icons"
-import { useEffect, useState } from "react"
-import { usePathname } from "next/navigation"
+import { useEffect, useState, useRef } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { ConfigurationSection } from "./ConfigurationSection"
 import { MenuItem } from "./MenuItem"
 import { SiteSelector } from "./SiteSelector"
@@ -29,9 +30,12 @@ import { ControlCenterBadge } from "./ControlCenterBadge"
 import { ContentBadge } from "./ContentBadge"
 import { RequirementsBadge, CampaignsBadge } from "./RequirementsBadge"
 import { ChatsBadge } from "./ChatsBadge"
+import { NotificationBadge } from "./NotificationBadge"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/app/hooks/use-auth"
+import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 
 // Add Cpu icon for AI representation
 const Cpu = ({ className = "", ...props }: { className?: string, [key: string]: any }) => (
@@ -91,10 +95,22 @@ const humanInTheLoopItems = [
     href: "/requirements",
     icon: CheckSquare,
   },
+  {
+    title: "Chats",
+    href: "/chat",
+    icon: MessageSquare,
+  },
 ]
 
-// Automatic category
-const automaticItems = [
+// Context section - main item
+const contextMainItem = {
+  title: "Context",
+  href: "/context",
+  icon: LayoutGrid,
+}
+
+// Context children items
+const contextChildrenItems = [
   {
     title: "Campaigns",
     href: "/campaigns",
@@ -121,14 +137,30 @@ const automaticItems = [
     icon: DollarSign,
   },
   {
-    title: "AI Team",
+    title: "Agents",
     href: "/agents",
     icon: Cpu,
   },
+]
+
+// Profile section - main item (clicking goes to notifications)
+const profileMainItem = {
+  title: "Account",
+  href: "/notifications",
+  icon: User,
+}
+
+// Profile children items
+const profileChildrenItems = [
   {
-    title: "Chats",
-    href: "/chat",
-    icon: MessageSquare,
+    title: "Account",
+    href: "/profile",
+    icon: User,
+  },
+  {
+    title: "Log out",
+    href: "#logout",
+    icon: LogOut,
   },
 ]
 
@@ -140,7 +172,7 @@ const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: bo
     switch (title) {
       case "Human in the Loop":
         return "💪"
-      case "Automatic":
+      case "Context":
         return "🤖"
       default:
         return ""
@@ -163,7 +195,235 @@ export function Sidebar({
   onCollapse 
 }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, isLoading } = useAuth()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  
+  // Context section state
+  const [forceShowContextChildren, setForceShowContextChildren] = useState(false)
+  
+  // Settings section state (to coordinate with ConfigurationSection)
+  const [forceShowSettingsChildren, setForceShowSettingsChildren] = useState(false)
+  
+  // Profile section state
+  const [forceShowProfileChildren, setForceShowProfileChildren] = useState(false)
+  
+  // Check if Context or any context child is active
+  const isContextActive = pathname.startsWith('/context')
+  const isCampaignsActive = pathname.startsWith('/campaigns')
+  const isSegmentsActive = pathname.startsWith('/segments')
+  const isAssetsActive = pathname.startsWith('/assets')
+  const isLeadsActive = pathname.startsWith('/leads')
+  const isSalesActive = pathname.startsWith('/sales')
+  const isAgentsActive = pathname.startsWith('/agents')
+  
+  const shouldShowContextChildren = isContextActive || isCampaignsActive || isSegmentsActive || 
+    isAssetsActive || isLeadsActive || isSalesActive || isAgentsActive || forceShowContextChildren
+  
+  // Check if Profile or any profile child is active
+  const isProfileActive = pathname.startsWith('/profile')
+  const isNotificationsActive = pathname.startsWith('/notifications')
+  
+  // Profile children should be open when in profile/notifications area or forced
+  const shouldShowProfileChildren = isProfileActive || isNotificationsActive || forceShowProfileChildren
+  
+  // For tracking previous path to handle context menu closing
+  const prevPathContextRef = useRef(pathname)
+  
+  // Reset sections when navigating between routes
+  useEffect(() => {
+    const previousPath = prevPathContextRef.current;
+    
+    const inContextArea = isContextActive || isCampaignsActive || isSegmentsActive || 
+                          isAssetsActive || isLeadsActive || isSalesActive || isAgentsActive;
+    const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing');
+    const inProfileArea = isProfileActive;
+    
+    const isLeavingContextArea = (
+      (previousPath.startsWith('/context') || 
+       previousPath.startsWith('/campaigns') || 
+       previousPath.startsWith('/segments') ||
+       previousPath.startsWith('/assets') ||
+       previousPath.startsWith('/leads') ||
+       previousPath.startsWith('/sales') ||
+       previousPath.startsWith('/agents')) &&
+      !inContextArea
+    );
+    
+    const isLeavingSettingsArea = (
+      (previousPath.startsWith('/settings') || 
+       previousPath.startsWith('/security') || 
+       previousPath.startsWith('/billing')) &&
+      !inSettingsArea
+    );
+    
+    const isLeavingProfileArea = (
+      (previousPath.startsWith('/profile') || 
+       previousPath.startsWith('/notifications')) &&
+      !inProfileArea
+    );
+    
+    // When navigating away from context area, hide the context children
+    if (isLeavingContextArea) {
+      setForceShowContextChildren(false);
+    }
+    
+    // When navigating away from settings area, hide the settings children
+    if (isLeavingSettingsArea) {
+      setForceShowSettingsChildren(false);
+    }
+    
+    // When navigating away from profile area, hide the profile children
+    if (isLeavingProfileArea) {
+      setForceShowProfileChildren(false);
+    }
+    
+    // Update previous path reference
+    prevPathContextRef.current = pathname;
+  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isLeadsActive, isSalesActive, isAgentsActive, isProfileActive, isNotificationsActive]);
+  
+  // Centralized navigation handler that coordinates all sections
+  const handleSectionNavigation = (e: React.MouseEvent, href: string, section: 'context' | 'settings' | 'profile') => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const inContextArea = isContextActive || isCampaignsActive || isSegmentsActive || 
+                          isAssetsActive || isLeadsActive || isSalesActive || isAgentsActive;
+    
+    // Check if we're in settings area (we'll need to get this from ConfigurationSection)
+    const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing');
+    const inProfileArea = isProfileActive || isNotificationsActive;
+    
+    if (section === 'context') {
+      // Always ensure context section is open when clicking on Context
+      setForceShowContextChildren(true);
+      setForceShowSettingsChildren(false); // Close other sections
+      setForceShowProfileChildren(false);
+      
+      // If already in context area and trying to go to context, navigate immediately
+      if (href === '/context' && isContextActive) {
+        router.push(href);
+        return;
+      }
+      
+      // If not in context area, navigate with delay to show animation
+      if (!inContextArea) {
+        setTimeout(() => {
+          router.push(href);
+        }, 400);
+      } else {
+        // If already in context area, navigate immediately
+        router.push(href);
+      }
+    } else if (section === 'settings') {
+      // If already in settings area and trying to go to settings, navigate immediately
+      if (href === '/settings' && pathname.startsWith('/settings')) {
+        router.push(href);
+        return;
+      }
+      
+      // If not in settings area, show settings children and hide other sections immediately
+      if (!inSettingsArea) {
+        setForceShowSettingsChildren(true);
+        setForceShowContextChildren(false); // Close context immediately
+        setForceShowProfileChildren(false); // Close profile immediately
+        
+        // Navigate after delay
+        setTimeout(() => {
+          router.push(href);
+        }, 400);
+      } else {
+        // If already in settings area, navigate immediately
+        router.push(href);
+      }
+    } else if (section === 'profile') {
+      // If already in profile area and trying to go to profile, navigate immediately
+      if (href === '/profile' && isProfileActive) {
+        router.push(href);
+        return;
+      }
+      
+      // If not in profile area, show profile children and hide other sections immediately
+      if (!inProfileArea) {
+        setForceShowProfileChildren(true);
+        setForceShowContextChildren(false); // Close context immediately
+        setForceShowSettingsChildren(false); // Close settings immediately
+        
+        // Navigate after delay
+        setTimeout(() => {
+          router.push(href);
+        }, 400);
+      } else {
+        // If already in profile area, navigate immediately
+        router.push(href);
+      }
+    }
+  };
+  
+  // Handle context menu navigation with delay
+  const handleContextNavigation = (e: React.MouseEvent, href: string) => {
+    handleSectionNavigation(e, href, 'context');
+  };
+  
+  // Handle settings menu navigation with delay (to be passed to ConfigurationSection)
+  const handleSettingsNavigation = (e: React.MouseEvent, href: string) => {
+    handleSectionNavigation(e, href, 'settings');
+  };
+  
+  // Handle profile menu navigation with delay
+  const handleProfileNavigation = (e: React.MouseEvent, href: string) => {
+    handleSectionNavigation(e, href, 'profile');
+  };
+  
+  // Handle toggling context menu
+  const toggleContextMenu = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    
+    // If already in context area, don't toggle
+    if (isContextActive || isCampaignsActive || isSegmentsActive || 
+        isAssetsActive || isLeadsActive || isSalesActive || isAgentsActive) return;
+    
+    // Toggle force show
+    setForceShowContextChildren(prev => !prev);
+  }
+  
+  // Handle toggling profile menu
+  const toggleProfileMenu = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    
+    // If already in profile area, don't toggle
+    if (isProfileActive || isNotificationsActive) return;
+    
+    // Toggle force show
+    setForceShowProfileChildren(prev => !prev);
+  }
+
+  // Handle logout function
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true)
+      toast.loading("Signing out...")
+      
+      // Cerrar sesión en Supabase del lado del cliente como medida adicional
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      
+      // Redirección simple a la API de logout
+      window.location.href = '/api/auth/logout'
+    } catch (error) {
+      console.error("Error logging out:", error)
+      toast.error("Error signing out")
+      
+      // En caso de error, intentar la redirección directa de todos modos
+      window.location.href = '/api/auth/logout'
+    }
+  }
 
   return (
     <div
@@ -212,7 +472,7 @@ export function Sidebar({
         <div style={{ paddingTop: '21.6px', paddingBottom: '21.6px' }}>
           {/* Main Navigation Items */}
           <div className={cn(
-            "space-y-1",
+            "flex flex-col space-y-1",
             isCollapsed ? "px-[14px]" : "px-3"
           )}>
             {mainNavigationItems.map((item) => (
@@ -231,7 +491,7 @@ export function Sidebar({
           <div style={{ marginTop: '21.6px' }}>
             <CategoryHeader title="Human in the Loop" isCollapsed={isCollapsed} />
             <div className={cn(
-              "space-y-1",
+              "flex flex-col space-y-1",
               isCollapsed ? "px-[14px]" : "px-3"
             )}>
               {humanInTheLoopItems.map((item) => (
@@ -257,21 +517,82 @@ export function Sidebar({
             </div>
           </div>
 
-          {/* Automatic Category */}
-          <div style={{ marginTop: '21.6px' }}>
-            <CategoryHeader title="Automatic" isCollapsed={isCollapsed} />
-            <div className={cn(
-              "space-y-1",
-              isCollapsed ? "px-[14px]" : "px-3"
-            )}>
-              {automaticItems.map((item) => (
+
+        </div>
+      </div>
+
+      {/* Bottom Section - Fixed */}
+      <div className="flex-none border-t border-border">
+        <div className={cn("flex flex-col space-y-1 py-4", isCollapsed ? "px-[14px]" : "px-3")}>
+          {/* Context main item */}
+          <div 
+            className="relative"
+          >
+            <MenuItem
+              href={contextMainItem.href}
+              icon={contextMainItem.icon}
+              title={contextMainItem.title}
+              isActive={pathname.startsWith(contextMainItem.href)}
+              isCollapsed={isCollapsed}
+              className="context-parent-item"
+              onClick={(e) => handleContextNavigation(e, contextMainItem.href)}
+            />
+            
+            {/* Indicator for Context that it has children */}
+            {!isCollapsed && (
+              <div 
+                className={cn(
+                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix",
+                  pathname.startsWith(contextMainItem.href) 
+                    ? "transform rotate-90 text-white" // White when active
+                    : shouldShowContextChildren
+                      ? "transform rotate-90 text-primary" 
+                      : "transform rotate-0 text-muted-foreground/70"
+                )}
+                onClick={toggleContextMenu}
+              >
+                <svg 
+                  width="8" 
+                  height="8" 
+                  viewBox="0 0 6 10" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="transition-all duration-300"
+                >
+                  <path 
+                    d="M1 1L5 5L1 9" 
+                    stroke="currentColor" 
+                    strokeWidth="1.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
+          
+          {/* Container for Context children with animation */}
+          <div 
+            className={cn(
+              "transition-all duration-300 ease-in-out", 
+              shouldShowContextChildren ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+            )}
+            style={{
+              transitionTimingFunction: shouldShowContextChildren 
+                ? 'cubic-bezier(0.4, 0, 0.2, 1)' // ease-out for showing
+                : 'cubic-bezier(0.4, 0, 1, 1)'    // ease-in for hiding (faster)
+            }}
+          >
+            {/* Context children items */}
+            {contextChildrenItems.map((item) => (
+              <div key={`context-child-${item.href}`} className="relative">
                 <MenuItem
-                  key={item.href}
                   href={item.href}
                   icon={item.icon}
                   title={item.title}
-                  isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
+                  isActive={pathname.startsWith(item.href)}
                   isCollapsed={isCollapsed}
+                  className={!isCollapsed ? "ml-3" : ""}
                 >
                   {item.title === "Leads" && (
                     <LeadsBadge isActive={pathname.startsWith("/leads")} />
@@ -279,39 +600,127 @@ export function Sidebar({
                   {item.title === "Campaigns" && (
                     <CampaignsBadge isActive={pathname.startsWith("/campaigns")} />
                   )}
-                  {item.title === "Chats" && (
-                    <ChatsBadge isActive={pathname.startsWith("/chat")} />
-                  )}
                 </MenuItem>
-              ))}
+              </div>
+            ))}
+          </div>
+          
+          {/* Settings item - now part of the same list */}
+          <ConfigurationSection 
+            className={cn("!p-0", isCollapsed ? "px-[14px]" : "px-3")} 
+            isCollapsed={isCollapsed}
+            forceShowChildren={forceShowSettingsChildren}
+            setForceShowChildren={setForceShowSettingsChildren}
+            onSettingsNavigation={handleSettingsNavigation}
+          />
+        </div>
+        {/* Profile Section - Collapsible */}
+        <div className="border-t border-border">
+          <div className={cn("flex flex-col space-y-1 py-4", isCollapsed ? "px-[14px]" : "px-3")}>
+            {/* Profile main item */}
+            <div 
+              className="relative"
+            >
+              <MenuItem
+                href={profileMainItem.href}
+                icon={profileMainItem.icon}
+                title={user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Account'}
+                subtitle={user?.email || ''}
+                avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
+                isActive={pathname.startsWith('/notifications')}
+                isCollapsed={isCollapsed}
+                className="profile-parent-item ![padding-top:25.2px] ![padding-bottom:25.2px]"
+                onClick={(e) => handleProfileNavigation(e, profileMainItem.href)}
+              />
+              
+              {/* Notification badge positioned above avatar */}
+              {!isCollapsed && (
+                <div className="absolute top-0 left-[1.7rem] z-10">
+                  <NotificationBadge isActive={pathname.startsWith("/notifications")} />
+                </div>
+              )}
+              
+              {/* For collapsed mode, position badge over collapsed avatar */}
+              {isCollapsed && (
+                <div className="absolute -top-2 right-0.5 z-10">
+                  <NotificationBadge isActive={pathname.startsWith("/notifications")} />
+                </div>
+              )}
+              
+              {/* Indicator for Profile that it has children */}
+              {!isCollapsed && (
+                <div 
+                  className={cn(
+                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix",
+                    pathname.startsWith('/notifications') 
+                      ? "transform rotate-90 text-white" // White when active
+                      : shouldShowProfileChildren
+                        ? "transform rotate-90 text-primary" 
+                        : "transform rotate-0 text-muted-foreground/70"
+                  )}
+                  onClick={toggleProfileMenu}
+                >
+                  <svg 
+                    width="8" 
+                    height="8" 
+                    viewBox="0 0 6 10" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="transition-all duration-300"
+                  >
+                    <path 
+                      d="M1 1L5 5L1 9" 
+                      stroke="currentColor" 
+                      strokeWidth="1.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+            
+            {/* Container for Profile children with animation */}
+            <div 
+              className={cn(
+                "transition-all duration-300 ease-in-out overflow-hidden", 
+                shouldShowProfileChildren ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+              )}
+              style={{
+                transitionTimingFunction: shouldShowProfileChildren 
+                  ? 'cubic-bezier(0.4, 0, 0.2, 1)' // ease-out for showing
+                  : 'cubic-bezier(0.4, 0, 1, 1)'    // ease-in for hiding (faster)
+              }}
+            >
+              {/* Profile children items */}
+              {profileChildrenItems.map((item) => {
+                const isLogout = item.href === "#logout";
+                
+                return (
+                  <div 
+                    key={`profile-child-${item.href}`} 
+                    className="relative"
+                    onClick={(e) => {
+                      if (isLogout) {
+                        e.preventDefault();
+                        handleLogout();
+                      }
+                    }}
+                  >
+                    <MenuItem
+                      href={isLogout ? "#" : item.href}
+                      icon={item.icon}
+                      title={isLogout ? (isLoggingOut ? "Signing out..." : "Log out") : item.title}
+                      isActive={!isLogout && pathname.startsWith(item.href)}
+                      isCollapsed={isCollapsed}
+                      className={!isCollapsed ? "ml-3" : ""}
+                    >
+                    </MenuItem>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Bottom Section - Fixed */}
-      <div className="flex-none border-t border-border">
-        <ConfigurationSection className={cn(
-          isCollapsed ? "px-[14px]" : "px-3"
-        )} isCollapsed={isCollapsed} />
-        <div className={cn(
-          "border-t border-border",
-          isCollapsed ? "px-[14px] flex justify-center" : "px-3"
-        )}
-        style={{ paddingTop: '14.4px', paddingBottom: '14.4px' }}
-        >
-          <MenuItem
-            href="/profile"
-            icon={User}
-            title={user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario'}
-            subtitle={user?.email || ''}
-            avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
-            isActive={pathname.startsWith('/profile')}
-            isCollapsed={isCollapsed}
-            className="![padding-top:25.2px] ![padding-bottom:25.2px]"
-          >
-            {!isCollapsed && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-          </MenuItem>
         </div>
       </div>
     </div>

@@ -1,13 +1,10 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Settings, Bell, Shield, LogOut, Sun, Moon, CreditCard } from "@/app/components/ui/icons"
+import { Settings, Shield, Sun, Moon, CreditCard } from "@/app/components/ui/icons"
 import { MenuItem } from "./MenuItem"
-import { NotificationBadge } from "./NotificationBadge"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
-import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/client"
 import { Switch } from "@/app/components/ui/switch"
 import {
   Tooltip,
@@ -20,6 +17,9 @@ import { type LucideIcon } from "@/app/components/ui/icons"
 
 interface ConfigurationSectionProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed?: boolean
+  forceShowChildren?: boolean
+  setForceShowChildren?: (value: boolean) => void
+  onSettingsNavigation?: (e: React.MouseEvent, href: string) => void
 }
 
 interface ConfigItem {
@@ -30,11 +30,6 @@ interface ConfigItem {
 }
 
 const configItems: ConfigItem[] = [
-  {
-    title: "Notifications",
-    href: "/notifications",
-    icon: Bell,
-  },
   {
     title: "Settings",
     href: "/settings",
@@ -58,44 +53,19 @@ const configItems: ConfigItem[] = [
     icon: Sun,
     isSettingsChild: true,
   },
-  {
-    title: "Log out",
-    href: "#logout",
-    icon: LogOut,
-    isSettingsChild: true,
-  },
 ]
 
-// Lista de cookies de Supabase que necesitamos eliminar
-const SUPABASE_COOKIES = [
-  'sb-access-token',
-  'sb-refresh-token',
-  'supabase-auth-token',
-  'sb-provider-token',
-  'sb-auth-token',
-  'sb:token',
-  'sb-token',
-  'sb-refresh',
-  'sb-auth',
-  'sb-provider'
-]
 
-// Lista de claves de localStorage que podrían contener datos de sesión
-const LOCAL_STORAGE_KEYS = [
-  'supabase.auth.token',
-  'supabase.auth.refreshToken',
-  'supabase.auth.user',
-  'supabase.auth.expires',
-  'supabase.auth.provider',
-  'sb-provider-token',
-  'sb-access-token',
-  'sb-refresh-token',
-  'supabase-auth'
-]
 
-export function ConfigurationSection({ className, isCollapsed }: ConfigurationSectionProps) {
+export function ConfigurationSection({ 
+  className, 
+  isCollapsed, 
+  forceShowChildren: externalForceShowChildren,
+  setForceShowChildren: externalSetForceShowChildren,
+  onSettingsNavigation
+}: ConfigurationSectionProps) {
   const pathname = usePathname()
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const router = useRouter()
   const [isChanging, setIsChanging] = useState(false)
   // Create a dummy element ref that we'll use for focus management
   const dummyFocusRef = useRef<HTMLDivElement>(null);
@@ -108,8 +78,22 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
   const isSecurityActive = pathname.startsWith('/security')
   const isBillingActive = pathname.startsWith('/billing')
   
-  // Allow manual override for the menu
-  const [forceShowChildren, setForceShowChildren] = useState(false)
+  // Use external state if provided, fallback to local state
+  const [internalForceShowChildren, setInternalForceShowChildren] = useState(false)
+  const forceShowChildren = externalForceShowChildren !== undefined ? externalForceShowChildren : internalForceShowChildren
+  
+  // Unified setter that handles both external and internal state
+  const setForceShowChildren = (value: boolean | ((prev: boolean) => boolean)) => {
+    if (externalSetForceShowChildren) {
+      // For external control, always use direct boolean value
+      const newValue = typeof value === 'function' ? value(forceShowChildren) : value;
+      externalSetForceShowChildren(newValue);
+    } else {
+      // For internal control, can use function or direct value
+      setInternalForceShowChildren(value);
+    }
+  };
+  
   const shouldShowSettingsChildren = isSettingsActive || isSecurityActive || isBillingActive || forceShowChildren
   
   // For animation - defining all state upfront
@@ -117,24 +101,52 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
   const settingsSectionRef = useRef<HTMLDivElement>(null)
   const prevPathRef = useRef(pathname)
   
-  // Reset forceShowChildren when navigating between routes
+  // Reset forceShowChildren when navigating between routes (only if using internal state)
   useEffect(() => {
-    const previousPath = prevPathRef.current;
-    const isLeavingSettingsArea = (
-      (previousPath.startsWith('/settings') || 
-       previousPath.startsWith('/security') || 
-       previousPath.startsWith('/billing')) &&
-      !isSettingsActive && !isSecurityActive && !isBillingActive
-    );
-    
-    // When navigating away from settings area, hide the settings children
-    if (isLeavingSettingsArea) {
-      setForceShowChildren(false);
+    // Only manage internal state if no external state is provided
+    if (externalForceShowChildren === undefined) {
+      const previousPath = prevPathRef.current;
+      const isLeavingSettingsArea = (
+        (previousPath.startsWith('/settings') || 
+         previousPath.startsWith('/security') || 
+         previousPath.startsWith('/billing')) &&
+        !isSettingsActive && !isSecurityActive && !isBillingActive
+      );
+      
+      // When navigating away from settings area, hide the settings children
+      if (isLeavingSettingsArea) {
+        setForceShowChildren(false);
+      }
     }
     
     // Update previous path reference
     prevPathRef.current = pathname;
-  }, [pathname, isSettingsActive, isSecurityActive, isBillingActive]);
+  }, [pathname, isSettingsActive, isSecurityActive, isBillingActive, externalForceShowChildren, setForceShowChildren]);
+  
+  // Use external navigation handler if provided, fallback to local implementation
+  const handleSettingsNavigation = onSettingsNavigation || ((e: React.MouseEvent, href: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // If already in settings area and trying to go to settings, navigate immediately
+    if (href === '/settings' && isSettingsActive) {
+      router.push(href);
+      return;
+    }
+    
+    // If not in settings area, first show children then navigate with delay
+    if (!isSettingsActive && !isSecurityActive && !isBillingActive) {
+      setForceShowChildren(true);
+      
+      // Navigate after delay
+      setTimeout(() => {
+        router.push(href);
+      }, 400);
+    } else {
+      // If already in settings area, navigate immediately
+      router.push(href);
+    }
+  });
   
   // Handle toggling settings menu
   const toggleSettingsMenu = (e?: React.MouseEvent) => {
@@ -188,30 +200,12 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
     document.body.focus();
   };
   
-  const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true)
-      toast.loading("Signing out...")
-      
-      // Cerrar sesión en Supabase del lado del cliente como medida adicional
-      const supabase = createClient()
-      await supabase.auth.signOut()
-      
-      // Redirección simple a la API de logout
-      window.location.href = '/api/auth/logout'
-    } catch (error) {
-      console.error("Error logging out:", error)
-      toast.error("Error signing out")
-      
-      // En caso de error, intentar la redirección directa de todos modos
-      window.location.href = '/api/auth/logout'
-    }
-  }
+
 
   return (
     <div className={cn("space-y-1 py-4", className)} onMouseDown={(e) => e.preventDefault()}>
-      {/* Notifications and Settings are always visible */}
-      {configItems.slice(0, 2).map((item, idx) => {
+      {/* Settings is always visible */}
+      {configItems.slice(0, 1).map((item, idx) => {
         const isSettings = item.title === "Settings";
         const settingsActive = isSettingsActive || isSecurityActive || isBillingActive;
         
@@ -219,11 +213,6 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
           <div 
             key={`main-${item.href}`} 
             className={cn(isSettings && "relative")}
-            onClick={() => {
-              if (isSettings) {
-                toggleSettingsMenu();
-              }
-            }}
           >
             <MenuItem
               href={item.href}
@@ -232,10 +221,9 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
               isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
               isCollapsed={isCollapsed}
               className={isSettings ? "setting-parent-item" : ""}
+              onClick={isSettings ? (e) => handleSettingsNavigation(e, item.href) : undefined}
             >
-              {item.title === "Notifications" && (
-                <NotificationBadge isActive={pathname.startsWith("/notifications")} />
-              )}
+
             </MenuItem>
             
             {/* Indicator for Settings that it has children */}
@@ -243,9 +231,11 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
               <div 
                 className={cn(
                   "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix",
-                  settingsActive || forceShowChildren
-                    ? "transform rotate-90 text-primary" 
-                    : "transform rotate-0 text-muted-foreground/70"
+                  isSettingsActive
+                    ? "transform rotate-90 text-white" // White when active
+                    : settingsActive || forceShowChildren
+                      ? "transform rotate-90 text-primary" 
+                      : "transform rotate-0 text-muted-foreground/70"
                 )}
                 onClick={toggleSettingsMenu}
               >
@@ -285,9 +275,8 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
         }}
       >
         {/* Settings children items */}
-        {configItems.slice(2).map((item, index) => {
+        {configItems.slice(1).map((item, index) => {
           const isActive = pathname.startsWith(item.href);
-          const isLogout = item.href === "#logout";
           const isTheme = item.href === "#theme";
           
           // Para elementos especiales que no navegarán realmente
@@ -335,18 +324,12 @@ export function ConfigurationSection({ className, isCollapsed }: ConfigurationSe
             <div 
               key={`child-${item.href}`}
               className={cn("relative")}
-              onClick={(e) => {
-                if (isLogout) {
-                  e.preventDefault();
-                  handleLogout();
-                }
-              }}
             >
               <MenuItem
-                href={isLogout ? "#" : item.href}
+                href={item.href}
                 icon={item.icon}
-                title={isLogout ? (isLoggingOut ? "Signing out..." : "Log out") : item.title}
-                isActive={!isLogout && isActive}
+                title={item.title}
+                isActive={isActive}
                 isCollapsed={isCollapsed}
                 className={!isCollapsed ? "ml-6" : ""}
               />

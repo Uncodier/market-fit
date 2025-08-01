@@ -157,9 +157,9 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
   
   return (
     <Badge 
-      className={`h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent hover:bg-yellow-500 ${
+      className={`badge-override h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent hover:bg-yellow-500 ${
         isActive 
-          ? "bg-yellow-400 text-black dark:bg-yellow-400 dark:text-black" 
+          ? "bg-yellow-400 !text-black dark:bg-yellow-400 dark:!text-black" 
           : "bg-yellow-400 text-muted-foreground dark:bg-yellow-400 dark:text-black"
       }`}
     >

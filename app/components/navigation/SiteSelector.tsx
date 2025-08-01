@@ -251,17 +251,25 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                           <div className="flex items-center gap-1">
                             <span className="text-sm font-medium truncate">{site.name}</span>
                             {isShared && (
-                              <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-md flex-shrink-0">
+                              <span className={cn(
+                                "px-1.5 py-0.5 text-xs rounded-md flex-shrink-0",
+                                isSelected 
+                                  ? "bg-white/20 text-gray-900" 
+                                  : "bg-blue-100 text-blue-700"
+                              )}>
                                 Shared
                               </span>
                             )}
                           </div>
-                          <span className="text-xs text-muted-foreground truncate">
+                          <span className={cn(
+                            "text-xs truncate",
+                            isSelected ? "text-white/70" : "text-muted-foreground"
+                          )}>
                             {site.url || "No URL"}
                           </span>
                         </div>
                         {isSelected && (
-                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                          <Check className="h-4 w-4 text-white flex-shrink-0" />
                         )}
                       </DropdownMenuItem>
                     )

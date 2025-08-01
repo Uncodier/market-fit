@@ -71,6 +71,10 @@ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
   "/create-site": {
     title: "Create New Site",
     helpText: "Set up a new site with your preferences and configuration"
+  },
+  "/context": {
+    title: "Context",
+    helpText: "Manage and configure your site's context and settings"
   }
 }
 

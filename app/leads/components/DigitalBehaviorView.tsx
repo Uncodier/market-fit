@@ -10,6 +10,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
+import { Pagination } from "@/app/components/ui/pagination"
 import { format } from "date-fns"
 
 interface SessionEvent {
@@ -424,45 +425,12 @@ export function DigitalBehaviorView({ leadId }: DigitalBehaviorViewProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handlePageChange(data.pagination.page - 1)}
-                disabled={data.pagination.page === 1 || loading}
-                className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Previous page</span>
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: data.pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                  <Button
-                    key={page}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handlePageChange(page)}
-                    className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                      data.pagination.page === page 
-                        ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                        : "text-muted-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    {page}
-                  </Button>
-                ))}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handlePageChange(data.pagination.page + 1)}
-                disabled={data.pagination.page === data.pagination.totalPages || loading}
-                className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-              >
-                <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Next page</span>
-              </Button>
-            </div>
+            <Pagination
+              currentPage={data.pagination.page}
+              totalPages={data.pagination.totalPages}
+              onPageChange={handlePageChange}
+              disabled={loading}
+            />
           </div>
         )}
       </Card>

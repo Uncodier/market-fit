@@ -48,6 +48,7 @@ import { TrendItem, TrendPlatform } from "@/app/types/trends"
 import { trendsManager } from "@/app/services/trends-service"
 import { Loader, TrendingUp, RotateCcw, ExternalLink, TrendingDown, ChevronLeft, ChevronRight, Target, Sparkles, LayoutGrid, Clock } from "@/app/components/ui/icons"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
+import { Pagination } from "@/app/components/ui/pagination"
 import { toast } from "sonner"
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -372,45 +373,11 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Previous page</span>
-          </Button>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant="ghost"
-                size="sm"
-                onClick={() => handlePageChange(page)}
-                className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                  currentPage === page 
-                    ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                    : "text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                {page}
-              </Button>
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-          >
-            <ChevronRight className="h-4 w-4" />
-            <span className="sr-only">Next page</span>
-          </Button>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
       </div>
     )}
   </>

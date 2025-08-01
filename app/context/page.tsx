@@ -20,14 +20,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog"
-import { SiteForm } from "../components/settings/site-form"
+import { ContextForm } from "../components/settings/context-form"
 import { type SiteFormValues } from "../components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
 import { handleSave, handleCacheAndRebuild, handleDeleteSite } from "../components/settings/save-handlers"
 import { Input } from "../components/ui/input"
 import { useAuthContext } from "../components/auth/auth-provider"
 
-function SettingsFormSkeleton() {
+function ContextFormSkeleton() {
   return (
     <div className="space-y-8">
       <Card>
@@ -139,17 +139,17 @@ function SettingsFormSkeleton() {
   )
 }
 
-export default function SettingsPage() {
+export default function ContextPage() {
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
   const { theme } = useTheme()
   const { user } = useAuthContext()
   const [isSaving, setIsSaving] = useState(false)
-  const [activeSegment, setActiveSegment] = useState("general")
+  const [activeSegment, setActiveSegment] = useState("company")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [confirmationName, setConfirmationName] = useState("")
 
-  // Simple refresh prevention specifically for settings page
+  // Simple refresh prevention specifically for context page
   useSimpleRefreshPrevention()
 
   // Debug log para verificar el estado de prevención
@@ -159,7 +159,7 @@ export default function SettingsPage() {
       const justBecameVisible = sessionStorage.getItem('JUST_BECAME_VISIBLE')
       const justGainedFocus = sessionStorage.getItem('JUST_GAINED_FOCUS')
       
-      console.log('🔍 Settings page prevention status:', {
+      console.log('🔍 Context page prevention status:', {
         preventRefresh: preventRefresh === 'true',
         justBecameVisible: justBecameVisible === 'true',
         justGainedFocus: justGainedFocus === 'true'
@@ -181,12 +181,12 @@ export default function SettingsPage() {
   
   useEffect(() => {
     if (currentSite?.id && currentSite.id !== prevSiteIdRef.current) {
-      console.log("Settings: Site ID changed, updating formKey for site:", currentSite.id);
-      console.log("Settings: Previous site ID was:", prevSiteIdRef.current);
+      console.log("Context: Site ID changed, updating formKey for site:", currentSite.id);
+      console.log("Context: Previous site ID was:", prevSiteIdRef.current);
       setFormKey(prev => prev + 1)
       prevSiteIdRef.current = currentSite.id
     } else if (currentSite && currentSite.id === prevSiteIdRef.current) {
-      console.log("Settings: Same site ID, not updating formKey:", currentSite.id);
+      console.log("Context: Same site ID, not updating formKey:", currentSite.id);
     }
   }, [currentSite?.id])
 
@@ -219,14 +219,14 @@ export default function SettingsPage() {
   // Función para guardar manualmente (sin depender del submit)
   const handleManualSave = async () => {
     console.log("MANUAL SAVE: Obteniendo formulario");
-    const formElement = document.getElementById('settings-form') as HTMLFormElement;
+    const formElement = document.getElementById('context-form') as HTMLFormElement;
     if (!formElement) {
       console.error("MANUAL SAVE ERROR: No se encontró el formulario");
       return;
     }
     
     console.log("MANUAL SAVE: Disparando validación");
-    // Obtener una referencia al formulario React Hook Form dentro del SiteForm
+    // Obtener una referencia al formulario React Hook Form dentro del ContextForm
     // Esto es un hack, idealmente debería hacerse de otra manera
     const form = (window as any).__debug_form;
     if (!form) {
@@ -256,20 +256,22 @@ export default function SettingsPage() {
       <div className="flex-1">
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
-            <Tabs value="general" className="w-auto">
+            <Tabs value="company" className="w-auto">
               <TabsList>
-                <TabsTrigger value="general">General Settings</TabsTrigger>
-                <TabsTrigger value="channels">Channels</TabsTrigger>
-                <TabsTrigger value="team">Team</TabsTrigger>
+                <TabsTrigger value="company">Company</TabsTrigger>
+                <TabsTrigger value="branding">Branding</TabsTrigger>
+                <TabsTrigger value="marketing">Marketing</TabsTrigger>
+                <TabsTrigger value="customer-journey">Customer Journey</TabsTrigger>
+                <TabsTrigger value="social">Social Networks</TabsTrigger>
               </TabsList>
             </Tabs>
             <Button disabled>
-              Save settings
+              Save context
             </Button>
           </div>
         </StickyHeader>
         <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-          <SettingsFormSkeleton />
+          <ContextFormSkeleton />
         </div>
       </div>
     )
@@ -289,9 +291,11 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="flex">
-              <TabsTrigger value="general" className="whitespace-nowrap">General Settings</TabsTrigger>
-              <TabsTrigger value="channels" className="whitespace-nowrap">Channels</TabsTrigger>
-              <TabsTrigger value="team" className="whitespace-nowrap">Team</TabsTrigger>
+              <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
+              <TabsTrigger value="branding" className="whitespace-nowrap">Branding</TabsTrigger>
+              <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
+              <TabsTrigger value="customer-journey" className="whitespace-nowrap">Customer Journey</TabsTrigger>
+              <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="flex items-center gap-2">
@@ -300,15 +304,15 @@ export default function SettingsPage() {
               onClick={handleManualSave}
               disabled={isSaving}
             >
-              {isSaving ? "Saving..." : "Save settings"}
+              {isSaving ? "Saving..." : "Save context"}
             </Button>
           </div>
         </div>
       </StickyHeader>
       <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <SiteForm
+        <ContextForm
           key={formKey}
-          id="settings-form"
+          id="context-form"
           initialData={adaptedSiteData || undefined}
           onSubmit={onSave}
           onDeleteSite={() => setShowDeleteDialog(true)}
@@ -369,4 +373,4 @@ export default function SettingsPage() {
       </AlertDialog>
     </div>
   )
-} 
+}

@@ -23,6 +23,7 @@ export const routes: RouteConfig[] = [
   { path: "/security", hasLayout: true },
   { path: "/help", hasLayout: true },
   { path: "/profile", hasLayout: true },
+  { path: "/context", hasLayout: true },
   { path: "/create-site", hasLayout: false },
   
   // Routes without layout (default)

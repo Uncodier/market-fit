@@ -31,6 +31,7 @@ import {
   Target
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
+import { Pagination } from "@/app/components/ui/pagination"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -1074,55 +1075,12 @@ function ContentTable({
                       of <span className="font-medium">{statusItems.length}</span> items
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleStatusPageChange(status.id, currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="sr-only">Previous page</span>
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                        let page = i + 1
-                        if (totalPages > 5) {
-                          if (currentPage > 3) {
-                            page = currentPage - 2 + i
-                            if (page > totalPages) page = totalPages - 4 + i
-                          }
-                        }
-                        if (page < 1 || page > totalPages) return null
-                        return (
-                          <Button
-                            key={page}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleStatusPageChange(status.id, page)}
-                            className={`!min-w-0 h-8 w-8 p-0 font-medium transition-colors ${
-                              currentPage === page 
-                                ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                                : "text-muted-foreground hover:bg-muted/50"
-                            }`}
-                          >
-                            {page}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleStatusPageChange(status.id, currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                      <span className="sr-only">Next page</span>
-                    </Button>
-                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(page) => handleStatusPageChange(status.id, page)}
+                    maxVisiblePages={5}
+                  />
                 </div>
               )}
             </Card>
