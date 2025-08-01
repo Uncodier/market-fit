@@ -514,6 +514,9 @@ export function Sidebar({
                   {item.title === "Requirements" && (
                     <RequirementsBadge isActive={pathname.startsWith("/requirements")} />
                   )}
+                  {item.title === "Chats" && (
+                    <ChatsBadge isActive={pathname.startsWith("/chat")} />
+                  )}
                 </MenuItem>
               ))}
             </div>

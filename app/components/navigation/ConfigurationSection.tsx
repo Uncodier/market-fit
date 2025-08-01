@@ -293,7 +293,7 @@ export function ConfigurationSection({
                   isActive={false}
                   isCollapsed={isCollapsed}
                   className={cn(
-                    !isCollapsed ? "ml-6" : "",
+                    !isCollapsed ? "ml-3" : "",
                     "flex items-center"
                   )}
                   onClick={(e) => {
@@ -331,7 +331,7 @@ export function ConfigurationSection({
                 title={item.title}
                 isActive={isActive}
                 isCollapsed={isCollapsed}
-                className={!isCollapsed ? "ml-6" : ""}
+                className={!isCollapsed ? "ml-3" : ""}
               />
             </div>
           );
