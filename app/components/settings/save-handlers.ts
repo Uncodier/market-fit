@@ -63,7 +63,23 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
     console.log("SAVE 3: Datos extraídos del formulario:", {
       site: { name, url, description },
       settings: { goals: rawGoals, about: settingsData.about },
+      branding: data.branding,
       customer_journey: customer_journey
+    });
+    
+    // Debug specific branding data
+    console.log("SAVE 3.1: Branding data details:", {
+      brand_essence: data.branding?.brand_essence,
+      personality_traits: data.branding?.personality_traits,
+      primary_color: data.branding?.primary_color,
+      communication_style: data.branding?.communication_style
+    });
+    
+    // Debug specific customer journey data
+    console.log("SAVE 3.2: Customer journey data details:", {
+      awareness: customer_journey?.awareness,
+      consideration: customer_journey?.consideration,
+      decision: customer_journey?.decision
     });
     
     // Guardar inmediatamente el focusMode en localStorage para asegurar que persista

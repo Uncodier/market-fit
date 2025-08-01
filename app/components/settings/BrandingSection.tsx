@@ -61,12 +61,14 @@ export function BrandingSection({ active }: BrandingSectionProps) {
   // Helper functions for managing branding arrays
   const addToBrandingArray = (fieldName: string, value: string) => {
     const currentArray = form.getValues(fieldName as any) as string[] || []
-    form.setValue(fieldName as any, [...currentArray, value])
+    const newArray = [...currentArray, value]
+    form.setValue(fieldName as any, newArray, { shouldDirty: true, shouldValidate: true })
   }
 
   const removeFromBrandingArray = (fieldName: string, index: number) => {
     const currentArray = form.getValues(fieldName as any) as string[] || []
-    form.setValue(fieldName as any, currentArray.filter((_, i) => i !== index))
+    const newArray = currentArray.filter((_, i) => i !== index)
+    form.setValue(fieldName as any, newArray, { shouldDirty: true, shouldValidate: true })
   }
 
   return (

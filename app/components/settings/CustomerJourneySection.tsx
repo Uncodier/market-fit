@@ -16,7 +16,7 @@ import {
   Plus,
   Trash2
 } from "../ui/icons"
-import { useFormContext, useFieldArray } from "react-hook-form"
+import { useFormContext } from "react-hook-form"
 import { type SiteFormValues } from "./form-schema"
 
 interface CustomerJourneyStage {
@@ -80,19 +80,25 @@ interface StageInputsProps {
 }
 
 function StageInputs({ stageId, fieldType, title, placeholder }: StageInputsProps) {
-  const { control } = useFormContext<SiteFormValues>()
+  const { control, watch, setValue } = useFormContext<SiteFormValues>()
   
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `customer_journey.${stageId}.${fieldType}` as any
-  })
-
+  const fieldPath = `customer_journey.${stageId}.${fieldType}` as any
+  const currentArray = watch(fieldPath) || []
+  
   const addItem = () => {
-    append("")
+    const newArray = [...currentArray, ""]
+    setValue(fieldPath, newArray, { shouldDirty: true, shouldValidate: true })
   }
 
   const removeItem = (index: number) => {
-    remove(index)
+    const newArray = currentArray.filter((_: any, i: number) => i !== index)
+    setValue(fieldPath, newArray, { shouldDirty: true, shouldValidate: true })
+  }
+
+  const updateItem = (index: number, value: string) => {
+    const newArray = [...currentArray]
+    newArray[index] = value
+    setValue(fieldPath, newArray, { shouldDirty: true, shouldValidate: true })
   }
 
   return (
@@ -112,10 +118,11 @@ function StageInputs({ stageId, fieldType, title, placeholder }: StageInputsProp
       </div>
       
       <div className="space-y-2">
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex items-center gap-2">
+        {currentArray.map((item: string, index: number) => (
+          <div key={index} className="flex items-center gap-2">
             <Input
-              {...control.register(`customer_journey.${stageId}.${fieldType}.${index}` as any)}
+              value={item}
+              onChange={(e) => updateItem(index, e.target.value)}
               placeholder={placeholder}
               className="flex-1 h-12 text-sm"
             />
@@ -131,7 +138,7 @@ function StageInputs({ stageId, fieldType, title, placeholder }: StageInputsProp
           </div>
         ))}
         
-        {fields.length === 0 && (
+        {currentArray.length === 0 && (
           <div className="text-xs text-gray-400 dark:text-gray-500 italic py-2">
             No {fieldType.toLowerCase()} configured. Click "Add" to get started.
           </div>

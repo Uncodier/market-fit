@@ -102,6 +102,15 @@ const humanInTheLoopItems = [
   },
 ]
 
+// Automatic category
+const automaticItems = [
+  {
+    title: "Agents",
+    href: "/agents",
+    icon: Cpu,
+  },
+]
+
 // Context section - main item
 const contextMainItem = {
   title: "Context",
@@ -135,11 +144,6 @@ const contextChildrenItems = [
     title: "Sales",
     href: "/sales",
     icon: DollarSign,
-  },
-  {
-    title: "Agents",
-    href: "/agents",
-    icon: Cpu,
   },
 ]
 
@@ -215,10 +219,9 @@ export function Sidebar({
   const isAssetsActive = pathname.startsWith('/assets')
   const isLeadsActive = pathname.startsWith('/leads')
   const isSalesActive = pathname.startsWith('/sales')
-  const isAgentsActive = pathname.startsWith('/agents')
   
   const shouldShowContextChildren = isContextActive || isCampaignsActive || isSegmentsActive || 
-    isAssetsActive || isLeadsActive || isSalesActive || isAgentsActive || forceShowContextChildren
+    isAssetsActive || isLeadsActive || isSalesActive || forceShowContextChildren
   
   // Check if Profile or any profile child is active
   const isProfileActive = pathname.startsWith('/profile')
@@ -235,7 +238,7 @@ export function Sidebar({
     const previousPath = prevPathContextRef.current;
     
     const inContextArea = isContextActive || isCampaignsActive || isSegmentsActive || 
-                          isAssetsActive || isLeadsActive || isSalesActive || isAgentsActive;
+                          isAssetsActive || isLeadsActive || isSalesActive;
     const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing');
     const inProfileArea = isProfileActive;
     
@@ -245,8 +248,7 @@ export function Sidebar({
        previousPath.startsWith('/segments') ||
        previousPath.startsWith('/assets') ||
        previousPath.startsWith('/leads') ||
-       previousPath.startsWith('/sales') ||
-       previousPath.startsWith('/agents')) &&
+       previousPath.startsWith('/sales')) &&
       !inContextArea
     );
     
@@ -280,7 +282,7 @@ export function Sidebar({
     
     // Update previous path reference
     prevPathContextRef.current = pathname;
-  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isLeadsActive, isSalesActive, isAgentsActive, isProfileActive, isNotificationsActive]);
+  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isLeadsActive, isSalesActive, isProfileActive, isNotificationsActive]);
   
   // Centralized navigation handler that coordinates all sections
   const handleSectionNavigation = (e: React.MouseEvent, href: string, section: 'context' | 'settings' | 'profile') => {
@@ -288,7 +290,7 @@ export function Sidebar({
     e.stopPropagation();
     
     const inContextArea = isContextActive || isCampaignsActive || isSegmentsActive || 
-                          isAssetsActive || isLeadsActive || isSalesActive || isAgentsActive;
+                          isAssetsActive || isLeadsActive || isSalesActive;
     
     // Check if we're in settings area (we'll need to get this from ConfigurationSection)
     const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing');
@@ -384,7 +386,7 @@ export function Sidebar({
     
     // If already in context area, don't toggle
     if (isContextActive || isCampaignsActive || isSegmentsActive || 
-        isAssetsActive || isLeadsActive || isSalesActive || isAgentsActive) return;
+        isAssetsActive || isLeadsActive || isSalesActive) return;
     
     // Toggle force show
     setForceShowContextChildren(prev => !prev);
@@ -513,6 +515,26 @@ export function Sidebar({
                     <RequirementsBadge isActive={pathname.startsWith("/requirements")} />
                   )}
                 </MenuItem>
+              ))}
+            </div>
+          </div>
+
+          {/* Automatic Category */}
+          <div style={{ marginTop: '21.6px' }}>
+            <CategoryHeader title="🤖 Automatic" isCollapsed={isCollapsed} />
+            <div className={cn(
+              "flex flex-col space-y-1",
+              isCollapsed ? "px-[14px]" : "px-3"
+            )}>
+              {automaticItems.map((item) => (
+                <MenuItem
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  title={item.title}
+                  isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
+                  isCollapsed={isCollapsed}
+                />
               ))}
             </div>
           </div>

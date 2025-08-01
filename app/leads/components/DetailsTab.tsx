@@ -69,7 +69,7 @@ export function DetailsTab({
           {isEditing ? (
             <Input
               value={editForm.email || ""}
-              onChange={(e) => setEditForm({...editForm, email: e.target.value || null})}
+              onChange={(e) => setEditForm({...editForm, email: e.target.value})}
               className="h-12 text-sm"
               placeholder="email@example.com"
             />

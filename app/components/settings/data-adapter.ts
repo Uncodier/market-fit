@@ -116,6 +116,43 @@ export const formatServices = (services: any[]): any[] => {
   });
 }
 
+// Convert locations data to the new format with restrictions field
+export const formatLocations = (locations: any[]): any[] => {
+  if (!locations || !Array.isArray(locations)) return [];
+  
+  return locations.map(location => {
+    // Handle migration from old format to new format with restrictions
+    if (typeof location === 'object' && location !== null) {
+      return {
+        name: location.name || '',
+        address: location.address || '',
+        city: location.city || '',
+        state: location.state || '',
+        zip: location.zip || '',
+        country: location.country || '',
+        restrictions: location.restrictions || {
+          enabled: false,
+          included_addresses: [],
+          excluded_addresses: []
+        }
+      };
+    }
+    return {
+      name: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      country: '',
+      restrictions: {
+        enabled: false,
+        included_addresses: [],
+        excluded_addresses: []
+      }
+    };
+  });
+}
+
 // Adaptar Site a SiteFormValues para el formulario
 export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
   console.log("Adapting site to form:", site);
@@ -193,7 +230,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     industry: site.settings?.industry || "",
     products: formatProducts(site.settings?.products || []),
     services: formatServices(site.settings?.services || []),
-    locations: site.settings?.locations || [],
+    locations: formatLocations(site.settings?.locations || []),
     // Add goals with converted field names
     goals: goalsData,
     swot: site.settings?.swot || {
