@@ -440,25 +440,19 @@ export function Sidebar({
       {/* Logo Section - Fixed */}
       <Link href="/dashboard" className={cn(
         "flex items-center h-16 border-b border-border flex-none",
-        isCollapsed ? "justify-center px-3" : "justify-start px-6"
+        isCollapsed ? "justify-center px-3" : "justify-center px-6"
       )}>
         <Image 
-          src="/images/logo.png"
+          src={isCollapsed ? "/images/logo.png" : "/images/combination_mark.png"}
           alt="Market Fit Logo"
-          width={32}
-          height={32}
+          width={isCollapsed ? 32 : 120}
+          height={isCollapsed ? 32 : 40}
           className={cn(
-            "transition-all duration-200 h-8 w-8 object-contain",
-            isCollapsed ? "mr-0" : "mr-2"
+            "transition-all duration-200 object-contain",
+            isCollapsed ? "h-8 w-8" : "h-10 w-auto"
           )}
           priority
         />
-        <span className={cn(
-          "text-[1.1rem] font-bold transition-all duration-200",
-          isCollapsed ? "scale-0 w-0" : "scale-100 w-auto"
-        )}>
-          MARKET FIT
-        </span>
       </Link>
 
       {/* Site Selector */}
