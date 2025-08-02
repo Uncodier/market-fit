@@ -10,6 +10,8 @@ export interface Command {
   duration?: number;
   model?: string;
   agent_id?: string;
+  agent_name?: string; // Agent name from JOIN
+  agent_role?: string; // Agent role from JOIN
   output_tokens?: number;
   input_tokens?: number;
   results?: any[];

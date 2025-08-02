@@ -28,7 +28,7 @@ interface ExtendedTask extends Task {
   comments_count?: number
 }
 
-type TaskStatusFilter = Task['status'] | 'all'
+
 
 interface TaskCounts {
   byCategory: Record<string, number>
@@ -53,10 +53,12 @@ export default function ControlCenterPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [filters, setFilters] = useState<TaskFilters>({
     stage: [],
+    status: [],
     leadId: [],
     assigneeId: []
   })
-  const [currentStatus, setCurrentStatus] = useState<TaskStatusFilter>("all")
+  const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'completed'>('all')
+
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
 
@@ -428,11 +430,17 @@ export default function ControlCenterPage() {
 
     if (!matchesSearch) return false
 
-    // Apply status filter
-    if (currentStatus !== "all" && task.status !== currentStatus) return false
+
 
     // Apply stage filters
     if (filters.stage.length > 0 && !filters.stage.includes(task.stage || '')) return false
+
+    // Apply status filter from tabs
+    if (statusFilter === 'new' && task.status !== 'pending') return false
+    if (statusFilter === 'completed' && !['failed', 'canceled', 'completed'].includes(task.status)) return false
+
+    // Apply status filters from modal
+    if (filters.status.length > 0 && !filters.status.includes(task.status)) return false
 
     // Apply lead filters
     if (filters.leadId.length > 0 && !filters.leadId.includes(task.lead_id || '')) return false
@@ -469,7 +477,7 @@ export default function ControlCenterPage() {
 
   // Get total active filters
   const getTotalActiveFilters = () => {
-    return filters.stage.length + filters.leadId.length + filters.assigneeId.length
+    return filters.stage.length + filters.status.length + filters.leadId.length + filters.assigneeId.length
   }
 
   if (isLoading) {
@@ -502,6 +510,10 @@ export default function ControlCenterPage() {
           isCollapsed={isSidebarCollapsed}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          onFilterClick={() => setIsFilterModalOpen(true)}
+          activeFilters={getTotalActiveFilters()}
         />
       </div>
 
@@ -524,10 +536,8 @@ export default function ControlCenterPage() {
                 showCalendar={true}
               />
             }
-            currentStatus={currentStatus}
-            onStatusChange={setCurrentStatus}
-            onFilterClick={() => setIsFilterModalOpen(true)}
-            activeFilters={getTotalActiveFilters()}
+
+
           />
         </div>
 

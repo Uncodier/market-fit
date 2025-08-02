@@ -30,31 +30,45 @@ export function ControlCenterSkeleton({
           </div>
           
           {/* Sidebar Content */}
-          <div className="h-[calc(100%-71px)] overflow-hidden">
-            <div className="p-4 space-y-6">
-              {/* All Tasks */}
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-20" />
-                <Skeleton className="h-10 w-full rounded-md" />
-              </div>
-              
-              {/* Task Types */}
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-24" />
-                <div className="space-y-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-9 w-full rounded-md" />
-                  ))}
+          <div className="h-[calc(100%-71px)] overflow-hidden" style={{ paddingTop: '71px' }}>
+            <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" style={{ minHeight: 'calc(100vh - 71px - 56px)' }}>
+              <div className="w-[319px]">
+                {/* Status Filter Skeleton */}
+                <div className="px-4 py-3 border-b border-border/30 flex items-center justify-center min-h-[56px]">
+                  <div className="flex items-center justify-center w-full gap-3">
+                    {/* Tabs skeleton */}
+                    <div className="flex items-center justify-center">
+                      <div className="flex h-8 p-0.5 bg-muted/30 rounded-md">
+                        <Skeleton className="h-7 w-12 rounded-sm" />
+                        <Skeleton className="h-7 w-12 rounded-sm ml-1" />
+                        <Skeleton className="h-7 w-16 rounded-sm ml-1" />
+                      </div>
+                    </div>
+                    {/* Filter button skeleton */}
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
                 </div>
-              </div>
-              
-              {/* Categories */}
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-20" />
-                <div className="space-y-1">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-9 w-full rounded-md" />
-                  ))}
+
+                <div className="p-4 space-y-6">
+                  {/* Task Types */}
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-24" />
+                    <div className="space-y-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Skeleton key={i} className="h-9 w-full rounded-md" />
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Categories */}
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-20" />
+                    <div className="space-y-1">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton key={i} className="h-9 w-full rounded-md" />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

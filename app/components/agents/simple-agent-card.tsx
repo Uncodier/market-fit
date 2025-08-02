@@ -117,7 +117,7 @@ export function SimpleAgentCard({
 
   return (
     <div className={cn(
-      "flex flex-col relative",
+      "flex flex-col relative rounded-lg",
       className
     )}>
       <Card 

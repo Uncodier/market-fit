@@ -94,7 +94,7 @@ export async function getCommands(site_id: string, page: number = 1, pageSize: n
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
     
-    // Get commands for these agents with pagination
+    // Get commands for these agents with pagination, including agent name
     const { data, error } = await supabase
       .from("commands")
       .select(`
@@ -104,7 +104,9 @@ export async function getCommands(site_id: string, page: number = 1, pageSize: n
         description,
         context,
         created_at,
-        duration
+        duration,
+        agent_id,
+        agents!commands_agent_id_fkey(name, role)
       `)
       .in('agent_id', agentIds)
       .order("created_at", { ascending: false })
@@ -117,8 +119,15 @@ export async function getCommands(site_id: string, page: number = 1, pageSize: n
 
     console.log(`Datos recibidos de Supabase: ${data?.length || 0} registros para agents de site_id ${site_id}`)
     
+    // Transform data to flatten agent name and role
+    const transformedData = data?.map(command => ({
+      ...command,
+      agent_name: command.agents?.name || 'Unknown Agent',
+      agent_role: command.agents?.role || 'Unknown Role'
+    })) || []
+    
     // Si no hay datos, retornamos un array vacío en lugar de null
-    return { commands: data || [] }
+    return { commands: transformedData }
   } catch (error) {
     console.error("Error loading commands:", error)
     return { commands: [], error: "Error loading commands" }

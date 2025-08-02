@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Category } from "@/app/types"
 import { Badge } from "@/app/components/ui/badge"
 import { CategoriesHeader } from "./CategoriesHeader"
+import { TaskStatusFilter } from "./TaskStatusFilter"
 import { useTheme } from "@/app/context/ThemeContext"
 import { Check, Tag } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -47,6 +48,8 @@ const getCategoryIcon = (category: Category): string => {
   return category.icon || "📁"
 }
 
+type StatusFilterType = 'all' | 'new' | 'completed'
+
 interface TaskSidebarProps {
   categories: Category[]
   taskTypes: string[]
@@ -57,6 +60,10 @@ interface TaskSidebarProps {
   isCollapsed: boolean
   searchQuery: string
   onSearchChange: (value: string) => void
+  statusFilter: StatusFilterType
+  onStatusFilterChange: (filter: StatusFilterType) => void
+  onFilterClick?: () => void
+  activeFilters?: number
 }
 
 export function TaskSidebar({
@@ -68,7 +75,11 @@ export function TaskSidebar({
   taskCountByType,
   isCollapsed,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  statusFilter,
+  onStatusFilterChange,
+  onFilterClick,
+  activeFilters = 0
 }: TaskSidebarProps) {
   const { isDarkMode } = useTheme()
 
@@ -87,14 +98,22 @@ export function TaskSidebar({
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
       />
-      <div className="h-[calc(100vh-64px)] overflow-hidden" style={{ paddingTop: '64px' }}>
+      <div className="h-[calc(100vh-64px)] overflow-hidden" style={{ paddingTop: '71px' }}>
         <ScrollArea className={cn(
           "h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-        )}>
+        )} style={{ minHeight: 'calc(100vh - 71px - 56px)' }}>
           <div className={cn(
             "w-[319px] transition-all duration-200 ease-in-out",
             isCollapsed ? "opacity-0" : "opacity-100"
           )}>
+            {/* Status Filter - Always visible */}
+            <TaskStatusFilter
+              selectedFilter={statusFilter}
+              onFilterChange={onStatusFilterChange}
+              onFilterClick={onFilterClick}
+              activeFilters={activeFilters}
+            />
+
             {/* Show single empty state if no categories and no task types */}
             {categories.length === 0 && taskTypes.length === 0 ? (
               <div className="h-[calc(100vh-135px)] flex items-center justify-center p-4">

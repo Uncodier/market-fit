@@ -50,6 +50,7 @@ const TASK_STATUSES = [
 // Define tipos para los filtros
 export interface TaskFilters {
   stage: string[]
+  status: string[]
   leadId: string[]
   assigneeId: string[]
 }
@@ -74,6 +75,7 @@ export function TaskFilterModal({
   // Estado local para los filtros
   const [localFilters, setLocalFilters] = React.useState<TaskFilters>({
     stage: [...filters.stage],
+    status: [...filters.status],
     leadId: [...filters.leadId],
     assigneeId: [...filters.assigneeId]
   })
@@ -81,6 +83,7 @@ export function TaskFilterModal({
   // Estado para las secciones expandidas
   const [expandedSections, setExpandedSections] = React.useState({
     stage: true,
+    status: true,
     lead: true,
     assignee: true
   })
@@ -112,6 +115,23 @@ export function TaskFilterModal({
         return {
           ...prev,
           stage: [...prev.stage, value]
+        }
+      }
+    })
+  }
+
+  // Función para actualizar status
+  const handleStatusChange = (value: string) => {
+    setLocalFilters(prev => {
+      if (prev.status.includes(value)) {
+        return {
+          ...prev,
+          status: prev.status.filter(s => s !== value)
+        }
+      } else {
+        return {
+          ...prev,
+          status: [...prev.status, value]
         }
       }
     })
@@ -155,6 +175,7 @@ export function TaskFilterModal({
   const handleResetFilters = () => {
     setLocalFilters({
       stage: [],
+      status: [],
       leadId: [],
       assigneeId: []
     })
@@ -169,6 +190,7 @@ export function TaskFilterModal({
   // Contar el total de filtros activos
   const getTotalActiveFilters = () => {
     return localFilters.stage.length + 
+           localFilters.status.length +
            localFilters.leadId.length + 
            localFilters.assigneeId.length
   }
@@ -230,6 +252,52 @@ export function TaskFilterModal({
                       >
                         <Tag className="h-4 w-4 text-muted-foreground" />
                         <span className="capitalize">{stage.name}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Status Filter */}
+          <div className="border rounded-lg">
+            <div 
+              className="flex items-center justify-between p-3 cursor-pointer"
+              onClick={() => toggleSection('status')}
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-medium">Status</h3>
+                {localFilters.status.length > 0 && (
+                  <Badge variant="outline" className="ml-2">
+                    {localFilters.status.length}
+                  </Badge>
+                )}
+              </div>
+              {expandedSections.status ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+
+            {expandedSections.status && (
+              <div className="px-3 py-[10px] border-t">
+                <div className="grid grid-cols-2 gap-2">
+                  {TASK_STATUSES.map(status => (
+                    <div key={status.id} className="flex items-center space-x-2">
+                      <Switch 
+                        id={`status-${status.id}`}
+                        checked={localFilters.status.includes(status.id)}
+                        onCheckedChange={() => handleStatusChange(status.id)}
+                      />
+                      <Label 
+                        htmlFor={`status-${status.id}`}
+                        className="flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span className="capitalize">{status.name}</span>
                       </Label>
                     </div>
                   ))}

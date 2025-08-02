@@ -17,7 +17,8 @@ import { ZoomableCanvas } from "@/app/components/agents/zoomable-canvas"
 import { AnimatedConnectionLine } from "@/app/components/agents/animated-connection-line"
 import { CommandList } from "@/app/components/agents/command-list"
 import { Command } from "@/app/components/agents/command-item"
-import { CommandsPanel } from "@/app/components/agents/commands-panel"
+import { CommandsView } from "@/app/components/agents/commands-view"
+import { ActivitiesView } from "@/app/components/agents/activities-view"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { agents as mockAgents } from "@/app/data/mock-agents"
 import { useSite } from "@/app/context/SiteContext"
@@ -116,6 +117,7 @@ function AgentsPageContent() {
   const [selectedActivity, setSelectedActivity] = useState<AgentActivity | null>(null)
   const { isLayoutCollapsed } = useLayout()
   const [activeCommandTab, setActiveCommandTab] = useState<string>("all")
+  const [activeTab, setActiveTab] = useState<string>("agents")
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
@@ -126,7 +128,6 @@ function AgentsPageContent() {
   
   // Layout configuration
   const sidebarWidth = isLayoutCollapsed ? 72 : 240; // Width in pixels when collapsed or expanded
-  const commandPanelWidth = 300; // Width in pixels
   const topbarHeight = 64; // Height of the topbar in pixels
   
   // Lead agent and data analyst agent
@@ -1042,6 +1043,20 @@ function AgentsPageContent() {
     );
   };
 
+  // Helper function to get dynamic placeholder based on active tab
+  const getSearchPlaceholder = () => {
+    switch (activeTab) {
+      case "agents":
+        return "Search team...";
+      case "commands":
+        return "Search commands...";
+      case "activities":
+        return "Search activities...";
+      default:
+        return "Search...";
+    }
+  };
+
   return (
     <AgentSelectionContext.Provider value={{ selectedAgent, setSelectedAgent, selectedActivity, setSelectedActivity }}>
       <div className="flex h-full relative bg-background">
@@ -1049,27 +1064,26 @@ function AgentsPageContent() {
         <div 
           className="flex-1 w-full"
           style={{ 
-            width: `calc(100vw - ${sidebarWidth}px - ${commandPanelWidth}px)`,
-            maxWidth: `calc(100vw - ${sidebarWidth}px - ${commandPanelWidth}px)`,
+            width: `calc(100vw - ${sidebarWidth}px)`,
+            maxWidth: `calc(100vw - ${sidebarWidth}px)`,
             backgroundColor: "rgba(0, 0, 0, 0.02)"
           }}
         >
-          <Tabs defaultValue="all" className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <StickyHeader>
               <div className="px-16 pt-0">
                 <div className="flex items-center gap-4">
                   <div className="flex-1 flex items-center gap-4">
                     <TabsList>
-                      <TabsTrigger value="all">All Team</TabsTrigger>
-                      <TabsTrigger value="marketing">Marketing</TabsTrigger>
-                      <TabsTrigger value="sales">Sales</TabsTrigger>
-                      <TabsTrigger value="product">Product</TabsTrigger>
+                      <TabsTrigger value="agents">Team</TabsTrigger>
+                      <TabsTrigger value="commands">Commands</TabsTrigger>
+                      <TabsTrigger value="activities">Activities</TabsTrigger>
                     </TabsList>
                     
                     <div className="relative w-64">
                       <Input 
                         data-command-k-input
-                        placeholder="Search agents..." 
+                        placeholder={getSearchPlaceholder()} 
                         className="w-full"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -1081,16 +1095,18 @@ function AgentsPageContent() {
                     </div>
                   </div>
                   
-                  <div>
-                    <ToggleGroup type="single" value={viewMode} onValueChange={(value: string) => value && setViewMode(value as "hierarchy" | "grid")}>
-                      <ToggleGroupItem value="hierarchy" aria-label="Toggle hierarchy view" className="px-2">
-                        <TableRows className="h-4 w-4" />
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="grid" aria-label="Toggle grid view" className="px-2">
-                        <List className="h-4 w-4" />
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
+                  {activeTab === "agents" && (
+                    <div>
+                      <ToggleGroup type="single" value={viewMode} onValueChange={(value: string) => value && setViewMode(value as "hierarchy" | "grid")}>
+                        <ToggleGroupItem value="hierarchy" aria-label="Toggle hierarchy view" className="px-2">
+                          <TableRows className="h-4 w-4" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="grid" aria-label="Toggle grid view" className="px-2">
+                          <List className="h-4 w-4" />
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
+                  )}
                 </div>
               </div>
             </StickyHeader>
@@ -1104,7 +1120,7 @@ function AgentsPageContent() {
                 flexDirection: "column"
               }}
             >
-              <TabsContent value="all" className="m-0">
+              <TabsContent value="agents" className="m-0">
                 <div className={`${viewMode === "grid" ? "px-8" : ""}`}>
                   {viewMode === "hierarchy" ? (
                     <div className="flex flex-col items-center">
@@ -1314,7 +1330,7 @@ function AgentsPageContent() {
                                                   </div>
                                                   
                                                   {/* Label for hierarchical relationship */}
-                                                  <div className="absolute top-[-14px] left-[-16px] bg-background text-xs px-2 py-1 text-muted-foreground rounded font-medium border shadow-sm">
+                                                  <div className="absolute top-[-14px] left-[-16px] bg-background text-xs px-2 py-1 text-muted-foreground rounded-lg font-medium border shadow-sm">
                                                     Reports to
                                                   </div>
                                                   
@@ -1374,262 +1390,19 @@ function AgentsPageContent() {
                 </div>
               </TabsContent>
               
-              <TabsContent value="marketing" className="m-0">
-                <div className="px-8">
-                  {viewMode === "hierarchy" ? (
-                    <div className="flex flex-col items-center">
-                      <div className="w-full">
-                        <ZoomableCanvas>
-                          <div className="flex flex-col items-center">
-                            <div className="pt-2 flex flex-col items-center">
-                              <h2 className="text-2xl font-bold mb-10">Marketing Team Structure</h2>
-                              
-                              {/* Filter only marketing agents */}
-                              {isLoading ? (
-                                <div className="space-y-20">
-                                  {Array.from({ length: 2 }).map((_, index) => (
-                                    <SimpleAgentCardSkeleton key={index} className="w-[458px]" />
-                                  ))}
-                                </div>
-                              ) : (
-                                <div>
-                                  {agents
-                                    .filter(agent => agent.type === "marketing" && !agent.isDisabled)
-                                    .map((agent, index, filteredAgents) => (
-                                      <div key={agent.id}>
-                                        <div className="w-[458px] px-4">
-                                          <SimpleAgentCard 
-                                            agent={agent} 
-                                            onManage={handleManageAgent}
-                                            onChat={handleChatWithAgent}
-                                            onToggleActivities={handleToggleActivities}
-                                            showActivities={isAgentExpanded(agent.id)}
-                                            onExecuteActivity={handleExecuteActivity}
-                                            setSelectedAgent={setSelectedAgent}
-                                            className={index === 0 ? "border-primary/50 shadow-md" : ""}
-                                            activityStates={activityStates}
-                                          />
-                                        </div>
-                                        
-                                        {/* Add connection line if not the last agent */}
-                                        {index < filteredAgents.length - 1 && (
-                                          <div className="flex justify-center relative my-8">
-                                            <div className="h-12 w-0.5 bg-border"></div>
-                                            <AnimatedConnectionLine direction="down" className="h-12 opacity-100" dotColor="var(--primary)" />
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))
-                                  }
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </ZoomableCanvas>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      {renderGridView("marketing")}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="sales" className="m-0">
-                <div className="px-8">
-                  {viewMode === "hierarchy" ? (
-                    <div className="flex flex-col items-center">
-                      <div className="w-full">
-                        <ZoomableCanvas>
-                          <div className="flex flex-col items-center">
-                            <div className="pt-2 flex flex-col items-center">
-                              <h2 className="text-2xl font-bold mb-10">Sales Team Structure</h2>
-                              
-                              {/* Filter only sales agents */}
-                              {isLoading ? (
-                                <div className="space-y-20">
-                                  {Array.from({ length: 2 }).map((_, index) => (
-                                    <SimpleAgentCardSkeleton key={index} className="w-[458px]" />
-                                  ))}
-                                </div>
-                              ) : (
-                                <div>
-                                  {agents
-                                    .filter(agent => agent.type === "sales" && !agent.isDisabled && agent.id !== "7") // Exclude Customer Support from main list
-                                    .map((agent, index, filteredAgents) => (
-                                      <div key={agent.id}>
-                                        <div className="w-[458px] px-4">
-                                          <SimpleAgentCard 
-                                            agent={agent} 
-                                            onManage={handleManageAgent}
-                                            onChat={handleChatWithAgent}
-                                            onToggleActivities={handleToggleActivities}
-                                            showActivities={isAgentExpanded(agent.id)}
-                                            onExecuteActivity={handleExecuteActivity}
-                                            setSelectedAgent={setSelectedAgent}
-                                            className={index === 0 ? "border-primary/50 shadow-md" : ""}
-                                            activityStates={activityStates}
-                                          />
-                                        </div>
-                                        
-                                        {/* Add connection line if not the last agent */}
-                                        {index < filteredAgents.length - 1 && (
-                                          <div className="flex justify-center relative my-8">
-                                            <div className="h-12 w-0.5 bg-border"></div>
-                                            <AnimatedConnectionLine direction="down" className="h-12 opacity-100" dotColor="var(--primary)" />
-                                          </div>
-                                        )}
 
-                                        {/* Special case for Customer Support if this is Sales/CRM Specialist */}
-                                        {agent.id === "5" && (
-                                          <div className="mt-20 ml-10">
-                                            {/* Clean Connecting Lines - No dot */}
-                                            <div className="relative">
-                                              {/* Vertical line */}
-                                              <div className="absolute top-[-40px] left-[-28px] h-[calc(100%+108px)] w-0.5 bg-border rounded-full"></div>
-                                              {/* Horizontal line */}
-                                              <div className="absolute top-[48px] left-[-28px] w-7 h-0.5 bg-border rounded-full"></div>
-                                            </div>
-                                            
-                                            {/* Label for hierarchical relationship */}
-                                            <div className="absolute top-[-14px] left-[-16px] bg-background text-xs px-2 py-1 text-muted-foreground rounded font-medium border shadow-sm">
-                                              Reports to
-                                            </div>
-                                            
-                                            {agents.find(a => a.id === "7" && !a.isDisabled) && (
-                                              <div className="w-[400px]">
-                                                <SimpleAgentCard
-                                                  agent={agents.find(a => a.id === "7")!}
-                                                  onManage={handleManageAgent}
-                                                  onChat={handleChatWithAgent}
-                                                  onToggleActivities={handleToggleActivities}
-                                                  showActivities={isAgentExpanded("7")}
-                                                  onExecuteActivity={handleExecuteActivity}
-                                                  setSelectedAgent={setSelectedAgent}
-                                                />
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))
-                                  }
-                                </div>
-                              )}
-                              
-                              {/* Feedback Loop Visualization */}
-                              {!isLoading && agents.filter(agent => agent.type === "sales" && !agent.isDisabled).length > 1 && (
-                                <div className="mt-12 flex flex-col items-center">
-                                  <div className="w-[90%] h-0.5 bg-border relative">
-                                    <AnimatedConnectionLine direction="left" className="w-full opacity-100" speed="slow" dotColor="var(--primary)" />
-                                  </div>
-                                  <div className="mt-6 mb-3 text-center">
-                                    <span className="px-6 py-2 bg-muted rounded-md text-sm font-medium">
-                                      Feedback Loop
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </ZoomableCanvas>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      {renderGridView("sales")}
-                    </div>
-                  )}
-                </div>
+              
+              <TabsContent value="commands" className="m-0">
+                <CommandsView searchQuery={searchQuery} />
               </TabsContent>
               
-              <TabsContent value="product" className="m-0">
-                <div className="px-8">
-                  {viewMode === "hierarchy" ? (
-                    <div className="flex flex-col items-center">
-                      <div className="w-full">
-                        <ZoomableCanvas>
-                          <div className="flex flex-col items-center">
-                            <div className="pt-2 flex flex-col items-center">
-                              <h2 className="text-2xl font-bold mb-10">Product Team Structure</h2>
-                              
-                              {/* Filter only product agents */}
-                              {isLoading ? (
-                                <div className="space-y-20">
-                                  {Array.from({ length: 2 }).map((_, index) => (
-                                    <SimpleAgentCardSkeleton key={index} className="w-[458px]" />
-                                  ))}
-                                </div>
-                              ) : (
-                                <div>
-                                  {agents
-                                    .filter(agent => agent.type === "product" && !agent.isDisabled)
-                                    .map((agent, index, filteredAgents) => (
-                                      <div key={agent.id}>
-                                        <div className="w-[458px] px-4">
-                                          <SimpleAgentCard 
-                                            agent={agent} 
-                                            onManage={handleManageAgent}
-                                            onChat={handleChatWithAgent}
-                                            onToggleActivities={handleToggleActivities}
-                                            showActivities={isAgentExpanded(agent.id)}
-                                            onExecuteActivity={handleExecuteActivity}
-                                            setSelectedAgent={setSelectedAgent}
-                                            className={index === 0 ? "border-primary/50 shadow-md" : ""}
-                                            activityStates={activityStates}
-                                          />
-                                        </div>
-                                        
-                                        {/* Add connection line if not the last agent */}
-                                        {index < filteredAgents.length - 1 && (
-                                          <div className="flex justify-center relative my-8">
-                                            <div className="h-12 w-0.5 bg-border"></div>
-                                            <AnimatedConnectionLine direction="down" className="h-12 opacity-100" dotColor="var(--primary)" />
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))
-                                  }
-                                </div>
-                              )}
-                              
-                              {/* Feedback Loop Visualization */}
-                              {!isLoading && agents.filter(agent => agent.type === "product" && !agent.isDisabled).length > 1 && (
-                                <div className="mt-12 flex flex-col items-center">
-                                  <div className="w-[90%] h-0.5 bg-border relative">
-                                    <AnimatedConnectionLine direction="left" className="w-full opacity-100" speed="slow" dotColor="var(--primary)" />
-                                  </div>
-                                  <div className="mt-6 mb-3 text-center">
-                                    <span className="px-6 py-2 bg-muted rounded-md text-sm font-medium">
-                                      Feedback Loop
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </ZoomableCanvas>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      {renderGridView("product")}
-                    </div>
-                  )}
-                </div>
+              <TabsContent value="activities" className="m-0">
+                <ActivitiesView searchQuery={searchQuery} />
               </TabsContent>
             </div>
           </Tabs>
         </div>
-        
-        {/* Command Panel - fixed position */}
-        <div 
-          className="w-[300px] border-l bg-background/90 backdrop-blur-sm flex flex-col overflow-hidden fixed right-0 h-[calc(100vh-64px)] z-[9999]"
-          style={{ top: `${topbarHeight}px` }}
-        >
-          <CommandsPanel />
-        </div>
+
       </div>
     </AgentSelectionContext.Provider>
   )
