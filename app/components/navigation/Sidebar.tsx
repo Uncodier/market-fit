@@ -185,7 +185,7 @@ const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: bo
   
   return (
     <div className="px-3" style={{ paddingTop: '7.2px', paddingBottom: '7.2px' }}>
-      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2" style={{ fontSize: '10.8px' }}>
+      <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2" style={{ fontSize: '10.8px' }}>
         <span className="text-sm">{getEmoji(title)}</span>
         {title}
       </h3>
@@ -449,7 +449,20 @@ export function Sidebar({
           height={isCollapsed ? 32 : 40}
           className={cn(
             "transition-all duration-200 object-contain",
-            isCollapsed ? "h-8 w-8" : "h-10 w-auto"
+            isCollapsed ? "h-8 w-8" : "h-10 w-auto",
+            "dark:hidden"
+          )}
+          priority
+        />
+        <Image 
+          src={isCollapsed ? "/images/logo.png" : "/images/combination_mark_white.png"}
+          alt="Market Fit Logo"
+          width={isCollapsed ? 32 : 120}
+          height={isCollapsed ? 32 : 40}
+          className={cn(
+            "transition-all duration-200 object-contain",
+            isCollapsed ? "h-8 w-8" : "h-10 w-auto",
+            "hidden dark:block"
           )}
           priority
         />
