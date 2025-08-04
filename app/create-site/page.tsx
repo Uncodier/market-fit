@@ -19,6 +19,21 @@ export default function CreateSitePage() {
   const handleComplete = async (data: any) => {
     try {
       setIsSaving(true)
+      
+      // Debug: log the data being sent
+      console.log("🔍 Onboarding form data received:", { 
+        rawData: data,
+        locations: data.locations,
+        locationsWithRestrictions: data.locations?.map((loc: any) => ({
+          name: loc.name,
+          hasRestrictions: !!loc.restrictions,
+          enabled: loc.restrictions?.enabled, // ⭐ CHECK IF BOOLEAN IS SAVED
+          restrictions: loc.restrictions,
+          includeCount: loc.restrictions?.included_addresses?.length || 0,
+          excludeCount: loc.restrictions?.excluded_addresses?.length || 0
+        }))
+      })
+      
       const newSite = await createSite({
         name: data.name,
         url: data.url || null,

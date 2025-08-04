@@ -288,6 +288,15 @@ export function SiteOnboarding({
     const nameValid = formData.name && formData.name.trim()
     const urlValid = formData.url && formData.url.trim()
     
+    // If we're in step 7, proceed with creating the project even if basic validation fails
+    // The user has already progressed through previous steps
+    if (currentStep === 7) {
+      console.log("Step 7: Proceeding with project creation", { formData })
+      form.handleSubmit(onComplete)()
+      return
+    }
+    
+    // For other steps, validate required fields
     if (!nameValid || !urlValid) {
       if (!nameValid) {
         form.setError("name", { 
@@ -404,6 +413,19 @@ export function SiteOnboarding({
       country: ""
     }
     const updatedLocations = [...current]
+    
+    // Ensure restrictions object exists and enable restrictions when adding addresses
+    if (!updatedLocations[locationIndex].restrictions) {
+      updatedLocations[locationIndex].restrictions = {
+        enabled: true, // Enable restrictions when adding addresses
+        included_addresses: [],
+        excluded_addresses: []
+      }
+    } else {
+      // Update existing restrictions to enabled when adding addresses
+      updatedLocations[locationIndex].restrictions.enabled = true
+    }
+    
     updatedLocations[locationIndex] = {
       ...updatedLocations[locationIndex],
       restrictions: {
@@ -425,6 +447,19 @@ export function SiteOnboarding({
       country: ""
     }
     const updatedLocations = [...current]
+    
+    // Ensure restrictions object exists and enable restrictions when adding addresses
+    if (!updatedLocations[locationIndex].restrictions) {
+      updatedLocations[locationIndex].restrictions = {
+        enabled: true, // Enable restrictions when adding addresses
+        included_addresses: [],
+        excluded_addresses: []
+      }
+    } else {
+      // Update existing restrictions to enabled when adding addresses
+      updatedLocations[locationIndex].restrictions.enabled = true
+    }
+    
     updatedLocations[locationIndex] = {
       ...updatedLocations[locationIndex],
       restrictions: {
@@ -464,6 +499,16 @@ export function SiteOnboarding({
   const handleIncludedAddressUpdate = (locationIndex: number, addressIndex: number, field: string, value: string) => {
     const current = form.getValues("locations") || []
     const updatedLocations = [...current]
+    
+    // Ensure restrictions object exists
+    if (!updatedLocations[locationIndex].restrictions) {
+      updatedLocations[locationIndex].restrictions = {
+        enabled: true, // Enable when updating addresses
+        included_addresses: [],
+        excluded_addresses: []
+      }
+    }
+    
     const updatedAddresses = [...(updatedLocations[locationIndex].restrictions?.included_addresses || [])]
     updatedAddresses[addressIndex] = {
       ...updatedAddresses[addressIndex],
@@ -482,6 +527,16 @@ export function SiteOnboarding({
   const handleExcludedAddressUpdate = (locationIndex: number, addressIndex: number, field: string, value: string) => {
     const current = form.getValues("locations") || []
     const updatedLocations = [...current]
+    
+    // Ensure restrictions object exists
+    if (!updatedLocations[locationIndex].restrictions) {
+      updatedLocations[locationIndex].restrictions = {
+        enabled: true, // Enable when updating addresses
+        included_addresses: [],
+        excluded_addresses: []
+      }
+    }
+    
     const updatedAddresses = [...(updatedLocations[locationIndex].restrictions?.excluded_addresses || [])]
     updatedAddresses[addressIndex] = {
       ...updatedAddresses[addressIndex],
@@ -944,16 +999,11 @@ export function SiteOnboarding({
                     <Button
                       type="button"
                       onClick={handleComplete}
-                      disabled={isLoading || !isRequiredFieldsComplete}
+                      disabled={isLoading}
                       size="lg"
-                      className="min-w-[140px]"
+                      className="min-w-[140px] bg-primary text-primary-foreground hover:bg-primary/90"
                     >
-                      {isLoading 
-                        ? "Creating..." 
-                        : !isRequiredFieldsComplete 
-                        ? "Complete Required Fields"
-                        : "Create Project"
-                      }
+                      {isLoading ? "Creating..." : "Create Project"}
                       <Check className="h-4 w-4 ml-2" />
                     </Button>
                   ) : (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useFormContext } from "react-hook-form"
 import { FormField, FormItem, FormControl, FormLabel, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
@@ -34,6 +34,44 @@ export function LocationsOnboardingStep({
 }: LocationsOnboardingStepProps) {
   const form = useFormContext()
   const [globalRestrictionsEnabled, setGlobalRestrictionsEnabled] = useState(false)
+
+  // Initialize the switch state based on existing data
+  useEffect(() => {
+    const currentLocations = form.getValues("locations") || []
+    const hasEnabledRestrictions = currentLocations.some((loc: any) => loc.restrictions?.enabled)
+    if (hasEnabledRestrictions && !globalRestrictionsEnabled) {
+      setGlobalRestrictionsEnabled(true)
+      console.log("🔄 Initialized switch from existing data:", { hasEnabledRestrictions })
+    }
+  }, [form, globalRestrictionsEnabled])
+  
+  // When restrictions are enabled, ensure all locations have restrictions object
+  const handleRestrictionsToggle = (enabled: boolean) => {
+    setGlobalRestrictionsEnabled(enabled)
+    
+    // Update ALL existing locations with the new enabled state
+    const currentLocations = form.getValues("locations") || []
+    const updatedLocations = currentLocations.map((location: any) => ({
+      ...location,
+      restrictions: {
+        ...(location.restrictions || {}),
+        enabled: enabled, // ALWAYS update the enabled field
+        included_addresses: location.restrictions?.included_addresses || [],
+        excluded_addresses: location.restrictions?.excluded_addresses || []
+      }
+    }))
+    form.setValue("locations", updatedLocations)
+    
+    console.log("🔧 Regional restrictions toggled:", { 
+      enabled, 
+      updatedLocations: updatedLocations.map((loc: any) => ({
+        name: loc.name,
+        restrictionsEnabled: loc.restrictions?.enabled,
+        includesCount: loc.restrictions?.included_addresses?.length || 0,
+        excludesCount: loc.restrictions?.excluded_addresses?.length || 0
+      }))
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -186,11 +224,16 @@ export function LocationsOnboardingStep({
               <FormLabel className="text-sm font-medium">Regional Restrictions</FormLabel>
               <p className="text-xs text-muted-foreground ml-2">
                 Apply service restrictions to specific geographic regions
+                {globalRestrictionsEnabled && (
+                  <span className="ml-2 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">
+                    ✓ Active
+                  </span>
+                )}
               </p>
             </div>
             <Switch
               checked={globalRestrictionsEnabled}
-              onCheckedChange={setGlobalRestrictionsEnabled}
+              onCheckedChange={handleRestrictionsToggle}
             />
           </div>
           

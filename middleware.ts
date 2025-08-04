@@ -202,7 +202,7 @@ export async function middleware(req: NextRequest) {
     // Si es una ruta de autenticación
     if (path.startsWith('/auth')) {
       // Permitir acceso a rutas específicas de auth sin redirección
-      if (path === '/auth/confirm' || path === '/auth/callback' || path === '/auth/set-password' || path === '/auth/team-invitation') {
+      if (path === '/auth/confirm' || path === '/auth/callback' || path === '/auth/set-password' || path === '/auth/reset-password' || path === '/auth/team-invitation') {
         console.log('Middleware: Allowing access to auth flow page:', path)
         return res
       }

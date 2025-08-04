@@ -65,6 +65,95 @@ export async function getAssets(site_id: string): Promise<{ assets?: Asset[], er
   }
 }
 
+// Function to attach an asset to an agent
+export async function attachAssetToAgent(agentId: string, assetId: string): Promise<{ error?: string }> {
+  try {
+    const supabase = createClient()
+    
+    // Check if the relationship already exists
+    const { data: existingRelation, error: checkError } = await supabase
+      .from('agent_assets')
+      .select('*')
+      .eq('agent_id', agentId)
+      .eq('asset_id', assetId)
+      .single()
+    
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
+      console.error("Error checking existing relation:", checkError)
+      return { error: "Error checking asset relation" }
+    }
+    
+    if (existingRelation) {
+      return { error: "Asset is already attached to this agent" }
+    }
+    
+    // Create the relationship
+    const { error } = await supabase
+      .from('agent_assets')
+      .insert([{
+        agent_id: agentId,
+        asset_id: assetId
+      }])
+    
+    if (error) {
+      console.error("Error attaching asset to agent:", error)
+      return { error: "Error attaching asset to agent" }
+    }
+    
+    return {}
+  } catch (error) {
+    console.error("Error attaching asset to agent:", error)
+    return { error: "Error attaching asset to agent" }
+  }
+}
+
+// Function to detach an asset from an agent
+export async function detachAssetFromAgent(agentId: string, assetId: string): Promise<{ error?: string }> {
+  try {
+    const supabase = createClient()
+    
+    const { error } = await supabase
+      .from('agent_assets')
+      .delete()
+      .match({
+        agent_id: agentId,
+        asset_id: assetId
+      })
+    
+    if (error) {
+      console.error("Error detaching asset from agent:", error)
+      return { error: "Error detaching asset from agent" }
+    }
+    
+    return {}
+  } catch (error) {
+    console.error("Error detaching asset from agent:", error)
+    return { error: "Error detaching asset from agent" }
+  }
+}
+
+// Function to get agent's attached assets
+export async function getAgentAssets(agentId: string): Promise<{ assetIds?: string[], error?: string }> {
+  try {
+    const supabase = createClient()
+    
+    const { data, error } = await supabase
+      .from('agent_assets')
+      .select('asset_id')
+      .eq('agent_id', agentId)
+    
+    if (error) {
+      console.error("Error getting agent assets:", error)
+      return { error: "Error getting agent assets" }
+    }
+    
+    return { assetIds: data?.map((item: { asset_id: string }) => item.asset_id) || [] }
+  } catch (error) {
+    console.error("Error getting agent assets:", error)
+    return { error: "Error getting agent assets" }
+  }
+}
+
 export async function createAsset(data: CreateAssetInput): Promise<{ error?: string, asset?: Asset, debug?: any }> {
   try {
     const supabase = createClient()

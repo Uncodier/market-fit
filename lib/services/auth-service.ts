@@ -74,7 +74,7 @@ export async function resetPassword(email: string): Promise<void> {
   try {
     const supabase = createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/auth/reset-password`,
     })
     
     if (error) throw new AuthServiceError(`Error al solicitar cambio de contraseña: ${error.message}`)

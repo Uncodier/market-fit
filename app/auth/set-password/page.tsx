@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
@@ -18,8 +18,52 @@ function SetPasswordContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+  const [isCheckingSession, setIsCheckingSession] = useState(true)
 
   const redirectTo = searchParams.get('redirect_to')
+
+  // Check for active session on component mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const supabase = createClient()
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        console.log('[Set Password] Session check:', {
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          error: error?.message
+        })
+
+        if (error) {
+          console.error('[Set Password] Session error:', error)
+          setSessionError(`Session error: ${error.message}`)
+          return
+        }
+
+        if (!session || !session.user) {
+          console.error('[Set Password] No active session found')
+          setSessionError('No active session found. Please request a new password reset link.')
+          
+          // Redirect to auth page after a delay
+          setTimeout(() => {
+            router.push('/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.'))
+          }, 3000)
+          return
+        }
+
+        console.log('[Set Password] Valid session found for:', session.user.email)
+      } catch (error: any) {
+        console.error('[Set Password] Session check error:', error)
+        setSessionError('Failed to verify session. Please try again.')
+      } finally {
+        setIsCheckingSession(false)
+      }
+    }
+
+    checkSession()
+  }, [router])
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 8) return "Password must be at least 8 characters long"
@@ -63,7 +107,16 @@ function SetPasswordContent() {
 
       if (error) {
         console.error('❌ Password update error:', error)
-        toast.error(error.message || "Failed to set password")
+        
+        // Handle specific session errors
+        if (error.message.includes('session') || error.message.includes('JWT')) {
+          toast.error("Your session has expired. Please request a new password reset link.")
+          setTimeout(() => {
+            router.push('/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.'))
+          }, 2000)
+        } else {
+          toast.error(error.message || "Failed to set password")
+        }
         return
       }
 
@@ -92,6 +145,44 @@ function SetPasswordContent() {
 
   const passwordError = password ? validatePassword(password) : null
   const confirmError = confirmPassword && password !== confirmPassword ? "Passwords do not match" : null
+
+  // Show loading state while checking session
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <Card>
+            <CardContent className="flex flex-col items-center text-center py-8">
+              <Loader className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+              <p className="text-gray-600">Verifying your session...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if session is invalid
+  if (sessionError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <Card>
+            <CardContent className="flex flex-col items-center text-center py-8">
+              <div className="bg-red-100 p-3 rounded-full mb-4">
+                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.98-.833-2.75 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Session Error</h3>
+              <p className="text-gray-600 mb-4">{sessionError}</p>
+              <p className="text-sm text-gray-500">Redirecting you back to the login page...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

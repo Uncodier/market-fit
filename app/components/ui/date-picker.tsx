@@ -739,7 +739,8 @@ export function DatePicker({
                           handleHourChange(e.target.value);
                         }
                       }}
-                      className="w-full px-2 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      className="w-full px-2 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent max-h-[200px] overflow-y-auto"
+                      style={{ maxHeight: '200px' }}
                     >
                       {Array.from({ length: timeFormat === '12h' ? 12 : 24 }, (_, i) => {
                         const value = timeFormat === '12h' ? i + 1 : i;
@@ -760,7 +761,8 @@ export function DatePicker({
                     <select
                       value={selectedTime.minutes}
                       onChange={(e) => handleMinuteChange(e.target.value)}
-                      className="w-full px-2 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      className="w-full px-2 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent max-h-[200px] overflow-y-auto"
+                      style={{ maxHeight: '200px' }}
                     >
                       {Array.from({ length: 60 }, (_, i) => (
                         <option key={i} value={i}>

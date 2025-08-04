@@ -4,11 +4,11 @@ import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
-import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash2, Download, Image, FileVideo, FileText, UploadCloud } from "@/app/components/ui/icons"
+import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash2, Download, Image, FileVideo, FileText, UploadCloud, Link as LinkIcon, Unlink } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import React, { useEffect, useState, Suspense } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { getAssets, deleteAsset, type Asset } from "@/app/assets/actions"
+import { getAssets, deleteAsset, attachAssetToAgent, detachAssetFromAgent, getAgentAssets, type Asset } from "@/app/assets/actions"
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -31,10 +31,43 @@ import {
 } from "@/app/components/ui/alert-dialog"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { safeReload } from "@/app/utils/safe-reload"
+import { useSearchParams } from "next/navigation"
 
 interface AssetWithThumbnail extends Asset {
   thumbnailUrl?: string
   tags: string[]
+  isAttachedToAgent?: boolean
+}
+
+// Compatible file types for agents (same as in upload-file-dialog)
+const AGENT_COMPATIBLE_FILE_TYPES = [
+  'application/pdf',
+  'text/csv',
+  'application/vnd.ms-excel',
+  'text/markdown',
+  'text/plain',
+  'application/json',
+  'text/yaml',
+  'application/x-yaml',
+  'image/jpeg',
+  'image/png',
+  'image/webp'
+]
+
+const AGENT_COMPATIBLE_EXTENSIONS = [
+  '.pdf', '.csv', '.md', '.txt', '.json', '.yaml', '.yml', '.jpg', '.jpeg', '.png', '.webp'
+]
+
+// Helper function to check if an asset is compatible with agents
+const isAssetCompatibleWithAgent = (asset: Asset): boolean => {
+  // Check by file type first
+  if (AGENT_COMPATIBLE_FILE_TYPES.includes(asset.file_type)) {
+    return true
+  }
+  
+  // Then check by extension as fallback
+  const extension = `.${asset.name.split('.').pop()?.toLowerCase()}`
+  return AGENT_COMPATIBLE_EXTENSIONS.includes(extension)
 }
 
 function AssetCardSkeleton() {
@@ -65,7 +98,21 @@ function AssetCardSkeleton() {
   )
 }
 
-function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: () => void }) {
+function AssetCard({ 
+  asset, 
+  onDelete, 
+  onAttach, 
+  onDetach, 
+  isCompatibleWithAgent = false, 
+  agentId 
+}: { 
+  asset: AssetWithThumbnail
+  onDelete: () => void
+  onAttach?: (assetId: string) => void
+  onDetach?: (assetId: string) => void
+  isCompatibleWithAgent?: boolean
+  agentId?: string
+}) {
   const [imageError, setImageError] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -406,6 +453,42 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
                 </Tooltip>
               </TooltipProvider>
 
+              {/* Agent attach/detach buttons - only show if compatible and agentId is provided */}
+              {isCompatibleWithAgent && agentId && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className={`h-8 w-8 transition-colors duration-200 ${
+                          asset.isAttachedToAgent 
+                            ? 'bg-green-500/90 hover:bg-red-500 text-white dark:bg-green-600/90 dark:hover:bg-red-600' 
+                            : 'bg-white/90 hover:bg-green-500 hover:text-white dark:bg-gray-800/90 dark:hover:bg-green-600'
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (asset.isAttachedToAgent) {
+                            onDetach?.(asset.id)
+                          } else {
+                            onAttach?.(asset.id)
+                          }
+                        }}
+                      >
+                        {asset.isAttachedToAgent ? (
+                          <Unlink className="h-4 w-4" />
+                        ) : (
+                          <LinkIcon className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{asset.isAttachedToAgent ? 'Detach from Agent' : 'Attach to Agent'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -429,10 +512,20 @@ function AssetCard({ asset, onDelete }: { asset: AssetWithThumbnail, onDelete: (
               </TooltipProvider>
             </div>
           </div>
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2 flex flex-col gap-1">
             <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize`}>
               {asset.file_type}
             </Badge>
+            {isCompatibleWithAgent && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-medium">
+                Agent Compatible
+              </Badge>
+            )}
+            {asset.isAttachedToAgent && (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] font-medium">
+                Attached
+              </Badge>
+            )}
           </div>
         </div>
         <div className="p-4">
@@ -582,6 +675,11 @@ function AssetsContent() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [isSearching, setIsSearching] = useState(false)
+  const [attachedAssetIds, setAttachedAssetIds] = useState<string[]>([])
+  
+  // Get agent ID from URL parameters
+  const searchParams = useSearchParams()
+  const agentId = searchParams.get('agent')
   
   // Usar el hook de Command+K
   useCommandK()
@@ -609,11 +707,31 @@ function AssetsContent() {
           const metadata = asset.metadata as { tags?: string[] } || {}
           return {
             ...asset,
-            tags: metadata.tags || []
+            tags: metadata.tags || [],
+            isAttachedToAgent: false // Will be updated when agent assets are loaded
           }
         }) || []
         
         setAssets(assetsWithTags)
+        
+        // If agentId is provided, load attached assets
+        if (agentId) {
+          console.log("Loading attached assets for agent:", agentId)
+          const { assetIds, error: agentAssetsError } = await getAgentAssets(agentId)
+          
+          if (agentAssetsError) {
+            console.error("Error loading agent assets:", agentAssetsError)
+          } else if (assetIds) {
+            console.log("Found attached assets:", assetIds)
+            setAttachedAssetIds(assetIds)
+            
+            // Update assets to mark which ones are attached
+            setAssets(prev => prev.map(asset => ({
+              ...asset,
+              isAttachedToAgent: assetIds.includes(asset.id)
+            })))
+          }
+        }
       } catch (err) {
         console.error("Error loading assets:", err)
         setError("Error al cargar los assets")
@@ -623,7 +741,55 @@ function AssetsContent() {
     }
     
     loadAssets()
-  }, [currentSite?.id, isSiteLoading])
+  }, [currentSite?.id, isSiteLoading, agentId])
+  
+  // Handle attaching asset to agent
+  const handleAttach = async (assetId: string) => {
+    if (!agentId) return
+    
+    console.log("Attaching asset", assetId, "to agent", agentId)
+    const { error } = await attachAssetToAgent(agentId, assetId)
+    
+    if (error) {
+      console.error("Error attaching asset:", error)
+      toast.error("Failed to attach asset to agent")
+      return
+    }
+    
+    // Update local state
+    setAttachedAssetIds(prev => [...prev, assetId])
+    setAssets(prev => prev.map(asset => 
+      asset.id === assetId 
+        ? { ...asset, isAttachedToAgent: true }
+        : asset
+    ))
+    
+    toast.success("Asset attached to agent successfully")
+  }
+  
+  // Handle detaching asset from agent
+  const handleDetach = async (assetId: string) => {
+    if (!agentId) return
+    
+    console.log("Detaching asset", assetId, "from agent", agentId)
+    const { error } = await detachAssetFromAgent(agentId, assetId)
+    
+    if (error) {
+      console.error("Error detaching asset:", error)
+      toast.error("Failed to detach asset from agent")
+      return
+    }
+    
+    // Update local state
+    setAttachedAssetIds(prev => prev.filter(id => id !== assetId))
+    setAssets(prev => prev.map(asset => 
+      asset.id === assetId 
+        ? { ...asset, isAttachedToAgent: false }
+        : asset
+    ))
+    
+    toast.success("Asset detached from agent successfully")
+  }
 
   // Función para manejar la búsqueda
   const handleSearch = (term: string) => {
@@ -636,10 +802,19 @@ function AssetsContent() {
     }, 300)
   }
 
-  const filteredAssets = assets.filter(asset => 
-    asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  // Filter assets based on search term and agent compatibility
+  let filteredAssets = assets.filter(asset => {
+    // Search term filter
+    const matchesSearch = asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      asset.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+    
+    // If agentId is provided, only show compatible assets
+    if (agentId) {
+      return matchesSearch && isAssetCompatibleWithAgent(asset)
+    }
+    
+    return matchesSearch
+  })
 
   const handleDeleteAsset = (assetId: string) => {
     setAssets(assets.filter(a => a.id !== assetId))
@@ -744,7 +919,7 @@ function AssetsContent() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList>
-                  <TabsTrigger value="all">All Assets</TabsTrigger>
+                  <TabsTrigger value="all">{agentId ? 'Compatible Assets' : 'All Assets'}</TabsTrigger>
                   <TabsTrigger value="images">Images</TabsTrigger>
                   <TabsTrigger value="videos">Videos</TabsTrigger>
                   <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -763,7 +938,14 @@ function AssetsContent() {
                   </kbd>
                 </div>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-4">
+                {agentId && (
+                  <div className="text-sm text-muted-foreground">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      Agent Mode: {agentId}
+                    </Badge>
+                  </div>
+                )}
                 {/* Any other buttons would go here */}
               </div>
             </div>
@@ -779,7 +961,15 @@ function AssetsContent() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredAssets.map((asset) => (
-                      <AssetCard key={asset.id} asset={asset} onDelete={() => handleDeleteAsset(asset.id)} />
+                      <AssetCard 
+                        key={asset.id} 
+                        asset={asset} 
+                        onDelete={() => handleDeleteAsset(asset.id)}
+                        onAttach={handleAttach}
+                        onDetach={handleDetach}
+                        isCompatibleWithAgent={isAssetCompatibleWithAgent(asset)}
+                        agentId={agentId || undefined}
+                      />
                     ))}
                   </div>
                 )}
@@ -792,7 +982,15 @@ function AssetsContent() {
                     {filteredAssets
                       .filter(a => a.file_type === "image")
                       .map((asset) => (
-                        <AssetCard key={asset.id} asset={asset} onDelete={() => handleDeleteAsset(asset.id)} />
+                        <AssetCard 
+                          key={asset.id} 
+                          asset={asset} 
+                          onDelete={() => handleDeleteAsset(asset.id)}
+                          onAttach={handleAttach}
+                          onDetach={handleDetach}
+                          isCompatibleWithAgent={isAssetCompatibleWithAgent(asset)}
+                          agentId={agentId || undefined}
+                        />
                       ))}
                   </div>
                 )}
@@ -805,7 +1003,15 @@ function AssetsContent() {
                     {filteredAssets
                       .filter(a => a.file_type === "video")
                       .map((asset) => (
-                        <AssetCard key={asset.id} asset={asset} onDelete={() => handleDeleteAsset(asset.id)} />
+                        <AssetCard 
+                          key={asset.id} 
+                          asset={asset} 
+                          onDelete={() => handleDeleteAsset(asset.id)}
+                          onAttach={handleAttach}
+                          onDetach={handleDetach}
+                          isCompatibleWithAgent={isAssetCompatibleWithAgent(asset)}
+                          agentId={agentId || undefined}
+                        />
                       ))}
                   </div>
                 )}
@@ -818,7 +1024,15 @@ function AssetsContent() {
                     {filteredAssets
                       .filter(a => a.file_type === "document")
                       .map((asset) => (
-                        <AssetCard key={asset.id} asset={asset} onDelete={() => handleDeleteAsset(asset.id)} />
+                        <AssetCard 
+                          key={asset.id} 
+                          asset={asset} 
+                          onDelete={() => handleDeleteAsset(asset.id)}
+                          onAttach={handleAttach}
+                          onDetach={handleDetach}
+                          isCompatibleWithAgent={isAssetCompatibleWithAgent(asset)}
+                          agentId={agentId || undefined}
+                        />
                       ))}
                   </div>
                 )}

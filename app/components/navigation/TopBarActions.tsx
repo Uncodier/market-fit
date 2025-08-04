@@ -30,10 +30,208 @@ import {
   Download, 
   Users, 
   FileText,
-  UploadCloud
+  UploadCloud,
+  PlayCircle,
+  StopCircle
 } from "@/app/components/ui/icons"
 import { subMonths, format } from "date-fns"
 import { safeReload } from "../../utils/safe-reload"
+import { useSearchParams } from "next/navigation"
+
+// Robot Start Button Component
+function RobotStartButton({ currentSite }: { currentSite: any }) {
+  const [isStartingRobot, setIsStartingRobot] = useState(false)
+  const [isStoppingRobot, setIsStoppingRobot] = useState(false)
+  const [activeRobotInstance, setActiveRobotInstance] = useState<any | null>(null)
+  const [isLoadingRobots, setIsLoadingRobots] = useState(true)
+  const searchParams = useSearchParams()
+  
+  // Get current tab from URL or default to channel-market-fit
+  const activeTab = searchParams.get('tab') || 'channel-market-fit'
+
+  // Map tab values to activity names
+  const getActivityName = (tabValue: string): string => {
+    const activityMap: Record<string, string> = {
+      "channel-market-fit": "Channel Market Fit",
+      "engage": "Engage in Social Networks", 
+      "seo": "SEO",
+      "publish-content": "Publish Content",
+      "publish-ads": "Publish Ads",
+      "ux-analysis": "UX Analysis",
+      "build-requirements": "Build Requirements"
+    }
+    return activityMap[tabValue] || tabValue
+  }
+
+  // Function to check for active robots for the current tab
+  const checkActiveRobots = async () => {
+    if (!currentSite) {
+      setActiveRobotInstance(null)
+      setIsLoadingRobots(false)
+      return
+    }
+
+    try {
+      setIsLoadingRobots(true)
+      const supabase = createClient()
+      
+      // Get the activity name for the current tab to use as robot name filter
+      const activityName = getActivityName(activeTab)
+      
+      const { data, error } = await supabase
+        .from('remote_instances')
+        .select('id, status, instance_type, name, provider_instance_id')
+        .eq('site_id', currentSite.id)
+        .eq('name', activityName)
+        .neq('status', 'stopped')
+        .neq('status', 'error')
+        .limit(1)
+
+      if (error) {
+        console.error('Error checking active robots:', error)
+        setActiveRobotInstance(null)
+      } else {
+        const instance = data && data.length > 0 ? data[0] : null
+        setActiveRobotInstance(instance)
+        console.log(`Robot instance for ${activityName}:`, instance)
+      }
+    } catch (error) {
+      console.error('Error checking active robots:', error)
+      setActiveRobotInstance(null)
+    } finally {
+      setIsLoadingRobots(false)
+    }
+  }
+
+  // Check for active robots when site or tab changes
+  useEffect(() => {
+    checkActiveRobots()
+  }, [currentSite, activeTab])
+
+  // Function to start robot
+  const handleStartRobot = async () => {
+    if (!currentSite) {
+      toast.error("No site selected")
+      return
+    }
+
+    setIsStartingRobot(true)
+    
+    try {
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
+      const response = await apiClient.post('/api/workflow/startRobot', {
+        site_id: currentSite.id,
+        user_id: currentSite.user_id,
+        activity: getActivityName(activeTab)
+      })
+      
+      if (response.success) {
+        toast.success("Robot started successfully")
+        // Refresh the robot status after starting
+        await checkActiveRobots()
+      } else {
+        throw new Error(response.error?.message || 'Failed to start robot')
+      }
+    } catch (error) {
+      console.error('Error starting robot:', error)
+      toast.error("Failed to start robot")
+    } finally {
+      setIsStartingRobot(false)
+    }
+  }
+
+  // Function to stop robot
+  const handleStopRobot = async () => {
+    if (!activeRobotInstance) {
+      toast.error("No active robot to stop")
+      return
+    }
+
+    setIsStoppingRobot(true)
+    
+    try {
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
+      const response = await apiClient.post('/api/robots/instance/stop', {
+        instance_id: activeRobotInstance.id
+      })
+      
+      if (response.success) {
+        toast.success("Robot stopped successfully")
+        // Refresh the robot status after stopping
+        await checkActiveRobots()
+      } else {
+        throw new Error(response.error?.message || 'Failed to stop robot')
+      }
+    } catch (error) {
+      console.error('Error stopping robot:', error)
+      toast.error("Failed to stop robot")
+    } finally {
+      setIsStoppingRobot(false)
+    }
+  }
+
+  // Show loading state if we're checking for robots
+  if (isLoadingRobots) {
+    return (
+      <Button 
+        size="default"
+        className="flex items-center gap-2 bg-gray-400 transition-all duration-200"
+        disabled={true}
+      >
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+        Loading...
+      </Button>
+    )
+  }
+
+  // If there's an active robot instance, show stop button
+  if (activeRobotInstance) {
+    return (
+      <Button 
+        size="default"
+        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-all duration-200"
+        onClick={handleStopRobot}
+        disabled={isStoppingRobot}
+      >
+        {isStoppingRobot ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            Stopping...
+          </>
+        ) : (
+          <>
+            <StopCircle className="mr-2 h-4 w-4" />
+            Stop Robot
+          </>
+        )}
+      </Button>
+    )
+  }
+
+  // Default state: show start button
+  return (
+    <Button 
+      size="default"
+      className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-all duration-200"
+      onClick={handleStartRobot}
+      disabled={isStartingRobot}
+    >
+      {isStartingRobot ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+          Starting...
+        </>
+      ) : (
+        <>
+          <PlayCircle className="mr-2 h-4 w-4" />
+          Start Robot
+        </>
+      )}
+    </Button>
+  )
+}
 
 // Cpu icon para representación de AI
 const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
@@ -77,6 +275,7 @@ interface TopBarActionsProps {
   isControlCenterPage: boolean
   isCampaignsPage: boolean
   isSalesPage: boolean
+  isRobotsPage: boolean
   isExperimentDetailPage?: boolean
   segmentData: {
     id: string
@@ -106,6 +305,7 @@ export function TopBarActions({
   isControlCenterPage,
   isCampaignsPage,
   isSalesPage,
+  isRobotsPage,
   isExperimentDetailPage = false,
   segmentData,
   segments,
@@ -1137,6 +1337,11 @@ The success of this experiment will be measured by:
               Add Sale
             </Button>
           </>
+        ) : null
+      )}
+      {isRobotsPage && (
+        currentSite ? (
+          <RobotStartButton currentSite={currentSite} />
         ) : null
       )}
 

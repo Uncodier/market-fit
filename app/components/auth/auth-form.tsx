@@ -377,7 +377,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${window.location.origin}/auth/set-password?returnTo=${encodeURIComponent(finalReturnTo)}`
+        redirectTo: `${window.location.origin}/auth/reset-password?returnTo=${encodeURIComponent(finalReturnTo)}`
       })
       
       if (error) {

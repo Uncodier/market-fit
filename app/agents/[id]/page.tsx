@@ -24,7 +24,10 @@ import {
   Users,
   Check,
   PieChart,
-  Trash2
+  Trash2,
+  FolderOpen,
+  Link as LinkIcon,
+  XCircle as UnlinkIcon
 } from "@/app/components/ui/icons"
 import { Agent, AgentActivity } from "@/app/types/agents"
 import { cn } from "@/lib/utils"
@@ -39,6 +42,45 @@ import { createClient } from "@/lib/supabase/client"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { UploadFileDialog } from "@/app/components/agents/upload-file-dialog"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { getAssets, attachAssetToAgent, detachAssetFromAgent, type Asset } from "@/app/assets/actions"
+import { toast } from "sonner"
+
+// Compatible file types for agents (same as in upload-file-dialog)
+const AGENT_COMPATIBLE_FILE_TYPES = [
+  'application/pdf',
+  'text/csv',
+  'application/vnd.ms-excel',
+  'text/markdown',
+  'text/plain',
+  'application/json',
+  'text/yaml',
+  'application/x-yaml',
+  'image/jpeg',
+  'image/png',
+  'image/webp'
+]
+
+const AGENT_COMPATIBLE_EXTENSIONS = [
+  '.pdf', '.csv', '.md', '.txt', '.json', '.yaml', '.yml', '.jpg', '.jpeg', '.png', '.webp'
+]
+
+// Helper function to check if an asset is compatible with agents
+const isAssetCompatibleWithAgent = (asset: Asset): boolean => {
+  // Check by file type first
+  if (AGENT_COMPATIBLE_FILE_TYPES.includes(asset.file_type)) {
+    return true
+  }
+  
+  // Then check by extension as fallback
+  const extension = `.${asset.name.split('.').pop()?.toLowerCase()}`
+  return AGENT_COMPATIBLE_EXTENSIONS.includes(extension)
+}
+
+// Asset interface with attachment status
+interface AssetWithAttachment extends Asset {
+  isAttachedToAgent?: boolean
+  tags: string[]
+}
 
 // Activity Item Component
 interface ActivityItemProps {
@@ -659,6 +701,11 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
   // Estado para el loading de actividades
   const [isActivitiesLoading, setIsActivitiesLoading] = useState(false)
   
+  // Assets state
+  const [availableAssets, setAvailableAssets] = useState<AssetWithAttachment[]>([])
+  const [isAssetsLoading, setIsAssetsLoading] = useState(false)
+  const [attachedAssetIds, setAttachedAssetIds] = useState<string[]>([])
+  
   // Load agent data and related assets
   useEffect(() => {
     // For new agents, just use the default values already set and don't load from DB
@@ -923,6 +970,109 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
     
     loadAgentData()
   }, [agentId, isNewAgent, supabase])
+  
+  // Load compatible assets from the current site
+  useEffect(() => {
+    async function loadCompatibleAssets() {
+      if (!currentSite?.id) return
+      
+      setIsAssetsLoading(true)
+      try {
+        const { assets: fetchedAssets, error } = await getAssets(currentSite.id)
+        
+        if (error) {
+          console.error("Error loading assets:", error)
+          return
+        }
+        
+        // Filter only compatible assets and add metadata
+        const compatibleAssets = fetchedAssets?.filter(isAssetCompatibleWithAgent).map(asset => {
+          const metadata = asset.metadata as { tags?: string[] } || {}
+          return {
+            ...asset,
+            tags: metadata.tags || [],
+            isAttachedToAgent: attachedAssetIds.includes(asset.id)
+          }
+        }) || []
+        
+        setAvailableAssets(compatibleAssets)
+      } catch (err) {
+        console.error("Error loading compatible assets:", err)
+      } finally {
+        setIsAssetsLoading(false)
+      }
+    }
+    
+    loadCompatibleAssets()
+  }, [currentSite?.id, attachedAssetIds])
+  
+  // Update attached asset IDs when context files change
+  useEffect(() => {
+    const attachedIds = contextFiles.map(file => file.id)
+    setAttachedAssetIds(attachedIds)
+  }, [contextFiles])
+  
+  // Handle asset attach
+  const handleAssetAttach = async (assetId: string) => {
+    if (isNewAgent) {
+      // For new agents, we can't attach assets until they're saved
+      toast.error("Please save the agent first before attaching assets")
+      return
+    }
+    
+    setIsAssetsLoading(true)
+    try {
+      const { error } = await attachAssetToAgent(agentId, assetId)
+      
+      if (error) {
+        console.error("Error attaching asset:", error)
+        toast.error("Failed to attach asset")
+        return
+      }
+      
+      // Find the asset and add it to context files
+      const asset = availableAssets.find(a => a.id === assetId)
+      if (asset) {
+        const newContextFile = {
+          id: asset.id,
+          name: asset.name,
+          path: asset.file_path
+        }
+        setContextFiles(prev => [...prev, newContextFile])
+        toast.success("Asset attached successfully")
+      }
+    } catch (err) {
+      console.error("Error attaching asset:", err)
+      toast.error("Failed to attach asset")
+    } finally {
+      setIsAssetsLoading(false)
+    }
+  }
+  
+  // Handle asset detach
+  const handleAssetDetach = async (assetId: string) => {
+    if (isNewAgent) return
+    
+    setIsAssetsLoading(true)
+    try {
+      const { error } = await detachAssetFromAgent(agentId, assetId)
+      
+      if (error) {
+        console.error("Error detaching asset:", error)
+        toast.error("Failed to detach asset")
+        return
+      }
+      
+      // Remove from context files
+      setContextFiles(prev => prev.filter(file => file.id !== assetId))
+      toast.success("Asset detached successfully")
+    } catch (err) {
+      console.error("Error detaching asset:", err)
+      toast.error("Failed to detach asset")
+    } finally {
+      setIsAssetsLoading(false)
+    }
+  }
   
   // Handle tool toggle
   const handleToolToggle = (toolId: string, enabled: boolean) => {
@@ -1629,6 +1779,134 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     contentClassName="mb-4"
                     title="No context files added" 
                     description="Add files to provide additional context for your agent" 
+                    className="flex flex-col items-center justify-center py-8"
+                  />
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Compatible Assets Section */}
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Available Assets</CardTitle>
+                  <CardDescription>
+                    Compatible files from your site that can be attached to this agent
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isAssetsLoading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-8 w-8 rounded" />
+                          <div className="space-y-1">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-20" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-8 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                ) : availableAssets.length > 0 ? (
+                  <div className="space-y-2">
+                    {availableAssets.map((asset) => (
+                      <div 
+                        key={asset.id} 
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0">
+                            {asset.file_type.startsWith('image/') ? (
+                              <img 
+                                src={asset.file_path} 
+                                alt={asset.name}
+                                className="h-8 w-8 object-cover rounded"
+                                onError={(e) => {
+                                  const target = e.currentTarget as HTMLImageElement
+                                  target.style.display = 'none'
+                                  const nextElement = target.nextElementSibling as HTMLElement
+                                  if (nextElement) {
+                                    nextElement.style.display = 'flex'
+                                  }
+                                }}
+                              />
+                            ) : null}
+                            <div className={`h-8 w-8 rounded bg-muted flex items-center justify-center ${asset.file_type.startsWith('image/') ? 'hidden' : ''}`}>
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm truncate">{asset.name}</div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                              <span>{asset.file_type}</span>
+                              {asset.tags.length > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <div className="flex gap-1">
+                                    {asset.tags.slice(0, 2).map((tag) => (
+                                      <Badge 
+                                        key={tag} 
+                                        variant="secondary" 
+                                        className="text-[10px] px-1 py-0 h-4"
+                                      >
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                    {asset.tags.length > 2 && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        +{asset.tags.length - 2} more
+                                      </span>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {asset.isAttachedToAgent && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                              Attached
+                            </Badge>
+                          )}
+                          <Button
+                            variant={asset.isAttachedToAgent ? "outline" : "default"}
+                            size="sm"
+                            onClick={() => {
+                              if (asset.isAttachedToAgent) {
+                                handleAssetDetach(asset.id)
+                              } else {
+                                handleAssetAttach(asset.id)
+                              }
+                            }}
+                            disabled={isAssetsLoading}
+                          >
+                            {asset.isAttachedToAgent ? (
+                              <>
+                                <UnlinkIcon className="h-3 w-3 mr-1" />
+                                Detach
+                              </>
+                            ) : (
+                              <>
+                                <LinkIcon className="h-3 w-3 mr-1" />
+                                Attach
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyCard 
+                    icon={<FolderOpen className="h-10 w-10 text-muted-foreground" />}
+                    contentClassName="mb-4"
+                    title="No compatible assets found" 
+                    description="Upload compatible files (PDF, CSV, MD, TXT, JSON, YAML, or images) to attach them to your agent" 
                     className="flex flex-col items-center justify-center py-8"
                   />
                 )}
