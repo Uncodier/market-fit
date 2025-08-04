@@ -1570,3 +1570,16 @@ export const Lightbulb = ({ className = "", size = 20, ...props }: IconProps) =>
 
 // CheckCircle (alias for CheckCircle2)
 export const CheckCircle = CheckCircle2
+
+// ListTodo
+export const ListTodo = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="6" height="6" rx="1" />
+      <path d="m3 17 2 2 4-4" />
+      <path d="M13 6h8" />
+      <path d="M13 12h8" />
+      <path d="M13 18h8" />
+    </svg>
+  </IconWrapper>
+)
