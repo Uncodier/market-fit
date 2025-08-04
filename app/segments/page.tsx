@@ -38,6 +38,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Segment } from "@/app/types/segments"
 import { useRouter } from "next/navigation"
 
+
 type AdPlatform = "facebook" | "google" | "linkedin" | "twitter"
 
 // Función auxiliar para manejar valores no disponibles
@@ -389,6 +390,8 @@ export default function SegmentsPage() {
   const [initialFetchDone, setInitialFetchDone] = useState(false)
   const [loadAttemptsCount, setLoadAttemptsCount] = useState(0)
   const router = useRouter()
+
+
 
   // Manejador de cambio del input
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -826,7 +829,7 @@ export default function SegmentsPage() {
                 </div>
               </div>
               <div className="ml-auto">
-                {/* Any other buttons would go here */}
+                {/* Buttons are handled by TopBarActions */}
               </div>
             </div>
           </div>

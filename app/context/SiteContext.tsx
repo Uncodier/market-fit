@@ -993,9 +993,25 @@ export function SiteProvider({ children }: SiteProviderProps) {
         await handleUpdateSettings(site.id, site.settings)
       }
       
-      // Don't automatically reload sites to prevent constant recompilation
-      // The UI will handle local state updates as needed
-      // await loadSites() // Reload the sites to get updated data
+      // Update local state without full reload when preventing refresh
+      if (shouldPreventRefresh() || isOnSettingsPage()) {
+        console.log("UPDATE SITE: Updating local state without full reload");
+        
+        // Update the current site if it's the same site being updated
+        if (currentSite && currentSite.id === site.id) {
+          console.log("UPDATE SITE: Updating current site in local state");
+          setCurrentSite(site);
+        }
+        
+        // Update the sites array
+        setSites(prevSites => 
+          prevSites.map(s => s.id === site.id ? site : s)
+        );
+      } else {
+        // Only reload sites if not preventing refresh
+        console.log("UPDATE SITE: Full reload of sites");
+        await loadSites();
+      }
       
     } catch (err) {
       console.error("Error updating site:", err)
@@ -1390,11 +1406,46 @@ export function SiteProvider({ children }: SiteProviderProps) {
         throw upsertError;
       }
       
-      console.log("UPDATE SETTINGS 9: Recargando información");
-      // Don't automatically reload sites after settings update to prevent constant reloading
-      // The settings page will handle its own state updates
-      // await loadSites();
-      console.log("UPDATE SETTINGS 10: Proceso completado con éxito (sin reload automático)");
+      console.log("UPDATE SETTINGS 9: Actualizando estado local");
+      
+      // Update local state without full reload when preventing refresh
+      if (shouldPreventRefresh() || isOnSettingsPage()) {
+        console.log("UPDATE SETTINGS: Updating local state without full reload");
+        
+        // Update the current site if it matches the siteId being updated
+        if (currentSite && currentSite.id === siteId) {
+          console.log("UPDATE SETTINGS: Updating current site settings in local state");
+          const updatedSite = {
+            ...currentSite,
+            settings: {
+              ...currentSite.settings,
+              ...formattedSettings
+            }
+          } as Site;
+          setCurrentSite(updatedSite);
+        }
+        
+        // Update the sites array 
+        setSites(prevSites => 
+          prevSites.map(site => 
+            site.id === siteId 
+              ? {
+                  ...site,
+                  settings: {
+                    ...site.settings,
+                    ...formattedSettings
+                  }
+                } as Site
+              : site
+          )
+        );
+      } else {
+        // Only reload sites if not preventing refresh
+        console.log("UPDATE SETTINGS: Full reload of sites");
+        await loadSites();
+      }
+      
+      console.log("UPDATE SETTINGS 10: Proceso completado con éxito");
       
     } catch (err) {
       console.error("UPDATE SETTINGS ERROR GENERAL:", err);

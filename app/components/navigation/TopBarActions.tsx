@@ -34,9 +34,11 @@ import {
   PlayCircle,
   StopCircle
 } from "@/app/components/ui/icons"
+
 import { subMonths, format } from "date-fns"
 import { safeReload } from "../../utils/safe-reload"
 import { useSearchParams } from "next/navigation"
+
 
 // Robot Start Button Component
 function RobotStartButton({ currentSite }: { currentSite: any }) {
@@ -1119,7 +1121,15 @@ The success of this experiment will be measured by:
                 </>
               )}
             </Button>
-            <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
+            <CreateSegmentDialog 
+              onCreateSegment={handleCreateSegment}
+              trigger={
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Segment
+                </Button>
+              }
+            />
           </div>
         ) : null
       )}

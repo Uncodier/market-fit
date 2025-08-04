@@ -37,6 +37,7 @@ interface CreateSegmentDialogProps {
     language: string
     site_id: string
   }) => Promise<void>
+  trigger?: React.ReactNode
 }
 
 const LANGUAGES = [
@@ -105,7 +106,7 @@ const AUDIENCES = [
   { value: 'gaming', label: 'Gaming & Entertainment' }
 ] as const
 
-export function CreateSegmentDialog({ onCreateSegment }: CreateSegmentDialogProps) {
+export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -157,10 +158,12 @@ export function CreateSegmentDialog({ onCreateSegment }: CreateSegmentDialogProp
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2">
-          <PlusCircle className="h-4 w-4" />
-          New Segment
-        </Button>
+        {trigger || (
+          <Button className="flex items-center gap-2">
+            <PlusCircle className="h-4 w-4" />
+            New Segment
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>

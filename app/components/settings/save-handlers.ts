@@ -218,28 +218,28 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       },
       marketing_channels: settingsData.marketing_channels || [],
       social_media: filteredSocialMedia,
-      // Include channels configuration
-      channels: channels || {
+      // Include channels configuration - preserve existing configuration and merge with new data
+      channels: {
         email: {
-          enabled: false,
-          email: "",
-          password: "",
-          aliases: "",
-          incomingServer: "",
-          incomingPort: "",
-          outgoingServer: "",
-          outgoingPort: "",
-          status: "not_configured" as const
+          enabled: channels?.email?.enabled ?? currentSite.settings?.channels?.email?.enabled ?? false,
+          email: channels?.email?.email ?? currentSite.settings?.channels?.email?.email ?? "",
+          password: channels?.email?.password ?? currentSite.settings?.channels?.email?.password ?? "",
+          aliases: channels?.email?.aliases ?? currentSite.settings?.channels?.email?.aliases ?? "",
+          incomingServer: channels?.email?.incomingServer ?? currentSite.settings?.channels?.email?.incomingServer ?? "",
+          incomingPort: channels?.email?.incomingPort ?? currentSite.settings?.channels?.email?.incomingPort ?? "",
+          outgoingServer: channels?.email?.outgoingServer ?? currentSite.settings?.channels?.email?.outgoingServer ?? "",
+          outgoingPort: channels?.email?.outgoingPort ?? currentSite.settings?.channels?.email?.outgoingPort ?? "",
+          status: (channels?.email?.status ?? currentSite.settings?.channels?.email?.status ?? "not_configured") as "not_configured" | "password_required" | "pending_sync" | "synced"
         },
         whatsapp: {
-          enabled: false,
-          setupType: undefined,
-          country: undefined,
-          region: undefined,
-          account_sid: undefined,
-          existingNumber: undefined,
-          setupRequested: false,
-          status: "not_configured" as const
+          enabled: channels?.whatsapp?.enabled ?? currentSite.settings?.channels?.whatsapp?.enabled ?? false,
+          setupType: channels?.whatsapp?.setupType ?? currentSite.settings?.channels?.whatsapp?.setupType ?? undefined,
+          country: channels?.whatsapp?.country ?? currentSite.settings?.channels?.whatsapp?.country ?? undefined,
+          region: channels?.whatsapp?.region ?? currentSite.settings?.channels?.whatsapp?.region ?? undefined,
+          account_sid: channels?.whatsapp?.account_sid ?? currentSite.settings?.channels?.whatsapp?.account_sid ?? undefined,
+          existingNumber: channels?.whatsapp?.existingNumber ?? currentSite.settings?.channels?.whatsapp?.existingNumber ?? undefined,
+          setupRequested: channels?.whatsapp?.setupRequested ?? currentSite.settings?.channels?.whatsapp?.setupRequested ?? false,
+          status: (channels?.whatsapp?.status ?? currentSite.settings?.channels?.whatsapp?.status ?? "not_configured") as "not_configured" | "pending" | "active"
         }
       },
       // Incluir competitors y focus_mode en settings en lugar de site
@@ -308,22 +308,26 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           );
           // Clear the password from the form data to avoid storing in plaintext
           data.channels.email.password = "";
-          // Ensure we keep email settings structure in settings with ALL fields
-          if (!settings.channels) settings.channels = { 
-            email: {
-              aliases: ""
-            } as any,
-            whatsapp: {
+          // Ensure channels structure exists and preserve existing whatsapp configuration
+          if (!settings.channels) {
+            settings.channels = {
+              email: {},
+              whatsapp: {}
+            } as any;
+          }
+          if (!settings.channels.whatsapp) {
+            settings.channels.whatsapp = {
               enabled: false,
               setupType: undefined,
               country: undefined,
               region: undefined,
+              account_sid: undefined,
               existingNumber: undefined,
               setupRequested: false,
               status: "not_configured" as const
-            }
-          };
-          // Copy all email configuration fields from the form data
+            };
+          }
+          // Update only email configuration fields from the form data, preserving existing whatsapp
           settings.channels.email = {
             enabled: data.channels.email.enabled || false,
             email: data.channels.email.email || "",
@@ -339,12 +343,15 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           console.error("Error storing email credentials:", tokenError);
         }
       } else if (data.channels?.email?.password === 'STORED_SECURELY' && data.channels.email.enabled) {
-        // If using the stored password, make sure we keep ALL email configuration fields
-        if (!settings.channels) settings.channels = { 
-          email: {
-            aliases: ""
-          } as any,
-          whatsapp: {
+        // If using the stored password, make sure we keep ALL email configuration fields and preserve whatsapp
+        if (!settings.channels) {
+          settings.channels = {
+            email: {},
+            whatsapp: {}
+          } as any;
+        }
+        if (!settings.channels.whatsapp) {
+          settings.channels.whatsapp = {
             enabled: false,
             setupType: undefined,
             country: undefined,
@@ -353,8 +360,9 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
             existingNumber: undefined,
             setupRequested: false,
             status: "not_configured" as const
-          }
-        };
+          };
+        }
+        // Update only email configuration, preserving existing whatsapp
         settings.channels.email = {
           enabled: data.channels.email.enabled || false,
           email: data.channels.email.email || "",
@@ -421,6 +429,35 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
     
     if (shouldPreventRefresh()) {
       console.log("SAVE 14: Settings saved successfully, skipping sites refresh to prevent reload");
+      
+      // Even though we skip full refresh, we need to update the currentSite state
+      // to reflect the saved changes in the UI, preserving nested objects like channels
+      const updatedSite = {
+        ...currentSite,
+        ...siteUpdate,
+        settings: {
+          ...currentSite.settings,
+          ...settings,
+          // Preserve nested objects that might get overwritten
+          channels: {
+            ...currentSite.settings?.channels,
+            ...settings.channels,
+            // Deep merge for email and whatsapp to preserve all fields
+            email: {
+              ...currentSite.settings?.channels?.email,
+              ...settings.channels?.email
+            },
+            whatsapp: {
+              ...currentSite.settings?.channels?.whatsapp,
+              ...settings.channels?.whatsapp
+            }
+          }
+        }
+      };
+      
+      // Update the current site state locally without triggering a full reload
+      console.log("SAVE 14.1: Updating current site state locally");
+      updateSite(updatedSite as any);
     } else {
       console.log("SAVE 14: Settings saved successfully, refreshing sites data");
       await refreshSites();
