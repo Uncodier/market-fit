@@ -34,6 +34,8 @@ import { format, subMonths, isAfter, isFuture } from "date-fns"
 import { startOfMonth } from "date-fns"
 import { isSameDay, isSameMonth } from "date-fns"
 import { useRequestController } from "@/app/hooks/useRequestController"
+import OnboardingItinerary from "@/app/components/dashboard/onboarding-itinerary"
+import { useProfile } from "@/app/hooks/use-profile"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -64,8 +66,37 @@ export default function DashboardPage() {
   }, [dateRange.startDate, dateRange.endDate]);
   
   const [formattedTotal, setFormattedTotal] = useState("")
-  const [activeTab, setActiveTab] = useState("overview")
+  const { settings } = useProfile()
+  const userSettings = (settings as Record<string, any>) || {}
+  const onboardingCompleted = !!userSettings?.onboarding?.completed
+  const [activeTab, setActiveTab] = useState(onboardingCompleted ? "overview" : "onboarding")
+  
+  // Update URL when tab changes and get tab from URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const urlTab = params.get('tab')
+      if (urlTab && ['onboarding', 'overview', 'analytics', 'traffic', 'costs', 'sales'].includes(urlTab)) {
+        setActiveTab(urlTab)
+      } else {
+        // If no tab in URL, set URL to match current activeTab
+        const currentTab = onboardingCompleted ? "overview" : "onboarding"
+        if (currentTab === "onboarding") {
+          const url = new URL(window.location.href)
+          url.searchParams.set('tab', 'onboarding')
+          window.history.replaceState({}, '', url.toString())
+        }
+      }
+    }
+  }, [onboardingCompleted])
   const [isInitialized, setIsInitialized] = useState(false)
+
+  // If onboarding gets completed, switch away from onboarding tab
+  useEffect(() => {
+    if (onboardingCompleted && activeTab === "onboarding") {
+      setActiveTab("overview")
+    }
+  }, [onboardingCompleted, activeTab])
 
   // Determine the type of date range based on start and end dates
   const determineRangeType = useCallback((startDate: Date, endDate: Date) => {
@@ -307,13 +338,29 @@ export default function DashboardPage() {
       cancelAllRequests();
       setActiveTab(newTab);
       setFormattedTotal(""); // Reset formatted total when changing tabs
+      
+      // Update URL
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        if (newTab === 'overview') {
+          url.searchParams.delete('tab')
+        } else {
+          url.searchParams.set('tab', newTab)
+        }
+        window.history.pushState({}, '', url.toString())
+        
+        // Emit custom event to notify TopBarActions
+        window.dispatchEvent(new CustomEvent('dashboard:tabchange', {
+          detail: { activeTab: newTab }
+        }))
+      }
     }
   }
 
   return (
     <div className="flex-1 p-0">
       <Tabs 
-        defaultValue="overview" 
+        defaultValue={onboardingCompleted ? "overview" : "onboarding"} 
         className="space-y-4"
         value={activeTab}
         onValueChange={handleTabChange}
@@ -323,6 +370,9 @@ export default function DashboardPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList>
+                  {!onboardingCompleted && (
+                    <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
+                  )}
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="analytics">Analytics</TabsTrigger>
                   <TabsTrigger value="traffic">Traffic</TabsTrigger>
@@ -330,47 +380,49 @@ export default function DashboardPage() {
                   <TabsTrigger value="sales">Sales Reports</TabsTrigger>
                 </TabsList>
               </div>
-              <div className="ml-auto flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Segment:</span>
-                  <Select 
-                    value={selectedSegment} 
-                    onValueChange={handleSegmentChange}
-                    disabled={isLoadingSegments}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <div className="flex-1 overflow-hidden">
-                        <span style={{ pointerEvents: 'none' }}>
-                          <SelectValue placeholder="All segments" />
-                        </span>
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent className="min-w-[180px] w-auto">
-                      <SelectItem 
-                        value="all"
-                        className="flex-wrap whitespace-normal"
-                      >
-                        <span style={{ pointerEvents: 'none' }}>All segments</span>
-                      </SelectItem>
-                      {segments.map((segment) => (
+              {activeTab !== "onboarding" && (
+                <div className="ml-auto flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Segment:</span>
+                    <Select 
+                      value={selectedSegment} 
+                      onValueChange={handleSegmentChange}
+                      disabled={isLoadingSegments}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <div className="flex-1 overflow-hidden">
+                          <span style={{ pointerEvents: 'none' }}>
+                            <SelectValue placeholder="All segments" />
+                          </span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="min-w-[180px] w-auto">
                         <SelectItem 
-                          key={segment.id} 
-                          value={segment.id}
+                          value="all"
                           className="flex-wrap whitespace-normal"
                         >
-                          <span style={{ pointerEvents: 'none' }}>{segment.name}</span>
+                          <span style={{ pointerEvents: 'none' }}>All segments</span>
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        {segments.map((segment) => (
+                          <SelectItem 
+                            key={segment.id} 
+                            value={segment.id}
+                            className="flex-wrap whitespace-normal"
+                          >
+                            <span style={{ pointerEvents: 'none' }}>{segment.name}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <CalendarDateRangePicker 
+                    onRangeChange={handleDateRangeChange} 
+                    initialStartDate={dateRange.startDate}
+                    initialEndDate={dateRange.endDate}
+                    key={`date-range-${format(dateRange.startDate, 'yyyy-MM-dd')}-${format(dateRange.endDate, 'yyyy-MM-dd')}`}
+                  />
                 </div>
-                <CalendarDateRangePicker 
-                  onRangeChange={handleDateRangeChange} 
-                  initialStartDate={dateRange.startDate}
-                  initialEndDate={dateRange.endDate}
-                  key={`date-range-${format(dateRange.startDate, 'yyyy-MM-dd')}-${format(dateRange.endDate, 'yyyy-MM-dd')}`}
-                />
-              </div>
+              )}
             </div>
           </div>
         </StickyHeader>
@@ -380,13 +432,21 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
               <p className="text-muted-foreground">
-                Welcome to your control panel - Viewing {selectedRangeType} data ({format(dateRange.startDate, "MMMM d")} to {format(dateRange.endDate, "MMMM d")} {format(dateRange.endDate, "yyyy")})
+                {activeTab === "onboarding" 
+                  ? "Let's get your growth engine set up and ready to capture leads!"
+                  : `Welcome to your control panel - Viewing ${selectedRangeType} data (${format(dateRange.startDate, "MMMM d")} to ${format(dateRange.endDate, "MMMM d")} ${format(dateRange.endDate, "yyyy")})`
+                }
               </p>
             </div>
           </div>
         </div>
 
         <div className="px-16">
+          <TabsContent value="onboarding" className="space-y-4">
+            {activeTab === "onboarding" && (
+              <OnboardingItinerary />
+            )}
+          </TabsContent>
           <TabsContent value="overview" className="space-y-4">
             {activeTab === "overview" && (
               <>

@@ -327,17 +327,12 @@ export function RecentActivity({
               </p>
             </div>
             {activity.description && (
-              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 overflow-hidden">
+              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-1 overflow-hidden">
                 {activity.description}
               </p>
             )}
           </div>
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            {activity.journeyStage && (
-              <Badge className={`text-xs px-2 py-1 whitespace-nowrap ${getJourneyStageColor(activity.journeyStage)}`}>
-                {activity.journeyStage}
-              </Badge>
-            )}
+          <div className="ml-auto text-xs text-muted-foreground">
             <span title={new Date(activity.date).toLocaleString()}>
               {formatDate(activity.date)}
             </span>

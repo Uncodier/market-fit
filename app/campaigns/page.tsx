@@ -738,7 +738,7 @@ export default function CampaignsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
             <CalendarDateRangePicker />
           </div>
         </div>

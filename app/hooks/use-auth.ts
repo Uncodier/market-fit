@@ -11,6 +11,11 @@ declare global {
     MarketFit?: {
       siteId?: string;
       init?: (config: any) => void;
+      showWidget?: () => void;
+      hideWidget?: () => void;
+      widgetHide?: () => void;
+      openChatWithTask?: () => void;
+      setTheme?: (theme: string) => void;
       chat?: {
         identify: (userData: { name: string; email: string; phone?: string }) => Promise<void>
       }

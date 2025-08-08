@@ -10,6 +10,7 @@ import { EmptyState } from "@/app/components/ui/empty-state"
 import { useNotifications } from "./context/NotificationsContext"
 import { NotificationCard } from "./components/NotificationCard"
 import { NotificationSkeleton } from "./components/NotificationSkeleton"
+import { HelpButton } from "@/app/components/ui/help-button"
 
 export default function NotificationsPage() {
   const {
@@ -75,6 +76,10 @@ export default function NotificationsPage() {
             
             <div className="ml-auto">
               <div className="flex items-center gap-2">
+                <HelpButton 
+                  size="sm" 
+                  tooltipText="Need help managing your notifications?"
+                />
                 <Button 
                   variant="outline" 
                   size="sm"

@@ -77,7 +77,19 @@ const isAssetCompatibleWithAgent = (asset: Asset): boolean => {
 }
 
 // Asset interface with attachment status
-interface AssetWithAttachment extends Asset {
+interface AssetWithAttachment {
+  id: string
+  name: string
+  description: string | null
+  file_path: string
+  file_type: string
+  file_size: number | null
+  metadata: Record<string, any> | null
+  is_public: boolean
+  site_id: string
+  user_id: string
+  created_at: string
+  updated_at: string
   isAttachedToAgent?: boolean
   tags: string[]
 }
@@ -986,7 +998,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
         }
         
         // Filter only compatible assets and add metadata
-        const compatibleAssets = fetchedAssets?.filter(isAssetCompatibleWithAgent).map(asset => {
+        const compatibleAssets = fetchedAssets?.filter(isAssetCompatibleWithAgent).map((asset: Asset) => {
           const metadata = asset.metadata as { tags?: string[] } || {}
           return {
             ...asset,

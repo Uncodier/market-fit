@@ -247,12 +247,14 @@ export function SiteOnboarding({
     setHasValidated(true)
     updateStepErrors()
     
-    if (currentStep === 1) {
-      const formData = form.getValues()
-      const nameValid = formData.name && formData.name.trim()
-      const urlValid = formData.url && formData.url.trim()
-      
-      if (!nameValid || !urlValid) {
+    // Check if current step is valid before proceeding
+    if (!validateStep(currentStep)) {
+      // Specific validation for step 1
+      if (currentStep === 1) {
+        const formData = form.getValues()
+        const nameValid = formData.name && formData.name.trim()
+        const urlValid = formData.url && formData.url.trim()
+        
         if (!nameValid) {
           form.setError("name", { 
             type: "manual", 
@@ -265,8 +267,8 @@ export function SiteOnboarding({
             message: "Site URL is required" 
           })
         }
-        return
       }
+      return
     }
     
     if (currentStep < steps.length) {
@@ -611,6 +613,92 @@ export function SiteOnboarding({
   const hasExistingSites = sites.length > 0
   const formData = form.watch()
   const isRequiredFieldsComplete = !!(formData.name && formData.name.trim() && formData.url && formData.url.trim())
+  
+  // Check if there are any validation errors that should prevent project creation
+  const hasValidationErrors = () => {
+    // Update step errors before checking
+    const newErrors = new Set<number>()
+    for (let i = 1; i <= 7; i++) { // Only check steps 1-7 for project creation
+      if (!validateStep(i)) {
+        newErrors.add(i)
+      }
+    }
+    return newErrors.size > 0
+  }
+
+  // Show loading skeleton while creating site
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center p-4">
+        <div className="container max-w-6xl mx-auto">
+          {/* Header skeleton */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+            <div />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Steps skeleton */}
+            <div className="space-y-6">
+              <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+              <div className="space-y-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
+                    <div className="flex-1">
+                      <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mb-1" />
+                      <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Main Content skeleton */}
+            <div className="lg:col-span-2">
+              <Card className="h-[600px]">
+                <CardHeader>
+                  <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mb-2" />
+                  <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                    <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                    <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                    <div className="h-24 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                  </div>
+                </CardContent>
+                <ActionFooter>
+                  <div className="flex justify-between">
+                    <div className="h-10 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                    <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                  </div>
+                </ActionFooter>
+              </Card>
+            </div>
+          </div>
+
+          {/* Loading indicator */}
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-card border border-border rounded-lg shadow-lg p-6 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold mb-2">Creating Your Project</h3>
+              <p className="text-sm text-muted-foreground">
+                Setting up your workspace and configuring everything...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center p-4">
@@ -646,16 +734,42 @@ export function SiteOnboarding({
 
             {/* Steps list */}
             <div className="space-y-4">
-              {steps.map((step, index) => (
-                <button
-                  key={step.id}
-                  onClick={() => {
-                    setHasValidated(true)
-                    updateStepErrors()
-                    setCurrentStep(step.id)
-                  }}
-                  className="flex items-center gap-4 w-full text-left hover:bg-muted/30 rounded-lg p-2 transition-colors"
-                >
+              {steps.map((step, index) => {
+                // Check if this step should be disabled
+                const isStepDisabled = () => {
+                  // Always allow going to completed steps or current step
+                  if (step.id <= currentStep) return false
+                  
+                  // If site is not created (currentStep < 8), don't allow jumping to success step
+                  if (step.id === 8 && currentStep < 8) return true
+                  
+                  // Don't allow jumping ahead if there are validation errors in previous steps
+                  for (let i = 1; i < step.id; i++) {
+                    if (hasValidated && stepErrors.has(i)) return true
+                  }
+                  
+                  return false
+                }
+                
+                const disabled = isStepDisabled()
+                
+                return (
+                  <button
+                    key={step.id}
+                    onClick={() => {
+                      if (disabled) return
+                      setHasValidated(true)
+                      updateStepErrors()
+                      setCurrentStep(step.id)
+                    }}
+                    disabled={disabled}
+                    className={cn(
+                      "flex items-center gap-4 w-full text-left rounded-lg p-2 transition-colors",
+                      disabled 
+                        ? "cursor-not-allowed opacity-50" 
+                        : "hover:bg-muted/30"
+                    )}
+                  >
                   <div
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
@@ -694,7 +808,8 @@ export function SiteOnboarding({
                     </div>
                   </div>
                 </button>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -999,7 +1114,7 @@ export function SiteOnboarding({
                     <Button
                       type="button"
                       onClick={handleComplete}
-                      disabled={isLoading}
+                      disabled={isLoading || hasValidationErrors()}
                       size="lg"
                       className="min-w-[140px] bg-primary text-primary-foreground hover:bg-primary/90"
                     >

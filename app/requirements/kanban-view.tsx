@@ -32,9 +32,9 @@ const STATUS_COLORS: Record<string, string> = {
 
 // Colors for priorities
 const PRIORITY_COLORS: Record<string, string> = {
-  'high': 'bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30',
-  'medium': 'bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 border-yellow-300/30',
-  'low': 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30'
+  'high': 'bg-red-50/60 text-red-600/70 dark:bg-red-900/20 dark:text-red-400/70 border border-red-200/30 dark:border-red-800/30',
+  'medium': 'bg-yellow-50/60 text-yellow-600/70 dark:bg-yellow-900/20 dark:text-yellow-400/70 border border-yellow-200/30 dark:border-yellow-800/30',
+  'low': 'bg-blue-50/60 text-blue-600/70 dark:bg-blue-900/20 dark:text-blue-400/70 border border-blue-200/30 dark:border-blue-800/30'
 }
 
 // Helper to get completion status display (moved outside component)

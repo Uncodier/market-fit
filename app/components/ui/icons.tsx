@@ -1583,3 +1583,62 @@ export const ListTodo = ({ className = "", size = 20, ...props }: IconProps) => 
     </svg>
   </IconWrapper>
 )
+
+// Calendar alias for compatibility
+export const Calendar = CalendarIcon
+
+// Bot - Robot icon
+export const Bot = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 8V4H8v4" />
+      <rect width="16" height="12" x="4" y="8" rx="2" />
+      <path d="M2 14h2" />
+      <path d="M20 14h2" />
+      <path d="M15 13v2" />
+      <path d="M9 13v2" />
+    </svg>
+  </IconWrapper>
+)
+
+// ArrowRight
+export const ArrowRight = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  </IconWrapper>
+)
+
+// Play
+export const Play = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="5,3 19,12 5,21" />
+    </svg>
+  </IconWrapper>
+)
+
+// Zap
+export const Zap = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13,2 3,14 12,14 11,22 21,10 12,10" />
+    </svg>
+  </IconWrapper>
+)
+
+// Unlink
+export const Unlink = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71" />
+      <path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71" />
+      <line x1="8" y1="2" x2="8" y2="5" />
+      <line x1="2" y1="8" x2="5" y2="8" />
+      <line x1="16" y1="19" x2="16" y2="22" />
+      <line x1="19" y1="16" x2="22" y2="16" />
+    </svg>
+  </IconWrapper>
+)

@@ -8,7 +8,7 @@ import {
   Users,
   User,
   MessageSquare,
-
+  Bot,
   Home,
   FolderOpen,
   Bell,
@@ -18,7 +18,8 @@ import {
   CreditCard,
   DollarSign,
   Rocket,
-  LogOut
+  LogOut,
+  HelpCircle
 } from "@/app/components/ui/icons"
 import { useEffect, useState, useRef } from "react"
 import { usePathname, useRouter } from "next/navigation"
@@ -109,6 +110,11 @@ const automaticItems = [
     href: "/agents",
     icon: Cpu,
   },
+  {
+    title: "Robots",
+    href: "/robots",
+    icon: Bot,
+  },
 ]
 
 // Context section - main item
@@ -160,6 +166,11 @@ const profileChildrenItems = [
     title: "Account",
     href: "/profile",
     icon: User,
+  },
+  {
+    title: "Help",
+    href: "#help",
+    icon: HelpCircle,
   },
   {
     title: "Log out",
@@ -544,6 +555,7 @@ export function Sidebar({
                   title={item.title}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={isCollapsed}
+                  className={item.title === "Robots" ? "invisible" : undefined}
                 />
               ))}
             </div>
@@ -574,7 +586,7 @@ export function Sidebar({
             {!isCollapsed && (
               <div 
                 className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix",
+                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix hover:scale-110 hover:bg-accent/50 active:scale-95",
                   pathname.startsWith(contextMainItem.href) 
                     ? "transform rotate-90 text-white" // White when active
                     : shouldShowContextChildren
@@ -683,7 +695,7 @@ export function Sidebar({
               {!isCollapsed && (
                 <div 
                   className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix",
+                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix hover:scale-110 hover:bg-accent/50 active:scale-95",
                     pathname.startsWith('/notifications') 
                       ? "transform rotate-90 text-white" // White when active
                       : shouldShowProfileChildren
@@ -727,6 +739,7 @@ export function Sidebar({
               {/* Profile children items */}
               {profileChildrenItems.map((item) => {
                 const isLogout = item.href === "#logout";
+                const isHelp = item.href === "#help";
                 
                 return (
                   <div 
@@ -736,14 +749,31 @@ export function Sidebar({
                       if (isLogout) {
                         e.preventDefault();
                         handleLogout();
+                      } else if (isHelp) {
+                        e.preventDefault();
+                        console.log('Sidebar help button clicked')
+                        if (typeof window !== 'undefined') {
+                          console.log('Sidebar Window MarketFit:', (window as any).MarketFit)
+                          if ((window as any).MarketFit?.openChatWithTask) {
+                            console.log('Sidebar calling openChatWithTask')
+                            ;(window as any).MarketFit.openChatWithTask({
+                              welcomeMessage: "Hi! I'm here to help you navigate and use all the features effectively. What would you like to know?",
+                              task: "I need help with using the platform",
+                              clearExistingMessages: false,
+                              newConversation: false
+                            });
+                          } else {
+                            console.log('Sidebar MarketFit.openChatWithTask not available')
+                          }
+                        }
                       }
                     }}
                   >
                     <MenuItem
-                      href={isLogout ? "#" : item.href}
+                      href={isLogout || isHelp ? "#" : item.href}
                       icon={item.icon}
                       title={isLogout ? (isLoggingOut ? "Signing out..." : "Log out") : item.title}
-                      isActive={!isLogout && pathname.startsWith(item.href)}
+                      isActive={!isLogout && !isHelp && pathname.startsWith(item.href)}
                       isCollapsed={isCollapsed}
                       className={!isCollapsed ? "ml-3" : ""}
                     >

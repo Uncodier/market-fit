@@ -20,7 +20,7 @@ import { CalendarDateRangePicker } from "../ui/date-range-picker"
 import { AIActionModal } from "@/app/components/ui/ai-action-modal"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter, usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { 
@@ -50,6 +50,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   
   // Get current tab from URL or default to channel-market-fit
   const activeTab = searchParams.get('tab') || 'channel-market-fit'
+  const activeTabRef = useRef(activeTab)
 
   // Map tab values to activity names
   const getActivityName = (tabValue: string): string => {
@@ -105,10 +106,85 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     }
   }
 
+  // Update activeTab ref when activeTab changes
+  useEffect(() => {
+    activeTabRef.current = activeTab
+  }, [activeTab])
+
   // Check for active robots when site or tab changes
   useEffect(() => {
     checkActiveRobots()
   }, [currentSite, activeTab])
+
+  // Setup real-time monitoring (separate from checking robots to avoid re-subscription)
+  useEffect(() => {
+    if (currentSite) {
+      const supabase = createClient()
+      
+      const instancesSubscription = supabase
+        .channel(`remote_instances_${currentSite.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'remote_instances',
+            filter: `site_id=eq.${currentSite.id}`
+          },
+          (payload: any) => {
+            console.log('Start button: Real-time instance update:', payload)
+            
+            // Get current activity name for filtering - use ref to get fresh value
+            const currentActivityName = getActivityName(activeTabRef.current)
+            
+            // Check if this change affects the current tab's activity
+            if (payload.new?.name === currentActivityName || payload.old?.name === currentActivityName) {
+              console.log(`Start button: Instance change detected for ${currentActivityName}`)
+              
+              // Handle different event types
+              if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+                const instance = payload.new
+                
+                // If instance is stopped or error, clear the robot instance and loading states
+                if (instance.status === 'stopped' || instance.status === 'error' || instance.status === 'failed') {
+                  console.log(`Start button: Instance ${instance.name} stopped/error/failed`)
+                  setActiveRobotInstance(null)
+                  setIsStoppingRobot(false) // Clear stopping state
+                  setIsStartingRobot(false) // Clear starting state just in case
+                }
+                // If instance is running/active, update the robot instance and clear loading state
+                else if (instance.status === 'running' || instance.status === 'active') {
+                  console.log(`Start button: Instance ${instance.name} started/active`)
+                  setActiveRobotInstance(instance)
+                  setIsStartingRobot(false) // Clear loading state when robot is ready
+                  
+                  // Emit custom event to notify robots page to refresh
+                  window.dispatchEvent(new CustomEvent('robotStarted', { 
+                    detail: { instanceId: instance.id, instance }
+                  }))
+                }
+                // If instance is starting/pending, just clear the current instance (robots page will handle the details)
+                else if (instance.status === 'starting' || instance.status === 'pending' || instance.status === 'initializing') {
+                  console.log(`Start button: Instance ${instance.name} is starting`)
+                  setActiveRobotInstance(null)
+                }
+              }
+              // If instance was deleted, clear everything
+              else if (payload.eventType === 'DELETE') {
+                console.log(`Start button: Instance deleted`)
+                setActiveRobotInstance(null)
+              }
+            }
+          }
+        )
+        .subscribe()
+
+      // Cleanup subscription on unmount or site change
+      return () => {
+        instancesSubscription.unsubscribe()
+      }
+    }
+  }, [currentSite])
 
   // Function to start robot
   const handleStartRobot = async () => {
@@ -129,18 +205,93 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       })
       
       if (response.success) {
-        toast.success("Robot started successfully")
-        // Refresh the robot status after starting
+        toast.success("Robot workflow initiated - setting up browser...")
+        
+        // Immediate refresh to check for new instance
         await checkActiveRobots()
+        
+        // Check if robot is already running after the API call
+        if (activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)) {
+          console.log('Robot is already running, no need to poll')
+          setIsStartingRobot(false)
+          return
+        }
+        
+        // Setup fallback polling in case real-time updates fail
+        let pollAttempts = 0
+        const maxPollAttempts = 20 // 20 attempts * 2 seconds = 40 seconds
+        let pollingActive = true
+        
+        const pollForStartedInstance = async () => {
+          if (!pollingActive) return
+          
+          pollAttempts++
+          console.log(`Polling for started robot instance (attempt ${pollAttempts}/${maxPollAttempts})`)
+          
+          await checkActiveRobots()
+          
+          // Check if robot is now running - if so, stop polling and clear loading state
+          const activityName = getActivityName(activeTab)
+          const supabase = createClient()
+          
+          const { data: currentInstance } = await supabase
+            .from('remote_instances')
+            .select('id, status, name')
+            .eq('site_id', currentSite.id)
+            .eq('name', activityName)
+            .neq('status', 'stopped')
+            .neq('status', 'error')
+            .limit(1)
+          
+          if (currentInstance && currentInstance.length > 0) {
+            const instance = currentInstance[0]
+            if (['running', 'active'].includes(instance.status)) {
+              console.log('✅ Robot is now running! Stopping polling.')
+              pollingActive = false
+              setIsStartingRobot(false)
+              
+              // Emit custom event to notify robots page to refresh
+              window.dispatchEvent(new CustomEvent('robotStarted', { 
+                detail: { instanceId: instance.id, instance }
+              }))
+              
+              return
+            } else if (['failed', 'error'].includes(instance.status)) {
+              console.log('❌ Robot failed to start. Stopping polling.')
+              pollingActive = false
+              setIsStartingRobot(false)
+              toast.error("Robot failed to start")
+              return
+            }
+          }
+          
+          if (pollAttempts < maxPollAttempts && pollingActive) {
+            setTimeout(pollForStartedInstance, 2000) // Poll every 2 seconds
+          } else if (pollingActive) {
+            console.log('Max polling attempts reached for robot start')
+            pollingActive = false
+            setIsStartingRobot(false)
+            // Final refresh attempt
+            setTimeout(() => {
+              console.log('Final refresh attempt after robot start')
+              checkActiveRobots()
+            }, 3000)
+          }
+        }
+        
+        // Start polling after 3 seconds (allow real-time to work first)
+        setTimeout(pollForStartedInstance, 3000)
+        
       } else {
         throw new Error(response.error?.message || 'Failed to start robot')
       }
     } catch (error) {
       console.error('Error starting robot:', error)
       toast.error("Failed to start robot")
-    } finally {
       setIsStartingRobot(false)
     }
+    // Note: Don't set setIsStartingRobot(false) here in finally block
+    // It will be set when polling detects the robot is running or fails
   }
 
   // Function to stop robot
@@ -161,8 +312,67 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       
       if (response.success) {
         toast.success("Robot stopped successfully")
-        // Refresh the robot status after stopping
+        
+        // Immediately clear the robot instance since stop was successful
+        setActiveRobotInstance(null)
+        console.log('✅ Robot stopped successfully, clearing active instance')
+        
+        // Emit custom event to notify robots page to refresh
+        window.dispatchEvent(new CustomEvent('robotStopped', { 
+          detail: { instanceId: activeRobotInstance.id }
+        }))
+        
+        // Refresh to double-check status
         await checkActiveRobots()
+        
+        // Setup fallback refresh in case real-time updates fail
+        let refreshAttempts = 0
+        const maxRefreshAttempts = 5 // Reduced to 5 attempts since we already cleared the state
+        let refreshActive = true
+        
+        const refreshStoppedStatus = async () => {
+          if (!refreshActive) return
+          
+          refreshAttempts++
+          console.log(`Refreshing stopped robot status (attempt ${refreshAttempts}/${maxRefreshAttempts})`)
+          
+          await checkActiveRobots()
+          
+          // Check if there's still an active robot - if not, stop refreshing
+          const activityName = getActivityName(activeTab)
+          const supabase = createClient()
+          
+          const { data: currentInstance } = await supabase
+            .from('remote_instances')
+            .select('id, status, name')
+            .eq('site_id', currentSite.id)
+            .eq('name', activityName)
+            .neq('status', 'stopped')
+            .neq('status', 'error')
+            .limit(1)
+          
+          if (!currentInstance || currentInstance.length === 0) {
+            console.log('✅ Confirmed no active robots, stopping refresh')
+            refreshActive = false
+            return
+          }
+          
+          if (refreshAttempts < maxRefreshAttempts && refreshActive) {
+            setTimeout(refreshStoppedStatus, 2000) // Refresh every 2 seconds
+          } else if (refreshActive) {
+            console.log('Max refresh attempts reached for robot stop')
+            refreshActive = false
+            // Final refresh attempt
+            setTimeout(() => {
+              console.log('Final refresh attempt after robot stop')
+              checkActiveRobots()
+            }, 3000)
+          }
+        }
+        
+        // Start refreshing after 2 seconds (allow real-time to work first)
+        setTimeout(refreshStoppedStatus, 2000)
+        
       } else {
         throw new Error(response.error?.message || 'Failed to stop robot')
       }
@@ -223,7 +433,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       {isStartingRobot ? (
         <>
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-          Starting...
+          Starting Robot...
         </>
       ) : (
         <>
@@ -279,6 +489,7 @@ interface TopBarActionsProps {
   isSalesPage: boolean
   isRobotsPage: boolean
   isExperimentDetailPage?: boolean
+  dashboardActiveTab?: string
   segmentData: {
     id: string
     activeTab: string
@@ -309,6 +520,7 @@ export function TopBarActions({
   isSalesPage,
   isRobotsPage,
   isExperimentDetailPage = false,
+  dashboardActiveTab,
   segmentData,
   segments,
   propSegments,
@@ -324,6 +536,43 @@ export function TopBarActions({
     endDate: new Date()
   })
   const [selectedSegment, setSelectedSegment] = useState<string>("all")
+  
+  // Check if we're on dashboard onboarding tab
+  const [currentDashboardTab, setCurrentDashboardTab] = useState<string | null>(null)
+  
+  useEffect(() => {
+    if (isDashboardPage && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tab = params.get('tab')
+      // If no tab parameter, we need to check if user is in onboarding mode
+      const finalTab = tab || 'overview'
+      console.log('TopBarActions: Current dashboard tab:', finalTab, 'from URL:', tab)
+      setCurrentDashboardTab(finalTab)
+      
+      // Listen for popstate events (back/forward navigation)
+      const handlePopState = () => {
+        const newParams = new URLSearchParams(window.location.search)
+        const newTab = newParams.get('tab') || 'overview'
+        console.log('TopBarActions: Tab changed to:', newTab)
+        setCurrentDashboardTab(newTab)
+      }
+      
+      // Listen for custom events from dashboard tab changes
+      const handleTabChange = () => {
+        const newParams = new URLSearchParams(window.location.search)
+        const newTab = newParams.get('tab') || 'overview'
+        console.log('TopBarActions: Custom tab change to:', newTab)
+        setCurrentDashboardTab(newTab)
+      }
+      
+      window.addEventListener('popstate', handlePopState)
+      window.addEventListener('dashboard:tabchange', handleTabChange)
+      return () => {
+        window.removeEventListener('popstate', handlePopState)
+        window.removeEventListener('dashboard:tabchange', handleTabChange)
+      }
+    }
+  }, [isDashboardPage])
   
   // AI Action Modal state
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
@@ -987,6 +1236,16 @@ The success of this experiment will be measured by:
       {currentSite ? (
         <>
           {isDashboardPage && (
+            (() => {
+              if (typeof window !== 'undefined') {
+                const params = new URLSearchParams(window.location.search)
+                const tab = params.get('tab')
+                // Show export button only if explicitly NOT on onboarding tab
+                return tab !== 'onboarding'
+              }
+              return true // Default to showing it if we can't determine
+            })()
+          ) && (
             <Button 
               onClick={async () => {
                 if (!userId) {

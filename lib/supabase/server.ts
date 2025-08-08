@@ -26,7 +26,7 @@ export async function createClient() {
 
 // Cliente con permisos elevados (solo para operaciones del servidor)
 export async function createServiceClient() {
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {

@@ -26,10 +26,12 @@ interface Robot {
   successRate: number;
 }
 
-// Wrapper component for Suspense
+// Wrapper component for Suspense  
 export default function RobotsPage() {
+  console.log('🏁 ROBOTS PAGE LOADED - CHECK CONSOLE!')
+  
   return (
-    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading robots...</div>}>
       <RobotsPageContent />
     </Suspense>
   )
@@ -37,10 +39,14 @@ export default function RobotsPage() {
 
 // Main content component
 function RobotsPageContent() {
+  console.log('🚀 RobotsPageContent component started rendering')
+  
   const { isLayoutCollapsed } = useLayout()
   const { currentSite } = useSite()
   const searchParams = useSearchParams()
   const router = useRouter()
+  
+  console.log('🚀 Hooks loaded, currentSite:', currentSite?.id || 'null')
 
   // Get tab from URL params or default to channel-market-fit
   const activeTab = searchParams.get('tab') || 'channel-market-fit'
@@ -61,6 +67,7 @@ function RobotsPageContent() {
   const [pollingAttempts, setPollingAttempts] = useState(0)
   const [maxPollingAttempts] = useState(20) // 20 attempts * 3 seconds = 60 seconds max
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const activeTabRef = useRef(activeTab)
 
   // Map tab values to activity names (for robot name matching)
   const getActivityName = (tabValue: string): string => {
@@ -78,10 +85,13 @@ function RobotsPageContent() {
 
   // Function to check for active robots for the current tab
   const checkActiveRobots = useCallback(async () => {
+    console.log('🔄 Robots page: checkActiveRobots called', { currentSite: currentSite?.id, activeTab })
+    
     if (!currentSite) {
       setActiveRobotInstance(null)
       setStreamUrl(null)
       setIsLoadingRobots(false)
+      console.log('❌ Robots page: No currentSite, exiting checkActiveRobots')
       return
     }
 
@@ -107,14 +117,17 @@ function RobotsPageContent() {
         setStreamUrl(null)
       } else {
         const instance = data && data.length > 0 ? data[0] : null
+        console.log(`🔍 Robots page: checkActiveRobots result for ${activityName}:`, instance)
+        console.log(`🔍 Robots page: Previous activeRobotInstance:`, activeRobotInstance?.id)
+        
         setActiveRobotInstance(instance)
         
         if (instance) {
-          console.log(`Found active robot for ${activityName}:`, instance)
+          console.log(`✅ Found active robot for ${activityName}:`, instance)
           // Check if we need to get/update the stream URL
           await ensureStreamUrl(instance)
         } else {
-          console.log(`No active robot found for ${activityName}`)
+          console.log(`❌ No active robot found for ${activityName}`)
           setStreamUrl(null)
         }
       }
@@ -344,6 +357,29 @@ function RobotsPageContent() {
     }
   }, [activeRobotInstance, stopPollingForInstance])
 
+  // Listen for robot events from TopBarActions
+  useEffect(() => {
+    const handleRobotStopped = (event: CustomEvent) => {
+      console.log('🔔 Robots page: Received robotStopped event:', event.detail)
+      // Force a refresh of the robots page
+      checkActiveRobots()
+    }
+
+    const handleRobotStarted = (event: CustomEvent) => {
+      console.log('🔔 Robots page: Received robotStarted event:', event.detail)
+      // Force a refresh of the robots page
+      checkActiveRobots()
+    }
+
+    window.addEventListener('robotStopped', handleRobotStopped as EventListener)
+    window.addEventListener('robotStarted', handleRobotStarted as EventListener)
+    
+    return () => {
+      window.removeEventListener('robotStopped', handleRobotStopped as EventListener)
+      window.removeEventListener('robotStarted', handleRobotStarted as EventListener)
+    }
+  }, [checkActiveRobots])
+
   // Cleanup timeouts and polling on unmount
   useEffect(() => {
     return () => {
@@ -367,11 +403,18 @@ function RobotsPageContent() {
     }
   }, [showConnectedIndicator])
 
-  // Check for active robots when site changes and setup real-time monitoring
+  // Update activeTab ref when activeTab changes
+  useEffect(() => {
+    activeTabRef.current = activeTab
+  }, [activeTab])
+
+  // Check for active robots when site or tab changes
   useEffect(() => {
     checkActiveRobots()
+  }, [currentSite, activeTab])
 
-    // Setup real-time subscription for remote_instances changes
+  // Setup real-time monitoring (separate from checking robots to avoid re-subscription)
+  useEffect(() => {
     if (currentSite) {
       const supabase = createClient()
       
@@ -386,22 +429,28 @@ function RobotsPageContent() {
             filter: `site_id=eq.${currentSite.id}`
           },
           (payload: any) => {
-            console.log('Real-time instance update:', payload)
+            console.log('🔄 Robots page: Real-time instance update:', payload)
             
-            // Get current activity name for filtering
-            const currentActivityName = getActivityName(activeTab)
+            // Get current activity name for filtering - use ref to get fresh value
+            const currentActivityName = getActivityName(activeTabRef.current)
+            console.log(`🔍 Robots page: Current activity name: ${currentActivityName}`)
+            console.log(`🔍 Robots page: Payload new name: ${payload.new?.name}, old name: ${payload.old?.name}`)
             
             // Check if this change affects the current tab's activity
             if (payload.new?.name === currentActivityName || payload.old?.name === currentActivityName) {
-              console.log(`Instance change detected for ${currentActivityName}, refreshing...`)
+              console.log(`🎯 Robots page: Instance change detected for ${currentActivityName}, refreshing...`)
               
               // Handle different event types
               if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+                console.log(`📝 Robots page: Processing ${payload.eventType} event for instance:`, payload.new)
                 const instance = payload.new
                 
                 // If instance is stopped or error, clear the stream and stop polling
                 if (instance.status === 'stopped' || instance.status === 'error' || instance.status === 'failed') {
-                  console.log(`Instance ${instance.name} stopped/error/failed, clearing stream`)
+                  console.log(`🛑 Robots page: Instance ${instance.name} stopped/error/failed, clearing stream`)
+                  console.log(`🛑 Robots page: Previous activeRobotInstance:`, activeRobotInstance?.id)
+                  console.log(`🛑 Robots page: Current streamUrl:`, streamUrl)
+                  
                   setActiveRobotInstance(null)
                   setStreamUrl(null)
                   setConnectionStatus('disconnected')
@@ -414,6 +463,8 @@ function RobotsPageContent() {
                     setReconnectTimeoutId(null)
                   }
                   setReconnectAttempts(0)
+                  
+                  console.log(`✅ Robots page: Robot state cleared for stopped instance`)
                 }
                 // If instance is running/active, setup the stream and stop polling
                 else if (instance.status === 'running' || instance.status === 'active') {
@@ -457,7 +508,7 @@ function RobotsPageContent() {
         stopPollingForInstance()
       }
     }
-  }, [checkActiveRobots, currentSite, activeTab])
+  }, [currentSite])
 
   // Function to handle tab change
   const handleTabChange = (newTab: string) => {
@@ -466,6 +517,9 @@ function RobotsPageContent() {
     router.push(`/robots?${currentParams.toString()}`)
   }
 
+  // Debug log to see what's happening
+  console.log('🤖 Robots page render - activeRobotInstance:', activeRobotInstance?.id || 'null', 'isLoadingRobots:', isLoadingRobots, 'isPollingForInstance:', isPollingForInstance)
+
   return (
     <div className="flex-1 p-0">
           <StickyHeader>
@@ -473,6 +527,7 @@ function RobotsPageContent() {
               <div className="flex items-center gap-4">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
                   <TabsList>
+                <TabsTrigger value="free-agent">Free Agent</TabsTrigger>
                 <TabsTrigger value="channel-market-fit">Channel Market Fit</TabsTrigger>
                 <TabsTrigger value="engage">Engage in Social Networks</TabsTrigger>
                 <TabsTrigger value="seo">SEO</TabsTrigger>
@@ -493,77 +548,41 @@ function RobotsPageContent() {
             <div className="h-full flex flex-col m-0 bg-card">
               <div className="flex-1 p-0 overflow-hidden">
                 {isLoadingRobots || isPollingForInstance ? (
-                  <div className="h-full flex flex-col">
-                    {/* Robot startup loading state */}
-                    <div className="h-full bg-muted/50 rounded-lg flex flex-col items-center justify-center p-8 relative overflow-hidden">
-                      {/* Browser skeleton frame */}
-                      <div className="w-full h-full border-2 border-dashed border-muted-foreground/20 rounded-lg flex flex-col">
-                        {/* Browser toolbar skeleton */}
-                        <div className="h-12 bg-muted/30 rounded-t-lg border-b border-muted-foreground/20 flex items-center px-4 gap-2">
-                          <div className="flex gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-400/40 animate-pulse"></div>
-                            <div className="w-3 h-3 rounded-full bg-yellow-400/40 animate-pulse"></div>
-                            <div className="w-3 h-3 rounded-full bg-green-400/40 animate-pulse"></div>
-                          </div>
-                          <div className="flex-1 mx-4">
-                            <div className="h-6 bg-muted/50 rounded animate-pulse"></div>
-                          </div>
-                        </div>
-                        
-                        {/* Browser content skeleton */}
-                        <div className="flex-1 p-6 space-y-4">
-                          <div className="space-y-3">
-                            <div className="h-4 bg-muted/40 rounded w-3/4 animate-pulse"></div>
-                            <div className="h-4 bg-muted/40 rounded w-1/2 animate-pulse"></div>
-                            <div className="h-4 bg-muted/40 rounded w-5/6 animate-pulse"></div>
+                  <div className="h-full flex flex-col relative">
+                    <BrowserSkeleton />
+                    
+                    {/* Loading status overlay - minimal and unobtrusive */}
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex gap-1">
+                            <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-4 mt-8">
-                            <div className="h-24 bg-muted/40 rounded animate-pulse"></div>
-                            <div className="h-24 bg-muted/40 rounded animate-pulse"></div>
-                          </div>
-                          
-                          <div className="space-y-2 mt-6">
-                            <div className="h-3 bg-muted/40 rounded w-full animate-pulse"></div>
-                            <div className="h-3 bg-muted/40 rounded w-4/5 animate-pulse"></div>
-                            <div className="h-3 bg-muted/40 rounded w-3/5 animate-pulse"></div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Loading overlay */}
-                      <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex flex-col items-center justify-center">
-                        <div className="flex flex-col items-center space-y-4">
-                          <div className="relative">
-                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary"></div>
-                            <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-2 border-primary/40"></div>
-                          </div>
-                          
-                          <div className="text-center space-y-2">
-                            <h3 className="text-lg font-semibold text-foreground">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">
                               {isPollingForInstance ? 'Starting Robot Browser...' : 'Loading Robot Session...'}
-                            </h3>
-                            <p className="text-sm text-muted-foreground max-w-md">
+                            </p>
+                            <p className="text-xs text-muted-foreground">
                               {isPollingForInstance 
                                 ? `Setting up robot instance (${pollingAttempts}/${maxPollingAttempts})` 
                                 : 'Initializing robot components...'
                               }
                             </p>
-                            
-                            {isPollingForInstance && (
-                              <div className="mt-4">
-                                <div className="w-48 bg-muted rounded-full h-2">
-                                  <div 
-                                    className="bg-primary h-2 rounded-full transition-all duration-300" 
-                                    style={{ width: `${(pollingAttempts / maxPollingAttempts) * 100}%` }}
-                                  ></div>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  Checking for successful startup...
-                                </p>
-                              </div>
-                            )}
                           </div>
+                          
+                          {isPollingForInstance && (
+                            <div className="w-32">
+                              <div className="w-full bg-muted rounded-full h-1.5">
+                                <div 
+                                  className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+                                  style={{ width: `${(pollingAttempts / maxPollingAttempts) * 100}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -578,7 +597,7 @@ function RobotsPageContent() {
                     />
                   </div>
                 ) : (
-                  <div className="relative w-full h-full">
+                  <div className="relative w-full h-full bg-background">
                     {/* Connection status indicator */}
                     {connectionStatus !== 'connected' && (
                       <div className="absolute top-4 left-4 z-10">
@@ -633,25 +652,41 @@ function RobotsPageContent() {
                       </div>
                     )}
                     
-                    <iframe
-                      src={streamUrl || "https://www.google.com"}
-                      className="w-full h-full border-0"
-                      title={streamUrl ? "Robot Browser Session" : "Google"}
-                      allowFullScreen
-                      allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
-                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
-                      onLoad={() => {
-                        if (streamUrl) {
-                          setConnectionStatus('connected')
-                          setShowConnectedIndicator(true)
-                          setReconnectAttempts(0)
-                        }
-                      }}
-                      onError={(e) => {
-                        console.error('Iframe error:', e)
-                        handleConnectionLoss()
-                      }}
-                    />
+                    <div className="w-full h-full flex items-center justify-center bg-background">
+                      <div className="bg-background rounded-lg shadow-2xl border border-muted-foreground/30 overflow-hidden" style={{
+                        width: '100%',
+                        maxWidth: '1024px',
+                        height: 'auto',
+                        aspectRatio: '4/3',
+                        maxHeight: 'calc(100vh - 200px)'
+                      }}>
+                        <iframe
+                          src={streamUrl || "https://www.google.com"}
+                          className="border-0 bg-background rounded-lg"
+                          title={streamUrl ? "Robot Browser Session" : "Google"}
+                          allowFullScreen
+                          allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
+                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
+                          style={{
+                            width: 'calc(100% + 4px)',
+                            height: 'calc(100% + 4px)',
+                            transform: 'translate(-2px, -2px)',
+                            transformOrigin: 'center center'
+                          }}
+                          onLoad={() => {
+                            if (streamUrl) {
+                              setConnectionStatus('connected')
+                              setShowConnectedIndicator(true)
+                              setReconnectAttempts(0)
+                            }
+                          }}
+                          onError={(e) => {
+                            console.error('Iframe error:', e)
+                            handleConnectionLoss()
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

@@ -32,6 +32,7 @@ import { useProfile } from "@/app/hooks/use-profile"
 import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ProfileSkeleton } from "./components/ProfileSkeleton"
+import { HelpButton } from "@/app/components/ui/help-button"
 
 type UserRole = "Product Manager" | "Designer" | "Developer" | "Marketing" | "Sales" | "CEO" | "Other"
 
@@ -228,12 +229,18 @@ export default function ProfilePage() {
       <StickyHeader>
         <div className="flex items-center justify-between px-16 w-full">
           <div className="flex-1" />
-          <Button 
-            disabled={isUpdating}
-            onClick={handleSave}
-          >
-            {isUpdating ? "Saving..." : "Save changes"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <HelpButton 
+              size="sm" 
+              tooltipText="Need help with your profile settings?"
+            />
+            <Button 
+              disabled={isUpdating}
+              onClick={handleSave}
+            >
+              {isUpdating ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
         </div>
       </StickyHeader>
       

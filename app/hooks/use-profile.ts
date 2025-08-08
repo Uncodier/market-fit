@@ -81,9 +81,9 @@ export function useProfile() {
   }, [user?.id, profile])
 
   // Actualizar configuración del perfil
-  const updateSettings = useCallback(async (settings: Record<string, any>): Promise<boolean> => {
+  const updateSettings = useCallback(async (settings: Record<string, any>, silent = false): Promise<boolean> => {
     if (!user?.id) {
-      toast.error('User not authenticated')
+      if (!silent) toast.error('User not authenticated')
       return false
     }
 
@@ -92,15 +92,15 @@ export function useProfile() {
       
       if (success && profile) {
         setProfile({ ...profile, settings })
-        toast.success('Settings updated')
+        if (!silent) toast.success('Settings updated')
         return true
       } else {
-        toast.error('Failed to update settings')
+        if (!silent) toast.error('Failed to update settings')
         return false
       }
     } catch (error) {
       console.error('Error updating settings:', error)
-      toast.error('Error updating settings')
+      if (!silent) toast.error('Error updating settings')
       return false
     }
   }, [user?.id, profile])

@@ -829,7 +829,6 @@ export default function SegmentsPage() {
                 </div>
               </div>
               <div className="ml-auto">
-                {/* Buttons are handled by TopBarActions */}
               </div>
             </div>
           </div>

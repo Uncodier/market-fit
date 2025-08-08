@@ -120,9 +120,9 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
   const { toast } = useToast()
 
   const priorityColors = {
-    high: "bg-red-100/20 text-red-600 dark:text-red-400 hover:bg-red-100/30 border-red-300/30",
-    medium: "bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-100/30 border-yellow-300/30",
-    low: "bg-blue-100/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100/30 border-blue-300/30"
+    high: "bg-red-50/60 text-red-600/70 dark:bg-red-900/20 dark:text-red-400/70 hover:bg-red-100/40 border border-red-200/30 dark:border-red-800/30",
+    medium: "bg-yellow-50/60 text-yellow-600/70 dark:bg-yellow-900/20 dark:text-yellow-400/70 hover:bg-yellow-100/40 border border-yellow-200/30 dark:border-yellow-800/30",
+    low: "bg-blue-50/60 text-blue-600/70 dark:bg-blue-900/20 dark:text-blue-400/70 hover:bg-blue-100/40 border border-blue-200/30 dark:border-blue-800/30"
   }
 
   const statusColors = {
@@ -581,7 +581,204 @@ export default function RequirementsPage() {
     }
   }, [])
 
-  // Efecto de carga de datos (simplificado)
+  // Función optimizada para cargar datos con filtros a nivel de base de datos
+  const loadRequirementsWithFilters = React.useCallback(async () => {
+    if (!currentSite?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const siteId = currentSite.id;
+    
+    try {
+      const supabase = createClient();
+      
+      // Verify that the site exists
+      const { data: siteData, error: siteError } = await supabase
+        .from("sites")
+        .select("id, name")
+        .eq("id", siteId)
+        .single();
+        
+      if (siteError || !siteData) {
+        throw new Error("The selected site does not exist or you don't have access to it");
+      }
+      
+      // Load segments
+      const { data: segmentData, error: segmentError } = await supabase
+        .from("segments")
+        .select("*")
+        .eq("site_id", siteId);
+      
+      if (segmentError) {
+        throw new Error(`Error loading segments: ${segmentError.message}`);
+      }
+      
+      // Build the optimized query for requirements
+      let requirementsQuery = supabase
+        .from("requirements")
+        .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id), metadata")
+        .eq("site_id", siteId);
+
+      // Apply database-level filters based on active tab and filters
+      if (activeTab !== "all") {
+        switch (activeTab) {
+          case "pending":
+            requirementsQuery = requirementsQuery.eq("completion_status", COMPLETION_STATUS.PENDING);
+            break;
+          case "completed":
+            requirementsQuery = requirementsQuery.eq("completion_status", COMPLETION_STATUS.COMPLETED);
+            break;
+          case "rejected":
+            requirementsQuery = requirementsQuery.eq("completion_status", COMPLETION_STATUS.REJECTED);
+            break;
+        }
+      }
+
+      // Apply advanced filters at database level
+      if (filters.completionStatus.length > 0) {
+        requirementsQuery = requirementsQuery.in("completion_status", filters.completionStatus);
+      }
+
+      if (filters.status.length > 0) {
+        requirementsQuery = requirementsQuery.in("status", filters.status);
+      }
+
+      if (filters.priority.length > 0) {
+        requirementsQuery = requirementsQuery.in("priority", filters.priority);
+      }
+
+      // Handle segment filtering with a separate query first if needed
+      let requirementIds: string[] | null = null;
+      if (filters.segments.length > 0) {
+        const { data: segmentRequirements, error: segmentError } = await supabase
+          .from("requirement_segments")
+          .select("requirement_id")
+          .in("segment_id", filters.segments);
+        
+        if (segmentError) {
+          throw new Error(`Error filtering by segments: ${segmentError.message}`);
+        }
+        
+        requirementIds = segmentRequirements?.map((sr: { requirement_id: string }) => sr.requirement_id) || [];
+        
+        // If no requirements match the segment filter, return empty result
+        if (requirementIds && requirementIds.length === 0) {
+          setSegments((segmentData || []).map((segment: SegmentData) => ({
+            id: segment.id,
+            name: segment.name,
+            description: segment.description || "",
+          })));
+          setRequirements([]);
+          setCampaigns([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Apply the segment filter to the main query
+        requirementsQuery = requirementsQuery.in("id", requirementIds);
+      }
+
+      // Execute the optimized query
+      const { data: requirementData, error: requirementError } = await requirementsQuery;
+      
+      if (requirementError) {
+        throw new Error(`Error loading requirements: ${requirementError.message}`);
+      }
+      
+      // Load campaigns to get their names and metadata
+      const { data: campaignData, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("id, title, metadata")
+        .eq("site_id", siteId);
+      
+      if (campaignError) {
+        console.warn("Error loading campaigns:", campaignError.message);
+        // We don't throw here to not block the requirements loading
+      }
+      
+      // Map segments to expected format
+      const segments = (segmentData || []).map((segment: SegmentData) => ({
+        id: segment.id,
+        name: segment.name,
+        description: segment.description || "",
+      }));
+      
+      // Create a campaigns map for quick lookup
+      const campaignsMap = new Map<string, string>();
+      const campaignsOutsourcedMap = new Map<string, boolean>();
+      if (campaignData && campaignData.length > 0) {
+        campaignData.forEach((campaign: { id: string, title: string, metadata?: any }) => {
+          campaignsMap.set(campaign.id, campaign.title);
+          campaignsOutsourcedMap.set(campaign.id, campaign.metadata?.payment_status?.outsourced || false);
+        });
+      }
+      
+      // Map requirements to expected format
+      const requirements = (requirementData || []).map((req: any) => {
+        // Extract related segment IDs
+        const segmentIds = (req.requirement_segments || []).map((sr: any) => sr.segment_id);
+        
+        // Get segment names
+        const segmentNames = segments
+          .filter((segment: any) => segmentIds.includes(segment.id))
+          .map((segment: any) => segment.name);
+        
+        // Extract related campaign IDs
+        const campaignIds = (req.campaign_requirements || []).map((cr: any) => cr.campaign_id);
+        
+        // Get campaign names
+        const campaignNames = campaignIds
+          .filter((id: string) => campaignsMap.has(id))
+          .map((id: string) => campaignsMap.get(id) || "");
+        
+        // Check if any of the related campaigns is outsourced
+        const campaignOutsourced = campaignIds.some((id: string) => 
+          campaignsOutsourcedMap.get(id) === true
+        );
+        
+        return {
+          id: req.id,
+          title: req.title,
+          description: req.description || "",
+          type: req.type || "task",
+          priority: req.priority || "medium",
+          status: req.status || "backlog",
+          completionStatus: req.completion_status || "pending",
+          source: req.source || "",
+          budget: req.budget || null,
+          createdAt: req.created_at || new Date().toISOString(),
+          segments: segmentIds,
+          segmentNames: segmentNames,
+          campaigns: campaignIds,
+          campaignNames: campaignNames,
+          metadata: req.metadata || {},
+          campaignOutsourced: campaignOutsourced
+        };
+      });
+      
+      // Save campaigns for the dropdown
+      const formattedCampaigns = (campaignData || []).map((campaign: { id: string; title: string; description?: string }) => ({
+        id: campaign.id,
+        title: campaign.title,
+        description: campaign.description || ""
+      }));
+      setCampaigns(formattedCampaigns);
+      
+      // Update state
+      setSegments(segments);
+      setRequirements(requirements);
+      
+      // Reset loading state
+      setIsLoading(false);
+      
+    } catch (error: any) {
+      setVisibleError(error.message || "Error loading data");
+      setIsLoading(false);
+    }
+  }, [currentSite, activeTab, filters]);
+
+  // Efecto de carga de datos optimizado
   useEffect(() => {
     // Si no hay sitio seleccionado, no cargamos nada
     if (!currentSite) {
@@ -597,141 +794,13 @@ export default function RequirementsPage() {
       return;
     }
     
-    // Función de carga simplificada
-    const loadDataSimple = async () => {
-      try {
-        const supabase = createClient();
-        
-        // Verify that the site exists
-        const { data: siteData, error: siteError } = await supabase
-          .from("sites")
-          .select("id, name")
-          .eq("id", siteId)
-          .single();
-          
-        if (siteError || !siteData) {
-          throw new Error("The selected site does not exist or you don't have access to it");
-        }
-        
-        // Load segments
-        const { data: segmentData, error: segmentError } = await supabase
-          .from("segments")
-          .select("*")
-          .eq("site_id", siteId);
-        
-        if (segmentError) {
-          throw new Error(`Error loading segments: ${segmentError.message}`);
-        }
-        
-        // Load requirements - FIXING THE QUERY
-        const { data: requirementData, error: requirementError } = await supabase
-          .from("requirements")
-          .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id), metadata")
-          .eq("site_id", siteId);
-        
-        if (requirementError) {
-          throw new Error(`Error loading requirements: ${requirementError.message}`);
-        }
-        
-        // Load campaigns to get their names and metadata
-        const { data: campaignData, error: campaignError } = await supabase
-          .from("campaigns")
-          .select("id, title, metadata")
-          .eq("site_id", siteId);
-        
-        if (campaignError) {
-          console.warn("Error loading campaigns:", campaignError.message);
-          // We don't throw here to not block the requirements loading
-        }
-        
-        // Map segments to expected format
-        const segments = (segmentData || []).map((segment: SegmentData) => ({
-          id: segment.id,
-          name: segment.name,
-          description: segment.description || "",
-        }));
-        
-        // Create a campaigns map for quick lookup
-        const campaignsMap = new Map<string, string>();
-        const campaignsOutsourcedMap = new Map<string, boolean>();
-        if (campaignData && campaignData.length > 0) {
-          campaignData.forEach((campaign: { id: string, title: string, metadata?: any }) => {
-            campaignsMap.set(campaign.id, campaign.title);
-            campaignsOutsourcedMap.set(campaign.id, campaign.metadata?.payment_status?.outsourced || false);
-          });
-        }
-        
-        // Map requirements to expected format
-        const requirements = (requirementData || []).map((req: any) => {
-          // Extract related segment IDs
-          const segmentIds = (req.requirement_segments || []).map((sr: any) => sr.segment_id);
-          
-          // Get segment names
-          const segmentNames = segments
-            .filter((segment: any) => segmentIds.includes(segment.id))
-            .map((segment: any) => segment.name);
-          
-          // Extract related campaign IDs
-          const campaignIds = (req.campaign_requirements || []).map((cr: any) => cr.campaign_id);
-          
-          // Get campaign names
-          const campaignNames = campaignIds
-            .filter((id: string) => campaignsMap.has(id))
-            .map((id: string) => campaignsMap.get(id) || "");
-          
-          // Check if any of the related campaigns is outsourced
-          const campaignOutsourced = campaignIds.some((id: string) => 
-            campaignsOutsourcedMap.get(id) === true
-          );
-          
-          return {
-            id: req.id,
-            title: req.title,
-            description: req.description || "",
-            type: req.type || "task",
-            priority: req.priority || "medium",
-            status: req.status || "backlog",
-            completionStatus: req.completion_status || "pending",
-            source: req.source || "",
-            budget: req.budget || null,
-            createdAt: req.created_at || new Date().toISOString(),
-            segments: segmentIds,
-            segmentNames: segmentNames,
-            campaigns: campaignIds,
-            campaignNames: campaignNames,
-            metadata: req.metadata || {},
-            campaignOutsourced: campaignOutsourced
-          };
-        });
-        
-        // Save campaigns for the dropdown
-        const formattedCampaigns = (campaignData || []).map((campaign: { id: string; title: string; description?: string }) => ({
-          id: campaign.id,
-          title: campaign.title,
-          description: campaign.description || ""
-        }));
-        setCampaigns(formattedCampaigns);
-        
-        // Update state
-        setSegments(segments);
-        setRequirements(requirements);
-        
-        // Reset loading state
-        setIsLoading(false);
-        
-      } catch (error: any) {
-        setVisibleError(error.message || "Error loading data");
-        setIsLoading(false);
-      }
-    };
-    
     setIsLoading(true);
-    loadDataSimple();
+    loadRequirementsWithFilters();
     
     return () => {
       // Limpieza
     };
-  }, [currentSite]);
+  }, [currentSite, activeTab, filters, loadRequirementsWithFilters]);
 
   // Manejar actualización de estados con invalidación de caché
   const handleUpdateStatus = async (id: string, status: RequirementStatusType) => {
@@ -838,7 +907,7 @@ export default function RequirementsPage() {
     }
   }
 
-  // Efecto para filtrar los requisitos según la pestaña activa y otros filtros
+  // Efecto optimizado para filtrar solo por búsqueda (el resto se filtra en DB)
   useEffect(() => {
     if (!requirements || requirements.length === 0) {
       setFilteredRequirements([]);
@@ -848,7 +917,7 @@ export default function RequirementsPage() {
     // Obtener requisitos que coinciden con los criterios de búsqueda
     let filtered = [...requirements];
 
-    // Filtrar por texto de búsqueda
+    // Filtrar por texto de búsqueda (solo esto se hace en cliente)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(req => 
@@ -858,44 +927,6 @@ export default function RequirementsPage() {
       );
     }
 
-    // Aplicar filtros avanzados si están definidos
-    if (filters.priority.length > 0) {
-      filtered = filtered.filter(req => filters.priority.includes(req.priority));
-    }
-
-    if (filters.segments.length > 0) {
-      filtered = filtered.filter(req => 
-        req.segments.some(segId => filters.segments.includes(segId))
-      );
-    }
-
-    if (filters.completionStatus.length > 0) {
-      filtered = filtered.filter(req => 
-        filters.completionStatus.includes(req.completionStatus)
-      );
-    }
-    
-    if (filters.status.length > 0) {
-      filtered = filtered.filter(req => 
-        filters.status.includes(req.status)
-      );
-    }
-
-    // Filtrar según la pestaña activa
-    if (activeTab !== "all") {
-      switch (activeTab) {
-        case "pending":
-          filtered = filtered.filter(req => req.completionStatus === COMPLETION_STATUS.PENDING);
-          break;
-        case "completed":
-          filtered = filtered.filter(req => req.completionStatus === COMPLETION_STATUS.COMPLETED);
-          break;
-        case "rejected":
-          filtered = filtered.filter(req => req.completionStatus === COMPLETION_STATUS.REJECTED);
-          break;
-      }
-    }
-
     // Ordenar por prioridad: high, medium, low
     filtered.sort((a, b) => {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -903,7 +934,7 @@ export default function RequirementsPage() {
     });
 
     setFilteredRequirements(filtered);
-  }, [requirements, activeTab, searchQuery, filters]);
+  }, [requirements, searchQuery]);
 
   // Security mechanism to prevent indefinite loading
   useEffect(() => {

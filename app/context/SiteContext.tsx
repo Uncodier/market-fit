@@ -394,32 +394,22 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Helper function to parse JSON fields from the database
   const parseJsonField = (field: any, defaultValue: any) => {
-    if (!field) return defaultValue;
+    if (!field) {
+      return defaultValue;
+    }
     
     try {
       // If it's already an object/array, return it
       if (typeof field === 'object') {
-        // Special handling for arrays to ensure they're valid
-        if (Array.isArray(field)) {
-          return field;
-        }
         return field;
       }
       
       // If it's a string, try to parse it
       if (typeof field === 'string') {
-        console.log(`Parsing JSON string: ${field}`);
         const parsed = JSON.parse(field);
-        
-        // Special handling for products and services to ensure they're valid arrays
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
         
         // Special handling for goals to ensure correct structure
         if (defaultValue && defaultValue.quarterly !== undefined) {
-          // This is probably goals data
-          console.log("Detected goals data:", parsed);
           return {
             quarterly: typeof parsed.quarterly === 'string' ? parsed.quarterly : '',
             yearly: typeof parsed.yearly === 'string' ? parsed.yearly : '',
@@ -817,11 +807,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
           
           // Si tenemos settings, los agregamos al sitio
           if (settingsData) {
-            console.log("HANDLE SET CURRENT SITE: Loaded settings data:", {
-              siteId: site.id,
-              hasCustomerJourney: !!settingsData.customer_journey,
-              customerJourneyKeys: settingsData.customer_journey ? Object.keys(settingsData.customer_journey) : []
-            });
             
             let parsedGoals = {
               quarterly: '',
@@ -1368,13 +1353,27 @@ export function SiteProvider({ children }: SiteProviderProps) {
       const settingsForDB = formattedSettings;
       
       // Use upsert operation with site_id as the conflict resolution field
+      // First get existing settings to preserve other fields
       try {
-        console.log("UPDATE SETTINGS: Raw upsert data:", JSON.stringify(settingsForDB));
-        console.log("UPDATE SETTINGS: Goals before upsert:", settingsForDB.goals);
+        console.log("UPDATE SETTINGS: Getting existing settings to preserve data...");
+        const { data: existingSettings } = await supabaseRef.current
+          .from('settings')
+          .select('*')
+          .eq('site_id', siteId)
+          .single();
+        
+        // Merge with existing settings to preserve all fields
+        const mergedSettings = {
+          ...existingSettings,
+          ...settingsForDB  // Override with new values
+        };
+        
+        console.log("UPDATE SETTINGS: Raw upsert data:", JSON.stringify(mergedSettings));
+        console.log("UPDATE SETTINGS: Goals before upsert:", mergedSettings.goals);
         
         const { error } = await supabaseRef.current
           .from('settings')
-          .upsert(settingsForDB, { 
+          .upsert(mergedSettings, { 
             onConflict: 'site_id',
             ignoreDuplicates: false
           });

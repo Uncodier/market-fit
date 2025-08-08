@@ -65,10 +65,10 @@ export function MenuItem({
         label={title}
         className={cn(
           className,
-          "rounded-md px-3 py-2 text-sm transition-colors relative group",
+          "rounded-md px-3 py-2 text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
           isActive
-            ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
-            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground shadow-lg shadow-primary/25"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20",
           isCollapsed ? "justify-center" : "justify-start"
         )}
         iconSize={25}
@@ -130,10 +130,10 @@ export function MenuItem({
       href={href}
       className={cn(
         className,
-        "flex items-center rounded-md text-sm transition-colors relative group",
+        "flex items-center rounded-md text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
         isActive
-          ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground shadow-lg shadow-primary/25"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20",
         isCollapsed ? "justify-center h-[35px] w-[35px]" : "justify-start h-[35px]",
         isSettingsLink ? "safari-settings-link" : ""
       )}

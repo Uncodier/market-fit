@@ -43,19 +43,30 @@ export async function POST(request: NextRequest) {
         // Update the site settings to mark WhatsApp as connected
         const supabase = createClient()
         
+        // First get existing settings to preserve other fields
+        const { data: existingSettings } = await supabase
+          .from('settings')
+          .select('*')
+          .eq('site_id', siteInfo.siteId)
+          .single()
+
+        // Merge with existing settings to preserve all fields
+        const updatedSettings = {
+          ...existingSettings,
+          site_id: siteInfo.siteId,
+          whatsapp: {
+            enabled: true,
+            setupType: "port_existing",
+            existingNumber: PhoneNumber,
+            setupRequested: true,
+            status: "connected"
+          },
+          updated_at: new Date().toISOString()
+        }
+
         const { error: updateError } = await supabase
           .from('settings')
-          .upsert({
-            site_id: siteInfo.siteId,
-            whatsapp: {
-              enabled: true,
-              setupType: "port_existing",
-              existingNumber: PhoneNumber,
-              setupRequested: true,
-              status: "connected"
-            },
-            updated_at: new Date().toISOString()
-          }, {
+          .upsert(updatedSettings, {
             onConflict: 'site_id',
             ignoreDuplicates: false
           })

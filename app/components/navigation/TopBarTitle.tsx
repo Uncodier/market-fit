@@ -444,10 +444,29 @@ export function TopBarTitle({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="inline-flex items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+              <button 
+                className="inline-flex items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer hover:scale-105 transition-all duration-200 active:scale-95"
+                onClick={() => {
+                  console.log('TopBar help button clicked')
+                  if (typeof window !== 'undefined') {
+                    console.log('TopBar Window MarketFit:', (window as any).MarketFit)
+                    if ((window as any).MarketFit?.openChatWithTask) {
+                      console.log('TopBar calling openChatWithTask')
+                      ;(window as any).MarketFit.openChatWithTask({
+                        welcomeMessage: "Hi! I see you're looking for help with this page. What can I assist you with?",
+                        task: helpText || "I need help with this section",
+                        clearExistingMessages: false,
+                        newConversation: false
+                      })
+                    } else {
+                      console.log('TopBar MarketFit.openChatWithTask not available')
+                    }
+                  }
+                }}
+              >
                 <HelpCircle className="h-5 w-5" />
                 <span className="sr-only">Help</span>
-              </div>
+              </button>
             </TooltipTrigger>
             <TooltipContent side="right" align="center">
               <p className="max-w-xs text-sm">{helpText}</p>

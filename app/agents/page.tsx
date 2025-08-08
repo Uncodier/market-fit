@@ -1095,18 +1095,20 @@ function AgentsPageContent() {
                     </div>
                   </div>
                   
-                  {activeTab === "agents" && (
-                    <div>
-                      <ToggleGroup type="single" value={viewMode} onValueChange={(value: string) => value && setViewMode(value as "hierarchy" | "grid")}>
-                        <ToggleGroupItem value="hierarchy" aria-label="Toggle hierarchy view" className="px-2">
-                          <TableRows className="h-4 w-4" />
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="grid" aria-label="Toggle grid view" className="px-2">
-                          <List className="h-4 w-4" />
-                        </ToggleGroupItem>
-                      </ToggleGroup>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-4">
+                    {activeTab === "agents" && (
+                      <div>
+                        <ToggleGroup type="single" value={viewMode} onValueChange={(value: string) => value && setViewMode(value as "hierarchy" | "grid")}>
+                          <ToggleGroupItem value="hierarchy" aria-label="Toggle hierarchy view" className="px-2">
+                            <TableRows className="h-4 w-4" />
+                          </ToggleGroupItem>
+                          <ToggleGroupItem value="grid" aria-label="Toggle grid view" className="px-2">
+                            <List className="h-4 w-4" />
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </StickyHeader>

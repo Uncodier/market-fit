@@ -83,6 +83,8 @@ export default function RootLayout({
                         }
                       });
                       
+
+                      
                       // Function to update theme after initialization
                       function updateWidgetTheme() {
                         const currentTheme = detectTheme();
@@ -109,6 +111,15 @@ export default function RootLayout({
                   
                   var firstScript = document.getElementsByTagName('script')[0];
                   firstScript.parentNode.insertBefore(script, firstScript);
+                  
+                  // Hide widget after everything is loaded
+                  setTimeout(function() {
+                    if (window.MarketFit && typeof window.MarketFit.widgetHide === 'function') {
+                      window.MarketFit.widgetHide();
+                    } else if (window.MarketFit && typeof window.MarketFit.hideWidget === 'function') {
+                      window.MarketFit.hideWidget();
+                    }
+                  }, 1000);
                 })();
               `
             }}
