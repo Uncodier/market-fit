@@ -181,8 +181,6 @@ const profileChildrenItems = [
 
 // Category header component
 const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: boolean }) => {
-  if (isCollapsed) return null
-  
   const getEmoji = (title: string) => {
     switch (title) {
       case "Human in the Loop":
@@ -196,10 +194,12 @@ const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: bo
   
   return (
     <div className="px-3" style={{ paddingTop: '7.2px', paddingBottom: '7.2px' }}>
-      <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2" style={{ fontSize: '10.8px' }}>
-        <span className="text-sm">{getEmoji(title)}</span>
-        {title}
-      </h3>
+      {!isCollapsed && (
+        <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2" style={{ fontSize: '10.8px' }}>
+          <span className="text-sm">{getEmoji(title)}</span>
+          {title}
+        </h3>
+      )}
     </div>
   )
 }
