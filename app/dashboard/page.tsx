@@ -512,7 +512,7 @@ export default function DashboardPage() {
                     <CardContent className="flex-1 flex flex-col">
                       <div className="flex-1">
                         <RecentActivity 
-                          limit={5}
+                          limit={6}
                           startDate={dateRange.startDate}
                           endDate={dateRange.endDate} 
                         />

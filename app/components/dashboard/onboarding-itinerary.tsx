@@ -1308,6 +1308,7 @@ Thanks!`
                     variant="ghost"
                     onClick={() => sendInstructions(section)}
                     className="text-xs"
+                    disabled={sectionPercent === 100}
                   >
                     <Send className="h-3 w-3 mr-1" />
                     Delegate

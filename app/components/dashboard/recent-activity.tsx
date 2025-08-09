@@ -10,6 +10,7 @@ import { ClipboardList, Circle } from "@/app/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
 import { format } from "date-fns";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { useRouter } from "next/navigation";
 
 interface ActivityUser {
   id: string;
@@ -121,12 +122,13 @@ function capitalizeStatus(status: string | null | undefined): string {
 }
 
 export function RecentActivity({ 
-  limit = 5,
+  limit = 6,
   startDate,
   endDate
 }: RecentActivityProps) {
   const { currentSite } = useSite();
   const { fetchWithController, getSignalForEndpoint } = useRequestController();
+  const router = useRouter();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -260,15 +262,15 @@ export function RecentActivity({
 
   if (isLoading) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-4">
         {emptyActivities.map((activity) => (
-          <div key={activity.id} className="flex items-center">
+          <div key={activity.id} className="flex items-center rounded-lg p-2 -m-2">
             <Skeleton className="h-9 w-9 rounded-full" />
-            <div className="ml-4 space-y-1">
+            <div className="ml-4 space-y-1 flex-1 pr-4">
               <Skeleton className="h-4 w-[250px]" />
               <Skeleton className="h-3 w-[200px]" />
             </div>
-            <div className="ml-auto text-xs text-muted-foreground">
+            <div className="ml-auto">
               <Skeleton className="h-3 w-[60px]" />
             </div>
           </div>
@@ -306,10 +308,19 @@ export function RecentActivity({
     );
   }
 
+  // Handle activity click to navigate to control center
+  const handleActivityClick = (activity: Activity) => {
+    router.push(`/control-center/${activity.id}`)
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {activities.map((activity) => (
-        <div key={activity.id} className="flex items-center">
+        <div 
+          key={activity.id} 
+          className="flex items-center cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
+          onClick={() => handleActivityClick(activity)}
+        >
           <Avatar>
             <AvatarImage src={activity.user.imageUrl ?? ""} alt={activity.user.name || ""} />
             <AvatarFallback>{getInitials(activity.user.name || activity.lead?.name || "")}</AvatarFallback>
