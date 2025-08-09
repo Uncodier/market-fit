@@ -328,6 +328,24 @@ export default function LeadsPage() {
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
   const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false)
   const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
+
+  // Kanban pagination state for leads
+  const [kanbanPagination, setKanbanPagination] = useState<Record<string, { page: number; hasMore: boolean; isLoading: boolean }>>({
+    new: { page: 1, hasMore: true, isLoading: false },
+    contacted: { page: 1, hasMore: true, isLoading: false },
+    qualified: { page: 1, hasMore: true, isLoading: false },
+    converted: { page: 1, hasMore: true, isLoading: false },
+    lost: { page: 1, hasMore: true, isLoading: false }
+  })
+
+  // Total counts for each status from the database
+  const [totalCounts, setTotalCounts] = useState<Record<string, number>>({
+    new: 0,
+    contacted: 0,
+    qualified: 0,
+    converted: 0,
+    lost: 0
+  })
   
   // Get unique assignee IDs from leads
   const assigneeIds = useMemo(() => {
@@ -367,6 +385,11 @@ export default function LeadsPage() {
       })) || []
       
       setDbLeads(normalizedLeads)
+
+      // Load total counts for kanban view
+      if (viewType === 'kanban') {
+        await loadTotalCounts()
+      }
     } catch (error) {
       console.error("Error loading leads:", error)
       toast.error("Error loading leads")
@@ -374,6 +397,142 @@ export default function LeadsPage() {
       setLoading(false)
     }
   }
+
+  // Function to load total counts for kanban view
+  const loadTotalCounts = React.useCallback(async () => {
+    if (!currentSite?.id) return
+
+    try {
+      const supabase = createClient()
+      const statuses = ['new', 'contacted', 'qualified', 'converted', 'lost']
+      const counts: Record<string, number> = {}
+
+      // Fetch count for each status
+      for (const status of statuses) {
+        const { count, error } = await supabase
+          .from('leads')
+          .select('*', { count: 'exact', head: true })
+          .eq('site_id', currentSite.id)
+          .eq('status', status)
+
+        if (error) {
+          console.error(`Error fetching count for ${status}:`, error)
+          counts[status] = 0
+        } else {
+          counts[status] = count || 0
+        }
+      }
+
+      setTotalCounts(counts)
+
+      // Set kanban pagination state based on total counts
+      setKanbanPagination({
+        new: { page: 1, hasMore: counts.new > 50, isLoading: false },
+        contacted: { page: 1, hasMore: counts.contacted > 50, isLoading: false },
+        qualified: { page: 1, hasMore: counts.qualified > 50, isLoading: false },
+        converted: { page: 1, hasMore: counts.converted > 50, isLoading: false },
+        lost: { page: 1, hasMore: counts.lost > 50, isLoading: false }
+      })
+    } catch (error) {
+      console.error("Error loading total counts:", error)
+    }
+  }, [currentSite?.id])
+
+  // Handle load more for kanban columns
+  const handleLoadMoreKanban = async (status: string) => {
+    const currentPagination = kanbanPagination[status]
+    if (currentPagination.isLoading || !currentPagination.hasMore) return
+
+    if (!currentSite) return
+
+    // Set loading state
+    setKanbanPagination(prev => ({
+      ...prev,
+      [status]: { ...prev[status], isLoading: true }
+    }))
+
+    try {
+      const supabase = createClient()
+      const itemsPerPage = 50
+      const offset = currentPagination.page * itemsPerPage
+
+      // Fetch more leads for this specific status
+      const { data: moreLeads, error } = await supabase
+        .from('leads')
+        .select(`
+          id,
+          name,
+          email,
+          phone,
+          company,
+          company_id,
+          position,
+          segment_id,
+          campaign_id,
+          status,
+          notes,
+          origin,
+          created_at,
+          updated_at,
+          last_contact,
+          site_id,
+          user_id,
+          birthday,
+          language,
+          social_networks,
+          address,
+          attribution,
+          assignee_id,
+          companies(name)
+        `)
+        .eq('site_id', currentSite.id)
+        .eq('status', status)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + itemsPerPage - 1)
+
+      if (error) throw error
+
+      // Normalize new leads
+      const normalizedMoreLeads = moreLeads.map((lead: any) => ({
+        ...lead,
+        origin: lead.origin || null
+      }))
+
+      // Add new leads to the existing leads array
+      setDbLeads(prevLeads => {
+        // Remove any existing leads with the same IDs to avoid duplicates
+        const existingLeadIds = new Set(prevLeads.map((l: Lead) => l.id))
+        const newLeads = normalizedMoreLeads.filter((l: any) => !existingLeadIds.has(l.id))
+        return [...prevLeads, ...newLeads]
+      })
+
+      // Update pagination state
+      setKanbanPagination(prev => ({
+        ...prev,
+        [status]: { 
+          ...prev[status], 
+          page: prev[status].page + 1,
+          isLoading: false,
+          hasMore: moreLeads.length === itemsPerPage
+        }
+      }))
+
+    } catch (error) {
+      console.error('Error loading more leads:', error)
+      toast.error("Failed to load more leads")
+      setKanbanPagination(prev => ({
+        ...prev,
+        [status]: { ...prev[status], isLoading: false }
+      }))
+    }
+  }
+
+  // Load total counts when switching to kanban view
+  useEffect(() => {
+    if (viewType === 'kanban' && !loading) {
+      loadTotalCounts()
+    }
+  }, [viewType, loading, loadTotalCounts])
 
   // Cargar leads y datos relacionados
   useEffect(() => {
@@ -468,21 +627,77 @@ export default function LeadsPage() {
         const supabase = createClient()
         const uncachedLeadIds = uncachedLeads.map(lead => lead.id)
         
-        // Obtener todas las tasks completadas o en progreso de leads no cacheados
-        const { data: allTasks, error } = await supabase
-          .from('tasks')
-          .select('lead_id, stage, status, created_at, title, type')
-          .in('lead_id', uncachedLeadIds)
-          .in('status', ['completed', 'in_progress'])
-          .eq('site_id', currentSite.id)
+        // If no uncached leads, skip the query
+        if (uncachedLeadIds.length === 0) {
+          setLeadJourneyStages(stages)
+          setIsLoadingJourneyStages(false)
+          return
+        }
+        
+        // Debug info before query
+        console.log('🔍 Journey stages query params:', {
+          uncachedLeadIds,
+          siteId: currentSite.id,
+          leadCount: uncachedLeadIds.length
+        })
+
+        // Try a simpler query first to test connection
+        let allTasks = null
+        let error = null
+
+        try {
+          // First, test if we can access the tasks table at all
+          const testQuery = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('site_id', currentSite.id)
+            .limit(1)
+
+          if (testQuery.error) {
+            console.error('Cannot access tasks table:', testQuery.error)
+            throw new Error(`Tasks table access denied: ${testQuery.error.message}`)
+          }
+
+          // If test passes, do the full query
+          const fullQuery = await supabase
+            .from('tasks')
+            .select('lead_id, stage, status, created_at, title, type')
+            .in('lead_id', uncachedLeadIds)
+            .in('status', ['completed', 'in_progress'])
+            .eq('site_id', currentSite.id)
+
+          allTasks = fullQuery.data
+          error = fullQuery.error
+
+        } catch (queryError) {
+          error = queryError
+          console.error('Query execution failed:', queryError)
+        }
+
+        console.log('🔍 Journey stages query result:', { 
+          dataCount: allTasks?.length,
+          hasError: !!error,
+          errorType: typeof error
+        })
         
         if (error) {
-          console.error('Error fetching tasks:', error)
-          // Set default stage for uncached leads
+          console.warn('⚠️ Journey stages fetch failed, using fallback. Error details:', {
+            error,
+            message: error?.message || 'Unknown error',
+            code: error?.code || 'Unknown code',
+            details: error?.details || 'No details',
+            hint: error?.hint || 'No hint',
+            uncachedLeadIds,
+            siteId: currentSite.id
+          })
+          
+          // Set default stage for uncached leads (fallback behavior)
           uncachedLeads.forEach(lead => {
             stages[lead.id] = "not_contacted"
             leadJourneyStagesCache[lead.id] = "not_contacted"
           })
+          
+          // Don't throw or stop execution, just continue with defaults
         } else {
           // Procesar las tasks para encontrar la etapa más alta por lead
           const stageOrder = ["referral", "retention", "purchase", "decision", "consideration", "awareness"]
@@ -517,7 +732,14 @@ export default function LeadsPage() {
           })
         }
       } catch (error) {
-        console.error('Error in fetchJourneyStagesForLeads:', error)
+        console.warn('⚠️ Journey stages processing failed, using fallback:', {
+          error,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          type: typeof error,
+          uncachedLeadsCount: uncachedLeads.length,
+          siteId: currentSite.id
+        })
         // Set default stage for uncached leads
         uncachedLeads.forEach(lead => {
           stages[lead.id] = "not_contacted"
@@ -930,6 +1152,9 @@ export default function LeadsPage() {
                       onOpenFilters={handleOpenFilterModal}
                       onUpdateLead={handleUpdateLead}
                       userData={userData}
+                      kanbanPagination={kanbanPagination}
+                      onLoadMore={handleLoadMoreKanban}
+                      totalCounts={totalCounts}
                     />
                   )}
                 </TabsContent>

@@ -63,6 +63,12 @@ export interface LeadFilters {
   searchQuery?: string
 }
 
+interface KanbanPaginationState {
+  page: number
+  hasMore: boolean
+  isLoading: boolean
+}
+
 interface KanbanViewProps {
   leads: Lead[]
   onUpdateLeadStatus: (leadId: string, newStatus: string) => Promise<void>
@@ -72,6 +78,9 @@ interface KanbanViewProps {
   onOpenFilters?: () => void
   onUpdateLead?: (leadId: string, updates: Partial<Lead>) => void // Add callback for lead updates
   userData?: Record<string, { name: string, avatar_url: string | null }>
+  kanbanPagination?: Record<string, KanbanPaginationState>
+  onLoadMore?: (status: string) => void
+  totalCounts?: Record<string, number>
 }
 
 // Cache de etapas para cada lead
@@ -85,7 +94,10 @@ export function KanbanView({
   filters,
   onOpenFilters,
   onUpdateLead,
-  userData
+  userData,
+  kanbanPagination = {},
+  onLoadMore,
+  totalCounts = {}
 }: KanbanViewProps) {
   const { currentSite } = useSite()
   const { user } = useAuth()
@@ -100,7 +112,7 @@ export function KanbanView({
     return leads.map(lead => lead.id).sort().join(',')
   }, [leads])
   
-  // Organizamos los leads por estado
+  // Organizamos los leads por estado con paginación
   const getLeadsByStatus = () => {
     const leadsByStatus: Record<string, Lead[]> = {}
     
@@ -115,8 +127,31 @@ export function KanbanView({
         leadsByStatus[lead.status].push(lead)
       }
     })
+
+    // Apply pagination: show up to 50 leads per column initially, then load more
+    LEAD_STATUSES.forEach(status => {
+      const pagination = kanbanPagination[status.id]
+      if (pagination) {
+        const itemsPerPage = 50
+        const maxItems = pagination.page * itemsPerPage
+        leadsByStatus[status.id] = leadsByStatus[status.id].slice(0, maxItems)
+      }
+    })
     
     return leadsByStatus
+  }
+
+  // Helper function to check if there are more leads to load for a status
+  const hasMoreLeads = (statusId: string) => {
+    const allStatusLeads = leads.filter(lead => lead.status === statusId)
+    const pagination = kanbanPagination[statusId]
+    if (!pagination) return false
+    
+    const itemsPerPage = 50
+    const maxItems = pagination.page * itemsPerPage
+    
+    // Show load more if we have more leads than currently displayed or pagination indicates more available
+    return allStatusLeads.length >= maxItems || pagination.hasMore
   }
   
   const [leadsByStatus, setLeadsByStatus] = useState(getLeadsByStatus())
@@ -189,21 +224,76 @@ export function KanbanView({
         const supabase = createClient()
         const uncachedLeadIds = uncachedLeads.map(lead => lead.id)
         
-        // Obtener todas las tasks completadas solo de leads no cacheados
-        const { data: allTasks, error } = await supabase
-          .from('tasks')
-          .select('lead_id, stage, status')
-          .in('lead_id', uncachedLeadIds)
-          .eq('status', 'completed')
-          .eq('site_id', currentSite.id)
+        // If no uncached leads, skip the query
+        if (uncachedLeadIds.length === 0) {
+          setLeadJourneyStages(stages)
+          setIsLoadingJourneyStages(false)
+          return
+        }
+        
+        console.log('🔍 KanbanView: Journey stages query params:', {
+          uncachedLeadIds,
+          siteId: currentSite.id,
+          leadCount: uncachedLeadIds.length
+        })
+
+        // Try a simpler query first to test connection
+        let allTasks = null
+        let error = null
+
+        try {
+          // First, test if we can access the tasks table at all
+          const testQuery = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('site_id', currentSite.id)
+            .limit(1)
+
+          if (testQuery.error) {
+            console.warn('KanbanView: Cannot access tasks table:', testQuery.error)
+            throw new Error(`Tasks table access denied: ${testQuery.error.message}`)
+          }
+
+          // If test passes, do the full query
+          const fullQuery = await supabase
+            .from('tasks')
+            .select('lead_id, stage, status')
+            .in('lead_id', uncachedLeadIds)
+            .eq('status', 'completed')
+            .eq('site_id', currentSite.id)
+
+          allTasks = fullQuery.data
+          error = fullQuery.error
+
+        } catch (queryError) {
+          error = queryError
+          console.warn('KanbanView: Query execution failed:', queryError)
+        }
+
+        console.log('🔍 KanbanView: Journey stages query result:', { 
+          dataCount: allTasks?.length,
+          hasError: !!error,
+          errorType: typeof error
+        })
         
         if (error) {
-          console.error('Error fetching tasks:', error)
-          // Set default stage for uncached leads
+          console.warn('⚠️ KanbanView: Journey stages fetch failed, using fallback. Error details:', {
+            error,
+            message: (error as any)?.message || 'Unknown error',
+            code: (error as any)?.code || 'Unknown code',
+            details: (error as any)?.details || 'No details',
+            hint: (error as any)?.hint || 'No hint',
+            uncachedLeadIds,
+            siteId: currentSite.id
+          })
+          
+          // Set default stage for uncached leads (fallback behavior)
           uncachedLeads.forEach(lead => {
             stages[lead.id] = "not_contacted"
             leadJourneyStagesCache[lead.id] = "not_contacted"
           })
+          
+          // Don't throw or stop execution, just continue with defaults
         } else {
           // Procesar las tasks para encontrar la etapa más alta por lead
           const stageOrder = ["referral", "retention", "purchase", "decision", "consideration", "awareness"]
@@ -238,7 +328,14 @@ export function KanbanView({
           })
         }
       } catch (error) {
-        console.error('Error in fetchJourneyStagesForLeads:', error)
+        console.warn('⚠️ KanbanView: Journey stages processing failed, using fallback:', {
+          error,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          type: typeof error,
+          uncachedLeadsCount: uncachedLeads.length,
+          siteId: currentSite.id
+        })
         // Set default stage for uncached leads
         uncachedLeads.forEach(lead => {
           stages[lead.id] = "not_contacted"
@@ -485,7 +582,7 @@ export function KanbanView({
                 <div key={status.id} className="flex flex-col h-full min-w-[260px] w-auto">
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="font-medium text-sm">{status.name}</h3>
-                    <Badge variant="outline">{leadsByStatus[status.id].length}</Badge>
+                    <Badge variant="outline">{totalCounts[status.id] !== undefined ? totalCounts[status.id] : leadsByStatus[status.id].length}</Badge>
                   </div>
                   
                   <Droppable droppableId={status.id}>
@@ -709,6 +806,21 @@ export function KanbanView({
                             </Draggable>
                           ))}
                           {provided.placeholder}
+                          
+                          {/* Load More Button */}
+                          {hasMoreLeads(status.id) && onLoadMore && (
+                            <div className="flex justify-center mt-2 px-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => onLoadMore(status.id)}
+                                disabled={kanbanPagination[status.id]?.isLoading}
+                                className="w-full max-w-xs"
+                                size="sm"
+                              >
+                                {kanbanPagination[status.id]?.isLoading ? "Loading..." : "Load More"}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

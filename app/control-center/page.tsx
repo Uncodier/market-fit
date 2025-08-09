@@ -62,6 +62,24 @@ export default function ControlCenterPage() {
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
 
+  // Kanban pagination state
+  const [kanbanPagination, setKanbanPagination] = useState<Record<string, { page: number; hasMore: boolean; isLoading: boolean }>>({
+    pending: { page: 1, hasMore: true, isLoading: false },
+    in_progress: { page: 1, hasMore: true, isLoading: false },
+    completed: { page: 1, hasMore: true, isLoading: false },
+    failed: { page: 1, hasMore: true, isLoading: false },
+    canceled: { page: 1, hasMore: true, isLoading: false }
+  })
+
+  // Total counts for each status from the database
+  const [totalCounts, setTotalCounts] = useState<Record<string, number>>({
+    pending: 0,
+    in_progress: 0,
+    completed: 0,
+    failed: 0,
+    canceled: 0
+  })
+
   // Initialize command+k hook
   useCommandK()
 
@@ -189,7 +207,7 @@ export default function ControlCenterPage() {
     fetchUsers()
   }, [currentSite])
 
-  // Fetch tasks with user data and comments count
+  // Fetch initial tasks with user data and comments count (first 50 per status for kanban pagination)
   const fetchTasks = React.useCallback(async () => {
     if (!currentSite) return
 
@@ -197,26 +215,50 @@ export default function ControlCenterPage() {
     const supabase = createClient()
 
     try {
-      // Get tasks with comments count
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          leads:lead_id (
-            id,
-            name
-          ),
-          comments_count:task_comments(count)
-        `)
-        .eq('site_id', currentSite.id)
-        .order('priority', { ascending: false })
-        .order('scheduled_date', { ascending: true })
+      // Get initial tasks (limit to 50 per status for each status type for kanban view)
+      const statuses = ['pending', 'in_progress', 'completed', 'failed', 'canceled']
+      const allTasks = []
+      const counts: Record<string, number> = {}
 
-      if (tasksError) throw tasksError
+      // Fetch first 50 tasks and total count for each status
+      for (const status of statuses) {
+        // Get total count for this status
+        const { count, error: countError } = await supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('site_id', currentSite.id)
+          .eq('status', status)
+
+        if (countError) throw countError
+        counts[status] = count || 0
+
+        // Get first 50 tasks for this status
+        const { data: statusTasks, error } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            leads:lead_id (
+              id,
+              name
+            ),
+            comments_count:task_comments(count)
+          `)
+          .eq('site_id', currentSite.id)
+          .eq('status', status)
+          .order('priority', { ascending: false })
+          .order('scheduled_date', { ascending: true })
+          .limit(50)
+
+        if (error) throw error
+        if (statusTasks) allTasks.push(...statusTasks)
+      }
+
+      // Set total counts
+      setTotalCounts(counts)
 
       // Enrich tasks with user data
       const enrichedTasks = await Promise.all(
-        tasksData.map(async (task) => {
+        allTasks.map(async (task) => {
           let assigneeName = undefined
           if (task.assignee) {
             const userData = await getUserData(task.assignee)
@@ -234,6 +276,15 @@ export default function ControlCenterPage() {
 
       setTasks(enrichedTasks)
 
+      // Set kanban pagination state based on total counts
+      setKanbanPagination({
+        pending: { page: 1, hasMore: counts.pending > 50, isLoading: false },
+        in_progress: { page: 1, hasMore: counts.in_progress > 50, isLoading: false },
+        completed: { page: 1, hasMore: counts.completed > 50, isLoading: false },
+        failed: { page: 1, hasMore: counts.failed > 50, isLoading: false },
+        canceled: { page: 1, hasMore: counts.canceled > 50, isLoading: false }
+      })
+
       // Extract unique task types from the fetched tasks
       const uniqueTypes = Array.from(new Set(
         enrichedTasks
@@ -246,6 +297,12 @@ export default function ControlCenterPage() {
 
     } catch (error) {
       console.error('Error fetching tasks:', error)
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        type: typeof error,
+        site_id: currentSite?.id
+      })
       toast.error("Failed to load tasks")
     } finally {
       setIsLoading(false)
@@ -361,9 +418,27 @@ export default function ControlCenterPage() {
       }
     }
 
-    // Refresh tasks after update
+    // Refresh tasks and counts after update
     const fetchTasksAgain = async () => {
       try {
+        // Fetch updated counts for all statuses
+        const statuses = ['pending', 'in_progress', 'completed', 'failed', 'canceled']
+        const counts: Record<string, number> = {}
+        
+        for (const status of statuses) {
+          const { count, error: countError } = await supabase
+            .from('tasks')
+            .select('*', { count: 'exact', head: true })
+            .eq('site_id', currentSite.id)
+            .eq('status', status)
+
+          if (countError) throw countError
+          counts[status] = count || 0
+        }
+        
+        setTotalCounts(counts)
+
+        // Fetch updated tasks
         const { data: tasksData, error: tasksError } = await supabase
           .from('tasks')
           .select(`
@@ -419,6 +494,93 @@ export default function ControlCenterPage() {
   // Handle task click
   const handleTaskClick = (task: ExtendedTask) => {
     router.push(`/control-center/${task.id}`)
+  }
+
+  // Handle load more for kanban columns
+  const handleLoadMoreKanban = async (status: string) => {
+    const currentPagination = kanbanPagination[status]
+    if (currentPagination.isLoading || !currentPagination.hasMore) return
+
+    if (!currentSite) return
+
+    // Set loading state
+    setKanbanPagination(prev => ({
+      ...prev,
+      [status]: { ...prev[status], isLoading: true }
+    }))
+
+    try {
+      const supabase = createClient()
+      const itemsPerPage = 50
+      const offset = currentPagination.page * itemsPerPage
+
+      // Fetch more tasks for this specific status
+      const { data: moreTasks, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          leads:lead_id (
+            id,
+            name
+          ),
+          comments_count:task_comments(count)
+        `)
+        .eq('site_id', currentSite.id)
+        .eq('status', status)
+        .order('priority', { ascending: false })
+        .order('scheduled_date', { ascending: true })
+        .range(offset, offset + itemsPerPage - 1)
+
+      if (error) throw error
+
+      // Enrich the new tasks with user data
+      const enrichedMoreTasks = await Promise.all(
+        moreTasks.map(async (task) => {
+          let assigneeName = undefined
+          if (task.assignee) {
+            const userData = await getUserData(task.assignee)
+            assigneeName = userData?.name
+          }
+
+          return {
+            ...task,
+            leadName: task.leads?.name,
+            assigneeName,
+            comments_count: task.comments_count?.[0]?.count || 0
+          }
+        })
+      )
+
+      // Add new tasks to the existing tasks array
+      setTasks(prevTasks => {
+        // Remove any existing tasks with the same IDs to avoid duplicates
+        const existingTaskIds = new Set(prevTasks.map(t => t.id))
+        const newTasks = enrichedMoreTasks.filter(t => !existingTaskIds.has(t.id))
+        return [...prevTasks, ...newTasks]
+      })
+
+      // Update pagination state
+      setKanbanPagination(prev => ({
+        ...prev,
+        [status]: { 
+          ...prev[status], 
+          page: prev[status].page + 1,
+          isLoading: false,
+          hasMore: moreTasks.length === itemsPerPage
+        }
+      }))
+
+      // Note: totalCounts doesn't need to be updated since it represents the total count in the database
+      // which doesn't change when we load more tasks (we're just displaying more of the existing total)
+
+    } catch (error) {
+      console.error('Error loading more tasks:', error)
+      toast.error("Failed to load more tasks")
+      setKanbanPagination(prev => ({
+        ...prev,
+        [status]: { ...prev[status], isLoading: false }
+      }))
+    }
   }
 
   // Filter tasks based on search query and filters
@@ -559,6 +721,9 @@ export default function ControlCenterPage() {
                   tasks={filteredTasks}
                   onUpdateTaskStatus={handleUpdateTaskStatus}
                   onTaskClick={handleTaskClick}
+                  kanbanPagination={kanbanPagination}
+                  onLoadMore={handleLoadMoreKanban}
+                  totalCounts={totalCounts}
                 />
               ) : viewType === "calendar" ? (
                 <TaskCalendar

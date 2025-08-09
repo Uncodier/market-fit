@@ -4,6 +4,7 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
+import { Button } from "@/app/components/ui/button"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -20,10 +21,19 @@ interface ExtendedTask extends Task {
   comments_count?: number
 }
 
+interface KanbanPaginationState {
+  page: number
+  hasMore: boolean
+  isLoading: boolean
+}
+
 interface TaskKanbanProps {
   tasks: ExtendedTask[]
   onUpdateTaskStatus: (taskId: string, newStatus: string) => Promise<void>
   onTaskClick: (task: ExtendedTask) => void
+  kanbanPagination: Record<string, KanbanPaginationState>
+  onLoadMore: (status: string) => void
+  totalCounts: Record<string, number>
 }
 
 // Define task statuses
@@ -82,7 +92,7 @@ const getSerialNumber = (serialId: string) => {
   return serialId
 }
 
-export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanbanProps) {
+export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagination, onLoadMore, totalCounts }: TaskKanbanProps) {
   const router = useRouter()
   const { currentSite } = useSite()
   const [localTasks, setLocalTasks] = React.useState(tasks)
@@ -92,11 +102,31 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
   }, [tasks])
 
   const tasksByStatus = TASK_STATUSES.reduce((acc, status) => {
-    acc[status.id] = localTasks
+    const statusTasks = localTasks
       .filter(task => task.status === status.id)
       .sort((a, b) => (b.priority || 0) - (a.priority || 0)) // Sort by priority descending
+    
+    // Apply pagination: show up to 50 tasks per column initially, then load more
+    const pagination = kanbanPagination[status.id]
+    const itemsPerPage = 50
+    const maxItems = pagination.page * itemsPerPage
+    
+    acc[status.id] = statusTasks.slice(0, maxItems)
     return acc
   }, {} as Record<string, ExtendedTask[]>)
+
+  // Helper function to check if there are more tasks to load for a status
+  const hasMoreTasks = (statusId: string) => {
+    const allStatusTasks = localTasks.filter(task => task.status === statusId)
+    const pagination = kanbanPagination[statusId]
+    const itemsPerPage = 50
+    const maxItems = pagination.page * itemsPerPage
+    
+    // Show load more if:
+    // 1. We have exactly the max items displayed (indicating there might be more)
+    // 2. OR the pagination state indicates there are more items available
+    return allStatusTasks.length >= maxItems || pagination.hasMore
+  }
 
   // Handle drag end
   const handleDragEnd = async (result: any) => {
@@ -222,7 +252,7 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                     <h3 className="font-medium text-sm">{status.name}</h3>
                   </div>
                   <Badge variant="outline" className="text-xs">
-                    {tasksByStatus[status.id]?.length || 0}
+                    {totalCounts[status.id] || 0}
                   </Badge>
                 </div>
               </div>
@@ -338,6 +368,21 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick }: TaskKanba
                       </div>
                     )}
                     {provided.placeholder}
+                    
+                    {/* Load More Button */}
+                    {hasMoreTasks(status.id) && (
+                      <div className="flex justify-center mt-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => onLoadMore(status.id)}
+                          disabled={kanbanPagination[status.id].isLoading}
+                          className="w-full max-w-xs"
+                          size="sm"
+                        >
+                          {kanbanPagination[status.id].isLoading ? "Loading..." : "Load More"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </Droppable>

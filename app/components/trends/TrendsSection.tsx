@@ -113,6 +113,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
         console.log(`📊 [TrendsSection] Final trends count: ${finalTrends.length} (sorted by ${sortBy})`)
         setTrends(finalTrends)
         setLastUpdated(result.data.lastUpdated)
+        toast.success(`Loaded ${finalTrends.length} trends successfully`)
       } else {
         toast.error("Failed to fetch trends: " + (result.error || "Unknown error"))
       }

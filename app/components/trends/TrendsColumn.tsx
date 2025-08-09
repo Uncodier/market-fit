@@ -195,9 +195,14 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
         
         console.log(`📊 [TrendsColumn] Final ${sortedTrends.length} trends sorted by relevance`)
         setTrends(sortedTrends)
+        toast.success(`Loaded ${sortedTrends.length} trends successfully`)
+      } else {
+        console.log("❌ [TrendsColumn] Failed to fetch trends:", result.error)
+        toast.error("Failed to fetch trends: " + (result.error || "Unknown error"))
       }
     } catch (error) {
-      console.error("Error fetching trends:", error)
+      console.error("❌ [TrendsColumn] Error fetching trends:", error)
+      toast.error("An error occurred while fetching trends")
     } finally {
       setIsLoading(false)
     }
@@ -250,7 +255,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
                 className="h-6 w-6 p-0"
               >
                 {isLoading ? (
-                  <Loader className="h-3 w-3" />
+                  <Loader className="h-3 w-3 animate-spin" />
                 ) : (
                   <RotateCcw className="h-3 w-3" />
                 )}
