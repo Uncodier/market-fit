@@ -83,7 +83,16 @@ export function ContextForm({
   
   const form = useForm<SiteFormValues>({
     resolver: zodResolver(siteFormSchema),
-    defaultValues: stableInitialData || {}
+    defaultValues: {
+      // Ensure business model has default values
+      businessModel: {
+        b2b: false,
+        b2c: false,
+        b2b2c: false
+      },
+      focusMode: 50,
+      ...stableInitialData
+    }
   });
 
   // Don't reset the form if it's the same site
@@ -94,13 +103,24 @@ export function ContextForm({
     }
     
     console.log("ContextForm: Resetting form for site ID:", siteId);
+    console.log("ContextForm: stableInitialData:", stableInitialData);
+    console.log("ContextForm: businessModel from data:", stableInitialData?.businessModel);
     setLastSiteId(siteId);
     
     // Reset the form with new data
-    if (stableInitialData) {
-      // Reset with the complete form structure that matches the schema
-      form.reset(stableInitialData);
-    }
+    const formData = {
+      // Ensure business model has default values
+      businessModel: {
+        b2b: false,
+        b2c: false,
+        b2b2c: false
+      },
+      focusMode: 50,
+      ...stableInitialData
+    };
+    
+    console.log("ContextForm: Final formData.businessModel:", formData.businessModel);
+    form.reset(formData);
   }, [stableInitialData, form, siteId, lastSiteId]);
 
   // Expose form via window for manual save handling

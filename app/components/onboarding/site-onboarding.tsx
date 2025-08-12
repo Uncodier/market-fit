@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   AppWindow,
   Globe,
@@ -688,7 +689,7 @@ export function SiteOnboarding({
           {/* Loading indicator */}
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-card border border-border rounded-lg shadow-lg p-6 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary mx-auto mb-4"></div>
+              <LoadingSkeleton variant="fullscreen" size="lg" />
               <h3 className="text-lg font-semibold mb-2">Creating Your Project</h3>
               <p className="text-sm text-muted-foreground">
                 Setting up your workspace and configuring everything...
@@ -1118,7 +1119,12 @@ export function SiteOnboarding({
                       size="lg"
                       className="min-w-[140px] bg-primary text-primary-foreground hover:bg-primary/90"
                     >
-                      {isLoading ? "Creating..." : "Create Project"}
+                      {isLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                          <span>Creating</span>
+                        </div>
+                      ) : "Create Project"}
                       <Check className="h-4 w-4 ml-2" />
                     </Button>
                   ) : (

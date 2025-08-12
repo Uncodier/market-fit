@@ -68,6 +68,11 @@ export const siteFormSchema = z.object({
     }
   })).optional().default([]),
   focusMode: z.number().min(0).max(100),
+  businessModel: z.object({
+    b2b: z.boolean().optional().default(false),
+    b2c: z.boolean().optional().default(false),
+    b2b2c: z.boolean().optional().default(false)
+  }).optional().default({ b2b: false, b2c: false, b2b2c: false }),
   about: z.string().optional(),
   company_size: z.string().optional(),
   products: z.array(z.object({

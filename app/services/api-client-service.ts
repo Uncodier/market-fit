@@ -1,5 +1,33 @@
 import { createClient } from "@/lib/supabase/client";
 
+// Helper functions for URL validation
+const isValidUrl = (url: string): boolean => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const tryParseUrl = (url: string): any => {
+  try {
+    const parsed = new URL(url);
+    return {
+      protocol: parsed.protocol,
+      hostname: parsed.hostname,
+      port: parsed.port,
+      pathname: parsed.pathname,
+      valid: true
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Invalid URL',
+      valid: false
+    };
+  }
+};
+
 // Get API server URL from environment variables
 const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || '';
 
@@ -157,10 +185,17 @@ export class ApiClientService {
   }
 
   async get<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
-    if (!this.apiServerUrl) {
+    if (!this.apiServerUrl || this.apiServerUrl.trim() === '') {
+      console.error('API server URL is not configured. Please set NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL environment variable.');
       return {
         success: false,
-        error: { message: 'API server URL is not configured' }
+        error: { 
+          message: 'API server URL is not configured. Please check your environment variables.',
+          details: {
+            missingVar: 'NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL',
+            currentValue: this.apiServerUrl || 'undefined'
+          }
+        }
       };
     }
 
@@ -204,10 +239,17 @@ export class ApiClientService {
   }
 
   async post<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
-    if (!this.apiServerUrl) {
+    if (!this.apiServerUrl || this.apiServerUrl.trim() === '') {
+      console.error('API server URL is not configured. Please set NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL environment variable.');
       return {
         success: false,
-        error: { message: 'API server URL is not configured' }
+        error: { 
+          message: 'API server URL is not configured. Please check your environment variables.',
+          details: {
+            missingVar: 'NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL',
+            currentValue: this.apiServerUrl || 'undefined'
+          }
+        }
       };
     }
 
@@ -215,7 +257,13 @@ export class ApiClientService {
     
     if (process.env.NODE_ENV === 'development') {
       console.log('POST request to:', url);
+      console.log('API Server URL:', this.apiServerUrl);
+      console.log('Endpoint:', endpoint);
       console.log('Request body:', body);
+      console.log('Full URL validation:', {
+        isValidUrl: isValidUrl(url),
+        urlObject: tryParseUrl(url)
+      });
     }
 
     try {
@@ -243,21 +291,50 @@ export class ApiClientService {
       return await this.handleResponse<T>(response);
     } catch (error) {
       console.error('Error in POST request:', error);
+      
+      // Provide more specific error messages based on the error type
+      let errorMessage = 'Network error';
+      const errorDetails: any = { originalError: error };
+      
+      if (error instanceof TypeError) {
+        if (error.message.includes('fetch')) {
+          errorMessage = 'Failed to connect to API server. Please check if the server is running and the URL is correct.';
+          errorDetails.suggestion = 'Verify NEXT_PUBLIC_API_SERVER_URL environment variable and server connectivity';
+        } else if (error.message.includes('URL')) {
+          errorMessage = 'Invalid API server URL format';
+          errorDetails.suggestion = 'Check the NEXT_PUBLIC_API_SERVER_URL format (e.g., http://localhost:3001)';
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      // Add debugging information
+      errorDetails.requestUrl = url;
+      errorDetails.apiServerUrl = this.apiServerUrl;
+      errorDetails.endpoint = endpoint;
+      
       return {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Network error',
-          details: error
+          message: errorMessage,
+          details: errorDetails
         }
       };
     }
   }
 
   async put<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
-    if (!this.apiServerUrl) {
+    if (!this.apiServerUrl || this.apiServerUrl.trim() === '') {
+      console.error('API server URL is not configured. Please set NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL environment variable.');
       return {
         success: false,
-        error: { message: 'API server URL is not configured' }
+        error: { 
+          message: 'API server URL is not configured. Please check your environment variables.',
+          details: {
+            missingVar: 'NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL',
+            currentValue: this.apiServerUrl || 'undefined'
+          }
+        }
       };
     }
 
@@ -304,10 +381,17 @@ export class ApiClientService {
   }
 
   async delete<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
-    if (!this.apiServerUrl) {
+    if (!this.apiServerUrl || this.apiServerUrl.trim() === '') {
+      console.error('API server URL is not configured. Please set NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL environment variable.');
       return {
         success: false,
-        error: { message: 'API server URL is not configured' }
+        error: { 
+          message: 'API server URL is not configured. Please check your environment variables.',
+          details: {
+            missingVar: 'NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL',
+            currentValue: this.apiServerUrl || 'undefined'
+          }
+        }
       };
     }
 

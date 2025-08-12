@@ -32,12 +32,14 @@ import {
   FileText,
   UploadCloud,
   PlayCircle,
-  StopCircle
+  StopCircle,
+  Search
 } from "@/app/components/ui/icons"
 
 import { subMonths, format } from "date-fns"
 import { safeReload } from "../../utils/safe-reload"
 import { useSearchParams } from "next/navigation"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 
 
 // Robot Start Button Component
@@ -48,13 +50,14 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   const [isLoadingRobots, setIsLoadingRobots] = useState(true)
   const searchParams = useSearchParams()
   
-  // Get current tab from URL or default to channel-market-fit
-  const activeTab = searchParams.get('tab') || 'channel-market-fit'
+  // Get current tab from URL or default to free-agent
+  const activeTab = searchParams.get('tab') || 'free-agent'
   const activeTabRef = useRef(activeTab)
 
   // Map tab values to activity names
   const getActivityName = (tabValue: string): string => {
     const activityMap: Record<string, string> = {
+      "free-agent": "Free Agent",
       "channel-market-fit": "Channel Market Fit",
       "engage": "Engage in Social Networks", 
       "seo": "SEO",
@@ -228,54 +231,70 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           pollAttempts++
           console.log(`Polling for started robot instance (attempt ${pollAttempts}/${maxPollAttempts})`)
           
-          await checkActiveRobots()
-          
-          // Check if robot is now running - if so, stop polling and clear loading state
-          const activityName = getActivityName(activeTab)
-          const supabase = createClient()
-          
-          const { data: currentInstance } = await supabase
-            .from('remote_instances')
-            .select('id, status, name')
-            .eq('site_id', currentSite.id)
-            .eq('name', activityName)
-            .neq('status', 'stopped')
-            .neq('status', 'error')
-            .limit(1)
-          
-          if (currentInstance && currentInstance.length > 0) {
-            const instance = currentInstance[0]
-            if (['running', 'active'].includes(instance.status)) {
-              console.log('✅ Robot is now running! Stopping polling.')
-              pollingActive = false
-              setIsStartingRobot(false)
-              
-              // Emit custom event to notify robots page to refresh
-              window.dispatchEvent(new CustomEvent('robotStarted', { 
-                detail: { instanceId: instance.id, instance }
-              }))
-              
-              return
-            } else if (['failed', 'error'].includes(instance.status)) {
-              console.log('❌ Robot failed to start. Stopping polling.')
-              pollingActive = false
-              setIsStartingRobot(false)
-              toast.error("Robot failed to start")
-              return
+          try {
+            await checkActiveRobots()
+            
+            // Check if robot is now running - if so, stop polling and clear loading state
+            const activityName = getActivityName(activeTab)
+            const supabase = createClient()
+            
+            const { data: currentInstance, error: instanceError } = await supabase
+              .from('remote_instances')
+              .select('id, status, name')
+              .eq('site_id', currentSite.id)
+              .eq('name', activityName)
+              .neq('status', 'stopped')
+              .neq('status', 'error')
+              .limit(1)
+            
+            if (instanceError) {
+              console.error('Error checking robot status:', instanceError)
+              // Continue polling unless max attempts reached
+            } else if (currentInstance && currentInstance.length > 0) {
+              const instance = currentInstance[0]
+              if (['running', 'active'].includes(instance.status)) {
+                console.log('✅ Robot is now running! Stopping polling.')
+                pollingActive = false
+                setIsStartingRobot(false)
+                
+                // Emit custom event to notify robots page to refresh
+                window.dispatchEvent(new CustomEvent('robotStarted', { 
+                  detail: { instanceId: instance.id, instance }
+                }))
+                
+                return
+              } else if (['failed', 'error'].includes(instance.status)) {
+                console.log('❌ Robot failed to start. Stopping polling.')
+                pollingActive = false
+                setIsStartingRobot(false)
+                toast.error("Robot failed to start - please try again")
+                return
+              }
             }
-          }
-          
-          if (pollAttempts < maxPollAttempts && pollingActive) {
-            setTimeout(pollForStartedInstance, 2000) // Poll every 2 seconds
-          } else if (pollingActive) {
-            console.log('Max polling attempts reached for robot start')
-            pollingActive = false
-            setIsStartingRobot(false)
-            // Final refresh attempt
-            setTimeout(() => {
-              console.log('Final refresh attempt after robot start')
-              checkActiveRobots()
-            }, 3000)
+            
+            if (pollAttempts < maxPollAttempts && pollingActive) {
+              setTimeout(pollForStartedInstance, 2000) // Poll every 2 seconds
+            } else if (pollingActive) {
+              console.log('Max polling attempts reached for robot start')
+              pollingActive = false
+              setIsStartingRobot(false)
+              toast.warning("Robot startup is taking longer than expected. Please check the robots page.")
+              // Final refresh attempt
+              setTimeout(() => {
+                console.log('Final refresh attempt after robot start')
+                checkActiveRobots()
+              }, 3000)
+            }
+          } catch (pollError) {
+            console.error('Error during robot polling:', pollError)
+            if (pollAttempts >= maxPollAttempts || !pollingActive) {
+              pollingActive = false
+              setIsStartingRobot(false)
+              toast.error("Unable to verify robot status - please check the robots page")
+            } else if (pollingActive) {
+              // Continue polling even if there's an error, but with longer delay
+              setTimeout(pollForStartedInstance, 3000)
+            }
           }
         }
         
@@ -283,11 +302,41 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
         setTimeout(pollForStartedInstance, 3000)
         
       } else {
-        throw new Error(response.error?.message || 'Failed to start robot')
+        // Handle API response errors
+        const errorMessage = response.error?.message || 'Unknown error occurred'
+        console.error('API Error starting robot:', response.error || response)
+        
+        // Log additional debugging information if available
+        if (response.error?.details) {
+          console.error('Error details:', response.error.details)
+          
+          // If it's a configuration issue, provide more specific guidance
+          if (response.error.details.suggestion) {
+            console.error('Suggestion:', response.error.details.suggestion)
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
     } catch (error) {
       console.error('Error starting robot:', error)
-      toast.error("Failed to start robot")
+      
+      // Provide more specific error messages based on the error type
+      let errorMessage = "Failed to start robot"
+      
+      if (error instanceof Error) {
+        if (error.message.includes('fetch')) {
+          errorMessage = "Network error - please check your connection and try again"
+        } else if (error.message.includes('timeout')) {
+          errorMessage = "Request timed out - please try again"
+        } else if (error.message.includes('permission') || error.message.includes('unauthorized')) {
+          errorMessage = "Permission denied - please refresh the page and try again"
+        } else if (error.message && error.message !== 'Unknown error') {
+          errorMessage = error.message
+        }
+      }
+      
+      toast.error(errorMessage)
       setIsStartingRobot(false)
     }
     // Note: Don't set setIsStartingRobot(false) here in finally block
@@ -374,11 +423,43 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
         setTimeout(refreshStoppedStatus, 2000)
         
       } else {
-        throw new Error(response.error?.message || 'Failed to stop robot')
+        // Handle API response errors
+        const errorMessage = response.error?.message || 'Failed to stop robot'
+        console.error('API Error stopping robot:', response.error || response)
+        
+        // Log additional debugging information if available
+        if (response.error?.details) {
+          console.error('Error details:', response.error.details)
+          
+          // If it's a configuration issue, provide more specific guidance
+          if (response.error.details.suggestion) {
+            console.error('Suggestion:', response.error.details.suggestion)
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
     } catch (error) {
       console.error('Error stopping robot:', error)
-      toast.error("Failed to stop robot")
+      
+      // Provide more specific error messages based on the error type
+      let errorMessage = "Failed to stop robot"
+      
+      if (error instanceof Error) {
+        if (error.message.includes('fetch')) {
+          errorMessage = "Network error - please check your connection and try again"
+        } else if (error.message.includes('timeout')) {
+          errorMessage = "Request timed out - please try again"
+        } else if (error.message.includes('permission') || error.message.includes('unauthorized')) {
+          errorMessage = "Permission denied - please refresh the page and try again"
+        } else if (error.message.includes('not found')) {
+          errorMessage = "Robot instance not found - it may have already stopped"
+        } else if (error.message && error.message !== 'Unknown error') {
+          errorMessage = error.message
+        }
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setIsStoppingRobot(false)
     }
@@ -392,7 +473,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
         className="flex items-center gap-2 bg-gray-400 transition-all duration-200"
         disabled={true}
       >
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+        <LoadingSkeleton variant="button" size="sm" className="text-white" />
         Loading...
       </Button>
     )
@@ -409,7 +490,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       >
         {isStoppingRobot ? (
           <>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            <LoadingSkeleton variant="button" size="sm" className="text-white" />
             Stopping...
           </>
         ) : (
@@ -432,7 +513,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     >
       {isStartingRobot ? (
         <>
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+          <LoadingSkeleton variant="button" size="sm" className="text-white" />
           Starting Robot...
         </>
       ) : (
@@ -1300,7 +1381,7 @@ The success of this experiment will be measured by:
         >
           {isGeneratingExperiment ? (
             <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+              <LoadingSkeleton variant="button" size="sm" />
               Generating...
             </>
           ) : (
@@ -1324,7 +1405,7 @@ The success of this experiment will be measured by:
             >
               {segmentData.isAnalyzing ? (
                 <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  <LoadingSkeleton variant="button" size="sm" />
                   Analyzing...
                 </>
               ) : (
@@ -1345,7 +1426,7 @@ The success of this experiment will be measured by:
             >
               {segmentData.isGeneratingTopics ? (
                 <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  <LoadingSkeleton variant="button" size="sm" />
                   Getting Topics...
                 </>
               ) : (
@@ -1370,7 +1451,7 @@ The success of this experiment will be measured by:
             >
               {isProcessing ? (
                 <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  <LoadingSkeleton variant="button" size="sm" />
                   Processing...
                 </>
               ) : (
@@ -1500,7 +1581,7 @@ The success of this experiment will be measured by:
             >
               {isProcessing ? (
                 <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  <LoadingSkeleton variant="button" size="sm" />
                   Processing...
                 </>
               ) : (
@@ -1510,6 +1591,7 @@ The success of this experiment will be measured by:
                 </>
               )}
             </Button>
+
             <CreateContentDialog 
               segments={segments.length > 0 ? segments : propSegments || []}
               onSuccess={() => {
@@ -1543,7 +1625,7 @@ The success of this experiment will be measured by:
             >
               {isProcessing ? (
                 <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  <LoadingSkeleton variant="button" size="sm" />
                   Processing...
                 </>
               ) : (

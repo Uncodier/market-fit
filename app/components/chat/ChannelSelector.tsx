@@ -1,6 +1,7 @@
 import React, { memo } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import * as Icons from "@/app/components/ui/icons"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 
@@ -71,7 +72,7 @@ export const ChannelSelector = memo(function ChannelSelector({
                 title={isUpdating ? "Updating channel..." : config.description}
               >
                 {isUpdating && channel === selectedChannel ? (
-                  <Icons.Loader className="h-4 w-4 animate-spin" />
+                  <LoadingSkeleton size="sm" />
                 ) : (
                   <IconComponent className="h-4 w-4" />
                 )}

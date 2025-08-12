@@ -6,6 +6,7 @@ import { Input } from "@/app/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { ChevronDown, ChevronRight, ChevronUp, Copy, Globe, PlusCircle, Search, HelpCircle } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Select,
   SelectContent,
@@ -214,7 +215,7 @@ function SegmentCard({
                   <div className="w-full h-[500px] bg-background rounded-md border">
                     {iframeLoading[segment.id] && (
                       <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground/20"></div>
+                        <LoadingSkeleton variant="fullscreen" size="md" />
                       </div>
                     )}
                     {segment.url ? (
@@ -968,7 +969,7 @@ export default function SegmentsPage() {
             >
               {isSaving ? (
                 <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
+                  <LoadingSkeleton variant="button" size="sm" />
                   Saving...
                 </>
               ) : (

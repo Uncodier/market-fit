@@ -12,6 +12,7 @@ import {
 } from "@/app/components/ui/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { useSite } from "@/app/context/SiteContext"
 
 function SuccessContent() {
@@ -132,7 +133,7 @@ function SuccessContent() {
                   <span className="text-2xl font-bold">
                     {isRefreshing ? (
                       <span className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <LoadingSkeleton variant="button" size="sm" />
                         Updating...
                       </span>
                     ) : (
@@ -213,7 +214,7 @@ export default function BillingSuccessPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <LoadingSkeleton variant="fullscreen" size="md" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>

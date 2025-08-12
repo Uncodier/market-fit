@@ -69,7 +69,7 @@ export function DeleteConfirmationModal({
           >
             {isDeleting ? (
               <>
-                <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+                <div className="h-4 w-4 mr-2 animate-pulse bg-muted rounded" />
                 Deleting...
               </>
             ) : (

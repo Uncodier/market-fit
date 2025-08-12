@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Loader } from "@/app/components/ui/icons"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { toast } from "sonner"
 
 function ResetPasswordContent() {
@@ -109,7 +110,7 @@ function ResetPasswordContent() {
       <div className="max-w-md w-full space-y-8">
         <Card>
           <CardContent className="flex flex-col items-center text-center py-8">
-            <Loader className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+            <LoadingSkeleton variant="fullscreen" size="lg" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Processing Reset Link</h3>
             <p className="text-gray-600">Please wait while we verify your reset password link...</p>
           </CardContent>
@@ -126,7 +127,7 @@ export default function ResetPasswordPage() {
         <div className="max-w-md w-full space-y-8">
           <Card>
             <CardContent className="flex flex-col items-center text-center py-8">
-              <Loader className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+              <LoadingSkeleton variant="fullscreen" size="lg" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Loading</h3>
               <p className="text-gray-600">Please wait...</p>
             </CardContent>

@@ -177,7 +177,12 @@ export const CommandsTable = memo(function CommandsTable({
             disabled={isLoading}
             className="w-full max-w-xs"
           >
-            {isLoading ? "Loading..." : "Load More"}
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                <span>Loading</span>
+              </div>
+            ) : "Load More"}
           </Button>
         </div>
       )}

@@ -28,6 +28,7 @@ import { MenuItem } from "./MenuItem"
 import { SiteSelector } from "./SiteSelector"
 import { LeadsBadge } from "./LeadsBadge"
 import { ControlCenterBadge } from "./ControlCenterBadge"
+import { RobotsBadge } from "./RobotsBadge"
 import { ContentBadge } from "./ContentBadge"
 import { RequirementsBadge, CampaignsBadge } from "./RequirementsBadge"
 import { ChatsBadge } from "./ChatsBadge"
@@ -547,7 +548,7 @@ export function Sidebar({
               "flex flex-col space-y-1",
               isCollapsed ? "px-[14px]" : "px-3"
             )}>
-              {automaticItems.map((item) => (
+              {automaticItems.filter(item => item.title !== "Robots").map((item) => (
                 <MenuItem
                   key={item.href}
                   href={item.href}
@@ -555,8 +556,11 @@ export function Sidebar({
                   title={item.title}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={isCollapsed}
-                  className={item.title === "Robots" ? "invisible" : undefined}
-                />
+                >
+                  {item.title === "Robots" && (
+                    <RobotsBadge isActive={pathname.startsWith("/robots")} />
+                  )}
+                </MenuItem>
               ))}
             </div>
           </div>

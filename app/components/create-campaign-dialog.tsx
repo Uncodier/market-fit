@@ -464,7 +464,12 @@ export function CreateCampaignDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading} className="h-12">
-              {isLoading ? "Creating..." : "Create Campaign"}
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                  <span>Creating</span>
+                </div>
+              ) : "Create Campaign"}
             </Button>
           </DialogFooter>
         </form>

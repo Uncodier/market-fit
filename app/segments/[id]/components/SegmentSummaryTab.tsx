@@ -505,7 +505,7 @@ export function SegmentSummaryTab({
               <div className="w-full h-[230px] bg-background rounded-md border border-border">
                 {iframeLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground/20"></div>
+                    <div className="h-8 w-8 animate-pulse bg-muted rounded-full"></div>
                   </div>
                 )}
                 {segment.url ? (

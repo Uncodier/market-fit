@@ -13,6 +13,7 @@ import {
   Phone,
   Tag
 } from "@/app/components/ui/icons"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { Target } from "@/app/components/ui/target-icon"
 import {
   Dialog,
@@ -415,7 +416,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <LoadingSkeleton variant="button" size="sm" className="text-white" />
                 Creating...
               </>
             ) : (

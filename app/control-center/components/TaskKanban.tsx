@@ -379,7 +379,12 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
                           className="w-full max-w-xs"
                           size="sm"
                         >
-                          {kanbanPagination[status.id].isLoading ? "Loading..." : "Load More"}
+                          {kanbanPagination[status.id].isLoading ? (
+                            <div className="flex items-center gap-2">
+                              <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                              <span>Loading</span>
+                            </div>
+                          ) : "Load More"}
                         </Button>
                       </div>
                     )}

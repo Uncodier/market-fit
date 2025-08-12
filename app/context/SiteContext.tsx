@@ -84,6 +84,11 @@ export interface SiteSettings {
   updated_at?: string
   competitors?: CompetitorUrl[] | null
   focus_mode?: number
+  business_model?: {
+    b2b?: boolean
+    b2c?: boolean
+    b2b2c?: boolean
+  } | null
   goals?: {
     quarterly?: string
     yearly?: string
@@ -919,7 +924,14 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   purchase: { metrics: [], actions: [], tactics: [] },
                   retention: { metrics: [], actions: [], tactics: [] },
                   referral: { metrics: [], actions: [], tactics: [] }
-                })
+                }),
+                focus_mode: settingsData.focus_mode || 50,
+                business_model: (() => {
+                  console.log("SITE CONTEXT: Raw settingsData.business_model from DB:", settingsData.business_model);
+                  const parsed = parseJsonField(settingsData.business_model, { b2b: false, b2c: false, b2b2c: false });
+                  console.log("SITE CONTEXT: Parsed business_model:", parsed);
+                  return parsed;
+                })()
                 // allowed_domains is handled in a separate table, not in settings
               }
             };

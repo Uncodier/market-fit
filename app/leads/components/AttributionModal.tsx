@@ -302,7 +302,7 @@ export function AttributionModal({
           >
             {isLoading ? (
               <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                <div className="h-4 w-4 animate-pulse bg-white/20 rounded" />
                 {statusType === "converted" ? "Converting..." : "Marking as Lost..."}
               </>
             ) : (

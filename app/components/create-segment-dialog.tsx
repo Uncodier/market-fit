@@ -11,6 +11,7 @@ import {
   Users, 
   Globe 
 } from "@/app/components/ui/icons"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Dialog,
   DialogContent,
@@ -255,7 +256,7 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
           >
             {isSubmitting ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <LoadingSkeleton variant="button" size="sm" className="text-white" />
                 Creating...
               </>
             ) : (

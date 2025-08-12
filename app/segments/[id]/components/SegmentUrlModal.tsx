@@ -76,7 +76,7 @@ export function SegmentUrlModal({
           >
             {isSaving ? (
               <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-foreground" />
+                <div className="mr-2 h-4 w-4 animate-pulse bg-muted rounded" />
                 Saving...
               </>
             ) : (

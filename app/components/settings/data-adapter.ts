@@ -224,6 +224,17 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       name: comp.name || "" // Ensure name is always a string
     })) || [],
     focusMode: site.settings?.focus_mode || 50,
+    businessModel: (() => {
+      console.log("DATA ADAPTER: Raw site.settings:", JSON.stringify(site.settings, null, 2));
+      console.log("DATA ADAPTER: site.settings?.business_model:", site.settings?.business_model);
+      const businessModel = {
+        b2b: site.settings?.business_model?.b2b || false,
+        b2c: site.settings?.business_model?.b2c || false,
+        b2b2c: site.settings?.business_model?.b2b2c || false
+      };
+      console.log("DATA ADAPTER: Final businessModel:", businessModel);
+      return businessModel;
+    })(),
     // Add company info
     about: site.settings?.about || "",
     company_size: site.settings?.company_size || "",

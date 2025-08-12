@@ -109,7 +109,7 @@ function TeamInvitationContent() {
           {isProcessing && (
             <div className="flex items-center justify-center py-8">
               <div className="text-center space-y-3">
-                <Loader className="w-8 h-8 animate-spin mx-auto text-primary" />
+                <div className="w-8 h-8 mx-auto animate-pulse bg-primary/20 rounded-full" />
                 <p className="text-sm text-muted-foreground">
                   Processing your invitation...
                 </p>
@@ -210,7 +210,7 @@ function TeamInvitationLoading() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-3">
-              <Loader className="w-8 h-8 animate-spin mx-auto text-primary" />
+              <div className="w-8 h-8 mx-auto animate-pulse bg-primary/20 rounded-full" />
               <p className="text-sm text-muted-foreground">
                 Loading invitation...
               </p>

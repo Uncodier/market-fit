@@ -4,6 +4,7 @@ import React, { FormEvent, useCallback, useRef, useMemo, memo } from "react"
 import { Button } from "@/app/components/ui/button"
 import { OptimizedTextarea } from "@/app/components/ui/optimized-textarea"
 import * as Icons from "@/app/components/ui/icons"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { cn } from "@/lib/utils"
 import { useLayout } from "@/app/context/LayoutContext"
 import { ChannelSelector } from "./ChannelSelector"
@@ -141,6 +142,27 @@ export const ChatInput = memo(function ChatInput({
                 height: '135px' // Initial height, will be auto-adjusted
               }}
             />
+
+            {/* Send button on the right - moved after textarea */}
+            <div className="absolute bottom-[15px] right-[15px]" style={{ zIndex: 51 }}>
+              <Button 
+                type="submit" 
+                size="icon"
+                variant="ghost"
+                disabled={!canSend}
+                className={cn(
+                  "rounded-xl h-[39px] w-[39px] text-primary hover:text-primary/90 transition-colors hover:bg-muted",
+                  canSend ? "opacity-100" : "opacity-50"
+                )}
+              >
+                {isLoading ? (
+                  <LoadingSkeleton size="sm" />
+                ) : (
+                  <Icons.ChevronRight className="h-5 w-5" />
+                )}
+                <span className="sr-only">Send</span>
+              </Button>
+            </div>
             
             {/* Channel selector centered */}
             <div className="absolute bottom-[15px] left-1/2 transform -translate-x-1/2 flex items-center justify-center">
@@ -173,27 +195,6 @@ export const ChatInput = memo(function ChatInput({
               >
                 <Icons.Search className="h-5 w-5" />
                 <span className="sr-only">Web search</span>
-              </Button>
-            </div>
-            
-            {/* Send button on the right */}
-            <div className="absolute bottom-[15px] right-[15px]">
-              <Button 
-                type="submit" 
-                size="icon"
-                variant="ghost"
-                disabled={!canSend}
-                className={cn(
-                  "rounded-xl h-[39px] w-[39px] text-primary hover:text-primary/90 transition-colors hover:bg-muted",
-                  canSend ? "opacity-100" : "opacity-50"
-                )}
-              >
-                {isLoading ? (
-                  <Icons.Loader className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Icons.ChevronRight className="h-5 w-5" />
-                )}
-                <span className="sr-only">Send</span>
               </Button>
             </div>
           </div>

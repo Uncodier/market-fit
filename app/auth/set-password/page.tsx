@@ -9,6 +9,7 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Loader, Eye, EyeOff, CheckCircle2, Lock } from "@/app/components/ui/icons"
 import { toast } from "sonner"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 
 function SetPasswordContent() {
   const router = useRouter()
@@ -153,7 +154,7 @@ function SetPasswordContent() {
         <div className="max-w-md w-full space-y-8">
           <Card>
             <CardContent className="flex flex-col items-center text-center py-8">
-              <Loader className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+              <LoadingSkeleton variant="fullscreen" size="lg" />
               <p className="text-gray-600">Verifying your session...</p>
             </CardContent>
           </Card>
@@ -296,7 +297,7 @@ function SetPasswordContent() {
               >
                 {isLoading ? (
                   <>
-                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    <LoadingSkeleton variant="button" size="sm" />
                     Setting Password...
                   </>
                 ) : (
@@ -324,7 +325,7 @@ export default function SetPasswordPage() {
         <div className="max-w-md w-full space-y-8">
           <Card>
             <CardContent className="flex flex-col items-center text-center py-8">
-              <Loader className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+              <LoadingSkeleton variant="fullscreen" size="lg" />
               <p className="text-gray-600">Loading...</p>
             </CardContent>
           </Card>

@@ -28,7 +28,8 @@ import {
   Pencil,
   ChevronUp,
   ChevronDown,
-  Target
+  Target,
+  Microscope
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { Pagination } from "@/app/components/ui/pagination"

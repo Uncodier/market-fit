@@ -7,6 +7,7 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { ChatMessage } from "@/app/types/chat"
 import { toast } from "sonner"
 import * as Icons from "@/app/components/ui/icons"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 
 interface EditMessageModalProps {
   isOpen: boolean
@@ -112,7 +113,7 @@ export function EditMessageModal({ isOpen, onOpenChange, message, onSave }: Edit
           >
             {isSaving ? (
               <>
-                <Icons.Loader className="h-4 w-4 mr-2 animate-spin" />
+                <LoadingSkeleton variant="button" size="sm" />
                 Saving...
               </>
             ) : (

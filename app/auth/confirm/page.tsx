@@ -218,7 +218,7 @@ function ConfirmContent() {
             <div className="flex flex-col items-center text-center">
               {state === 'loading' && (
                 <>
-                  <Loader className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+                  <div className="h-12 w-12 mb-4 animate-pulse bg-blue-200 rounded-full" />
                   <p className="text-gray-600">Confirming your email...</p>
                 </>
               )}
@@ -239,7 +239,7 @@ function ConfirmContent() {
                 <>
                   <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
                   <p className="text-gray-600 mb-4">{message}</p>
-                  <Loader className="h-6 w-6 text-blue-500 animate-spin" />
+                  <div className="h-6 w-6 animate-pulse bg-blue-200 rounded" />
                 </>
               )}
 
@@ -282,7 +282,7 @@ export default function ConfirmPage() {
         <div className="max-w-md w-full space-y-8">
           <Card>
             <CardContent className="flex flex-col items-center text-center py-8">
-              <Loader className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+              <div className="h-12 w-12 mb-4 animate-pulse bg-blue-200 rounded-full" />
               <p className="text-gray-600">Loading...</p>
             </CardContent>
           </Card>

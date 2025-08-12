@@ -10,8 +10,11 @@ import { useSite } from "@/app/context/SiteContext"
 import { SimpleMessagesView } from "@/app/components/simple-messages-view"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { RobotsPageSkeleton } from "@/app/components/skeletons/robots-page-skeleton"
 import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
 import { createClient } from "@/lib/supabase/client"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import "@/app/styles/iframe-containment.css"
 
 // Robot interface
 interface Robot {
@@ -31,7 +34,7 @@ export default function RobotsPage() {
   console.log('🏁 ROBOTS PAGE LOADED - CHECK CONSOLE!')
   
   return (
-    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading robots...</div>}>
+    <Suspense fallback={<RobotsPageSkeleton />}>
       <RobotsPageContent />
     </Suspense>
   )
@@ -48,8 +51,8 @@ function RobotsPageContent() {
   
   console.log('🚀 Hooks loaded, currentSite:', currentSite?.id || 'null')
 
-  // Get tab from URL params or default to channel-market-fit
-  const activeTab = searchParams.get('tab') || 'channel-market-fit'
+  // Get tab from URL params or default to free-agent
+  const activeTab = searchParams.get('tab') || 'free-agent'
   const [activeRobotInstance, setActiveRobotInstance] = useState<any | null>(null)
   const [isLoadingRobots, setIsLoadingRobots] = useState(true)
   const [streamUrl, setStreamUrl] = useState<string | null>(null)
@@ -72,6 +75,7 @@ function RobotsPageContent() {
   // Map tab values to activity names (for robot name matching)
   const getActivityName = (tabValue: string): string => {
     const activityMap: Record<string, string> = {
+      "free-agent": "Free Agent",
       "channel-market-fit": "Channel Market Fit",
       "engage": "Engage in Social Networks", 
       "seo": "SEO",
@@ -102,6 +106,8 @@ function RobotsPageContent() {
       // Get the activity name for the current tab to use as robot name filter
       const activityName = getActivityName(activeTab)
       
+      // Find robot with the specific activity name only
+      // Each tab should only show robots for its specific activity
       const { data, error } = await supabase
         .from('remote_instances')
         .select('id, status, instance_type, name, provider_instance_id, cdp_url')
@@ -157,13 +163,27 @@ function RobotsPageContent() {
         const supabase = createClient()
         const activityName = getActivityName(activeTab)
         
-        const { data, error } = await supabase
+        // First try to find a robot with the specific activity name
+        let { data, error } = await supabase
           .from('remote_instances')
           .select('id, status, instance_type, name, provider_instance_id, cdp_url')
           .eq('site_id', currentSite.id)
           .eq('name', activityName)
           .in('status', ['running', 'active', 'failed', 'error'])
           .limit(1)
+
+        // If no specific robot found and it's free-agent tab, look for any active robot
+        if ((!data || data.length === 0) && activeTab === 'free-agent') {
+          const fallbackQuery = await supabase
+            .from('remote_instances')
+            .select('id, status, instance_type, name, provider_instance_id, cdp_url')
+            .eq('site_id', currentSite.id)
+            .in('status', ['running', 'active', 'failed', 'error'])
+            .limit(1)
+          
+          data = fallbackQuery.data
+          error = fallbackQuery.error
+        }
 
         if (error) {
           console.error('Error polling for robot instance:', error)
@@ -437,7 +457,11 @@ function RobotsPageContent() {
             console.log(`🔍 Robots page: Payload new name: ${payload.new?.name}, old name: ${payload.old?.name}`)
             
             // Check if this change affects the current tab's activity
-            if (payload.new?.name === currentActivityName || payload.old?.name === currentActivityName) {
+            // Each tab should only respond to changes for its specific activity
+            const isRelevantChange = payload.new?.name === currentActivityName || 
+                                   payload.old?.name === currentActivityName
+            
+            if (isRelevantChange) {
               console.log(`🎯 Robots page: Instance change detected for ${currentActivityName}, refreshing...`)
               
               // Handle different event types
@@ -497,6 +521,8 @@ function RobotsPageContent() {
                 }
                 setReconnectAttempts(0)
               }
+            } else {
+              console.log(`⏸️ Robots page: Instance change ignored - not for current activity ${currentActivityName}`)
             }
           }
         )
@@ -544,7 +570,7 @@ function RobotsPageContent() {
       <div className="">
         <div className="flex h-[calc(100vh-136px)]">
           {/* Web View - 2/3 of available space */}
-          <div className="w-2/3 h-full border-r border-border">
+          <div className="w-2/3 h-full border-r border-border iframe-container">
             <div className="h-full flex flex-col m-0 bg-card">
               <div className="flex-1 p-0 overflow-hidden">
                 {isLoadingRobots || isPollingForInstance ? (
@@ -597,7 +623,7 @@ function RobotsPageContent() {
                     />
                   </div>
                 ) : (
-                  <div className="relative w-full h-full bg-background">
+                  <div className="relative w-full h-full bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
                     {/* Connection status indicator */}
                     {connectionStatus !== 'connected' && (
                       <div className="absolute top-4 left-4 z-10">
@@ -608,7 +634,7 @@ function RobotsPageContent() {
                         }`}>
                           {connectionStatus === 'reconnecting' && (
                             <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                              <LoadingSkeleton size="sm" className="text-yellow-600" />
                               <span>Reconnecting... ({reconnectAttempts}/{maxReconnectAttempts})</span>
                             </>
                           )}
@@ -652,26 +678,31 @@ function RobotsPageContent() {
                       </div>
                     )}
                     
-                    <div className="w-full h-full flex items-center justify-center bg-background">
+                    <div className="w-full h-full flex items-center justify-center bg-background iframe-wrapper">
                       <div className="bg-background rounded-lg shadow-2xl border border-muted-foreground/30 overflow-hidden" style={{
                         width: '100%',
                         maxWidth: '1024px',
                         height: 'auto',
                         aspectRatio: '4/3',
-                        maxHeight: 'calc(100vh - 200px)'
+                        maxHeight: 'calc(100vh - 200px)',
+                        contain: 'layout style paint',
+                        isolation: 'isolate'
                       }}>
                         <iframe
                           src={streamUrl || "https://www.google.com"}
-                          className="border-0 bg-background rounded-lg"
+                          className="border-0 bg-background rounded-lg contained-iframe"
                           title={streamUrl ? "Robot Browser Session" : "Google"}
                           allowFullScreen
                           allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
-                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
+                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
                           style={{
                             width: 'calc(100% + 4px)',
                             height: 'calc(100% + 4px)',
                             transform: 'translate(-2px, -2px)',
-                            transformOrigin: 'center center'
+                            transformOrigin: 'center center',
+                            position: 'relative',
+                            zIndex: 1,
+                            isolation: 'isolate'
                           }}
                           onLoad={() => {
                             if (streamUrl) {
@@ -694,25 +725,12 @@ function RobotsPageContent() {
           </div>
 
           {/* Messages View - 1/3 of available space */}
-          <div className="w-1/3 h-full">
+          <div className="w-1/3 h-full messages-area">
             <div className="h-full flex flex-col m-0 bg-card">
               <div className="flex-1 p-0 overflow-hidden">
                 {isLoadingRobots || isPollingForInstance ? (
                   <div className="h-full flex items-center justify-center p-6">
-                    <div className="text-center space-y-4">
-                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary mx-auto"></div>
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-foreground">
-                          {isPollingForInstance ? 'Setting up communication...' : 'Loading messages...'}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {isPollingForInstance 
-                            ? 'Preparing robot messaging interface'
-                            : 'Initializing session...'
-                          }
-                        </p>
-                      </div>
-                    </div>
+                    <LoadingSkeleton variant="fullscreen" size="lg" />
                   </div>
                 ) : !activeRobotInstance ? (
                   <div className="h-full flex items-center justify-center">

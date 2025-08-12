@@ -441,7 +441,12 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
           </div>
           <DialogFooter>
             <Button type="submit" disabled={loading || loadingData}>
-              {loading ? "Creating..." : "Create sale"}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                  <span>Creating</span>
+                </div>
+              ) : "Create sale"}
             </Button>
           </DialogFooter>
         </form>

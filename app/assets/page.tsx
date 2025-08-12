@@ -12,6 +12,7 @@ import { getAssets, deleteAsset, attachAssetToAgent, detachAssetFromAgent, getAg
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import {
   Tooltip,
@@ -248,7 +249,7 @@ function AssetCard({
             {isLoadingText ? (
               <div className="w-full h-full flex items-center justify-center bg-gray-50">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <LoadingSkeleton variant="fullscreen" size="md" />
                   <p className="mt-2 text-sm text-gray-600">Loading content...</p>
                 </div>
               </div>

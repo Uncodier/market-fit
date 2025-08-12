@@ -381,7 +381,12 @@ export function CommandsView({ searchQuery = "" }: CommandsViewProps) {
                   disabled={isLoadingMore}
                   className="w-full max-w-xs"
                 >
-                  {isLoadingMore ? "Loading..." : "Load More"}
+                  {isLoadingMore ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                      <span>Loading</span>
+                    </div>
+                  ) : "Load More"}
                 </Button>
               </div>
             )}

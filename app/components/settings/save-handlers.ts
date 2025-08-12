@@ -245,6 +245,16 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       // Incluir competitors y focus_mode en settings en lugar de site
       competitors: filteredCompetitors?.length > 0 ? filteredCompetitors : [],
       focus_mode: focusMode || 50,
+      business_model: (() => {
+        const businessModelData = {
+          b2b: data.businessModel?.b2b || false,
+          b2c: data.businessModel?.b2c || false,
+          b2b2c: data.businessModel?.b2b2c || false
+        };
+        console.log("SAVE HANDLER: data.businessModel:", data.businessModel);
+        console.log("SAVE HANDLER: Final business_model to save:", businessModelData);
+        return businessModelData;
+      })(),
       goals: {
         quarterly: goals.quarterly || "",
         yearly: goals.yearly || "", 

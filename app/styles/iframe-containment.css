@@ -1,0 +1,79 @@
+/* Iframe containment styles to prevent modals and overlays from escaping */
+
+/* Create stacking context and containment for iframe areas */
+.iframe-container {
+  contain: layout style paint;
+  isolation: isolate;
+  position: relative;
+  z-index: 0;
+}
+
+/* Ensure iframe content doesn't create overlays outside its bounds */
+.iframe-container iframe {
+  contain: layout style;
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+}
+
+/* Prevent any content inside iframe from creating high z-index overlays */
+.iframe-container iframe[sandbox] {
+  /* Restrict what the iframe can do */
+  border: none;
+  overflow: hidden;
+}
+
+/* Ensure that any browser-generated dialogs or system modals 
+   don't interfere with our UI elements */
+.robot-browser-session {
+  position: relative;
+  isolation: isolate;
+  contain: layout style paint;
+  overflow: hidden;
+}
+
+/* Messages area should have higher stacking context than iframe */
+.messages-area {
+  position: relative;
+  z-index: 10;
+  isolation: isolate;
+}
+
+/* Context selector and other UI elements should be on top */
+.ui-overlay {
+  position: relative;
+  z-index: 20;
+  isolation: isolate;
+}
+
+/* Prevent any iframe content from creating system-level dialogs */
+.iframe-wrapper {
+  position: relative;
+  contain: strict;
+  isolation: isolate;
+}
+
+/* Force iframe to respect container boundaries */
+.contained-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  contain: layout style paint;
+  isolation: isolate;
+  pointer-events: auto;
+}
+
+/* Ensure text areas and inputs are not blocked by iframe overlays */
+textarea, input[type="text"], input[type="email"] {
+  position: relative;
+  z-index: 15;
+  isolation: isolate;
+}
+
+/* Context modal should be on the highest layer */
+.context-modal {
+  z-index: 100001 !important;
+  isolation: isolate;
+  position: fixed;
+}

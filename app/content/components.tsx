@@ -326,7 +326,12 @@ export function CreateContentDialog({
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isCreating}>
-              {isCreating ? "Creating..." : "Create Content"}
+              {isCreating ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                  <span>Creating</span>
+                </div>
+              ) : "Create Content"}
             </Button>
           </DialogFooter>
         </form>

@@ -89,7 +89,7 @@ export function MenuBar({
         >
           {isSaving ? (
             <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+              <div className="h-4 w-4 animate-pulse bg-muted rounded" />
               Saving...
             </>
           ) : (

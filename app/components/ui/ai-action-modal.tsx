@@ -767,7 +767,7 @@ export function AIActionModal({
                       <div className="absolute inset-4 rounded-full bg-primary/30 animate-ping-slow" 
                           style={{ animationDelay: "600ms" }}></div>
                       <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground">
-                        <Loader className="h-5 w-5 animate-spin" />
+                        <div className="h-5 w-5 animate-pulse bg-primary-foreground/20 rounded" />
                       </div>
                     </>
                   ) : (
@@ -863,7 +863,7 @@ export function AIActionModal({
                         >
                           {isTestingConnection ? (
                             <>
-                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                              <div className="h-4 w-4 animate-pulse bg-muted rounded" />
                               Testing Connection...
                             </>
                           ) : (
@@ -1013,7 +1013,7 @@ export function AIActionModal({
                 >
                   {isSendingReport ? (
                     <>
-                      <Loader className="mr-1 h-3 w-3 animate-spin" />
+                      <div className="mr-1 h-3 w-3 animate-pulse bg-muted rounded" />
                       Sending...
                     </>
                   ) : reportSent ? (
@@ -1045,7 +1045,7 @@ export function AIActionModal({
                 >
                   {isProcessing ? (
                     <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                      <div className="h-4 w-4 animate-pulse bg-white/20 rounded" />
                       Processing...
                     </>
                   ) : (

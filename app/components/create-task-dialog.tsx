@@ -391,7 +391,12 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
               disabled={isSubmitting || !currentSite}
               className="w-full"
             >
-              {isSubmitting ? "Creating..." : "Create Task"}
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                  <span>Creating</span>
+                </div>
+              ) : "Create Task"}
             </Button>
           </DialogFooter>
         </form>

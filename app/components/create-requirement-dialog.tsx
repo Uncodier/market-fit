@@ -492,7 +492,12 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading} className="h-12">
-              {isLoading ? "Creating..." : "Create Requirement"}
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                  <span>Creating</span>
+                </div>
+              ) : "Create Requirement"}
             </Button>
           </DialogFooter>
         </form>

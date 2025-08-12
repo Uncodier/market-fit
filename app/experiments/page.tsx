@@ -12,6 +12,7 @@ import { useToast } from "@/app/components/ui/use-toast"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { cn } from "@/lib/utils"
@@ -238,7 +239,7 @@ function ExperimentRow({
                       >
                         <div className="flex items-center justify-center min-w-0">
                           {isLoading ? (
-                            <div className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-green-200 dark:border-green-500/30 border-r-green-700 dark:border-r-green-400" />
+                            <LoadingSkeleton variant="button" size="sm" className="text-green-700" />
                           ) : (
                             <PlayCircle className="h-3.5 w-3.5 mr-1.5 text-green-700 dark:text-green-400" />
                           )}
@@ -261,7 +262,7 @@ function ExperimentRow({
                       >
                         <div className="flex items-center justify-center min-w-0">
                           {isLoading ? (
-                            <div className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-200 dark:border-red-500/30 border-r-red-700 dark:border-r-red-400" />
+                            <LoadingSkeleton variant="button" size="sm" className="text-red-700" />
                           ) : (
                             <StopCircle className="h-3.5 w-3.5 mr-1.5 text-red-700 dark:text-red-400" />
                           )}
@@ -1152,7 +1153,7 @@ export default function ExperimentsPage() {
                   >
                     {isLoading[selectedExperiment.id] ? (
                       <>
-                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-green-200 dark:border-green-500/30 border-r-green-700 dark:border-r-green-400" />
+                        <LoadingSkeleton variant="button" size="sm" className="text-green-700" />
                         Starting...
                       </>
                     ) : (
@@ -1176,7 +1177,7 @@ export default function ExperimentsPage() {
                   >
                     {isLoading[selectedExperiment.id] ? (
                       <>
-                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-red-200 dark:border-red-500/30 border-r-red-700 dark:border-r-red-400" />
+                        <LoadingSkeleton variant="button" size="sm" className="text-red-700" />
                         Stopping...
                       </>
                     ) : (

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, Tag, Link, Globe, AppWindow, ChevronDown, ChevronRight } from "../ui/icons"
 import { Slider } from "../ui/slider"
+import { Switch } from "../ui/switch"
 
 interface MarketingSectionProps {
   active: boolean
@@ -256,6 +257,81 @@ export function MarketingSection({ active }: MarketingSectionProps) {
                 </FormItem>
               )}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-8 py-6">
+          <CardTitle className="text-xl font-semibold">Business Model</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Select your business model focus areas. You can enable multiple models.
+          </p>
+        </CardHeader>
+        <CardContent className="px-8 pb-8">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <FormField
+                control={form.control}
+                name="businessModel.b2b"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base font-medium">B2B</FormLabel>
+                      <FormDescription>
+                        Business to Business focus
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="businessModel.b2c"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base font-medium">B2C</FormLabel>
+                      <FormDescription>
+                        Business to Consumer focus
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="businessModel.b2b2c"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base font-medium">B2B2C</FormLabel>
+                      <FormDescription>
+                        Business to Business to Consumer
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

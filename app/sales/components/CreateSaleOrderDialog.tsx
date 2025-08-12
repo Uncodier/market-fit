@@ -382,7 +382,12 @@ export function CreateSaleOrderDialog({ sale, open, onOpenChange, onSuccess }: C
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Order"}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                  <span>Creating</span>
+                </div>
+              ) : "Create Order"}
             </Button>
           </DialogFooter>
         </form>

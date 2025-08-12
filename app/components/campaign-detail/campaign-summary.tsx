@@ -229,7 +229,7 @@ export function CampaignSummary({
                   {loadingLeads ? (
                     <tr>
                       <td colSpan={6} className="p-4 text-center">
-                        <Loader className="h-5 w-5 animate-spin mx-auto" />
+                        <div className="h-5 w-5 mx-auto animate-pulse bg-muted rounded" />
                         <div className="mt-2 text-sm text-muted-foreground">Loading leads...</div>
                       </td>
                     </tr>
@@ -312,7 +312,7 @@ export function CampaignSummary({
                   {loadingLeads ? (
                     <tr>
                       <td colSpan={6} className="p-4 text-center">
-                        <Loader className="h-5 w-5 animate-spin mx-auto" />
+                        <div className="h-5 w-5 mx-auto animate-pulse bg-muted rounded" />
                         <div className="mt-2 text-sm text-muted-foreground">Loading converted clients...</div>
                       </td>
                     </tr>
@@ -401,7 +401,7 @@ export function CampaignSummary({
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {taskDetailContext.loadingSegments ? (
                     <div className="flex items-center">
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      <div className="mr-2 h-4 w-4 animate-pulse bg-muted rounded" />
                       <span className="text-sm text-muted-foreground">Loading segments...</span>
                     </div>
                   ) : taskDetailContext.campaignSegments && taskDetailContext.campaignSegments.length > 0 ? (

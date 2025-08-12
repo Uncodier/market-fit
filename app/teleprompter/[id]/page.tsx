@@ -1370,7 +1370,7 @@ export default function TeleprompterPage() {
             >
               {isSavingVideo ? (
                 <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2"></span>
+                  <div className="h-4 w-4 mr-2 animate-pulse bg-white/20 rounded" />
                   Saving...
                 </>
               ) : isRecording ? (

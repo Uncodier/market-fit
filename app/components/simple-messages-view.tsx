@@ -1,12 +1,13 @@
 "use client"
 
 import { MessageSquare, User, Settings, ChevronRight, ChevronDown, ChevronUp, Clock, CheckCircle, Target, Pencil, Trash2 } from "@/app/components/ui/icons"
-import { ContextSelector } from "@/app/components/ui/context-selector"
+import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { MessagesSkeleton } from "@/app/components/skeletons/messages-skeleton"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Dialog,
   DialogContent,
@@ -83,7 +84,7 @@ export interface InstancePlan {
   steps_total: number
   priority: number
   created_at: string
-  results?: any // Contains the complete plan JSON with phases and steps
+  steps?: any // Contains the steps for the plan
 }
 
 interface PlanStep {
@@ -212,6 +213,13 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
   const saveStep = async () => {
     if (!editingStep || !editTitle.trim() || !activeRobotInstance?.id) return
 
+    // Check if step can be edited
+    if (!canEditOrDeleteStep(editingStep)) {
+      console.log('Cannot edit completed step')
+      closeEditModal()
+      return
+    }
+
     try {
       const supabase = createClient()
       
@@ -240,6 +248,13 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
 
   const deleteStep = async (stepId: string) => {
     if (!activeRobotInstance?.id) return
+
+    // Find the step to check if it can be deleted
+    const stepToDelete = steps.find(step => step.id === stepId)
+    if (!stepToDelete || !canEditOrDeleteStep(stepToDelete)) {
+      console.log('Cannot delete completed step')
+      return
+    }
 
     try {
       const supabase = createClient()
@@ -292,18 +307,76 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
       } else {
         console.log('Plan status updated successfully')
         // The real-time subscription will handle updating the local state
+        
+        // Check if all steps will be completed after this update
+        const updatedSteps = steps.map(step => 
+          step.id === stepId ? { ...step, status: newStatus } : step
+        )
+        
+        const allWillBeCompleted = updatedSteps.every(step => step.status === 'completed')
+        
+        if (allWillBeCompleted && updatedSteps.length > 0) {
+          // Mark all instance plans as completed
+          await markAllInstancePlansCompleted()
+        }
       }
     } catch (error) {
       console.error('Error toggling step status:', error)
     }
   }
 
+  // Mark all instance plans as completed when all steps are done
+  const markAllInstancePlansCompleted = async () => {
+    if (!activeRobotInstance?.id) return
+
+    try {
+      const supabase = createClient()
+      
+      // Update all instance plans for this instance to completed
+      const { error } = await supabase
+        .from('instance_plans')
+        .update({
+          status: 'completed',
+          progress_percentage: 100,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('instance_id', activeRobotInstance.id)
+
+      if (error) {
+        console.error('Error marking instance plans as completed:', error)
+      } else {
+        console.log('All instance plans marked as completed successfully')
+      }
+    } catch (error) {
+      console.error('Error marking instance plans as completed:', error)
+    }
+  }
+
   const getCurrentStep = () => {
+    // Check if all steps are completed
+    const allCompleted = steps.length > 0 && steps.every(step => step.status === 'completed')
+    
+    if (allCompleted) {
+      // If all steps are completed, return the first step
+      return steps[0]
+    }
+    
     const inProgressStep = steps.find(step => step.status === 'in_progress')
     if (inProgressStep) return inProgressStep
     
     const firstPendingStep = steps.find(step => step.status === 'pending')
     return firstPendingStep || steps[0]
+  }
+
+  // Check if all steps are completed
+  const areAllStepsCompleted = () => {
+    return steps.length > 0 && steps.every(step => step.status === 'completed')
+  }
+
+  // Check if a step can be edited or deleted (completed steps cannot be edited/deleted)
+  const canEditOrDeleteStep = (step: PlanStep) => {
+    return step.status !== 'completed'
   }
 
   // Create test plans for debugging
@@ -481,22 +554,18 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
         // Convert instance plans to step format for the UI
         let convertedSteps: PlanStep[] = []
         
-        // Extract steps from the complex plan structure
+        // Extract steps from the plan structure
         plans.forEach((plan: InstancePlan, planIndex: number) => {
-          if (plan.results && plan.results.phases && Array.isArray(plan.results.phases)) {
-            // Extract steps from each phase
-            plan.results.phases.forEach((phase: any) => {
-              if (phase.steps && Array.isArray(phase.steps)) {
-                const phaseSteps = phase.steps.map((step: any, stepIndex: number) => ({
-                  id: `${plan.id}-${stepIndex}`,
-                  title: step.title || `Step ${stepIndex + 1}`,
-                  description: step.description || undefined,
-                  status: 'pending' as const, // All steps start as pending
-                  order: convertedSteps.length + stepIndex + 1
-                }))
-                convertedSteps = [...convertedSteps, ...phaseSteps]
-              }
-            })
+          if (plan.steps && Array.isArray(plan.steps)) {
+            // Use steps directly from the plan
+            const planSteps = plan.steps.map((step: any, stepIndex: number) => ({
+              id: step.id || `${plan.id}-${stepIndex}`,
+              title: step.title || `Step ${stepIndex + 1}`,
+              description: step.description || undefined,
+              status: step.status || 'pending' as const,
+              order: convertedSteps.length + stepIndex + 1
+            }))
+            convertedSteps = [...convertedSteps, ...planSteps]
           } else {
             // Fallback: use the plan itself as a single step
             convertedSteps.push({
@@ -719,16 +788,36 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
               setInstancePlans(prevPlans => {
                 const updatedPlans = [...prevPlans, newPlan]
                 
-                // Add to steps
-                const newStep: PlanStep = {
-                  id: newPlan.id,
-                  title: newPlan.title,
-                  description: newPlan.description || undefined,
-                  status: newPlan.status === 'in_progress' ? 'in_progress' : 
-                         newPlan.status === 'completed' ? 'completed' : 'pending',
-                  order: updatedPlans.length
+                // Add steps from the plan
+                if (newPlan.steps && Array.isArray(newPlan.steps)) {
+                  const newSteps = newPlan.steps.map((step: any, stepIndex: number) => ({
+                    id: step.id || `${newPlan.id}-${stepIndex}`,
+                    title: step.title || `Step ${stepIndex + 1}`,
+                    description: step.description || undefined,
+                    status: step.status || 'pending' as const,
+                    order: stepIndex + 1 // Will be reordered below
+                  }))
+                  
+                  setSteps(prevSteps => {
+                    const allSteps = [...prevSteps, ...newSteps]
+                    // Reorder all steps
+                    return allSteps.map((step, index) => ({
+                      ...step,
+                      order: index + 1
+                    }))
+                  })
+                } else {
+                  // Fallback: use the plan itself as a single step
+                  const newStep: PlanStep = {
+                    id: newPlan.id,
+                    title: newPlan.title,
+                    description: newPlan.description || undefined,
+                    status: newPlan.status === 'in_progress' ? 'in_progress' : 
+                           newPlan.status === 'completed' ? 'completed' : 'pending',
+                    order: updatedPlans.length
+                  }
+                  setSteps(prevSteps => [...prevSteps, newStep])
                 }
-                setSteps(prevSteps => [...prevSteps, newStep])
                 
                 return updatedPlans
               })
@@ -740,24 +829,47 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                 )
               )
               
-              // Update steps
-              setSteps(prevSteps =>
-                prevSteps.map(step => 
-                  step.id === updatedPlan.id ? {
-                    ...step,
-                    title: updatedPlan.title,
-                    description: updatedPlan.description || undefined,
-                    status: updatedPlan.status === 'in_progress' ? 'in_progress' : 
-                           updatedPlan.status === 'completed' ? 'completed' : 'pending'
-                  } : step
+              // Update steps - rebuild all steps from all plans to ensure consistency
+              setInstancePlans(currentPlans => {
+                const allPlans = currentPlans.map(plan => 
+                  plan.id === updatedPlan.id ? updatedPlan : plan
                 )
-              )
+                
+                let convertedSteps: PlanStep[] = []
+                allPlans.forEach((plan: InstancePlan) => {
+                  if (plan.steps && Array.isArray(plan.steps)) {
+                    const planSteps = plan.steps.map((step: any, stepIndex: number) => ({
+                      id: step.id || `${plan.id}-${stepIndex}`,
+                      title: step.title || `Step ${stepIndex + 1}`,
+                      description: step.description || undefined,
+                      status: step.status || 'pending' as const,
+                      order: convertedSteps.length + stepIndex + 1
+                    }))
+                    convertedSteps = [...convertedSteps, ...planSteps]
+                  } else {
+                    convertedSteps.push({
+                      id: plan.id,
+                      title: plan.title,
+                      description: plan.description || undefined,
+                      status: plan.status === 'in_progress' ? 'in_progress' : 
+                             plan.status === 'completed' ? 'completed' : 'pending',
+                      order: convertedSteps.length + 1
+                    })
+                  }
+                })
+                
+                setSteps(convertedSteps)
+                return allPlans
+              })
             } else if (payload.eventType === 'DELETE') {
               setInstancePlans(prevPlans => 
                 prevPlans.filter(plan => plan.id !== payload.old.id)
               )
               setSteps(prevSteps => {
-                const filteredSteps = prevSteps.filter(step => step.id !== payload.old.id)
+                // Remove all steps that belong to the deleted plan
+                const filteredSteps = prevSteps.filter(step => 
+                  !step.id.startsWith(payload.old.id) && step.id !== payload.old.id
+                )
                 // Reorder the remaining steps
                 return filteredSteps.map((step, index) => ({
                   ...step,
@@ -838,6 +950,29 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
           })
       } else {
         console.log('Message sent successfully:', response.data)
+        
+        // Process the response from instance act API
+        // The API returns { message: string, context: object } in the root
+        const responseMessage = response.data?.message || response.data
+        const responseContext = response.data?.context
+        
+        if (responseMessage && typeof responseMessage === 'string') {
+          // Add the robot's response to the log
+          await supabase
+            .from('instance_logs')
+            .insert({
+              instance_id: activeRobotInstance.id,
+              site_id: activeRobotInstance.site_id,
+              log_type: 'robot_response',
+              level: 'info',
+              message: responseMessage,
+              details: { 
+                response_context: responseContext,
+                user_input: messageToSend,
+                timestamp: new Date().toISOString()
+              }
+            })
+        }
       }
     } catch (error) {
       console.error('Error calling robot API:', error)
@@ -1190,13 +1325,34 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   <div className="relative">
                     <Avatar className="h-7 w-7 border border-primary/20">
                       <AvatarFallback className="bg-primary/10 text-primary">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                        A
                       </AvatarFallback>
                     </Avatar>
                   </div>
+                  <span className="text-sm font-medium text-primary">Robot</span>
+                  <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700">
+                    thinking
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     {formatTime(new Date())}
                   </span>
+                </div>
+                
+                {/* Loading message content */}
+                <div className="mr-8 w-full max-w-full">
+                  <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap bg-background/50 rounded-lg p-4 border border-dashed border-primary/20">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                      <span className="text-sm">Robot is thinking...</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground/70 mt-2 mb-0">
+                      Processing your request and preparing a response
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1212,23 +1368,36 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
 
       {/* Floating Step Indicator - Expandable */}
       {steps.length > 0 && (
-        <div className="absolute bottom-[175px] md:bottom-[180px] left-0 right-0 z-20 transition-all duration-500 ease-in-out">
+        <div className="absolute bottom-[175px] md:bottom-[180px] left-0 right-0 z-[5] transition-all duration-500 ease-in-out">
           <div className="px-6">
-            <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg transition-all duration-500" style={{
+            <div className={`backdrop-blur-sm border rounded-lg shadow-lg transition-all duration-500 ${
+              areAllStepsCompleted() ? 'bg-green-50/95 border-green-200' : 'bg-background/95 border-border'
+            }`} style={{
               marginLeft: '5px',
               marginRight: '5px',
-              padding: isStepIndicatorExpanded ? '1rem 1.5rem' : '0.5rem 0.75rem'
+              padding: '0.5rem 0.75rem'
             }}>
               {isStepIndicatorExpanded ? (
                 <div className="space-y-2">
                   {/* Current step header */}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      areAllStepsCompleted() ? 'bg-green-500' :
                       getCurrentStep()?.status === 'in_progress' ? 'bg-primary animate-pulse' : 
                       getCurrentStep()?.status === 'completed' ? 'bg-green-500' : 'bg-muted-foreground/60'
                     }`}></div>
-                    <span className="font-medium whitespace-nowrap">Step {getCurrentStep()?.order || 1} of {steps.length}</span>
-                    <span className="text-xs truncate">- {getCurrentStep()?.title}</span>
+                    {areAllStepsCompleted() ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="font-medium whitespace-nowrap text-green-600">All steps completed!</span>
+                        <span className="text-xs text-green-600/70">Back to step 1</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium whitespace-nowrap">Step {getCurrentStep()?.order || 1} of {steps.length}</span>
+                        <span className="text-xs truncate">- {getCurrentStep()?.title}</span>
+                      </>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1244,67 +1413,96 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   
                   {/* All steps list */}
                   <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {steps.map((step) => (
-                      <div 
-                        key={step.id} 
-                        className="group flex items-center gap-2 text-sm hover:text-primary cursor-pointer transition-all duration-200 py-1 rounded px-1 -mx-1 hover:bg-muted/20 hover:scale-[1.02] active:scale-95"
-                        onClick={() => openEditModal(step)}
-                      >
+                    {steps.map((step) => {
+                      const canEdit = canEditOrDeleteStep(step)
+                      const allCompleted = areAllStepsCompleted()
+                      
+                      return (
                         <div 
-                          className={`w-2 h-2 rounded-full flex-shrink-0 cursor-pointer ${
-                            step.status === 'in_progress' ? 'bg-primary animate-pulse' : 
-                            step.status === 'completed' ? 'bg-green-500' : 'bg-muted-foreground/60'
+                          key={step.id} 
+                          className={`group flex items-center gap-2 text-sm transition-all duration-200 py-1 rounded px-1 -mx-1 ${
+                            canEdit ? 'hover:text-primary cursor-pointer hover:bg-muted/20' : 
+                            'cursor-not-allowed opacity-75'
                           }`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleStepStatus(step.id)
-                          }}
-                          title="Click to change status"
-                        ></div>
-                        <span className={`font-medium ${step.status === 'completed' ? 'text-green-600' : step.status === 'in_progress' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                          {step.order}.
-                        </span>
-                        <div className="flex-1 min-w-0 mr-2 overflow-hidden">
-                          <div className="truncate">
-                            <span className={`${step.status === 'completed' ? 'text-green-600 line-through' : step.status === 'in_progress' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                              {step.title}
-                              {step.description && (
-                                <span className="text-xs text-muted-foreground/60 ml-1">
-                                  - {step.description}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Delete button only */}
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          onClick={() => canEdit ? openEditModal(step) : null}
+                          title={!canEdit ? 'Completed steps cannot be edited' : 'Click to edit'}
+                        >
+                          <div 
+                            className={`w-2 h-2 rounded-full flex-shrink-0 cursor-pointer ${
+                              step.status === 'in_progress' ? 'bg-primary animate-pulse' : 
+                              step.status === 'completed' ? 'bg-green-500' : 'bg-muted-foreground/60'
+                            }`}
                             onClick={(e) => {
                               e.stopPropagation()
-                              deleteStep(step.id)
+                              toggleStepStatus(step.id)
                             }}
-                            className="h-4 w-4 p-0 hover:bg-red-100 hover:text-red-600"
-                            title="Delete step"
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                          </Button>
+                            title="Click to change status"
+                          ></div>
+                          <span className={`font-medium ${step.status === 'completed' ? 'text-green-600' : step.status === 'in_progress' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {step.order}.
+                          </span>
+                          <div className="flex-1 min-w-0 mr-2 overflow-hidden">
+                            <div className="truncate">
+                              <span className={`${step.status === 'completed' ? 'text-green-600 line-through' : step.status === 'in_progress' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                {step.title}
+                                {step.description && (
+                                  <span className="text-xs text-muted-foreground/60 ml-1">
+                                    - {step.description}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Delete button only for non-completed steps */}
+                          {canEdit && (
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteStep(step.id)
+                                }}
+                                className="h-4 w-4 p-0 hover:bg-red-100 hover:text-red-600"
+                                title="Delete step"
+                              >
+                                <Trash2 className="h-2.5 w-2.5" />
+                              </Button>
+                            </div>
+                          )}
+                          
+                          {/* Show lock icon for completed steps */}
+                          {!canEdit && (
+                            <div className="opacity-50">
+                              <CheckCircle className="h-3 w-3 text-green-500" />
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
 
                   </div>
                 </div>
               ) : steps.length > 0 ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    areAllStepsCompleted() ? 'bg-green-500' :
                     getCurrentStep()?.status === 'in_progress' ? 'bg-primary animate-pulse' : 
                     getCurrentStep()?.status === 'completed' ? 'bg-green-500' : 'bg-muted-foreground/60'
                   }`}></div>
-                  <span className="font-medium whitespace-nowrap">Step {getCurrentStep()?.order || 1} of {steps.length}</span>
-                  <span className="text-xs truncate">- {getCurrentStep()?.title}</span>
+                  {areAllStepsCompleted() ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="font-medium whitespace-nowrap text-green-600">All steps completed!</span>
+                      <span className="text-xs text-green-600/70">Back to step 1</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium whitespace-nowrap">Step {getCurrentStep()?.order || 1} of {steps.length}</span>
+                      <span className="text-xs truncate">- {getCurrentStep()?.title}</span>
+                    </>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1327,7 +1525,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
       )}
 
       {/* Message input area - styled exactly like ChatInput */}
-      <div className="absolute bottom-4 left-0 right-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10">
+      <div className="absolute bottom-4 left-0 right-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20]">
         <div className="px-6">
           <form className="relative" onSubmit={(e) => {
             e.preventDefault()
@@ -1358,15 +1556,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
               />
               
               {/* Context selector button in bottom left */}
-              <div className="absolute bottom-[15px] left-[15px]">
-                <ContextSelector 
+              <div className="absolute bottom-[15px] left-[15px] z-50">
+                <ContextSelectorModal 
                   selectedContext={selectedContext}
                   onContextChange={setSelectedContext}
                 />
               </div>
               
               {/* Send button on the right */}
-              <div className="absolute bottom-[15px] right-[15px]">
+              <div className="absolute bottom-[15px] right-[15px]" style={{ zIndex: 51 }}>
                 <Button 
                   type="submit" 
                   size="icon"

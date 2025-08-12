@@ -189,8 +189,8 @@ CREATE TABLE public.instance_plans (
   retry_count integer DEFAULT 0,
   max_retries integer DEFAULT 3,
   
-  -- Results and artifacts
-  results jsonb DEFAULT '{}'::jsonb,
+  -- Steps and artifacts
+  steps jsonb DEFAULT '[]'::jsonb, -- Array of step objects with id, title, description, status
   artifacts jsonb DEFAULT '[]'::jsonb,
   error_message text,
   

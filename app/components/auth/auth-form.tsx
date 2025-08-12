@@ -13,6 +13,7 @@ import * as z from "zod"
 import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google } from "@/app/components/ui/icons"
 import { Separator } from "@/app/components/ui/separator"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 
 interface AuthFormProps {
   mode?: 'login' | 'register'
@@ -396,7 +397,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
 
   const getReferralCodeIcon = () => {
     if (referralCodeStatus === 'valid') return <Check className="h-4 w-4 text-green-500" />
-    if (referralCodeStatus === 'checking') return <div className="h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+    if (referralCodeStatus === 'checking') return <LoadingSkeleton size="sm" />
     return null
   }
 
@@ -534,7 +535,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                             referralCodeStatus === 'valid' ? (
                               <Check className="h-4 w-4 text-green-500" />
                             ) : referralCodeStatus === 'checking' ? (
-                              <div className="h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                              <LoadingSkeleton size="sm" />
                             ) : null
                           }
                           className={`h-12 text-sm bg-background border-input ${

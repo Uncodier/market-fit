@@ -420,7 +420,12 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
               Debug Create
             </Button>
             <Button type="submit" disabled={isLoading} className="h-12">
-              {isLoading ? "Creating..." : "Create Experiment"}
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                  <span>Creating</span>
+                </div>
+              ) : "Create Experiment"}
             </Button>
           </DialogFooter>
         </form>

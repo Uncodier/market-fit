@@ -1,4 +1,5 @@
 import { Button } from "@/app/components/ui/button"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Dialog,
   DialogContent,
@@ -200,7 +201,7 @@ export function AddSubtaskDialog({ campaignId, onAddSubtask, trigger }: AddSubta
             >
               {isLoading ? (
                 <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  <LoadingSkeleton variant="button" size="sm" />
                   <span>Adding...</span>
                 </>
               ) : (

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { TrendDetailModal } from "./TrendDetailModal"
 import { TrendItem, TrendPlatform } from "@/app/types/trends"
 import { trendsManager } from "@/app/services/trends-service"
@@ -255,7 +256,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
                 className="h-6 w-6 p-0"
               >
                 {isLoading ? (
-                  <Loader className="h-3 w-3 animate-spin" />
+                  <LoadingSkeleton size="sm" />
                 ) : (
                   <RotateCcw className="h-3 w-3" />
                 )}

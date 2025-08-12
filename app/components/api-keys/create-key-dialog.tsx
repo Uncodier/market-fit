@@ -362,7 +362,12 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Key"}
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                    <span>Creating</span>
+                  </div>
+                ) : "Create Key"}
               </Button>
             </div>
           </form>
