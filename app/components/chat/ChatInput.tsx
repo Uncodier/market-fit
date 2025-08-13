@@ -165,7 +165,7 @@ export const ChatInput = memo(function ChatInput({
             </div>
             
             {/* Channel selector centered */}
-            <div className="absolute bottom-[15px] left-1/2 transform -translate-x-1/2 flex items-center justify-center">
+            <div className="absolute bottom-[15px] left-1/2 transform -translate-x-1/2 flex items-center justify-center" style={{ zIndex: 52 }}>
               <ChannelSelector
                 selectedChannel={selectedChannel}
                 onChannelChange={setSelectedChannel}

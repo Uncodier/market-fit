@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator 
 } from "@/app/components/ui/dropdown-menu"
 import { formatDistanceToNow, format } from "date-fns"
+import { truncateConversationNames } from "@/app/utils/name-utils"
 
 interface ConversationItemProps {
   conversation: ConversationListItem

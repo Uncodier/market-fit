@@ -22,6 +22,7 @@ import { extractCleanText } from "@/app/utils/text-cleaning"
 import { useSite } from "@/app/context/SiteContext"
 import { useRef } from "react"
 import { getConversationMessages } from "@/app/services/chat-service"
+import { truncateAgentName, truncateLeadName } from "@/app/utils/name-utils"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -925,8 +926,8 @@ export function ChatMessages({
                             </div>
                             <span className={`text-sm font-medium ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}`}>
                               {(hasAssignee && msg.sender_id === leadData?.assignee?.id) 
-                                ? leadData.assignee.name 
-                                : agentName
+                                ? truncateAgentName(leadData.assignee.name)
+                                : truncateAgentName(agentName)
                               }
                             </span>
                           </div>
@@ -968,7 +969,7 @@ export function ChatMessages({
                                 {leadData?.name ? leadData.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2) : "V"}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-amber-600 dark:text-amber-500">{leadData?.name || "Visitor"}</span>
+                            <span className="text-sm font-medium text-amber-600 dark:text-amber-500">{truncateLeadName(leadData?.name || "Visitor")}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""

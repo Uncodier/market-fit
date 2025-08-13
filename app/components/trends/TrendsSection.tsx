@@ -80,7 +80,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
     }
   }, [currentSiteId, sortBy, segments]) // Add segments as dependency to reload when site segments change
 
-  const fetchTrends = async () => {
+  const fetchTrends = async (showSuccessToast = false) => {
     setIsLoading(true)
     try {
       // Use higher limit to get enough trends for quality selection in table view
@@ -113,7 +113,11 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
         console.log(`📊 [TrendsSection] Final trends count: ${finalTrends.length} (sorted by ${sortBy})`)
         setTrends(finalTrends)
         setLastUpdated(result.data.lastUpdated)
-        toast.success(`Loaded ${finalTrends.length} trends successfully`)
+        
+        // Only show success toast if explicitly requested (e.g., on manual refresh)
+        if (showSuccessToast) {
+          toast.success(`Loaded ${finalTrends.length} trends successfully`)
+        }
       } else {
         toast.error("Failed to fetch trends: " + (result.error || "Unknown error"))
       }
@@ -131,7 +135,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
   }
 
   const handleRefresh = () => {
-    fetchTrends()
+    fetchTrends(true) // Show success toast on manual refresh
   }
 
   const handlePageChange = (page: number) => {

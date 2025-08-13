@@ -47,7 +47,7 @@ export function StickyHeader({
     <div className={cn(
       "sticky flex items-center p-0",
       "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-      "border-b border-border z-60",
+      "border-b border-border z-[2]",
       isAgentsPage ? "top-[64px] min-h-[71px]" : "top-[64px] min-h-[71px]",
       className
     )}

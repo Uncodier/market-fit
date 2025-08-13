@@ -7,6 +7,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { Agent } from "@/app/types/agents"
 import { cn } from "@/lib/utils"
 import { ChatToggle } from "@/app/components/chat/chat-toggle"
+import { truncateAgentName, truncateLeadName } from "@/app/utils/name-utils"
 
 interface ChatHeaderProps {
   agentId: string
@@ -120,8 +121,8 @@ export function ChatHeader({
   
   // Determine what to display on the left side (agent or assignee)
   const leftSideDisplayName = hasAssignee 
-    ? leadData.assignee.name 
-    : (currentAgent?.name || agentName || "Agent")
+    ? truncateAgentName(leadData.assignee.name)
+    : truncateAgentName(currentAgent?.name || agentName || "Agent")
   
   const leftSideAvatar = hasAssignee 
     ? leadData.assignee.avatar_url 
@@ -149,7 +150,7 @@ export function ChatHeader({
         isLead={isLead}
         agentName={leftSideDisplayName}
         agentId={agentId}
-        leadName={isLead ? leadData?.name || "Lead" : "Visitor"}
+        leadName={isLead ? truncateLeadName(leadData?.name || "Lead") : "Visitor"}
         leadId={isLead ? leadData?.id || "" : ""}
         className="absolute top-0 left-0"
       />
@@ -200,7 +201,7 @@ export function ChatHeader({
                     href={`/leads/${leadData.id}`} 
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
                   >
-                    <h2 className="font-medium text-lg">{leadData.name}</h2>
+                    <h2 className="font-medium text-lg">{truncateLeadName(leadData.name)}</h2>
                     <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-amber-500/10 text-amber-600 border-amber-500/20">
                       {leadData.company?.name 
                         ? (leadData.company.name.length > 20 

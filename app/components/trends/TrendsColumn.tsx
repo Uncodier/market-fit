@@ -153,7 +153,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
     }
   }, [currentSiteId, segments]) // Add segments as dependency to reload when site segments change
 
-  const fetchTrends = async () => {
+  const fetchTrends = async (showSuccessToast = false) => {
     setIsLoading(true)
     try {
       // Get enough trends for quality selection in kanban view
@@ -196,7 +196,11 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
         
         console.log(`📊 [TrendsColumn] Final ${sortedTrends.length} trends sorted by relevance`)
         setTrends(sortedTrends)
-        toast.success(`Loaded ${sortedTrends.length} trends successfully`)
+        
+        // Only show success toast if explicitly requested (e.g., on manual refresh)
+        if (showSuccessToast) {
+          toast.success(`Loaded ${sortedTrends.length} trends successfully`)
+        }
       } else {
         console.log("❌ [TrendsColumn] Failed to fetch trends:", result.error)
         toast.error("Failed to fetch trends: " + (result.error || "Unknown error"))
@@ -215,7 +219,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
   }
 
   const handleRefresh = () => {
-    fetchTrends()
+    fetchTrends(true) // Show success toast on manual refresh
   }
 
   const renderTrendsSkeleton = () => (
