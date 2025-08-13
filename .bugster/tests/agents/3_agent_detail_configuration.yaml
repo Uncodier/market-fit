@@ -1,0 +1,14 @@
+# @META:{"id": "65339ea6-618d-46cc-9fbe-7586fa25c466", "last_modified": "2025-08-12T22:53:41.801484+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Agent Detail Configuration
+  page: agents/:id
+  page_path: app/agents/[id]/page.tsx
+  task: Configuring agent settings and tools
+  steps:
+  - Navigate to a specific agent detail page
+  - Toggle several agent tools on and off
+  - Add a description in the description field
+  - Click the Save button
+  - Verify success notification appears
+  - Refresh the page and confirm changes persisted
+  expected_result: Agent settings are saved successfully

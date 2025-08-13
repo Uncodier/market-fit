@@ -28,7 +28,8 @@ import {
   X,
   Key,
   Globe,
-  Trash2
+  Trash2,
+  Bot
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { useAuth } from "@/app/hooks/use-auth"
@@ -41,6 +42,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { useSite } from "@/app/context/SiteContext"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { ApiKeysList } from "@/app/components/api-keys/api-keys-list"
+import { RobotSessionsList } from "@/app/components/security/robot-sessions-list"
 
 // Define MFA factor interface
 interface MfaFactor {
@@ -384,6 +386,10 @@ export default function SecurityPage() {
                 <Key className="h-4 w-4" />
                 API Keys
               </TabsTrigger>
+              <TabsTrigger value="robot_sessions" className="flex items-center gap-2">
+                <Bot className="h-4 w-4" />
+                Robot Sessions
+              </TabsTrigger>
               <TabsTrigger value="allowed_domains" className="flex items-center gap-2">
                 <Globe className="h-4 w-4" />
                 Allowed Domains
@@ -643,11 +649,25 @@ export default function SecurityPage() {
               <CardHeader className="px-8 py-6">
                 <CardTitle className="text-xl font-semibold">API Keys</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
+              <CardContent className="space-y-8 px-8 pb-8 w-full">
                 <div className="text-sm text-muted-foreground">
                   Manage your API keys to interact with our services programmatically. API keys are used to authenticate requests to the API.
                 </div>
                 <ApiKeysList />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="robot_sessions">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Robot Sessions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8 w-full">
+                <div className="text-sm text-muted-foreground">
+                  Manage automation authentication sessions for robots. These sessions store browser authentication data that can be reused across automation instances.
+                </div>
+                <RobotSessionsList />
               </CardContent>
             </Card>
           </TabsContent>
@@ -657,7 +677,7 @@ export default function SecurityPage() {
               <CardHeader className="px-8 py-6">
                 <CardTitle className="text-xl font-semibold">Allowed Domains</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
+              <CardContent className="space-y-8 px-8 pb-8 w-full">
                 <div className="text-sm text-muted-foreground">
                   Configure which domains are allowed to make requests to your API. This helps secure your application by preventing unauthorized access.
                 </div>
@@ -728,7 +748,9 @@ function AllowedDomainsList() {
               </div>
             ))}
           </div>
-          <AddDomainDialog onAddDomain={addDomain} />
+          <div className="w-full">
+            <AddDomainDialog onAddDomain={addDomain} />
+          </div>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center min-h-[400px] w-full">

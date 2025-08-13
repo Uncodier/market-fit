@@ -1,11 +1,13 @@
-name: Lead Management List View
-page: leads
-page_path: app/leads/page.tsx
-task: Viewing and filtering leads
-steps:
-- Navigate to leads page
-- Verify leads table loads with data
-- Use search input to filter leads by name
-- Apply status filter from dropdown
-- Verify filtered results match criteria
-expected_result: Leads should be displayed in a table with filtering options
+# @META:{"id": "aa9378e5-7e7b-4700-808f-b5fec151d186", "last_modified": "2025-08-12T22:53:41.797657+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Lead Management List View
+  page: leads
+  page_path: app/leads/page.tsx
+  task: Viewing and filtering leads
+  steps:
+  - Navigate to leads page
+  - Verify leads table loads with data
+  - Use search input to filter leads by name
+  - Apply status filter from dropdown
+  - Verify filtered results match criteria
+  expected_result: Leads should be displayed in a table with filtering options

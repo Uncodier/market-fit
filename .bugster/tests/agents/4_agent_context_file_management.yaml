@@ -1,0 +1,14 @@
+# @META:{"id": "7d4ae5fb-3a6f-4a22-8f0d-40087681234e", "last_modified": "2025-08-12T22:53:41.800783+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Agent Context File Management
+  page: agents/:id
+  page_path: app/agents/[id]/page.tsx
+  task: Uploading and managing context files for an agent
+  steps:
+  - Navigate to a specific agent detail page
+  - Click on the Context Files tab
+  - Click the Upload File button
+  - Select a file from the file system dialog
+  - Complete the upload dialog with a description
+  - Verify the file appears in the context files list
+  expected_result: Context file is uploaded and appears in the list

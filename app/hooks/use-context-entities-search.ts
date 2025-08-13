@@ -17,6 +17,7 @@ async function getRequirementsForSite(siteId: string, limit: number = 20): Promi
     .from('requirements')
     .select('id, title, description, status, priority, completion_status, created_at')
     .eq('site_id', siteId)
+    .neq('completion_status', 'completed')
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -45,6 +46,7 @@ async function getTasksForSite(siteId: string, limit: number = 20): Promise<Cont
     .from('tasks')
     .select('id, serial_id, title, description, status, type, priority, created_at')
     .eq('site_id', siteId)
+    .not('status', 'in', '(failed,canceled,completed)')
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -120,6 +122,7 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
           .from('content')
           .select('id, title, description, type, status, created_at')
           .eq('site_id', currentSite.id)
+          .neq('status', 'published')
           .order('created_at', { ascending: false })
           .limit(20)
           .then(result => {
@@ -225,7 +228,8 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
           .from('content')
           .select('id, title, description, type, status, created_at')
           .eq('site_id', currentSite.id)
-          .or(`title.ilike.%${query}%,description.ilike.%${query}%,type.ilike.%${query}%,status.ilike.%${query}%`)
+          .neq('status', 'published')
+          .or(`title.ilike.%${query}%,description.ilike.%${query}%,type.ilike.%${query}%`)
           .order('created_at', { ascending: false })
           .limit(50)
           .then(result => {

@@ -1,0 +1,14 @@
+# @META:{"id": "2dc87a14-19fc-45ea-8048-5bef4c627b39", "last_modified": "2025-08-12T22:53:41.811561+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Campaign Status Change
+  page: campaigns/:id
+  page_path: app/campaigns/[id]/page.tsx
+  task: Changing campaign status
+  steps:
+  - Navigate to a specific campaign detail page
+  - Locate the status bar at the top of the page
+  - Click on a different status (Active, Paused, Completed)
+  - Confirm the status change in the dialog
+  - Verify the status updates visually
+  - Refresh the page and verify the status change persisted
+  expected_result: Campaign status updates successfully

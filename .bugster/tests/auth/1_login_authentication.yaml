@@ -1,11 +1,13 @@
-name: Login Authentication
-page: auth
-page_path: app/auth/page.tsx
-task: User authentication with email
-steps:
-- Navigate to the auth page
-- Enter valid email address in the email input field
-- Click the submit button
-- Verify confirmation email is sent
-- Verify user is redirected to dashboard after confirming email
-expected_result: User should be authenticated and redirected to the dashboard
+# @META:{"id": "916668bd-f7c7-4b75-b864-50e6bdf6ec6a", "last_modified": "2025-08-12T22:53:41.793008+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Login Authentication
+  page: auth
+  page_path: app/auth/page.tsx
+  task: User authentication with email
+  steps:
+  - Navigate to the auth page
+  - Enter valid email address in the email input field
+  - Click the submit button
+  - Verify confirmation email is sent
+  - Verify user is redirected to dashboard after confirming email
+  expected_result: User should be authenticated and redirected to the dashboard

@@ -1,11 +1,13 @@
-name: Asset Management
-page: assets
-page_path: app/assets/page.tsx
-task: Viewing and uploading assets
-steps:
-- Navigate to assets page
-- Verify assets load in grid view
-- Click upload button and select file
-- Complete upload process
-- Verify new asset appears in grid
-expected_result: Assets should be displayed with upload option
+# @META:{"id": "5556f2d3-240e-41ac-bd81-b97c46155254", "last_modified": "2025-08-12T22:53:41.816557+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Asset Management
+  page: assets
+  page_path: app/assets/page.tsx
+  task: Viewing and uploading assets
+  steps:
+  - Navigate to assets page
+  - Verify assets load in grid view
+  - Click upload button and select file
+  - Complete upload process
+  - Verify new asset appears in grid
+  expected_result: Assets should be displayed with upload option

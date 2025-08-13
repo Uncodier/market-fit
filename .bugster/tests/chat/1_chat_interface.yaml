@@ -1,11 +1,13 @@
-name: Chat Interface
-page: chat
-page_path: app/chat/page.tsx
-task: Interacting with chat interface
-steps:
-- Navigate to chat page
-- Verify chat interface loads correctly
-- Type message in chat input
-- Send message and verify it appears in chat
-- Verify response is received and displayed
-expected_result: Messages should be sent and received correctly
+# @META:{"id": "4121a69d-9e6b-431b-80d3-f0cb3230fae2", "last_modified": "2025-08-12T22:53:41.789553+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Chat Interface
+  page: chat
+  page_path: app/chat/page.tsx
+  task: Interacting with chat interface
+  steps:
+  - Navigate to chat page
+  - Verify chat interface loads correctly
+  - Type message in chat input
+  - Send message and verify it appears in chat
+  - Verify response is received and displayed
+  expected_result: Messages should be sent and received correctly

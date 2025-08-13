@@ -1,11 +1,13 @@
-name: Task Detail View
-page: control-center/:id
-page_path: app/control-center/[id]/page.tsx
-task: Viewing and updating task details
-steps:
-- Navigate to specific task detail page
-- Verify task details load correctly
-- Change task status using status bar
-- Switch to timeline tab
-- Verify task history is displayed correctly
-expected_result: Task details should be displayed with status update options
+# @META:{"id": "119ca955-3d3d-4ea4-b5ec-c91bcf883d63", "last_modified": "2025-08-12T22:53:41.810314+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Task Detail View
+  page: control-center/:id
+  page_path: app/control-center/[id]/page.tsx
+  task: Viewing and updating task details
+  steps:
+  - Navigate to specific task detail page
+  - Verify task details load correctly
+  - Change task status using status bar
+  - Switch to timeline tab
+  - Verify task history is displayed correctly
+  expected_result: Task details should be displayed with status update options

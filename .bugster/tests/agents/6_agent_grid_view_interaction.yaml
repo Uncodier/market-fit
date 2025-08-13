@@ -1,0 +1,13 @@
+# @META:{"id": "b759669f-0fe1-4289-b8d6-66d20846c05b", "last_modified": "2025-08-12T22:53:41.800026+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Agent Grid View Interaction
+  page: agents
+  page_path: app/agents/page.tsx
+  task: Interacting with different agent view modes
+  steps:
+  - Navigate to the agents page
+  - Toggle between grid and list views using the view selector
+  - Verify agents display correctly in each view mode
+  - Use the search function to filter agents
+  - Verify search results update in real-time
+  expected_result: View mode toggles and displays agents accordingly

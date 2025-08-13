@@ -1,0 +1,14 @@
+# @META:{"id": "6a227d14-e9fe-4a38-b8e9-397bc32f26db", "last_modified": "2025-08-12T22:53:41.818390+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Company Profile Management
+  page: companies/:id
+  page_path: app/companies/[id]/page.tsx
+  task: Updating company profile information
+  steps:
+  - Navigate to a specific company profile page
+  - Edit the company name, website, and description
+  - Update contact information including phone and email
+  - Click the Save button
+  - Verify success notification appears
+  - Refresh the page and verify changes persist
+  expected_result: Company profile updates save successfully

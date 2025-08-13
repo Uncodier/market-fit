@@ -48,12 +48,12 @@ export function ContextLeadItem({ lead, checked, onCheckedChange }: ContextLeadI
           </div>
         )}
       </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-foreground">
+      <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
             {lead.name}
           </h4>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs flex-shrink-0">
             {lead.status}
           </Badge>
         </div>
@@ -95,12 +95,12 @@ export function ContextContentItem({ content, checked, onCheckedChange }: Contex
           </div>
         )}
       </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-foreground">
+      <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
             {content.title}
           </h4>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-shrink-0">
             <Badge variant="outline" className="text-xs">
               {content.type.replace('_', ' ')}
             </Badge>
@@ -144,12 +144,12 @@ export function ContextRequirementItem({ requirement, checked, onCheckedChange }
           </div>
         )}
       </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-foreground">
+      <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
             {requirement.title}
           </h4>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-shrink-0">
             <Badge variant="outline" className="text-xs">
               {requirement.priority}
             </Badge>
@@ -167,18 +167,6 @@ export function ContextRequirementItem({ requirement, checked, onCheckedChange }
 }
 
 export function ContextTaskItem({ task, checked, onCheckedChange }: ContextTaskItemProps) {
-  const getStatusBadgeVariant = (status: string) => {
-    // Always return outline for white badges
-    return 'outline'
-  }
-
-  const getPriorityColor = (priority: number) => {
-    if (priority >= 8) return 'text-red-600'
-    if (priority >= 5) return 'text-orange-600'
-    if (priority >= 3) return 'text-blue-600'
-    return 'text-gray-600'
-  }
-
   return (
     <div 
       className={`flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer border ${
@@ -193,18 +181,15 @@ export function ContextTaskItem({ task, checked, onCheckedChange }: ContextTaskI
           </div>
         )}
       </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-foreground">
+      <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
             {task.serial_id && (
               <span className="text-muted-foreground mr-1">#{task.serial_id}</span>
             )}
             {task.title}
           </h4>
-          <div className="flex gap-1 items-center">
-            <span className={`text-xs font-medium ${getPriorityColor(task.priority)}`}>
-              P{task.priority}
-            </span>
+          <div className="flex gap-1 items-center flex-shrink-0">
             <Badge variant="outline" className="text-xs">
               {task.status.replace('_', ' ')}
             </Badge>
@@ -213,11 +198,6 @@ export function ContextTaskItem({ task, checked, onCheckedChange }: ContextTaskI
         <p className="text-xs text-muted-foreground line-clamp-2">
           {task.description}
         </p>
-        {task.type && (
-          <Badge variant="outline" className="text-xs w-fit">
-            {task.type}
-          </Badge>
-        )}
       </div>
     </div>
   )

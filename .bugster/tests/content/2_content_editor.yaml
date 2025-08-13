@@ -1,11 +1,13 @@
-name: Content Editor
-page: content/:id
-page_path: app/content/[id]/page.tsx
-task: Editing content details and body
-steps:
-- Navigate to content editor for specific item
-- Edit title and description fields
-- Use rich text editor to modify content body
-- Click 'Save Changes' button
-- Verify success notification and saved state
-expected_result: Content changes should be saved and reflected in preview
+# @META:{"id": "8d658665-1580-4f58-8b08-7fd346316a71", "last_modified": "2025-08-12T22:53:41.804835+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Content Editor
+  page: content/:id
+  page_path: app/content/[id]/page.tsx
+  task: Editing content details and body
+  steps:
+  - Navigate to content editor for specific item
+  - Edit title and description fields
+  - Use rich text editor to modify content body
+  - Click 'Save Changes' button
+  - Verify success notification and saved state
+  expected_result: Content changes should be saved and reflected in preview

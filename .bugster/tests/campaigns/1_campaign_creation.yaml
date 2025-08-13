@@ -1,11 +1,13 @@
-name: Campaign Creation
-page: campaigns
-page_path: app/campaigns/page.tsx
-task: Creating a new marketing campaign
-steps:
-- Navigate to campaigns page
-- Click 'Create Campaign' button
-- Fill in campaign name and details in dialog
-- Select target segment from dropdown
-- Submit form and verify new campaign appears in list
-expected_result: New campaign should be created and visible in campaigns list
+# @META:{"id": "f1531667-bc1f-4c8e-892a-782236d4e26c", "last_modified": "2025-08-12T22:53:41.813299+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Campaign Creation
+  page: campaigns
+  page_path: app/campaigns/page.tsx
+  task: Creating a new marketing campaign
+  steps:
+  - Navigate to campaigns page
+  - Click 'Create Campaign' button
+  - Fill in campaign name and details in dialog
+  - Select target segment from dropdown
+  - Submit form and verify new campaign appears in list
+  expected_result: New campaign should be created and visible in campaigns list

@@ -1,11 +1,13 @@
-name: User Profile Management
-page: profile
-page_path: app/profile/page.tsx
-task: Updating user profile information
-steps:
-- Navigate to profile page
-- Verify profile information loads correctly
-- Upload new profile image
-- Update profile fields and preferences
-- Save changes and verify updates are reflected
-expected_result: Profile changes should be saved and reflected immediately
+# @META:{"id": "b37f357d-3bf4-44bf-8281-85551724fe02", "last_modified": "2025-08-12T22:53:41.809652+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: User Profile Management
+  page: profile
+  page_path: app/profile/page.tsx
+  task: Updating user profile information
+  steps:
+  - Navigate to profile page
+  - Verify profile information loads correctly
+  - Upload new profile image
+  - Update profile fields and preferences
+  - Save changes and verify updates are reflected
+  expected_result: Profile changes should be saved and reflected immediately

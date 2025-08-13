@@ -1,0 +1,14 @@
+# @META:{"id": "494cabe8-ae69-434c-8297-6afd69ac9890", "last_modified": "2025-08-12T22:53:41.807868+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Content Filtering and Search
+  page: content
+  page_path: app/content/page.tsx
+  task: Filtering and searching content items
+  steps:
+  - Navigate to the content page
+  - Use the search field to search for specific content
+  - Apply status filters from the filter dropdown
+  - Apply category filters from the filter dropdown
+  - Verify filtered results match the combined criteria
+  - Clear filters and verify all content items return
+  expected_result: Filtered results match applied criteria

@@ -1,0 +1,13 @@
+# @META:{"id": "17b4538b-c6e8-4073-a3ca-1aeeed99c759", "last_modified": "2025-08-12T22:53:41.813900+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Campaign View Type Switching
+  page: campaigns
+  page_path: app/campaigns/page.tsx
+  task: Switching between campaign view types
+  steps:
+  - Navigate to the campaigns page
+  - Toggle between different view types (list, kanban)
+  - Verify campaigns display correctly in each view
+  - Apply status filters and verify filtering works in each view
+  - Switch back to original view
+  expected_result: Campaigns display in the selected view format

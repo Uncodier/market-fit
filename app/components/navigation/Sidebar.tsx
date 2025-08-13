@@ -34,7 +34,6 @@ import { RequirementsBadge, CampaignsBadge } from "./RequirementsBadge"
 import { ChatsBadge } from "./ChatsBadge"
 import { NotificationBadge } from "./NotificationBadge"
 import Link from "next/link"
-import Image from "next/image"
 import { useAuth } from "@/app/hooks/use-auth"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -454,29 +453,23 @@ export function Sidebar({
         "flex items-center h-16 border-b border-border flex-none",
         isCollapsed ? "justify-center px-3" : "justify-center px-6"
       )}>
-        <Image 
+        <img 
           src={isCollapsed ? "/images/logo.png" : "/images/combination_mark.png"}
           alt="Market Fit Logo"
-          width={isCollapsed ? 32 : 120}
-          height={isCollapsed ? 32 : 40}
           className={cn(
             "transition-all duration-200 object-contain",
             isCollapsed ? "h-8 w-8" : "h-10 w-auto",
             "dark:hidden"
           )}
-          priority
         />
-        <Image 
+        <img 
           src={isCollapsed ? "/images/logo.png" : "/images/combination_mark_white.png"}
           alt="Market Fit Logo"
-          width={isCollapsed ? 32 : 120}
-          height={isCollapsed ? 32 : 40}
           className={cn(
             "transition-all duration-200 object-contain",
             isCollapsed ? "h-8 w-8" : "h-10 w-auto",
             "hidden dark:block"
           )}
-          priority
         />
       </Link>
 
@@ -548,7 +541,7 @@ export function Sidebar({
               "flex flex-col space-y-1",
               isCollapsed ? "px-[14px]" : "px-3"
             )}>
-              {automaticItems.filter(item => item.title !== "Robots").map((item) => (
+              {automaticItems.map((item) => (
                 <MenuItem
                   key={item.href}
                   href={item.href}

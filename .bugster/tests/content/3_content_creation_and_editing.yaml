@@ -1,0 +1,14 @@
+# @META:{"id": "7de7cce8-7bdf-47ce-9d35-10ce7286fd22", "last_modified": "2025-08-12T22:53:41.804296+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Content Creation and Editing
+  page: content/:id
+  page_path: app/content/[id]/page.tsx
+  task: Creating and editing content
+  steps:
+  - Navigate to a specific content editor page
+  - Edit the title and description fields
+  - Use the rich text editor to format content body
+  - Add various formatting elements (bold, italic, lists)
+  - Click the Save button
+  - Verify success notification appears
+  expected_result: Content edits are saved successfully

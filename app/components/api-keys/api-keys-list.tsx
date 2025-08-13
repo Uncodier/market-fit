@@ -304,7 +304,9 @@ export function ApiKeysList() {
               />
             ))}
           </div>
-          <CreateKeyDialog onSuccess={loadKeys} />
+          <div className="w-full">
+            <CreateKeyDialog onSuccess={loadKeys} />
+          </div>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center min-h-[400px] w-full">
@@ -313,7 +315,7 @@ export function ApiKeysList() {
             title="No API keys"
             description="Create an API key to start making requests to the API"
           />
-          <div className="mt-6 w-full max-w-sm">
+          <div className="mt-6 w-full">
             <CreateKeyDialog onSuccess={loadKeys} />
           </div>
         </div>

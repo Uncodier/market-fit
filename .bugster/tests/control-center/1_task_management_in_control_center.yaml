@@ -1,11 +1,13 @@
-name: Task Management in Control Center
-page: control-center
-page_path: app/control-center/page.tsx
-task: Viewing and managing tasks
-steps:
-- Navigate to control center page
-- Toggle between different view types (kanban, list)
-- Apply status filter to tasks
-- Create new task using 'Create Task' button
-- Verify new task appears in the selected view
-expected_result: Tasks should be displayed with filtering and view options
+# @META:{"id": "7984035e-1976-40a7-96a6-03bf7cfd82b8", "last_modified": "2025-08-12T22:53:41.810847+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Task Management in Control Center
+  page: control-center
+  page_path: app/control-center/page.tsx
+  task: Viewing and managing tasks
+  steps:
+  - Navigate to control center page
+  - Toggle between different view types (kanban, list)
+  - Apply status filter to tasks
+  - Create new task using 'Create Task' button
+  - Verify new task appears in the selected view
+  expected_result: Tasks should be displayed with filtering and view options

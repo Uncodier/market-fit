@@ -7,6 +7,7 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Settings, Globe } from "@/app/components/ui/icons"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useSite } from "@/app/context/SiteContext"
+import { useRobots } from "@/app/context/RobotsContext"
 import { SimpleMessagesView } from "@/app/components/simple-messages-view"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -46,6 +47,7 @@ function RobotsPageContent() {
   
   const { isLayoutCollapsed } = useLayout()
   const { currentSite } = useSite()
+  const { getActiveRobotForActivity, hasActiveRobotsForActivity, isLoading: isLoadingRobots } = useRobots()
   const searchParams = useSearchParams()
   const router = useRouter()
   
@@ -53,8 +55,7 @@ function RobotsPageContent() {
 
   // Get tab from URL params or default to free-agent
   const activeTab = searchParams.get('tab') || 'free-agent'
-  const [activeRobotInstance, setActiveRobotInstance] = useState<any | null>(null)
-  const [isLoadingRobots, setIsLoadingRobots] = useState(true)
+  const activeRobotInstance = getActiveRobotForActivity(activeTab)
   const [streamUrl, setStreamUrl] = useState<string | null>(null)
 
   // Reconnection states
@@ -65,11 +66,6 @@ function RobotsPageContent() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [showConnectedIndicator, setShowConnectedIndicator] = useState(false)
   
-  // Polling states for robot startup
-  const [isPollingForInstance, setIsPollingForInstance] = useState(false)
-  const [pollingAttempts, setPollingAttempts] = useState(0)
-  const [maxPollingAttempts] = useState(20) // 20 attempts * 3 seconds = 60 seconds max
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const activeTabRef = useRef(activeTab)
 
   // Map tab values to activity names (for robot name matching)
@@ -87,160 +83,7 @@ function RobotsPageContent() {
     return activityMap[tabValue] || tabValue
   }
 
-  // Function to check for active robots for the current tab
-  const checkActiveRobots = useCallback(async () => {
-    console.log('🔄 Robots page: checkActiveRobots called', { currentSite: currentSite?.id, activeTab })
-    
-    if (!currentSite) {
-      setActiveRobotInstance(null)
-      setStreamUrl(null)
-      setIsLoadingRobots(false)
-      console.log('❌ Robots page: No currentSite, exiting checkActiveRobots')
-      return
-    }
-
-    try {
-      setIsLoadingRobots(true)
-      const supabase = createClient()
-      
-      // Get the activity name for the current tab to use as robot name filter
-      const activityName = getActivityName(activeTab)
-      
-      // Find robot with the specific activity name only
-      // Each tab should only show robots for its specific activity
-      const { data, error } = await supabase
-        .from('remote_instances')
-        .select('id, status, instance_type, name, provider_instance_id, cdp_url')
-        .eq('site_id', currentSite.id)
-        .eq('name', activityName)
-        .neq('status', 'stopped')
-        .neq('status', 'error')
-        .limit(1)
-
-      if (error) {
-        console.error('Error checking active robots:', error)
-        setActiveRobotInstance(null)
-        setStreamUrl(null)
-      } else {
-        const instance = data && data.length > 0 ? data[0] : null
-        console.log(`🔍 Robots page: checkActiveRobots result for ${activityName}:`, instance)
-        console.log(`🔍 Robots page: Previous activeRobotInstance:`, activeRobotInstance?.id)
-        
-        setActiveRobotInstance(instance)
-        
-        if (instance) {
-          console.log(`✅ Found active robot for ${activityName}:`, instance)
-          // Check if we need to get/update the stream URL
-          await ensureStreamUrl(instance)
-        } else {
-          console.log(`❌ No active robot found for ${activityName}`)
-          setStreamUrl(null)
-        }
-      }
-    } catch (error) {
-      console.error('Error checking active robots:', error)
-      setActiveRobotInstance(null)
-      setStreamUrl(null)
-    } finally {
-      setIsLoadingRobots(false)
-    }
-  }, [currentSite, activeTab])
-
-  // Function to start polling for successful robot instance
-  const startPollingForInstance = useCallback(() => {
-    console.log('Starting polling for robot instance...')
-    setIsPollingForInstance(true)
-    setPollingAttempts(0)
-    
-    const pollForInstance = async () => {
-      if (!currentSite) {
-        stopPollingForInstance()
-        return
-      }
-
-      try {
-        console.log(`Polling attempt ${pollingAttempts + 1}/${maxPollingAttempts}`)
-        const supabase = createClient()
-        const activityName = getActivityName(activeTab)
-        
-        // First try to find a robot with the specific activity name
-        let { data, error } = await supabase
-          .from('remote_instances')
-          .select('id, status, instance_type, name, provider_instance_id, cdp_url')
-          .eq('site_id', currentSite.id)
-          .eq('name', activityName)
-          .in('status', ['running', 'active', 'failed', 'error'])
-          .limit(1)
-
-        // If no specific robot found and it's free-agent tab, look for any active robot
-        if ((!data || data.length === 0) && activeTab === 'free-agent') {
-          const fallbackQuery = await supabase
-            .from('remote_instances')
-            .select('id, status, instance_type, name, provider_instance_id, cdp_url')
-            .eq('site_id', currentSite.id)
-            .in('status', ['running', 'active', 'failed', 'error'])
-            .limit(1)
-          
-          data = fallbackQuery.data
-          error = fallbackQuery.error
-        }
-
-        if (error) {
-          console.error('Error polling for robot instance:', error)
-        } else if (data && data.length > 0) {
-          const instance = data[0]
-          console.log(`Found instance with status: ${instance.status}`)
-          
-          if (instance.status === 'running' || instance.status === 'active') {
-            // Success! Stop polling and setup the instance
-            console.log('Robot instance started successfully!')
-            stopPollingForInstance()
-            setActiveRobotInstance(instance)
-            await ensureStreamUrl(instance)
-            return
-          } else if (instance.status === 'failed' || instance.status === 'error') {
-            // Failed! Stop polling
-            console.log('Robot instance failed to start')
-            stopPollingForInstance()
-            return
-          }
-        }
-
-        // Continue polling if not found or still pending
-        setPollingAttempts(prev => {
-          const newAttempts = prev + 1
-          if (newAttempts >= maxPollingAttempts) {
-            console.log('Max polling attempts reached, stopping...')
-            stopPollingForInstance()
-            return prev
-          }
-          return newAttempts
-        })
-
-      } catch (error) {
-        console.error('Error during polling:', error)
-        setPollingAttempts(prev => prev + 1)
-      }
-    }
-
-    // Start immediate poll
-    pollForInstance()
-    
-    // Setup interval for subsequent polls
-    pollingIntervalRef.current = setInterval(pollForInstance, 3000)
-  }, [currentSite, activeTab, pollingAttempts, maxPollingAttempts])
-
-  // Function to stop polling
-  const stopPollingForInstance = useCallback(() => {
-    console.log('Stopping polling for robot instance')
-    setIsPollingForInstance(false)
-    setPollingAttempts(0)
-    
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current)
-      pollingIntervalRef.current = null
-    }
-  }, [])
+  // Note: Polling logic removed - RobotsContext handles robot state management
 
   // Function to ensure we have a stream URL for the robot instance
   const ensureStreamUrl = async (instance: any) => {
@@ -370,44 +213,16 @@ function RobotsPageContent() {
       reconnectTimeoutRef.current = null
       setReconnectTimeoutId(null)
     }
+  }, [activeRobotInstance])
 
-    // Stop polling when instance changes (unless we're starting a new one)
-    if (!activeRobotInstance) {
-      stopPollingForInstance()
-    }
-  }, [activeRobotInstance, stopPollingForInstance])
+  // Note: Robot events are now handled by the RobotsContext automatically
+  // No need for manual event listeners here
 
-  // Listen for robot events from TopBarActions
-  useEffect(() => {
-    const handleRobotStopped = (event: CustomEvent) => {
-      console.log('🔔 Robots page: Received robotStopped event:', event.detail)
-      // Force a refresh of the robots page
-      checkActiveRobots()
-    }
-
-    const handleRobotStarted = (event: CustomEvent) => {
-      console.log('🔔 Robots page: Received robotStarted event:', event.detail)
-      // Force a refresh of the robots page
-      checkActiveRobots()
-    }
-
-    window.addEventListener('robotStopped', handleRobotStopped as EventListener)
-    window.addEventListener('robotStarted', handleRobotStarted as EventListener)
-    
-    return () => {
-      window.removeEventListener('robotStopped', handleRobotStopped as EventListener)
-      window.removeEventListener('robotStarted', handleRobotStarted as EventListener)
-    }
-  }, [checkActiveRobots])
-
-  // Cleanup timeouts and polling on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
-      }
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
       }
     }
   }, [])
@@ -428,113 +243,20 @@ function RobotsPageContent() {
     activeTabRef.current = activeTab
   }, [activeTab])
 
-  // Check for active robots when site or tab changes
+  // Update stream URL when active robot changes
   useEffect(() => {
-    checkActiveRobots()
-  }, [currentSite, activeTab])
-
-  // Setup real-time monitoring (separate from checking robots to avoid re-subscription)
-  useEffect(() => {
-    if (currentSite) {
-      const supabase = createClient()
-      
-      const instancesSubscription = supabase
-        .channel(`remote_instances_${currentSite.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'remote_instances',
-            filter: `site_id=eq.${currentSite.id}`
-          },
-          (payload: any) => {
-            console.log('🔄 Robots page: Real-time instance update:', payload)
-            
-            // Get current activity name for filtering - use ref to get fresh value
-            const currentActivityName = getActivityName(activeTabRef.current)
-            console.log(`🔍 Robots page: Current activity name: ${currentActivityName}`)
-            console.log(`🔍 Robots page: Payload new name: ${payload.new?.name}, old name: ${payload.old?.name}`)
-            
-            // Check if this change affects the current tab's activity
-            // Each tab should only respond to changes for its specific activity
-            const isRelevantChange = payload.new?.name === currentActivityName || 
-                                   payload.old?.name === currentActivityName
-            
-            if (isRelevantChange) {
-              console.log(`🎯 Robots page: Instance change detected for ${currentActivityName}, refreshing...`)
-              
-              // Handle different event types
-              if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-                console.log(`📝 Robots page: Processing ${payload.eventType} event for instance:`, payload.new)
-                const instance = payload.new
-                
-                // If instance is stopped or error, clear the stream and stop polling
-                if (instance.status === 'stopped' || instance.status === 'error' || instance.status === 'failed') {
-                  console.log(`🛑 Robots page: Instance ${instance.name} stopped/error/failed, clearing stream`)
-                  console.log(`🛑 Robots page: Previous activeRobotInstance:`, activeRobotInstance?.id)
-                  console.log(`🛑 Robots page: Current streamUrl:`, streamUrl)
-                  
-                  setActiveRobotInstance(null)
-                  setStreamUrl(null)
-                  setConnectionStatus('disconnected')
-                  stopPollingForInstance()
-                  
-                  // Clear any reconnection timeouts
-                  if (reconnectTimeoutRef.current) {
-                    clearTimeout(reconnectTimeoutRef.current)
-                    reconnectTimeoutRef.current = null
-                    setReconnectTimeoutId(null)
-                  }
-                  setReconnectAttempts(0)
-                  
-                  console.log(`✅ Robots page: Robot state cleared for stopped instance`)
-                }
-                // If instance is running/active, setup the stream and stop polling
-                else if (instance.status === 'running' || instance.status === 'active') {
-                  console.log(`Instance ${instance.name} started/active, setting up stream`)
-                  stopPollingForInstance()
-                  setActiveRobotInstance(instance)
-                  ensureStreamUrl(instance)
-                }
-                // If instance is starting/pending, start polling
-                else if (instance.status === 'starting' || instance.status === 'pending' || instance.status === 'initializing') {
-                  console.log(`Instance ${instance.name} is starting, beginning polling`)
-                  setActiveRobotInstance(null) // Clear any existing instance
-                  setStreamUrl(null)
-                  setConnectionStatus('disconnected')
-                  startPollingForInstance()
-                }
-              }
-              // If instance was deleted, clear everything
-              else if (payload.eventType === 'DELETE') {
-                console.log(`Instance deleted, clearing stream`)
-                setActiveRobotInstance(null)
-                setStreamUrl(null)
-                setConnectionStatus('disconnected')
-                stopPollingForInstance()
-                
-                if (reconnectTimeoutRef.current) {
-                  clearTimeout(reconnectTimeoutRef.current)
-                  reconnectTimeoutRef.current = null
-                  setReconnectTimeoutId(null)
-                }
-                setReconnectAttempts(0)
-              }
-            } else {
-              console.log(`⏸️ Robots page: Instance change ignored - not for current activity ${currentActivityName}`)
-            }
-          }
-        )
-        .subscribe()
-
-      // Cleanup subscription on unmount or site change
-      return () => {
-        instancesSubscription.unsubscribe()
-        stopPollingForInstance()
-      }
+    if (activeRobotInstance) {
+      console.log(`✅ Found active robot for ${activeTab}:`, activeRobotInstance)
+      ensureStreamUrl(activeRobotInstance)
+    } else {
+      console.log(`❌ No active robot found for ${activeTab}`)
+      setStreamUrl(null)
+      setConnectionStatus('disconnected')
     }
-  }, [currentSite])
+  }, [activeRobotInstance, activeTab])
+
+  // Note: Real-time monitoring is now handled by RobotsContext
+  // This ensures efficient data sharing across all components
 
   // Function to handle tab change
   const handleTabChange = (newTab: string) => {
@@ -544,15 +266,15 @@ function RobotsPageContent() {
   }
 
   // Debug log to see what's happening
-  console.log('🤖 Robots page render - activeRobotInstance:', activeRobotInstance?.id || 'null', 'isLoadingRobots:', isLoadingRobots, 'isPollingForInstance:', isPollingForInstance)
+  console.log('🤖 Robots page render - activeRobotInstance:', activeRobotInstance?.id || 'null', 'isLoadingRobots:', isLoadingRobots, 'activeTab:', activeTab)
 
   return (
     <div className="flex-1 p-0">
-          <StickyHeader>
-            <div className="px-16 pt-0">
-              <div className="flex items-center gap-4">
+      <StickyHeader>
+        <div className="px-16 pt-0">
+          <div className="flex items-center gap-4">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-                  <TabsList>
+              <TabsList>
                 <TabsTrigger value="free-agent">Free Agent</TabsTrigger>
                 <TabsTrigger value="channel-market-fit">Channel Market Fit</TabsTrigger>
                 <TabsTrigger value="engage">Engage in Social Networks</TabsTrigger>
@@ -561,19 +283,18 @@ function RobotsPageContent() {
                 <TabsTrigger value="publish-ads">Publish Ads</TabsTrigger>
                 <TabsTrigger value="ux-analysis">UX Analysis</TabsTrigger>
                 <TabsTrigger value="build-requirements">Build Requirements</TabsTrigger>
-                  </TabsList>
+              </TabsList>
             </Tabs>
           </div>
         </div>
       </StickyHeader>
       
-      <div className="">
-        <div className="flex h-[calc(100vh-136px)]">
+      <div className="flex h-[calc(100vh-136px)]">
           {/* Web View - 2/3 of available space */}
           <div className="w-2/3 h-full border-r border-border iframe-container">
             <div className="h-full flex flex-col m-0 bg-card">
               <div className="flex-1 p-0 overflow-hidden">
-                {isLoadingRobots || isPollingForInstance ? (
+                {isLoadingRobots ? (
                   <div className="h-full flex flex-col relative">
                     <BrowserSkeleton />
                     
@@ -589,26 +310,12 @@ function RobotsPageContent() {
                           
                           <div className="flex-1">
                             <p className="text-sm font-medium text-foreground">
-                              {isPollingForInstance ? 'Starting Robot Browser...' : 'Loading Robot Session...'}
+                              Loading Robot Session...
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {isPollingForInstance 
-                                ? `Setting up robot instance (${pollingAttempts}/${maxPollingAttempts})` 
-                                : 'Initializing robot components...'
-                              }
+                              Initializing robot components...
                             </p>
                           </div>
-                          
-                          {isPollingForInstance && (
-                            <div className="w-32">
-                              <div className="w-full bg-muted rounded-full h-1.5">
-                                <div 
-                                  className="bg-primary h-1.5 rounded-full transition-all duration-300" 
-                                  style={{ width: `${(pollingAttempts / maxPollingAttempts) * 100}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -724,32 +431,31 @@ function RobotsPageContent() {
             </div>
           </div>
 
-          {/* Messages View - 1/3 of available space */}
-          <div className="w-1/3 h-full messages-area">
-            <div className="h-full flex flex-col m-0 bg-card">
-              <div className="flex-1 p-0 overflow-hidden">
-                {isLoadingRobots || isPollingForInstance ? (
-                  <div className="h-full flex items-center justify-center p-6">
-                    <LoadingSkeleton variant="fullscreen" size="lg" />
-                  </div>
-                ) : !activeRobotInstance ? (
-                  <div className="h-full flex items-center justify-center">
-                    <EmptyCard
-                      icon={<Settings className="h-16 w-16 text-primary/40" />}
-                      title="No active sessions"
-                      description="Robot sessions and communications will appear here when a robot is running."
-                      variant="fancy"
-                      showShadow={false}
-                    />
+        {/* Messages View - 1/3 of available space */}
+        <div className="w-1/3 h-full messages-area">
+          <div className="h-full flex flex-col m-0 bg-card">
+            <div className="flex-1 p-0 overflow-hidden">
+              {isLoadingRobots ? (
+                <div className="h-full flex items-center justify-center p-6">
+                  <LoadingSkeleton variant="fullscreen" size="lg" />
                 </div>
-                              ) : (
-                  <SimpleMessagesView 
-                    className="h-full" 
-                    activeRobotInstance={activeRobotInstance}
+              ) : !activeRobotInstance ? (
+                <div className="h-full flex items-center justify-center">
+                  <EmptyCard
+                    icon={<Settings className="h-16 w-16 text-primary/40" />}
+                    title="No active sessions"
+                    description="Robot sessions and communications will appear here when a robot is running."
+                    variant="fancy"
+                    showShadow={false}
                   />
-                      )}
-                    </div>
-                    </div>
+                </div>
+              ) : (
+                <SimpleMessagesView 
+                  className="h-full" 
+                  activeRobotInstance={activeRobotInstance}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,0 +1,13 @@
+# @META:{"id": "e7d03811-5e9b-4e11-af21-dc5dbfe3e8f8", "last_modified": "2025-08-12T22:53:41.806749+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Content View Mode Toggle
+  page: content
+  page_path: app/content/page.tsx
+  task: Switching between content view modes
+  steps:
+  - Navigate to the content page
+  - Toggle between grid and list views
+  - Verify content items display correctly in each view
+  - Toggle to Kanban view if available
+  - Verify content items are organized by status in Kanban view
+  expected_result: Content displays in selected view mode

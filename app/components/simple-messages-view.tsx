@@ -1,6 +1,6 @@
 "use client"
 
-import { MessageSquare, User, Settings, ChevronRight, ChevronDown, ChevronUp, Clock, CheckCircle, Target, Pencil, Trash2 } from "@/app/components/ui/icons"
+import { MessageSquare, User, Settings, ChevronRight, ChevronDown, ChevronUp, Clock, CheckCircle, Target, Pencil, Trash2, Eye, EyeOff, Code, Zap, LayoutGrid } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect, useRef } from 'react'
 import { contextService, type SelectedContextIds } from '@/app/services/context-service'
 import { useSite } from '@/app/context/SiteContext'
+import { useToast } from '@/app/components/ui/use-toast'
 
 // Mock messages for demonstration
 const mockMessages = [
@@ -69,7 +70,120 @@ interface InstanceLog {
   created_at: string
   tool_name?: string
   tool_result?: any
+  screenshot_base64?: string
+  parent_log_id?: string | null
+  // Support for alternative field names from different data sources
+  toolName?: string
+  tool_results?: any
+  logType?: string
 }
+
+// Structured Output Types
+type EventType = 
+  | 'step_completed'
+  | 'step_failed' 
+  | 'step_canceled'
+  | 'plan_failed'
+  | 'plan_new_required'
+  | 'session_acquired'
+  | 'session_needed'
+  | 'session_saved'
+  | 'user_attention_required';
+
+interface StructuredOutputResponse {
+  event: EventType;
+  step: number;
+  assistant_message: string;
+}
+
+interface StructuredOutputStyle {
+  icon: string;
+  color: string;
+  backgroundColor: string;
+  borderColor: string;
+  label: string;
+  priority: 'success' | 'error' | 'warning' | 'neutral' | 'info';
+}
+
+// Structured Output Styles Configuration
+const StructuredOutputStyles: Record<EventType, StructuredOutputStyle> = {
+  // ✅ Estados de éxito
+  step_completed: {
+    icon: '✅',
+    color: '#2e7d32',
+    backgroundColor: '#e8f5e8',
+    borderColor: '#4caf50',
+    label: 'Step Completed',
+    priority: 'success'
+  },
+  session_saved: {
+    icon: '💾',
+    color: '#1976d2',
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3',
+    label: 'Session Saved',
+    priority: 'success'
+  },
+  session_acquired: {
+    icon: '🔐',
+    color: '#7b1fa2',
+    backgroundColor: '#f3e5f5',
+    borderColor: '#9c27b0',
+    label: 'Session Acquired',
+    priority: 'success'
+  },
+  // ❌ Estados de error
+  step_failed: {
+    icon: '❌',
+    color: '#d32f2f',
+    backgroundColor: '#ffebee',
+    borderColor: '#f44336',
+    label: 'Step Failed',
+    priority: 'error'
+  },
+  plan_failed: {
+    icon: '🔴',
+    color: '#d32f2f',
+    backgroundColor: '#ffebee',
+    borderColor: '#f44336',
+    label: 'Plan Failed',
+    priority: 'error'
+  },
+  // ⚠️ Estados de atención
+  user_attention_required: {
+    icon: '⚠️',
+    color: '#f57c00',
+    backgroundColor: '#fff3e0',
+    borderColor: '#ff9800',
+    label: 'Attention Required',
+    priority: 'warning'
+  },
+  session_needed: {
+    icon: '🔐',
+    color: '#f57c00',
+    backgroundColor: '#fff3e0',
+    borderColor: '#ff9800',
+    label: 'Session Needed',
+    priority: 'warning'
+  },
+  // 🔄 Estados de cambio
+  step_canceled: {
+    icon: '⏸️',
+    color: '#616161',
+    backgroundColor: '#f5f5f5',
+    borderColor: '#9e9e9e',
+    label: 'Step Canceled',
+    priority: 'neutral'
+  },
+  plan_new_required: {
+    icon: '🔄',
+    color: '#1976d2',
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3',
+    label: 'New Plan Required',
+    priority: 'info'
+  }
+};
 
 export interface InstancePlan {
   id: string
@@ -98,6 +212,7 @@ interface PlanStep {
 export function SimpleMessagesView({ className = "", activeRobotInstance }: SimpleMessagesViewProps) {
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
+  const { toast } = useToast()
   const [logs, setLogs] = useState<InstanceLog[]>([])
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
   const [message, setMessage] = useState('')
@@ -134,6 +249,165 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  // Helper function to get tool name from various possible field names
+  const getToolName = (log: InstanceLog): string | null => {
+    return log.tool_name || log.toolName || null
+  }
+
+  // Helper function to get tool result from various possible field names
+  const getToolResult = (log: InstanceLog): any => {
+    return log.tool_result || log.tool_results || null
+  }
+
+  // Helper function to get the appropriate icon for a tool
+  const getToolIcon = (toolName: string): React.ReactElement => {
+    switch (toolName.toLowerCase()) {
+      case 'computer':
+        return <Code className="h-3.5 w-3.5" />
+      case 'structured_output':
+        return <LayoutGrid className="h-3.5 w-3.5" />
+      default:
+        return <Zap className="h-3.5 w-3.5" />
+    }
+  }
+
+  // Helper function to render structured output based on tool_result.output
+  const renderStructuredOutput = (log: InstanceLog): React.ReactElement | null => {
+    const toolResult = getToolResult(log)
+    
+    try {
+      let structuredData: StructuredOutputResponse | null = null
+
+      // Try to parse the output from tool_result.output
+      if (toolResult?.output) {
+        if (typeof toolResult.output === 'string') {
+          structuredData = JSON.parse(toolResult.output)
+        } else {
+          structuredData = toolResult.output
+        }
+      }
+
+      if (!structuredData || !structuredData.event || !StructuredOutputStyles[structuredData.event]) {
+        return null
+      }
+
+      const style = StructuredOutputStyles[structuredData.event]
+
+      return (
+        <div 
+          className="text-xs bg-muted p-3 rounded overflow-x-auto transition-colors"
+          style={{
+            borderLeft: `3px solid ${style.borderColor}`,
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{style.icon}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span 
+                  className="font-medium text-sm"
+                  style={{ color: style.color }}
+                >
+                  {style.label}
+                </span>
+                {structuredData.step && (
+                  <span 
+                    className="text-xs px-2 py-1 rounded"
+                    style={{ 
+                      backgroundColor: style.color + '20',
+                      color: style.color 
+                    }}
+                  >
+                    Step {structuredData.step}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    } catch (error) {
+      console.error('Error parsing structured output:', error)
+      return null
+    }
+  }
+
+  // Helper function to check if a string is a base64 image
+  const isBase64Image = (str: string): boolean => {
+    if (typeof str !== 'string') return false
+    
+    // Check for data URL format
+    if (str.startsWith('data:image/')) return true
+    
+    // Check for plain base64 (common patterns)
+    if (str.length > 100 && /^[A-Za-z0-9+/]*={0,2}$/.test(str)) {
+      // Additional check: base64 strings are typically much longer for images
+      return str.length > 1000
+    }
+    
+    return false
+  }
+
+  // Helper function to ensure proper data URL format
+  const formatBase64Image = (base64: string): string => {
+    if (base64.startsWith('data:image/')) {
+      return base64
+    }
+    // Assume PNG if no format specified
+    return `data:image/png;base64,${base64}`
+  }
+
+  // Helper function to render object with base64 images extracted
+  const renderObjectWithImages = (obj: any, depth: number = 0): React.ReactElement => {
+    if (depth > 3) return <span>...</span> // Prevent infinite recursion
+    
+    if (typeof obj === 'string' && isBase64Image(obj)) {
+      return (
+        <div className="mt-2">
+          <div className="text-xs text-gray-600 mb-1">Screenshot:</div>
+          <img 
+            src={formatBase64Image(obj)} 
+            alt="Screenshot" 
+            className="w-full h-auto rounded border shadow-sm"
+            style={{ maxHeight: '400px' }}
+          />
+        </div>
+      )
+    }
+    
+    if (Array.isArray(obj)) {
+      return (
+        <div>
+          {obj.map((item, index) => (
+            <div key={index} className="mb-2">
+              <div className="text-xs text-gray-500">[{index}]:</div>
+              <div className="ml-2">
+                {renderObjectWithImages(item, depth + 1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    
+    if (obj && typeof obj === 'object') {
+      return (
+        <div>
+          {Object.entries(obj).map(([key, value]) => (
+            <div key={key} className="mb-2">
+              <div className="text-xs text-gray-600 font-medium">{key}:</div>
+              <div className="ml-2">
+                {renderObjectWithImages(value, depth + 1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    
+    return <span className="font-mono text-xs">{JSON.stringify(obj, null, 2)}</span>
   }
 
   // Toggle collapse for system messages
@@ -252,28 +526,122 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
     // Find the step to check if it can be deleted
     const stepToDelete = steps.find(step => step.id === stepId)
     if (!stepToDelete || !canEditOrDeleteStep(stepToDelete)) {
-      console.log('Cannot delete completed step')
+      toast({
+        title: "Cannot delete step",
+        description: "Completed steps cannot be deleted",
+        variant: "destructive"
+      })
       return
     }
 
     try {
       const supabase = createClient()
       
-      // Delete the plan from the database
-      const { error } = await supabase
-        .from('instance_plans')
-        .delete()
-        .eq('id', stepId)
+      // Helper function to check if string is a valid UUID format
+      const isValidUUID = (str: string) => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        return uuidRegex.test(str)
+      }
 
-      if (error) {
-        console.error('Error deleting plan:', error)
-        // Could show a toast notification here
+      // If stepId is a valid UUID, it's likely a plan ID itself
+      if (isValidUUID(stepId)) {
+        // Try to find the plan by ID and delete it entirely
+        const { error } = await supabase
+          .from('instance_plans')
+          .delete()
+          .eq('id', stepId)
+
+        if (error) {
+          console.error('Error deleting plan:', error)
+          toast({
+            title: "Error deleting step",
+            description: error.message || "Failed to delete the step",
+            variant: "destructive"
+          })
+        } else {
+          console.log('Plan deleted successfully')
+          toast({
+            title: "Step deleted",
+            description: "The step has been removed from the plan"
+          })
+        }
       } else {
-        console.log('Plan deleted successfully')
-        // The real-time subscription will handle updating the local state
+        // stepId is not a UUID, so it must be a step within a plan's steps array
+        // Find which plan contains this step
+        const planWithStep = instancePlans.find(plan => {
+          if (plan.steps && Array.isArray(plan.steps)) {
+            return plan.steps.some((step: any) => step.id === stepId)
+          }
+          return false
+        })
+
+        if (!planWithStep) {
+          toast({
+            title: "Error deleting step",
+            description: "Step not found in any plan",
+            variant: "destructive"
+          })
+          return
+        }
+
+        // Remove the step from the plan's steps array
+        const updatedSteps = (planWithStep.steps as any[]).filter((step: any) => step.id !== stepId)
+        
+        // If no steps remain, delete the plan entirely
+        if (updatedSteps.length === 0) {
+          const { error } = await supabase
+            .from('instance_plans')
+            .delete()
+            .eq('id', planWithStep.id)
+
+          if (error) {
+            console.error('Error deleting plan:', error)
+            toast({
+              title: "Error deleting step",
+              description: error.message || "Failed to delete the plan",
+              variant: "destructive"
+            })
+          } else {
+            console.log('Plan deleted successfully (no steps remaining)')
+            toast({
+              title: "Step deleted",
+              description: "The step has been removed from the plan"
+            })
+          }
+        } else {
+          // Update the plan with the modified steps array
+          const { error } = await supabase
+            .from('instance_plans')
+            .update({
+              steps: updatedSteps,
+              steps_total: updatedSteps.length,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', planWithStep.id)
+
+          if (error) {
+            console.error('Error updating plan steps:', error)
+            toast({
+              title: "Error deleting step",
+              description: error.message || "Failed to update the plan",
+              variant: "destructive"
+            })
+          } else {
+            console.log('Step removed from plan successfully')
+            toast({
+              title: "Step deleted",
+              description: "The step has been removed from the plan"
+            })
+          }
+        }
       }
     } catch (error) {
       console.error('Error deleting step:', error)
+      toast({
+        title: "Error deleting step",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      })
     }
   }
 
@@ -626,7 +994,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
       console.log('Building query with instance_id =', instanceId)
       const { data, error, count } = await supabase
         .from('instance_logs')
-        .select('id, log_type, level, message, details, created_at, tool_name, tool_result', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .eq('instance_id', instanceId)
         .order('created_at', { ascending: true })
         
@@ -1012,7 +1380,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
 
 
       {/* Messages list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-full pb-[175px]">
+      <div className="flex-1 overflow-y-auto px-[30px] py-4 space-y-6 max-w-full pb-[175px]">
         {!activeRobotInstance ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             {/* Custom fancy empty card without bubbles */}
@@ -1046,63 +1414,98 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
           </div>
         ) : (
           <>
-            {/* Header with collapse all buttons */}
-            {(logs.some(log => log.log_type === 'system') || 
-              logs.some(log => log.tool_name && ((log.tool_result && Object.keys(log.tool_result).length > 0) || 
-                                                (log.details && Object.keys(log.details).length > 0)))) && (
-              <div className="flex items-center justify-between mb-4 pb-2 border-b border-border">
-                <h4 className="text-sm font-medium text-foreground">
-                  Messages ({logs.length})
-                </h4>
-                <div className="flex items-center gap-2">
-                  {logs.some(log => log.log_type === 'system') && (
-                    <button
-                      onClick={toggleAllSystemMessages}
-                      className="flex items-center gap-1 px-2 py-1 text-xs bg-muted hover:bg-muted/80 text-muted-foreground rounded transition-colors"
-                      title="Toggle all system messages"
-                    >
-                      {logs.filter(log => log.log_type === 'system').every(log => collapsedSystemMessages.has(log.id)) ? (
-                        <>
-                          <ChevronRight className="h-3 w-3" />
-                          Expand System
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-3 w-3" />
-                          Collapse System
-                        </>
-                      )}
-                    </button>
-                  )}
-                  
-                  {logs.some(log => log.tool_name && ((log.tool_result && Object.keys(log.tool_result).length > 0) || 
-                                                     (log.details && Object.keys(log.details).length > 0))) && (
-                    <button
-                      onClick={toggleAllToolDetails}
-                      className="flex items-center gap-1 px-2 py-1 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors"
-                      title="Toggle all tool details"
-                    >
-                      {logs.filter(log => log.tool_name && ((log.tool_result && Object.keys(log.tool_result).length > 0) || 
-                                                           (log.details && Object.keys(log.details).length > 0)))
-                           .every(log => collapsedToolDetails.has(log.id)) ? (
-                        <>
-                          <ChevronRight className="h-3 w-3" />
-                          Expand Tools
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-3 w-3" />
-                          Collapse Tools
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+
             
-            {logs.map((log, index) => (
+            {logs.map((log, index) => {
+              const toolName = getToolName(log)
+              const toolResult = getToolResult(log)
+              
+              // Simple debug for tool_call entries only
+              if (log.log_type === 'tool_call') {
+                console.log('🔧 Tool Call:', {
+                  id: log.id,
+                  resolved_tool_name: toolName,
+                  has_tool_result: !!toolResult,
+                  has_details: !!log.details
+                });
+              }
+              
+              // If this is a tool call with a parent_log_id, render only as gray card section
+              if ((log.log_type === 'tool_call' || log.log_type === 'tool_result') && log.parent_log_id) {
+                // Special handling for structured_output tools
+                if (toolName && toolName.toLowerCase() === 'structured_output') {
+                  const structuredOutput = renderStructuredOutput(log)
+                  if (structuredOutput) {
+                    return (
+                      <div key={log.id} className="space-y-2 max-w-full overflow-hidden">
+                        {structuredOutput}
+                      </div>
+                    )
+                  }
+                }
+
+                // Regular tool call rendering
+                return (
+                  <div key={log.id} className="space-y-2 max-w-full overflow-hidden">
+                    <div 
+                      className="text-xs bg-muted p-3 rounded overflow-x-auto cursor-pointer hover:bg-muted/60 hover:shadow-sm transition-all duration-200 border border-transparent hover:border-muted-foreground/20"
+                      onClick={() => toggleToolDetails(log.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        {getToolIcon(toolName || '')}
+                        <div className="flex-1 min-w-0">
+                          {log.message && (
+                            <div className="text-sm leading-relaxed truncate">
+                              {log.message}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {!collapsedToolDetails.has(log.id) && (
+                        <>
+                          {log.screenshot_base64 && (
+                            <div className="mt-2 text-muted-foreground">
+                              <strong>Screenshot:</strong>
+                              <div className="mt-2">
+                                <img 
+                                  src={formatBase64Image(log.screenshot_base64)} 
+                                  alt="Tool Screenshot" 
+                                  className="w-full h-auto rounded border shadow-sm"
+                                  style={{ maxHeight: '400px' }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {toolResult && Object.keys(toolResult).length > 0 && (
+                            <div className="mt-2 text-muted-foreground">
+                              <strong>Result:</strong> 
+                              <div className="mt-1">
+                                {renderObjectWithImages(toolResult)}
+                              </div>
+                            </div>
+                          )}
+                          {log.details && Object.keys(log.details).length > 0 && (
+                            <div className="mt-3 text-muted-foreground">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Eye className="h-3.5 w-3.5 text-blue-600" />
+                                <strong className="text-sm text-blue-600">Details Overview:</strong>
+                              </div>
+                              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                                {renderObjectWithImages(log.details)}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
               <div key={log.id} className="space-y-4 max-w-full overflow-hidden">
+              
               {log.log_type === "user_action" ? (
                 // User message - styled like visitor messages in chat
                 <div className="flex flex-col w-full items-end group">
@@ -1130,32 +1533,30 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   >
                     <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', maxWidth: '100%' }}>
                       {log.message}
-                      {log.tool_name && (
+                      {toolName && (
                         <div className="mt-2 text-xs bg-muted p-2 rounded overflow-hidden">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span><strong>Tool:</strong> {log.tool_name}</span>
-                              {/* DEBUG: Tool Details Content */}
-                              <span className="text-xs text-red-500 font-mono">
-                                [tool_result: {log.tool_result ? `${Object.keys(log.tool_result).length} keys` : 'null'}, 
-                                 details: {log.details ? `${Object.keys(log.details).length} keys` : 'null'}]
-                              </span>
-                              {((log.tool_result && Object.keys(log.tool_result).length > 0) || 
-                                (log.details && Object.keys(log.details).length > 0)) && (
+                              <span><strong>Tool:</strong> {toolName}</span>
+                              {(toolName && (
+                                (toolResult && Object.keys(toolResult).length > 0) || 
+                                (log.details && Object.keys(log.details).length > 0) ||
+                                log.screenshot_base64
+                              )) && (
                                 <button
                                   onClick={() => toggleToolDetails(log.id)}
-                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-colors"
-                                  title={collapsedToolDetails.has(log.id) ? "Show details" : "Hide details"}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all duration-200 shadow-sm border border-slate-200/50"
+                                  title={collapsedToolDetails.has(log.id) ? "Show details overview" : "Hide details overview"}
                                 >
                                   {collapsedToolDetails.has(log.id) ? (
                                     <>
-                                      <span>Show Details</span>
-                                      <ChevronRight className="h-3 w-3" />
+                                      <Eye className="h-3.5 w-3.5" />
+                                      <span className="font-medium">Overview</span>
                                     </>
                                   ) : (
                                     <>
-                                      <span>Hide Details</span>
-                                      <ChevronDown className="h-3 w-3" />
+                                      <EyeOff className="h-3.5 w-3.5" />
+                                      <span className="font-medium">Hide</span>
                                     </>
                                   )}
                                 </button>
@@ -1165,17 +1566,37 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                           
                           {!collapsedToolDetails.has(log.id) && (
                             <>
-                              {log.tool_result && Object.keys(log.tool_result).length > 0 && (
+                              {log.screenshot_base64 && (
+                                <div className="mt-2 text-muted-foreground">
+                                  <strong>Screenshot:</strong>
+                                  <div className="mt-2">
+                                    <img 
+                                      src={formatBase64Image(log.screenshot_base64)} 
+                                      alt="Tool Screenshot" 
+                                      className="w-full h-auto rounded border shadow-sm"
+                                      style={{ maxHeight: '400px' }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {toolResult && Object.keys(toolResult).length > 0 && (
                                 <div className="mt-2 text-muted-foreground">
                                   <strong>Result:</strong>
-                                  <pre className="mt-1 text-xs overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify(log.tool_result, null, 2)}</pre>
-                        </div>
-                      )}
+                                  <div className="mt-1">
+                                    {renderObjectWithImages(toolResult)}
+                                  </div>
+                                </div>
+                              )}
                               {log.details && Object.keys(log.details).length > 0 && (
-                                <div className="mt-2 text-muted-foreground">
-                                  <strong>Details:</strong>
-                                  <pre className="mt-1 text-xs overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify(log.details, null, 2)}</pre>
-                    </div>
+                                <div className="mt-3 text-muted-foreground">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Eye className="h-3.5 w-3.5 text-blue-600" />
+                                    <strong className="text-sm text-blue-600">Details Overview:</strong>
+                                  </div>
+                                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                                    {renderObjectWithImages(log.details)}
+                                  </div>
+                                </div>
                               )}
                             </>
                           )}
@@ -1250,32 +1671,30 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                     <div className="mr-8 w-full max-w-full">
                       <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', maxWidth: '100%' }}>
                       {log.message}
-                      {log.tool_name && (
+                      {toolName && (
                           <div className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span><strong>Tool:</strong> {log.tool_name}</span>
-                                {/* DEBUG: Tool Details Content */}
-                                <span className="text-xs text-red-500 font-mono">
-                                  [tool_result: {log.tool_result ? `${Object.keys(log.tool_result).length} keys` : 'null'}, 
-                                   details: {log.details ? `${Object.keys(log.details).length} keys` : 'null'}]
-                                </span>
-                                {((log.tool_result && Object.keys(log.tool_result).length > 0) || 
-                                  (log.details && Object.keys(log.details).length > 0)) && (
+                                <span><strong>Tool:</strong> {toolName}</span>
+                                {(toolName && (
+                                  (toolResult && Object.keys(toolResult).length > 0) || 
+                                  (log.details && Object.keys(log.details).length > 0) ||
+                                  log.screenshot_base64
+                                )) && (
                                   <button
                                     onClick={() => toggleToolDetails(log.id)}
-                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-colors"
-                                    title={collapsedToolDetails.has(log.id) ? "Show details" : "Hide details"}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all duration-200 shadow-sm border border-slate-200/50"
+                                    title={collapsedToolDetails.has(log.id) ? "Show details overview" : "Hide details overview"}
                                   >
                                     {collapsedToolDetails.has(log.id) ? (
                                       <>
-                                        <span>Show Details</span>
-                                        <ChevronRight className="h-3 w-3" />
+                                        <Eye className="h-3.5 w-3.5" />
+                                        <span className="font-medium">Overview</span>
                                       </>
                                     ) : (
                                       <>
-                                        <span>Hide Details</span>
-                                        <ChevronDown className="h-3 w-3" />
+                                        <EyeOff className="h-3.5 w-3.5" />
+                                        <span className="font-medium">Hide</span>
                                       </>
                                     )}
                                   </button>
@@ -1283,22 +1702,42 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                               </div>
                             </div>
                             
-                            {!collapsedToolDetails.has(log.id) && (
+                                                        {!collapsedToolDetails.has(log.id) && (
                               <>
-                                {log.tool_result && Object.keys(log.tool_result).length > 0 && (
+                                {log.screenshot_base64 && (
+                                  <div className="mt-2 text-muted-foreground">
+                                    <strong>Screenshot:</strong>
+                                    <div className="mt-2">
+                                      <img 
+                                        src={formatBase64Image(log.screenshot_base64)} 
+                                        alt="Tool Screenshot" 
+                                        className="w-full h-auto rounded border shadow-sm"
+                                        style={{ maxHeight: '400px' }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                {toolResult && Object.keys(toolResult).length > 0 && (
                                   <div className="mt-2 text-muted-foreground">
                                     <strong>Result:</strong> 
-                                    <pre className="mt-1 text-xs overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify(log.tool_result, null, 2)}</pre>
-                        </div>
-                      )}
-                      {log.details && Object.keys(log.details).length > 0 && (
-                                  <div className="mt-2 text-muted-foreground">
-                          <strong>Details:</strong>
-                                    <pre className="mt-1 text-xs overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify(log.details, null, 2)}</pre>
-                        </div>
+                                    <div className="mt-1">
+                                      {renderObjectWithImages(toolResult)}
+                                    </div>
+                                  </div>
+                                )}
+                                {log.details && Object.keys(log.details).length > 0 && (
+                                  <div className="mt-3 text-muted-foreground">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Eye className="h-3.5 w-3.5 text-blue-600" />
+                                      <strong className="text-sm text-blue-600">Details Overview:</strong>
+                                    </div>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                                      {renderObjectWithImages(log.details)}
+                                    </div>
+                                  </div>
                                 )}
                               </>
-                      )}
+                            )}
                     </div>
                         )}
                   </div>
@@ -1316,7 +1755,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                 </div>
               )}
               </div>
-            ))}
+              )
+            })}
             
             {/* Loading indicator when waiting for response */}
             {isWaitingForResponse && (
@@ -1369,7 +1809,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
       {/* Floating Step Indicator - Expandable */}
       {steps.length > 0 && (
         <div className="absolute bottom-[175px] md:bottom-[180px] left-0 right-0 z-[5] transition-all duration-500 ease-in-out">
-          <div className="px-6">
+          <div className="px-[30px]">
             <div className={`backdrop-blur-sm border rounded-lg shadow-lg transition-all duration-500 ${
               areAllStepsCompleted() ? 'bg-green-50/95 border-green-200' : 'bg-background/95 border-border'
             }`} style={{
@@ -1526,7 +1966,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
 
       {/* Message input area - styled exactly like ChatInput */}
       <div className="absolute bottom-4 left-0 right-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20]">
-        <div className="px-6">
+        <div className="px-[30px]">
           <form className="relative" onSubmit={(e) => {
             e.preventDefault()
             handleSendMessage()

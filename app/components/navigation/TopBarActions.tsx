@@ -23,11 +23,13 @@ import { useRouter, usePathname } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { useRobots } from "@/app/context/RobotsContext"
 import { 
   BarChart, 
   PlusCircle, 
   FlaskConical, 
   Download, 
+  Key,
   Users, 
   FileText,
   UploadCloud,
@@ -40,18 +42,21 @@ import { subMonths, format } from "date-fns"
 import { safeReload } from "../../utils/safe-reload"
 import { useSearchParams } from "next/navigation"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { useBillingCheck } from "@/app/hooks/use-billing-check"
+import { UpgradeToStartupButton } from "@/app/components/billing/upgrade-to-startup-button"
 
 
 // Robot Start Button Component
 function RobotStartButton({ currentSite }: { currentSite: any }) {
   const [isStartingRobot, setIsStartingRobot] = useState(false)
   const [isStoppingRobot, setIsStoppingRobot] = useState(false)
-  const [activeRobotInstance, setActiveRobotInstance] = useState<any | null>(null)
-  const [isLoadingRobots, setIsLoadingRobots] = useState(true)
+  const { getActiveRobotForActivity, refreshRobots, isLoading: isLoadingRobots } = useRobots()
+  const { canStartRobot, hasStartupPlan, hasActiveCredits, creditsAvailable } = useBillingCheck()
   const searchParams = useSearchParams()
   
   // Get current tab from URL or default to free-agent
   const activeTab = searchParams.get('tab') || 'free-agent'
+  const activeRobotInstance = getActiveRobotForActivity(activeTab)
   const activeTabRef = useRef(activeTab)
 
   // Map tab values to activity names
@@ -69,130 +74,32 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     return activityMap[tabValue] || tabValue
   }
 
-  // Function to check for active robots for the current tab
-  const checkActiveRobots = async () => {
-    if (!currentSite) {
-      setActiveRobotInstance(null)
-      setIsLoadingRobots(false)
-      return
-    }
-
-    try {
-      setIsLoadingRobots(true)
-      const supabase = createClient()
-      
-      // Get the activity name for the current tab to use as robot name filter
-      const activityName = getActivityName(activeTab)
-      
-      const { data, error } = await supabase
-        .from('remote_instances')
-        .select('id, status, instance_type, name, provider_instance_id')
-        .eq('site_id', currentSite.id)
-        .eq('name', activityName)
-        .neq('status', 'stopped')
-        .neq('status', 'error')
-        .limit(1)
-
-      if (error) {
-        console.error('Error checking active robots:', error)
-        setActiveRobotInstance(null)
-      } else {
-        const instance = data && data.length > 0 ? data[0] : null
-        setActiveRobotInstance(instance)
-        console.log(`Robot instance for ${activityName}:`, instance)
-      }
-    } catch (error) {
-      console.error('Error checking active robots:', error)
-      setActiveRobotInstance(null)
-    } finally {
-      setIsLoadingRobots(false)
-    }
-  }
+  // Note: Robot checking now handled by RobotsContext
 
   // Update activeTab ref when activeTab changes
   useEffect(() => {
     activeTabRef.current = activeTab
   }, [activeTab])
 
-  // Check for active robots when site or tab changes
-  useEffect(() => {
-    checkActiveRobots()
-  }, [currentSite, activeTab])
+  // Note: Robot state monitoring now handled by RobotsContext
 
-  // Setup real-time monitoring (separate from checking robots to avoid re-subscription)
-  useEffect(() => {
-    if (currentSite) {
-      const supabase = createClient()
-      
-      const instancesSubscription = supabase
-        .channel(`remote_instances_${currentSite.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'remote_instances',
-            filter: `site_id=eq.${currentSite.id}`
-          },
-          (payload: any) => {
-            console.log('Start button: Real-time instance update:', payload)
-            
-            // Get current activity name for filtering - use ref to get fresh value
-            const currentActivityName = getActivityName(activeTabRef.current)
-            
-            // Check if this change affects the current tab's activity
-            if (payload.new?.name === currentActivityName || payload.old?.name === currentActivityName) {
-              console.log(`Start button: Instance change detected for ${currentActivityName}`)
-              
-              // Handle different event types
-              if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-                const instance = payload.new
-                
-                // If instance is stopped or error, clear the robot instance and loading states
-                if (instance.status === 'stopped' || instance.status === 'error' || instance.status === 'failed') {
-                  console.log(`Start button: Instance ${instance.name} stopped/error/failed`)
-                  setActiveRobotInstance(null)
-                  setIsStoppingRobot(false) // Clear stopping state
-                  setIsStartingRobot(false) // Clear starting state just in case
-                }
-                // If instance is running/active, update the robot instance and clear loading state
-                else if (instance.status === 'running' || instance.status === 'active') {
-                  console.log(`Start button: Instance ${instance.name} started/active`)
-                  setActiveRobotInstance(instance)
-                  setIsStartingRobot(false) // Clear loading state when robot is ready
-                  
-                  // Emit custom event to notify robots page to refresh
-                  window.dispatchEvent(new CustomEvent('robotStarted', { 
-                    detail: { instanceId: instance.id, instance }
-                  }))
-                }
-                // If instance is starting/pending, just clear the current instance (robots page will handle the details)
-                else if (instance.status === 'starting' || instance.status === 'pending' || instance.status === 'initializing') {
-                  console.log(`Start button: Instance ${instance.name} is starting`)
-                  setActiveRobotInstance(null)
-                }
-              }
-              // If instance was deleted, clear everything
-              else if (payload.eventType === 'DELETE') {
-                console.log(`Start button: Instance deleted`)
-                setActiveRobotInstance(null)
-              }
-            }
-          }
-        )
-        .subscribe()
-
-      // Cleanup subscription on unmount or site change
-      return () => {
-        instancesSubscription.unsubscribe()
-      }
-    }
-  }, [currentSite])
+  // Note: Real-time monitoring now handled by RobotsContext
+  // This component just reacts to context changes
 
   // Function to start robot
   const handleStartRobot = async () => {
     if (!currentSite) {
       toast.error("No site selected")
+      return
+    }
+
+    // Check billing requirements
+    if (!canStartRobot) {
+      if (!hasStartupPlan && !hasActiveCredits) {
+        toast.error("Robot feature requires Startup plan or active credits")
+      } else if (!hasActiveCredits) {
+        toast.error("No credits available to start robot")
+      }
       return
     }
 
@@ -210,8 +117,10 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       if (response.success) {
         toast.success("Robot workflow initiated - setting up browser...")
         
-        // Immediate refresh to check for new instance
-        await checkActiveRobots()
+        // Small delay to allow database to update, then refresh
+        setTimeout(async () => {
+          await refreshRobots()
+        }, 1000)
         
         // Check if robot is already running after the API call
         if (activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)) {
@@ -232,7 +141,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           console.log(`Polling for started robot instance (attempt ${pollAttempts}/${maxPollAttempts})`)
           
           try {
-            await checkActiveRobots()
+            await refreshRobots()
             
             // Check if robot is now running - if so, stop polling and clear loading state
             const activityName = getActivityName(activeTab)
@@ -282,7 +191,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
               // Final refresh attempt
               setTimeout(() => {
                 console.log('Final refresh attempt after robot start')
-                checkActiveRobots()
+                refreshRobots()
               }, 3000)
             }
           } catch (pollError) {
@@ -362,9 +271,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       if (response.success) {
         toast.success("Robot stopped successfully")
         
-        // Immediately clear the robot instance since stop was successful
-        setActiveRobotInstance(null)
-        console.log('✅ Robot stopped successfully, clearing active instance')
+        console.log('✅ Robot stopped successfully')
         
         // Emit custom event to notify robots page to refresh
         window.dispatchEvent(new CustomEvent('robotStopped', { 
@@ -372,7 +279,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
         }))
         
         // Refresh to double-check status
-        await checkActiveRobots()
+        await refreshRobots()
         
         // Setup fallback refresh in case real-time updates fail
         let refreshAttempts = 0
@@ -385,7 +292,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           refreshAttempts++
           console.log(`Refreshing stopped robot status (attempt ${refreshAttempts}/${maxRefreshAttempts})`)
           
-          await checkActiveRobots()
+          await refreshRobots()
           
           // Check if there's still an active robot - if not, stop refreshing
           const activityName = getActivityName(activeTab)
@@ -414,7 +321,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             // Final refresh attempt
             setTimeout(() => {
               console.log('Final refresh attempt after robot stop')
-              checkActiveRobots()
+              refreshRobots()
             }, 3000)
           }
         }
@@ -479,27 +386,111 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     )
   }
 
-  // If there's an active robot instance, show stop button
+  // If there's an active robot instance, show stop button and save auth button
   if (activeRobotInstance) {
+    const handleSaveAuthSession = async () => {
+      if (!activeRobotInstance) {
+        toast.error("No active robot instance to save auth session")
+        return
+      }
+
+      try {
+        const { apiClient } = await import('@/app/services/api-client-service')
+        
+        const response = await apiClient.post('/api/robots/auth', {
+          site_id: currentSite.id,
+          remote_instance_id: activeRobotInstance.id
+        })
+        
+        if (response.success) {
+          toast.success('Auth session saved successfully')
+        } else {
+          // Handle API response errors
+          const errorMessage = response.error?.message || 'Failed to save auth session'
+          console.error('API Error saving auth session:', response.error || response)
+          
+          // Log additional debugging information if available
+          if (response.error?.details) {
+            console.error('Error details:', response.error.details)
+            
+            // If it's a configuration issue, provide more specific guidance
+            if (response.error.details.suggestion) {
+              console.error('Suggestion:', response.error.details.suggestion)
+            }
+          }
+          
+          throw new Error(errorMessage)
+        }
+      } catch (error) {
+        console.error('Error saving auth session:', error)
+        
+        // Provide more specific error messages based on the error type
+        let errorMessage = "Failed to save auth session"
+        
+        if (error instanceof Error) {
+          if (error.message.includes('fetch')) {
+            errorMessage = "Network error - please check your connection and try again"
+          } else if (error.message.includes('timeout')) {
+            errorMessage = "Request timed out - please try again"
+          } else if (error.message.includes('permission') || error.message.includes('unauthorized')) {
+            errorMessage = "Permission denied - please refresh the page and try again"
+          } else if (error.message.includes('not found')) {
+            errorMessage = "Robot instance not found - please try refreshing the page"
+          } else if (error.message && error.message !== 'Unknown error') {
+            errorMessage = error.message
+          }
+        }
+        
+        toast.error(errorMessage)
+      }
+    }
+
     return (
-      <Button 
-        size="default"
-        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-all duration-200"
-        onClick={handleStopRobot}
-        disabled={isStoppingRobot}
-      >
-        {isStoppingRobot ? (
-          <>
-            <LoadingSkeleton variant="button" size="sm" className="text-white" />
-            Stopping...
-          </>
-        ) : (
-          <>
-            <StopCircle className="mr-2 h-4 w-4" />
-            Stop Robot
-          </>
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="secondary" 
+          size="default"
+          className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+          onClick={handleSaveAuthSession}
+        >
+          <Key className="h-4 w-4" />
+          Save Auth Session
+        </Button>
+        <Button 
+          size="default"
+          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-all duration-200"
+          onClick={handleStopRobot}
+          disabled={isStoppingRobot}
+        >
+          {isStoppingRobot ? (
+            <>
+              <LoadingSkeleton variant="button" size="sm" className="text-white" />
+              Stopping...
+            </>
+          ) : (
+            <>
+              <StopCircle className="mr-2 h-4 w-4" />
+              Stop Robot
+            </>
+          )}
+        </Button>
+      </div>
+    )
+  }
+
+  // Check if billing requirements are met
+  if (!canStartRobot) {
+    return (
+      <div className="flex items-center gap-2">
+        <UpgradeToStartupButton
+          className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 transition-all duration-200"
+        />
+        {hasActiveCredits && (
+          <div className="text-xs text-muted-foreground">
+            {creditsAvailable} credits available
+          </div>
         )}
-      </Button>
+      </div>
     )
   }
 

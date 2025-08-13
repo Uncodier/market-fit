@@ -5,6 +5,7 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { LayoutProvider } from '../context/LayoutContext';
 import { SiteProvider } from '../context/SiteContext';
 import { WidgetProvider } from '../context/WidgetContext';
+import { RobotsProvider } from '../context/RobotsContext';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { AuthProvider } from '../components/auth/auth-provider';
 
@@ -18,11 +19,13 @@ export default function Providers({ children }: ProvidersProps) {
       <ThemeProvider>
         <LayoutProvider>
           <SiteProvider>
-            <WidgetProvider>
-              <TooltipProvider>
-                {children}
-              </TooltipProvider>
-            </WidgetProvider>
+            <RobotsProvider>
+              <WidgetProvider>
+                <TooltipProvider>
+                  {children}
+                </TooltipProvider>
+              </WidgetProvider>
+            </RobotsProvider>
           </SiteProvider>
         </LayoutProvider>
       </ThemeProvider>

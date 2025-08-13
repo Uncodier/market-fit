@@ -1,0 +1,14 @@
+# @META:{"id": "df87e522-33dd-4608-9af9-ad43b1767f83", "last_modified": "2025-08-12T22:53:41.788147+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Teleprompter Settings Adjustment
+  page: teleprompter/:id
+  page_path: app/teleprompter/[id]/page.tsx
+  task: Adjusting teleprompter display settings
+  steps:
+  - Navigate to a specific teleprompter session
+  - Click the settings button to open settings panel
+  - Adjust text size, background color, and font settings
+  - Verify changes apply immediately to the display
+  - Close settings panel
+  - Verify settings persist during playback
+  expected_result: Display settings are applied immediately

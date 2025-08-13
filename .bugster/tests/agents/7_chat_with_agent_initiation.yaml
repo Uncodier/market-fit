@@ -1,0 +1,13 @@
+# @META:{"id": "762e6f1c-2909-4168-9cc4-d5f70e40eeb5", "last_modified": "2025-08-12T22:53:41.803448+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Chat with Agent Initiation
+  page: agents
+  page_path: app/agents/page.tsx
+  task: Starting a chat conversation with an agent
+  steps:
+  - Navigate to the agents page
+  - Locate a specific agent in the grid/list view
+  - Click the 'Chat' button on the agent card
+  - Verify redirection to chat interface
+  - Verify selected agent is active in the chat session
+  expected_result: Chat interface opens with the selected agent

@@ -1,11 +1,13 @@
-name: Team Invitation Acceptance
-page: auth/team-invitation
-page_path: app/auth/team-invitation/page.tsx
-task: Accepting a team invitation
-steps:
-- Navigate to team invitation page with valid invitation token
-- Wait for invitation validation
-- Verify invitation details are displayed correctly
-- Click 'Accept Invitation' button
-- Verify success message and dashboard redirect
-expected_result: User should successfully join the team and be redirected to dashboard
+# @META:{"id": "a1532b3f-d91f-43ee-bbc6-0ddf4d2193ef", "last_modified": "2025-08-12T22:53:41.795324+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Team Invitation Acceptance
+  page: auth/team-invitation
+  page_path: app/auth/team-invitation/page.tsx
+  task: Accepting a team invitation
+  steps:
+  - Navigate to team invitation page with valid invitation token
+  - Wait for invitation validation
+  - Verify invitation details are displayed correctly
+  - Click 'Accept Invitation' button
+  - Verify success message and dashboard redirect
+  expected_result: User should successfully join the team and be redirected to dashboard

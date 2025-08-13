@@ -1,0 +1,14 @@
+# @META:{"id": "8c86cbc0-31a3-43ff-8953-9c62158a0f5d", "last_modified": "2025-08-12T22:53:41.788887+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Teleprompter Playback Control
+  page: teleprompter/:id
+  page_path: app/teleprompter/[id]/page.tsx
+  task: Controlling teleprompter playback
+  steps:
+  - Navigate to a specific teleprompter session
+  - Click the play button to start scrolling
+  - Adjust the speed using the slider control
+  - Verify text scrolls at the adjusted speed
+  - Click pause to stop scrolling
+  - Verify text stops scrolling
+  expected_result: Teleprompter text scrolls at adjusted speed

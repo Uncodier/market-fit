@@ -1,11 +1,13 @@
-name: Security Settings Management
-page: security
-page_path: app/security/page.tsx
-task: Managing security settings
-steps:
-- Navigate to security page
-- Verify security settings load correctly
-- Update password in password form
-- Toggle MFA settings
-- Save changes and verify updates are applied
-expected_result: Security settings should be displayed and updatable
+# @META:{"id": "9b5f0cb6-8be2-454c-b3ba-c19dd3959f8f", "last_modified": "2025-08-12T22:53:41.791470+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Security Settings Management
+  page: security
+  page_path: app/security/page.tsx
+  task: Managing security settings
+  steps:
+  - Navigate to security page
+  - Verify security settings load correctly
+  - Update password in password form
+  - Toggle MFA settings
+  - Save changes and verify updates are applied
+  expected_result: Security settings should be displayed and updatable

@@ -1,11 +1,13 @@
-name: Segment Management
-page: segments
-page_path: app/segments/page.tsx
-task: Viewing and creating customer segments
-steps:
-- Navigate to segments page
-- Verify existing segments are displayed
-- Click 'Create Segment' button
-- Fill in segment details in dialog
-- Submit and verify new segment appears in list
-expected_result: Segments should be displayed with creation option
+# @META:{"id": "ecd8968b-432b-4d4d-b05e-d62f4f52809e", "last_modified": "2025-08-12T22:53:41.820103+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Segment Management
+  page: segments
+  page_path: app/segments/page.tsx
+  task: Viewing and creating customer segments
+  steps:
+  - Navigate to segments page
+  - Verify existing segments are displayed
+  - Click 'Create Segment' button
+  - Fill in segment details in dialog
+  - Submit and verify new segment appears in list
+  expected_result: Segments should be displayed with creation option

@@ -1,0 +1,13 @@
+# @META:{"id": "68f389ca-a5a6-4aef-aecf-92a7d44c8f26", "last_modified": "2025-08-12T22:53:41.799261+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Agent Activity Tracking
+  page: agents/:id
+  page_path: app/agents/[id]/page.tsx
+  task: Viewing agent activity history
+  steps:
+  - Navigate to a specific agent detail page
+  - Click on the Activities tab
+  - Verify activity list loads with timestamps
+  - Use the filter options to narrow down activities
+  - Verify filtered results match the selected criteria
+  expected_result: Agent activities display in chronological order

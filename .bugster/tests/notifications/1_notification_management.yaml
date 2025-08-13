@@ -1,11 +1,13 @@
-name: Notification Management
-page: notifications
-page_path: app/notifications/page.tsx
-task: Viewing and managing notifications
-steps:
-- Navigate to notifications page
-- Verify notifications load correctly
-- Use tab filter to view different notification types
-- Click on notification to mark as read
-- Verify notification status updates
-expected_result: Notifications should be displayed with filtering options
+# @META:{"id": "bdd1fb18-3a0d-45db-8c2a-4ce1297ffc13", "last_modified": "2025-08-12T22:53:41.817220+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Notification Management
+  page: notifications
+  page_path: app/notifications/page.tsx
+  task: Viewing and managing notifications
+  steps:
+  - Navigate to notifications page
+  - Verify notifications load correctly
+  - Use tab filter to view different notification types
+  - Click on notification to mark as read
+  - Verify notification status updates
+  expected_result: Notifications should be displayed with filtering options

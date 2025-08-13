@@ -1,11 +1,13 @@
-name: Experiment Detail View
-page: experiments/:id
-page_path: app/experiments/[id]/page.tsx
-task: Viewing and managing experiment details
-steps:
-- Navigate to specific experiment detail page
-- Verify experiment details load correctly
-- Edit experiment content using rich text editor
-- Save changes and verify update
-- Change experiment status and verify update
-expected_result: Experiment details should be displayed with editor and status controls
+# @META:{"id": "a24c70e6-990a-4e7d-80ca-7bf63bb3c2fc", "last_modified": "2025-08-12T22:53:41.796237+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Experiment Detail View
+  page: experiments/:id
+  page_path: app/experiments/[id]/page.tsx
+  task: Viewing and managing experiment details
+  steps:
+  - Navigate to specific experiment detail page
+  - Verify experiment details load correctly
+  - Edit experiment content using rich text editor
+  - Save changes and verify update
+  - Change experiment status and verify update
+  expected_result: Experiment details should be displayed with editor and status controls

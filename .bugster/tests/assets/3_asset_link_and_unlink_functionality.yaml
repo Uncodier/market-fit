@@ -1,0 +1,14 @@
+# @META:{"id": "edc9bd0c-5241-40c0-a913-b0aee751c052", "last_modified": "2025-08-12T22:53:41.816041+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Asset Link and Unlink Functionality
+  page: assets
+  page_path: app/assets/page.tsx
+  task: Linking and unlinking assets to content
+  steps:
+  - Navigate to the assets page
+  - Hover over an asset card to reveal action buttons
+  - Click the link button to attach the asset
+  - Verify link status changes to attached
+  - Click the unlink button
+  - Verify link status changes to detached
+  expected_result: Asset link status toggles successfully

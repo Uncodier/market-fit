@@ -1,0 +1,14 @@
+# @META:{"id": "795e5931-96eb-4aed-8b6e-12ce304101d8", "last_modified": "2025-08-12T22:53:41.806207+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Content Category and Tag Management
+  page: content/:id
+  page_path: app/content/[id]/page.tsx
+  task: Managing content categories and tags
+  steps:
+  - Navigate to a specific content editor page
+  - Change the content category using the dropdown
+  - Add new tags to the content
+  - Remove existing tags
+  - Click Save Changes button
+  - Verify changes are saved and persist on reload
+  expected_result: Categories and tags are updated successfully

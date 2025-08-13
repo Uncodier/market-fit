@@ -1,0 +1,13 @@
+# @META:{"id": "35f83974-44a6-4ed9-b20d-07287f5566f3", "last_modified": "2025-08-12T22:53:41.815347+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Asset Upload and Management
+  page: assets
+  page_path: app/assets/page.tsx
+  task: Uploading and managing digital assets
+  steps:
+  - Navigate to the assets page
+  - Click the upload button
+  - Select a file from the file system dialog
+  - Verify the upload progress indicator displays
+  - Verify the newly uploaded asset appears in the grid
+  expected_result: Asset successfully uploads and appears in the grid view

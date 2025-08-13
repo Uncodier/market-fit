@@ -1,11 +1,13 @@
-name: Dashboard Overview Loading
-page: dashboard
-page_path: app/dashboard/page.tsx
-task: Loading and displaying dashboard metrics
-steps:
-- Navigate to dashboard page
-- Verify date range selector is visible
-- Verify revenue widget loads with data
-- Verify segment distribution chart loads
-- Change date range selection and verify data updates
-expected_result: Dashboard should load with all widgets and data visible
+# @META:{"id": "1c2b643c-025e-40df-8fb6-b36cacf111c7", "last_modified": "2025-08-12T22:53:41.808993+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Dashboard Overview Loading
+  page: dashboard
+  page_path: app/dashboard/page.tsx
+  task: Loading and displaying dashboard metrics
+  steps:
+  - Navigate to dashboard page
+  - Verify date range selector is visible
+  - Verify revenue widget loads with data
+  - Verify segment distribution chart loads
+  - Change date range selection and verify data updates
+  expected_result: Dashboard should load with all widgets and data visible

@@ -1,11 +1,13 @@
-name: Requirement Management
-page: requirements
-page_path: app/requirements/page.tsx
-task: Viewing and filtering requirements
-steps:
-- Navigate to requirements page
-- Verify requirements load correctly
-- Apply status filter from dropdown
-- Use search input to filter by keyword
-- Verify filtered results match criteria
-expected_result: Requirements should be displayed with filtering options
+# @META:{"id": "c08f1020-dbc8-42e7-bc64-7f4bd43158de", "last_modified": "2025-08-12T22:53:41.808425+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Requirement Management
+  page: requirements
+  page_path: app/requirements/page.tsx
+  task: Viewing and filtering requirements
+  steps:
+  - Navigate to requirements page
+  - Verify requirements load correctly
+  - Apply status filter from dropdown
+  - Use search input to filter by keyword
+  - Verify filtered results match criteria
+  expected_result: Requirements should be displayed with filtering options

@@ -1,11 +1,13 @@
-name: Experiment Management
-page: experiments
-page_path: app/experiments/page.tsx
-task: Viewing and creating experiments
-steps:
-- Navigate to experiments page
-- Verify experiment list loads correctly
-- Click 'Create Experiment' button
-- Fill in experiment details in dialog
-- Submit and verify new experiment appears in list
-expected_result: Experiments should be displayed with creation option
+# @META:{"id": "db0a5b4a-abfb-4b4b-926c-77d73cf07880", "last_modified": "2025-08-12T22:53:41.796954+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Experiment Management
+  page: experiments
+  page_path: app/experiments/page.tsx
+  task: Viewing and creating experiments
+  steps:
+  - Navigate to experiments page
+  - Verify experiment list loads correctly
+  - Click 'Create Experiment' button
+  - Fill in experiment details in dialog
+  - Submit and verify new experiment appears in list
+  expected_result: Experiments should be displayed with creation option

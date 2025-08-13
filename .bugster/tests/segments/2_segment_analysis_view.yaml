@@ -1,11 +1,13 @@
-name: Segment Analysis View
-page: segments/:id
-page_path: app/segments/[id]/page.tsx
-task: Viewing detailed segment analysis
-steps:
-- Navigate to specific segment detail page
-- Verify segment details tab loads correctly
-- Switch to analysis tab
-- Verify charts and metrics load with data
-- Switch to ICP tab and verify profile information
-expected_result: Segment details and analysis should be displayed with charts
+# @META:{"id": "c01c71d9-0865-4305-a0b6-7db50ccfa1e5", "last_modified": "2025-08-12T22:53:41.819591+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Segment Analysis View
+  page: segments/:id
+  page_path: app/segments/[id]/page.tsx
+  task: Viewing detailed segment analysis
+  steps:
+  - Navigate to specific segment detail page
+  - Verify segment details tab loads correctly
+  - Switch to analysis tab
+  - Verify charts and metrics load with data
+  - Switch to ICP tab and verify profile information
+  expected_result: Segment details and analysis should be displayed with charts

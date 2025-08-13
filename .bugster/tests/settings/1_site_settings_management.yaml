@@ -1,11 +1,13 @@
-name: Site Settings Management
-page: settings
-page_path: app/settings/page.tsx
-task: Updating site settings
-steps:
-- Navigate to settings page
-- Verify site settings form loads correctly
-- Update site name and details
-- Save changes and verify success message
-- Reload page and verify changes persisted
-expected_result: Site settings should be saved and reflected immediately
+# @META:{"id": "c25c64aa-1fa0-4b66-b914-5d935edd55ed", "last_modified": "2025-08-12T22:53:41.787142+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Site Settings Management
+  page: settings
+  page_path: app/settings/page.tsx
+  task: Updating site settings
+  steps:
+  - Navigate to settings page
+  - Verify site settings form loads correctly
+  - Update site name and details
+  - Save changes and verify success message
+  - Reload page and verify changes persisted
+  expected_result: Site settings should be saved and reflected immediately

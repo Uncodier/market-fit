@@ -1,0 +1,14 @@
+# @META:{"id": "3e808abf-558b-4100-89d9-140ceb9127b5", "last_modified": "2025-08-12T22:53:41.805527+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Deep Research Content Analysis
+  page: content/deepResearch
+  page_path: app/content/deepResearch/page.tsx
+  task: Performing deep research on content topics
+  steps:
+  - Navigate to the Deep Research page
+  - Enter keywords in the search field
+  - Select a time range using the date picker
+  - Click the Search button
+  - Verify research results load and display
+  - Filter results using available filter options
+  expected_result: Research results display based on search criteria

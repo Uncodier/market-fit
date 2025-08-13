@@ -1,0 +1,14 @@
+# @META:{"id": "b6187796-d754-4f6d-a6ea-1cd0e172e609", "last_modified": "2025-08-12T22:53:41.794685+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Team Invitation Process
+  page: auth/team-invitation
+  page_path: app/auth/team-invitation/page.tsx
+  task: Accepting a team invitation
+  steps:
+  - Navigate to team invitation page with a valid invitation token
+  - Verify invitation details display correctly
+  - Click Accept Invitation button
+  - Complete any additional required information
+  - Verify success message appears
+  - Verify redirection to dashboard
+  expected_result: Team invitation is accepted successfully

@@ -265,8 +265,8 @@ export function ConfigurationSection({
       <div 
         ref={settingsSectionRef}
         className={cn(
-          "transition-all duration-300 ease-in-out overflow-hidden", 
-          shouldShowSettingsChildren ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+          "transition-all duration-300 ease-in-out", 
+          shouldShowSettingsChildren ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
         )}
         style={{
           transitionTimingFunction: shouldShowSettingsChildren 
@@ -274,7 +274,7 @@ export function ConfigurationSection({
             : 'cubic-bezier(0.4, 0, 1, 1)'    // ease-in for hiding (faster)
         }}
       >
-        {/* Settings children items */}
+        {/* Settings children items - using exact same pattern as context children */}
         {configItems.slice(1).map((item, index) => {
           const isActive = pathname.startsWith(item.href);
           const isTheme = item.href === "#theme";
@@ -282,20 +282,14 @@ export function ConfigurationSection({
           // Para elementos especiales que no navegarán realmente
           if (isTheme) {
             return (
-              <div 
-                key={`child-${item.href}`}
-                className={cn("relative")}
-              >
+              <div key={`settings-child-${item.href}`} className="relative">
                 <MenuItem
                   href="#"
                   icon={isDarkMode ? Moon : Sun}
                   title={isDarkMode ? "Dark Mode" : "Light Mode"}
                   isActive={false}
                   isCollapsed={isCollapsed}
-                  className={cn(
-                    !isCollapsed ? "ml-3" : "",
-                    "flex items-center"
-                  )}
+                  className={!isCollapsed ? "ml-3" : ""}
                   onClick={(e) => {
                     e.preventDefault();
                     toggleTheme();
@@ -321,10 +315,7 @@ export function ConfigurationSection({
           }
           
           return (
-            <div 
-              key={`child-${item.href}`}
-              className={cn("relative")}
-            >
+            <div key={`settings-child-${item.href}`} className="relative">
               <MenuItem
                 href={item.href}
                 icon={item.icon}

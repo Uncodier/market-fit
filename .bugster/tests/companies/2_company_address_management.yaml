@@ -1,0 +1,14 @@
+# @META:{"id": "cb27b488-9476-41cb-b1cb-0ef156eb5fb3", "last_modified": "2025-08-12T22:53:41.817830+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Company Address Management
+  page: companies/:id
+  page_path: app/companies/[id]/page.tsx
+  task: Managing company address information
+  steps:
+  - Navigate to a specific company profile page
+  - Navigate to the address section
+  - Update street address, city, state, and postal code
+  - Click Save button
+  - Verify changes are saved successfully
+  - Verify address displays correctly in the company profile
+  expected_result: Address information updates successfully

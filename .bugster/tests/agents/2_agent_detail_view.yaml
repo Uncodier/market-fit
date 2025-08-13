@@ -1,11 +1,13 @@
-name: Agent Detail View
-page: agents/:id
-page_path: app/agents/[id]/page.tsx
-task: Viewing and configuring agent details
-steps:
-- Navigate to specific agent detail page
-- Verify agent information loads correctly
-- Toggle agent tools and verify state changes
-- Upload context file for agent
-- Verify file appears in context files list
-expected_result: Agent details should be displayed with configuration options
+# @META:{"id": "869a11b6-47a9-4d23-8a4f-a4089dff3e96", "last_modified": "2025-08-12T22:53:41.802173+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Agent Detail View
+  page: agents/:id
+  page_path: app/agents/[id]/page.tsx
+  task: Viewing and configuring agent details
+  steps:
+  - Navigate to specific agent detail page
+  - Verify agent information loads correctly
+  - Toggle agent tools and verify state changes
+  - Upload context file for agent
+  - Verify file appears in context files list
+  expected_result: Agent details should be displayed with configuration options

@@ -1,11 +1,13 @@
-name: Agent Management
-page: agents
-page_path: app/agents/page.tsx
-task: Viewing and interacting with agents
-steps:
-- Navigate to agents page
-- Verify agents load in grid/list view
-- Click on agent to view details
-- Toggle between different view modes
-- Verify agent activities are displayed
-expected_result: Agents should be displayed with interaction options
+# @META:{"id": "36d4550a-9aca-4b0e-9c5b-58046057bfca", "last_modified": "2025-08-12T22:53:41.802754+00:00"}
+# This comment contains machine-readable metadata that should not be modified
+- name: Agent Management
+  page: agents
+  page_path: app/agents/page.tsx
+  task: Viewing and interacting with agents
+  steps:
+  - Navigate to agents page
+  - Verify agents load in grid/list view
+  - Click on agent to view details
+  - Toggle between different view modes
+  - Verify agent activities are displayed
+  expected_result: Agents should be displayed with interaction options
