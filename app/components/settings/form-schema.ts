@@ -447,6 +447,27 @@ export const siteFormSchema = z.object({
     retention: { metrics: [], actions: [], tactics: [] },
     referral: { metrics: [], actions: [], tactics: [] }
   }),
+
+  // Copywriting Configuration
+  copywriting: z.array(z.object({
+    id: z.string().optional(),
+    title: z.string().min(1, "Title is required"),
+    content: z.string().min(1, "Content is required"),
+    copy_type: z.enum([
+      "tweet", "cold_email", "cold_call", "sales_pitch", "follow_up_email", 
+      "nurture_email", "linkedin_message", "ad_copy", "facebook_ad", "google_ad",
+      "landing_page", "email_subject", "newsletter", "blog_post", "case_study",
+      "testimonial", "tagline", "slogan", "product_description", "call_to_action",
+      "social_post", "instagram_post", "instagram_story", "video_script", 
+      "webinar_script", "press_release", "proposal", "objection_handling", 
+      "faq", "blurb", "other"
+    ]),
+    target_audience: z.string().optional(),
+    use_case: z.string().optional(),
+    notes: z.string().optional(),
+    tags: z.array(z.string()).optional().default([]),
+    status: z.enum(["draft", "review", "approved", "published", "archived"]).optional().default("draft")
+  })).optional().default([]),
 })
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>
@@ -468,6 +489,18 @@ export interface SocialMedia {
   phoneCode?: string
   inviteCode?: string
   channelId?: string
+}
+
+export interface CopywritingItem {
+  id?: string
+  title: string
+  content: string
+  copy_type: 'tweet' | 'cold_email' | 'cold_call' | 'sales_pitch' | 'follow_up_email' | 'nurture_email' | 'linkedin_message' | 'ad_copy' | 'facebook_ad' | 'google_ad' | 'landing_page' | 'email_subject' | 'newsletter' | 'blog_post' | 'case_study' | 'testimonial' | 'tagline' | 'slogan' | 'product_description' | 'call_to_action' | 'social_post' | 'instagram_post' | 'instagram_story' | 'video_script' | 'webinar_script' | 'press_release' | 'proposal' | 'objection_handling' | 'faq' | 'blurb' | 'other'
+  target_audience?: string
+  use_case?: string
+  notes?: string
+  tags?: string[]
+  status?: 'draft' | 'review' | 'approved' | 'published' | 'archived'
 }
 
 export const getFocusModeConfig = (focusMode: number) => {

@@ -11,6 +11,7 @@ import { GeneralSection } from "./GeneralSection"
 import { CompanySection } from "./CompanySection"
 import { BrandingSection } from "./BrandingSection"
 import { MarketingSection } from "./MarketingSection"
+import { CopywritingSection } from "./CopywritingSection"
 import { CustomerJourneySection } from "./CustomerJourneySection"
 import { SocialSection } from "./SocialSection"
 import { BillingSection } from "./BillingSection"
@@ -91,6 +92,7 @@ export function ContextForm({
         b2b2c: false
       },
       focusMode: 50,
+      copywriting: [],
       ...stableInitialData
     }
   });
@@ -116,6 +118,7 @@ export function ContextForm({
         b2b2c: false
       },
       focusMode: 50,
+      copywriting: [],
       ...stableInitialData
     };
     
@@ -253,6 +256,17 @@ export function ContextForm({
 
           {renderCard("marketing",
             <MarketingSection active={true} />
+          )}
+
+          {renderCard("copywriting",
+            <CopywritingSection 
+              active={true} 
+              onSave={async () => {
+                const formData = form.getValues()
+                await onSubmit(formData)
+              }}
+              isSaving={isSaving}
+            />
           )}
 
           {renderCard("customer-journey",

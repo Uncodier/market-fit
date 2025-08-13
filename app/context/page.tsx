@@ -261,6 +261,7 @@ export default function ContextPage() {
                 <TabsTrigger value="company">Company</TabsTrigger>
                 <TabsTrigger value="branding">Branding</TabsTrigger>
                 <TabsTrigger value="marketing">Marketing</TabsTrigger>
+                <TabsTrigger value="copywriting">Copywriting</TabsTrigger>
                 <TabsTrigger value="customer-journey">Customer Journey</TabsTrigger>
                 <TabsTrigger value="social">Social Networks</TabsTrigger>
               </TabsList>
@@ -291,11 +292,12 @@ export default function ContextPage() {
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="flex">
-              <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
-              <TabsTrigger value="branding" className="whitespace-nowrap">Branding</TabsTrigger>
-              <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
-              <TabsTrigger value="customer-journey" className="whitespace-nowrap">Customer Journey</TabsTrigger>
-              <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger>
+                              <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
+                <TabsTrigger value="branding" className="whitespace-nowrap">Branding</TabsTrigger>
+                <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
+                <TabsTrigger value="copywriting" className="whitespace-nowrap">Copywriting</TabsTrigger>
+                <TabsTrigger value="customer-journey" className="whitespace-nowrap">Customer Journey</TabsTrigger>
+                <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="flex items-center gap-2">

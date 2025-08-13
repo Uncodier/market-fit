@@ -395,7 +395,10 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         actions: site.settings?.customer_journey?.referral?.actions || [],
         tactics: site.settings?.customer_journey?.referral?.tactics || []
       }
-    }
+    },
+    
+    // Copywriting data - will be loaded separately in CopywritingSection
+    copywriting: []
   }
   
   console.log("🔍 ADAPT: Final adapted data:", result);

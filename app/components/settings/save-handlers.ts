@@ -3,6 +3,7 @@ import { type SiteFormValues } from "./form-schema"
 import { type Site } from "../../context/SiteContext"
 import { secureTokensService } from "../../services/secure-tokens-service"
 import { createClient } from "@/lib/supabase/client"
+import { copywritingService } from "../../context/copywriting-actions"
 
 interface SaveOptions {
   currentSite: Site
@@ -50,14 +51,14 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       // Extract all the settings fields explicitly to avoid any tracking contamination
       about, company_size, industry, products, services, locations, 
       business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels, 
-      social_media, company, customer_journey
+      social_media, company, customer_journey, copywriting
     } = data;
     
     // Create settingsData object explicitly without any tracking fields
     const settingsData = {
       about, company_size, industry, products, services, locations,
       business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels,
-      social_media, company, customer_journey
+      social_media, company, customer_journey, copywriting
     };
     
     console.log("SAVE 3: Datos extraídos del formulario:", {
@@ -421,6 +422,35 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
     } catch (settingsError) {
       console.error("SAVE ERROR en updateSettings:", settingsError);
       throw settingsError;
+    }
+
+    // Handle copywriting data separately
+    console.log("SAVE 12.1: Processing copywriting data...");
+    if (copywriting && Array.isArray(copywriting)) {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        if (user) {
+          const result = await copywritingService.syncCopywritingItems(
+            currentSite.id, 
+            user.id, 
+            copywriting
+          )
+          
+          if (result.success) {
+            console.log("SAVE 12.2: Copywriting data synced successfully");
+          } else {
+            console.error("SAVE ERROR: Failed to sync copywriting data:", result.error);
+            toast.error(`Failed to save copywriting data: ${result.error}`);
+          }
+        } else {
+          console.error("SAVE ERROR: No user found for copywriting sync");
+        }
+      } catch (copywritingError) {
+        console.error("SAVE ERROR en copywriting sync:", copywritingError);
+        toast.error("Failed to save copywriting data");
+      }
     }
 
     // NOTE: team_members sync is now handled in TeamSection specifically
