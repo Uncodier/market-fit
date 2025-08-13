@@ -483,7 +483,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     return (
       <div className="flex items-center gap-2">
         <UpgradeToStartupButton
-          className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 transition-all duration-200"
+          className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-all duration-200"
         />
         {hasActiveCredits && (
           <div className="text-xs text-muted-foreground">

@@ -6,7 +6,7 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
 import { billingService } from "@/app/services/billing-service"
 import { toast } from "sonner"
-import { ArrowUpCircle } from "@/app/components/ui/icons"
+import { TrendingUp } from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 
 interface UpgradeToStartupButtonProps {
@@ -72,7 +72,7 @@ export function UpgradeToStartupButton({
         children
       ) : (
         <>
-          <ArrowUpCircle className="mr-2 h-4 w-4" />
+          <TrendingUp className="mr-2 h-4 w-4" />
           Upgrade to Startup
         </>
       )}
