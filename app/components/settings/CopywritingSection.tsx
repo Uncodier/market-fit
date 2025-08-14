@@ -501,7 +501,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
       </CardContent>
       
       {/* Card Footer with Save Button */}
-      <CardFooter className="px-8 py-6 bg-gray-50/50 border-t">
+      <CardFooter className="px-8 py-6 bg-muted/30 border-t">
         <div className="flex items-center justify-between w-full">
                         <div className="text-sm text-muted-foreground">
                 {copywritingList.length > 0 && (
