@@ -482,7 +482,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
     
     try {
-      if (!isInitialized) setIsLoading(true)
+      // Always set loading to true when starting to load sites, regardless of initialization status
+      setIsLoading(true)
       setError(null)
       
       console.log("Getting user session...")
@@ -757,31 +758,36 @@ export function SiteProvider({ children }: SiteProviderProps) {
 
   // Redirect to /create-site if user has no sites
   useEffect(() => {
-    // Only redirect if:
-    // 1. Component is mounted and initialized
-    // 2. Not currently loading
-    // 3. No sites available
-    // 4. Not already on create-site page or auth pages
-    // 5. User has a session (authenticated)
-    if (
-      isMounted && 
-      isInitialized && 
-      !isLoading && 
-      sites.length === 0 && 
-      !pathname.startsWith('/create-site') && 
-      !pathname.startsWith('/auth/') &&
-      supabaseRef.current
-    ) {
-      // Check if user is authenticated before redirecting
-      supabaseRef.current.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
-        if (session) {
-          console.log("No sites found for authenticated user, redirecting to /create-site")
-          router.push('/create-site')
-        }
-      }).catch((error: any) => {
-        console.error("Error checking session for redirect:", error)
-      })
-    }
+    // Add a small delay to ensure all state updates are complete
+    const redirectTimer = setTimeout(() => {
+      // Only redirect if:
+      // 1. Component is mounted and fully initialized
+      // 2. Not currently loading sites
+      // 3. No sites available
+      // 4. Not already on create-site page or auth pages
+      // 5. User has a session (authenticated)
+      if (
+        isMounted && 
+        isInitialized && 
+        !isLoading && 
+        sites.length === 0 && 
+        !pathname.startsWith('/create-site') && 
+        !pathname.startsWith('/auth/') &&
+        supabaseRef.current
+      ) {
+        // Double-check if user is authenticated before redirecting
+        supabaseRef.current.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
+          if (session) {
+            console.log("No sites found for authenticated user, redirecting to /create-site")
+            router.push('/create-site')
+          }
+        }).catch((error: any) => {
+          console.error("Error checking session for redirect:", error)
+        })
+      }
+    }, 100) // Small delay to ensure state consistency
+
+    return () => clearTimeout(redirectTimer)
   }, [isMounted, isInitialized, isLoading, sites.length, pathname, router])
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
@@ -925,7 +931,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   retention: { metrics: [], actions: [], tactics: [] },
                   referral: { metrics: [], actions: [], tactics: [] }
                 }),
-                focus_mode: settingsData.focus_mode || 50,
                 business_model: (() => {
                   console.log("SITE CONTEXT: Raw settingsData.business_model from DB:", settingsData.business_model);
                   const parsed = parseJsonField(settingsData.business_model, { b2b: false, b2c: false, b2b2c: false });

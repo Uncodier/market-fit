@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { useSite } from "../context/SiteContext"
 import { SiteOnboarding } from "../components/onboarding/site-onboarding"
@@ -12,9 +12,29 @@ export default function CreateSitePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [createdSiteId, setCreatedSiteId] = useState<string>("")
-  const { createSite, setCurrentSite, sites } = useSite()
+  const { createSite, setCurrentSite, sites, isLoading: sitesLoading } = useSite()
   const { user } = useAuth()
   const router = useRouter()
+
+  // Redirect to dashboard if user already has sites (after loading completes)
+  useEffect(() => {
+    if (!sitesLoading && sites.length > 0) {
+      console.log("User already has sites, redirecting to dashboard")
+      router.push('/dashboard')
+    }
+  }, [sitesLoading, sites.length, router])
+
+  // Don't render onboarding if still loading sites or if user already has sites
+  if (sitesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your sites...</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleComplete = async (data: any) => {
     try {

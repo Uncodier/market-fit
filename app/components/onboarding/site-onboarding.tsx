@@ -93,7 +93,7 @@ export function SiteOnboarding({
   const [expandedBusinessHours, setExpandedBusinessHours] = useState<Set<number>>(new Set())
   const [stepErrors, setStepErrors] = useState<Set<number>>(new Set())
   const [hasValidated, setHasValidated] = useState(false)
-  const { sites } = useSite()
+  const { sites, isLoading: sitesLoading } = useSite()
   const router = useRouter()
 
   // Move to step 8 when project is successfully created
