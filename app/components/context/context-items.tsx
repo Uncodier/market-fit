@@ -4,7 +4,8 @@ import {
   ContextLead, 
   ContextContent, 
   ContextRequirement, 
-  ContextTask 
+  ContextTask,
+  ContextCampaign
 } from "@/app/services/context-entities.service"
 
 interface BaseContextItemProps {
@@ -26,6 +27,10 @@ interface ContextRequirementItemProps extends BaseContextItemProps {
 
 interface ContextTaskItemProps extends BaseContextItemProps {
   task: ContextTask
+}
+
+interface ContextCampaignItemProps extends BaseContextItemProps {
+  campaign: ContextCampaign
 }
 
 export function ContextLeadItem({ lead, checked, onCheckedChange }: ContextLeadItemProps) {
@@ -197,6 +202,46 @@ export function ContextTaskItem({ task, checked, onCheckedChange }: ContextTaskI
         </div>
         <p className="text-xs text-muted-foreground line-clamp-2">
           {task.description}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export function ContextCampaignItem({ campaign, checked, onCheckedChange }: ContextCampaignItemProps) {
+  return (
+    <div 
+      className={`flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer border ${
+        checked ? 'bg-primary/5 border-primary/20' : 'border-transparent'
+      }`}
+      onClick={() => onCheckedChange(!checked)}
+    >
+      <div className="flex items-center justify-center w-5 h-5 mt-0.5">
+        {checked && (
+          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+            <Check className="h-3 w-3 text-primary-foreground" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
+            {campaign.title}
+          </h4>
+          <div className="flex gap-1 flex-shrink-0">
+            <Badge variant="outline" className="text-xs">
+              {campaign.priority}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {campaign.status}
+            </Badge>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {campaign.description}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Type: {campaign.type}
         </p>
       </div>
     </div>

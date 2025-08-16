@@ -253,36 +253,60 @@ export interface Database {
       conversations: {
         Row: {
           id: string
-          title: string
-          agent_id: string
-          site_id: string
-          user_id: string
+          visitor_id: string | null
+          agent_id: string | null
+          user_id: string | null
+          lead_id: string | null
+          site_id: string | null
+          status: string | null
+          title: string | null
+          custom_data: Json | null
           created_at: string
           updated_at: string
           last_message_at: string | null
           is_archived: boolean
+          command_id: string | null
+          flag: number | null
+          delegate_id: string | null
+          channel: string | null
         }
         Insert: {
           id?: string
-          title: string
-          agent_id: string
-          site_id: string
-          user_id: string
+          visitor_id?: string | null
+          agent_id?: string | null
+          user_id?: string | null
+          lead_id?: string | null
+          site_id?: string | null
+          status?: string | null
+          title?: string | null
+          custom_data?: Json | null
           created_at?: string
           updated_at?: string
           last_message_at?: string | null
           is_archived?: boolean
+          command_id?: string | null
+          flag?: number | null
+          delegate_id?: string | null
+          channel?: string | null
         }
         Update: {
           id?: string
-          title?: string
-          agent_id?: string
-          site_id?: string
-          user_id?: string
+          visitor_id?: string | null
+          agent_id?: string | null
+          user_id?: string | null
+          lead_id?: string | null
+          site_id?: string | null
+          status?: string | null
+          title?: string | null
+          custom_data?: Json | null
           created_at?: string
           updated_at?: string
           last_message_at?: string | null
           is_archived?: boolean
+          command_id?: string | null
+          flag?: number | null
+          delegate_id?: string | null
+          channel?: string | null
         }
       }
       messages: {

@@ -1190,7 +1190,7 @@ function RequirementDetailContent() {
                     onValueChange={(value: RequirementStatusType) => {
                       handleUpdateStatus(value)
                     }}
-                    disabled={editForm.completionStatus !== COMPLETION_STATUS.PENDING || isSaving}
+                    disabled={isSaving}
                   >
                     <SelectTrigger className={`h-11 w-full ${getStatusColor(editForm.status)}`}>
                       <SelectValue placeholder="Select status">
@@ -1249,7 +1249,7 @@ function RequirementDetailContent() {
                     onValueChange={(value: "high" | "medium" | "low") => {
                       handleUpdatePriority(value)
                     }}
-                    disabled={editForm.completionStatus !== COMPLETION_STATUS.PENDING || isSaving}
+                    disabled={isSaving}
                   >
                     <SelectTrigger className={`h-11 w-full ${getPriorityColor(editForm.priority)}`}>
                       <SelectValue placeholder="Select priority">

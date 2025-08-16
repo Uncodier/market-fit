@@ -4,10 +4,12 @@ import { useState, useEffect, Suspense, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe } from "@/app/components/ui/icons"
+import { Settings, Globe, Target } from "@/app/components/ui/icons"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useRobots } from "@/app/context/RobotsContext"
+import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
+import type { Campaign } from "@/app/types"
 import { SimpleMessagesView } from "@/app/components/simple-messages-view"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -50,6 +52,10 @@ function RobotsPageContent() {
   const { getActiveRobotForActivity, hasActiveRobotsForActivity, isLoading: isLoadingRobots } = useRobots()
   const searchParams = useSearchParams()
   const router = useRouter()
+  
+  // Campaign state
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false)
   
   console.log('🚀 Hooks loaded, currentSite:', currentSite?.id || 'null')
 
@@ -243,6 +249,31 @@ function RobotsPageContent() {
     activeTabRef.current = activeTab
   }, [activeTab])
 
+  // Fetch campaigns for campaigns tab
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      if (activeTab === 'campaigns' && currentSite?.id) {
+        setIsLoadingCampaigns(true)
+        try {
+          const result = await getCampaigns(currentSite.id)
+          if (result.data && !result.error) {
+            // Filter out completed campaigns - we only want active and pending
+            const nonCompletedCampaigns = result.data.filter(campaign => 
+              campaign.status !== 'completed'
+            )
+            setCampaigns(nonCompletedCampaigns)
+          }
+        } catch (error) {
+          console.error('Error fetching campaigns:', error)
+        } finally {
+          setIsLoadingCampaigns(false)
+        }
+      }
+    }
+
+    fetchCampaigns()
+  }, [activeTab, currentSite?.id])
+
   // Update stream URL when active robot changes
   useEffect(() => {
     if (activeRobotInstance) {
@@ -283,6 +314,7 @@ function RobotsPageContent() {
                 <TabsTrigger value="publish-ads">Publish Ads</TabsTrigger>
                 <TabsTrigger value="ux-analysis">UX Analysis</TabsTrigger>
                 <TabsTrigger value="build-requirements">Build Requirements</TabsTrigger>
+                <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -290,11 +322,82 @@ function RobotsPageContent() {
       </StickyHeader>
       
       <div className="flex h-[calc(100vh-136px)]">
-          {/* Web View - 2/3 of available space */}
-          <div className="w-2/3 h-full border-r border-border iframe-container">
+        {/* For campaigns tab, show full-width content */}
+        {activeTab === 'campaigns' ? (
+          <div className="w-full h-full">
             <div className="h-full flex flex-col m-0 bg-card">
-              <div className="flex-1 p-0 overflow-hidden">
-                {isLoadingRobots ? (
+              <div className="flex-1 p-8 overflow-auto">
+                {isLoadingCampaigns ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Loading campaigns...</p>
+                    </div>
+                  </div>
+                ) : campaigns.length === 0 ? (
+                  <div className="h-full flex items-center justify-center">
+                    <EmptyState
+                      icon={<Target className="h-16 w-16 text-primary/40" />}
+                      title="No active campaigns"
+                      description="Create campaigns to see them appear here. Only active and pending campaigns are shown."
+                      variant="fancy"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {campaigns.map((campaign) => (
+                        <div
+                          key={campaign.id}
+                          className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => router.push(`/campaigns/${campaign.id}`)}
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <h3 className="font-semibold text-lg line-clamp-2">{campaign.title}</h3>
+                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              campaign.status === 'active' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {campaign.status}
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                            {campaign.description}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-muted-foreground">
+                              {campaign.type}
+                            </div>
+                            <div className={`px-2 py-1 rounded text-xs font-medium ${
+                              campaign.priority === 'high' 
+                                ? 'bg-red-100 text-red-800'
+                                : campaign.priority === 'medium'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {campaign.priority}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Web View - 2/3 of available space */}
+            <div className="w-2/3 h-full border-r border-border iframe-container">
+              <div className="h-full flex flex-col m-0 bg-card">
+                <div className="flex-1 p-0 overflow-hidden">
+                  {isLoadingRobots ? (
                   <div className="h-full flex flex-col relative">
                     <BrowserSkeleton />
                     
@@ -426,38 +529,40 @@ function RobotsPageContent() {
                       </div>
                     </div>
                   </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-        {/* Messages View - 1/3 of available space */}
-        <div className="w-1/3 h-full messages-area">
-          <div className="h-full flex flex-col m-0 bg-card">
-            <div className="flex-1 p-0 overflow-hidden">
-              {isLoadingRobots ? (
-                <div className="h-full flex items-center justify-center p-6">
-                  <LoadingSkeleton variant="fullscreen" size="lg" />
+            {/* Messages View - 1/3 of available space */}
+            <div className="w-1/3 h-full messages-area">
+              <div className="h-full flex flex-col m-0 bg-card">
+                <div className="flex-1 p-0 overflow-hidden">
+                  {isLoadingRobots ? (
+                    <div className="h-full flex items-center justify-center p-6">
+                      <LoadingSkeleton variant="fullscreen" size="lg" />
+                    </div>
+                  ) : !activeRobotInstance ? (
+                    <div className="h-full flex items-center justify-center">
+                      <EmptyCard
+                        icon={<Settings className="h-16 w-16 text-primary/40" />}
+                        title="No active sessions"
+                        description="Robot sessions and communications will appear here when a robot is running."
+                        variant="fancy"
+                        showShadow={false}
+                      />
+                    </div>
+                  ) : (
+                    <SimpleMessagesView 
+                      className="h-full" 
+                      activeRobotInstance={activeRobotInstance}
+                    />
+                  )}
                 </div>
-              ) : !activeRobotInstance ? (
-                <div className="h-full flex items-center justify-center">
-                  <EmptyCard
-                    icon={<Settings className="h-16 w-16 text-primary/40" />}
-                    title="No active sessions"
-                    description="Robot sessions and communications will appear here when a robot is running."
-                    variant="fancy"
-                    showShadow={false}
-                  />
-                </div>
-              ) : (
-                <SimpleMessagesView 
-                  className="h-full" 
-                  activeRobotInstance={activeRobotInstance}
-                />
-              )}
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   )

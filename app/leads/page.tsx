@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/ta
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
-import { getLeads, createLead, updateLead } from "./actions"
+import { getLeads, createLead, updateLead, deleteLead } from "./actions"
 import { CreateLeadDialog } from "@/app/components/create-lead-dialog"
 import { toast } from "sonner"
 import { getSegments } from "@/app/segments/actions"
@@ -914,7 +914,13 @@ export default function LeadsPage() {
   }
 
   // Función para actualizar un lead localmente
-  const handleUpdateLead = (leadId: string, updates: Partial<Lead>) => {
+  const handleUpdateLead = (leadId: string, updates: Partial<Lead> & { invalidated?: boolean }) => {
+    // Si el lead fue invalidado, removerlo completamente del estado
+    if (updates.invalidated) {
+      setDbLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId))
+      return
+    }
+    
     setDbLeads(prevLeads => 
       prevLeads.map(lead => 
         lead.id === leadId 
@@ -922,6 +928,26 @@ export default function LeadsPage() {
           : lead
       )
     )
+  }
+
+  // Función para eliminar un lead
+  const handleDeleteLead = async (leadId: string) => {
+    try {
+      const result = await deleteLead(leadId)
+      
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      
+      // Remover el lead del estado local
+      setDbLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId))
+      
+      toast.success("Lead deleted successfully")
+    } catch (error) {
+      console.error("Error deleting lead:", error)
+      toast.error("Error deleting lead")
+    }
   }
 
   // Función para manejar cambios en el buscador
@@ -1135,6 +1161,7 @@ export default function LeadsPage() {
                       forceReload={forceReload}
                       invalidateJourneyStageCache={invalidateJourneyStageCache}
                       onUpdateLead={handleUpdateLead}
+                      onDeleteLead={handleDeleteLead}
                       userData={userData}
                         onToggleCompanyExpansion={handleToggleCompanyExpansion}
                       segments={segments}

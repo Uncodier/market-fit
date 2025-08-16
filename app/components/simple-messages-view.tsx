@@ -8,6 +8,7 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { MessagesSkeleton } from "@/app/components/skeletons/messages-skeleton"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { OptimizedTextarea } from "@/app/components/ui/optimized-textarea"
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import { useState, useEffect, useRef } from 'react'
 import { contextService, type SelectedContextIds } from '@/app/services/context-service'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
+import { useOptimizedMessageState } from '@/app/hooks/useOptimizedMessageState'
 
 // Mock messages for demonstration
 const mockMessages = [
@@ -198,6 +200,8 @@ export interface InstancePlan {
   steps_total: number
   priority: number
   created_at: string
+  updated_at?: string
+  completed_at?: string
   steps?: any // Contains the steps for the plan
 }
 
@@ -215,16 +219,20 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
   const { toast } = useToast()
   const [logs, setLogs] = useState<InstanceLog[]>([])
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
-  const [message, setMessage] = useState('')
+  const { message, setMessage, messageRef, handleMessageChange, clearMessage, textareaRef } = useOptimizedMessageState()
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const [collapsedSystemMessages, setCollapsedSystemMessages] = useState<Set<string>>(new Set())
   const [collapsedToolDetails, setCollapsedToolDetails] = useState<Set<string>>(new Set())
   const [isStepIndicatorExpanded, setIsStepIndicatorExpanded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
+  // Ref to track current robot instance ID to prevent unnecessary reloads
+  const currentRobotInstanceIdRef = useRef<string | null>(null)
+  
   // Steps management state - loaded from database
   const [steps, setSteps] = useState<PlanStep[]>([])
   const [instancePlans, setInstancePlans] = useState<InstancePlan[]>([])
+  const [completedPlans, setCompletedPlans] = useState<InstancePlan[]>([]) // For context/history
   const [isLoadingPlans, setIsLoadingPlans] = useState(false)
   
   // Modal state
@@ -235,13 +243,18 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
   
   // Loading/response state
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false)
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
+  const [recentUserMessageIds, setRecentUserMessageIds] = useState<Set<string>>(new Set())
+  const [waitingForMessageId, setWaitingForMessageId] = useState<string | null>(null)
+  const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // Context selection state
   const [selectedContext, setSelectedContext] = useState<SelectedContextIds>({
     leads: [],
     contents: [],
     requirements: [],
-    tasks: []
+    tasks: [],
+    campaigns: []
   })
   
   const formatTime = (date: Date) => {
@@ -249,6 +262,22 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  // Helper function to remove duplicate steps
+  const removeDuplicateSteps = (steps: PlanStep[]): PlanStep[] => {
+    const seen = new Set<string>()
+    const uniqueSteps = steps.filter(step => {
+      if (seen.has(step.id)) {
+        console.warn(`🚨 Removing duplicate step with ID: ${step.id}, title: ${step.title}`)
+        return false
+      }
+      seen.add(step.id)
+      return true
+    })
+    
+    // Re-order the steps to ensure consistent ordering
+    return uniqueSteps.sort((a, b) => a.order - b.order)
   }
 
   // Helper function to get tool name from various possible field names
@@ -695,7 +724,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
 
   // Mark all instance plans as completed when all steps are done
   const markAllInstancePlansCompleted = async () => {
-    if (!activeRobotInstance?.id) return
+    if (!activeRobotInstance?.id || !currentSite?.id) return
 
     try {
       const supabase = createClient()
@@ -715,26 +744,103 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
         console.error('Error marking instance plans as completed:', error)
       } else {
         console.log('All instance plans marked as completed successfully')
+        
+        // Add completion message to instance logs
+        await addPlanCompletionMessage()
       }
     } catch (error) {
       console.error('Error marking instance plans as completed:', error)
     }
   }
 
+  // Add a completion message when all plans are finished
+  const addPlanCompletionMessage = async () => {
+    if (!activeRobotInstance?.id || !currentSite?.id) return
+
+    try {
+      const supabase = createClient()
+      
+      // Create a completion message in instance logs
+      const completionLog = {
+        instance_id: activeRobotInstance.id,
+        site_id: currentSite.id,
+        log_type: 'system',
+        level: 'info',
+        message: '✅ All plans have been completed successfully!',
+        details: {
+          event_type: 'plan_completion',
+          completed_at: new Date().toISOString(),
+          total_steps: steps.length,
+          completed_steps: steps.filter(step => step.status === 'completed').length
+        }
+      }
+
+      const { error } = await supabase
+        .from('instance_logs')
+        .insert(completionLog)
+
+      if (error) {
+        console.error('Error adding plan completion message:', error)
+      } else {
+        console.log('Plan completion message added successfully')
+      }
+    } catch (error) {
+      console.error('Error adding plan completion message:', error)
+    }
+  }
+
+  // Clear thinking state - utility function
+  const clearThinkingState = () => {
+    console.log('🛡️ Clearing thinking state')
+    setIsWaitingForResponse(false)
+    setWaitingForMessageId(null)
+    
+    // Clear any existing timeout
+    if (thinkingTimeoutRef.current) {
+      clearTimeout(thinkingTimeoutRef.current)
+      thinkingTimeoutRef.current = null
+    }
+  }
+
+  // Set thinking state with safety timeout
+  const setThinkingStateWithTimeout = () => {
+    console.log('🤔 Setting thinking state with safety timeout')
+    setIsWaitingForResponse(true)
+    
+    // Clear any existing timeout
+    if (thinkingTimeoutRef.current) {
+      clearTimeout(thinkingTimeoutRef.current)
+    }
+    
+    // Set safety timeout - clear thinking state after 2 minutes if no response
+    thinkingTimeoutRef.current = setTimeout(() => {
+      console.log('⏰ Thinking timeout reached, clearing state as safety measure')
+      clearThinkingState()
+    }, 120000) // 2 minutes
+  }
+
   const getCurrentStep = () => {
+    console.log('🔍 getCurrentStep called with steps:', steps.map(s => ({ id: s.id, title: s.title, order: s.order, status: s.status })))
+    
     // Check if all steps are completed
     const allCompleted = steps.length > 0 && steps.every(step => step.status === 'completed')
+    console.log('🔍 All steps completed?', allCompleted)
     
     if (allCompleted) {
       // If all steps are completed, return the first step
+      console.log('🔍 All completed, returning first step:', steps[0])
       return steps[0]
     }
     
     const inProgressStep = steps.find(step => step.status === 'in_progress')
+    console.log('🔍 In progress step found:', inProgressStep)
     if (inProgressStep) return inProgressStep
     
     const firstPendingStep = steps.find(step => step.status === 'pending')
-    return firstPendingStep || steps[0]
+    console.log('🔍 First pending step found:', firstPendingStep)
+    const result = firstPendingStep || steps[0]
+    console.log('🔍 getCurrentStep returning:', result)
+    return result
   }
 
   // Check if all steps are completed
@@ -742,77 +848,45 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
     return steps.length > 0 && steps.every(step => step.status === 'completed')
   }
 
+  // Create unified timeline of logs and completed plans
+  const createUnifiedTimeline = () => {
+    const timelineItems: Array<{
+      type: 'log' | 'completed_plan'
+      timestamp: string
+      data: InstanceLog | InstancePlan
+    }> = []
+
+    // Add logs to timeline
+    logs.forEach(log => {
+      timelineItems.push({
+        type: 'log',
+        timestamp: log.created_at,
+        data: log
+      })
+    })
+
+    // Add completed plans to timeline
+    completedPlans.forEach(plan => {
+      const timestamp = plan.completed_at || plan.updated_at || plan.created_at
+      timelineItems.push({
+        type: 'completed_plan',
+        timestamp: timestamp,
+        data: plan
+      })
+    })
+
+    // Sort by timestamp
+    return timelineItems.sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+  }
+
   // Check if a step can be edited or deleted (completed steps cannot be edited/deleted)
   const canEditOrDeleteStep = (step: PlanStep) => {
     return step.status !== 'completed'
   }
 
-  // Create test plans for debugging
-  const createTestPlansFunc = async (instanceId: string, siteId: string, userId: string) => {
-    try {
-      const supabase = createClient()
-      
-      const testPlans = [
-        {
-          title: 'Research Target Market',
-          description: 'Analyze the target market and identify key opportunities',
-          plan_type: 'objective',
-          priority: 1,
-          status: 'in_progress',
-          instructions: 'Research and analyze the target market to understand customer needs and preferences',
-          progress_percentage: 30,
-          steps_completed: 1,
-          steps_total: 3,
-          instance_id: instanceId,
-          site_id: siteId,
-          user_id: userId
-        },
-        {
-          title: 'Content Strategy Planning',
-          description: 'Develop a comprehensive content strategy for the channel',
-          plan_type: 'task',
-          priority: 2,
-          status: 'pending',
-          instructions: 'Create a detailed content calendar and strategy document',
-          progress_percentage: 0,
-          steps_completed: 0,
-          steps_total: 5,
-          instance_id: instanceId,
-          site_id: siteId,
-          user_id: userId
-        },
-        {
-          title: 'Performance Metrics Setup',
-          description: 'Set up tracking and monitoring for key performance indicators',
-          plan_type: 'task',
-          priority: 3,
-          status: 'pending',
-          instructions: 'Configure analytics and tracking systems',
-          progress_percentage: 0,
-          steps_completed: 0,
-          steps_total: 4,
-          instance_id: instanceId,
-          site_id: siteId,
-          user_id: userId
-        }
-      ]
-      
-      console.log('🔧 Creating test plans:', testPlans)
-      
-      const { data, error } = await supabase
-        .from('instance_plans')
-        .insert(testPlans)
-        .select()
-      
-      if (error) {
-        console.error('❌ Error creating test plans:', error)
-      } else {
-        console.log('✅ Test plans created successfully:', data)
-      }
-    } catch (error) {
-      console.error('❌ Error in createTestPlans:', error)
-    }
-  }
+
 
   // Auto scroll to bottom when new logs arrive
   const scrollToBottom = () => {
@@ -908,36 +982,77 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
         }
       } else {
         console.log(`✅ Loaded ${data?.length || 0} plans for instance ${instanceId}`)
-        const plans = data || []
-        setInstancePlans(plans)
+        const allPlans = data || []
+        console.log('🔍 RAW PLANS FROM DATABASE:', JSON.stringify(allPlans, null, 2))
         
-        // If no plans found, let's create some test data to verify the functionality
-        if (plans.length === 0) {
-          console.log('🔧 No plans found, creating test plans for debugging...')
-          await createTestPlansFunc(instanceId, activeRobotInstance.site_id, activeRobotInstance.user_id)
-          // Reload after creating test data
-          return loadInstancePlans()
+        // Separate completed plans from active/pending plans
+        const activePlans = allPlans.filter((plan: InstancePlan) => 
+          plan.status !== 'completed' || 
+          (plan.steps && Array.isArray(plan.steps) && plan.steps.some((step: any) => step.status !== 'completed'))
+        )
+        const completedPlansData = allPlans.filter((plan: InstancePlan) => 
+          plan.status === 'completed' && 
+          (!plan.steps || !Array.isArray(plan.steps) || plan.steps.every((step: any) => step.status === 'completed'))
+        )
+        
+        console.log('🔍 ACTIVE PLANS:', activePlans.length)
+        console.log('🔍 COMPLETED PLANS:', completedPlansData.length)
+        
+        setInstancePlans(activePlans)
+        setCompletedPlans(completedPlansData)
+        
+        // If no active plans found, just continue without creating test data
+        if (activePlans.length === 0) {
+          console.log('🔧 No active plans found')
+          setSteps([])
+          return
         }
         
-        // Convert instance plans to step format for the UI
+        // Convert only ACTIVE instance plans to step format for the UI
         let convertedSteps: PlanStep[] = []
         
         // Extract steps from the plan structure
-        plans.forEach((plan: InstancePlan, planIndex: number) => {
+        const usedIds = new Set<string>()
+        
+        activePlans.forEach((plan: InstancePlan, planIndex: number) => {
           if (plan.steps && Array.isArray(plan.steps)) {
             // Use steps directly from the plan
-            const planSteps = plan.steps.map((step: any, stepIndex: number) => ({
-              id: step.id || `${plan.id}-${stepIndex}`,
-              title: step.title || `Step ${stepIndex + 1}`,
-              description: step.description || undefined,
-              status: step.status || 'pending' as const,
-              order: convertedSteps.length + stepIndex + 1
-            }))
+            const planSteps = plan.steps.map((step: any, stepIndex: number) => {
+              let stepId = step.id
+              
+              // Ensure unique ID
+              if (!stepId || usedIds.has(stepId)) {
+                stepId = `plan_${planIndex}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
+                while (usedIds.has(stepId)) {
+                  stepId = `plan_${planIndex}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
+                }
+              }
+              usedIds.add(stepId)
+              
+              return {
+                id: stepId,
+                title: step.title || `Step ${stepIndex + 1}`,
+                description: step.description || undefined,
+                status: step.status || 'pending' as const,
+                order: convertedSteps.length + stepIndex + 1
+              }
+            })
             convertedSteps = [...convertedSteps, ...planSteps]
           } else {
             // Fallback: use the plan itself as a single step
+            let planId = plan.id
+            
+            // Ensure unique ID
+            if (!planId || usedIds.has(planId)) {
+              planId = `plan_${planIndex}_${Math.random().toString(36).substring(7)}`
+              while (usedIds.has(planId)) {
+                planId = `plan_${planIndex}_${Math.random().toString(36).substring(7)}`
+              }
+            }
+            usedIds.add(planId)
+            
             convertedSteps.push({
-              id: plan.id,
+              id: planId,
               title: plan.title,
               description: plan.description || undefined,
               status: plan.status === 'in_progress' ? 'in_progress' : 
@@ -948,8 +1063,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
         })
         
         console.log('✅ Setting real plan steps extracted from complex structure:', convertedSteps.length, 'steps')
-        console.log('🔍 First few steps:', convertedSteps.slice(0, 3))
-        setSteps(convertedSteps)
+        
+        // Remove any duplicates before setting state
+        const uniqueSteps = removeDuplicateSteps(convertedSteps)
+        setSteps(uniqueSteps)
       }
     } catch (error) {
       console.error('Error loading instance plans:', error)
@@ -1087,7 +1204,28 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
     loadInstancePlans()
     
     if (activeRobotInstance?.id) {
-      loadInstanceLogs()
+      // Only reload data if the robot instance ID actually changed
+      const newInstanceId = activeRobotInstance.id
+      if (currentRobotInstanceIdRef.current !== newInstanceId) {
+        console.log('🔄 Robot instance changed, reloading data:', { 
+          from: currentRobotInstanceIdRef.current, 
+          to: newInstanceId 
+        })
+        currentRobotInstanceIdRef.current = newInstanceId
+        
+        // Clear existing state when switching to a new robot instance
+        setLogs([])
+        setInstancePlans([])
+        setCompletedPlans([])
+        setSteps([])
+        setRecentUserMessageIds(new Set())
+        clearThinkingState()
+        
+        // Load fresh data for the new instance
+        loadInstanceLogs()
+      } else {
+        console.log('🔄 Same robot instance, keeping existing data:', newInstanceId)
+      }
 
       // Setup real-time subscription for logs
       const supabase = createClient()
@@ -1106,11 +1244,70 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
             console.log('Real-time log update:', payload)
             if (payload.eventType === 'INSERT') {
               const newLog = payload.new as InstanceLog
-              setLogs(prevLogs => [...prevLogs, newLog])
               
-              // Stop loading animation when agent responds
-              if (newLog.log_type === 'agent_action' || newLog.log_type === 'tool_result') {
-                setIsWaitingForResponse(false)
+              setLogs(prevLogs => {
+                // If this is a user_action message, replace any temporary message with the same content
+                if (newLog.log_type === 'user_action') {
+                  const tempMessageIndex = prevLogs.findIndex(log => 
+                    log.details?.temp_message && 
+                    log.message === newLog.message &&
+                    log.log_type === 'user_action'
+                  )
+                  
+                  if (tempMessageIndex !== -1) {
+                    console.log('🔄 Replacing temporary user message with real one')
+                    // Remove the temp message ID from tracking
+                    const tempId = prevLogs[tempMessageIndex].id
+                    setRecentUserMessageIds(prev => {
+                      const newSet = new Set(prev)
+                      newSet.delete(tempId)
+                      return newSet
+                    })
+                    
+                    // Replace the temporary message with the real one
+                    const updatedLogs = [...prevLogs]
+                    updatedLogs[tempMessageIndex] = newLog
+                    return updatedLogs
+                  }
+                }
+                
+                // Double-check for duplicates by ID
+                const isDuplicate = prevLogs.some(log => log.id === newLog.id)
+                if (isDuplicate) {
+                  console.log('🚫 Preventing duplicate log entry:', newLog.id)
+                  return prevLogs
+                }
+                
+                return [...prevLogs, newLog]
+              })
+              
+              // Stop loading animation only when we get a response related to our sent message
+              if (waitingForMessageId) {
+                // Check for various indicators that this is a response to our workflow request
+                const isWorkflowResponse = (
+                  // Agent action that might be responding to our workflow
+                  (newLog.log_type === 'agent_action') ||
+                  // Tool result that mentions workflow or prompt
+                  (newLog.log_type === 'tool_result' && (
+                    newLog.message.toLowerCase().includes('workflow') ||
+                    newLog.message.toLowerCase().includes('prompt') ||
+                    newLog.message.toLowerCase().includes('robot')
+                  )) ||
+                  // System message that indicates workflow processing
+                  (newLog.log_type === 'system' && (
+                    newLog.message.toLowerCase().includes('workflow') ||
+                    newLog.message.toLowerCase().includes('processing') ||
+                    newLog.message.toLowerCase().includes('received')
+                  ))
+                )
+                
+                if (isWorkflowResponse) {
+                  // Additional check: make sure this log is recent (within 2 minutes of sending)
+                  const timeDiff = new Date(newLog.created_at).getTime() - new Date().getTime()
+                  if (Math.abs(timeDiff) < 120000) { // Within 2 minutes
+                    clearThinkingState()
+                  }
+                }
               }
               
               // Auto-collapse if it's a long system message
@@ -1153,38 +1350,76 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
             console.log('Real-time plan update:', payload)
             if (payload.eventType === 'INSERT') {
               const newPlan = payload.new as InstancePlan
+              
+              // Safety mechanism: Clear thinking state when new plan arrives
+              // This ensures the thinking indicator is removed even if the workflow response wasn't detected
+              console.log('🛡️ New plan received, clearing thinking state as safety measure')
+              clearThinkingState()
+              
               setInstancePlans(prevPlans => {
                 const updatedPlans = [...prevPlans, newPlan]
                 
                 // Add steps from the plan
                 if (newPlan.steps && Array.isArray(newPlan.steps)) {
-                  const newSteps = newPlan.steps.map((step: any, stepIndex: number) => ({
-                    id: step.id || `${newPlan.id}-${stepIndex}`,
-                    title: step.title || `Step ${stepIndex + 1}`,
-                    description: step.description || undefined,
-                    status: step.status || 'pending' as const,
-                    order: stepIndex + 1 // Will be reordered below
-                  }))
-                  
                   setSteps(prevSteps => {
+                    // Get existing step IDs to avoid duplicates
+                    const existingIds = new Set(prevSteps.map(step => step.id))
+                    
+                    const newSteps = newPlan.steps.map((step: any, stepIndex: number) => {
+                      let stepId = step.id
+                      
+                      // Ensure unique ID
+                      if (!stepId || existingIds.has(stepId)) {
+                        stepId = `realtime_plan_${newPlan.id}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
+                        while (existingIds.has(stepId)) {
+                          stepId = `realtime_plan_${newPlan.id}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
+                        }
+                      }
+                      existingIds.add(stepId)
+                      
+                      return {
+                        id: stepId,
+                        title: step.title || `Step ${stepIndex + 1}`,
+                        description: step.description || undefined,
+                        status: step.status || 'pending' as const,
+                        order: stepIndex + 1 // Will be reordered below
+                      }
+                    })
+                    
                     const allSteps = [...prevSteps, ...newSteps]
-                    // Reorder all steps
-                    return allSteps.map((step, index) => ({
+                    // Reorder all steps and remove duplicates
+                    const reorderedSteps = allSteps.map((step, index) => ({
                       ...step,
                       order: index + 1
                     }))
+                    return removeDuplicateSteps(reorderedSteps)
                   })
                 } else {
                   // Fallback: use the plan itself as a single step
-                  const newStep: PlanStep = {
-                    id: newPlan.id,
-                    title: newPlan.title,
-                    description: newPlan.description || undefined,
-                    status: newPlan.status === 'in_progress' ? 'in_progress' : 
-                           newPlan.status === 'completed' ? 'completed' : 'pending',
-                    order: updatedPlans.length
-                  }
-                  setSteps(prevSteps => [...prevSteps, newStep])
+                  setSteps(prevSteps => {
+                    const existingIds = new Set(prevSteps.map(step => step.id))
+                    let planId = newPlan.id
+                    
+                    // Ensure unique ID
+                    if (!planId || existingIds.has(planId)) {
+                      planId = `realtime_plan_${Math.random().toString(36).substring(7)}`
+                      while (existingIds.has(planId)) {
+                        planId = `realtime_plan_${Math.random().toString(36).substring(7)}`
+                      }
+                    }
+                    
+                    const newStep: PlanStep = {
+                      id: planId,
+                      title: newPlan.title,
+                      description: newPlan.description || undefined,
+                      status: newPlan.status === 'in_progress' ? 'in_progress' : 
+                             newPlan.status === 'completed' ? 'completed' : 'pending',
+                      order: updatedPlans.length
+                    }
+                    
+                    const allSteps = [...prevSteps, newStep]
+                    return removeDuplicateSteps(allSteps)
+                  })
                 }
                 
                 return updatedPlans
@@ -1255,117 +1490,146 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
         plansSubscription.unsubscribe()
       }
     } else {
+      // Reset the ref when no robot instance
+      currentRobotInstanceIdRef.current = null
       setLogs([])
       setInstancePlans([])
+      setCompletedPlans([])
       setSteps([])
+      setRecentUserMessageIds(new Set()) // Clear tracked message IDs when switching instances
+      clearThinkingState()
     }
   }, [activeRobotInstance?.id])
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (thinkingTimeoutRef.current) {
+        clearTimeout(thinkingTimeoutRef.current)
+        thinkingTimeoutRef.current = null
+      }
+    }
+  }, [])
+
   // Handle sending messages
   const handleSendMessage = async () => {
-    if (!activeRobotInstance?.id || !message.trim() || !currentSite?.id) return
+    if (!activeRobotInstance?.id || !messageRef.current.trim() || !currentSite?.id || isSendingMessage) return
 
-    const messageToSend = message.trim()
-    setMessage('') // Clear immediately for better UX
-    setIsWaitingForResponse(true) // Start loading animation
+    const messageToSend = messageRef.current.trim()
+    
+    // Prevent duplicate submissions
+    setIsSendingMessage(true)
+    clearMessage() // Clear immediately for better UX using optimized clear
+    setThinkingStateWithTimeout() // Start loading animation with safety timeout
+
+    // Generate unique temporary ID for UI display
+    const tempMessageId = `temp_user_${Date.now()}_${Math.random().toString(36).substring(7)}`
+    setWaitingForMessageId(tempMessageId) // Track which message we're waiting for
 
     try {
-      const supabase = createClient()
       
-      // First, save the user message to the log for immediate UI feedback
-      await supabase
-        .from('instance_logs')
-        .insert({
-          instance_id: activeRobotInstance.id,
-          site_id: activeRobotInstance.site_id,
-          log_type: 'user_action',
-          level: 'info',
-          message: messageToSend,
-          details: { 
-            user_input: true,
-            timestamp: new Date().toISOString(),
-            context_summary: contextService.getContextSummary(await contextService.getContextData(selectedContext, currentSite.id))
-          }
-        })
+      // Create temporary user message for immediate UI feedback
+      const tempUserMessage: InstanceLog = {
+        id: tempMessageId,
+        log_type: 'user_action',
+        level: 'info',
+        message: messageToSend,
+        created_at: new Date().toISOString(),
+        details: {
+          user_input: true,
+          timestamp: new Date().toISOString(),
+          temp_message: true // Mark as temporary
+        }
+      }
+      
+      // Add temporary message to UI immediately
+      setLogs(prevLogs => [...prevLogs, tempUserMessage])
+      
+      // Track this temp message to remove it later
+      setRecentUserMessageIds(prev => new Set(prev).add(tempMessageId))
 
       // Get complete context data using the service
       const contextData = await contextService.getContextData(selectedContext, currentSite.id)
       
+      // Convert context to string format as required by the API
+      const contextString = contextData && typeof contextData === 'object' 
+        ? JSON.stringify(contextData) 
+        : contextData || ""
+      
       const { apiClient } = await import('@/app/services/api-client-service')
       
-      const response = await apiClient.post('/api/robots/instance/act', {
+      const response = await apiClient.post('/api/workflow/promptRobot', {
         instance_id: activeRobotInstance.id,
         message: messageToSend,
-        context: contextData
+        step_status: "pending",
+        site_id: currentSite.id,
+        context: contextString
       })
 
       if (!response.success) {
         console.error('Error sending message to robot:', response.error?.message)
         
-        // Add error log locally for immediate feedback
-        await supabase
-          .from('instance_logs')
-          .insert({
-            instance_id: activeRobotInstance.id,
-            site_id: activeRobotInstance.site_id,
-            log_type: 'error',
-            level: 'error',
-            message: `Failed to send message: ${response.error?.message}`,
-            details: { 
-              error: response.error?.message,
-              original_message: messageToSend
-            }
-          })
+        // Remove the temporary message and show error
+        setLogs(prevLogs => prevLogs.filter(log => log.id !== tempMessageId))
+        
+        // Clear waiting state on error
+        clearThinkingState()
+        
+        // Add error log for feedback
+        const errorLog: InstanceLog = {
+          id: `api_error_${Date.now()}`,
+          log_type: 'error',
+          level: 'error',
+          message: `Failed to send message: ${response.error?.message}`,
+          created_at: new Date().toISOString(),
+          details: { 
+            error: response.error?.message,
+            original_message: messageToSend
+          }
+        }
+        
+        setLogs(prevLogs => [...prevLogs, errorLog])
       } else {
         console.log('Message sent successfully:', response.data)
-        
-        // Process the response from instance act API
-        // The API returns { message: string, context: object } in the root
-        const responseMessage = response.data?.message || response.data
-        const responseContext = response.data?.context
-        
-        if (responseMessage && typeof responseMessage === 'string') {
-          // Add the robot's response to the log
-          await supabase
-            .from('instance_logs')
-            .insert({
-              instance_id: activeRobotInstance.id,
-              site_id: activeRobotInstance.site_id,
-              log_type: 'robot_response',
-              level: 'info',
-              message: responseMessage,
-              details: { 
-                response_context: responseContext,
-                user_input: messageToSend,
-                timestamp: new Date().toISOString()
-              }
-            })
-        }
+        // The API will handle creating the message in the database
+        // The real-time subscription will replace our temporary message
       }
     } catch (error) {
       console.error('Error calling robot API:', error)
       
-      // Add error log locally for immediate feedback
-      const supabase = createClient()
-      await supabase
-        .from('instance_logs')
-        .insert({
-          instance_id: activeRobotInstance.id,
-          site_id: activeRobotInstance.site_id,
-          log_type: 'error',
-          level: 'error',
-          message: `Network error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          details: { 
-            error: error instanceof Error ? error.message : String(error),
-            original_message: messageToSend
-          }
-        })
+      // Remove the temporary message on error
+      setLogs(prevLogs => prevLogs.filter(log => !log.details?.temp_message))
+      
+      // Clear waiting state on error
+      clearThinkingState()
+      
+      // Clear temp message tracking
+      setRecentUserMessageIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(tempMessageId)
+        return newSet
+      })
+      
+      // Add error log for feedback
+      const errorLog: InstanceLog = {
+        id: `error_${Date.now()}`,
+        log_type: 'error',
+        level: 'error',
+        message: `Network error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        created_at: new Date().toISOString(),
+        details: { 
+          error: error instanceof Error ? error.message : String(error),
+          original_message: messageToSend
+        }
+      }
+      
+      setLogs(prevLogs => [...prevLogs, errorLog])
+    } finally {
+      // Always reset sending state
+      setIsSendingMessage(false)
     }
     
-    // Auto-stop loading animation after 30 seconds
-    setTimeout(() => {
-      setIsWaitingForResponse(false)
-    }, 30000)
+    // Note: Safety timeout is now handled by setThinkingStateWithTimeout()
   }
 
 
@@ -1416,7 +1680,53 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
           <>
 
             
-            {logs.map((log, index) => {
+            {createUnifiedTimeline().map((item, index) => {
+              if (item.type === 'completed_plan') {
+                const plan = item.data as InstancePlan
+                return (
+                  <div key={`plan-${plan.id}`} className="space-y-4 max-w-full overflow-hidden">
+                    <div className="bg-green-50/50 border border-green-200/50 rounded-lg p-4">
+                      <div className="mb-3">
+                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                          Plan Completed
+                        </span>
+                      </div>
+                      <div className="mb-2">
+                        <h4 className="font-medium text-green-800">{plan.title}</h4>
+                      </div>
+                      
+                      {plan.description && (
+                        <p className="text-sm text-green-700 mb-3">{plan.description}</p>
+                      )}
+                      
+                      {plan.steps && Array.isArray(plan.steps) && (
+                        <div className="space-y-1">
+                          <div className="text-xs text-green-600 font-medium mb-2">
+                            Steps ({plan.steps.length}):
+                          </div>
+                          {plan.steps.map((step: any, stepIndex: number) => (
+                            <div key={step.id || stepIndex} className="flex items-center gap-2 text-xs text-green-700">
+                              <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+                              <span className="font-medium">{step.order || stepIndex + 1}.</span>
+                              <span className="line-through opacity-75">{step.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-4 mt-3 text-xs text-green-600">
+                        <span>Progress: {plan.progress_percentage || 100}%</span>
+                        <span>Steps: {plan.steps_completed || 0}/{plan.steps_total || 0}</span>
+                        {(plan.completed_at || plan.updated_at) && (
+                          <span>Completed: {new Date(plan.completed_at || plan.updated_at!).toLocaleString()}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+              
+              const log = item.data as InstanceLog
               const toolName = getToolName(log)
               const toolResult = getToolResult(log)
               
@@ -1504,7 +1814,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
               }
 
               return (
-              <div key={log.id} className="space-y-4 max-w-full overflow-hidden">
+              <div key={`log-${log.id}`} className="space-y-4 max-w-full overflow-hidden">
               
               {log.log_type === "user_action" ? (
                 // User message - styled like visitor messages in chat
@@ -1853,7 +2163,21 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   
                   {/* All steps list */}
                   <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {steps.map((step) => {
+                    {(() => {
+                      // Debug: Log steps to identify duplicates
+                      const stepIds = steps.map(s => s.id)
+                      const duplicateIds = stepIds.filter((id, index) => stepIds.indexOf(id) !== index)
+                      if (duplicateIds.length > 0) {
+                        console.warn('🚨 Duplicate step IDs found:', duplicateIds)
+                        console.warn('🔍 All step IDs:', stepIds)
+                      }
+                      
+                      return steps
+                        .filter((step, index, array) => 
+                          // Remove duplicates by keeping only the first occurrence of each ID
+                          array.findIndex(s => s.id === step.id) === index
+                        )
+                        .map((step) => {
                       const canEdit = canEditOrDeleteStep(step)
                       const allCompleted = areAllStepsCompleted()
                       
@@ -1920,7 +2244,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                           )}
                         </div>
                       )
-                    })}
+                    })
+                    })()}
 
                   </div>
                 </div>
@@ -1972,18 +2297,18 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
             handleSendMessage()
           }}>
             <div className="relative">
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
+              <OptimizedTextarea
+                ref={textareaRef}
+                onChange={handleMessageChange}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
                     handleSendMessage()
                   }
                 }}
-                placeholder={activeRobotInstance ? "Message..." : "No active robot instance"}
+                placeholder={activeRobotInstance ? (isSendingMessage ? "Sending message..." : "Send prompt") : "No active robot instance"}
                 className="resize-none min-h-[135px] w-full py-5 pl-[30px] pr-[30px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
-                disabled={!activeRobotInstance}
+                disabled={!activeRobotInstance || isSendingMessage}
                 style={{
                   lineHeight: '1.5',
                   overflowY: 'hidden',
@@ -1991,7 +2316,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   paddingBottom: '50px',
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
-                  height: '135px'
+                  height: '135px' // Initial height, will be auto-adjusted
                 }}
               />
               
@@ -2009,9 +2334,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   type="submit" 
                   size="icon"
                   variant="ghost"
-                  disabled={!activeRobotInstance || !message.trim()}
+                  disabled={!activeRobotInstance || isSendingMessage}
                   className={`rounded-xl h-[39px] w-[39px] transition-colors hover:bg-muted ${
-                    activeRobotInstance && message.trim() 
+                    activeRobotInstance && !isSendingMessage
                       ? 'text-primary hover:text-primary/90 opacity-100' 
                       : 'text-muted-foreground opacity-50'
                   }`}

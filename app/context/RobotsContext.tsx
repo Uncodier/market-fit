@@ -132,8 +132,24 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         }
       })
 
-      setRobotsByActivity(organizedRobots)
-      setTotalActiveRobots(activeCount)
+      // Only update state if data actually changed to prevent unnecessary re-renders
+      setRobotsByActivity(prevRobots => {
+        const hasChanged = JSON.stringify(prevRobots) !== JSON.stringify(organizedRobots)
+        if (hasChanged) {
+          console.log('🤖 RobotsContext: Robots data changed, updating state')
+          return organizedRobots
+        }
+        console.log('🤖 RobotsContext: Robots data unchanged, skipping state update')
+        return prevRobots
+      })
+      
+      setTotalActiveRobots(prevCount => {
+        if (prevCount !== activeCount) {
+          console.log('🤖 RobotsContext: Active robots count changed:', { from: prevCount, to: activeCount })
+          return activeCount
+        }
+        return prevCount
+      })
 
       console.log('🤖 RobotsContext: Refreshed robots data', {
         totalActivities: Object.keys(organizedRobots).length,

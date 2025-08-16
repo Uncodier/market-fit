@@ -3,7 +3,7 @@ import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronDown, ChevronRight, ChevronLeft, Search, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter } from "@/app/components/ui/icons"
+import { ChevronDown, ChevronRight, ChevronLeft, Search, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, MoreHorizontal, Trash2 } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Pagination } from "@/app/components/ui/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -11,11 +11,15 @@ import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { Sparkles, User as UserIcon } from "@/app/components/ui/icons"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/app/components/ui/dropdown-menu"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/app/components/ui/alert-dialog"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { assignLeadToUser, updateLead } from "@/app/leads/actions"
 import { createClient } from "@/utils/supabase/client"
+import { createConversation } from "@/app/services/chat-service"
 import { toast } from "sonner"
 import { Lead } from "@/app/leads/types"
+import { useRouter } from "next/navigation"
 
 // Colores para las etapas del journey
 const JOURNEY_STAGE_COLORS: Record<string, string> = {
@@ -65,7 +69,8 @@ interface GroupedLeadsTableProps {
   onLeadClick: (lead: Lead) => void
   forceReload: number
   invalidateJourneyStageCache: (leadId: string) => void
-  onUpdateLead?: (leadId: string, updates: Partial<Lead>) => void
+  onUpdateLead?: (leadId: string, updates: Partial<Lead> & { invalidated?: boolean }) => void
+  onDeleteLead?: (leadId: string) => Promise<void>
   userData: Record<string, { name: string, avatar_url: string | null }>
   onToggleCompanyExpansion: (companyKey: string) => void
   segments: Array<{ id: string; name: string }>
@@ -86,6 +91,7 @@ export function GroupedLeadsTable({
   forceReload,
   invalidateJourneyStageCache,
   onUpdateLead,
+  onDeleteLead,
   userData,
   onToggleCompanyExpansion,
   segments,
@@ -97,10 +103,14 @@ export function GroupedLeadsTable({
   const totalPages = Math.ceil(totalCompanies / itemsPerPage)
   const { currentSite } = useSite()
   const { user } = useAuth()
+  const router = useRouter()
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [loadingActions, setLoadingActions] = useState<Record<string, 'research' | 'followup' | null>>({})
-  const [successActions, setSuccessActions] = useState<Record<string, 'research' | 'followup' | null>>({})
+  const [loadingActions, setLoadingActions] = useState<Record<string, 'research' | 'followup' | 'invalidation' | 'newConversation' | null>>({})
+  const [successActions, setSuccessActions] = useState<Record<string, 'research' | 'followup' | 'invalidation' | 'newConversation' | null>>({})
   const [assigningLeads, setAssigningLeads] = useState<Record<string, boolean>>({})
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null)
+  const [isDeletingLead, setIsDeletingLead] = useState(false)
 
   // Función para llamar API de research
   const handleLeadResearch = async (leadId: string, isBulk: boolean = false, allLeads?: Lead[]) => {
@@ -283,6 +293,179 @@ export function GroupedLeadsTable({
       leadsToProcess.forEach(lead => {
         setAssigningLeads(prev => ({ ...prev, [lead.id]: false }))
       })
+    }
+  }
+
+  // Función para llamar API de invalidation
+  const handleLeadInvalidation = async (leadId: string, isBulk: boolean = false, allLeads?: Lead[]) => {
+    const leadsToProcess = isBulk && allLeads ? allLeads : [{ id: leadId }]
+    
+    // Marcar todos los leads como loading
+    leadsToProcess.forEach(lead => {
+      setLoadingActions(prev => ({ ...prev, [lead.id]: 'invalidation' }))
+    })
+    
+    try {
+      const { apiClient } = await import('@/app/services/api-client-service')
+      
+      const results = await Promise.all(
+        leadsToProcess.map(async (lead) => {
+          try {
+            const response = await apiClient.post('/api/workflow/leadInvalidation', {
+              lead_id: lead.id,
+              site_id: currentSite?.id
+            })
+            
+            if (response.success) {
+              setSuccessActions(prev => ({ ...prev, [lead.id]: 'invalidation' }))
+              setTimeout(() => {
+                setSuccessActions(prev => ({ ...prev, [lead.id]: null }))
+              }, 2000)
+              
+              setTimeout(() => {
+                invalidateJourneyStageCache(lead.id)
+              }, 1000)
+              
+              setTimeout(() => {
+                invalidateJourneyStageCache(lead.id)
+              }, 5000)
+              
+              return { success: true, leadId: lead.id }
+            } else {
+              throw new Error(response.error?.message || 'Failed to initiate lead invalidation')
+            }
+          } catch (error) {
+            console.error(`Error calling lead invalidation API for lead ${lead.id}:`, error)
+            return { success: false, leadId: lead.id, error }
+          }
+        })
+      )
+      
+      const failedCount = results.filter(r => !r.success).length
+      const successCount = results.length - failedCount
+      
+      if (successCount > 0) {
+        toast.success(`Lead invalidation initiated for ${successCount} lead${successCount > 1 ? 's' : ''} successfully`)
+        
+        // Remover los leads invalidados exitosamente del estado local
+        const successfulLeadIds = results.filter(r => r.success).map(r => r.leadId)
+        successfulLeadIds.forEach(leadId => {
+          // Usar setTimeout para dar tiempo a que se muestre el estado de éxito
+          setTimeout(() => {
+            // Eliminar el lead del estado usando la función onUpdateLead con un status especial
+            // o notificar al componente padre que debe remover el lead
+            if (onUpdateLead) {
+              // Marcar como invalidado para que el componente padre lo filtre
+              onUpdateLead(leadId, { invalidated: true })
+            }
+          }, 2500) // Esperar 2.5 segundos para que el usuario vea el éxito
+        })
+      }
+      
+      if (failedCount > 0) {
+        toast.error(`Failed to initiate invalidation for ${failedCount} lead${failedCount > 1 ? 's' : ''}`)
+      }
+      
+    } catch (error) {
+      console.error('Error calling lead invalidation API:', error)
+      toast.error("Failed to initiate lead invalidation")
+    } finally {
+      // Limpiar loading state
+      leadsToProcess.forEach(lead => {
+        setLoadingActions(prev => ({ ...prev, [lead.id]: null }))
+      })
+    }
+  }
+
+  // Función para crear nueva conversación
+  const handleNewConversation = async (leadId: string) => {
+    if (!currentSite?.id || !user?.id) {
+      toast.error('No site selected or user not authenticated')
+      return
+    }
+
+    setLoadingActions(prev => ({ ...prev, [leadId]: 'newConversation' }))
+    
+    try {
+      const supabase = createClient()
+      
+      // Find the Customer Support agent for this site
+      const { data: agent, error: agentError } = await supabase
+        .from('agents')
+        .select('id, name')
+        .eq('site_id', currentSite.id)
+        .eq('role', 'Customer Support')
+        .single()
+
+      if (agentError || !agent) {
+        console.error('Customer Support agent not found:', agentError)
+        toast.error('Customer Support agent not found for this site')
+        return
+      }
+
+      // Get lead details
+      const lead = companyGroups
+        .flatMap(group => group.leads)
+        .find(l => l.id === leadId)
+      
+      if (!lead) {
+        toast.error('Lead not found')
+        return
+      }
+
+      // Create conversation with the Customer Support agent and lead
+      const conversation = await createConversation(
+        currentSite.id,
+        user.id,
+        agent.id,
+        `Chat with ${lead.name}`,
+        {
+          lead_id: lead.id,
+          channel: 'web'
+        }
+      )
+
+      if (conversation) {
+        setSuccessActions(prev => ({ ...prev, [leadId]: 'newConversation' }))
+        setTimeout(() => {
+          setSuccessActions(prev => ({ ...prev, [leadId]: null }))
+        }, 2000)
+        
+        toast.success('Conversation created successfully')
+        // Navigate to chat with proper URL format
+        const url = `/chat?conversationId=${conversation.id}&agentId=${agent.id}&agentName=${encodeURIComponent(agent.name)}`
+        router.push(url)
+      } else {
+        toast.error('Failed to create conversation')
+      }
+    } catch (error) {
+      console.error('Error creating conversation:', error)
+      toast.error('Failed to create conversation')
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [leadId]: null }))
+    }
+  }
+
+  // Función para eliminar lead
+  const handleDeleteLead = async (lead: Lead) => {
+    setLeadToDelete(lead)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDeleteLead = async () => {
+    if (!leadToDelete || !onDeleteLead) return
+    
+    setIsDeletingLead(true)
+    try {
+      await onDeleteLead(leadToDelete.id)
+      setShowDeleteDialog(false)
+      setLeadToDelete(null)
+      toast.success("Lead deleted successfully")
+    } catch (error) {
+      console.error("Error deleting lead:", error)
+      toast.error("Error deleting lead")
+    } finally {
+      setIsDeletingLead(false)
     }
   }
 
@@ -558,63 +741,121 @@ export function GroupedLeadsTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-right w-[120px] min-w-[100px] max-w-[120px] overflow-hidden">
-                    <div className="flex justify-end gap-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                    <div className="flex justify-end">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
-                              size="icon"
-                              disabled={loadingActions[group.mostAdvancedLead.id] === 'research'}
+                            size="sm" 
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className="sr-only">Open AI actions menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleLeadResearch(group.mostAdvancedLead.id, group.leadCount > 1, group.leads)
                               }}
-                              className={`${successActions[group.mostAdvancedLead.id] === 'research' ? 'bg-green-100 text-green-700' : ''}`}
+                            disabled={loadingActions[group.mostAdvancedLead.id] === 'research'}
+                            className="flex items-center"
                             >
                               {loadingActions[group.mostAdvancedLead.id] === 'research' ? (
-                                <Loader className="h-4 w-4" />
+                              <Loader className="mr-2 h-4 w-4" />
                               ) : successActions[group.mostAdvancedLead.id] === 'research' ? (
-                                <CheckCircle2 className="h-4 w-4" />
-                              ) : (
-                                <Search className="h-4 w-4" />
-                              )}
-                              <span className="sr-only">Lead Research</span>
-                            </Button>
-                          </TooltipTrigger>
-                                                      <TooltipContent>
-                              <p>{group.leadCount > 1 ? `Research all ${group.leadCount} leads` : 'Research lead'}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              disabled={loadingActions[group.mostAdvancedLead.id] === 'followup'}
+                              <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                            ) : (
+                              <Search className="mr-2 h-4 w-4" />
+                            )}
+                            <span>
+                              {group.leadCount > 1 ? `Research all ${group.leadCount} leads` : 'Lead Research'}
+                            </span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleLeadFollowUp(group.mostAdvancedLead.id, group.leadCount > 1, group.leads)
                               }}
-                              className={`${successActions[group.mostAdvancedLead.id] === 'followup' ? 'bg-green-100 text-green-700' : ''}`}
+                            disabled={loadingActions[group.mostAdvancedLead.id] === 'followup'}
+                            className="flex items-center"
                             >
                               {loadingActions[group.mostAdvancedLead.id] === 'followup' ? (
-                                <Loader className="h-4 w-4" />
+                              <Loader className="mr-2 h-4 w-4" />
                               ) : successActions[group.mostAdvancedLead.id] === 'followup' ? (
-                                <CheckCircle2 className="h-4 w-4" />
-                              ) : (
-                                <Mail className="h-4 w-4" />
-                              )}
-                              <span className="sr-only">Lead Follow Up</span>
-                            </Button>
-                          </TooltipTrigger>
-                                                      <TooltipContent>
-                              <p>{group.leadCount > 1 ? `Intelligent follow-up for all ${group.leadCount} leads` : 'Intelligent follow-up'}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                              <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                            ) : (
+                              <Mail className="mr-2 h-4 w-4" />
+                            )}
+                            <span>
+                              {group.leadCount > 1 ? `Follow-up all ${group.leadCount} leads` : 'Lead Follow Up'}
+                            </span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleLeadInvalidation(group.mostAdvancedLead.id, group.leadCount > 1, group.leads)
+                            }}
+                            disabled={loadingActions[group.mostAdvancedLead.id] === 'invalidation'}
+                            className="flex items-center"
+                          >
+                            {loadingActions[group.mostAdvancedLead.id] === 'invalidation' ? (
+                              <Loader className="mr-2 h-4 w-4" />
+                            ) : successActions[group.mostAdvancedLead.id] === 'invalidation' ? (
+                              <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                            ) : (
+                              <X className="mr-2 h-4 w-4" />
+                            )}
+                            <span>
+                              {group.leadCount > 1 ? `Invalidate all ${group.leadCount} leads` : 'Lead Invalidation'}
+                            </span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onLeadClick(group.mostAdvancedLead)
+                            }}
+                            className="flex items-center"
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            <span>Edit Lead</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleNewConversation(group.mostAdvancedLead.id)
+                            }}
+                            disabled={loadingActions[group.mostAdvancedLead.id] === 'newConversation'}
+                            className="flex items-center"
+                          >
+                            {loadingActions[group.mostAdvancedLead.id] === 'newConversation' ? (
+                              <Loader className="mr-2 h-4 w-4" />
+                            ) : successActions[group.mostAdvancedLead.id] === 'newConversation' ? (
+                              <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                            ) : (
+                              <MessageSquare className="mr-2 h-4 w-4" />
+                            )}
+                            <span>New Conversation</span>
+                          </DropdownMenuItem>
+                          {onDeleteLead && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteLead(group.mostAdvancedLead)
+                                }}
+                                className="flex items-center text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete Lead</span>
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -722,63 +963,115 @@ export function GroupedLeadsTable({
                       </div>
                     </TableCell>
                     <TableCell className="text-right w-[120px] min-w-[100px] max-w-[120px] overflow-hidden">
-                      <div className="flex justify-end gap-2">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                disabled={loadingActions[lead.id] === 'research'}
+                              size="sm" 
+                              className="h-8 w-8 p-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="sr-only">Open AI actions menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleLeadResearch(lead.id)
                                 }}
-                                className={`${successActions[lead.id] === 'research' ? 'bg-green-100 text-green-700' : ''}`}
+                              disabled={loadingActions[lead.id] === 'research'}
+                              className="flex items-center"
                               >
                                 {loadingActions[lead.id] === 'research' ? (
-                                  <Loader className="h-4 w-4" />
+                                <Loader className="mr-2 h-4 w-4" />
                                 ) : successActions[lead.id] === 'research' ? (
-                                  <CheckCircle2 className="h-4 w-4" />
-                                ) : (
-                                  <Search className="h-4 w-4" />
-                                )}
-                                <span className="sr-only">Lead Research</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Research lead</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={loadingActions[lead.id] === 'followup'}
+                                <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                              ) : (
+                                <Search className="mr-2 h-4 w-4" />
+                              )}
+                              <span>Lead Research</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleLeadFollowUp(lead.id)
                                 }}
-                                className={`${successActions[lead.id] === 'followup' ? 'bg-green-100 text-green-700' : ''}`}
+                              disabled={loadingActions[lead.id] === 'followup'}
+                              className="flex items-center"
                               >
                                 {loadingActions[lead.id] === 'followup' ? (
-                                  <Loader className="h-4 w-4" />
+                                <Loader className="mr-2 h-4 w-4" />
                                 ) : successActions[lead.id] === 'followup' ? (
-                                  <CheckCircle2 className="h-4 w-4" />
-                                ) : (
-                                  <Mail className="h-4 w-4" />
-                                )}
-                                <span className="sr-only">Lead Follow Up</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Intelligent follow-up</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                                <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                              ) : (
+                                <Mail className="mr-2 h-4 w-4" />
+                              )}
+                              <span>Lead Follow Up</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleLeadInvalidation(lead.id)
+                              }}
+                              disabled={loadingActions[lead.id] === 'invalidation'}
+                              className="flex items-center"
+                            >
+                              {loadingActions[lead.id] === 'invalidation' ? (
+                                <Loader className="mr-2 h-4 w-4" />
+                              ) : successActions[lead.id] === 'invalidation' ? (
+                                <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                              ) : (
+                                <X className="mr-2 h-4 w-4" />
+                              )}
+                              <span>Lead Invalidation</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onLeadClick(lead)
+                              }}
+                              className="flex items-center"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Edit Lead</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleNewConversation(lead.id)
+                              }}
+                              disabled={loadingActions[lead.id] === 'newConversation'}
+                              className="flex items-center"
+                            >
+                              {loadingActions[lead.id] === 'newConversation' ? (
+                                <Loader className="mr-2 h-4 w-4" />
+                              ) : successActions[lead.id] === 'newConversation' ? (
+                                <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                              ) : (
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                              )}
+                              <span>New Conversation</span>
+                            </DropdownMenuItem>
+                            {onDeleteLead && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteLead(lead)
+                                  }}
+                                  className="flex items-center text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Delete Lead</span>
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -825,6 +1118,37 @@ export function GroupedLeadsTable({
           onPageChange={onPageChange}
         />
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{leadToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteLead}
+              disabled={isDeletingLead}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {isDeletingLead ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Lead'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 } 

@@ -67,6 +67,15 @@ export interface ContextData {
     notes?: string
     created_at: string
   }>
+  campaigns: Array<{
+    id: string
+    title: string
+    description: string
+    status: string
+    priority: string
+    type: string
+    created_at: string
+  }>
 }
 
 export interface SelectedContextIds {
@@ -74,6 +83,7 @@ export interface SelectedContextIds {
   contents: string[]
   requirements: string[]
   tasks: string[]
+  campaigns: string[]
 }
 
 export class ContextService {
@@ -84,7 +94,8 @@ export class ContextService {
       leads: [],
       contents: [],
       requirements: [],
-      tasks: []
+      tasks: [],
+      campaigns: []
     }
 
     try {
@@ -196,6 +207,29 @@ export class ContextService {
         }
       }
 
+      // Fetch Campaigns
+      if (selectedIds.campaigns.length > 0) {
+        const { data: campaignsData, error: campaignsError } = await this.supabase
+          .from('campaigns')
+          .select(`
+            id,
+            title,
+            description,
+            status,
+            priority,
+            type,
+            created_at
+          `)
+          .eq('site_id', siteId)
+          .in('id', selectedIds.campaigns)
+
+        if (campaignsError) {
+          console.error('Error fetching campaigns:', campaignsError)
+        } else {
+          results.campaigns = campaignsData || []
+        }
+      }
+
     } catch (error) {
       console.error('Error in getContextData:', error)
       throw new Error('Failed to fetch context data')
@@ -219,6 +253,9 @@ export class ContextService {
     }
     if (contextData.tasks.length > 0) {
       summary.push(`${contextData.tasks.length} tasks`)
+    }
+    if (contextData.campaigns.length > 0) {
+      summary.push(`${contextData.campaigns.length} campaigns`)
     }
 
     return summary.length > 0 ? `Context: ${summary.join(', ')}` : 'No context selected'

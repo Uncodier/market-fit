@@ -29,6 +29,7 @@ export function ChatsBadge({ isActive = false }: { isActive?: boolean }) {
         
         if (error) {
           console.error('Error fetching pending conversations:', error)
+          console.error('Error details:', error.message, error.details)
           setPendingConversationsCount(0)
           return
         }
@@ -38,6 +39,7 @@ export function ChatsBadge({ isActive = false }: { isActive?: boolean }) {
 
       } catch (error) {
         console.error('Error counting pending conversations:', error)
+        console.error('Error details:', error instanceof Error ? error.message : error)
         setPendingConversationsCount(0)
       }
     }

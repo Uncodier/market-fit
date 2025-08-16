@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { Input } from "@/app/components/ui/input"
@@ -15,14 +15,17 @@ import {
   ContextLeadItem,
   ContextContentItem,
   ContextRequirementItem,
-  ContextTaskItem
+  ContextTaskItem,
+  ContextCampaignItem
 } from "@/app/components/context/context-items"
+import { ModalFooter, ModalFooterActions, ModalFooterInfo } from "@/app/components/ui/modal-footer"
 
 interface SelectedContext {
   leads: string[]
   contents: string[]
   requirements: string[]
   tasks: string[]
+  campaigns: string[]
 }
 
 interface ContextSelectorModalProps {
@@ -35,6 +38,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
   const [activeTab, setActiveTab] = useState("leads")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedItemsNames, setSelectedItemsNames] = useState<{[key: string]: {name: string, type: string}}>({})
+  const searchInputRef = useRef<HTMLInputElement>(null)
   // Use the new search hook for global database search
   const {
     searchResults,
@@ -45,7 +49,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
     loadInitialData
   } = useContextEntitiesSearch()
 
-  const totalSelected = Object.values(selectedContext).reduce((sum, arr) => sum + arr.length, 0)
+  const totalSelected = Object.values(selectedContext).reduce((sum, arr) => sum + (arr?.length || 0), 0)
 
   // Function to remove an item from selection
   const handleRemoveItem = (itemId: string) => {
@@ -54,7 +58,10 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
     
     // Find which category this item belongs to and remove it
     Object.keys(newContext).forEach(category => {
-      newContext[category as keyof SelectedContext] = newContext[category as keyof SelectedContext].filter(id => id !== itemId)
+      const categoryKey = category as keyof SelectedContext
+      if (newContext[categoryKey]) {
+        newContext[categoryKey] = newContext[categoryKey].filter(id => id !== itemId)
+      }
     })
     
     // Remove from names storage
@@ -138,18 +145,33 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
     }
   }, [open, clearSearch])
 
+  // Handle Command+K shortcut
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault()
+        if (open && searchInputRef.current) {
+          searchInputRef.current.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open])
+
   const handleSelectionChange = (tab: keyof SelectedContext, itemId: string, checked: boolean, itemName?: string) => {
     const newContext = { ...selectedContext }
     const newSelectedNames = { ...selectedItemsNames }
     
     if (checked) {
-      newContext[tab] = [...newContext[tab], itemId]
+      newContext[tab] = [...(newContext[tab] || []), itemId]
       // Store the item name for later use
       if (itemName) {
         newSelectedNames[itemId] = { name: itemName, type: tab.slice(0, -1) } // Remove 's' from plural
       }
     } else {
-      newContext[tab] = newContext[tab].filter(id => id !== itemId)
+      newContext[tab] = (newContext[tab] || []).filter(id => id !== itemId)
       // Remove from names storage
       delete newSelectedNames[itemId]
     }
@@ -211,7 +233,8 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
         leads: 'leads or contacts',
         contents: 'content items',
         requirements: 'requirements',
-        tasks: 'tasks'
+        tasks: 'tasks',
+        campaigns: 'campaigns'
       }
       
       return (
@@ -239,9 +262,9 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
     }
 
     return (
-      <div className="space-y-2 max-h-96 min-h-[300px] overflow-y-auto">
+      <div className="max-h-96 min-h-[300px] overflow-y-auto" style={{ rowGap: '0px' }}>
         {        data.map((item: any) => {
-          const isChecked = selectedContext[tabKey as keyof SelectedContext].includes(item.id)
+          const isChecked = (selectedContext[tabKey as keyof SelectedContext] || []).includes(item.id)
           const handleCheck = (checked: boolean) => {
             const itemName = item.name || item.title || 'Unknown'
             handleSelectionChange(tabKey as keyof SelectedContext, item.id, checked, itemName)
@@ -284,6 +307,15 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
                   onCheckedChange={handleCheck}
                 />
               )
+            case 'campaigns':
+              return (
+                <ContextCampaignItem
+                  key={item.id}
+                  campaign={item}
+                  checked={isChecked}
+                  onCheckedChange={handleCheck}
+                />
+              )
             default:
               return null
           }
@@ -294,10 +326,11 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
 
   const tabCounts = useMemo(() => {
     return {
-      leads: selectedContext.leads.length,
-      contents: selectedContext.contents.length,
-      requirements: selectedContext.requirements.length,
-      tasks: selectedContext.tasks.length
+      leads: selectedContext.leads?.length || 0,
+      contents: selectedContext.contents?.length || 0,
+      requirements: selectedContext.requirements?.length || 0,
+      tasks: selectedContext.tasks?.length || 0,
+      campaigns: selectedContext.campaigns?.length || 0
     }
   }, [selectedContext])
 
@@ -306,6 +339,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
       <DialogTrigger asChild>
         <div className="flex items-center gap-2 flex-wrap relative z-51">
           <Button
+            type="button"
             variant="outline"
             size="sm"
             className="h-8 px-3 hover:bg-muted transition-colors duration-200 text-xs"
@@ -315,7 +349,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
           
           {/* Show individual chips for selected items */}
           {displayItems.map(item => (
-            <Badge key={item.id} variant="outline" className="h-6 px-2 text-xs flex items-center gap-1 group hover:bg-muted">
+            <Badge key={item.id} variant="outline" className="h-6 px-2 text-xs flex items-center gap-1 group" interactive={true}>
               <span>{item.name.length > 15 ? `${item.name.substring(0, 15)}...` : item.name}</span>
               <button
                 onClick={(e) => {
@@ -338,37 +372,42 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
         </div>
       </DialogTrigger>
       
-      <DialogContent className="max-w-2xl max-h-[80vh] min-h-[600px] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[80vh] min-h-[600px] flex flex-col p-0" style={{ rowGap: '0px' }}>
+        <DialogHeader className="px-6 py-6">
           <DialogTitle>Add Context</DialogTitle>
           <p className="text-sm text-muted-foreground">
             Search and select data to provide context to the robot
           </p>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden px-6 pb-0">
           {/* Global Search */}
           <div className="mb-6 p-1">
-            <input
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-12"
-              placeholder="Search leads, content, requirements, tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm.trim().length >= 1 ? (
+            <div className="relative w-full">
+              <Input
+                ref={searchInputRef}
+                data-command-k-input
+                type="text"
+                placeholder="Search leads, content, requirements, tasks, campaigns..."
+                className="w-full h-12"
+                icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-[44]">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </div>
+            {searchTerm.trim().length >= 1 && (
               <p className="text-xs text-muted-foreground mt-2">
                 Searching for "{searchTerm}" across all databases...
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground mt-2">
-                Showing recent items. Start typing to search specific content.
               </p>
             )}
           </div>
 
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col" style={{ rowGap: '0px' }}>
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="leads" className="flex items-center gap-2">
                 👤 Leads
                 {tabCounts.leads > 0 && (
@@ -401,9 +440,17 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="campaigns" className="flex items-center gap-2">
+                🎯 Campaigns
+                {tabCounts.campaigns > 0 && (
+                  <Badge variant="outline" className="h-4 px-1.5 text-xs">
+                    {tabCounts.campaigns}
+                  </Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 mt-4 overflow-hidden">
+            <div className="flex-1 overflow-hidden" style={{ rowGap: '0px' }}>
               <TabsContent value="leads" className="h-full mt-0">
                 {renderTabContent('leads')}
               </TabsContent>
@@ -416,16 +463,19 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
               <TabsContent value="tasks" className="h-full mt-0">
                 {renderTabContent('tasks')}
               </TabsContent>
+              <TabsContent value="campaigns" className="h-full mt-0">
+                {renderTabContent('campaigns')}
+              </TabsContent>
             </div>
           </Tabs>
         </div>
 
         {/* Footer */}
-        <div className="border-t pt-4 flex justify-between items-center relative z-51">
-          <span className="text-sm text-muted-foreground">
+        <ModalFooter>
+          <ModalFooterInfo>
             {totalSelected} item{totalSelected !== 1 ? 's' : ''} selected
-          </span>
-          <div className="flex gap-2">
+          </ModalFooterInfo>
+          <ModalFooterActions>
             <Button
               variant="outline"
               size="sm"
@@ -434,7 +484,8 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
                   leads: [],
                   contents: [],
                   requirements: [],
-                  tasks: []
+                  tasks: [],
+                  campaigns: []
                 })
               }}
               disabled={totalSelected === 0}
@@ -447,8 +498,8 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
             >
               Done
             </Button>
-          </div>
-        </div>
+          </ModalFooterActions>
+        </ModalFooter>
       </DialogContent>
     </Dialog>
   )

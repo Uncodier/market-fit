@@ -9,29 +9,63 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          "border-transparent bg-primary text-primary-foreground",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-transparent bg-secondary text-secondary-foreground",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+          "border-transparent bg-destructive text-destructive-foreground",
         outline: "text-foreground",
         indigo:
-          "border-transparent bg-[rgb(99,102,241)] text-white hover:bg-[rgb(99,102,241)]/80",
+          "border-transparent bg-[rgb(99,102,241)] text-white",
+      },
+      interactive: {
+        true: "",
+        false: "",
       },
     },
+    compoundVariants: [
+      {
+        variant: "default",
+        interactive: true,
+        class: "hover:bg-primary/80 cursor-pointer",
+      },
+      {
+        variant: "secondary",
+        interactive: true,
+        class: "hover:bg-secondary/80 cursor-pointer",
+      },
+      {
+        variant: "destructive",
+        interactive: true,
+        class: "hover:bg-destructive/80 cursor-pointer",
+      },
+      {
+        variant: "indigo",
+        interactive: true,
+        class: "hover:bg-[rgb(99,102,241)]/80 cursor-pointer",
+      },
+    ],
     defaultVariants: {
       variant: "default",
+      interactive: false,
     },
   }
 )
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+    VariantProps<typeof badgeVariants> {
+  interactive?: boolean
+}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, interactive, ...props }: BadgeProps) {
+  // Auto-detect interactive state based on props if not explicitly set
+  const isInteractive = interactive !== undefined 
+    ? interactive 
+    : !!(props.onClick || props.onMouseDown || props.onMouseUp || props.onKeyDown)
+
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div className={cn(badgeVariants({ variant, interactive: isInteractive }), className)} {...props} />
   )
 }
 

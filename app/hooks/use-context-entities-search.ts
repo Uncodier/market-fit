@@ -7,7 +7,8 @@ import {
   ContextLead,
   ContextContent,
   ContextRequirement,
-  ContextTask
+  ContextTask,
+  ContextCampaign
 } from '@/app/services/context-entities.service'
 
 // Auxiliary functions for requirements and tasks
@@ -70,11 +71,40 @@ async function getTasksForSite(siteId: string, limit: number = 20): Promise<Cont
   })) || []
 }
 
+async function getCampaignsForSite(siteId: string, limit: number = 20): Promise<ContextCampaign[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('campaigns')
+    .select('id, title, description, status, priority, type, created_at')
+    .eq('site_id', siteId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error && error.code === 'PGRST116') {
+    return []
+  }
+  
+  if (error) {
+    throw error
+  }
+
+  return data?.map(campaign => ({
+    id: campaign.id,
+    title: campaign.title || '',
+    description: campaign.description || '',
+    status: campaign.status || '',
+    priority: campaign.priority || '',
+    type: campaign.type || '',
+    created_at: campaign.created_at
+  })) || []
+}
+
 interface SearchResults {
   leads: ContextLead[]
   contents: ContextContent[]
   requirements: ContextRequirement[]
   tasks: ContextTask[]
+  campaigns: ContextCampaign[]
 }
 
 interface UseContextEntitiesSearchReturn {
@@ -94,7 +124,8 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
     leads: [],
     contents: [],
     requirements: [],
-    tasks: []
+    tasks: [],
+    campaigns: []
   })
   
   const [loading, setLoading] = useState(false)
@@ -114,7 +145,7 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
     try {
       // Load recent data from all entities (no search filter)
       // Using safe queries that handle 404 errors gracefully
-      const [leadsResult, contentResult, requirementsResult, tasksResult] = await Promise.allSettled([
+      const [leadsResult, contentResult, requirementsResult, tasksResult, campaignsResult] = await Promise.allSettled([
         // Use leads service (client-side compatible)
         getLeads(currentSite.id),
         // Use direct query for content (since getContent is server-only)
@@ -133,7 +164,9 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
           }),
         // Use auxiliary functions for requirements and tasks
         getRequirementsForSite(currentSite.id, 20),
-        getTasksForSite(currentSite.id, 20)
+        getTasksForSite(currentSite.id, 20),
+        // Use auxiliary function for campaigns
+        getCampaignsForSite(currentSite.id, 20)
       ])
 
       // Process results same as search
@@ -141,7 +174,8 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
         leads: [],
         contents: [],
         requirements: [],
-        tasks: []
+        tasks: [],
+        campaigns: []
       }
 
       // Process leads response
@@ -181,6 +215,11 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
         results.tasks = tasksResult.value
       }
 
+      // Process campaigns
+      if (campaignsResult.status === 'fulfilled') {
+        results.campaigns = campaignsResult.value
+      }
+
       setSearchResults(results)
       setHasInitialized(true)
 
@@ -189,7 +228,8 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
         leads: results.leads.length,
         contents: results.contents.length,
         requirements: results.requirements.length,
-        tasks: results.tasks.length
+        tasks: results.tasks.length,
+        campaigns: results.campaigns.length
       })
 
     } catch (error) {
@@ -219,7 +259,7 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
     try {
       // Search in parallel across all entities with improved search
       // Using safe queries that handle 404 errors gracefully
-      const [leadsResult, contentResult, requirementsResult, tasksResult] = await Promise.allSettled([
+      const [leadsResult, contentResult, requirementsResult, tasksResult, campaignsResult] = await Promise.allSettled([
         // Search leads using client-side filtering since getLeads doesn't support search
         getLeads(currentSite.id),
 
@@ -243,7 +283,10 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
         getRequirementsForSite(currentSite.id, 50),
 
         // Search tasks using auxiliary function (client-side filtering)
-        getTasksForSite(currentSite.id, 50)
+        getTasksForSite(currentSite.id, 50),
+
+        // Search campaigns using auxiliary function (client-side filtering)
+        getCampaignsForSite(currentSite.id, 50)
       ])
 
       // Process results
@@ -251,7 +294,8 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
         leads: [],
         contents: [],
         requirements: [],
-        tasks: []
+        tasks: [],
+        campaigns: []
       }
 
       // Process leads response with client-side filtering
@@ -317,6 +361,19 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
         results.tasks = filteredTasks.slice(0, 50)
       }
 
+      // Process campaigns with client-side filtering
+      if (campaignsResult.status === 'fulfilled') {
+        const searchLower = query.toLowerCase()
+        const filteredCampaigns = campaignsResult.value.filter(campaign => {
+          return (campaign.title && typeof campaign.title === 'string' && campaign.title.toLowerCase().includes(searchLower)) ||
+                 (campaign.description && typeof campaign.description === 'string' && campaign.description.toLowerCase().includes(searchLower)) ||
+                 (campaign.status && typeof campaign.status === 'string' && campaign.status.toLowerCase().includes(searchLower)) ||
+                 (campaign.priority && typeof campaign.priority === 'string' && campaign.priority.toLowerCase().includes(searchLower)) ||
+                 (campaign.type && typeof campaign.type === 'string' && campaign.type.toLowerCase().includes(searchLower))
+        })
+        results.campaigns = filteredCampaigns.slice(0, 50)
+      }
+
       setSearchResults(results)
 
       // Log results for debugging
@@ -324,11 +381,12 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
         leads: results.leads.length,
         contents: results.contents.length,
         requirements: results.requirements.length,
-        tasks: results.tasks.length
+        tasks: results.tasks.length,
+        campaigns: results.campaigns.length
       })
 
       // Check if all searches failed (excluding table not found errors)
-      const availableResults = [leadsResult, contentResult, requirementsResult, tasksResult]
+      const availableResults = [leadsResult, contentResult, requirementsResult, tasksResult, campaignsResult]
         .filter(result => {
           if (result.status === 'rejected') {
             // Don't count table not found as a failure
@@ -361,7 +419,8 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
       leads: [],
       contents: [],
       requirements: [],
-      tasks: []
+      tasks: [],
+      campaigns: []
     })
     setError(null)
     setHasInitialized(false)

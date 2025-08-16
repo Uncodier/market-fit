@@ -717,36 +717,7 @@ export function KanbanView({
                                             </TooltipContent>
                                           </Tooltip>
                                         </TooltipProvider>
-                                        {/* Assignee action button - only show if no assignee */}
-                                        {!lead.assignee_id && (
-                                          <TooltipProvider>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  className="h-6 w-6 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50"
-                                                  disabled={assigningLeads[lead.id]}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    e.preventDefault()
-                                                    handleAssignLead(lead.id)
-                                                  }}
-                                                >
-                                                  {assigningLeads[lead.id] ? (
-                                                    <Loader className="h-3 w-3" />
-                                                  ) : (
-                                                    <Sparkles className="h-3 w-3" />
-                                                  )}
-                                                  <span className="sr-only">Assign to me</span>
-                                                </Button>
-                                              </TooltipTrigger>
-                                              <TooltipContent>
-                                                <p>Assign to me</p>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
-                                        )}
+
                                         {/* Assignee indicator - always show */}
                                         <TooltipProvider>
                                           <Tooltip>
