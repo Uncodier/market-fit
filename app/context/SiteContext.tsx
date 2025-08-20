@@ -390,6 +390,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   
+  // ✅ NEW STATES: Track sites loading attempts and session validity
+  const [sitesLoadAttempted, setSitesLoadAttempted] = useState(false)
+  const [hasValidSession, setHasValidSession] = useState(false)
+  
   // Navigation hooks
   const router = useRouter()
   const pathname = usePathname()
@@ -478,6 +482,36 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const loadSites = async () => {
     if (!isMounted || !supabaseRef.current) {
       console.log("Cannot load sites:", { isMounted, hasSupabaseClient: !!supabaseRef.current })
+      return
+    }
+
+    // ✅ MARK that we attempted to load sites
+    setSitesLoadAttempted(true)
+    
+    // ✅ VERIFY session first
+    try {
+      const { data: { session } } = await supabaseRef.current.auth.getSession()
+      setHasValidSession(!!session)
+      
+      if (!session) {
+        console.log("No session found, skipping sites load")
+        setSites([])
+        setIsLoading(false)
+        if (!isInitialized) {
+          setIsInitialized(true)
+        }
+        return
+      }
+      
+      console.log("✅ Valid session found, proceeding with sites load")
+    } catch (sessionError) {
+      console.error("Error checking session:", sessionError)
+      setHasValidSession(false)
+      setSites([])
+      setIsLoading(false)
+      if (!isInitialized) {
+        setIsInitialized(true)
+      }
       return
     }
     
@@ -670,11 +704,15 @@ export function SiteProvider({ children }: SiteProviderProps) {
       (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED', session: any) => {
         if (event === 'SIGNED_IN') {
           console.log('User signed in, loading sites...')
+          setHasValidSession(true)
+          setSitesLoadAttempted(false) // ✅ Reset for new load
           loadSitesWithPrevention()
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out, clearing sites...')
           setSites([])
           setCurrentSite(null)
+          setHasValidSession(false)
+          setSitesLoadAttempted(true) // ✅ Mark as "loaded" (empty)
           setIsLoading(false)
           try {
             localStorage.removeItem("currentSiteId")
@@ -685,6 +723,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
           // Token refresh happens automatically when window regains focus
           // Don't reload sites to prevent interrupting user work on settings page
           console.log('Token refreshed - no action needed, prevention in place')
+          // Update session validity without reloading sites
+          setHasValidSession(!!session)
         }
       }
     )
@@ -758,37 +798,43 @@ export function SiteProvider({ children }: SiteProviderProps) {
 
   // Redirect to /create-site if user has no sites
   useEffect(() => {
-    // Add a small delay to ensure all state updates are complete
+    // Add a delay to ensure all state updates are complete
     const redirectTimer = setTimeout(() => {
       // Only redirect if:
       // 1. Component is mounted and fully initialized
       // 2. Not currently loading sites
-      // 3. No sites available
-      // 4. Not already on create-site page or auth pages
-      // 5. User has a session (authenticated)
+      // 3. Already attempted to load sites at least once
+      // 4. Has a valid session
+      // 5. No sites available
+      // 6. Not already on create-site page or auth pages
       if (
         isMounted && 
         isInitialized && 
         !isLoading && 
+        sitesLoadAttempted &&     // ✅ NEW CONDITION
+        hasValidSession &&        // ✅ NEW CONDITION
         sites.length === 0 && 
         !pathname.startsWith('/create-site') && 
         !pathname.startsWith('/auth/') &&
         supabaseRef.current
       ) {
-        // Double-check if user is authenticated before redirecting
-        supabaseRef.current.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
-          if (session) {
-            console.log("No sites found for authenticated user, redirecting to /create-site")
-            router.push('/create-site')
-          }
-        }).catch((error: any) => {
-          console.error("Error checking session for redirect:", error)
+        console.log("✅ Confirmed: User has valid session but no sites, redirecting to create-site")
+        router.push('/create-site')
+      } else {
+        console.log("❌ Redirect conditions not met:", {
+          isMounted,
+          isInitialized,
+          isLoading: !isLoading,
+          sitesLoadAttempted,
+          hasValidSession,
+          sitesCount: sites.length,
+          pathname
         })
       }
-    }, 100) // Small delay to ensure state consistency
+    }, 1000) // ✅ Increased delay from 100ms to 1000ms
 
     return () => clearTimeout(redirectTimer)
-  }, [isMounted, isInitialized, isLoading, sites.length, pathname, router])
+  }, [isMounted, isInitialized, isLoading, sitesLoadAttempted, hasValidSession, sites.length, pathname, router])
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = async (site: Site) => {

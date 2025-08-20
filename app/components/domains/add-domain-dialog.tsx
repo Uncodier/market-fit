@@ -34,17 +34,28 @@ const formSchema = z.object({
         // Allow localhost
         if (domain.toLowerCase() === 'localhost') return true
         
+        // If domain starts with https:// or http://, extract the domain part
+        let cleanDomain = domain
+        if (domain.startsWith('https://') || domain.startsWith('http://')) {
+          try {
+            const url = new URL(domain)
+            cleanDomain = url.hostname
+          } catch {
+            return false
+          }
+        }
+        
         // Regular domain validation
         const domainRegex = /^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/
-        if (domainRegex.test(domain)) return true
+        if (domainRegex.test(cleanDomain)) return true
         
         // IPv4 validation
         const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/
-        if (ipv4Regex.test(domain)) return true
+        if (ipv4Regex.test(cleanDomain)) return true
         
         // IPv6 validation
         const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/
-        if (ipv6Regex.test(domain)) return true
+        if (ipv6Regex.test(cleanDomain)) return true
         
         return false
       },
@@ -68,8 +79,38 @@ export function AddDomainDialog({ onAddDomain }: AddDomainDialogProps) {
     },
   })
 
+  const handleDomainChange = (value: string) => {
+    // If the value is empty, don't add anything
+    if (!value) {
+      return value
+    }
+
+    // If the value already starts with http:// or https://, don't modify it
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value
+    }
+
+    // Add https:// prefix when user starts typing anything that doesn't already have a protocol
+    if (value.trim() && !value.startsWith('//')) {
+      return `https://${value}`
+    }
+
+    return value
+  }
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const success = await onAddDomain(values.domain)
+    // Extract the domain part if it has https:// prefix
+    let domainToSubmit = values.domain
+    if (domainToSubmit.startsWith('https://') || domainToSubmit.startsWith('http://')) {
+      try {
+        const url = new URL(domainToSubmit)
+        domainToSubmit = url.hostname
+      } catch {
+        // If URL parsing fails, use the original value
+      }
+    }
+    
+    const success = await onAddDomain(domainToSubmit)
     if (success) {
       form.reset()
       setOpen(false)
@@ -106,9 +147,18 @@ export function AddDomainDialog({ onAddDomain }: AddDomainDialogProps) {
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        placeholder="example.com" 
+                        placeholder="https://example.com" 
                         className="pl-10"
-                        {...field} 
+                        {...field}
+                        onChange={(e) => {
+                          const processedValue = handleDomainChange(e.target.value)
+                          field.onChange(processedValue)
+                        }}
+                        onBlur={(e) => {
+                          const processedValue = handleDomainChange(e.target.value)
+                          field.onChange(processedValue)
+                          field.onBlur()
+                        }}
                       />
                     </div>
                   </FormControl>

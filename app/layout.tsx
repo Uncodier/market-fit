@@ -119,7 +119,7 @@ export default function RootLayout({
                     } else if (window.MarketFit && typeof window.MarketFit.hideWidget === 'function') {
                       window.MarketFit.hideWidget();
                     }
-                  }, 1000);
+                  }, 2000);
                 })();
               `
             }}
