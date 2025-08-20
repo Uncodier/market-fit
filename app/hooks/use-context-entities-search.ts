@@ -435,3 +435,5 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
     loadInitialData
   }
 }
+
+export default useContextEntitiesSearch

@@ -326,4 +326,6 @@ export function useAuth() {
     signUpWithEmail,
     signOut
   }
-} 
+}
+
+export default useAuth 

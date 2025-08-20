@@ -18,6 +18,7 @@ import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
 import { getUserData } from "@/app/services/user-service"
 import { cn } from "@/lib/utils"
+import { extractUrlsFromText, generateTitleFromUrl } from "@/app/utils/url-cleaning"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -429,80 +430,10 @@ export default function TimelineTab({ task }: TimelineTabProps) {
     return null
   }
 
-  // Function to detect URLs in text
-  const detectUrlsInText = (text: string) => {
-    if (!text || typeof text !== 'string') return []
-    
-    // Improved regex patterns to catch different URL formats without cutting them
-    const urlPatterns = [
-      // URLs with protocol - capture until whitespace or end of string, but preserve query params and fragments
-      /https?:\/\/[^\s<>"'\[\](){}\|\\^`]+/gi,
-      // www. URLs - more comprehensive pattern
-      /www\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*[^\s<>"'\[\](){}\|\\^`]*/gi,
-      // domain.tld URLs - improved pattern for complete URLs
-      /[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(?:\/[^\s<>"'\[\](){}\|\\^`]*)?/gi
-    ]
-    
-    const allMatches = []
-    
-    for (const pattern of urlPatterns) {
-      const matches = text.match(pattern) || []
-      allMatches.push(...matches)
-    }
-    
-    // Remove duplicates and clean URLs
-    const uniqueUrls = Array.from(new Set(allMatches))
-    
-    return uniqueUrls.map(url => {
-      // Only remove trailing punctuation that is clearly not part of the URL
-      // Be more conservative to avoid cutting legitimate URL parts
-      let cleanedUrl = url.replace(/[.,;:!?)\]}>]+$/, '')
-      
-      // Remove trailing punctuation only if it's followed by whitespace or end of string
-      // This helps preserve URLs like example.com/path?param=value.html
-      cleanedUrl = cleanedUrl.replace(/[.,;:!?)\]}>](?=\s|$)/g, '')
-      
-      // Add protocol if missing
-      if (!cleanedUrl.match(/^https?:\/\//)) {
-        cleanedUrl = `https://${cleanedUrl}`
-      }
-      
-      return cleanedUrl
-    }).filter(url => {
-      // Basic validation: must have at least a domain with TLD
-      try {
-        const urlObj = new URL(url)
-        return urlObj.hostname.includes('.') && urlObj.hostname.length > 3
-      } catch {
-        return false
-      }
-    })
-  }
+  // Use the imported URL detection function
+  const detectUrlsInText = extractUrlsFromText
 
-  // Function to generate a title from URL
-  const generateTitleFromUrl = (url: string) => {
-    try {
-      const parsedUrl = new URL(url)
-      const hostname = parsedUrl.hostname.replace('www.', '')
-      
-      // Extract meaningful parts from pathname
-      const pathParts = parsedUrl.pathname.split('/').filter(part => part && part !== '')
-      
-      if (pathParts.length > 0) {
-        // Use the last meaningful part of the path
-        const lastPart = pathParts[pathParts.length - 1]
-        const cleaned = lastPart.replace(/[-_]/g, ' ').replace(/\.(html|php|aspx?)$/i, '')
-        return cleaned.split(' ').map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-        ).join(' ')
-      }
-      
-      // Fallback to hostname
-      return `Visit ${hostname.charAt(0).toUpperCase() + hostname.slice(1)}`
-    } catch {
-      return "View Link"
-    }
-  }
+
 
   // Auto-detect URLs in comment and populate CTA
   useEffect(() => {
