@@ -108,18 +108,32 @@ describe('URL Cleaning Utilities', () => {
   })
 
   describe('generateTitleFromUrl', () => {
-    it('should generate title from URL path', () => {
+    it('should generate title with domain and path', () => {
       const url = 'https://example.com/user-profile'
       const result = generateTitleFromUrl(url)
       
-      expect(result).toBe('User Profile')
+      expect(result).toBe('Example, User Profile')
     })
 
     it('should handle URLs with query parameters', () => {
       const url = 'https://calendly.com/sergio-prado?param=value'
       const result = generateTitleFromUrl(url)
       
-      expect(result).toBe('Sergio Prado')
+      expect(result).toBe('Calendly, Sergio Prado')
+    })
+
+    it('should handle Calendly URLs specifically', () => {
+      const url = 'https://www.calendly.com/sergio-prado'
+      const result = generateTitleFromUrl(url)
+      
+      expect(result).toBe('Calendly, Sergio Prado')
+    })
+
+    it('should handle complex paths', () => {
+      const url = 'https://docs.google.com/document/edit'
+      const result = generateTitleFromUrl(url)
+      
+      expect(result).toBe('Docs, Edit')
     })
 
     it('should fallback to hostname for root URLs', () => {
@@ -127,6 +141,13 @@ describe('URL Cleaning Utilities', () => {
       const result = generateTitleFromUrl(url)
       
       expect(result).toBe('Example')
+    })
+
+    it('should handle URLs with multiple path segments', () => {
+      const url = 'https://github.com/user/repository/issues'
+      const result = generateTitleFromUrl(url)
+      
+      expect(result).toBe('Github, Issues')
     })
 
     it('should handle invalid URLs gracefully', () => {
@@ -162,3 +183,4 @@ describe('URL Cleaning Utilities', () => {
     })
   })
 })
+

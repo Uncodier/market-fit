@@ -45,12 +45,17 @@ export const extractUrlsFromText = (text: string): string[] => {
 }
 
 /**
- * Generates a title from a URL
+ * Generates a title from a URL that includes both domain and path information
  */
 export const generateTitleFromUrl = (url: string): string => {
   try {
     const parsedUrl = new URL(url)
     const hostname = parsedUrl.hostname.replace('www.', '')
+    
+    // Get the main domain name (first part before TLD)
+    const domainParts = hostname.split('.')
+    const mainDomain = domainParts[0]
+    const domainName = mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1).toLowerCase()
     
     // Extract meaningful parts from pathname
     const pathParts = parsedUrl.pathname.split('/').filter(part => part && part !== '')
@@ -59,13 +64,16 @@ export const generateTitleFromUrl = (url: string): string => {
       // Use the last meaningful part of the path
       const lastPart = pathParts[pathParts.length - 1]
       const cleaned = lastPart.replace(/[-_]/g, ' ').replace(/\.(html|php|aspx?)$/i, '')
-      return cleaned.split(' ').map(word => 
+      const pathTitle = cleaned.split(' ').map(word => 
         word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
       ).join(' ')
+      
+      // Combine domain and path: "Calendly, Sergio Prado"
+      return `${domainName}, ${pathTitle}`
     }
     
-    // Fallback to hostname
-    return hostname.split('.')[0].charAt(0).toUpperCase() + hostname.split('.')[0].slice(1)
+    // Fallback to just domain name if no meaningful path
+    return domainName
   } catch {
     return 'Visit Link'
   }
