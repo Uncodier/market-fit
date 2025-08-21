@@ -796,7 +796,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
   }, [isInitialized, isMounted]) // Removed currentSite?.id dependency to prevent re-subscriptions
 
-  // Redirect to /create-site if user has no sites
+  // Redirect to /create-site if user has no sites (but don't redirect away from create-site)
   useEffect(() => {
     // Add a delay to ensure all state updates are complete
     const redirectTimer = setTimeout(() => {
@@ -807,6 +807,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // 4. Has a valid session
       // 5. No sites available
       // 6. Not already on create-site page or auth pages
+      // 7. Not trying to redirect FROM create-site (this was the bug!)
       if (
         isMounted && 
         isInitialized && 
@@ -820,6 +821,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
       ) {
         console.log("✅ Confirmed: User has valid session but no sites, redirecting to create-site")
         router.push('/create-site')
+      } else if (
+        // 🚫 NEVER redirect away from create-site if user is there intentionally
+        pathname.startsWith('/create-site')
+      ) {
+        // Check if this is intentional access
+        const isIntentionalAccess = typeof window !== 'undefined' && 
+          sessionStorage.getItem('intentional_create_site_access') === 'true'
+        
+        if (isIntentionalAccess || sites.length > 0) {
+          console.log("🚫 User is on create-site page intentionally - allowing access")
+          // Do nothing - let them stay on create-site
+        }
       } else {
         console.log("❌ Redirect conditions not met:", {
           isMounted,

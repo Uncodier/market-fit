@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { useSite } from "../context/SiteContext"
 import { SiteOnboarding } from "../components/onboarding/site-onboarding"
 import { useAuth } from "../hooks/use-auth"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "../services/api-client-service"
 
 export default function CreateSitePage() {
@@ -15,16 +15,29 @@ export default function CreateSitePage() {
   const { createSite, setCurrentSite, sites, isLoading: sitesLoading } = useSite()
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const hasRedirectedRef = useRef(false)
 
-  // Redirect to dashboard if user already has sites (after loading completes)
+  // Allow manual access to create-site even with existing sites
   useEffect(() => {
-    if (!sitesLoading && sites.length > 0) {
-      console.log("User already has sites, redirecting to dashboard")
-      router.push('/dashboard')
+    // Set a flag to indicate this is intentional access
+    sessionStorage.setItem('intentional_create_site_access', 'true')
+    
+    // Clean up the flag when leaving the page
+    return () => {
+      sessionStorage.removeItem('intentional_create_site_access')
     }
-  }, [sitesLoading, sites.length, router])
+  }, [])
 
-  // Don't render onboarding if still loading sites or if user already has sites
+  // Simple redirect logic - only redirect if user has no sites and is loading
+  useEffect(() => {
+    // Don't do any redirects - let the user stay here if they navigated manually
+    // The SiteContext will handle redirecting users with no sites TO this page
+    // But we won't redirect them AWAY from this page
+    console.log("Create-site page loaded - allowing access regardless of existing sites")
+  }, [sitesLoading, sites.length, router, searchParams])
+
+  // Only show loading if still loading sites
   if (sitesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
