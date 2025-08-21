@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
@@ -76,6 +76,7 @@ export function ChatList({
 }: ChatListProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [conversations, setConversations] = useState<ConversationListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -127,6 +128,15 @@ export function ChatList({
     
     fetchUserAvatar()
   }, [user])
+
+  // Debounce search query to avoid excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300) // 300ms delay
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
   
   // Pagination states - similar to commands-panel.tsx
   const [currentPage, setCurrentPage] = useState(1)
@@ -157,13 +167,13 @@ export function ChatList({
   }, [selectedConversationId]);
 
   // Load conversations with pagination - similar to commands-panel.tsx
-  const loadConversations = useCallback(async (page: number = 1, append: boolean = false) => {
+  const loadConversations = useCallback(async (page: number = 1, append: boolean = false, searchQuery?: string) => {
     if (!siteId) {
       console.log('🔍 DEBUG: Cannot load conversations - no siteId provided');
       return;
     }
     
-          console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}, page: ${page}, append: ${append}, filter: ${combinedFilter}`);
+    console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}, page: ${page}, append: ${append}, filter: ${combinedFilter}, search: ${searchQuery || 'none'}`);
     
     // Solo mostrar el esqueleto en la primera carga
     const isFirstLoad = isFirstLoadRef.current && page === 1;
@@ -183,7 +193,7 @@ export function ChatList({
       const channelFilter = ['web', 'email', 'whatsapp'].includes(combinedFilter) ? combinedFilter as 'web' | 'email' | 'whatsapp' : 'all'
       const assigneeFilter = ['assigned', 'ai'].includes(combinedFilter) ? combinedFilter as 'assigned' | 'ai' : 'all'
       
-      const result = await getConversations(siteId, page, 20, channelFilter, assigneeFilter, user?.id) // 20 conversations per page
+      const result = await getConversations(siteId, page, 20, channelFilter, assigneeFilter, user?.id, searchQuery) // 20 conversations per page
       console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations for page ${page}`);
       
       if (result.length > 0) {
@@ -234,7 +244,7 @@ export function ChatList({
     if (isLoadingMore || !hasMore) return;
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    await loadConversations(nextPage, true);
+    await loadConversations(nextPage, true, debouncedSearchQuery);
   };
 
   useEffect(() => {
@@ -562,15 +572,22 @@ export function ChatList({
     }
   }, [combinedFilter, siteId, loadConversations])
 
-  const filteredConversations = conversations.filter(conv => {
-    // Only filter by search query since channel filtering is done at query level
-    const searchLower = searchQuery.toLowerCase()
-    return (
-      (conv.title && conv.title.toLowerCase().includes(searchLower)) ||
-      (conv.agentName && conv.agentName.toLowerCase().includes(searchLower)) ||
-      (conv.lastMessage && conv.lastMessage.toLowerCase().includes(searchLower))
-    )
-  })
+  // Handle search query changes
+  useEffect(() => {
+    if (siteId) {
+      console.log(`🔍 DEBUG: Search query changed to: "${debouncedSearchQuery}", reloading conversations`);
+      // Reset pagination state
+      setCurrentPage(1)
+      setHasMore(true)
+      // Reset isFirstLoadRef so skeleton shows on search
+      isFirstLoadRef.current = true
+      // Load conversations with search query
+      loadConversations(1, false, debouncedSearchQuery)
+    }
+  }, [debouncedSearchQuery, siteId, loadConversations])
+
+  // No need for client-side filtering since search is done at database level
+  const filteredConversations = conversations
 
   // Separar conversaciones pendientes del resto
   const pendingConversations = filteredConversations.filter(conv => conv.status === 'pending')

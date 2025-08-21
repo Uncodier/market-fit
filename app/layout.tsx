@@ -76,6 +76,7 @@ export default function RootLayout({
                         theme: detectTheme(),
                         chat: {
                           enabled: true,
+                          hidden: true,
                           allowAnonymousMessages: false,
                           position: "bottom-right",
                           title: "Customer and Tech Support",
@@ -112,14 +113,7 @@ export default function RootLayout({
                   var firstScript = document.getElementsByTagName('script')[0];
                   firstScript.parentNode.insertBefore(script, firstScript);
                   
-                  // Hide widget after everything is loaded
-                  setTimeout(function() {
-                    if (window.MarketFit && typeof window.MarketFit.widgetHide === 'function') {
-                      window.MarketFit.widgetHide();
-                    } else if (window.MarketFit && typeof window.MarketFit.hideWidget === 'function') {
-                      window.MarketFit.hideWidget();
-                    }
-                  }, 2000);
+
                 })();
               `
             }}

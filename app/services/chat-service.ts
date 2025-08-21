@@ -260,10 +260,11 @@ export async function getConversations(
   pageSize: number = 20,
   channelFilter?: 'all' | 'web' | 'email' | 'whatsapp',
   assigneeFilter?: 'all' | 'assigned' | 'ai',
-  currentUserId?: string
+  currentUserId?: string,
+  searchQuery?: string
 ): Promise<ConversationListItem[]> {
   try {
-    console.log(`🔍 DEBUG: getConversations called for site: ${siteId}, page: ${page}, pageSize: ${pageSize}, channelFilter: ${channelFilter || 'none'}`);
+    console.log(`🔍 DEBUG: getConversations called for site: ${siteId}, page: ${page}, pageSize: ${pageSize}, channelFilter: ${channelFilter || 'none'}, searchQuery: ${searchQuery || 'none'}`);
     const supabase = createClient();
     
     // Calculate pagination
@@ -303,6 +304,13 @@ export async function getConversations(
       } else {
         query = query.eq(`custom_data->>channel`, channelFilter)
       }
+    }
+
+    // Apply search filter if specified
+    if (searchQuery && searchQuery.trim()) {
+      const searchTerm = searchQuery.trim().toLowerCase()
+      // Search only in conversation title for now (most reliable)
+      query = query.ilike('title', `%${searchTerm}%`)
     }
 
     // Apply ordering and pagination
