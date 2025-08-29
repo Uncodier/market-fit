@@ -1207,7 +1207,45 @@ Thanks!`
         </Card>
       </div>
 
-
+      {/* Completion Card - Moved to top */}
+      {!validOnboardingState?.completed && (
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/50 dark:via-indigo-950/50 dark:to-purple-950/50">
+          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+          <CardContent className="relative p-8 text-center space-y-6">
+            <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <CheckCircle2 className="h-8 w-8 text-white" />
+            </div>
+            <div className="space-y-3">
+              <h3 className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Ready to launch? 🚀
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 max-w-sm mx-auto leading-relaxed">
+                You've set up the foundation! Complete your onboarding to unlock the full potential of Market Fit
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                onClick={markAllDone} 
+                size="lg" 
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transform hover:scale-105 transition-all duration-200 active:scale-95"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Complete Onboarding
+              </Button>
+              <Button 
+                variant="outline"
+                size="lg" 
+                className="hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200 active:scale-95"
+                onClick={() => window.open('https://www.calendly.com/sergio-prado', '_blank')}
+              >
+                <User className="h-4 w-4 mr-2" />
+                Get Human Assistance
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions for Critical Tasks */}
       {criticalCompleted < criticalTasks.length && (
@@ -1413,46 +1451,6 @@ Thanks!`
           </Card>
         )
       })}
-
-      {/* Completion Card */}
-      {!validOnboardingState?.completed && (
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/50 dark:via-indigo-950/50 dark:to-purple-950/50">
-          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
-          <CardContent className="relative p-8 text-center space-y-6">
-            <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-              <CheckCircle2 className="h-8 w-8 text-white" />
-            </div>
-            <div className="space-y-3">
-              <h3 className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Ready to launch? 🚀
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 max-w-sm mx-auto leading-relaxed">
-                You've set up the foundation! Complete your onboarding to unlock the full potential of Market Fit
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button 
-                onClick={markAllDone} 
-                size="lg" 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transform hover:scale-105 transition-all duration-200 active:scale-95"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Complete Onboarding
-              </Button>
-              <Button 
-                variant="outline"
-                size="lg" 
-                className="hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200 active:scale-95"
-                onClick={() => window.open('https://www.calendly.com/sergio-prado', '_blank')}
-              >
-                <User className="h-4 w-4 mr-2" />
-                Get Human Assistance
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

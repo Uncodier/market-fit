@@ -63,6 +63,12 @@ const configItems: ConfigItem[] = [
     icon: Settings,
   },
   {
+    title: "Agents",
+    href: "/agents",
+    icon: Cpu,
+    isSettingsChild: true,
+  },
+  {
     title: "Billing",
     href: "/billing",
     icon: CreditCard,
@@ -72,12 +78,6 @@ const configItems: ConfigItem[] = [
     title: "Security",
     href: "/security",
     icon: Shield,
-    isSettingsChild: true,
-  },
-  {
-    title: "Agents",
-    href: "/agents",
-    icon: Cpu,
     isSettingsChild: true,
   },
   {
