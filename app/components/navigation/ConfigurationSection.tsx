@@ -2,6 +2,33 @@
 
 import { cn } from "@/lib/utils"
 import { Settings, Shield, Sun, Moon, CreditCard } from "@/app/components/ui/icons"
+
+// Add Cpu icon for AI representation
+const Cpu = ({ className = "", ...props }: { className?: string, [key: string]: any }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    width="18" 
+    height="18" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+    <rect x="9" y="9" width="6" height="6" />
+    <line x1="9" y1="1" x2="9" y2="4" />
+    <line x1="15" y1="1" x2="15" y2="4" />
+    <line x1="9" y1="20" x2="9" y2="23" />
+    <line x1="15" y1="20" x2="15" y2="23" />
+    <line x1="20" y1="9" x2="23" y2="9" />
+    <line x1="20" y1="14" x2="23" y2="14" />
+    <line x1="1" y1="9" x2="4" y2="9" />
+    <line x1="1" y1="14" x2="4" y2="14" />
+  </svg>
+)
 import { MenuItem } from "./MenuItem"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
@@ -48,6 +75,12 @@ const configItems: ConfigItem[] = [
     isSettingsChild: true,
   },
   {
+    title: "Agents",
+    href: "/agents",
+    icon: Cpu,
+    isSettingsChild: true,
+  },
+  {
     title: "Theme",
     href: "#theme",
     icon: Sun,
@@ -77,6 +110,7 @@ export function ConfigurationSection({
   const isSettingsActive = pathname.startsWith('/settings')
   const isSecurityActive = pathname.startsWith('/security')
   const isBillingActive = pathname.startsWith('/billing')
+  const isAgentsActive = pathname.startsWith('/agents')
   
   // Use external state if provided, fallback to local state
   const [internalForceShowChildren, setInternalForceShowChildren] = useState(false)
@@ -94,7 +128,7 @@ export function ConfigurationSection({
     }
   };
   
-  const shouldShowSettingsChildren = isSettingsActive || isSecurityActive || isBillingActive || forceShowChildren
+  const shouldShowSettingsChildren = isSettingsActive || isSecurityActive || isBillingActive || isAgentsActive || forceShowChildren
   
   // For animation - defining all state upfront
   const [isEntering, setIsEntering] = useState(false)
@@ -109,8 +143,9 @@ export function ConfigurationSection({
       const isLeavingSettingsArea = (
         (previousPath.startsWith('/settings') || 
          previousPath.startsWith('/security') || 
-         previousPath.startsWith('/billing')) &&
-        !isSettingsActive && !isSecurityActive && !isBillingActive
+         previousPath.startsWith('/billing') ||
+         previousPath.startsWith('/agents')) &&
+        !isSettingsActive && !isSecurityActive && !isBillingActive && !isAgentsActive
       );
       
       // When navigating away from settings area, hide the settings children
@@ -121,7 +156,7 @@ export function ConfigurationSection({
     
     // Update previous path reference
     prevPathRef.current = pathname;
-  }, [pathname, isSettingsActive, isSecurityActive, isBillingActive, externalForceShowChildren, setForceShowChildren]);
+  }, [pathname, isSettingsActive, isSecurityActive, isBillingActive, isAgentsActive, externalForceShowChildren, setForceShowChildren]);
   
   // Use external navigation handler if provided, fallback to local implementation
   const handleSettingsNavigation = onSettingsNavigation || ((e: React.MouseEvent, href: string) => {

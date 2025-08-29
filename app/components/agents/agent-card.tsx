@@ -35,40 +35,7 @@ export function AgentCard({
   onShowFunctions,
   className 
 }: AgentCardProps) {
-  // Añadir console.log para depuración
-  console.log("Rendering AgentCard for agent:", agent.name, "icon:", agent.icon)
-  
-  // Función para obtener el componente de icono basado en el nombre
-  const getIconComponent = (iconName: string) => {
-    switch (iconName) {
-      case 'ShoppingCart':
-        return ShoppingCart;
-      case 'HelpCircle':
-        return HelpCircle;
-      case 'BarChart':
-        return BarChart;
-      case 'Tag':
-        return Tag;
-      case 'Settings':
-        return Settings;
-      case 'Users':
-        return Users;
-      case 'Check':
-        return Check;
-      case 'User':
-        return UserIcon;
-      case 'PieChart':
-        return PieChart;
-      default:
-        return UserIcon; // Icono por defecto
-    }
-  };
-  
-  // Obtener el componente de icono
-  const IconComponent = getIconComponent(agent.icon);
-  
-  // Verificar si el icono existe
-  console.log("Using icon component for:", agent.icon)
+
 
   const renderMetricItem = (label: string, value: string | number) => (
     <div className={cn(
@@ -109,11 +76,9 @@ export function AgentCard({
                 alt={`${agent.name}'s avatar`} 
               />
               <AvatarFallback className="bg-primary/10">
-                {IconComponent ? (
-                  <IconComponent className="h-5 w-5" aria-hidden={true} />
-                ) : (
-                  agent.name.split(" ").map(name => name[0]).join("")
-                )}
+                {agent.name.length >= 2 
+                  ? agent.name.substring(0, 2).toUpperCase()
+                  : agent.name.split(" ").map(name => name[0]).join("").substring(0, 2)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">

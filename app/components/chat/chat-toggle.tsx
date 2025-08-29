@@ -197,7 +197,9 @@ export function ChatToggle({
                     <Avatar className="h-5 w-5 bg-primary/10">
                       <AvatarImage src={agentId ? `/avatars/agent-${agentId}.png` : "/avatars/agent-default.png"} alt={agentName} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                        {agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                        {agentName.length >= 2 
+                          ? agentName.substring(0, 2).toUpperCase()
+                          : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                   </div>
@@ -208,7 +210,9 @@ export function ChatToggle({
                   <Avatar className="h-5 w-5 mr-1 bg-primary/10">
                     <AvatarImage src={agentId ? `/avatars/agent-${agentId}.png` : "/avatars/agent-default.png"} alt={agentName} />
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                      {agentName.length >= 2 
+                        ? agentName.substring(0, 2).toUpperCase()
+                        : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-xs text-muted-foreground">
@@ -234,7 +238,9 @@ export function ChatToggle({
                     <Avatar className="h-5 w-5 bg-primary/10">
                       <AvatarImage src={agentId ? `/avatars/agent-${agentId}.png` : "/avatars/agent-default.png"} alt={agentName} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                        {agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                        {agentName.length >= 2 
+                          ? agentName.substring(0, 2).toUpperCase()
+                          : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                   </div>
@@ -245,7 +251,9 @@ export function ChatToggle({
                   <Avatar className="h-5 w-5 mr-1 bg-primary/10">
                     <AvatarImage src={agentId ? `/avatars/agent-${agentId}.png` : "/avatars/agent-default.png"} alt={agentName} />
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                      {agentName.length >= 2 
+                        ? agentName.substring(0, 2).toUpperCase()
+                        : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-xs text-muted-foreground">

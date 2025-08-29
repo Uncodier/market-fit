@@ -18,7 +18,7 @@ import {
   Plus
 } from "@/app/components/ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { DatePickerWithRange } from "@/app/components/ui/date-range-picker"
+import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { useRouter } from "next/navigation"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
@@ -345,9 +345,12 @@ export default function DeepResearchPage() {
             {/* Custom Date Range (only show if custom is selected) */}
             {filters.timeRange === 'custom' && (
               <div className="flex justify-center">
-                <DatePickerWithRange
-                  date={filters.dateRange}
-                  setDate={(dateRange) => setFilters(prev => ({ ...prev, dateRange }))}
+                <CalendarDateRangePicker
+                  initialStartDate={filters.dateRange?.from}
+                  initialEndDate={filters.dateRange?.to}
+                  onRangeChange={(startDate, endDate) => 
+                    setFilters(prev => ({ ...prev, dateRange: { from: startDate, to: endDate } }))
+                  }
                 />
               </div>
             )}
@@ -393,8 +396,8 @@ export default function DeepResearchPage() {
                           <p className="text-muted-foreground line-clamp-3">{result.description}</p>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
-                              {RESEARCH_SOURCES.find(s => s.id === result.source)?.icon}
-                              {RESEARCH_SOURCES.find(s => s.id === result.source)?.name}
+                              <Globe className="h-4 w-4" />
+                              {result.source}
                             </div>
                             <span>•</span>
                             <span>{format(result.date, 'MMM dd, yyyy')}</span>

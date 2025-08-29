@@ -42,63 +42,6 @@ export function ChatHeader({
   handlePrivateDiscussion,
   conversationId
 }: ChatHeaderProps) {
-  // Helper function to get the icon component dynamically
-  const getIconComponent = (iconName: string) => {
-    // This is imported from the parent component
-    const Icons = require("@/app/components/ui/icons")
-    return Icons[iconName] || Icons.User
-  }
-
-  // Helper function to determine the best icon based on agent role or type
-  const getIconByRoleOrType = () => {
-    if (currentAgent?.icon) {
-      // Si el agente ya tiene un icono definido, usarlo
-      return getIconComponent(currentAgent.icon)
-    }
-    
-    // Determinar según el rol o tipo
-    let iconName = "User" // Default icon
-    
-    if (currentAgent?.role) {
-      // Mapear roles comunes a iconos apropiados
-      const roleLower = currentAgent.role.toLowerCase()
-      
-      if (roleLower.includes("growth") && roleLower.includes("lead")) {
-        iconName = "BarChart"
-      } else if (roleLower.includes("growth") && roleLower.includes("market")) {
-        iconName = "TrendingUp"
-      } else if (roleLower.includes("data") && roleLower.includes("analyst")) {
-        iconName = "PieChart"
-      } else if (roleLower.includes("ux") || roleLower.includes("designer")) {
-        iconName = "Smartphone"
-      } else if (roleLower.includes("sales") || roleLower.includes("crm")) {
-        iconName = "ShoppingCart"
-      } else if (roleLower.includes("support") || roleLower.includes("customer")) {
-        iconName = "HelpCircle"
-      } else if (roleLower.includes("content") || roleLower.includes("copywriter")) {
-        iconName = "FileText"
-      }
-    } else if (currentAgent?.type) {
-      // Si no hay rol, usar el tipo
-      switch (currentAgent.type.toLowerCase()) {
-        case "marketing":
-          iconName = "TrendingUp"
-          break
-        case "sales":
-          iconName = "ShoppingCart"
-          break
-        case "support":
-          iconName = "HelpCircle"
-          break
-        case "product":
-          iconName = "Smartphone"
-          break
-      }
-    }
-    
-    return getIconComponent(iconName)
-  }
-
   // Get the agent type with proper capitalization
   const agentType = currentAgent?.type 
     ? currentAgent.type.charAt(0).toUpperCase() + currentAgent.type.slice(1) 
@@ -112,9 +55,6 @@ export function ChatHeader({
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ')
     : agentType
-
-  // Get the appropriate icon component
-  const IconComponent = getIconByRoleOrType()
   
   // Determine if we should show assignee instead of agent
   const hasAssignee = !!(isLead && leadData?.assignee)
@@ -130,7 +70,9 @@ export function ChatHeader({
   
   const leftSideAvatarFallback = hasAssignee
     ? leadData.assignee.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
-    : (IconComponent ? null : leftSideDisplayName.split(' ').map((n: string) => n[0]).join('').substring(0, 2))
+    : leftSideDisplayName.length >= 2 
+      ? leftSideDisplayName.substring(0, 2).toUpperCase()
+      : leftSideDisplayName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
   
   // Check if a conversation is selected
   const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
@@ -169,13 +111,7 @@ export function ChatHeader({
               <AvatarFallback className={cn(
                 hasAssignee ? "bg-blue-500/10 text-blue-600" : "bg-primary/10"
               )}>
-                {hasAssignee ? (
-                  leftSideAvatarFallback
-                ) : IconComponent ? (
-                  <IconComponent className="h-6 w-6 transition-transform duration-200" aria-hidden={true} />
-                ) : (
-                  leftSideAvatarFallback
-                )}
+                {leftSideAvatarFallback}
               </AvatarFallback>
             </Avatar>
             <div className="transition-transform duration-300 ease-in-out">

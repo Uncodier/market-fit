@@ -172,7 +172,9 @@ export function GridAgentRow({
               alt={`${displayName}'s avatar`} 
             />
             <AvatarFallback className="bg-primary/5">
-              <IconComponent className="h-4 w-4 text-primary" aria-hidden={true} />
+              {displayName.length >= 2 
+                ? displayName.substring(0, 2).toUpperCase()
+                : displayName.split(" ").map(name => name[0]).join("").substring(0, 2)}
             </AvatarFallback>
           </Avatar>
           

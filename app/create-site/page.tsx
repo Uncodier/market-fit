@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { toast } from "sonner"
 import { useSite } from "../context/SiteContext"
 import { SiteOnboarding } from "../components/onboarding/site-onboarding"
@@ -8,7 +8,7 @@ import { useAuth } from "../hooks/use-auth"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "../services/api-client-service"
 
-export default function CreateSitePage() {
+function CreateSitePageContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [createdSiteId, setCreatedSiteId] = useState<string>("")
@@ -171,4 +171,19 @@ export default function CreateSitePage() {
       onGoToSettings={handleGoToSettings}
     />
   )
-} 
+}
+
+export default function CreateSitePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CreateSitePageContent />
+    </Suspense>
+  )
+}

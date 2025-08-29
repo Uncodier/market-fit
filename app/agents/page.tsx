@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+
 import { Input } from "@/app/components/ui/input"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -15,10 +15,7 @@ import { SimpleAgentCard } from "@/app/components/agents/simple-agent-card"
 import { GridAgentRow } from "@/app/components/agents/grid-agent-row"
 import { ZoomableCanvas } from "@/app/components/agents/zoomable-canvas"
 import { AnimatedConnectionLine } from "@/app/components/agents/animated-connection-line"
-import { CommandList } from "@/app/components/agents/command-list"
-import { Command } from "@/app/components/agents/command-item"
-import { CommandsView } from "@/app/components/agents/commands-view"
-import { ActivitiesView } from "@/app/components/agents/activities-view"
+
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { agents as mockAgents } from "@/app/data/mock-agents"
 import { useSite } from "@/app/context/SiteContext"
@@ -31,40 +28,7 @@ import { SimpleAgentCardSkeleton, GridAgentRowSkeleton } from "@/app/components/
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { useActivityExecution } from "@/app/hooks/use-activity-execution"
 
-// Type-safe version of the example commands
-const exampleCommands: Command[] = [
-  {
-    id: "cmd1",
-    name: "Generate SEO Content",
-    description: "Create SEO optimized content for blog post",
-    status: "completed",
-    timestamp: "2024-01-30T10:15:00Z",
-    duration: "45s"
-  },
-  {
-    id: "cmd2",
-    name: "Analyze Keyword Density",
-    description: "Check keyword usage and suggest improvements",
-    status: "completed",
-    timestamp: "2024-01-30T09:45:00Z",
-    duration: "12s"
-  },
-  {
-    id: "cmd3",
-    name: "Generate Meta Descriptions",
-    description: "Create meta descriptions for 5 new blog posts",
-    status: "failed",
-    timestamp: "2024-01-29T16:20:00Z",
-    errorMessage: "API rate limit exceeded"
-  },
-  {
-    id: "cmd4",
-    name: "Update Content Links",
-    description: "Update internal links in existing content",
-    status: "pending",
-    timestamp: "2024-01-31T11:30:00Z"
-  }
-];
+
 
 // Define a type for the database agent
 type DatabaseAgent = {
@@ -116,8 +80,7 @@ function AgentsPageContent() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [selectedActivity, setSelectedActivity] = useState<AgentActivity | null>(null)
   const { isLayoutCollapsed } = useLayout()
-  const [activeCommandTab, setActiveCommandTab] = useState<string>("all")
-  const [activeTab, setActiveTab] = useState<string>("agents")
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
@@ -1043,19 +1006,7 @@ function AgentsPageContent() {
     );
   };
 
-  // Helper function to get dynamic placeholder based on active tab
-  const getSearchPlaceholder = () => {
-    switch (activeTab) {
-      case "agents":
-        return "Search team...";
-      case "commands":
-        return "Search commands...";
-      case "activities":
-        return "Search activities...";
-      default:
-        return "Search...";
-    }
-  };
+
 
   return (
     <AgentSelectionContext.Provider value={{ selectedAgent, setSelectedAgent, selectedActivity, setSelectedActivity }}>
@@ -1069,21 +1020,15 @@ function AgentsPageContent() {
             backgroundColor: "rgba(0, 0, 0, 0.02)"
           }}
         >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <div className="space-y-4">
             <StickyHeader>
               <div className="px-16 pt-0">
                 <div className="flex items-center gap-4">
                   <div className="flex-1 flex items-center gap-4">
-                    <TabsList>
-                      <TabsTrigger value="agents">Team</TabsTrigger>
-                      <TabsTrigger value="commands">Commands</TabsTrigger>
-                      <TabsTrigger value="activities">Activities</TabsTrigger>
-                    </TabsList>
-                    
                     <div className="relative w-64">
                       <Input 
                         data-command-k-input
-                        placeholder={getSearchPlaceholder()} 
+                        placeholder="Search team..." 
                         className="w-full"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -1096,18 +1041,16 @@ function AgentsPageContent() {
                   </div>
                   
                   <div className="flex items-center gap-4">
-                    {activeTab === "agents" && (
-                      <div>
-                        <ToggleGroup type="single" value={viewMode} onValueChange={(value: string) => value && setViewMode(value as "hierarchy" | "grid")}>
-                          <ToggleGroupItem value="hierarchy" aria-label="Toggle hierarchy view" className="px-2">
-                            <TableRows className="h-4 w-4" />
-                          </ToggleGroupItem>
-                          <ToggleGroupItem value="grid" aria-label="Toggle grid view" className="px-2">
-                            <List className="h-4 w-4" />
-                          </ToggleGroupItem>
-                        </ToggleGroup>
-                      </div>
-                    )}
+                    <div>
+                      <ToggleGroup type="single" value={viewMode} onValueChange={(value: string) => value && setViewMode(value as "hierarchy" | "grid")}>
+                        <ToggleGroupItem value="hierarchy" aria-label="Toggle hierarchy view" className="px-2">
+                          <TableRows className="h-4 w-4" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="grid" aria-label="Toggle grid view" className="px-2">
+                          <List className="h-4 w-4" />
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1122,287 +1065,275 @@ function AgentsPageContent() {
                 flexDirection: "column"
               }}
             >
-              <TabsContent value="agents" className="m-0">
-                <div className={`${viewMode === "grid" ? "px-8" : ""}`}>
-                  {viewMode === "hierarchy" ? (
-                    <div className="flex flex-col items-center">
-                      <div className="w-full">
-                        <ZoomableCanvas>
-                          <div className="flex flex-col items-center">
-                            <div className="pt-2 flex flex-col items-center">
-                              <h2 className="text-2xl font-bold mb-10">Growth Team Structure</h2>
-                              
-                              {/* Lead Manager Card - Top Level */}
-                              {isLoading ? (
+              <div className={`${viewMode === "grid" ? "px-8" : ""}`}>
+                {viewMode === "hierarchy" ? (
+                  <div className="flex flex-col items-center">
+                    <div className="w-full">
+                      <ZoomableCanvas>
+                        <div className="flex flex-col items-center">
+                          <div className="pt-2 flex flex-col items-center">
+                            <h2 className="text-2xl font-bold mb-10">Growth Team Structure</h2>
+                            
+                            {/* Lead Manager Card - Top Level */}
+                            {isLoading ? (
+                              <div className="w-[458px] px-4">
+                                <SimpleAgentCardSkeleton className="border-primary shadow-md" />
+                              </div>
+                            ) : (
+                              leadAgent && 
+                              (!searchQuery || 
+                               leadAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                               leadAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) && 
+                              <div className="w-[458px] px-4">
+                                <SimpleAgentCard 
+                                  agent={leadAgent} 
+                                  onManage={handleManageAgent}
+                                  onChat={handleChatWithAgent}
+                                  onToggleActivities={handleToggleActivities}
+                                  showActivities={isAgentExpanded(leadAgent.id)}
+                                  onExecuteActivity={handleExecuteActivity}
+                                  setSelectedAgent={setSelectedAgent}
+                                  className="border-primary shadow-md"
+                                  activityStates={activityStates}
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Connecting Line - only show if both leadAgent and dataAnalystAgent are visible */}
+                            {(isLoading || (leadAgent && dataAnalystAgent &&
+                              (!searchQuery || 
+                               leadAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                               leadAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) &&
+                              (!searchQuery || 
+                               dataAnalystAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                               dataAnalystAgent.description.toLowerCase().includes(searchQuery.toLowerCase())))) && (
+                              <div className="flex justify-center relative">
+                                <div className="h-20 w-0.5 bg-border"></div>
+                                <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
+                              </div>
+                            )}
+                            
+                            {/* Data Analyst - Middle Level */}
+                            {isLoading ? (
+                              <div className="flex justify-center mb-10">
                                 <div className="w-[458px] px-4">
-                                  <SimpleAgentCardSkeleton className="border-primary shadow-md" />
+                                  <SimpleAgentCardSkeleton className="border-primary/30 shadow-md" />
                                 </div>
-                              ) : (
-                                leadAgent && 
-                                (!searchQuery || 
-                                 leadAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                 leadAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) && 
-                                <div className="w-[458px] px-4">
-                                  <SimpleAgentCard 
-                                    agent={leadAgent} 
-                                    onManage={handleManageAgent}
-                                    onChat={handleChatWithAgent}
-                                    onToggleActivities={handleToggleActivities}
-                                    showActivities={isAgentExpanded(leadAgent.id)}
-                                    onExecuteActivity={handleExecuteActivity}
-                                    setSelectedAgent={setSelectedAgent}
-                                    className="border-primary shadow-md"
-                                    activityStates={activityStates}
-                                  />
-                                </div>
-                              )}
-                              
-                              {/* Connecting Line - only show if both leadAgent and dataAnalystAgent are visible */}
-                              {(isLoading || (leadAgent && dataAnalystAgent &&
-                                (!searchQuery || 
-                                 leadAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                 leadAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) &&
-                                (!searchQuery || 
-                                 dataAnalystAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                 dataAnalystAgent.description.toLowerCase().includes(searchQuery.toLowerCase())))) && (
-                                <div className="flex justify-center relative">
-                                  <div className="h-20 w-0.5 bg-border"></div>
-                                  <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
-                                </div>
-                              )}
-                              
-                              {/* Data Analyst - Middle Level */}
-                              {isLoading ? (
+                              </div>
+                            ) : (
+                              dataAnalystAgent && 
+                              (!searchQuery || 
+                               dataAnalystAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                               dataAnalystAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) && (
+                              <>
                                 <div className="flex justify-center mb-10">
                                   <div className="w-[458px] px-4">
-                                    <SimpleAgentCardSkeleton className="border-primary/30 shadow-md" />
+                                    <SimpleAgentCard 
+                                      agent={dataAnalystAgent} 
+                                      onManage={handleManageAgent}
+                                      onChat={handleChatWithAgent}
+                                      onToggleActivities={handleToggleActivities}
+                                      showActivities={isAgentExpanded(dataAnalystAgent.id)}
+                                      onExecuteActivity={handleExecuteActivity}
+                                      setSelectedAgent={setSelectedAgent}
+                                      className="border-primary/30 shadow-md"
+                                      activityStates={activityStates}
+                                    />
                                   </div>
                                 </div>
-                              ) : (
-                                dataAnalystAgent && 
-                                (!searchQuery || 
-                                 dataAnalystAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                 dataAnalystAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) && (
-                                <>
-                                  <div className="flex justify-center mb-10">
-                                    <div className="w-[458px] px-4">
-                                      <SimpleAgentCard 
-                                        agent={dataAnalystAgent} 
-                                        onManage={handleManageAgent}
-                                        onChat={handleChatWithAgent}
-                                        onToggleActivities={handleToggleActivities}
-                                        showActivities={isAgentExpanded(dataAnalystAgent.id)}
-                                        onExecuteActivity={handleExecuteActivity}
-                                        setSelectedAgent={setSelectedAgent}
-                                        className="border-primary/30 shadow-md"
-                                        activityStates={activityStates}
-                                      />
-                                    </div>
-                                  </div>
-                                </>
-                               )
-                              )}
-                                  
-                                  {/* Connecting Line - only show if filtered execution agents exist */}
-                              {(isLoading || executionAgents.some(agent => 
-                                    !searchQuery || 
-                                    agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                    agent.description.toLowerCase().includes(searchQuery.toLowerCase())
-                              )) && (
-                                    <div className="flex justify-center relative">
-                                      <div className="h-20 w-0.5 bg-border"></div>
-                                      <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
-                                    </div>
-                              )}
-                              
-                              {/* Execution Teams - Bottom Level with connections */}
-                              <div className="relative mt-2">
-                                {/* Horizontal connecting line - only if there are filtered execution agents */}
-                                {(isLoading || executionAgents.some(agent => 
+                              </>
+                             )
+                            )}
+                                
+                                {/* Connecting Line - only show if filtered execution agents exist */}
+                            {(isLoading || executionAgents.some(agent => 
                                   !searchQuery || 
                                   agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                   agent.description.toLowerCase().includes(searchQuery.toLowerCase())
-                                )) && (
-                                  <div className="absolute top-0 left-1/2 w-[90%] h-0.5 bg-border transform -translate-x-1/2 relative">
-                                    <AnimatedConnectionLine direction="right" className="w-[50%] left-0 opacity-100" speed="normal" dotColor="var(--primary)" />
-                                    <AnimatedConnectionLine direction="left" className="w-[50%] right-0 opacity-100" speed="normal" dotColor="var(--primary)" />
+                            )) && (
+                                  <div className="flex justify-center relative">
+                                    <div className="h-20 w-0.5 bg-border"></div>
+                                    <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
                                   </div>
-                                )}
-                                
-                                {/* Get the sales specialist and customer support */}
-                                {isLoading ? (
-                                  <>
-                                    {/* Vertical connecting lines */}
-                                    <div className="grid gap-12 px-8 grid-cols-4">
+                            )}
+                            
+                            {/* Execution Teams - Bottom Level with connections */}
+                            <div className="relative mt-2">
+                              {/* Horizontal connecting line - only if there are filtered execution agents */}
+                              {(isLoading || executionAgents.some(agent => 
+                                !searchQuery || 
+                                agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                agent.description.toLowerCase().includes(searchQuery.toLowerCase())
+                              )) && (
+                                <div className="absolute top-0 left-1/2 w-[90%] h-0.5 bg-border transform -translate-x-1/2 relative">
+                                  <AnimatedConnectionLine direction="right" className="w-[50%] left-0 opacity-100" speed="normal" dotColor="var(--primary)" />
+                                  <AnimatedConnectionLine direction="left" className="w-[50%] right-0 opacity-100" speed="normal" dotColor="var(--primary)" />
+                                </div>
+                              )}
+                              
+                              {/* Get the sales specialist and customer support */}
+                              {isLoading ? (
+                                <>
+                                  {/* Vertical connecting lines */}
+                                  <div className="grid gap-12 px-8 grid-cols-4">
+                                    {Array.from({ length: 4 }).map((_, index) => (
+                                      <div key={index} className="flex justify-center relative">
+                                        <div className="h-20 w-0.5 bg-border"></div>
+                                        <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
+                                      </div>
+                                    ))}
+                                  </div>
+                                  
+                                  {/* Team member skeleton cards */}
+                                  <div className="pb-12">
+                                    <div className="grid grid-flow-col auto-cols-min gap-12 px-8 mt-8 min-w-full">
                                       {Array.from({ length: 4 }).map((_, index) => (
-                                        <div key={index} className="flex justify-center relative">
-                                          <div className="h-20 w-0.5 bg-border"></div>
-                                          <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
+                                        <div key={index} className="w-[458px] px-4">
+                                          <SimpleAgentCardSkeleton />
                                         </div>
                                       ))}
                                     </div>
+                                  </div>
+                                </>
+                              ) : (
+                                (() => {
+                                const salesSpecialist = executionAgents.find(agent => agent.id === "5");
+                                const customerSupport = executionAgents.find(agent => agent.id === "7");
+                                const filteredAgents = executionAgents.filter(agent => 
+                                  agent.id !== "7" && 
+                                  (!searchQuery || 
+                                  agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                  agent.description.toLowerCase().includes(searchQuery.toLowerCase()))
+                                );
+                                
+                                // Hide customerSupport if salesSpecialist is filtered out
+                                const showCustomerSupport = salesSpecialist && 
+                                  customerSupport && 
+                                  (!searchQuery || 
+                                   salesSpecialist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                   salesSpecialist.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                   customerSupport.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                   customerSupport.description.toLowerCase().includes(searchQuery.toLowerCase()));
+                                
+                                // If no agents match the search query, show a message
+                                if (filteredAgents.length === 0 && !showCustomerSupport) {
+                                  return (
+                                    <div className="flex flex-col items-center justify-center min-h-[200px] text-center p-8">
+                                      <p className="text-lg font-medium text-muted-foreground mb-2">
+                                        No agents found matching "{searchQuery}"
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                
+                                return (
+                                  <>
+                                    {/* Vertical connecting lines */}
+                                    <div className={
+                                      `grid gap-12 px-8 ${
+                                        filteredAgents.length <= 4 ? "grid-cols-" + filteredAgents.length : "grid-cols-4"
+                                      }`
+                                    }>
+                                      {filteredAgents.map((_, index) => (
+                                        index < 5 && (
+                                          <div key={index} className="flex justify-center relative">
+                                            <div className="h-20 w-0.5 bg-border"></div>
+                                            <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
+                                          </div>
+                                        )
+                                      ))}
+                                    </div>
                                     
-                                    {/* Team member skeleton cards */}
+                                    {/* Team member cards - scrollable container */}
                                     <div className="pb-12">
-                                      <div className="grid grid-flow-col auto-cols-min gap-12 px-8 mt-8 min-w-full">
-                                        {Array.from({ length: 4 }).map((_, index) => (
-                                          <div key={index} className="w-[458px] px-4">
-                                            <SimpleAgentCardSkeleton />
+                                      <div className={
+                                        `grid grid-flow-col auto-cols-min gap-12 px-8 mt-8 min-w-full`
+                                      }>
+                                        {filteredAgents.map((agent) => (
+                                          <div key={agent.id} className="w-[458px] px-4">
+                                            <SimpleAgentCard
+                                              agent={agent}
+                                              onManage={handleManageAgent}
+                                              onChat={handleChatWithAgent}
+                                              onToggleActivities={handleToggleActivities}
+                                              showActivities={isAgentExpanded(agent.id)}
+                                              onExecuteActivity={handleExecuteActivity}
+                                              setSelectedAgent={setSelectedAgent}
+                                              activityStates={activityStates}
+                                            />
+                                            
+                                            {/* If this is the Sales Specialist, show Customer Support beneath it */}
+                                            {agent.id === "5" && customerSupport && showCustomerSupport && (
+                                              <div className="mt-20 ml-10">
+                                                {/* Clean Connecting Lines - No dot */}
+                                                <div className="relative">
+                                                  {/* Vertical line */}
+                                                  <div className="absolute top-[-40px] left-[-28px] h-[calc(100%+108px)] w-0.5 bg-border rounded-full"></div>
+                                                  {/* Horizontal line */}
+                                                  <div className="absolute top-[48px] left-[-28px] w-7 h-0.5 bg-border rounded-full"></div>
+                                                </div>
+                                                
+                                                {/* Label for hierarchical relationship */}
+                                                <div className="absolute top-[-14px] left-[-16px] bg-background text-xs px-2 py-1 text-muted-foreground rounded-lg font-medium border shadow-sm">
+                                                  Reports to
+                                                </div>
+                                                
+                                                {agents.find(a => a.id === "7" && !a.isDisabled) && (
+                                                  <div className="w-[400px]">
+                                                    <SimpleAgentCard
+                                                      agent={agents.find(a => a.id === "7")!}
+                                                      onManage={handleManageAgent}
+                                                      onChat={handleChatWithAgent}
+                                                      onToggleActivities={handleToggleActivities}
+                                                      showActivities={isAgentExpanded("7")}
+                                                      onExecuteActivity={handleExecuteActivity}
+                                                      setSelectedAgent={setSelectedAgent}
+                                                      activityStates={activityStates}
+                                                    />
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
                                           </div>
                                         ))}
                                       </div>
                                     </div>
                                   </>
-                                ) : (
-                                  (() => {
-                                  const salesSpecialist = executionAgents.find(agent => agent.id === "5");
-                                  const customerSupport = executionAgents.find(agent => agent.id === "7");
-                                  const filteredAgents = executionAgents.filter(agent => 
-                                    agent.id !== "7" && 
-                                    (!searchQuery || 
-                                    agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                    agent.description.toLowerCase().includes(searchQuery.toLowerCase()))
-                                  );
-                                  
-                                  // Hide customerSupport if salesSpecialist is filtered out
-                                  const showCustomerSupport = salesSpecialist && 
-                                    customerSupport && 
-                                    (!searchQuery || 
-                                     salesSpecialist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                     salesSpecialist.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                     customerSupport.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                     customerSupport.description.toLowerCase().includes(searchQuery.toLowerCase()));
-                                  
-                                  // If no agents match the search query, show a message
-                                  if (filteredAgents.length === 0 && !showCustomerSupport) {
-                                    return (
-                                      <div className="flex flex-col items-center justify-center min-h-[200px] text-center p-8">
-                                        <p className="text-lg font-medium text-muted-foreground mb-2">
-                                          No agents found matching "{searchQuery}"
-                                        </p>
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  return (
-                                    <>
-                                      {/* Vertical connecting lines */}
-                                      <div className={
-                                        `grid gap-12 px-8 ${
-                                          filteredAgents.length <= 4 ? "grid-cols-" + filteredAgents.length : "grid-cols-4"
-                                        }`
-                                      }>
-                                        {filteredAgents.map((_, index) => (
-                                          index < 5 && (
-                                            <div key={index} className="flex justify-center relative">
-                                              <div className="h-20 w-0.5 bg-border"></div>
-                                              <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
-                                            </div>
-                                          )
-                                        ))}
-                                      </div>
-                                      
-                                      {/* Team member cards - scrollable container */}
-                                      <div className="pb-12">
-                                        <div className={
-                                          `grid grid-flow-col auto-cols-min gap-12 px-8 mt-8 min-w-full`
-                                        }>
-                                          {filteredAgents.map((agent) => (
-                                            <div key={agent.id} className="w-[458px] px-4">
-                                              <SimpleAgentCard
-                                                agent={agent}
-                                                onManage={handleManageAgent}
-                                                onChat={handleChatWithAgent}
-                                                onToggleActivities={handleToggleActivities}
-                                                showActivities={isAgentExpanded(agent.id)}
-                                                onExecuteActivity={handleExecuteActivity}
-                                                setSelectedAgent={setSelectedAgent}
-                                                activityStates={activityStates}
-                                              />
-                                              
-                                              {/* If this is the Sales Specialist, show Customer Support beneath it */}
-                                              {agent.id === "5" && customerSupport && showCustomerSupport && (
-                                                <div className="mt-20 ml-10">
-                                                  {/* Clean Connecting Lines - No dot */}
-                                                  <div className="relative">
-                                                    {/* Vertical line */}
-                                                    <div className="absolute top-[-40px] left-[-28px] h-[calc(100%+108px)] w-0.5 bg-border rounded-full"></div>
-                                                    {/* Horizontal line */}
-                                                    <div className="absolute top-[48px] left-[-28px] w-7 h-0.5 bg-border rounded-full"></div>
-                                                  </div>
-                                                  
-                                                  {/* Label for hierarchical relationship */}
-                                                  <div className="absolute top-[-14px] left-[-16px] bg-background text-xs px-2 py-1 text-muted-foreground rounded-lg font-medium border shadow-sm">
-                                                    Reports to
-                                                  </div>
-                                                  
-                                                  {agents.find(a => a.id === "7" && !a.isDisabled) && (
-                                                    <div className="w-[400px]">
-                                                      <SimpleAgentCard
-                                                        agent={agents.find(a => a.id === "7")!}
-                                                        onManage={handleManageAgent}
-                                                        onChat={handleChatWithAgent}
-                                                        onToggleActivities={handleToggleActivities}
-                                                        showActivities={isAgentExpanded("7")}
-                                                        onExecuteActivity={handleExecuteActivity}
-                                                        setSelectedAgent={setSelectedAgent}
-                                                        activityStates={activityStates}
-                                                      />
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </>
-                                  );
-                                  })()
-                                )}
-                                
-                                {/* Feedback Loop Visualization - only show if there are visible agents */}
-                                {(isLoading || executionAgents.some(agent => 
-                                  !searchQuery || 
-                                  agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                  agent.description.toLowerCase().includes(searchQuery.toLowerCase())
-                                )) && (
-                                  <div className="mt-12 flex flex-col items-center">
-                                    <div className="w-[90%] h-0.5 bg-border relative">
-                                      <AnimatedConnectionLine direction="left" className="w-full opacity-100" speed="slow" dotColor="var(--primary)" />
-                                    </div>
-                                    <div className="mt-6 mb-3 text-center">
-                                      <span className="px-6 py-2 bg-muted rounded-md text-sm font-medium">
-                                        Feedback Loop
-                                      </span>
-                                    </div>
+                                );
+                                })()
+                              )}
+                              
+                              {/* Feedback Loop Visualization - only show if there are visible agents */}
+                              {(isLoading || executionAgents.some(agent => 
+                                !searchQuery || 
+                                agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                agent.description.toLowerCase().includes(searchQuery.toLowerCase())
+                              )) && (
+                                <div className="mt-12 flex flex-col items-center">
+                                  <div className="w-[90%] h-0.5 bg-border relative">
+                                    <AnimatedConnectionLine direction="left" className="w-full opacity-100" speed="slow" dotColor="var(--primary)" />
                                   </div>
-                                )}
-                              </div>
+                                  <div className="mt-6 mb-3 text-center">
+                                    <span className="px-6 py-2 bg-muted rounded-md text-sm font-medium">
+                                      Feedback Loop
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </ZoomableCanvas>
-                      </div>
+                        </div>
+                      </ZoomableCanvas>
                     </div>
-                  ) : (
-                    <div>
-                      {renderGridView()}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-              
-
-              
-              <TabsContent value="commands" className="m-0">
-                <CommandsView searchQuery={searchQuery} />
-              </TabsContent>
-              
-              <TabsContent value="activities" className="m-0">
-                <ActivitiesView searchQuery={searchQuery} />
-              </TabsContent>
+                  </div>
+                ) : (
+                  <div>
+                    {renderGridView()}
+                  </div>
+                )}
+              </div>
             </div>
-          </Tabs>
+          </div>
         </div>
 
       </div>

@@ -137,7 +137,9 @@ export function SimpleAgentCard({
                   alt={`${displayName}'s avatar`} 
                 />
                 <AvatarFallback className="bg-primary/10">
-                  <IconComponent className="h-5 w-5" aria-hidden={true} />
+                  {displayName.length >= 2 
+                    ? displayName.substring(0, 2).toUpperCase()
+                    : displayName.split(" ").map(name => name[0]).join("").substring(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">

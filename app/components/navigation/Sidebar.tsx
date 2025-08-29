@@ -97,19 +97,19 @@ const humanInTheLoopItems = [
     icon: CheckSquare,
   },
   {
+    title: "Leads",
+    href: "/leads",
+    icon: Users,
+  },
+  {
     title: "Chats",
     href: "/chat",
     icon: MessageSquare,
   },
 ]
 
-// Automatic category
-const automaticItems = [
-  {
-    title: "Agents",
-    href: "/agents",
-    icon: Cpu,
-  },
+// Robots category
+const robotsItems = [
   {
     title: "Robots",
     href: "/robots",
@@ -140,11 +140,6 @@ const contextChildrenItems = [
     title: "Assets",
     href: "/assets",
     icon: FolderOpen,
-  },
-  {
-    title: "Leads",
-    href: "/leads",
-    icon: Users,
   },
   {
     title: "Sales",
@@ -228,11 +223,11 @@ export function Sidebar({
   const isCampaignsActive = pathname.startsWith('/campaigns')
   const isSegmentsActive = pathname.startsWith('/segments')
   const isAssetsActive = pathname.startsWith('/assets')
-  const isLeadsActive = pathname.startsWith('/leads')
+
   const isSalesActive = pathname.startsWith('/sales')
   
   const shouldShowContextChildren = isContextActive || isCampaignsActive || isSegmentsActive || 
-    isAssetsActive || isLeadsActive || isSalesActive || forceShowContextChildren
+    isAssetsActive || isSalesActive || forceShowContextChildren
   
   // Check if Profile or any profile child is active
   const isProfileActive = pathname.startsWith('/profile')
@@ -249,7 +244,7 @@ export function Sidebar({
     const previousPath = prevPathContextRef.current;
     
     const inContextArea = isContextActive || isCampaignsActive || isSegmentsActive || 
-                          isAssetsActive || isLeadsActive || isSalesActive;
+                          isAssetsActive || isSalesActive;
     const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing');
     const inProfileArea = isProfileActive;
     
@@ -293,7 +288,7 @@ export function Sidebar({
     
     // Update previous path reference
     prevPathContextRef.current = pathname;
-  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isLeadsActive, isSalesActive, isProfileActive, isNotificationsActive]);
+  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isSalesActive, isProfileActive, isNotificationsActive]);
   
   // Centralized navigation handler that coordinates all sections
   const handleSectionNavigation = (e: React.MouseEvent, href: string, section: 'context' | 'settings' | 'profile') => {
@@ -301,7 +296,7 @@ export function Sidebar({
     e.stopPropagation();
     
     const inContextArea = isContextActive || isCampaignsActive || isSegmentsActive || 
-                          isAssetsActive || isLeadsActive || isSalesActive;
+                          isAssetsActive || isSalesActive;
     
     // Check if we're in settings area (we'll need to get this from ConfigurationSection)
     const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing');
@@ -397,7 +392,7 @@ export function Sidebar({
     
     // If already in context area, don't toggle
     if (isContextActive || isCampaignsActive || isSegmentsActive || 
-        isAssetsActive || isLeadsActive || isSalesActive) return;
+        isAssetsActive || isSalesActive) return;
     
     // Toggle force show
     setForceShowContextChildren(prev => !prev);
@@ -503,7 +498,6 @@ export function Sidebar({
 
           {/* Human in the Loop Category */}
           <div style={{ marginTop: '21.6px' }}>
-            <CategoryHeader title="Human in the Loop" isCollapsed={isCollapsed} />
             <div className={cn(
               "flex flex-col space-y-1",
               isCollapsed ? "px-[14px]" : "px-3"
@@ -526,6 +520,9 @@ export function Sidebar({
                   {item.title === "Requirements" && (
                     <RequirementsBadge isActive={pathname.startsWith("/requirements")} />
                   )}
+                  {item.title === "Leads" && (
+                    <LeadsBadge isActive={pathname.startsWith("/leads")} />
+                  )}
                   {item.title === "Chats" && (
                     <ChatsBadge isActive={pathname.startsWith("/chat")} />
                   )}
@@ -534,14 +531,13 @@ export function Sidebar({
             </div>
           </div>
 
-          {/* Automatic Category */}
+          {/* Robots Category */}
           <div style={{ marginTop: '21.6px' }}>
-            <CategoryHeader title="🤖 Automatic" isCollapsed={isCollapsed} />
             <div className={cn(
               "flex flex-col space-y-1",
               isCollapsed ? "px-[14px]" : "px-3"
             )}>
-              {automaticItems.map((item) => (
+              {robotsItems.map((item) => (
                 <MenuItem
                   key={item.href}
                   href={item.href}
@@ -635,9 +631,6 @@ export function Sidebar({
                   isCollapsed={isCollapsed}
                   className={!isCollapsed ? "ml-3" : ""}
                 >
-                  {item.title === "Leads" && (
-                    <LeadsBadge isActive={pathname.startsWith("/leads")} />
-                  )}
                   {item.title === "Campaigns" && (
                     <CampaignsBadge isActive={pathname.startsWith("/campaigns")} />
                   )}

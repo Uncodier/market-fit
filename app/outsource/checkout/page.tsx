@@ -57,58 +57,6 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
   
   return (
     <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:text-muted-foreground prose-li:text-muted-foreground prose-strong:text-foreground">
-      <style jsx global>{`
-        .prose ul {
-          list-style-type: disc;
-          padding-left: 1.5em;
-          margin-top: 0.5em;
-          margin-bottom: 0.5em;
-        }
-        .prose ol {
-          list-style-type: decimal;
-          padding-left: 1.5em;
-          margin-top: 0.5em;
-          margin-bottom: 0.5em;
-        }
-        .prose li {
-          margin-top: 0.25em;
-          margin-bottom: 0.25em;
-        }
-        .prose p {
-          margin-top: 0.5em;
-          margin-bottom: 0.5em;
-        }
-        .prose h1, .prose h2, .prose h3, .prose h4 {
-          font-weight: 600;
-          margin-top: 1em;
-          margin-bottom: 0.5em;
-          color: var(--foreground);
-        }
-        .prose h1 { font-size: 1.5em; }
-        .prose h2 { font-size: 1.3em; }
-        .prose h3 { font-size: 1.1em; }
-        .prose h4 { font-size: 1em; }
-        .prose blockquote {
-          border-left: 3px solid #ccc;
-          margin-left: 0;
-          padding-left: 1em;
-          font-style: italic;
-          color: var(--muted-foreground);
-        }
-        .prose code {
-          background: rgba(0, 0, 0, 0.05);
-          border-radius: 3px;
-          padding: 0.2em 0.4em;
-          font-family: monospace;
-        }
-        .dark .prose code {
-          background: rgba(255, 255, 255, 0.1);
-        }
-        .prose a {
-          color: var(--primary);
-          text-decoration: underline;
-        }
-      `}</style>
       <ReactMarkdown>{content}</ReactMarkdown>
     </div>
   );
@@ -796,7 +744,7 @@ function CheckoutContent() {
             >
               {isSubmitting ? (
                 <>
-                  <div className="h-4 w-4 mr-2 animate-pulse bg-muted rounded" />
+                  <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
                   Redirecting to Checkout...
                 </>
               ) : (

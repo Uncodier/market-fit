@@ -25,7 +25,9 @@ export function EmptyConversation({
             alt={agentName} 
           />
           <AvatarFallback className="bg-primary/10">
-            {agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+            {agentName.length >= 2 
+              ? agentName.substring(0, 2).toUpperCase()
+              : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
           </AvatarFallback>
         </Avatar>
       </div>
