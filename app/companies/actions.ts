@@ -135,7 +135,10 @@ export async function getCompanies(search?: string) {
       .order('name', { ascending: true })
     
     if (search && search.trim()) {
-      query = query.or(`name.ilike.%${search.trim()}%,legal_name.ilike.%${search.trim()}%`)
+      // Quote value to safely support commas and special characters in logic tree
+      const quoteLogicValue = (value: string) => `"${value.replace(/"/g, '""')}"`
+      const pattern = `%${search.trim()}%`
+      query = query.or(`name.ilike.${quoteLogicValue(pattern)},legal_name.ilike.${quoteLogicValue(pattern)}`)
     }
     
     const { data, error } = await query

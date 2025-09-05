@@ -269,7 +269,12 @@ export function useContextEntitiesSearch(): UseContextEntitiesSearchReturn {
           .select('id, title, description, type, status, created_at')
           .eq('site_id', currentSite.id)
           .neq('status', 'published')
-          .or(`title.ilike.%${query}%,description.ilike.%${query}%,type.ilike.%${query}%`)
+          // Quote search pattern to safely support commas and special characters
+          .or((() => {
+            const quoteLogicValue = (value: string) => `"${value.replace(/\"/g, '\"\"')}"`
+            const pattern = `%${query}%`
+            return `title.ilike.${quoteLogicValue(pattern)},description.ilike.${quoteLogicValue(pattern)},type.ilike.${quoteLogicValue(pattern)}`
+          })())
           .order('created_at', { ascending: false })
           .limit(50)
           .then(result => {
