@@ -259,7 +259,7 @@ function LayoutClientInner({
                 isCollapsed={isLayoutCollapsed}
                 onCollapse={handleCollapse}
                 segments={segments}
-                className="fixed top-0 right-0 z-10"
+                className="fixed top-0 right-0"
                 style={{ 
                   left: isLayoutCollapsed ? '4rem' : '16rem',
                 }}

@@ -758,29 +758,28 @@ export async function importLeads(leads: Partial<Lead>[], siteId: string) {
       
       // Prepare batch data
       const batchData = batch.map((lead, index) => {
-        // Validate required fields
-        if (!lead.name || !lead.email) {
-          errors.push(`Row ${i + index + 1}: Name and email are required`)
-          return null
-        }
-        
-        // Validate email format
+        const rowNumber = i + index + 1
+        // Require only a valid email
+        const email = (lead.email || '').toString().trim()
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(lead.email)) {
-          errors.push(`Row ${i + index + 1}: Invalid email format`)
+        if (!email || !emailRegex.test(email)) {
+          errors.push(`Row ${rowNumber}: A valid email is required`)
           return null
         }
         
         // Validate status
         const validStatuses = ['new', 'contacted', 'qualified', 'converted', 'lost']
         if (lead.status && !validStatuses.includes(lead.status as string)) {
-          errors.push(`Row ${i + index + 1}: Invalid status "${lead.status}"`)
+          errors.push(`Row ${rowNumber}: Invalid status "${lead.status}"`)
           return null
         }
         
+        // Generate fallback name if missing
+        const name = (lead.name && lead.name.toString().trim()) || email.split('@')[0]
+        
         return {
-          name: lead.name,
-          email: lead.email,
+          name,
+          email,
           phone: lead.phone || null,
           company: typeof lead.company === 'string' ? { name: lead.company } : lead.company || null,
           position: lead.position || null,
@@ -820,7 +819,7 @@ export async function importLeads(leads: Partial<Lead>[], siteId: string) {
       }
     }
     
-    // Return results
+    // Return results (partial success allowed)
     if (createdLeads.length === 0 && errors.length > 0) {
       return { success: false, count: 0, errors }
     }

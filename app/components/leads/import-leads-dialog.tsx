@@ -29,6 +29,7 @@ import { Lead } from "@/app/leads/types"
 import { toast } from "sonner"
 import Papa from 'papaparse'
 import readXlsxFile from 'read-excel-file'
+import { Switch } from "@/app/components/ui/switch"
 
 interface ImportLeadsDialogProps {
   segments?: Array<{
@@ -47,7 +48,7 @@ interface ImportStep {
 
 interface FieldMapping {
   csvField: string
-  leadField: keyof Lead | 'skip'
+  leadField: string | 'skip'
   required: boolean
 }
 
@@ -66,31 +67,47 @@ const IMPORT_STEPS: ImportStep[] = [
 ]
 
 const LEAD_FIELDS = [
-  { key: 'name', label: 'Name', required: true, type: 'string' },
-  { key: 'email', label: 'Email', required: true, type: 'email' },
+  { key: 'name', label: 'Name', required: false, type: 'string' },
+  { key: 'email', label: 'Email', required: false, type: 'email' },
   { key: 'phone', label: 'Phone', required: false, type: 'string' },
-  { key: 'company', label: 'Company', required: false, type: 'string' },
+  { key: 'company', label: 'Company (Name)', required: false, type: 'string' },
+  { key: 'company_name', label: 'Company - Name', required: false, type: 'string' },
+  { key: 'company_website', label: 'Company - Website', required: false, type: 'string' },
+  { key: 'company_industry', label: 'Company - Industry', required: false, type: 'string' },
+  { key: 'company_size', label: 'Company - Size', required: false, type: 'string' },
+  { key: 'company_description', label: 'Company - Description', required: false, type: 'string' },
+  // Company address (DB structure)
+  { key: 'company_address_street', label: 'Company Address - Street', required: false, type: 'string' },
+  { key: 'company_address_external_number', label: 'Company Address - External Number', required: false, type: 'string' },
+  { key: 'company_address_internal_number', label: 'Company Address - Internal Number', required: false, type: 'string' },
+  { key: 'company_address_city', label: 'Company Address - City', required: false, type: 'string' },
+  { key: 'company_address_state', label: 'Company Address - State', required: false, type: 'string' },
+  { key: 'company_address_zip', label: 'Company Address - ZIP', required: false, type: 'string' },
+  { key: 'company_address_country', label: 'Company Address - Country', required: false, type: 'string' },
+  { key: 'company_address_full_address', label: 'Company Address - Full Address', required: false, type: 'string' },
   { key: 'position', label: 'Position', required: false, type: 'string' },
   { key: 'status', label: 'Status', required: false, type: 'enum', options: ['new', 'contacted', 'qualified', 'converted', 'lost'] },
   { key: 'origin', label: 'Origin', required: false, type: 'string' },
   { key: 'notes', label: 'Notes', required: false, type: 'string' },
   { key: 'birthday', label: 'Birthday', required: false, type: 'string' },
   { key: 'language', label: 'Language', required: false, type: 'string' },
-  // Address fields
+  // Address fields (DB structure)
   { key: 'address_street', label: 'Address - Street', required: false, type: 'string' },
+  { key: 'address_external_number', label: 'Address - External Number', required: false, type: 'string' },
+  { key: 'address_internal_number', label: 'Address - Internal Number', required: false, type: 'string' },
   { key: 'address_city', label: 'Address - City', required: false, type: 'string' },
   { key: 'address_state', label: 'Address - State', required: false, type: 'string' },
-  { key: 'address_zipcode', label: 'Address - ZIP Code', required: false, type: 'string' },
+  { key: 'address_zip', label: 'Address - ZIP', required: false, type: 'string' },
   { key: 'address_country', label: 'Address - Country', required: false, type: 'string' },
-  // Social networks
+  { key: 'address_full_address', label: 'Address - Full Address', required: false, type: 'string' },
+  // Social networks (only those documented in sub_structures.md)
   { key: 'social_linkedin', label: 'LinkedIn', required: false, type: 'string' },
   { key: 'social_twitter', label: 'Twitter', required: false, type: 'string' },
   { key: 'social_facebook', label: 'Facebook', required: false, type: 'string' },
   { key: 'social_instagram', label: 'Instagram', required: false, type: 'string' },
-  { key: 'social_tiktok', label: 'TikTok', required: false, type: 'string' },
   { key: 'social_youtube', label: 'YouTube', required: false, type: 'string' },
-  { key: 'social_whatsapp', label: 'WhatsApp', required: false, type: 'string' },
-  { key: 'social_pinterest', label: 'Pinterest', required: false, type: 'string' }
+  { key: 'social_github', label: 'GitHub', required: false, type: 'string' },
+  { key: 'social_website', label: 'Website', required: false, type: 'string' }
 ] as const
 
 export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: ImportLeadsDialogProps) {
@@ -104,6 +121,7 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [hideSkipped, setHideSkipped] = useState(true)
 
   const resetDialog = () => {
     setCurrentStep('upload')
@@ -123,6 +141,16 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
         Email: 'john.doe@example.com',
         Phone: '+1234567890',
         Company: 'Acme Corp',
+        'Company - Website': 'https://acme.com',
+        'Company - Industry': 'Technology',
+        'Company - Size': '11-50',
+        'Company Address - Street': 'Sur 113-B, Juventino Rosas, Iztacalco',
+        'Company Address - External Number': '2183',
+        'Company Address - Internal Number': 'B',
+        'Company Address - City': 'Ciudad de México',
+        'Company Address - State': 'CDMX',
+        'Company Address - ZIP': '08700',
+        'Company Address - Country': 'Mexico',
         Position: 'Marketing Manager',
         Status: 'new',
         Origin: 'website',
@@ -130,24 +158,35 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
         Birthday: '1985-06-15',
         Language: 'English',
         'Address - Street': '123 Main St',
+        'Address - External Number': '123',
+        'Address - Internal Number': 'A',
         'Address - City': 'New York',
         'Address - State': 'NY',
-        'Address - ZIP Code': '10001',
+        'Address - ZIP': '10001',
         'Address - Country': 'USA',
         LinkedIn: 'https://linkedin.com/in/johndoe',
         Twitter: '@johndoe',
         Facebook: 'https://facebook.com/johndoe',
         Instagram: '@johndoe_official',
-        TikTok: '@johndoe_tiktok',
         YouTube: 'https://youtube.com/c/johndoe',
-        WhatsApp: '+1234567890',
-        Pinterest: 'https://pinterest.com/johndoe'
+        GitHub: 'https://github.com/johndoe',
+        Website: 'https://johndoe.com'
       },
       {
         Name: 'Jane Smith',
         Email: 'jane.smith@company.com',
         Phone: '+0987654321',
         Company: 'Tech Solutions',
+        'Company - Website': 'https://techsolutions.com',
+        'Company - Industry': 'Software',
+        'Company - Size': '51-200',
+        'Company Address - Street': 'Av. Reforma',
+        'Company Address - External Number': '456',
+        'Company Address - Internal Number': '12B',
+        'Company Address - City': 'Los Angeles',
+        'Company Address - State': 'CA',
+        'Company Address - ZIP': '90210',
+        'Company Address - Country': 'USA',
         Position: 'CEO',
         Status: 'contacted',
         Origin: 'referral',
@@ -155,18 +194,19 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
         Birthday: '1990-12-03',
         Language: 'Spanish',
         'Address - Street': '456 Oak Ave',
+        'Address - External Number': '456',
+        'Address - Internal Number': '12B',
         'Address - City': 'Los Angeles',
         'Address - State': 'CA',
-        'Address - ZIP Code': '90210',
+        'Address - ZIP': '90210',
         'Address - Country': 'USA',
         LinkedIn: 'https://linkedin.com/in/janesmith',
         Twitter: '@janesmith_ceo',
         Facebook: '',
         Instagram: '@jane.smith.business',
-        TikTok: '',
         YouTube: '',
-        WhatsApp: '+0987654321',
-        Pinterest: ''
+        GitHub: 'https://github.com/janesmith',
+        Website: 'https://janesmith.dev'
       }
     ]
 
@@ -253,14 +293,110 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
       
       // Auto-map fields with similar names
       const autoMappings: FieldMapping[] = fields.map(csvField => {
-        const lowercaseField = csvField.toLowerCase()
-        let leadField: keyof Lead | 'skip' = 'skip'
-        
+        const lowercaseField = csvField.toLowerCase().trim()
+        let leadField: string | 'skip' = 'skip'
+
+        // Email synonyms mapping
+        const emailSynonyms = ['email', 'e-mail', 'correo', 'correo electrónico', 'correo electronico', 'mail']
+        // Name synonyms (skip first/display, map only canonical name/"contact name")
+        const firstNameSynonyms = ['first name', 'firstname', 'first_name', 'nombre']
+        const displayNameSynonyms = ['display name', 'displayname']
+        const contactNameSynonyms = ['contact name', 'contactname']
+        // Last name synonyms
+        const lastNameSynonyms = ['last name', 'lastname', 'last_name', 'apellido', 'apellidos']
+        // Address synonyms
+        const zipSynonyms = ['zip', 'zipcode', 'zip code', 'postal', 'postal code', 'código postal', 'codigo postal', 'cp']
+        const street2Synonyms = ['street 2','street2','address 2','address2','address line 2','line 2','line2','billing street2','shipping street2','street line 2','st2']
+        const externalNumSynonyms = ['external number', 'ext number', 'num ext', 'no exterior', 'número exterior', 'numero exterior', 'exterior']
+        const internalNumSynonyms = ['internal number', 'int number', 'num int', 'no interior', 'número interior', 'numero interior', 'interior', 'apt', 'apartment', 'suite']
+        const fullAddressSynonyms = ['full address', 'dirección completa', 'direccion completa']
+        const billingOrShippingAddressSynonyms = ['billing address', 'shipping address']
+        const streetSynonyms = ['street', 'address', 'address line 1', 'address1', 'calle']
+        // Company synonyms
+        const companyNameSynonyms = ['company name', 'empresa', 'compañía', 'compania']
+        const companyWebsiteSynonyms = ['company website', 'website empresa', 'empresa website', 'website']
+        const companyIndustrySynonyms = ['company industry', 'industria empresa', 'industry']
+        const companySizeSynonyms = ['company size', 'tamaño empresa', 'tamano empresa', 'size empresa']
+        const companyDescriptionSynonyms = ['company description', 'descripción empresa', 'descripcion empresa']
+        // Company address synonyms
+        const companyFullAddressSynonyms = ['company address', 'company full address', 'dirección empresa', 'direccion empresa']
+        const companyStreetSynonyms = ['company street', 'company address line 1', 'company address1']
+        const companyZipSynonyms = ['company zip', 'company zipcode', 'company postal', 'company postal code']
+        const companyExternalNumSynonyms = ['company external number', 'company ext number', 'empresa no exterior']
+        const companyInternalNumSynonyms = ['company internal number', 'company int number', 'empresa no interior']
+        const companyCitySynonyms = ['company city']
+        const companyStateSynonyms = ['company state', 'company province', 'company region']
+        const companyCountrySynonyms = ['company country']
+        // Social synonyms
+        const githubSynonyms = ['github']
+        const websiteSynonyms = ['website', 'site', 'url']
+
+        if (emailSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'email'
+        } else if (contactNameSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'name'
+        } else if (firstNameSynonyms.some(s => lowercaseField.includes(s))) {
+          // Skip explicit first-name columns
+          leadField = 'skip'
+        } else if (displayNameSynonyms.some(s => lowercaseField.includes(s))) {
+          // Skip display-name columns
+          leadField = 'skip'
+        } else if (lastNameSynonyms.some(s => lowercaseField.includes(s))) {
+          // We will handle last name concatenation during import
+          leadField = 'skip'
+        } else if (zipSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'address_zip'
+        } else if (street2Synonyms.some(s => lowercaseField.includes(s))) {
+          // We do not store street 2; skip
+          leadField = 'skip'
+        } else if (externalNumSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'address_external_number'
+        } else if (internalNumSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'address_internal_number'
+        } else if (billingOrShippingAddressSynonyms.some(s => lowercaseField.includes(s))) {
+          // We don't store separate billing/shipping addresses; skip
+          leadField = 'skip'
+        } else if (fullAddressSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'address_full_address'
+        } else if (streetSynonyms.some(s => lowercaseField === s || lowercaseField.includes(s))) {
+          leadField = 'address_street'
+        } else if (companyNameSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_name'
+        } else if (companyWebsiteSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_website'
+        } else if (companyIndustrySynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_industry'
+        } else if (companySizeSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_size'
+        } else if (companyDescriptionSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_description'
+        } else if (companyFullAddressSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_address_full_address'
+        } else if (companyStreetSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_address_street'
+        } else if (companyZipSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_address_zip'
+        } else if (companyExternalNumSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_address_external_number'
+        } else if (companyInternalNumSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_address_internal_number'
+        } else if (companyCitySynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_address_city'
+        } else if (companyStateSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_address_state'
+        } else if (companyCountrySynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'company_address_country'
+        } else if (githubSynonyms.some(s => lowercaseField.includes(s))) {
+          leadField = 'social_github'
+        } else if (websiteSynonyms.some(s => lowercaseField === s || lowercaseField.includes(s))) {
+          leadField = 'social_website'
+        } else {
         LEAD_FIELDS.forEach(field => {
-          if (lowercaseField.includes(field.key) || field.key.includes(lowercaseField)) {
-            leadField = field.key as keyof Lead
+            if (lowercaseField.includes(String(field.key)) || String(field.key).includes(lowercaseField)) {
+              leadField = field.key as string
           }
         })
+        }
         
         return {
           csvField,
@@ -319,6 +455,32 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
           })
         }
       })
+
+      // Row-level minimum requirement: Email or Phone must be present
+      const emailMapping = fieldMappings.find(m => m.leadField === 'email')
+      const phoneMapping = fieldMappings.find(m => m.leadField === 'phone')
+      const emailValue = emailMapping ? row[emailMapping.csvField] : undefined
+      const phoneValue = phoneMapping ? row[phoneMapping.csvField] : undefined
+      const hasEmail = emailValue && String(emailValue).trim() !== ''
+      const hasPhone = phoneValue && String(phoneValue).trim() !== ''
+      
+      if (!hasEmail && !hasPhone) {
+        errors.push({
+          row: index + 1,
+          field: emailMapping?.csvField || phoneMapping?.csvField || 'email/phone',
+          value: '',
+          error: 'Email or Phone is required'
+        })
+      }
+
+      if (hasEmail && !isValidEmail(String(emailValue))) {
+        errors.push({
+          row: index + 1,
+          field: emailMapping?.csvField || 'email',
+          value: emailValue,
+          error: 'Invalid email format'
+        })
+      }
     })
     
     setValidationErrors(errors)
@@ -332,7 +494,7 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
     return emailRegex.test(email)
   }
 
-  const updateFieldMapping = (csvField: string, leadField: keyof Lead | 'skip') => {
+  const updateFieldMapping = (csvField: string, leadField: string | 'skip') => {
     setFieldMappings(prev => 
       prev.map(mapping => 
         mapping.csvField === csvField 
@@ -351,14 +513,24 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
         const lead: Partial<Lead> = {}
         const address: any = {}
         const socialNetworks: any = {}
+        const companyObj: any = {}
+        const companyAddress: any = {}
         
         fieldMappings.forEach(mapping => {
           if (mapping.leadField !== 'skip') {
             const value = row[mapping.csvField]
             if (value !== undefined && value !== '') {
-              // Handle company field
+              // Handle company fields
               if (mapping.leadField === 'company' && typeof value === 'string') {
-                lead.company = { name: value }
+                companyObj.name = value
+              }
+              else if (String(mapping.leadField).startsWith('company_address_')) {
+                const key = String(mapping.leadField).replace('company_address_', '')
+                companyAddress[key] = value
+              }
+              else if (String(mapping.leadField).startsWith('company_')) {
+                const companyField = String(mapping.leadField).replace('company_', '')
+                companyObj[companyField] = value
               }
               // Handle address fields
               else if (mapping.leadField.startsWith('address_')) {
@@ -377,6 +549,29 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
             }
           }
         })
+
+        // Attach company address if present
+        if (Object.keys(companyAddress).length > 0) {
+          companyObj.address = companyAddress
+        }
+        
+        // Combine first/last name into name if needed (even if those columns were skipped)
+        const lowerKeys = Object.keys(row).reduce((acc: Record<string,string>, k) => {
+          acc[k.toLowerCase()] = k
+          return acc
+        }, {})
+        const firstNameKey = Object.keys(lowerKeys).find(k => ['first name','firstname','first_name','nombre'].some(s => k.includes(s)))
+        const lastNameKey = Object.keys(lowerKeys).find(k => ['last name','lastname','last_name','apellido','apellidos'].some(s => k.includes(s)))
+        const first = firstNameKey ? row[lowerKeys[firstNameKey]] : undefined
+        const last = lastNameKey ? row[lowerKeys[lastNameKey]] : undefined
+        if (!lead.name && (first || last)) {
+          const parts = [first, last].filter(Boolean)
+          if (parts.length > 0) {
+            lead.name = parts.join(' ')
+          }
+        } else if (lead.name && last && typeof lead.name === 'string' && !lead.name.toLowerCase().includes(String(last).toLowerCase())) {
+          lead.name = `${lead.name} ${last}`
+        }
         
         // Set address object if any address fields were mapped
         if (Object.keys(address).length > 0) {
@@ -386,6 +581,11 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
         // Set social networks object if any social fields were mapped
         if (Object.keys(socialNetworks).length > 0) {
           lead.social_networks = socialNetworks
+        }
+
+        // Attach company object if any company fields were mapped
+        if (Object.keys(companyObj).length > 0) {
+          lead.company = companyObj
         }
         
         // Set default status if not provided
@@ -622,12 +822,26 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
               <CardHeader>
                 <CardTitle className="text-lg">Field Mapping</CardTitle>
                 <p className="text-sm text-gray-600">
-                  Map your CSV columns to lead fields. Required fields are marked with an asterisk.
+                  Map your CSV columns to lead fields. Required fields are marked with an asterisk. Left side shows your file columns; right side select the target Lead/Company field.
                 </p>
               </CardHeader>
               <CardContent>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm text-gray-600">
+                    {fieldMappings.filter(m => m.leadField !== 'skip').length} mappable columns
+                    {fieldMappings.filter(m => m.leadField === 'skip').length > 0 && (
+                      <span className="ml-2 text-gray-500">
+                        ({fieldMappings.filter(m => m.leadField === 'skip').length} auto-skipped)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Hide skipped columns</span>
+                    <Switch checked={hideSkipped} onCheckedChange={setHideSkipped} />
+                  </div>
+                </div>
                 <div className="space-y-3">
-                  {fieldMappings.map((mapping, index) => (
+                  {(hideSkipped ? fieldMappings.filter(m => m.leadField !== 'skip') : fieldMappings).map((mapping, index) => (
                     <div key={index} className="flex items-center gap-4">
                       <div className="flex-1">
                         <Badge variant="outline">{mapping.csvField}</Badge>
@@ -635,7 +849,7 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
                       <div className="flex-1">
                         <Select
                           value={mapping.leadField}
-                          onValueChange={(value) => updateFieldMapping(mapping.csvField, value as keyof Lead | 'skip')}
+                          onValueChange={(value) => updateFieldMapping(mapping.csvField, value as string | 'skip')}
                         >
                           <SelectTrigger>
                             <SelectValue />

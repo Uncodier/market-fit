@@ -983,15 +983,15 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
               <div className="space-y-4">
                 {!localState.hasSecureToken && (
                   <div>
-                    <Label className="text-sm font-medium text-foreground">Twilio API Key</Label>
+                    <Label className="text-sm font-medium text-foreground">Twilio Auth Token</Label>
                     <Input
-                      placeholder="Enter your Twilio API Key or Auth Token"
+                      placeholder="Enter your Twilio Auth Token"
                       value={localState.apiToken || ""}
                       onChange={(e) => handleApiTokenChange(e.target.value)}
                       type="password"
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Your existing Twilio API key for WhatsApp & SMS messaging (stored securely)
+                      Your Twilio Auth Token for WhatsApp & SMS messaging (stored securely)
                     </p>
                   </div>
                 )}
@@ -1024,9 +1024,9 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
                     <CheckCircle2 className="h-5 w-5 text-green-600" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">API Token Secured</p>
+                      <p className="text-sm font-medium">Auth Token Secured</p>
                       <p className="text-xs text-muted-foreground">
-                        Your Twilio API token is securely stored and encrypted
+                        Your Twilio Auth Token is securely stored and encrypted
                       </p>
                     </div>
                   </div>
