@@ -364,10 +364,16 @@ export function ChatList({
                 // Obtener detalles actualizados si es necesario
                 const details = await getConversationDetails(payload.new);
                 
-                // Generate a better title if we have a lead name
-                let title = payload.new.title || "Untitled Conversation";
-                if (details.leadName && (!payload.new.title || payload.new.title === "Untitled Conversation")) {
-                  title = `Chat with ${details.leadName}`;
+                // Compute resilient title using lead or agent name if needed
+                let title = payload.new.title as string | null;
+                if (!title || title.trim() === "") {
+                  if (details.leadName) {
+                    title = `Chat with ${details.leadName}`;
+                  } else if (details.agentName) {
+                    title = `Chat with ${details.agentName}`;
+                  } else {
+                    title = "Untitled Conversation";
+                  }
                 }
                 
                 // Actualizar sólo la conversación modificada en el estado
@@ -399,7 +405,7 @@ export function ChatList({
                     conv.id === payload.new.id 
                       ? { 
                           ...conv, 
-                          title: payload.new.title || conv.title,
+                          title: (payload.new.title && String(payload.new.title).trim() !== "") ? payload.new.title : conv.title,
                           timestamp: new Date(payload.new.updated_at || new Date()),
                           lastMessage: payload.new.last_message || conv.lastMessage,
                           status: payload.new.status || conv.status || 'active'
@@ -431,10 +437,16 @@ export function ChatList({
               // Usar la función auxiliar para obtener detalles
               const details = await getConversationDetails(payload.new);
               
-              // Generate a better title if we have a lead name
-              let title = payload.new.title || "Untitled Conversation";
-              if (details.leadName && (!payload.new.title || payload.new.title === "Untitled Conversation")) {
-                title = `Chat with ${details.leadName}`;
+              // Compute resilient title using lead or agent name if needed
+              let title = payload.new.title as string | null;
+              if (!title || title.trim() === "") {
+                if (details.leadName) {
+                  title = `Chat with ${details.leadName}`;
+                } else if (details.agentName) {
+                  title = `Chat with ${details.agentName}`;
+                } else {
+                  title = "Untitled Conversation";
+                }
               }
               
               const newConversation: ConversationListItem = {
@@ -455,6 +467,24 @@ export function ChatList({
               setConversations(prev => [newConversation, ...prev]);
               console.log(`🔍 New conversation ${newConversation.id} added with agent: ${details.agentName}, channel: ${details.channel}`);
               console.log(`🔍 DEBUG: Full conversation object:`, newConversation);
+
+              // If payload came without a title, fetch the latest row to correct it
+              if (!payload.new.title || String(payload.new.title).trim() === "") {
+                try {
+                  const supabase = createClient();
+                  const { data: convRow, error: convErr } = await supabase
+                    .from('conversations')
+                    .select('id, title')
+                    .eq('id', payload.new.id)
+                    .single();
+                  if (!convErr && convRow && convRow.title && String(convRow.title).trim() !== "" && convRow.title !== newConversation.title) {
+                    setConversations(prev => prev.map(c => c.id === convRow.id ? { ...c, title: convRow.title } : c));
+                    console.log(`🔍 Title corrected from DB for conversation ${convRow.id}: ${convRow.title}`);
+                  }
+                } catch (fetchErr) {
+                  console.warn('⚠️ Failed to fetch conversation title after INSERT:', fetchErr);
+                }
+              }
               
             } catch (error) {
               console.error('🔍 Error fetching conversation details:', error);
