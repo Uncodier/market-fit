@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/ta
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
-import { getLeads, createLead, updateLead, deleteLead } from "./actions"
+import { getLeads, createLead, updateLead, deleteLead, searchLeads, searchLeadsWithCount } from "./actions"
 import { CreateLeadDialog } from "@/app/components/create-lead-dialog"
 import { toast } from "sonner"
 import { getSegments } from "@/app/segments/actions"
@@ -328,6 +328,8 @@ export default function LeadsPage() {
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
   const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false)
   const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
+  const [searchTotalCount, setSearchTotalCount] = useState<number | null>(null)
+  const [allLeadsTotalCount, setAllLeadsTotalCount] = useState<number | null>(null)
 
   // Kanban pagination state for leads
   const [kanbanPagination, setKanbanPagination] = useState<Record<string, { page: number; hasMore: boolean; isLoading: boolean }>>({
@@ -385,6 +387,25 @@ export default function LeadsPage() {
       })) || []
       
       setDbLeads(normalizedLeads)
+      setSearchTotalCount(null)
+
+      // Fetch exact total count for table view (non-search)
+      try {
+        const supabase = createClient()
+        const { count, error } = await supabase
+          .from('leads')
+          .select('*', { count: 'exact', head: true })
+          .eq('site_id', currentSite.id)
+        if (error) {
+          console.error('Error fetching total leads count:', error)
+          setAllLeadsTotalCount(null)
+        } else {
+          setAllLeadsTotalCount(count || 0)
+        }
+      } catch (err) {
+        console.error('Error in total leads count:', err)
+        setAllLeadsTotalCount(null)
+      }
 
       // Load total counts for kanban view
       if (viewType === 'kanban') {
@@ -397,6 +418,57 @@ export default function LeadsPage() {
       setLoading(false)
     }
   }
+
+  // Cloud search (debounced) to query the full dataset on Supabase
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+    let cancelled = false
+
+    const run = async () => {
+      if (!currentSite?.id) return
+
+      const q = (searchQuery || "").trim()
+      if (q === "") {
+        // If query cleared, restore full dataset
+        await loadLeads()
+        return
+      }
+
+      setLoading(true)
+      try {
+        // Fetch page worth of data and exact count
+        const result = await searchLeadsWithCount(currentSite.id, q, 200, 0)
+        if (cancelled) return
+        if (result.error) {
+          toast.error(result.error)
+          setDbLeads([])
+          setSearchTotalCount(0)
+          return
+        }
+        setDbLeads(result.leads || [])
+        setSearchTotalCount(result.totalCount || 0)
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Error searching leads:", error)
+          toast.error("Error searching leads")
+          setDbLeads([])
+          setSearchTotalCount(0)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    // Debounce to reduce requests while typing
+    if (searchQuery !== undefined) {
+      timeoutId = setTimeout(run, 350)
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+      cancelled = true
+    }
+  }, [searchQuery, currentSite?.id])
 
   // Function to load total counts for kanban view
   const loadTotalCounts = React.useCallback(async () => {
@@ -1153,7 +1225,7 @@ export default function LeadsPage() {
                         companyGroups={companyGroups}
                       currentPage={currentPage}
                       itemsPerPage={itemsPerPage}
-                      totalLeads={filteredLeads.length}
+                      totalLeads={searchTotalCount ?? allLeadsTotalCount ?? filteredLeads.length}
                         totalCompanies={companyGroups.length}
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}
