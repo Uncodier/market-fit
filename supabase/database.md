@@ -1810,3 +1810,73 @@ CREATE TABLE public.instance_plans (
 | TRIGGER     | update_waitlist_updated_at                       | waitlist              |
 | TRIGGER     | validate_performance_bitmask_trigger             | commands              |
 | TRIGGER     | validate_performance_bitmask_trigger             | commands              |
+
+## Webhooks
+
+Market Fit supports site-scoped outbound webhooks so external services can receive real-time events.
+
+### Tables
+
+- webhooks_endpoints
+  - id (uuid, pk)
+  - site_id (uuid → sites.id)
+  - created_by (uuid → profiles.id)
+  - name (text, unique per site)
+  - description (text)
+  - target_url (text)
+  - secret (text)
+  - is_active (boolean)
+  - handshake_status (text: pending | verified | failed | none)
+  - handshake_token (text)
+  - handshake_verified_at (timestamptz)
+  - last_handshake_error (text)
+  - created_at / updated_at
+
+- webhooks_subscriptions
+  - id (uuid, pk)
+  - site_id (uuid → sites.id)
+  - endpoint_id (uuid → webhooks_endpoints.id)
+  - event_type (text)
+  - is_active (boolean)
+  - filters (jsonb)
+  - created_at / updated_at
+  - Unique: (endpoint_id, event_type)
+
+- webhooks_deliveries
+  - id (uuid, pk)
+  - site_id (uuid → sites.id)
+  - endpoint_id (uuid → webhooks_endpoints.id)
+  - subscription_id (uuid → webhooks_subscriptions.id, nullable)
+  - event_type (text)
+  - payload (jsonb)
+  - status (text: pending | delivered | failed | retrying)
+  - attempt_count (int)
+  - last_attempt_at (timestamptz)
+  - response_status (int)
+  - response_body (text)
+  - last_error (text)
+  - delivered_at (timestamptz)
+  - created_at / updated_at
+
+### Indexes
+
+- Endpoints: site_id, (site_id, is_active)
+- Subscriptions: site_id, endpoint_id, event_type
+- Deliveries: site_id, endpoint_id, status, event_type, created_at
+
+### RLS
+
+Unified RLS per table using site-scoped access:
+
+- A user can access rows if they are:
+  - a site owner via `site_ownership`, or
+  - an active member via `site_members` (status = 'active').
+- Policies use `(select auth.uid())` to avoid initplan overhead.
+
+### Event Types (initial)
+
+- task.created
+- task.updated
+- message.created
+
+You can subscribe an endpoint to any of these. Deliveries are recorded in `webhooks_deliveries` and should be sent by a background worker or scheduled job.

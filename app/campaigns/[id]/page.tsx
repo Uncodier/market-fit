@@ -24,7 +24,6 @@ import {
   AlertDialogTrigger
 } from "@/app/components/ui/alert-dialog"
 import { Revenue, Budget } from "@/app/types"
-import { SubtaskFormValues } from "@/app/components/add-subtask-dialog"
 import { CampaignRequirementFormValues } from "@/app/components/create-requirement-dialog-for-campaign"
 import { createRequirement } from "@/app/requirements/actions"
 import { getLeadsByCampaignId } from "@/app/leads/actions"
@@ -38,6 +37,7 @@ import {
   TaskDetailSkeleton,
   TaskDetailContextType
 } from "@/app/components/campaign-detail"
+import { SubtaskFormValues } from "@/app/components/add-subtask-dialog"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Settings, SaveIcon } from "@/app/components/ui/icons"
 import { CampaignDetails } from "@/app/components/campaign-detail/campaign-details"
@@ -792,6 +792,7 @@ export default function TaskDetailPage() {
                 loadingLeads={loadingLeads}
                 campaignLeads={campaignLeads}
                 onCreateRequirement={handleCreateRequirementInternal}
+                onAddSubtask={handleAddSubtask}
                 taskDetailContext={{ loadingSegments, campaignSegments }}
                 segments={siteSegments}
                 longDescription={longDescription}

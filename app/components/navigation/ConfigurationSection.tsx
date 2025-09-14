@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Settings, Shield, Sun, Moon, CreditCard } from "@/app/components/ui/icons"
+import { Settings, Shield, Sun, Moon, CreditCard, Plug } from "@/app/components/ui/icons"
 
 // Add Cpu icon for AI representation
 const Cpu = ({ className = "", ...props }: { className?: string, [key: string]: any }) => (
@@ -69,6 +69,12 @@ const configItems: ConfigItem[] = [
     isSettingsChild: true,
   },
   {
+    title: "Integrations",
+    href: "/integrations",
+    icon: Plug,
+    isSettingsChild: true,
+  },
+  {
     title: "Billing",
     href: "/billing",
     icon: CreditCard,
@@ -111,6 +117,7 @@ export function ConfigurationSection({
   const isSecurityActive = pathname.startsWith('/security')
   const isBillingActive = pathname.startsWith('/billing')
   const isAgentsActive = pathname.startsWith('/agents')
+  const isIntegrationsActive = pathname.startsWith('/integrations')
   
   // Use external state if provided, fallback to local state
   const [internalForceShowChildren, setInternalForceShowChildren] = useState(false)
@@ -128,7 +135,7 @@ export function ConfigurationSection({
     }
   };
   
-  const shouldShowSettingsChildren = isSettingsActive || isSecurityActive || isBillingActive || isAgentsActive || forceShowChildren
+  const shouldShowSettingsChildren = isSettingsActive || isSecurityActive || isBillingActive || isAgentsActive || isIntegrationsActive || forceShowChildren
   
   // For animation - defining all state upfront
   const [isEntering, setIsEntering] = useState(false)
@@ -144,8 +151,9 @@ export function ConfigurationSection({
         (previousPath.startsWith('/settings') || 
          previousPath.startsWith('/security') || 
          previousPath.startsWith('/billing') ||
-         previousPath.startsWith('/agents')) &&
-        !isSettingsActive && !isSecurityActive && !isBillingActive && !isAgentsActive
+         previousPath.startsWith('/agents') ||
+         previousPath.startsWith('/integrations')) &&
+        !isSettingsActive && !isSecurityActive && !isBillingActive && !isAgentsActive && !isIntegrationsActive
       );
       
       // When navigating away from settings area, hide the settings children
@@ -156,7 +164,7 @@ export function ConfigurationSection({
     
     // Update previous path reference
     prevPathRef.current = pathname;
-  }, [pathname, isSettingsActive, isSecurityActive, isBillingActive, isAgentsActive, externalForceShowChildren, setForceShowChildren]);
+  }, [pathname, isSettingsActive, isSecurityActive, isBillingActive, isAgentsActive, isIntegrationsActive, externalForceShowChildren, setForceShowChildren]);
   
   // Use external navigation handler if provided, fallback to local implementation
   const handleSettingsNavigation = onSettingsNavigation || ((e: React.MouseEvent, href: string) => {
@@ -170,7 +178,7 @@ export function ConfigurationSection({
     }
     
     // If not in settings area, first show children then navigate with delay
-    if (!isSettingsActive && !isSecurityActive && !isBillingActive) {
+    if (!isSettingsActive && !isSecurityActive && !isBillingActive && !isAgentsActive && !isIntegrationsActive) {
       setForceShowChildren(true);
       
       // Navigate after delay
@@ -191,7 +199,7 @@ export function ConfigurationSection({
     }
     
     // If already in settings area, don't toggle
-    if (isSettingsActive || isSecurityActive || isBillingActive) return;
+    if (isSettingsActive || isSecurityActive || isBillingActive || isAgentsActive || isIntegrationsActive) return;
     
     // Toggle force show without triggering additional animations
     setForceShowChildren(prev => !prev);

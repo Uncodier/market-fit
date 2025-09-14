@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
+import { useSearchParams } from "next/navigation"
 import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
 import { useSite } from "../context/SiteContext"
 import { useTheme } from "../context/ThemeContext"
@@ -145,12 +146,20 @@ export default function SettingsPage() {
   const { user } = useAuthContext()
   const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("general")
+  const searchParams = useSearchParams()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [confirmationName, setConfirmationName] = useState("")
 
   // Simple refresh prevention specifically for settings page
   useSimpleRefreshPrevention()
+  // Sync tab from URL (?tab=channels)
+  useEffect(() => {
+    const tab = searchParams.get('tab') || searchParams.get('segment')
+    if (tab && ["general", "channels", "team"].includes(tab)) {
+      setActiveSegment(tab)
+    }
+  }, [searchParams])
 
   // Debug log para verificar el estado de prevención
   useEffect(() => {

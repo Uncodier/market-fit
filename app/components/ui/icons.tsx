@@ -1259,6 +1259,19 @@ export const Rocket = ({ className = "", size = 20, ...props }: IconProps) => (
   </IconWrapper>
 )
 
+// Plug
+export const Plug = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 7h6" />
+      <path d="M10 7V3" />
+      <path d="M14 7V3" />
+      <path d="M7 13a5 5 0 0 0 10 0V7H7v6Z" />
+      <path d="M12 19v2" />
+    </svg>
+  </IconWrapper>
+)
+
 // Megaphone
 export const Megaphone = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>

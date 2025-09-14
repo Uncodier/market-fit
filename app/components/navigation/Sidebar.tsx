@@ -245,7 +245,7 @@ export function Sidebar({
     
     const inContextArea = isContextActive || isCampaignsActive || isSegmentsActive || 
                           isAssetsActive || isSalesActive;
-    const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing');
+    const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing') || pathname.startsWith('/agents') || pathname.startsWith('/integrations');
     const inProfileArea = isProfileActive;
     
     const isLeavingContextArea = (
@@ -261,7 +261,9 @@ export function Sidebar({
     const isLeavingSettingsArea = (
       (previousPath.startsWith('/settings') || 
        previousPath.startsWith('/security') || 
-       previousPath.startsWith('/billing')) &&
+       previousPath.startsWith('/billing') ||
+       previousPath.startsWith('/agents') ||
+       previousPath.startsWith('/integrations')) &&
       !inSettingsArea
     );
     
@@ -299,7 +301,7 @@ export function Sidebar({
                           isAssetsActive || isSalesActive;
     
     // Check if we're in settings area (we'll need to get this from ConfigurationSection)
-    const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing');
+    const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing') || pathname.startsWith('/agents') || pathname.startsWith('/integrations');
     const inProfileArea = isProfileActive || isNotificationsActive;
     
     if (section === 'context') {

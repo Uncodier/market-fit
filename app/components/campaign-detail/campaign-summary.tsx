@@ -8,11 +8,11 @@ import { Label } from "@/app/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Input } from "@/app/components/ui/input"
-import { BarChart, Loader, MoreHorizontal, User, Users, ExternalLink } from "@/app/components/ui/icons"
+import { BarChart, Loader, MoreHorizontal, User, Users, ExternalLink, PlusCircle } from "@/app/components/ui/icons"
 import { getCampaignById } from "@/app/campaigns/actions/campaigns/read"
 import { createSubtask } from "@/app/campaigns/actions/subtasks/create"
 import { Revenue, Budget, Campaign } from "@/app/types"
-import { SubtaskFormValues } from "@/app/components/add-subtask-dialog"
+import { AddSubtaskDialog, SubtaskFormValues } from "@/app/components/add-subtask-dialog"
 import { CampaignRequirementFormValues } from "@/app/components/create-requirement-dialog-for-campaign"
 import { createRequirement } from "@/app/requirements/actions"
 import { getLeadsByCampaignId } from "@/app/leads/actions"
@@ -23,6 +23,7 @@ import { getSegments } from "@/app/segments/actions"
 import { FinancialDetails, TaskDetailSkeleton } from "@/app/components/campaign-detail"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { CampaignDetailTabs } from "./campaign-detail-tabs"
+import { CampaignRequirementDialog } from "@/app/components/create-requirement-dialog-for-campaign"
 import { CampaignRequirements } from "@/app/components/campaign-requirements"
 import { AddCampaignLeadDialog } from "@/app/components/add-campaign-lead-dialog"
 import { cn } from "@/lib/utils"
@@ -117,6 +118,7 @@ export interface CampaignSummaryProps {
   loadingLeads: boolean;
   campaignLeads: Lead[];
   onCreateRequirement: (values: CampaignRequirementFormValues) => Promise<{ data?: any; error?: string }>;
+  onAddSubtask?: (values: SubtaskFormValues) => Promise<{ data?: any; error?: string }>;
   taskDetailContext: TaskDetailContextType;
   segments: any[];
   longDescription: string;
@@ -142,6 +144,7 @@ export function CampaignSummary({
   loadingLeads, 
   campaignLeads, 
   onCreateRequirement,
+  onAddSubtask,
   taskDetailContext,
   segments,
   longDescription,
@@ -186,6 +189,18 @@ export function CampaignSummary({
           campaignId={campaign.id} 
           externalRequirements={campaignRequirements}
           externalLoading={loadingRequirements}
+          renderAddButton={() => (
+            <CampaignRequirementDialog
+              campaignId={campaign.id}
+              onCreateRequirement={onCreateRequirement}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Requirement
+                </Button>
+              }
+            />
+          )}
         />
         
         {/* Generated Leads Card */}
@@ -370,6 +385,20 @@ export function CampaignSummary({
         {/* Campaign Overview Card */}
         <CampaignDetailTabs campaign={campaign}>
           <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Overview</div>
+              {onAddSubtask && (
+                <AddSubtaskDialog 
+                  campaignId={campaign.id}
+                  onAddSubtask={onAddSubtask}
+                  trigger={
+                    <Button size="sm">
+                      + Add Task
+                    </Button>
+                  }
+                />
+              )}
+            </div>
             {/* Campaign Title and Priority */}
             <div className="space-y-1">
               <div className="flex items-center gap-2">
