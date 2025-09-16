@@ -53,7 +53,7 @@ export const ChannelSelector = memo(function ChannelSelector({
         className="w-auto"
       >
         <TabsList className={cn(
-          "h-8 p-0.5 transition-opacity duration-200",
+          "h-8 p-0.5 bg-muted/30 rounded-md transition-opacity duration-200",
           isUpdating && "opacity-70"
         )}>
           {availableChannels.map((channel) => {
@@ -67,6 +67,7 @@ export const ChannelSelector = memo(function ChannelSelector({
                 disabled={isUpdating}
                 className={cn(
                   "h-7 w-7 px-0 flex items-center justify-center rounded-sm transition-all duration-200",
+                  "[&>*]:flex [&>*]:items-center [&>*]:justify-center",
                   isUpdating && "cursor-not-allowed"
                 )}
                 title={isUpdating ? "Updating channel..." : config.description}

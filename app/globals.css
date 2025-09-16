@@ -134,9 +134,12 @@
       /* Arreglo para iconos en inputs y selectores */
       input + div, 
       select + div,
-      button div,
-      .relative svg {
+      button div {
         position: relative;
+      }
+      /* Keep explicitly absolute icons absolute inside relative containers */
+      .relative svg[class*="absolute"] {
+        position: absolute;
       }
       
       /* Estilos para los inputs específicamente */
@@ -250,6 +253,19 @@
 
     * {
       scrollbar-width: auto;
+    }
+  }
+}
+
+/* Safari: ensure horizontal padding in search inputs (Conversations, Control Center) */
+@media not all and (min-resolution:.001dpcm) { 
+  @supports (-webkit-appearance:none) {
+    input[type="search"] {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      padding-left: 12px !important;  /* equals Tailwind px-3 */
+      padding-right: 12px !important; /* equals Tailwind px-3 */
+      background-clip: padding-box !important;
     }
   }
 }
@@ -657,10 +673,7 @@ html.safari [class*="input"] > div[aria-hidden="true"] {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  position: absolute !important;
-  right: 10px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
+  position: relative !important;
   z-index: 10 !important;
 }
 
@@ -721,7 +734,6 @@ html.safari button .w-4.h-4 {
   height: 16px !important;
   min-width: 16px !important;
   min-height: 16px !important;
-  margin-right: 8px !important;
 }
 
 /* Fix específico para inputs con iconos usando InputWithIcon */
@@ -955,3 +967,21 @@ html.safari [class*="select-trigger"] svg {
 .bg-primary {
   background: linear-gradient(123deg, rgb(89, 103, 181) -12%, rgb(144, 142, 237) 88.6903%) !important;
 } 
+
+.badge-gradient-green {
+  background: #d9f022 !important;
+  background: -webkit-linear-gradient(123deg, #E0FF17 -12%, #D1ED1C 88.6903%) !important;
+  background: linear-gradient(123deg, #E0FF17 -12%, #D1ED1C 88.6903%) !important;
+} 
+
+.max-w-\[calc\(100\%-240px\)\] { width: calc(100% - 240px); } 
+
+/* Safari-specific normalization for chat footer icons */
+@media not all and (min-resolution:.001dpcm) {
+  @supports (-webkit-appearance:none) {
+    .chat-input-container svg { display: block; position: static; vertical-align: middle; }
+    .chat-input-container [role="tab"] svg { margin: 0 auto; }
+    .chat-input-container button svg { margin: 0 auto; }
+  }
+} 
+.-top-1 { top: -0.75rem; } 

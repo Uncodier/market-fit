@@ -66,10 +66,7 @@ export function RequirementsBadge({ isActive = false }: { isActive?: boolean }) 
   
   return (
     <Badge 
-      className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black"
-      style={{
-        background: 'linear-gradient(123deg, var(--token-ad13da1e-2041-4c58-8175-eb55a19eeb20, rgb(224, 255, 23)) -12%, rgb(209, 237, 28) 88.69031531531532%) !important'
-      }}
+      className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black badge-gradient-green"
     >
       {backlogPendingCount > 99 ? "99+" : backlogPendingCount}
     </Badge>
@@ -130,10 +127,7 @@ export function CampaignsBadge({ isActive = false }: { isActive?: boolean }) {
   
   return (
     <Badge 
-      className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black"
-      style={{
-        background: 'linear-gradient(123deg, var(--token-ad13da1e-2041-4c58-8175-eb55a19eeb20, rgb(224, 255, 23)) -12%, rgb(209, 237, 28) 88.69031531531532%) !important'
-      }}
+      className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black badge-gradient-green"
     >
       {pendingCampaignsCount > 99 ? "99+" : pendingCampaignsCount}
     </Badge>

@@ -90,7 +90,9 @@ export function TaskSidebar({
     <div className={cn(
       "h-full transition-all duration-200 ease-in-out",
       !isDarkMode && "border-r",
-      isCollapsed ? "w-0 opacity-0" : "w-[319px]"
+      isCollapsed ? "w-0 opacity-0" : "w-[319px]",
+      // Scoped class for Safari-specific fixes
+      "task-sidebar"
     )}>
       <CategoriesHeader 
         isDarkMode={isDarkMode} 
@@ -130,7 +132,7 @@ export function TaskSidebar({
               <>
                 {/* Categories Section */}
                 {categories.length > 0 && (
-                  <div style={{ padding: '3.6px' }}>
+                  <div className="task-categories-list" style={{ padding: '3.6px' }}>
                     <div className="space-y-0.5">
                       {categories.map((category) => (
                         <button
@@ -167,7 +169,7 @@ export function TaskSidebar({
 
                 {/* Types Section */}
                 {taskTypes.length > 0 && (
-                  <div style={{ padding: '3.6px' }}>
+                  <div className="task-types-list" style={{ padding: '3.6px' }}>
                     <div style={{ paddingLeft: '10.8px', paddingRight: '10.8px', paddingTop: '14.4px', paddingBottom: '7.2px' }}>
                       <div className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider" style={{ gap: '7.2px', fontSize: '10.8px' }}>
                         <span>Task Types</span>

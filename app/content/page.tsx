@@ -1880,22 +1880,17 @@ export default function ContentPage() {
                   </TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
-                  <Input
+                  <Input 
                     data-command-k-input
-                    type="text"
-                    placeholder="Search content..."
-                    className="w-full pl-8 pr-12"
+                    placeholder="Search content..." 
+                    className="w-full" 
+                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     value={searchTerm}
                     onChange={handleSearchChange}
                   />
-                  <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                    <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                      <span className="text-xs">⌘</span>K
-                    </kbd>
-                  </div>
+                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
                 </div>
                 <Button 
                   variant="outline" 

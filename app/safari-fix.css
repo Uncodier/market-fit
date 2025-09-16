@@ -9,8 +9,8 @@
       -webkit-transform: translateZ(0);
     }
     
-    /* Eliminamos los estilos que pueden estar causando problemas */
-    button svg, a svg, div svg, span svg {
+    /* Limit resets to button/anchor SVGs only (avoid breaking absolute icons) */
+    button svg, a svg {
       position: relative;
       top: auto;
       left: auto;
@@ -375,6 +375,19 @@ html.safari nav a[href*="settings"] {
   height: auto !important;
 }
 
+/* Sidebar: ensure task selector items use full width in Safari */
+/* Scope to task types and categories list so Tab components are not affected */
+html.safari .task-sidebar .task-types-list button,
+html.safari .task-sidebar .task-categories-list button {
+  display: block !important; /* override global inline-flex for these lists only */
+  width: 100% !important;
+}
+
+html.safari .task-sidebar .task-types-list button > div,
+html.safari .task-sidebar .task-categories-list button > div {
+  display: flex !important;
+}
+
 html.safari [class*="menu-item"] a[href*="settings"] svg,
 html.safari [role="menuitem"] a[href*="settings"] svg,
 html.safari [class*="navigation"] a[href*="settings"] svg,
@@ -473,6 +486,15 @@ html.safari a[href*="settings"] {
   border-radius: 4px !important;
 }
 
+/* Collapsed state must be a perfect 35x35 square with no padding and no gap */
+html.safari .safari-settings-link.collapsed {
+  width: 35px !important;
+  height: 35px !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  justify-content: center !important;
+}
+
 html.safari .safari-settings-link > div,
 html.safari a[href*="settings"] > div:first-child {
   display: flex !important;
@@ -483,6 +505,12 @@ html.safari a[href*="settings"] > div:first-child {
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
   margin: 0 !important;
+}
+
+/* Collapsed icon container matches other collapsed items */
+html.safari .safari-settings-link.collapsed > div:first-child {
+  width: 35px !important;
+  height: 23px !important;
 }
 
 html.safari .safari-settings-link svg,
@@ -496,6 +524,14 @@ html.safari a[href*="settings"] svg {
   position: static !important;
   flex-shrink: 0 !important;
   margin: 0 !important;
+}
+
+/* Collapsed icon size equals others (18px) */
+html.safari .safari-settings-link.collapsed svg {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
 }
 
 html.safari .safari-settings-link span,
@@ -622,8 +658,6 @@ html.safari [class*="input-wrapper"],
 html.safari [class*="input-container"],
 html.safari div:has(> input) {
   position: relative !important;
-  display: block !important;
-  width: 100% !important;
 }
 
 /* Solución extrema para el icono de ojo en campos de contraseña */
@@ -1086,6 +1120,23 @@ html.safari .setting-parent-item + div svg {
   min-height: 8px !important;
 }
 
+/* Ensure Context and Profile parent chevrons match Settings size in Safari */
+html.safari .context-parent-item + div svg,
+html.safari .profile-parent-item + div svg {
+  width: 8px !important;
+  height: 8px !important;
+  min-width: 8px !important;
+  min-height: 8px !important;
+}
+
+/* Profile has extra siblings (notification badge) before the chevron */
+html.safari .profile-parent-item ~ div svg[viewBox="0 0 6 10"] {
+  width: 8px !important;
+  height: 8px !important;
+  min-width: 8px !important;
+  min-height: 8px !important;
+}
+
 /* Fix especificos para contenedores y SVGs en el menu de Safari */
 html.safari .settings-icon-container,
 html.safari .settings-icon-container svg,
@@ -1120,3 +1171,29 @@ html.safari .notifications-icon-container {
   max-width: 16px !important;
   max-height: 16px !important;
 } 
+ 
+ /* Safari: ensure horizontal padding in search inputs (Conversations, Control Center) */
+ html.safari input[type="search"] {
+   -webkit-appearance: none !important;
+   appearance: none !important;
+   padding-left: 12px !important;  /* equals Tailwind px-3 */
+   padding-right: 12px !important; /* equals Tailwind px-3 */
+   background-clip: padding-box !important;
+ }
+ 
+ /* Also target standard text inputs, but only when no explicit pl-* is present */
+ html.safari input.h-12:not([class*="pl-"]),
+ html.safari input[type="text"].h-12:not([class*="pl-"]),
+ html.safari .h-12 input:not([class*="pl-"]) {
+   -webkit-appearance: none !important;
+   appearance: none !important;
+   box-sizing: border-box !important;
+   padding-left: 12px !important;
+   padding-right: 12px !important;
+ }
+ 
+ /* Ensure inputs always respect padding box model in Safari */
+ html.safari input {
+   box-sizing: border-box !important;
+   background-clip: padding-box !important;
+ }
