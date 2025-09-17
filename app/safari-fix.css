@@ -652,11 +652,11 @@ html.safari [type="password"] + div svg {
 }
 
 /* Aseguramos que los contenedores de inputs tengan posición relativa */
-html.safari .input-wrapper,
-html.safari .input-container,
-html.safari [class*="input-wrapper"],
-html.safari [class*="input-container"],
-html.safari div:has(> input) {
+html.safari .input-wrapper:not(.chat-input-container),
+html.safari .input-container:not(.chat-input-container),
+html.safari [class*="input-wrapper"]:not(.chat-input-container),
+html.safari [class*="input-container"]:not(.chat-input-container),
+html.safari div:has(> input):not(.chat-input-container) {
   position: relative !important;
 }
 
