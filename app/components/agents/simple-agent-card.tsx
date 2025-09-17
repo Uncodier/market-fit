@@ -122,7 +122,7 @@ export function SimpleAgentCard({
     )}>
       <Card 
         className={cn(
-          "h-auto flex flex-col",
+          "h-auto flex flex-col overflow-hidden",
           agentCardVariants({ hover: true }),
           hasCustomData && "border-primary/30" // Highlight personalized agents
         )}

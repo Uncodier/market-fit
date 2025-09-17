@@ -178,23 +178,44 @@ export async function createAsset(data: CreateAssetInput): Promise<{ error?: str
       return { error: "User not authenticated" }
     }
 
-    // Verificar que el usuario tenga acceso al sitio
+    // Verify the user has access to the site (owner or active member)
+    // 1) Fetch site owner
     const { data: siteData, error: siteError } = await supabase
       .from('sites')
       .select('id, user_id')
       .eq('id', validatedData.site_id)
       .single()
-    
+
     if (siteError) {
       console.error("Error verifying site access:", siteError)
       return { error: "Error verifying site access" }
     }
-    
+
     if (!siteData) {
       return { error: "Specified site does not exist" }
     }
-    
-    if (siteData.user_id !== user.id) {
+
+    let hasSiteAccess = siteData.user_id === user.id
+
+    if (!hasSiteAccess) {
+      // 2) If not owner, check active membership
+      const { data: member, error: memberError } = await supabase
+        .from('site_members')
+        .select('id')
+        .eq('site_id', validatedData.site_id)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle()
+
+      if (memberError) {
+        console.error('Error checking site membership:', memberError)
+      }
+
+      hasSiteAccess = !!member
+    }
+
+    if (!hasSiteAccess) {
       return { error: "You don't have access to this site" }
     }
 
@@ -208,7 +229,7 @@ export async function createAsset(data: CreateAssetInput): Promise<{ error?: str
       authenticated_user_id: user.id,
       site_id: validatedData.site_id,
       site_user_id: siteData.user_id,
-      has_site_access: siteData.user_id === user.id
+      has_site_access: true
     }
 
     const { data: asset, error } = await supabase

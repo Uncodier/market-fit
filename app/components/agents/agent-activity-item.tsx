@@ -98,10 +98,10 @@ export function AgentActivityItem({
       )}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="w-8 flex items-center justify-center">
+        <div className="w-16 flex items-center justify-between pr-1">
           <span className={cn(
             "text-sm font-medium text-muted-foreground",
-            (isExecuting || isSuccessful || hasError) ? "hidden" : "group-hover:hidden"
+            hasError && "hidden"
           )}>
             {activity.id.split('').pop()}
           </span>

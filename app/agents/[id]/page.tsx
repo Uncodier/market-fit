@@ -480,6 +480,7 @@ function AgentPageSkeleton() {
                           ? 'bg-background text-foreground shadow-sm' 
                           : (index === 1 || index === 2 || index === 3 ? 'hidden' : 'text-muted-foreground')
                       }`}
+                      data-hide-in-safari={index === 1 || index === 2 || index === 3 ? "true" : undefined}
                     >
                       {tab}
                     </div>
@@ -1447,9 +1448,9 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
               <div className="flex items-center gap-8">
                 <TabsList>
                   <TabsTrigger value="basic">Basic Information</TabsTrigger>
-                  <TabsTrigger value="tools" className="hidden">Tools</TabsTrigger>
-                  <TabsTrigger value="triggers" className="hidden">Triggers</TabsTrigger>
-                  <TabsTrigger value="integrations" className="hidden">Integrations</TabsTrigger>
+                  <TabsTrigger value="tools" className="hidden" data-hide-in-safari>Tools</TabsTrigger>
+                  <TabsTrigger value="triggers" className="hidden" data-hide-in-safari>Triggers</TabsTrigger>
+                  <TabsTrigger value="integrations" className="hidden" data-hide-in-safari>Integrations</TabsTrigger>
                   <TabsTrigger value="context">Context Files</TabsTrigger>
                   <TabsTrigger value="activities">Activities</TabsTrigger>
                 </TabsList>
@@ -1828,7 +1829,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     {availableAssets.map((asset) => (
                       <div 
                         key={asset.id} 
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-gray-800/60 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <div className="flex-shrink-0">

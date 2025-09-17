@@ -189,10 +189,10 @@ html.safari [role="menuitem"] svg {
 
 /* Fixes específicos para botones */
 html.safari button {
-  position: relative !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 html.safari button svg {
@@ -291,11 +291,16 @@ html.safari [class*="dialog"] button,
 html.safari [class*="modal"] button,
 html.safari [aria-label="Close"],
 html.safari button[aria-label="Close"] {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  position: relative !important;
-  line-height: 1 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  line-height: 1;
+}
+
+/* Ensure absolute positioning wins where explicitly requested */
+html.safari .absolute {
+  position: absolute !important;
 }
 
 /* Fix específico para anclajes en settings */
@@ -1172,6 +1177,11 @@ html.safari .notifications-icon-container {
   max-height: 16px !important;
 } 
  
+/* Hide specific tabs in Agent detail only in Safari */
+html.safari [data-hide-in-safari] {
+  display: none !important;
+}
+
  /* Safari: ensure horizontal padding in search inputs (Conversations, Control Center) */
  html.safari input[type="search"] {
    -webkit-appearance: none !important;

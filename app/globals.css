@@ -635,10 +635,10 @@ html.safari [class*="input"] + div svg {
 
 /* Reglas ultras específicas para Safari y sus iconos */
 html.safari button {
-  position: relative !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 html.safari button svg,
@@ -713,10 +713,10 @@ html.safari .safari-icon-container svg {
 
 /* Fixes específicos para botones con iconos en Safari */
 html.safari button {
-  position: relative !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 html.safari button svg {

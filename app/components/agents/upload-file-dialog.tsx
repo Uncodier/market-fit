@@ -451,8 +451,8 @@ export function UploadFileDialog({
               {...getRootProps()}
               className={cn(
                 "relative flex flex-col items-center justify-center gap-4 p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50",
-                (isSubmitting || isLoading) && "opacity-70 cursor-not-allowed hover:bg-transparent bg-gray-50"
+                isDragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50",
+                (isSubmitting || isLoading) && "opacity-70 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent bg-gray-50 dark:bg-transparent"
               )}
             >
               <input {...getInputProps()} />
@@ -551,6 +551,7 @@ export function UploadFileDialog({
             onClick={handleSubmit} 
             disabled={isSubmitting || isLoading || !file || !name}
             className={cn(
+              "bg-primary text-white",
               isSubmitting && "opacity-70 cursor-not-allowed bg-primary/80",
               "min-w-[100px]"
             )}

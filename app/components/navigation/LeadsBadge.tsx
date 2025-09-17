@@ -66,44 +66,7 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
           return
         }
 
-        // Get journey stages for all leads to find "unaware" ones
-        const leadIds = leads.map(lead => lead.id)
-        const { data: tasks, error: tasksError } = await supabase
-          .from('tasks')
-          .select('lead_id, stage, status')
-          .in('lead_id', leadIds)
-          .in('status', ['completed', 'in_progress'])
-          .eq('site_id', currentSite.id)
-
-        // Group tasks by lead_id and find the highest stage for each lead
-        const stageOrder = ["referral", "retention", "purchase", "decision", "consideration", "awareness"]
-        const leadStages: Record<string, string> = {}
-        
-        const tasksByLead = tasks?.reduce((acc, task) => {
-          if (!acc[task.lead_id]) acc[task.lead_id] = []
-          acc[task.lead_id].push(task)
-          return acc
-        }, {} as Record<string, any[]>) || {}
-
-        leads.forEach(lead => {
-          const leadTasks = tasksByLead[lead.id] || []
-          
-          if (leadTasks.length === 0) {
-            leadStages[lead.id] = "not_contacted"
-          } else {
-            // Find the highest stage
-            const highestStage = leadTasks
-              .sort((a, b) => {
-                const aIndex = stageOrder.indexOf(a.stage)
-                const bIndex = stageOrder.indexOf(b.stage)
-                return aIndex - bIndex
-              })[0]?.stage || "not_contacted"
-            
-            leadStages[lead.id] = highestStage
-          }
-        })
-
-        // Group leads by company
+        // Group leads by company (avoid expensive tasks fetch here)
         const companiesByKey: Record<string, any[]> = {}
         
         leads.forEach(lead => {

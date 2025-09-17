@@ -48,7 +48,7 @@ export function ContextFile({ id, name, path, agentId, onRemove, onUpdate }: Con
   const displayPath = path.split('/').pop() || path;
 
   return (
-    <div className="group relative flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+    <div className="group relative flex items-center p-3 border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
       <UploadFileDialog 
         agentId={agentId}
         mode="update"
