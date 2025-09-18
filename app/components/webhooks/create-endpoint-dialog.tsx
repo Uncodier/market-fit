@@ -20,6 +20,9 @@ const EVENT_OPTIONS = [
   { id: "message.created", label: "Message created" },
   { id: "message.updated", label: "Message updated" },
   { id: "message.deleted", label: "Message deleted" },
+  { id: "lead.created", label: "Lead created" },
+  { id: "lead.updated", label: "Lead updated" },
+  { id: "lead.deleted", label: "Lead deleted" },
 ]
 
 export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoint" }: { onSuccess: () => void, triggerLabel?: string }) {
@@ -31,11 +34,7 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
   const [secret, setSecret] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [open, setOpen] = useState(false)
-  const [selectedEvents, setSelectedEvents] = useState<string[]>([
-    "task.created",
-    "task.updated",
-    "message.created",
-  ])
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([])
 
   const reset = () => {
     setName("")
@@ -121,7 +120,7 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
                 </label>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">Select which events this endpoint will listen to (Tasks CUD, Messages CUD).</p>
+            <p className="text-xs text-muted-foreground">Select which events this endpoint will listen to (Tasks CUD, Messages CUD, Leads CUD).</p>
           </div>
 
           <div className="flex items-center gap-2 justify-end">

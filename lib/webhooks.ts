@@ -6,7 +6,10 @@ export type WebhookEventType =
   | "task.deleted"
   | "message.created"
   | "message.updated"
-  | "message.deleted";
+  | "message.deleted"
+  | "lead.created"
+  | "lead.updated"
+  | "lead.deleted";
 
 export interface WebhookEndpoint {
   id: string;

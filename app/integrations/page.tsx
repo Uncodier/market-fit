@@ -15,10 +15,11 @@ import { Checkbox } from "@/app/components/ui/checkbox"
 import { CreateEndpointDialog } from "@/app/components/webhooks/create-endpoint-dialog"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { CustomSelect, Option } from "@/app/components/ui/custom-select"
 import { apiClient } from "@/app/services/api-client-service"
 import { createClient as createSbClient } from "@/lib/supabase/client"
+import { TestEndpointDialog } from "@/app/components/webhooks/test-endpoint-dialog"
+import { ChannelsSection } from "@/app/components/integrations/channels-section"
 import {
   listWebhookEndpoints,
   createWebhookEndpoint,
@@ -49,7 +50,14 @@ function IntegrationsSkeleton() {
   )
 }
 
-const SUPPORTED_EVENTS: WebhookEventType[] = ["task.created", "task.updated", "message.created"]
+const SUPPORTED_EVENTS: WebhookEventType[] = [
+  "task.created",
+  "task.updated",
+  "message.created",
+  "lead.created",
+  "lead.updated",
+  "lead.deleted",
+]
 
 export default function IntegrationsPage() {
   const { currentSite, isLoading } = useSite()
@@ -195,7 +203,9 @@ export default function IntegrationsPage() {
         ? opts.record
         : (table === 'messages'
             ? { id: `msg_${Math.random().toString(36).slice(2, 10)}`, site_id: currentSite.id, content: 'Hello world', created_at: nowIso, updated_at: nowIso }
-            : { id: `task_${Math.random().toString(36).slice(2, 10)}`, site_id: currentSite.id, title: 'Test task', status: 'open', created_at: nowIso, updated_at: nowIso })
+            : table === 'leads'
+              ? { id: `lead_${Math.random().toString(36).slice(2, 10)}`, site_id: currentSite.id, name: 'John Doe', email: `john_${Math.random().toString(36).slice(2, 6)}@example.com`, status: 'new', created_at: nowIso, updated_at: nowIso }
+              : { id: `task_${Math.random().toString(36).slice(2, 10)}`, site_id: currentSite.id, title: 'Test task', status: 'open', created_at: nowIso, updated_at: nowIso })
 
       const simulatedPayload = op === 'INSERT'
         ? { type: 'INSERT', table, schema: 'public', record: baseRecord, old_record: null }
@@ -297,67 +307,29 @@ export default function IntegrationsPage() {
         <div className="space-y-8">
           {activeSegment === "webhooks" && (
             <>
-              {/* Test Endpoint Dialog */}
-              <Dialog open={isTestOpen} onOpenChange={setIsTestOpen}>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Test endpoint</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 pt-2">
-                    <div className="space-y-1">
-                      <Label>Operation type</Label>
-                      <CustomSelect value={testOperation} onChange={(e) => setTestOperation(e.target.value as any)}>
-                        <Option value="INSERT">INSERT</Option>
-                        <Option value="UPDATE">UPDATE</Option>
-                        <Option value="DELETE">DELETE</Option>
-                      </CustomSelect>
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Table</Label>
-                      <CustomSelect value={testTable} onChange={(e) => { setTestTable(e.target.value); setTestRecordId(""); setTestRecords([]) }}>
-                        <Option value="tasks">tasks</Option>
-                        <Option value="messages">messages</Option>
-                      </CustomSelect>
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Record</Label>
-                      <CustomSelect value={testRecordId} onChange={(e) => setTestRecordId(e.target.value)} disabled={isLoadingRecords}>
-                        <Option value="">{isLoadingRecords ? 'Loading...' : 'Select a record'}</Option>
-                        {testRecords.map((r) => {
-                          const labelCandidate = r.title || r.name || r.content || r.email || r.id
-                          const label = (typeof labelCandidate === 'string' ? labelCandidate : String(labelCandidate))
-                          return (
-                            <Option key={r.id} value={r.id}>{label}</Option>
-                          )
-                        })}
-                      </CustomSelect>
-                      <p className="text-xs text-muted-foreground">Records are loaded from the selected table filtered by the current site.</p>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <div className="flex items-center gap-2 w-full justify-end">
-                      <Button type="button" variant="outline" onClick={() => setIsTestOpen(false)}>Cancel</Button>
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          if (!testEndpointId) return
-                          const selected = testRecords.find((r) => r.id === testRecordId)
-                          if ((testOperation === 'UPDATE' || testOperation === 'DELETE') && !selected) {
-                            toast.error('Select a record')
-                            return
-                          }
-                          setIsTestOpen(false)
-                          void handleTestEndpoint(testEndpointId, { operation: testOperation, table: testTable, record: selected })
-                        }}
-                        disabled={isSubmitting || !testEndpointId || ((testOperation === 'UPDATE' || testOperation === 'DELETE') && !testRecordId)}
-                      >
-                        <Play className="h-3.5 w-3.5 mr-1.5" />
-                        Send test
-                      </Button>
-                    </div>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <TestEndpointDialog
+                open={isTestOpen}
+                onOpenChange={setIsTestOpen}
+                operation={testOperation}
+                onChangeOperation={(op) => setTestOperation(op)}
+                table={testTable}
+                onChangeTable={(t) => { setTestTable(t); setTestRecordId(""); setTestRecords([]) }}
+                recordId={testRecordId}
+                onChangeRecordId={setTestRecordId}
+                records={testRecords}
+                isLoadingRecords={isLoadingRecords}
+                isSubmitting={isSubmitting}
+                onSend={() => {
+                  if (!testEndpointId) return
+                  const selected = testRecords.find((r) => r.id === testRecordId)
+                  if ((testOperation === 'UPDATE' || testOperation === 'DELETE') && !selected) {
+                    toast.error('Select a record')
+                    return
+                  }
+                  setIsTestOpen(false)
+                  void handleTestEndpoint(testEndpointId, { operation: testOperation, table: testTable, record: selected })
+                }}
+              />
 
               <Card>
                 <CardHeader>
@@ -491,91 +463,7 @@ export default function IntegrationsPage() {
           )}
 
           {activeSegment === "channels" && (
-            <>
-              {/* Web Card */}
-              <Card className="border border-border">
-                <CardHeader>
-                  <CardTitle>Web</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Enable website messaging and configure your site channel. Set up the widget and routing preferences in Channels.
-                  </p>
-                  <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                    <li>Configure website channel and availability</li>
-                    <li>Customize widget behavior and branding</li>
-                    <li>Manage routing, notifications and auto-replies</li>
-                  </ul>
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-                        window.location.href = `${base}/settings?tab=channels`
-                      }}
-                    >
-                      Go to Channels
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Email Card */}
-              <Card className="border border-border">
-                <CardHeader>
-                  <CardTitle>Email</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Configure SMTP (or provider) credentials to send emails. Credentials are stored securely using our secure tokens service.
-                  </p>
-                  <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                    <li>Enter email, password/app token, SMTP host and port</li>
-                    <li>Test connection and store token securely</li>
-                    <li>Set default sender and reply-to</li>
-                  </ul>
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-                        window.location.href = `${base}/settings?tab=channels`
-                      }}
-                    >
-                      Go to Channels
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* WhatsApp Card */}
-              <Card className="border border-border">
-                <CardHeader>
-                  <CardTitle>WhatsApp</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Connect your WhatsApp to send and receive messages. You can use your own Twilio account or request Uncodie-managed setup.
-                  </p>
-                  <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                    <li>Provide Account SID and Phone Number (own account)</li>
-                    <li>Store API token securely via Channels</li>
-                    <li>Verify number connectivity and status</li>
-                  </ul>
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-                        window.location.href = `${base}/settings?tab=channels`
-                      }}
-                    >
-                      Go to Channels
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
+            <ChannelsSection />
           )}
         </div>
       </div>
