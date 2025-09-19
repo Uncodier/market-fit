@@ -245,7 +245,7 @@ function LayoutClientInner({
             <Sidebar 
               isCollapsed={isLayoutCollapsed} 
               onCollapse={handleCollapse} 
-              className="flex-none fixed left-0 top-0 h-screen z-20"
+              className="flex-none fixed left-0 top-0 h-screen z-[200]"
             />
             <div 
               className={cn(

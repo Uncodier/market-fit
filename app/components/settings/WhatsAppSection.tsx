@@ -854,7 +854,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
   }
 
   const handleCopyWebhook = () => {
-    const webhookUrl = `${process.env.NEXT_PUBLIC_API_SERVER_URL || 'https://your-domain.com'}/api/agents/whatsapp`
+    const webhookUrl = 'https://backend.uncodie.com/api/agents/whatsapp'
     navigator.clipboard.writeText(webhookUrl)
     toast.success("Webhook URL copied to clipboard!")
   }
@@ -890,6 +890,8 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
             onCheckedChange={handleToggleEnabled}
           />
         </div>
+
+        
 
         {/* Configuration Form - Only show if enabled and not already configured */}
         {localState.enabled && !isConfigurationSaved && !isSetupPending && (
@@ -981,6 +983,61 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
 
             {localState.setupType === "use_own_account" && (
               <div className="space-y-4">
+                {/* Webhook URL - Below setup option, visible only for own account */}
+                {localState.enabled && (
+                  <div className="space-y-2">
+                    <Label className="text-base font-medium">Webhook URL</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={`https://backend.uncodie.com/api/agents/whatsapp`}
+                        readOnly
+                        className="bg-gray-50 dark:bg-gray-900"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyWebhook}
+                        className="px-3"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Use this URL in Twilio:</p>
+                      <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+                        <li>
+                          Sandbox: paste <code className="font-mono break-all">https://backend.uncodie.com/api/agents/whatsapp</code> in
+                          "When a message comes in" under
+                          {" "}
+                          <a
+                            href="https://console.twilio.com/us1/develop/sms/sandbox/whatsapp"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline"
+                          >
+                            WhatsApp Sandbox
+                          </a>.
+                        </li>
+                        <li>
+                          Production: paste <code className="font-mono break-all">https://backend.uncodie.com/api/agents/whatsapp</code> in
+                          "Request URL (Incoming messages)" under
+                          {" "}
+                          <a
+                            href="https://console.twilio.com/us1/develop/sms/services"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline"
+                          >
+                            Messaging Services
+                          </a>
+                          {" → your service → Integration"}.
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
                 {!localState.hasSecureToken && (
                   <div>
                     <Label className="text-sm font-medium text-foreground">Twilio Auth Token</Label>
@@ -992,6 +1049,9 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       Your Twilio Auth Token for WhatsApp & SMS messaging (stored securely)
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Find it in <a href="https://console.twilio.com/us1/account/keys-credentials/api-keys?frameUrl=%2Fconsole%2Fproject%2Fsettings" target="_blank" rel="noreferrer" className="underline">Twilio Console → Project Settings</a> (Auth Token)
                     </p>
                   </div>
                 )}
@@ -1017,6 +1077,9 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your Twilio Account SID identifier (starts with AC)
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Find it in <a href="https://console.twilio.com/us1/account/keys-credentials/api-keys?frameUrl=%2Fconsole%2Fproject%2Fsettings" target="_blank" rel="noreferrer" className="underline">Twilio Console → Project Settings</a> (Account SID)
                   </p>
                 </div>
 
@@ -1044,6 +1107,9 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   <p className="text-sm text-muted-foreground mt-1">
                     The phone number from your Twilio account in international format with country code
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Find it in <a href="https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders" target="_blank" rel="noreferrer" className="underline">Twilio Console → Messaging → Senders → WhatsApp Senders</a>. Assign the sender to your <a href="https://console.twilio.com/us1/develop/sms/services" target="_blank" rel="noreferrer" className="underline">Messaging Service</a> for inbound routing.
+                  </p>
                   {!phoneValidation.isValid && phoneValidation.error && (
                     <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
                       <AlertCircle className="h-4 w-4" />
@@ -1052,29 +1118,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   )}
                 </div>
 
-                {/* Webhook URL */}
-                <div className="space-y-2">
-                  <Label className="text-base font-medium">Webhook URL</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={`${process.env.NEXT_PUBLIC_API_SERVER_URL || 'https://your-domain.com'}/api/agents/whatsapp`}
-                      readOnly
-                      className="bg-gray-50 dark:bg-gray-900"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopyWebhook}
-                      className="px-3"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Configure this webhook URL in your Twilio account for WhatsApp Business API
-                  </p>
-                </div>
+                
               </div>
             )}
           </>
