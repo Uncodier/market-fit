@@ -393,6 +393,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // ✅ NEW STATES: Track sites loading attempts and session validity
   const [sitesLoadAttempted, setSitesLoadAttempted] = useState(false)
   const [hasValidSession, setHasValidSession] = useState(false)
+  // ✅ Only consider redirects after sites have actually finished loading at least once
+  const [sitesLoaded, setSitesLoaded] = useState(false)
   
   // Navigation hooks
   const router = useRouter()
@@ -485,7 +487,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
       return
     }
 
-    // ✅ MARK that we attempted to load sites
+    // Reset loaded flag at the start of a new load
+    setSitesLoaded(false)
+    // ✅ MARK that we attempted to load sites (kept for diagnostics)
     setSitesLoadAttempted(true)
     
     // ✅ VERIFY session first
@@ -528,6 +532,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         setSites([])
         setCurrentSite(null)
         setIsLoading(false)
+        setSitesLoaded(true)
         if (!isInitialized) {
           setIsInitialized(true)
         }
@@ -640,8 +645,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       console.log("Sites prepared:", sitesWithData)
       setSites(sitesWithData as Site[])
+      setSitesLoaded(true)
       
-      // Si hay sitios, intentamos restaurar el sitio guardado o usar el primero
+      // Si hay sitios, intentamos restaurar el sitio guardado (no auto-seleccionar el primero)
       if (sitesWithData.length > 0) {
         const savedSiteId = getLocalStorage("currentSiteId")
         const savedSite = savedSiteId ? sitesWithData.find((site: any) => site.id === savedSiteId) : null
@@ -649,26 +655,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
         // PRIORIDAD 1: Si hay un sitio guardado válido, usarlo siempre
         if (savedSite) {
           await handleSetCurrentSite(savedSite)
-        } 
-        // PRIORIDAD 2: Si estamos durante la inicialización y no hay sitio guardado, usar el primero
-        else if (!isInitialized && sitesWithData.length > 0) {
-          await handleSetCurrentSite(sitesWithData[0])
-          setLocalStorage("currentSiteId", sitesWithData[0].id)
         }
-        // PRIORIDAD 3: Si ya estamos inicializados, tenemos sitio actual, pero no está guardado
+        // PRIORIDAD 2: Si ya estamos inicializados, tenemos sitio actual, pero no está guardado
         else if (isInitialized && currentSite && !savedSite) {
           // Verificar que el sitio actual aún existe en la lista
           const existingSite = sitesWithData.find((site: any) => site.id === currentSite.id)
           if (existingSite) {
             await handleSetCurrentSite(existingSite)
           } else {
-            await handleSetCurrentSite(sitesWithData[0])
+            // No seleccionar automáticamente otro sitio; esperar a que el usuario elija en /projects
           }
         }
-        // PRIORIDAD 4: Caso fallback - no hay sitio actual ni guardado
-        else if (!currentSite && sitesWithData.length > 0) {
-          await handleSetCurrentSite(sitesWithData[0])
-        }
+        // PRIORIDAD 3: Si no hay sitio actual ni guardado, NO auto-seleccionar. Se manejará con redirect a /projects
       }
 
       if (!isInitialized) {
@@ -796,23 +794,25 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
   }, [isInitialized, isMounted]) // Removed currentSite?.id dependency to prevent re-subscriptions
 
-  // Redirect to /create-site if user has no sites (but don't redirect away from create-site)
+  // Redirect to /create-site if user has no sites.
+  // If user has sites but none selected, redirect to /projects to choose.
   useEffect(() => {
     // Add a delay to ensure all state updates are complete
     const redirectTimer = setTimeout(() => {
       // Only redirect if:
       // 1. Component is mounted and fully initialized
       // 2. Not currently loading sites
-      // 3. Already attempted to load sites at least once
+      // 3. Sites load has COMPLETED at least once
       // 4. Has a valid session
       // 5. No sites available
       // 6. Not already on create-site page or auth pages
       // 7. Not trying to redirect FROM create-site (this was the bug!)
+      // Case A: No sites at all -> go to create-site
       if (
         isMounted && 
         isInitialized && 
         !isLoading && 
-        sitesLoadAttempted &&     // ✅ NEW CONDITION
+        sitesLoaded &&            // ✅ Only after a completed load
         hasValidSession &&        // ✅ NEW CONDITION
         sites.length === 0 && 
         !pathname.startsWith('/create-site') && 
@@ -821,6 +821,23 @@ export function SiteProvider({ children }: SiteProviderProps) {
       ) {
         console.log("✅ Confirmed: User has valid session but no sites, redirecting to create-site")
         router.push('/create-site')
+      }
+      // Case B: There are sites but no selection -> go to projects
+      else if (
+        isMounted &&
+        isInitialized &&
+        !isLoading &&
+        sitesLoaded &&
+        hasValidSession &&
+        sites.length > 0 &&
+        !currentSite?.id &&
+        !pathname.startsWith('/projects') &&
+        !pathname.startsWith('/auth/') &&
+        !pathname.startsWith('/create-site') &&
+        supabaseRef.current
+      ) {
+        console.log("✅ Sites available but no current site selected, redirecting to /projects")
+        router.push('/projects')
       } else if (
         // 🚫 NEVER redirect away from create-site if user is there intentionally
         pathname.startsWith('/create-site')

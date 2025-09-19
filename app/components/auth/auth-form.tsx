@@ -59,8 +59,8 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   const [waitlistSuccess, setWaitlistSuccess] = useState(false)
   const [resetPasswordSuccess, setResetPasswordSuccess] = useState(false)
   
-  // Get returnTo from URL or default to dashboard
-  const [finalReturnTo, setFinalReturnTo] = useState<string>('/dashboard')
+  // Get returnTo from URL or default to projects selection
+  const [finalReturnTo, setFinalReturnTo] = useState<string>('/projects')
   
   const isDark = theme === 'dark'
   
@@ -96,9 +96,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     if (!returnTo && typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       const urlReturnTo = url.searchParams.get('returnTo')
-      setFinalReturnTo(urlReturnTo || '/dashboard')
+      setFinalReturnTo(urlReturnTo || '/projects')
     } else {
-      setFinalReturnTo(returnTo || '/dashboard')
+      setFinalReturnTo(returnTo || '/projects')
     }
 
     // If signup data is provided, validate referral code immediately

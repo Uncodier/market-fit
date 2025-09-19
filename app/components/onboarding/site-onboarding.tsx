@@ -712,7 +712,7 @@ export function SiteOnboarding({
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
-              Back to Dashboard
+              Back
             </button>
           )}
           {!hasExistingSites && <div />}

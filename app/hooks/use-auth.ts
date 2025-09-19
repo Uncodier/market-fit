@@ -126,7 +126,7 @@ export function useAuth() {
         // Verificar redirección inicial si hay sesión activa y estamos en la página de autenticación
         if (session?.user && typeof window !== 'undefined' && window.location.pathname.startsWith('/auth')) {
           const url = new URL(window.location.href)
-          const returnTo = url.searchParams.get('returnTo') || '/dashboard'
+          const returnTo = url.searchParams.get('returnTo') || '/projects'
           console.log('[Auth Debug] Initial redirect to:', returnTo)
           router.push(returnTo)
         }
@@ -164,7 +164,7 @@ export function useAuth() {
           if (currentPath.startsWith('/auth') && currentPath !== '/auth/confirm') {
             // Obtener el returnTo desde la URL
             const url = new URL(window.location.href)
-            const returnTo = url.searchParams.get('returnTo') || '/dashboard'
+            const returnTo = url.searchParams.get('returnTo') || '/projects'
             console.log('[Auth Debug] User signed in, redirecting to:', returnTo)
             
             // Redirigir inmediatamente
