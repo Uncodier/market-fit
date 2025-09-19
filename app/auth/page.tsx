@@ -107,7 +107,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="auth-page min-h-screen grid lg:grid-cols-2">
       {/* Left side - Branding and Info */}
       <div className="hidden lg:flex lg:flex-col lg:justify-center lg:px-12 xl:px-16 relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 lg:overflow-y-auto lg:min-h-screen">
         {/* Animated background elements */}
@@ -149,26 +149,14 @@ export default function AuthPage() {
         </div>
         
         <div className="relative z-10 max-w-md py-8 lg:py-12 xl:py-16 flex flex-col gap-8 lg:gap-10 xl:gap-12">
-          {/* Logo and Brand */}
-          <div className="flex items-center gap-3">
-            <div className="p-2 lg:p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl">
-              <Image 
-                src="/images/logo.png"
-                alt="Market Fit Logo"
-                width={28}
-                height={28}
-                className="h-6 w-6 lg:h-7 lg:w-7 object-contain"
-                priority
-              />
-            </div>
-            <h1 className="text-xl lg:text-2xl font-bold text-white">Market Fit</h1>
-          </div>
+          {/* Logo and Brand removed from left panel */}
           
           {/* Main Content Section */}
           <div className="flex flex-col gap-6 lg:gap-8">
             <h2 className="text-3xl lg:text-4xl font-bold leading-tight">
               <span className="text-white/80">Your </span>
-              <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">AI Powered Sales Team</span>
+              <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">AI </span>
+              <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">growth engine</span>
             </h2>
             
             <p className="text-lg lg:text-xl text-white/80 leading-relaxed">
@@ -231,19 +219,7 @@ export default function AuthPage() {
             </div>
           </div>
 
-          {/* Stats showcase */}
-          <div className="grid grid-cols-2 gap-4 lg:gap-6 pt-6 lg:pt-8 border-t border-white/10">
-            <div className="text-center group">
-              <div className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent mb-1 group-hover:from-violet-300 group-hover:to-purple-300 transition-all duration-300">
-                <span className="text-xs lg:text-sm text-white/60 font-normal">up to </span>300%
-              </div>
-              <div className="text-xs lg:text-sm text-white/60">Revenue Growth</div>
-            </div>
-            <div className="text-center group">
-              <div className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-1 group-hover:from-emerald-300 group-hover:to-teal-300 transition-all duration-300">24/7</div>
-              <div className="text-xs lg:text-sm text-white/60">AI Operations</div>
-            </div>
-          </div>
+
         </div>
 
         {/* Custom CSS for radial gradients and animations */}
@@ -386,8 +362,7 @@ export default function AuthPage() {
       {/* Right side - Auth Form */}
       <div className="flex flex-col justify-center px-6 py-12 lg:px-12 xl:px-16 bg-white dark:bg-background">
         <div className="mx-auto w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center mb-8">
+          <div className="flex items-center justify-center mb-8">
             <div className="p-3 rounded-full bg-primary/10">
               <Image 
                 src="/images/logo.png"
@@ -417,6 +392,18 @@ export default function AuthPage() {
             initialError={authError}
           />
         </div>
+        <style jsx global>{`
+          html.safari .auth-page input[type="text"],
+          html.safari .auth-page input[type="email"],
+          html.safari .auth-page input[type="password"],
+          html.safari .auth-page input[type="search"],
+          html.safari .auth-page input[type="tel"],
+          html.safari .auth-page input[type="url"],
+          html.safari .auth-page input[type="number"],
+          html.safari .auth-page textarea {
+            padding-left: 36px !important;
+          }
+        `}</style>
       </div>
     </div>
   )

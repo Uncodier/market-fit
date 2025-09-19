@@ -1,5 +1,5 @@
 export const siteConfig = {
-  name: "Market Fit",
+  name: "MAKINARI",
   description:
     "Market analysis platform",
   url: "https://market-fit.vercel.app",
