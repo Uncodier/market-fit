@@ -249,7 +249,7 @@ function LayoutClientInner({
             />
             <div 
               className={cn(
-                "flex-1 flex flex-col transition-all duration-200 bg-[rgb(0_0_0_/0.02)]",
+                "flex-1 flex flex-col transition-all duration-200",
                 isLayoutCollapsed ? "ml-16" : "ml-64"
               )}
             >
@@ -271,7 +271,7 @@ function LayoutClientInner({
               <main 
                 className={cn(
                   "flex-1",
-                  isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
+                  isChatPage ? "flex flex-col overflow-visible" : "overflow-visible"
                 )} 
                 style={
                   isChatPage ? 

@@ -10,7 +10,6 @@ import { Input } from "@/app/components/ui/input"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { ConversationListItem } from "@/app/types/chat"
-import { getConversations } from "../../services/chat-service"
 import { format } from "date-fns"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { createClient } from "@/lib/supabase/client"
@@ -81,7 +80,7 @@ export function ChatList({
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasEmptyResult, setHasEmptyResult] = useState(false)
-  const [combinedFilter, setCombinedFilter] = useState<'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai'>('all')
+  const [combinedFilter, setCombinedFilter] = useState<'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai' | 'inbound'>('all')
   const { isDarkMode } = useTheme()
   const { user } = useAuthContext()
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
@@ -192,8 +191,20 @@ export function ChatList({
       // Separate combined filter into channel and assignee filters
       const channelFilter = ['web', 'email', 'whatsapp'].includes(combinedFilter) ? combinedFilter as 'web' | 'email' | 'whatsapp' : 'all'
       const assigneeFilter = ['assigned', 'ai'].includes(combinedFilter) ? combinedFilter as 'assigned' | 'ai' : 'all'
+      const tasksOnly = combinedFilter === 'inbound'
       
-      const result = await getConversations(siteId, page, 20, channelFilter, assigneeFilter, user?.id, searchQuery) // 20 conversations per page
+      const { getConversations } = await import('@/app/services/getConversations.client')
+      const result = await getConversations(
+        siteId,
+        page,
+        20,
+        channelFilter,
+        assigneeFilter,
+        user?.id,
+        searchQuery,
+        undefined,
+        tasksOnly
+      ) // 20 conversations per page
       console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations for page ${page}`);
       
       if (result.length > 0) {

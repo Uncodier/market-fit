@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { useLayout } from "@/app/context/LayoutContext"
 import { ChannelSelector } from "./ChannelSelector"
 import { useChannelSelector } from "@/app/hooks/useChannelSelector"
-import { useLayoutDimensions } from "@/app/hooks/useLayoutDimensions"
+// Removed dynamic width calc; align with messages container
 
 interface ChatInputProps {
   message?: string // Optional for uncontrolled mode
@@ -45,6 +45,7 @@ export const ChatInput = memo(function ChatInput({
 }: ChatInputProps) {
   const { isLayoutCollapsed } = useLayout()
   const internalRef = useRef<HTMLTextAreaElement>(null)
+  // Dynamic width calculation removed; rely on static container matching messages
   
   // Channel selector hook - now optimized
   const {
@@ -116,7 +117,7 @@ export const ChatInput = memo(function ChatInput({
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
                 placeholder="Message..."
-                className="resize-none min-h-[135px] w-full py-5 pl-[60px] pr-[60px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
+                className="resize-none min-h-[135px] w-full py-5 pl-9 pr-[60px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
                 disabled={isLoading}
                 style={{
                   lineHeight: '1.5',

@@ -21,7 +21,7 @@ import { formatEmailForChat, isMimeMultipartMessage } from "@/app/utils/email-fo
 import { extractCleanText } from "@/app/utils/text-cleaning"
 import { useSite } from "@/app/context/SiteContext"
 import { useRef } from "react"
-import { getConversationMessages } from "@/app/services/chat-service"
+import { getConversationMessages } from "../../services/getConversationMessages.client"
 import { truncateAgentName, truncateLeadName } from "@/app/utils/name-utils"
 
 // Helper function to format date as "Month Day, Year"
@@ -582,7 +582,7 @@ export function ChatMessages({
 
   if (!hasSelectedConversation) {
     return (
-      <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-44">
+      <div className="flex-1 overflow-visible py-6 transition-colors duration-300 ease-in-out pt-[91px] pb-44">
         <EmptyState
           icon={<MessageSquare className="h-12 w-12" />}
           title="No conversation selected"
@@ -594,7 +594,7 @@ export function ChatMessages({
   }
 
   return (
-    <div className="flex-1 overflow-auto py-6 bg-muted/30 transition-colors duration-300 ease-in-out pt-[91px] pb-44">
+    <div className="flex-1 overflow-visible py-6 transition-colors duration-300 ease-in-out pt-[91px] pb-44">
       <div className="max-w-[calc(100%-240px)] mx-auto">
         {(isLoadingMessages || isTransitioningConversation) ? (
           <div className="space-y-6 w-full">

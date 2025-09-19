@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ChatMessage } from '@/app/types/chat'
-import { getConversationMessages, getAgentForConversation } from '@/app/services/chat-service'
+import { getConversationMessages } from '@/app/services/getConversationMessages.client'
+import { getAgentForConversation } from '@/app/services/chat-service'
 import { createClient } from '@/lib/supabase/client'
 import { useApiRequestTracker } from './useApiRequestTracker'
 

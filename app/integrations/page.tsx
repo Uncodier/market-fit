@@ -195,25 +195,15 @@ export default function IntegrationsPage() {
     if (!currentSite) return
     try {
       setIsSubmitting(true)
-      const op = opts?.operation || 'INSERT'
-      const table = opts?.table || 'tasks'
-      const nowIso = new Date().toISOString()
+      const op = (opts?.operation || 'INSERT') as 'INSERT' | 'UPDATE' | 'DELETE'
+      const table = (opts?.table || 'tasks') as string
 
-      const baseRecord: any = opts?.record && opts.record.id
-        ? opts.record
-        : (table === 'messages'
-            ? { id: `msg_${Math.random().toString(36).slice(2, 10)}`, site_id: currentSite.id, content: 'Hello world', created_at: nowIso, updated_at: nowIso }
-            : table === 'leads'
-              ? { id: `lead_${Math.random().toString(36).slice(2, 10)}`, site_id: currentSite.id, name: 'John Doe', email: `john_${Math.random().toString(36).slice(2, 6)}@example.com`, status: 'new', created_at: nowIso, updated_at: nowIso }
-              : { id: `task_${Math.random().toString(36).slice(2, 10)}`, site_id: currentSite.id, title: 'Test task', status: 'open', created_at: nowIso, updated_at: nowIso })
-
-      const simulatedPayload = op === 'INSERT'
-        ? { type: 'INSERT', table, schema: 'public', record: baseRecord, old_record: null }
-        : op === 'UPDATE'
-          ? { type: 'UPDATE', table, schema: 'public', record: { ...baseRecord, status: 'done', updated_at: nowIso }, old_record: baseRecord }
-          : { type: 'DELETE', table, schema: 'public', record: null, old_record: baseRecord }
-
-      const res = await apiClient.post('/api/workflow/webhook', simulatedPayload)
+      const res = await apiClient.post('/api/webhooks/test', {
+        endpoint_id: endpointId,
+        site_id: currentSite.id,
+        operation: op,
+        table
+      })
       if (!res.success) {
         throw new Error(res.error?.message || 'Request failed')
       }
@@ -240,12 +230,29 @@ export default function IntegrationsPage() {
       try {
         setIsLoadingRecords(true)
         const supabase = createSbClient()
-        const { data, error } = await supabase
-          .from(testTable)
-          .select('*')
-          .eq('site_id', currentSite.id)
-          .order('created_at', { ascending: false })
-          .limit(50)
+        let data: any[] | null = null
+        let error: any = null
+
+        if (testTable === 'messages') {
+          // messages does not have site_id; filter via related leads
+          const resp = await supabase
+            .from('messages')
+            .select('id, content, created_at, lead_id, leads!inner(site_id)')
+            .eq('leads.site_id', currentSite.id)
+            .order('created_at', { ascending: false })
+            .limit(50)
+          data = resp.data as any[] | null
+          error = resp.error
+        } else {
+          const resp = await supabase
+            .from(testTable)
+            .select('*')
+            .eq('site_id', currentSite.id)
+            .order('created_at', { ascending: false })
+            .limit(50)
+          data = resp.data as any[] | null
+          error = resp.error
+        }
         if (error) {
           console.error(error)
           toast.error('Failed to load records')
@@ -336,6 +343,9 @@ export default function IntegrationsPage() {
                   <CardTitle>Outbound Webhooks</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <div className="text-sm text-muted-foreground">
+                    Webhooks send real-time POST requests to your endpoint when selected events occur. Enable the events you want below. Currently supported: {SUPPORTED_EVENTS.join(", ")}.
+                  </div>
                   {endpoints.length > 0 && (
                     <div className="space-y-4">
                       <div className="space-y-2">

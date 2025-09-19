@@ -7,7 +7,7 @@ import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 
-type FilterType = 'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai'
+type FilterType = 'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai' | 'inbound'
 
 interface ChannelFilterProps {
   selectedFilter: FilterType
@@ -48,6 +48,10 @@ const getFilterConfig = (userAvatarUrl?: string | null, userName?: string) => ({
   ai: {
     icon: ({ className }: { className?: string }) => <Icons.Sparkles className="h-4 w-4 text-current" />,
     label: "AI Team"
+  },
+  inbound: {
+    icon: ({ className }: { className?: string }) => <Icons.ListTodo className="h-4 w-4 text-current" />,
+    label: "Tasks"
   }
 })
 
@@ -67,7 +71,7 @@ export const ChannelFilter = memo(function ChannelFilter({
         onValueChange={(value) => onFilterChange(value as FilterType)}
         className="w-auto"
       >
-        <TabsList className="h-8 p-0.5 bg-muted/30 grid-cols-6">
+        <TabsList className="h-8 p-0.5 bg-muted/30 grid-cols-7">
           {(Object.keys(filterConfig) as FilterType[]).map((filter) => {
             const config = filterConfig[filter]
             const IconComponent = config.icon
@@ -79,7 +83,7 @@ export const ChannelFilter = memo(function ChannelFilter({
                 className="h-7 w-7 px-0 flex items-center justify-center rounded-sm transition-all duration-200"
                 title={config.label}
               >
-                <IconComponent className={filter === 'web' || filter === 'email' || filter === 'assigned' || filter === 'ai' ? "" : "h-3.5 w-3.5 text-current"} />
+                <IconComponent className={filter === 'web' || filter === 'email' || filter === 'assigned' || filter === 'ai' || filter === 'inbound' ? "" : "h-3.5 w-3.5 text-current"} />
               </TabsTrigger>
             )
           })}

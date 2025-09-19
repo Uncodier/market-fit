@@ -124,7 +124,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <LoggerInit />
-          <main className="min-h-screen bg-background">
+          <main className="min-h-screen bg-background overflow-visible">
             <ClientWrapper>
               {children}
             </ClientWrapper>

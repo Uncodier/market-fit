@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { Label } from "@/app/components/ui/label"
-import { CustomSelect, Option } from "@/app/components/ui/custom-select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
 import { Play } from "@/app/components/ui/icons"
 
@@ -42,39 +42,55 @@ export function TestEndpointDialog(props: TestEndpointDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}> 
       <DialogContent className="max-w-md">
-        <DialogHeader>
+        <DialogHeader className="text-left">
           <DialogTitle>Test endpoint</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1">
             <Label>Operation type</Label>
-            <CustomSelect value={operation} onChange={(e) => onChangeOperation(e.target.value as TestOperation)}>
-              <Option value="INSERT">INSERT</Option>
-              <Option value="UPDATE">UPDATE</Option>
-              <Option value="DELETE">DELETE</Option>
-            </CustomSelect>
+            <Select value={operation} onValueChange={(val) => onChangeOperation(val as TestOperation)}>
+              <SelectTrigger>
+                <SelectValue className="text-left" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="INSERT">INSERT</SelectItem>
+                <SelectItem value="UPDATE">UPDATE</SelectItem>
+                <SelectItem value="DELETE">DELETE</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Choose the database operation to simulate.</p>
           </div>
           <div className="space-y-1">
             <Label>Table</Label>
-            <CustomSelect value={table} onChange={(e) => { onChangeTable(e.target.value); onChangeRecordId("") }}>
-              <Option value="tasks">tasks</Option>
-              <Option value="messages">messages</Option>
-              <Option value="leads">leads</Option>
-            </CustomSelect>
+            <Select value={table} onValueChange={(val) => { onChangeTable(val); onChangeRecordId("") }}>
+              <SelectTrigger>
+                <SelectValue className="text-left" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tasks">tasks</SelectItem>
+                <SelectItem value="messages">messages</SelectItem>
+                <SelectItem value="leads">leads</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Select the table to simulate events for. Messages are scoped via related leads.</p>
           </div>
           <div className="space-y-1">
             <Label>Record</Label>
-            <CustomSelect value={recordId} onChange={(e) => onChangeRecordId(e.target.value)} disabled={isLoadingRecords}>
-              <Option value="">{isLoadingRecords ? 'Loading...' : 'Select a record'}</Option>
-              {records.map((r) => {
-                const labelCandidate = r.title || r.name || r.content || r.email || r.id
-                const label = (typeof labelCandidate === 'string' ? labelCandidate : String(labelCandidate))
-                return (
-                  <Option key={r.id} value={r.id}>{label}</Option>
-                )
-              })}
-            </CustomSelect>
-            <p className="text-xs text-muted-foreground">Records are loaded from the selected table filtered by the current site.</p>
+            <Select value={recordId} onValueChange={(val) => onChangeRecordId(val)} disabled={isLoadingRecords}>
+              <SelectTrigger>
+                <SelectValue className="text-left" placeholder={isLoadingRecords ? 'Loading...' : 'Select a record'} />
+              </SelectTrigger>
+              <SelectContent>
+                {records.map((r) => {
+                  const labelCandidate = r.title || r.name || r.content || r.email || r.id
+                  const label = (typeof labelCandidate === 'string' ? labelCandidate : String(labelCandidate))
+                  return (
+                    <SelectItem key={r.id} value={String(r.id)}>{label}</SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Records are loaded from the selected table and filtered by the current site. For UPDATE/DELETE select a record; for INSERT a sample record will be generated.</p>
           </div>
         </div>
         <DialogFooter>

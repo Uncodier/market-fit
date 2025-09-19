@@ -36,13 +36,17 @@ export async function POST(request: NextRequest) {
 
     // Build simulated DB change payloads (INSERT/UPDATE/DELETE)
     const op: Operation = operation || (event_type === 'task.updated' ? 'UPDATE' : event_type === 'message.deleted' ? 'DELETE' : 'INSERT')
-    const targetTable = table || (event_type?.startsWith('message') ? 'messages' : 'tasks')
+    const targetTable = (table && ['tasks','messages','leads'].includes(table))
+      ? table
+      : (event_type?.startsWith('message') ? 'messages' : event_type?.startsWith('lead') ? 'leads' : 'tasks')
     const schema = 'public'
 
     const nowIso = new Date().toISOString()
     const baseRecord = targetTable === 'messages'
       ? { id: `msg_${endpoint.id.slice(0,8)}`, site_id: site_id, content: 'Hello world', created_at: nowIso, updated_at: nowIso }
-      : { id: `task_${endpoint.id.slice(0,8)}`, site_id: site_id, title: 'Test task', status: 'open', created_at: nowIso, updated_at: nowIso }
+      : targetTable === 'leads'
+        ? { id: `lead_${endpoint.id.slice(0,8)}`, site_id: site_id, name: 'John Doe', email: `john_${endpoint.id.slice(0,4)}@example.com`, status: 'new', created_at: nowIso, updated_at: nowIso }
+        : { id: `task_${endpoint.id.slice(0,8)}`, site_id: site_id, title: 'Test task', status: 'open', created_at: nowIso, updated_at: nowIso }
 
     const simulatedPayload = op === 'INSERT'
       ? { type: 'INSERT', table: targetTable, schema, record: baseRecord, old_record: null }
@@ -54,7 +58,7 @@ export async function POST(request: NextRequest) {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "User-Agent": "Uncodie-MarketFit-Webhooks/1.0",
-      "X-Uncodie-Event": event_type || `${targetTable}.${op.toLowerCase()}`,
+      "X-Uncodie-Event": event_type || `${targetTable.slice(0,-1)}.${op.toLowerCase()}`,
     }
 
     if (endpoint.secret) {
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL' }, { status: 400 })
     }
 
-    const resp = await fetch(`${normalizedBase.replace(/\/$/, '')}/api/workflow/webhook`, {
+    const resp = await fetch(`${normalizedBase.replace(/\/$/, '')}/api/workflows/webhook`, {
       method: "POST",
       headers,
       body: bodyString,

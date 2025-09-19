@@ -1,15 +1,12 @@
 /* Advanced CSS optimizations for chat performance */
 
 /* GPU acceleration and smooth animations */
-.chat-input-container {
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000;
-  backdrop-filter: blur(14px);
-  padding: 0px;
-  margin-bottom: 16px;
-  margin-left: 1px;
+.chat-input-container, .optimized-textarea {
+  position: sticky;
+  bottom: 16px;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  width: 100%;
 }
 
 /* Optimize textarea for smooth typing */

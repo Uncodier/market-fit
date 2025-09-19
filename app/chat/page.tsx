@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useEffect, useRef, useState, Suspense, useCallback, useMemo } from "react"
@@ -13,7 +14,7 @@ import { createClient } from "@/lib/supabase/client"
 import { ChatList } from "@/app/components/chat/chat-list"
 import { ChatToggle } from "@/app/components/chat/chat-toggle"
 import { useCommandK } from "@/app/hooks/use-command-k"
-import { checkApiServerAvailability, getAgentForConversation } from "@/app/services/chat-service"
+// Chat service functions are imported dynamically where used to avoid client bundling issues
 import * as Icons from "@/app/components/ui/icons"
 import { Agent } from "@/app/types/agents"
 
@@ -148,7 +149,8 @@ function ChatPageContent() {
       } else {
         // Try to load from database
         try {
-          const dbAgent = await getAgentForConversation(agentId)
+          const { getAgentForConversation } = await import("@/app/services/chat-service.client")
+          const dbAgent: Agent | null = await getAgentForConversation(agentId)
           if (dbAgent) {
             setCurrentAgent(dbAgent)
           } else {
@@ -304,7 +306,8 @@ function ChatPageContent() {
         // Only update if we have a valid agent ID and it's different from current agentId
         if (conversationAgentId && conversationAgentId !== agentId) {
           // Get agent details
-          const agent = await getAgentForConversation(conversationAgentId)
+          const { getAgentForConversation } = await import("@/app/services/chat-service.client")
+          const agent: Agent | null = await getAgentForConversation(conversationAgentId)
           if (agent) {
             // Update the URL with the agent details
             router.replace(`/chat?conversationId=${conversationId}&agentId=${agent.id}&agentName=${encodeURIComponent(agent.name)}`)
@@ -322,6 +325,7 @@ function ChatPageContent() {
   useEffect(() => {
     const checkApiServer = async () => {
       try {
+        const { checkApiServerAvailability } = await import("@/app/services/chat-service.client")
         const isAvailable = await checkApiServerAvailability()
         setIsApiServerAvailable(isAvailable)
       } catch (error) {
@@ -364,7 +368,8 @@ function ChatPageContent() {
             setCurrentAgent(mockAgent)
           } else {
             // Intenta cargar desde la base de datos
-            getAgentForConversation(agId).then(dbAgent => {
+            import("@/app/services/chat-service.client").then(async (mod) => {
+              const dbAgent: Agent | null = await mod.getAgentForConversation(agId)
               if (dbAgent) {
                 setCurrentAgent(dbAgent)
               } else if (agName) {
@@ -381,7 +386,7 @@ function ChatPageContent() {
                   icon: "User"
                 });
               }
-            }).catch(error => {
+            }).catch((error: unknown) => {
               console.error("Error fetching agent during popstate:", error)
               // Fallback a un agente temporal con el nombre de la URL
               if (agName) {
@@ -425,7 +430,7 @@ function ChatPageContent() {
   }, [hasActiveChatRequest, setIsAgentResponding])
 
   return (
-    <div className="flex h-full relative overflow-hidden">
+    <div className="flex h-full relative overflow-visible">
       {/* Chat list */}
       <div className={cn(
         "h-full transition-all duration-300 ease-in-out",
