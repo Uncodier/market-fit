@@ -66,7 +66,7 @@ export function ChatHeader({
   
   const leftSideAvatar = hasAssignee 
     ? leadData.assignee.avatar_url 
-    : `/avatars/agent-${agentId}.png`
+    : undefined
   
   const leftSideAvatarFallback = hasAssignee
     ? leadData.assignee.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
@@ -167,7 +167,7 @@ export function ChatHeader({
               </Link>
             ) : (
               <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out">
-                <AvatarImage src="/avatars/visitor-default.png" alt="Visitor" />
+                <AvatarImage src={undefined} alt="Visitor" />
                 <AvatarFallback className="bg-primary/10">
                   V
                 </AvatarFallback>

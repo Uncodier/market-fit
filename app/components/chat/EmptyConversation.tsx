@@ -21,7 +21,7 @@ export function EmptyConversation({
       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
         <Avatar className="h-12 w-12 border border-primary/20">
           <AvatarImage 
-            src={avatarSrc || `/avatars/agent-${agentId}.png`} 
+            src={avatarSrc || undefined} 
             alt={agentName} 
           />
           <AvatarFallback className="bg-primary/10">

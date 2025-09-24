@@ -158,7 +158,7 @@ export function ChatToggle({
                 <div className="flex items-center w-full gap-2 mb-1">
                   <div className="w-5 flex justify-center">
                     <Avatar className="h-5 w-5 bg-primary/10">
-                      <AvatarImage src={isLead && leadId ? `/avatars/lead-${leadId}.png` : "/avatars/visitor-default.png"} alt={leadName} />
+                      <AvatarImage src={isLead && leadId ? undefined : undefined} alt={leadName} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                         {leadName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                       </AvatarFallback>
@@ -169,7 +169,7 @@ export function ChatToggle({
                 </div>
                 <div className="pl-7 flex items-center gap-2 mt-1">
                   <Avatar className="h-5 w-5 mr-1 bg-primary/10">
-                    <AvatarImage src={isLead && leadId ? `/avatars/lead-${leadId}.png` : "/avatars/visitor-default.png"} alt={leadName} />
+                    <AvatarImage src={isLead && leadId ? undefined : undefined} alt={leadName} />
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                       {leadName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                     </AvatarFallback>
@@ -195,7 +195,7 @@ export function ChatToggle({
                 <div className="flex items-center w-full gap-2 mb-1">
                   <div className="w-5 flex justify-center">
                     <Avatar className="h-5 w-5 bg-primary/10">
-                      <AvatarImage src={agentId ? `/avatars/agent-${agentId}.png` : "/avatars/agent-default.png"} alt={agentName} />
+                      <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                         {agentName.length >= 2 
                           ? agentName.substring(0, 2).toUpperCase()
@@ -208,7 +208,7 @@ export function ChatToggle({
                 </div>
                 <div className="pl-7 flex items-center gap-2 mt-1">
                   <Avatar className="h-5 w-5 mr-1 bg-primary/10">
-                    <AvatarImage src={agentId ? `/avatars/agent-${agentId}.png` : "/avatars/agent-default.png"} alt={agentName} />
+                    <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                       {agentName.length >= 2 
                         ? agentName.substring(0, 2).toUpperCase()
@@ -236,7 +236,7 @@ export function ChatToggle({
                 <div className="flex items-center w-full gap-2 mb-1">
                   <div className="w-5 flex justify-center">
                     <Avatar className="h-5 w-5 bg-primary/10">
-                      <AvatarImage src={agentId ? `/avatars/agent-${agentId}.png` : "/avatars/agent-default.png"} alt={agentName} />
+                      <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                         {agentName.length >= 2 
                           ? agentName.substring(0, 2).toUpperCase()
@@ -249,7 +249,7 @@ export function ChatToggle({
                 </div>
                 <div className="pl-7 flex items-center gap-2 mt-1">
                   <Avatar className="h-5 w-5 mr-1 bg-primary/10">
-                    <AvatarImage src={agentId ? `/avatars/agent-${agentId}.png` : "/avatars/agent-default.png"} alt={agentName} />
+                    <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                       {agentName.length >= 2 
                         ? agentName.substring(0, 2).toUpperCase()
@@ -270,7 +270,7 @@ export function ChatToggle({
               >
                 <div className="w-5 flex justify-center">
                   <Avatar className="h-5 w-5 bg-primary/10">
-                    <AvatarImage src="/avatars/user-default.png" alt="User" />
+                    <AvatarImage src={undefined} alt="User" />
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                       U
                     </AvatarFallback>

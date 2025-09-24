@@ -57,7 +57,7 @@ export function useChatOperations({
     
     // Obtain user name and avatar
     const userName = user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'Team Member')
-    const userAvatar = user.user_metadata?.avatar_url || "/avatars/user-default.png"
+    const userAvatar = user.user_metadata?.avatar_url || null
     
     // Create a temporary message for UI feedback with the correct role (always team_member for UI)
     const tempUserMessage: ChatMessage = {
@@ -67,7 +67,7 @@ export function useChatOperations({
       timestamp: new Date(),
       sender_id: user.id,
       sender_name: userName,
-      sender_avatar: userAvatar
+      sender_avatar: userAvatar || undefined
     }
     
     // Set loading state while we send the API request

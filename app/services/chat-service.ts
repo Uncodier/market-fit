@@ -729,7 +729,7 @@ export async function addTeamMemberMessage(
   // Crear metadatos con información del usuario
   const metadata = {
     user_name: userName,
-    avatar_url: userAvatarUrl || `/avatars/user-default.png`,
+    avatar_url: userAvatarUrl ?? undefined,
     ...additionalMetadata
   };
 
@@ -789,7 +789,7 @@ export function convertMessagesToChatFormat(messages: Message[]): Promise<ChatMe
             const userData = await getUserData(userId);
             if (userData) {
               chatMessage.sender_name = chatMessage.sender_name || userData.name;
-              chatMessage.sender_avatar = chatMessage.sender_avatar || userData.avatar_url || "/avatars/user-default.png";
+              chatMessage.sender_avatar = chatMessage.sender_avatar || userData.avatar_url || undefined;
             }
           } catch (error) {
             console.error("Error al obtener datos del usuario para el mensaje:", error);

@@ -1821,7 +1821,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                 <div className="flex flex-col w-full items-end group">
                   <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                     <Avatar className="h-7 w-7 border border-amber-500/20">
-                      <AvatarImage src="/avatars/visitor-default.png" alt="User" />
+                      <AvatarImage src={undefined} alt="User" />
                       <AvatarFallback className="bg-amber-500/10 text-amber-600">
                         U
                       </AvatarFallback>

@@ -23,6 +23,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useRef } from "react"
 import { getConversationMessages } from "../../services/getConversationMessages.client"
 import { truncateAgentName, truncateLeadName } from "@/app/utils/name-utils"
+import { useAuthContext } from "@/app/components/auth/auth-provider"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -451,6 +452,16 @@ export function ChatMessages({
 
   // Use theme context for dark mode detection
   const { isDarkMode } = useTheme()
+  // Current user context for reliable team member name/avatar
+  const { user } = useAuthContext()
+
+  const currentUserId = user?.id
+  const currentUserName = user?.user_metadata?.name 
+    || user?.user_metadata?.full_name 
+    || (user?.email ? user.email.split('@')[0] : undefined)
+  const currentUserAvatar = (user?.user_metadata?.avatar_url as string | undefined)
+    || (user?.user_metadata?.picture as string | undefined)
+    || (user?.identities?.[0]?.identity_data as any)?.avatar_url
   
   // State for edit message modal
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -677,7 +688,7 @@ export function ChatMessages({
                         <div className="flex flex-col max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || `/avatars/user-default.png`} alt={msg.sender_name || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={msg.sender_avatar || currentUserAvatar || undefined} alt={msg.sender_name || currentUserName || "Team Member"} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
                                 backgroundColor: msg.sender_id 
                                   ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
@@ -686,7 +697,7 @@ export function ChatMessages({
                                 {msg.sender_name ? msg.sender_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || currentUserName || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
@@ -787,7 +798,7 @@ export function ChatMessages({
                         <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || `/avatars/user-default.png`} alt={msg.sender_name || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={msg.sender_avatar || currentUserAvatar || undefined} alt={msg.sender_name || currentUserName || "Team Member"} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
                                 backgroundColor: msg.sender_id 
                                   ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
@@ -796,7 +807,7 @@ export function ChatMessages({
                                 {msg.sender_name ? msg.sender_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || currentUserName || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
@@ -898,10 +909,10 @@ export function ChatMessages({
                           <div className="flex items-center mb-1 gap-2">
                             <div className="relative">
                               <Avatar className={`h-7 w-7 border ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'border-blue-500/20' : 'border-primary/10'}`}>
-                                <AvatarImage 
+                              <AvatarImage 
                                   src={(hasAssignee && msg.sender_id === leadData?.assignee?.id) 
-                                    ? leadData.assignee.avatar_url || `/avatars/user-default.png`
-                                    : `/avatars/agent-${agentId}.png`
+                                    ? (leadData.assignee.avatar_url || undefined)
+                                    : undefined
                                   } 
                                   alt={(hasAssignee && msg.sender_id === leadData?.assignee?.id) 
                                     ? leadData.assignee.name 
@@ -964,7 +975,7 @@ export function ChatMessages({
                         <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
-                              <AvatarImage src={leadData?.avatarUrl || "/avatars/visitor-default.png"} alt={leadData?.name || "Visitor"} />
+                              <AvatarImage src={leadData?.avatarUrl || undefined} alt={leadData?.name || "Visitor"} />
                               <AvatarFallback className="bg-amber-500/10 text-amber-600">
                                 {leadData?.name ? leadData.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2) : "V"}
                               </AvatarFallback>
@@ -1172,7 +1183,7 @@ export function ChatMessages({
             {/* Animación de espera mientras el agente responde */}
             {isAgentResponding && (
               <div className="flex justify-start animate-slide-in-fade mt-6 mb-8">
-                <div className="max-w-[calc(100%-240px)] flex items-center space-x-2 p-4 ml-9 bg-muted/20 rounded-md">
+                <div className="inline-flex items-center gap-2 ml-9 w-auto">
                   <div className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
                   <div className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
                   <div className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
