@@ -39,18 +39,21 @@ interface BuildWithAIButtonProps {
   className?: string
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive'
   size?: 'default' | 'sm' | 'lg' | 'icon'
+  label?: string
   modalTitle?: string
   modalDescription?: string
   modalActionLabel?: string
   onAction?: () => Promise<any>
   estimatedTime?: number
   refreshOnComplete?: boolean
+  disabled?: boolean
 }
 
 export function BuildWithAIButton({
   className = '',
   variant = 'default',
   size = 'default',
+  label = 'Build with AI',
   modalTitle = "Build with AI",
   modalDescription = "Use AI to enhance your workflow and create better content.",
   modalActionLabel = "Start Building",
@@ -59,7 +62,8 @@ export function BuildWithAIButton({
     return new Promise(resolve => setTimeout(resolve, 2000)) 
   },
   estimatedTime = 30,
-  refreshOnComplete = false
+  refreshOnComplete = false,
+  disabled = false
 }: BuildWithAIButtonProps) {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
 
@@ -69,10 +73,11 @@ export function BuildWithAIButton({
         variant={variant}
         size={size}
         className={className}
+        disabled={disabled}
         onClick={() => setIsAIModalOpen(true)}
       >
         <Cpu className="mr-2 h-4 w-4" />
-        Build with AI
+        {label}
       </Button>
 
       <AIActionModal

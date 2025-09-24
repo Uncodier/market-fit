@@ -265,6 +265,15 @@ const salesActivities: AgentActivity[] = [
     successRate: 88,
     executions: 67,
     status: "available"
+  },
+  {
+    id: "sl7",
+    name: "ICP Mining",
+    description: "Mine and enrich ideal client profile data for your market segments",
+    estimatedTime: "20-30 min",
+    successRate: 90,
+    executions: 0,
+    status: "available"
   }
 ];
 

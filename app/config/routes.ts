@@ -9,6 +9,7 @@ export const routes: RouteConfig[] = [
   { path: "/control-center", hasLayout: true },
   { path: "/segments", hasLayout: true },
   { path: "/content", hasLayout: true },
+  { path: "/people", hasLayout: true },
   { path: "/experiments", hasLayout: true },
   { path: "/requirements", hasLayout: true },
   { path: "/campaigns", hasLayout: true },

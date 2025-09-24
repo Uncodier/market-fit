@@ -134,14 +134,13 @@ export function CommandsView({ searchQuery = "" }: CommandsViewProps) {
   const { currentSite } = useSite();
   
   // Handle navigation to command detail page
-  const handleNavigateToCommand = useCallback((commandId: string) => {
+  const handleNavigateToCommand = useCallback((agentId: string, commandId: string) => {
     try {
-      const agentId = currentSite?.id || 'default';
       router.push(`/agents/${agentId}/${commandId}`);
     } catch (err) {
       console.error("Error navigating to command detail:", err);
     }
-  }, [router, currentSite?.id]);
+  }, [router]);
   
   // Function to load commands
   const loadCommands = async (page: number = 1, append: boolean = false) => {
@@ -305,7 +304,7 @@ export function CommandsView({ searchQuery = "" }: CommandsViewProps) {
                   <Card 
                     key={command.id} 
                     className="border border-border hover:border-foreground/20 transition-colors overflow-hidden cursor-pointer"
-                    onClick={() => handleNavigateToCommand(command.id)}
+                    onClick={() => handleNavigateToCommand(command.agent_id || "", command.id)}
                   >
                     <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
                       <div className="flex-1 p-4 w-full overflow-x-auto">

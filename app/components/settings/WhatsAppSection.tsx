@@ -552,6 +552,7 @@ interface WhatsAppLocalState {
   region?: string
   apiToken?: string
   accountSid?: string
+  messagingServiceSid?: string
   existingNumber?: string
   status: "not_configured" | "pending" | "active"
   setupRequested: boolean
@@ -562,6 +563,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
   const [isRequesting, setIsRequesting] = useState(false)
   const [phoneValidation, setPhoneValidation] = useState<{ isValid: boolean; error?: string }>({ isValid: true })
   const [showAccountSid, setShowAccountSid] = useState(false)
+  const [showMessagingServiceSid, setShowMessagingServiceSid] = useState(false)
   const { currentSite, updateSettings } = useSite()
   
   // Local state to avoid form auto-save issues
@@ -591,6 +593,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
           region: whatsappData.region,
           apiToken: "", // Never store token in local state
           accountSid: whatsappData.account_sid || "",
+          messagingServiceSid: (whatsappData as any)?.messaging_service_sid || "",
           existingNumber: whatsappData.existingNumber,
           status: whatsappData.status || "not_configured",
           setupRequested: whatsappData.setupRequested || false,
@@ -698,6 +701,49 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
     setLocalState(prev => ({ ...prev, accountSid }))
   }
 
+  const handleMessagingServiceSidChange = (messagingServiceSid: string) => {
+    setLocalState(prev => ({ ...prev, messagingServiceSid }))
+  }
+
+  const handleSaveMessagingServiceSid = async () => {
+    if (!currentSite?.id || !siteId) return
+    try {
+      setIsRequesting(true)
+      await updateSettings(currentSite.id, {
+        channels: {
+          email: currentSite.settings?.channels?.email || {
+            enabled: false,
+            email: "",
+            password: "",
+            incomingServer: "",
+            incomingPort: "",
+            outgoingServer: "",
+            outgoingPort: "",
+            status: "not_configured"
+          },
+          whatsapp: {
+            enabled: true,
+            setupType: localState.setupType,
+            country: localState.country,
+            region: localState.region,
+            account_sid: localState.accountSid,
+            messaging_service_sid: localState.messagingServiceSid,
+            existingNumber: localState.existingNumber,
+            setupRequested: localState.setupRequested,
+            status: localState.status
+          }
+        }
+      })
+
+      toast.success("Messaging Service SID saved")
+    } catch (e) {
+      console.error("Error saving Messaging Service SID:", e)
+      toast.error("Failed to save Messaging Service SID")
+    } finally {
+      setIsRequesting(false)
+    }
+  }
+
   const handleExistingNumberChange = async (existingNumber: string) => {
     setLocalState(prev => ({ ...prev, existingNumber }))
     
@@ -752,6 +798,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
             country: localState.country,
             region: localState.region,
             account_sid: localState.accountSid,
+            messaging_service_sid: localState.messagingServiceSid,
             existingNumber: localState.existingNumber,
             // DO NOT store apiToken here - it's stored securely via secureTokensService
             setupRequested: newSetupRequested,
@@ -779,6 +826,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
         country: localState.country,
         region: localState.region,
         account_sid: localState.accountSid,
+        messaging_service_sid: localState.messagingServiceSid,
         existingNumber: localState.existingNumber,
         // DO NOT sync apiToken to form
         setupRequested: newSetupRequested,
@@ -861,6 +909,7 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
 
   const selectedCountryConfig = TWILIO_COUNTRIES.find(c => c.code === localState.country)
   const availableCities = selectedCountryConfig ? getCitiesForCountry(localState.country!) : []
+  const dbMessagingServiceSid = ((currentSite?.settings?.channels?.whatsapp as any)?.messaging_service_sid || "") as string
 
   return (
     <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -1083,6 +1132,21 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   </p>
                 </div>
 
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Messaging Service SID</Label>
+                  <Input
+                    placeholder="Enter your Twilio Messaging Service SID (e.g., MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)"
+                    value={localState.messagingServiceSid || ""}
+                    onChange={(e) => handleMessagingServiceSidChange(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Twilio Messaging Service SID for inbound routing (starts with MG)
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Find it in <a href="https://console.twilio.com/us1/develop/sms/services" target="_blank" rel="noreferrer" className="underline">Twilio Console → Messaging → Services</a> (Service SID)
+                  </p>
+                </div>
+
                 {localState.hasSecureToken && (
                   <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
                     <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -1231,6 +1295,65 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your configured Twilio Account SID
+                  </p>
+                </div>
+              )}
+
+              {dbMessagingServiceSid && localState.setupType === "use_own_account" && (
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Messaging Service SID</Label>
+                  <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-sm flex-1">{showMessagingServiceSid ? dbMessagingServiceSid : '•'.repeat(dbMessagingServiceSid.length)}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2"
+                      onClick={() => setShowMessagingServiceSid(!showMessagingServiceSid)}
+                    >
+                      {showMessagingServiceSid ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your configured Twilio Messaging Service SID
+                  </p>
+                </div>
+              )}
+
+              {!dbMessagingServiceSid && localState.setupType === "use_own_account" && (
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Messaging Service SID</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        placeholder="Enter your Twilio Messaging Service SID (e.g., MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)"
+                        value={localState.messagingServiceSid || ""}
+                        onChange={(e) => handleMessagingServiceSidChange(e.target.value)}
+                        type={showMessagingServiceSid ? "text" : "password"}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2"
+                        onClick={() => setShowMessagingServiceSid(!showMessagingServiceSid)}
+                      >
+                        {showMessagingServiceSid ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSaveMessagingServiceSid}
+                      disabled={isRequesting || !(localState.accountSid && localState.existingNumber)}
+                    >
+                      {isRequesting ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optional but recommended for routing via Twilio Messaging Services
                   </p>
                 </div>
               )}

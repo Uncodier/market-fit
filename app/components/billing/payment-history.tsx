@@ -127,9 +127,32 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
         window.open(transaction.invoice_url, '_blank')
         toast.success('Invoice opened in new tab')
       } else {
-        // Simulated API call for demo purposes
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        toast.success(`Invoice for transaction ${transaction.transaction_id} downloaded`)
+        // Try to resolve URL from Stripe using stored details
+        const stripeInvoiceId = transaction.details?.stripe_invoice_id
+        const stripePaymentIntentId = transaction.details?.stripe_payment_intent_id
+
+        if (!stripeInvoiceId && !stripePaymentIntentId) {
+          toast.error('No Stripe reference to fetch invoice')
+          return
+        }
+
+        const response = await fetch('/api/stripe/invoice-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stripe_invoice_id: stripeInvoiceId,
+            stripe_payment_intent_id: stripePaymentIntentId
+          })
+        })
+
+        const data = await response.json()
+        if (!response.ok || !data?.url) {
+          toast.error(data?.error || 'Invoice not available yet')
+          return
+        }
+
+        window.open(data.url, '_blank')
+        toast.success('Invoice opened in new tab')
       }
     } catch (error) {
       toast.error('Failed to download invoice')

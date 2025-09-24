@@ -306,6 +306,12 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
           name: "Generate Sales Order",
           description: "Create complete sales orders with product details, pricing, and customer information",
           status: "available"
+        },
+        {
+          id: "sl7",
+          name: "ICP Mining",
+          description: "Mine and enrich ideal client profile data for your market segments",
+          status: "available"
         }
       ];
     case "Customer Support":
@@ -467,7 +473,7 @@ function AgentPageSkeleton() {
   return (
     <div className="flex-1 p-0">
       <div className="sticky top-[64px] min-h-[71px] flex items-center p-0 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 z-10">
-        <div className="sticky left-[256px] w-[calc(100vw-256px)] transition-all duration-200 ease-in-out">
+        <div className="sticky left-[256px] w-[calc(-256px+100vw)] transition-all duration-200 ease-in-out">
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">

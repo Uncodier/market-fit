@@ -117,6 +117,7 @@ export interface SiteSettings {
       setupRequested?: boolean
       apiToken?: string
       account_sid?: string
+      messaging_service_sid?: string
       status?: "not_configured" | "pending" | "active"
     }
   } | null
@@ -968,6 +969,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                     setupRequested: false,
                     apiToken: "",
                     account_sid: "",
+                    messaging_service_sid: "",
                     status: "not_configured"
                   }
                 }),
@@ -1352,6 +1354,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
             setupRequested: false,
             apiToken: "",
             account_sid: "",
+            messaging_service_sid: "",
             status: "not_configured"
           }
         };

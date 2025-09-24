@@ -138,7 +138,7 @@ export function TopBar({
         {isRequirementsPage && (
           canCreateContent ? (
             <>
-              <Button variant="outline">
+              <Button variant="secondary" className="h-9 gap-2">
                 <Filter className="mr-2 h-4 w-4" />
                 Filter
               </Button>
@@ -163,7 +163,7 @@ export function TopBar({
         {isLeadsPage && (
           canCreateContent ? (
             <>
-              <Button variant="outline">
+              <Button variant="secondary" className="h-9 gap-2">
                 <Filter className="mr-2 h-4 w-4" />
                 Filter
               </Button>

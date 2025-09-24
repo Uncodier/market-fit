@@ -178,7 +178,7 @@ export async function middleware(req: NextRequest) {
       }
     )
     
-    // Verificar la sesión usando getUser() que es más seguro
+    // Verificar la sesión usando getUser(); si falla, usaremos la sesión del cookie
     const {
       data: { user },
       error: userError
@@ -188,14 +188,17 @@ export async function middleware(req: NextRequest) {
       console.error('Middleware auth error:', userError.message)
     }
 
-    // También obtener la sesión para casos donde la necesitemos
+    // También obtener la sesión (no requiere fetch externo)
     const { data: { session } } = await supabase.auth.getSession()
+
+    // Fallback: si getUser falló (edge fetch), usa el usuario de la sesión
+    const effectiveUser = user ?? session?.user ?? null
 
     console.log('Middleware check:', {
       path,
       hasSession: !!session,
-      hasUser: !!user,
-      userId: user?.id?.substring(0, 8) + '...' || 'undefined...'
+      hasUser: !!effectiveUser,
+      userId: effectiveUser?.id?.substring(0, 8) + '...' || 'undefined...'
     })
 
     // Obtener la ruta actual
@@ -208,7 +211,7 @@ export async function middleware(req: NextRequest) {
       }
       
       // Si el usuario está autenticado y no está en una página de flujo de auth, redirigir al dashboard o returnTo
-      if (user) {
+      if (effectiveUser) {
         const returnTo = req.nextUrl.searchParams.get('returnTo') || '/dashboard'
         console.log('Middleware: Authenticated user on auth page, redirecting to:', returnTo)
         const redirectUrl = new URL(returnTo, req.url)
@@ -221,7 +224,7 @@ export async function middleware(req: NextRequest) {
     // Si es una ruta protegida
     if (PROTECTED_ROUTES.some(route => path.startsWith(route))) {
       // Si no hay usuario autenticado, redirigir a auth con returnTo
-      if (!user) {
+      if (!effectiveUser) {
         console.log('Middleware: Protected route without session, redirecting to auth. Path:', path)
         const redirectUrl = new URL('/auth', req.url)
         redirectUrl.searchParams.set('returnTo', path)

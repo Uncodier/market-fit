@@ -113,7 +113,7 @@ export const ChatInput = memo(function ChatInput({
           <form onSubmit={handleSubmit} className="relative">
             <div className="relative">
               <OptimizedTextarea
-                ref={internalRef}
+                ref={externalRef ?? internalRef}
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
                 placeholder="Message..."

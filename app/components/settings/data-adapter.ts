@@ -269,6 +269,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         country: site.settings.channels.whatsapp?.country,
         region: site.settings.channels.whatsapp?.region,
         account_sid: site.settings.channels.whatsapp?.account_sid,
+        messaging_service_sid: (site.settings.channels.whatsapp as any)?.messaging_service_sid,
         existingNumber: site.settings.channels.whatsapp?.existingNumber,
         setupRequested: site.settings.channels.whatsapp?.setupRequested || false,
         status: site.settings.channels.whatsapp?.status || "not_configured"
@@ -291,6 +292,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         country: undefined,
         region: undefined,
         account_sid: undefined,
+        messaging_service_sid: undefined,
         existingNumber: undefined,
         setupRequested: false,
         status: "not_configured" as const

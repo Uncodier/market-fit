@@ -151,7 +151,8 @@ export function TopBar({
     <div
       className={cn(
         "flex flex-col border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10",
-        breadcrumb ? "h-[calc(64px+41px)]" : "h-[64px]",
+        // Hide breadcrumb in chat pages
+        (breadcrumb && !pathname.startsWith("/chat")) ? "h-[calc(64px+41px)]" : "h-[64px]",
         className
       )}
       {...props}
@@ -190,8 +191,8 @@ export function TopBar({
         />
       </div>
       
-      {/* Breadcrumb section - asegurar visibilidad */}
-      {breadcrumb && (
+      {/* Breadcrumb section - hidden on chat pages */}
+      {breadcrumb && !pathname.startsWith("/chat") && (
         <div className="pl-16 py-2 border-t border-border/50 bg-white/50">
           {breadcrumb}
         </div>

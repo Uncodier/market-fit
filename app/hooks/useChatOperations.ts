@@ -9,10 +9,9 @@ import { toast } from 'react-hot-toast'
 import { 
   createConversation,
   sendTeamMemberIntervention,
-  sendAgentMessage,
-  addMessage,
-  addTeamMemberMessage
+  sendAgentMessage
 } from '@/app/services/chat-service'
+import { createClient } from '@/lib/supabase/client'
 
 // Helper function to log detailed API errors
 const logApiError = (error: any, context: string) => {
@@ -195,40 +194,48 @@ export function useChatOperations({
         try {
           // Remove temporary message to avoid duplicates
           setChatMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id))
-          
+
           // Create error metadata
           const errorMetadata = {
             ...customData,
             command_status: "failed",
             error_message: apiError instanceof Error ? apiError.message : "API communication error"
           }
-          
-          // Add message to database with failed status
-          const savedMessage = await addTeamMemberMessage(
-            actualConversationId,
-            user.id,
-            userName,
-            userAvatar,
-            tempUserMessage.text,
-            errorMetadata
-          )
-          
+
+          // Persist failed message directly via Supabase (fallback)
+          const supabase = createClient()
+          const { data: savedMessage, error: insertError } = await supabase
+            .from('messages')
+            .insert({
+              conversation_id: actualConversationId,
+              role: 'team_member',
+              user_id: user.id,
+              content: tempUserMessage.text,
+              custom_data: errorMetadata
+            })
+            .select()
+            .single()
+
+          if (insertError) {
+            console.error('Failed to persist failed message:', insertError)
+          }
+
           if (savedMessage) {
             // Add the saved message with failed status to UI
             setChatMessages(prev => [...prev, {
               id: savedMessage.id,
-              role: "team_member",
+              role: 'team_member',
               text: tempUserMessage.text,
               timestamp: new Date(savedMessage.created_at),
               sender_id: user.id,
               sender_name: userName,
               sender_avatar: userAvatar,
               metadata: {
-                command_status: "failed",
+                command_status: 'failed',
                 error_message: errorMetadata.error_message
               }
             }])
-            
+
             console.log(`[${new Date().toISOString()}] ⚠️ Mensaje guardado con estado 'failed'`, savedMessage.id)
           }
         } catch (dbError) {

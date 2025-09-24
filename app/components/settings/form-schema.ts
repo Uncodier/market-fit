@@ -204,6 +204,7 @@ export const siteFormSchema = z.object({
       region: z.string().optional(), // For new_number: city code
       number: z.string().optional(), // The assigned WhatsApp number
       account_sid: z.string().optional(), // Twilio Account SID for use_own_account setup
+      messaging_service_sid: z.string().optional(), // Twilio Messaging Service SID (starts with MG)
       existingNumber: z.string().optional().refine((val) => {
         if (!val || val.trim() === '') return true; // Optional field
         // Validate phone number format (international format with +)

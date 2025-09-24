@@ -565,7 +565,7 @@ export function DatePicker({
             variant="outline"
             className={cn(
               "h-10 text-left font-normal w-full",
-              "px-3 py-1 flex items-center justify-between",
+              "px-3 py-1 flex items-start justify-between",
               "rounded-md border border-input bg-background",
               "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
               "hover:bg-muted hover:border-input hover:no-underline transition-colors duration-200",
@@ -574,7 +574,7 @@ export function DatePicker({
             )}
             disabled={disabled}
           >
-            <div className="flex items-center flex-1 min-w-0 max-w-full overflow-hidden">
+            <div className="flex items-start flex-1 min-w-0 max-w-full overflow-hidden">
               <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
               <span className="truncate text-sm max-w-full overflow-hidden text-ellipsis">
                 {displayText}

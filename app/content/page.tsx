@@ -1893,8 +1893,8 @@ export default function ContentPage() {
                   </kbd>
                 </div>
                 <Button 
-                  variant="outline" 
-                  size="sm"
+                  variant="secondary" 
+                  className="h-9"
                   onClick={() => setIsFiltersDialogOpen(true)}
                 >
                   <Filter className="h-4 w-4" />

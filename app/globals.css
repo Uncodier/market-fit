@@ -549,8 +549,8 @@ html.safari input + div,
 html.safari [class*="input"] > div {
   position: relative !important;
   display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  /* align-items: center !important; */
+  /* justify-content: center !important; */
 }
 
 /* Fix para iconos en botones y enlaces */
@@ -668,11 +668,12 @@ html.safari [class*="input"] svg {
 }
 
 /* Contenedores de iconos en inputs */
-html.safari input + div,
-html.safari [class*="input"] > div[aria-hidden="true"] {
+/* Restrict Safari input icon wrapper rule to known icon containers only to avoid layout issues */
+html.safari input + div.safari-icon-container,
+html.safari [class*="input"] > div[aria-hidden="true"].safari-icon-container {
   display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  /* align-items: center !important; */
+  /* justify-content: center !important; */
   position: relative !important;
 }
 

@@ -12,6 +12,9 @@ const Slider = React.forwardRef<
   const isStyleSliderThumb = className?.includes('style-slider-thumb')
   const isColorClass = className?.includes('bg-')
   const colorClass = isColorClass ? className : ''
+  // Determine if this slider is range (two thumbs)
+  const candidate = (props as any).value ?? (props as any).defaultValue
+  const isRange = Array.isArray(candidate) && candidate.length > 1
   
   return (
     <SliderPrimitive.Root
@@ -38,14 +41,35 @@ const Slider = React.forwardRef<
           data-radix-slider-range
         />
       </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb 
-        className={cn(
-          "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", 
-          isStyleSliderThumb ? "slider-thumb" : colorClass
-        )}
-        style={{ borderRadius: '9999px' }}
-        data-radix-slider-thumb
-      />
+      {isRange ? (
+        <>
+          <SliderPrimitive.Thumb 
+            className={cn(
+              "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", 
+              isStyleSliderThumb ? "slider-thumb" : colorClass
+            )}
+            style={{ borderRadius: '9999px' }}
+            data-radix-slider-thumb
+          />
+          <SliderPrimitive.Thumb 
+            className={cn(
+              "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", 
+              isStyleSliderThumb ? "slider-thumb" : colorClass
+            )}
+            style={{ borderRadius: '9999px' }}
+            data-radix-slider-thumb
+          />
+        </>
+      ) : (
+        <SliderPrimitive.Thumb 
+          className={cn(
+            "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", 
+            isStyleSliderThumb ? "slider-thumb" : colorClass
+          )}
+          style={{ borderRadius: '9999px' }}
+          data-radix-slider-thumb
+        />
+      )}
     </SliderPrimitive.Root>
   )
 })

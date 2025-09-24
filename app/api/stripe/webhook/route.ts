@@ -440,6 +440,7 @@ export async function POST(request: NextRequest) {
             currency: invoice.currency?.toUpperCase() || 'USD',
             status: 'completed',
             payment_method: 'stripe',
+            invoice_url: invoice.hosted_invoice_url || invoice.invoice_pdf || null,
             details: {
               stripe_payment_intent_id: invoice.payment_intent,
               stripe_invoice_id: invoice.id,

@@ -24,6 +24,10 @@ const navigationTitles: Record<string, { title: string, helpText?: string }> = {
     title: "Segments",
     helpText: "Create and manage user segments based on behavior and attributes"
   },
+  "/people": {
+    title: "Find People",
+    helpText: "Search and filter people profiles across sources"
+  },
   "/content": {
     title: "Content",
     helpText: "Create and manage content for different segments and channels"
@@ -271,7 +275,7 @@ function LayoutClientInner({
                 isExperimentDetailPage={isExperimentDetailPage}
                 onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
               />
-              <div className={customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+              <div className={!isChatPage && customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
               <main 
                 className={cn(
                   "flex-1",
@@ -279,7 +283,7 @@ function LayoutClientInner({
                 )} 
                 style={
                   isChatPage ? 
-                  { height: customBreadcrumb ? 'calc(100vh - 105px)' : 'calc(100vh - 64px)' } as React.CSSProperties 
+                  { height: 'calc(100vh - 64px)' } as React.CSSProperties 
                   : {}
                 }
               >

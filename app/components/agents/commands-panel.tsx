@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/app/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { CheckCircle2, AlertCircle, Clock, FileText, RotateCcw, PlayCircle } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Card } from "@/app/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Command } from "@/app/agents/types"
 import { getCommands } from "@/app/agents/actions"
-import { CommandsTable } from "@/app/components/agents/commands-table"
+import { CommandsSegmentsTable } from "@/app/components/agents/commands-segments-table"
 import { CommandList } from "@/app/components/agents/command-list"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { toast } from "sonner"
@@ -282,7 +282,6 @@ export function CommandsPanel() {
   const [commands, setCommands] = useState<Command[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("completed");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -292,14 +291,14 @@ export function CommandsPanel() {
   const { currentSite } = useSite();
   
   // Handle navigation to command detail page
-  const handleNavigateToCommand = useCallback((commandId: string) => {
+  const handleNavigateToCommand = useCallback((agentId: string, commandId: string) => {
     try {
-      const agentId = currentSite?.id || 'default';
+      // Navigate to command detail route under the current agent (site) context
       router.push(`/agents/${agentId}/${commandId}`);
     } catch (err) {
       console.error("Error navigating to command detail:", err);
     }
-  }, [router, currentSite?.id]);
+  }, [router]);
   
   // Function to load commands
   const loadCommands = async (page: number = 1, append: boolean = false) => {
@@ -370,177 +369,91 @@ export function CommandsPanel() {
     return () => clearInterval(intervalId);
   }, [currentSite?.id]);
   
-  // Handle tab change
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-  };
-  
-  // Safely filter commands based on active tab
-  const safeFilter = (command: Command | null | undefined, status: string): boolean => {
-    if (!command) return false;
-    return command.status === status;
-  };
-  
-  // Memoized filtered commands
+  // Memoized commands list (no status filtering)
   const filteredCommands = useMemo(() => {
     try {
       if (!commands || !Array.isArray(commands) || commands.length === 0) {
         return [];
       }
-      
-      const isCompletedTab = activeTab === "completed";
-      const isRunningTab = activeTab === "running";
-      const isFailedTab = activeTab === "failed";
-      
-      return commands.filter(command => {
-        if (!command) return false;
-        
-        try {
-          const status = command.status;
-          if (isCompletedTab && status === "completed") return true;
-          if (isRunningTab && (status === "running" || status === "pending")) return true;
-          if (isFailedTab && (status === "failed" || status === "cancelled")) return true;
-          return false;
-        } catch (err) {
-          console.error("Error filtering command:", err);
-          return false;
-        }
-      });
+      return sanitizeCommands(commands);
     } catch (err) {
-      console.error("Critical error in command filtering:", err);
+      console.error("Critical error in command mapping:", err);
       return [];
-    }
-  }, [commands, activeTab]);
-  
-  // Count commands by status
-  const { completedCount, runningCount, failedCount } = useMemo(() => {
-    const defaultCounts = { completedCount: 0, runningCount: 0, failedCount: 0 };
-    
-    if (!commands || !Array.isArray(commands) || commands.length === 0) {
-      return defaultCounts;
-    }
-    
-    try {
-      return commands.reduce((acc, command) => {
-        if (!command) return acc;
-        
-        const status = String(command.status || "");
-        if (status === "completed") acc.completedCount++;
-        else if (status === "running" || status === "pending") acc.runningCount++;
-        else if (status === "failed" || status === "cancelled") acc.failedCount++;
-        
-        return acc;
-      }, { ...defaultCounts });
-    } catch (err) {
-      console.error("Error counting commands:", err);
-      return defaultCounts;
     }
   }, [commands]);
   
   return (
-    <div className="h-full flex flex-col overflow-hidden" data-testid="commands-panel">
-      {/* Panel Header with Tabs */}
-      <div className="border-b min-h-[71px] bg-background/95 backdrop-blur-sm">
-        <div className="px-1.5 pt-1.5 pb-1.5 h-full flex items-center">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-3" data-testid="tabs-list">
-              <TabsTrigger 
-                value="completed" 
-                data-testid="completed-tab"
-                className="text-xs"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                Completed
-              </TabsTrigger>
-              <TabsTrigger 
-                value="running" 
-                data-testid="running-tab"
-                className="text-xs"
-              >
-                <PlayCircle className="h-3.5 w-3.5 mr-1.5" />
-                Running
-                {runningCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 text-[10px]">
-                    {runningCount}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="failed" 
-                data-testid="failed-tab"
-                className="text-xs"
-              >
-                <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
-                Failed
-                {failedCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 text-[10px]">
-                    {failedCount}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
-      
-      <div className="flex-1 overflow-auto p-0">
-        {loading && commands.length === 0 ? (
-          <div className="divide-y divide-border/50" data-testid="loading-state">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="px-4 py-3.5">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <Skeleton className="h-4 w-48" data-testid="loading-skeleton" />
-                      <Skeleton className="h-4 w-16" data-testid="loading-skeleton" />
-                    </div>
-                    <Skeleton className="h-3 w-full mb-2" data-testid="loading-skeleton" />
-                    <Skeleton className="h-3 w-full mb-2" data-testid="loading-skeleton" />
-                    <div className="flex items-center justify-between">
-                      <Skeleton className="h-2 w-16" data-testid="loading-skeleton" />
-                      <Skeleton className="h-2 w-16" data-testid="loading-skeleton" />
-                    </div>
-                  </div>
+    <div className="flex flex-col" data-testid="commands-panel">
+      <div className="flex-1 p-0">
+        <div className="p-8 space-y-4">
+          <div className="px-8">
+            {loading && commands.length === 0 ? (
+              <Card className="overflow-hidden" data-testid="loading-state">
+                <div className="relative w-full">
+                  <Table className="table-fixed">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px]"><Skeleton className="h-4 w-24" /></TableHead>
+                        <TableHead className="w-[140px] min-w-[140px] max-w-[140px]"><Skeleton className="h-4 w-16" /></TableHead>
+                        <TableHead className="w-[130px] min-w-[130px] max-w-[130px]"><Skeleton className="h-4 w-20" /></TableHead>
+                        <TableHead className="w-[110px] min-w-[110px] max-w-[110px]"><Skeleton className="h-4 w-16" /></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.from({ length: 8 }).map((_, index) => (
+                        <TableRow key={index} className="group">
+                          <TableCell className="py-2 px-2 sm:px-4">
+                            <div className="flex items-start gap-2">
+                              <div className="h-5 w-5 flex-shrink-0 mt-0.5">
+                                <Skeleton className="h-5 w-5 rounded-full" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <Skeleton className="h-4 w-3/5 mb-2" />
+                                <Skeleton className="h-3 w-4/5" />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-2 px-2 sm:px-4">
+                            <Skeleton className="h-5 w-20 rounded-full" />
+                          </TableCell>
+                          <TableCell className="py-2 px-2 sm:px-4">
+                            <Skeleton className="h-4 w-24" />
+                          </TableCell>
+                          <TableCell className="py-2 px-2 sm:px-4">
+                            <Skeleton className="h-4 w-16" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
+                <div className="flex items-center justify-center px-6 py-4 border-t">
+                  <Skeleton className="h-10 w-full max-w-xs" />
+                </div>
+              </Card>
+            ) : filteredCommands.length === 0 ? (
+              <div className="h-full flex items-center justify-center p-4" data-testid="empty-state">
+                <EmptyCard
+                  icon={<FileText className="h-10 w-10 text-muted-foreground" />}
+                  title={"No commands found"}
+                  description={error ? `Error: ${error}` : "There are no commands to display at this time."}
+                  showShadow={false}
+                />
               </div>
-            ))}
-          </div>
-        ) : filteredCommands.length === 0 ? (
-          <div className="h-full flex items-center justify-center p-4" data-testid="empty-state">
-            <EmptyCard
-              icon={<FileText className="h-10 w-10 text-muted-foreground" />}
-              title={`No ${activeTab} commands found`}
-              description={error ? `Error: ${error}` : "There are no commands to display at this time."}
-              showShadow={false}
-            />
-          </div>
-        ) : (
-          <>
-            <CommandList 
-              commands={filteredCommands} 
-              hasError={!!error} 
-              onNavigateToCommand={handleNavigateToCommand}
-              agentId={currentSite?.id || 'default'}
-            />
-            {hasMore && (
-              <div className="flex justify-center py-4">
-                <Button
-                  variant="outline"
-                  onClick={handleLoadMore}
-                  disabled={isLoadingMore}
-                  className="w-full max-w-xs mx-4"
-                >
-                  {isLoadingMore ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                      <span>Loading</span>
-                    </div>
-                  ) : "Load More"}
-                </Button>
-              </div>
+            ) : (
+              <CommandsSegmentsTable
+                commands={filteredCommands}
+                onLoadMore={handleLoadMore}
+                hasMore={hasMore}
+                isLoading={isLoadingMore}
+                onRowClick={(cmd) => {
+                  if (!cmd?.id) return;
+                  handleNavigateToCommand(cmd.agent_id || "", cmd.id);
+                }}
+              />
             )}
-          </>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );

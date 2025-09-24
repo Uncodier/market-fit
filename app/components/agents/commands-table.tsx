@@ -3,7 +3,7 @@
 import React, { useState, useMemo, memo } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { Check, AlertCircle, Clock } from "@/app/components/ui/icons"
+import { AlertCircle, Clock } from "@/app/components/ui/icons"
 import { Command } from "@/app/agents/types"
 import { Button } from "@/app/components/ui/button"
 
@@ -57,7 +57,7 @@ export const CommandsTable = memo(function CommandsTable({
     
     switch (status) {
       case "completed":
-        return <Check className="h-4 w-4 text-success" />
+        return null
       case "running":
         return <Clock className="h-4 w-4 text-info animate-pulse" />
       case "pending":

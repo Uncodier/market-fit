@@ -2292,7 +2292,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
       {/* Message input area - styled exactly like ChatInput */}
       <div className="absolute bottom-4 left-0 right-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20]">
         <div className="px-[30px]">
-          <form className="relative" onSubmit={(e) => {
+          <form className="relative" style={{ width: '100%' }} onSubmit={(e) => {
             e.preventDefault()
             handleSendMessage()
           }}>
