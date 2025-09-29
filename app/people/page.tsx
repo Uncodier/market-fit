@@ -8,7 +8,7 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Card } from "@/app/components/ui/card"
+import { Card, CardContent } from "@/app/components/ui/card"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
@@ -447,7 +447,19 @@ export default function PeopleSearchPage() {
   const [icpName, setIcpName] = useState<string>("")
   const [isIcpModalOpen, setIsIcpModalOpen] = useState(false)
   const [icpListLoading, setIcpListLoading] = useState(false)
-  const [availableIcps, setAvailableIcps] = useState<Array<{ id: string; name: string | null; status?: string | null; role_query_id: string }>>([])
+  const [availableIcps, setAvailableIcps] = useState<Array<{ 
+    id: string; 
+    name: string | null; 
+    status?: string | null; 
+    role_query_id: string;
+    total_targets?: number;
+    processed_targets?: number;
+    found_matches?: number;
+    progress_percent?: string;
+    started_at?: string | null;
+    last_progress_at?: string | null;
+    finished_at?: string | null;
+  }>>([])
   const [selectedIcpId, setSelectedIcpId] = useState<string | 'none'>('none')
   const [collapsibleVersion, setCollapsibleVersion] = useState(0)
   const [sectionOpenDefaults, setSectionOpenDefaults] = useState({
@@ -472,6 +484,129 @@ export default function PeopleSearchPage() {
   useEffect(() => {
     setSidebarLeft(isLayoutCollapsed ? "64px" : "256px")
   }, [isLayoutCollapsed])
+
+  // Helper function to load ICP data
+  const handleLoadIcp = async (icpId: string) => {
+    try {
+      if (!currentSite?.id) return
+      const res = await apiClient.get(`/api/finder/icp?icp_id=${encodeURIComponent(icpId)}&site_id=${encodeURIComponent(currentSite.id)}`)
+      if (!res.success) {
+        throw new Error(res.error?.message || 'Failed to load saved list')
+      }
+      const q = (res.data as any)?.role_query?.query || {}
+      // Apply basic fields to UI
+      const parseDate = (s?: string) => (s ? new Date(s) : undefined)
+      const toLookupFromIds = (arr?: any[]) => (Array.isArray(arr) ? arr.map((id: any) => ({ id: (typeof id === 'string' ? Number(id) : id), text: `ID ${id}` })) : [])
+      setJobTitle(q.role_title || '')
+      setQuery(q.role_description || '')
+      setIsCurrentRole(Boolean(q.role_is_current))
+      setRoleDateRange({ start: parseDate(q.role_position_start_date), end: parseDate(q.role_position_end_date) })
+      setPersonName(q.person_name || '')
+      setPersonHeadline(q.person_headline || '')
+      // Clear complex chip-based filters; user can refine as needed
+      setSkills([])
+      // Person locations from IDs
+      setLocations(toLookupFromIds(q.person_locations))
+      setIndustries([])
+      setPersonIndustriesExclude([])
+      setCompanies([])
+      setKeywords([])
+      setOrgDomains([])
+      setOrgLinkedinIds([])
+      // Organization locations from IDs
+      setOrgLocations(toLookupFromIds(q.organization_locations))
+      setOrgIndustries([])
+      setOrgIndustriesExclude([])
+      // Job posting locations from IDs
+      setJobLocations(toLookupFromIds(q.job_post_locations))
+      setJobLocationsExclude(toLookupFromIds(q.job_post_locations_exclude))
+      setIncludeRemote(Boolean(q.job_post_is_remote))
+      setIsJobActive(Boolean(q.job_post_is_active))
+      setJobPostingTitle(q.job_post_title || '')
+      setJobPostingDescription(q.job_post_description || '')
+      setJobFeaturedRange({ start: parseDate(q.job_post_date_featured_start), end: parseDate(q.job_post_date_featured_end) })
+      setFundingDateRange({ start: parseDate(q.funding_event_date_featured_start), end: parseDate(q.funding_event_date_featured_end) })
+      if (typeof q.funding_total_start === 'number' && typeof q.funding_total_end === 'number') {
+        setFundingRange([q.funding_total_start, q.funding_total_end])
+        setFundingRangeTouched(true)
+      } else {
+        setFundingRange([50000, 50000])
+        setFundingRangeTouched(false)
+      }
+      // Company size (employees)
+      if (typeof q.organization_employees_start === 'number') {
+        setEmployeeFrom(q.organization_employees_start)
+      }
+      if (typeof q.organization_employees_end === 'number') {
+        setEmployeeTo(q.organization_employees_end)
+      }
+      setSimpleEventSource(q.simple_event_source ?? null)
+      setSimpleEventReason(q.simple_event_reason ?? null)
+      setSimpleEventDateRange({ start: parseDate(q.simple_event_date_featured_start), end: parseDate(q.simple_event_date_featured_end) })
+      // Decide which cards to open by default based on loaded query
+      const openDefaults = {
+        name: Boolean(q.person_name || q.person_headline || (q.person_linkedin_public_identifiers && q.person_linkedin_public_identifiers.length > 0)),
+        jobTitle: Boolean(q.role_title || q.role_description || q.role_position_start_date || q.role_position_end_date || q.role_is_current),
+        personIndustry: Boolean((q.person_industries && q.person_industries.length) || (q.person_industries_exclude && q.person_industries_exclude.length)),
+        personLocation: Boolean(q.person_locations && q.person_locations.length),
+        skills: Boolean(q.person_skills && q.person_skills.length),
+        personLinkedin: Boolean(q.person_linkedin_public_identifiers && q.person_linkedin_public_identifiers.length),
+        company: Boolean(q.organizations || q.organization_description || q.organization_linkedin_public_identifiers),
+        domains: Boolean((q.organization_domains && q.organization_domains.length) || q.organizations_bulk_domain),
+        compLocInd: Boolean((q.organization_locations && q.organization_locations.length) || (q.organization_industries && q.organization_industries.length) || (q.organization_industries_exclude && q.organization_industries_exclude.length) || (q.organization_keywords && q.organization_keywords.length)),
+        sizeFounded: Boolean(q.organization_employees_start || q.organization_employees_end || q.organization_revenue_start || q.organization_revenue_end || q.organization_founded_date_start || q.organization_founded_date_end),
+        foundedDate: Boolean(q.organization_founded_date_start || q.organization_founded_date_end),
+        companyLinkedin: Boolean(q.organization_linkedin_public_identifiers && q.organization_linkedin_public_identifiers.length),
+        jobPostings: Boolean(q.job_post_title || q.job_post_description || q.job_post_is_remote || q.job_post_is_active || q.job_post_date_featured_start || q.job_post_date_featured_end || (q.job_post_locations && q.job_post_locations.length) || (q.job_post_locations_exclude && q.job_post_locations_exclude.length)),
+        funding: Boolean(q.funding_types || typeof q.funding_total_start === 'number' || typeof q.funding_total_end === 'number' || q.funding_event_date_featured_start || q.funding_event_date_featured_end),
+        technologies: Boolean(q.organization_web_technologies && q.organization_web_technologies.length),
+        signals: Boolean(q.simple_event_source || q.simple_event_reason || q.simple_event_date_featured_start || q.simple_event_date_featured_end),
+      }
+      setSectionOpenDefaults(openDefaults)
+      setCollapsibleVersion(v => v + 1)
+      setIsIcpModalOpen(false)
+      toast.success('Saved list loaded')
+      // Trigger search with the loaded setup (build payload directly from q to avoid async state race)
+      setCurrentPage(1)
+      const payloadFromQ: FinderRequest = {
+        page: 0,
+        role_title: q.role_title || undefined,
+        role_description: q.role_description || undefined,
+        role_is_current: q.role_is_current,
+        role_position_start_date: q.role_position_start_date,
+        role_position_end_date: q.role_position_end_date,
+        person_name: q.person_name || undefined,
+        person_headline: q.person_headline || undefined,
+        person_locations: Array.isArray(q.person_locations) ? q.person_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
+        organization_locations: Array.isArray(q.organization_locations) ? q.organization_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
+        organization_employees_start: typeof q.organization_employees_start === 'number' ? q.organization_employees_start : undefined,
+        organization_employees_end: typeof q.organization_employees_end === 'number' ? q.organization_employees_end : undefined,
+        job_post_locations: Array.isArray(q.job_post_locations) ? q.job_post_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
+        job_post_locations_exclude: Array.isArray(q.job_post_locations_exclude) ? q.job_post_locations_exclude.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
+      }
+      await executeSearch(payloadFromQ)
+    } catch (e) {
+      console.error('[People] Load saved list error:', e)
+      toast.error('Failed to load saved list')
+    }
+  }
+
+  // Helper function to delete ICP
+  const handleDeleteIcp = async (icpId: string) => {
+    try {
+      if (!currentSite?.id) return
+      const res = await apiClient.delete(`/api/finder/icp?icp_id=${encodeURIComponent(icpId)}&site_id=${encodeURIComponent(currentSite.id)}`)
+      if (!res.success) {
+        throw new Error(res.error?.message || 'Failed to delete saved list')
+      }
+      // Remove from local state
+      setAvailableIcps(prev => prev.filter(icp => icp.id !== icpId))
+      toast.success('Saved list deleted')
+    } catch (e) {
+      console.error('[People] Delete saved list error:', e)
+      toast.error('Failed to delete saved list')
+    }
+  }
 
   useEffect(() => {
     document.title = "Find People | Market Fit"
@@ -743,6 +878,8 @@ export default function PeopleSearchPage() {
       if (icpName && icpName.trim().length > 0) {
         payload.name = icpName.trim()
       }
+      // Add target_totals with current search results total
+      payload.target_totals = totalResults
       const res = await apiClient.post('/api/finder/person_role_search/createQuery', payload, { includeAuth: false })
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to create query')
@@ -1415,7 +1552,7 @@ export default function PeopleSearchPage() {
                       // 3) List ICPs for those role_query_ids
                       const { data: icps, error: icpErr } = await supabase
                         .from('icp_mining')
-                        .select('id, name, status, role_query_id')
+                        .select('id, name, status, role_query_id, total_targets, processed_targets, found_matches, progress_percent, started_at, last_progress_at, finished_at')
                         .in('role_query_id', roleQueryIds)
                         .order('created_at', { ascending: false })
                       if (icpErr) throw icpErr
@@ -1748,140 +1885,135 @@ export default function PeopleSearchPage() {
       </Dialog>
       {/* ICP selection modal */}
       <Dialog open={isIcpModalOpen} onOpenChange={setIsIcpModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Load saved lists</DialogTitle>
             <DialogDescription>Select a saved list to load its query.</DialogDescription>
           </DialogHeader>
+          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+            {icpListLoading ? (
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Saved list</p>
-            <Select value={selectedIcpId} onValueChange={(v) => setSelectedIcpId(v)}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder={icpListLoading ? 'Loading lists…' : 'Select saved list'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Select saved list</SelectItem>
-                {availableIcps.map((i) => (
-                  <SelectItem key={i.id} value={i.id}>
-                    {(i.name && i.name.trim()) ? i.name : `List ${i.id.slice(0,8)}…`}
-                  </SelectItem>
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <Card key={idx} className="border border-border">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-10 w-10 rounded-md" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-5 w-2/3" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                        <Skeleton className="h-9 w-20 rounded-md" />
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
-              </SelectContent>
-            </Select>
+          </div>
+            ) : availableIcps.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No saved lists found</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {availableIcps.map((icp) => (
+                  <Card 
+                    key={icp.id} 
+                    className="border border-border hover:border-foreground/20 transition-colors cursor-pointer"
+                    onClick={() => {
+                      setSelectedIcpId(icp.id)
+                      // Auto-load the selected list
+                      handleLoadIcp(icp.id)
+                    }}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
+                          <span className="text-sm font-medium">
+                            {(icp.name && icp.name.trim()) ? icp.name.charAt(0).toUpperCase() : "L"}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold truncate">
+                              {(icp.name && icp.name.trim()) ? icp.name : `List ${icp.id.slice(0,8)}…`}
+                            </h3>
+                            {icp.status && (
+                              <Badge 
+                                variant={icp.status === 'completed' ? 'default' : icp.status === 'mining' ? 'secondary' : 'outline'}
+                                className="h-5 px-2 text-xs"
+                              >
+                                {icp.status}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            {icp.status === 'mining' && (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-muted-foreground">Progress: {icp.progress_percent || '0.00'}%</span>
+                                  <span className="text-muted-foreground">
+                                    {icp.processed_targets || 0} / {icp.total_targets || 0} targets
+                                  </span>
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-1.5">
+                                  <div 
+                                    className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+                                    style={{ width: `${icp.progress_percent || '0'}%` }}
+                                  />
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Found {icp.found_matches || 0} matches
+                                </p>
+                              </div>
+                            )}
+                            {icp.status === 'completed' && (
+                              <p className="text-sm text-muted-foreground">
+                                Ready to load • {icp.found_matches || 0} matches found
+                              </p>
+                            )}
+                            {icp.status === 'pending' && (
+                              <p className="text-sm text-muted-foreground">
+                                Queued for mining
+                              </p>
+                            )}
+                            {!icp.status && (
+                              <p className="text-sm text-muted-foreground">
+                                Status unknown
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+            <Button
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteIcp(icp.id)
+                            }}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <X className="h-4 w-4" />
+            </Button>
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleLoadIcp(icp.id)
+                            }}
+                          >
+                            Load
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsIcpModalOpen(false)}>Cancel</Button>
-            <Button
-              disabled={icpListLoading || selectedIcpId === 'none'}
-              onClick={async () => {
-                try {
-                  if (selectedIcpId === 'none') return
-                  const icp = availableIcps.find(x => x.id === selectedIcpId)
-                  if (!icp) return
-                  const res = await apiClient.get(`/api/finder/icp?icp_id=${encodeURIComponent(selectedIcpId)}&site_id=${encodeURIComponent(currentSite!.id)}`)
-                  if (!res.success) {
-                    throw new Error(res.error?.message || 'Failed to load saved list')
-                  }
-                  const q = (res.data as any)?.role_query?.query || {}
-                  // Apply basic fields to UI
-                  const parseDate = (s?: string) => (s ? new Date(s) : undefined)
-                  const toLookupFromIds = (arr?: any[]) => (Array.isArray(arr) ? arr.map((id: any) => ({ id: (typeof id === 'string' ? Number(id) : id), text: `ID ${id}` })) : [])
-                  setJobTitle(q.role_title || '')
-                  setQuery(q.role_description || '')
-                  setIsCurrentRole(Boolean(q.role_is_current))
-                  setRoleDateRange({ start: parseDate(q.role_position_start_date), end: parseDate(q.role_position_end_date) })
-                  setPersonName(q.person_name || '')
-                  setPersonHeadline(q.person_headline || '')
-                  // Clear complex chip-based filters; user can refine as needed
-                  setSkills([])
-                  // Person locations from IDs
-                  setLocations(toLookupFromIds(q.person_locations))
-                  setIndustries([])
-                  setPersonIndustriesExclude([])
-                  setCompanies([])
-                  setKeywords([])
-                  setOrgDomains([])
-                  setOrgLinkedinIds([])
-                  // Organization locations from IDs
-                  setOrgLocations(toLookupFromIds(q.organization_locations))
-                  setOrgIndustries([])
-                  setOrgIndustriesExclude([])
-                  // Job posting locations from IDs
-                  setJobLocations(toLookupFromIds(q.job_post_locations))
-                  setJobLocationsExclude(toLookupFromIds(q.job_post_locations_exclude))
-                  setIncludeRemote(Boolean(q.job_post_is_remote))
-                  setIsJobActive(Boolean(q.job_post_is_active))
-                  setJobPostingTitle(q.job_post_title || '')
-                  setJobPostingDescription(q.job_post_description || '')
-                  setJobFeaturedRange({ start: parseDate(q.job_post_date_featured_start), end: parseDate(q.job_post_date_featured_end) })
-                  setFundingDateRange({ start: parseDate(q.funding_event_date_featured_start), end: parseDate(q.funding_event_date_featured_end) })
-                  if (typeof q.funding_total_start === 'number' && typeof q.funding_total_end === 'number') {
-                    setFundingRange([q.funding_total_start, q.funding_total_end])
-                    setFundingRangeTouched(true)
-                  } else {
-                    setFundingRange([50000, 50000])
-                    setFundingRangeTouched(false)
-                  }
-                  // Company size (employees)
-                  if (typeof q.organization_employees_start === 'number') {
-                    setEmployeeFrom(q.organization_employees_start)
-                  }
-                  if (typeof q.organization_employees_end === 'number') {
-                    setEmployeeTo(q.organization_employees_end)
-                  }
-                  setSimpleEventSource(q.simple_event_source ?? null)
-                  setSimpleEventReason(q.simple_event_reason ?? null)
-                  setSimpleEventDateRange({ start: parseDate(q.simple_event_date_featured_start), end: parseDate(q.simple_event_date_featured_end) })
-                  // Decide which cards to open by default based on loaded query
-                  const openDefaults = {
-                    name: Boolean(q.person_name || q.person_headline || (q.person_linkedin_public_identifiers && q.person_linkedin_public_identifiers.length > 0)),
-                    jobTitle: Boolean(q.role_title || q.role_description || q.role_position_start_date || q.role_position_end_date || q.role_is_current),
-                    personIndustry: Boolean((q.person_industries && q.person_industries.length) || (q.person_industries_exclude && q.person_industries_exclude.length)),
-                    personLocation: Boolean(q.person_locations && q.person_locations.length),
-                    skills: Boolean(q.person_skills && q.person_skills.length),
-                    personLinkedin: Boolean(q.person_linkedin_public_identifiers && q.person_linkedin_public_identifiers.length),
-                    company: Boolean(q.organizations || q.organization_description || q.organization_linkedin_public_identifiers),
-                    domains: Boolean((q.organization_domains && q.organization_domains.length) || q.organizations_bulk_domain),
-                    compLocInd: Boolean((q.organization_locations && q.organization_locations.length) || (q.organization_industries && q.organization_industries.length) || (q.organization_industries_exclude && q.organization_industries_exclude.length) || (q.organization_keywords && q.organization_keywords.length)),
-                    sizeFounded: Boolean(q.organization_employees_start || q.organization_employees_end || q.organization_revenue_start || q.organization_revenue_end || q.organization_founded_date_start || q.organization_founded_date_end),
-                    foundedDate: Boolean(q.organization_founded_date_start || q.organization_founded_date_end),
-                    companyLinkedin: Boolean(q.organization_linkedin_public_identifiers && q.organization_linkedin_public_identifiers.length),
-                    jobPostings: Boolean(q.job_post_title || q.job_post_description || q.job_post_is_remote || q.job_post_is_active || q.job_post_date_featured_start || q.job_post_date_featured_end || (q.job_post_locations && q.job_post_locations.length) || (q.job_post_locations_exclude && q.job_post_locations_exclude.length)),
-                    funding: Boolean(q.funding_types || typeof q.funding_total_start === 'number' || typeof q.funding_total_end === 'number' || q.funding_event_date_featured_start || q.funding_event_date_featured_end),
-                    technologies: Boolean(q.organization_web_technologies && q.organization_web_technologies.length),
-                    signals: Boolean(q.simple_event_source || q.simple_event_reason || q.simple_event_date_featured_start || q.simple_event_date_featured_end),
-                  }
-                  setSectionOpenDefaults(openDefaults)
-                  setCollapsibleVersion(v => v + 1)
-                  setIsIcpModalOpen(false)
-                  toast.success('Saved list loaded')
-                  // Trigger search with the loaded setup (build payload directly from q to avoid async state race)
-                  setCurrentPage(1)
-                  const payloadFromQ: FinderRequest = {
-                    page: 0,
-                    role_title: q.role_title || undefined,
-                    role_description: q.role_description || undefined,
-                    role_is_current: q.role_is_current,
-                    role_position_start_date: q.role_position_start_date,
-                    role_position_end_date: q.role_position_end_date,
-                    person_name: q.person_name || undefined,
-                    person_headline: q.person_headline || undefined,
-                    person_locations: Array.isArray(q.person_locations) ? q.person_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
-                    organization_locations: Array.isArray(q.organization_locations) ? q.organization_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
-                    organization_employees_start: typeof q.organization_employees_start === 'number' ? q.organization_employees_start : undefined,
-                    organization_employees_end: typeof q.organization_employees_end === 'number' ? q.organization_employees_end : undefined,
-                    job_post_locations: Array.isArray(q.job_post_locations) ? q.job_post_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
-                    job_post_locations_exclude: Array.isArray(q.job_post_locations_exclude) ? q.job_post_locations_exclude.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
-                  }
-                  await executeSearch(payloadFromQ)
-                } catch (e) {
-                  console.error('[People] Load saved list error:', e)
-                  toast.error('Failed to load saved list')
-                }
-              }}
-            >
-              Load
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
