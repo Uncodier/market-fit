@@ -45,10 +45,7 @@ const getFullApiUrl = (baseUrl: string) => {
 // Full URL with protocol
 const FULL_API_SERVER_URL = getFullApiUrl(API_SERVER_URL);
 
-// Log the API server URL in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('API Server URL:', FULL_API_SERVER_URL);
-}
+// Silence API server URL log
 
 interface ApiClientOptions {
   headers?: Record<string, string>;
@@ -201,9 +198,7 @@ export class ApiClientService {
 
     const url = `${this.apiServerUrl}${endpoint}`;
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('GET request to:', url);
-    }
+    // Silence GET request log
 
     try {
       const headers: Record<string, string> = {
@@ -255,16 +250,7 @@ export class ApiClientService {
 
     const url = `${this.apiServerUrl}${endpoint}`;
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('POST request to:', url);
-      console.log('API Server URL:', this.apiServerUrl);
-      console.log('Endpoint:', endpoint);
-      console.log('Request body:', body);
-      console.log('Full URL validation:', {
-        isValidUrl: isValidUrl(url),
-        urlObject: tryParseUrl(url)
-      });
-    }
+    // Silence POST request logs
 
     try {
       const headers: Record<string, string> = {
@@ -340,10 +326,7 @@ export class ApiClientService {
 
     const url = `${this.apiServerUrl}${endpoint}`;
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('PUT request to:', url);
-      console.log('Request body:', body);
-    }
+    // Silence PUT request logs
 
     try {
       const headers: Record<string, string> = {
@@ -397,9 +380,7 @@ export class ApiClientService {
 
     const url = `${this.apiServerUrl}${endpoint}`;
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('DELETE request to:', url);
-    }
+    // Silence DELETE request logs
 
     try {
       const headers: Record<string, string> = {

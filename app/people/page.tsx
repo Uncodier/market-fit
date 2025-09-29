@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { apiClient } from "@/app/services/api-client-service"
 import { cn } from "@/lib/utils"
@@ -17,11 +17,17 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
-import { Search, ChevronUp, ChevronDown, ChevronRight, X } from "@/app/components/ui/icons"
+import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, Globe } from "@/app/components/ui/icons"
+import { LinkedInIcon } from "@/app/components/ui/social-icons"
 import { Badge } from "@/app/components/ui/badge"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { Switch } from "@/app/components/ui/switch"
 import { Slider } from "@/app/components/ui/slider"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { useSite } from "@/app/context/SiteContext"
+import { getSegments } from "@/app/segments/actions"
+import { createClient } from "@/lib/supabase/client"
 
 type Person = {
   id: string
@@ -47,8 +53,8 @@ interface LookupOption {
 type FinderFundingType =
   | 'angel' | 'seed' | 'series_a' | 'series_b' | 'series_c' | 'grant' | string
 
-type FinderSimpleEventSource = 'product_hunt' | 'crunchbase' | 'indeed' | string
-type FinderSimpleEventReason = 'report_released' | string
+type FinderSimpleEventSource = 'product_hunt' | 'form_c_sec_gov' | 'form_d_sec_gov'
+type FinderSimpleEventReason = 'report_released' | 'promoted_on_site'
 
 interface FinderRequest {
   page?: number
@@ -97,8 +103,8 @@ interface FinderRequest {
 
   job_post_title?: string
   job_post_description?: string
-  job_post_is_remote?: boolean
-  job_post_is_active?: boolean
+  job_post_is_remote?: boolean | null
+  job_post_is_active?: boolean | null
   job_post_date_featured_start?: string
   job_post_date_featured_end?: string
   job_post_locations?: number[]
@@ -123,6 +129,9 @@ interface CollapsibleFieldProps {
 
 function CollapsibleField({ title, children, defaultOpen = true, countBadge, onClear }: CollapsibleFieldProps) {
   const [open, setOpen] = useState(defaultOpen)
+  useEffect(() => {
+    setOpen(defaultOpen)
+  }, [defaultOpen])
   return (
     <div className="rounded-lg border border-border/30 bg-muted/40">
       <div
@@ -365,12 +374,14 @@ async function lookupFetcher(type: string, q: string): Promise<LookupOption[]> {
 
 export default function PeopleSearchPage() {
   const { isLayoutCollapsed } = useLayout()
+  const { currentSite } = useSite()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [sidebarLeft, setSidebarLeft] = useState("256px")
 
   // filters
   const [query, setQuery] = useState("")
   const [industries, setIndustries] = useState<LookupOption[]>([])
+  const [personIndustriesExclude, setPersonIndustriesExclude] = useState<LookupOption[]>([])
   const [locations, setLocations] = useState<LookupOption[]>([])
   const [employeeFrom, setEmployeeFrom] = useState<number | "">("")
   const [employeeTo, setEmployeeTo] = useState<number | "">("")
@@ -380,10 +391,12 @@ export default function PeopleSearchPage() {
   const [domainRankTo, setDomainRankTo] = useState<number | "">("")
   // single-string filters
   const [personName, setPersonName] = useState<string>("")
+  const [personHeadline, setPersonHeadline] = useState<string>("")
   const [jobTitle, setJobTitle] = useState<string>("")
   const [skills, setSkills] = useState<LookupOption[]>([])
   const [companies, setCompanies] = useState<LookupOption[]>([])
   const [keywords, setKeywords] = useState<LookupOption[]>([])
+  const [personLinkedinIds, setPersonLinkedinIds] = useState<string[]>([])
   const [isCurrentRole, setIsCurrentRole] = useState(true)
   const [roleDateRange, setRoleDateRange] = useState<{ start?: Date; end?: Date }>({})
   // job postings
@@ -401,13 +414,24 @@ export default function PeopleSearchPage() {
   const [fundingRangeTouched, setFundingRangeTouched] = useState<boolean>(false)
   // technologies
   const [technologies, setTechnologies] = useState<LookupOption[]>([])
+  // organization-specific additional filters
+  const [orgDomains, setOrgDomains] = useState<string[]>([])
+  const [orgBulkDomain, setOrgBulkDomain] = useState<string>("")
+  const [orgDescription, setOrgDescription] = useState<string>("")
+  const [orgLocations, setOrgLocations] = useState<LookupOption[]>([])
+  const [orgIndustries, setOrgIndustries] = useState<LookupOption[]>([])
+  const [orgIndustriesExclude, setOrgIndustriesExclude] = useState<LookupOption[]>([])
+  const [orgLinkedinIds, setOrgLinkedinIds] = useState<string[]>([])
+  const [orgFoundedRange, setOrgFoundedRange] = useState<{ start?: Date; end?: Date }>({})
   // simple events
-  const [simpleEventSource, setSimpleEventSource] = useState<string>("")
-  const [simpleEventReason, setSimpleEventReason] = useState<string>("")
+  const [simpleEventSource, setSimpleEventSource] = useState<FinderSimpleEventSource | null>(null)
+  const [simpleEventReason, setSimpleEventReason] = useState<FinderSimpleEventReason | null>(null)
+  const [simpleEventDateRange, setSimpleEventDateRange] = useState<{ start?: Date; end?: Date }>({})
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [pageJump, setPageJump] = useState<string>("")
 
   // remote data state
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -416,6 +440,34 @@ export default function PeopleSearchPage() {
   const [error, setError] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [addingToLeads, setAddingToLeads] = useState(false)
+  const [isSegmentModalOpen, setIsSegmentModalOpen] = useState(false)
+  const [segmentsLoading, setSegmentsLoading] = useState(false)
+  const [availableSegments, setAvailableSegments] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | 'none'>('none')
+  const [icpName, setIcpName] = useState<string>("")
+  const [isIcpModalOpen, setIsIcpModalOpen] = useState(false)
+  const [icpListLoading, setIcpListLoading] = useState(false)
+  const [availableIcps, setAvailableIcps] = useState<Array<{ id: string; name: string | null; status?: string | null; role_query_id: string }>>([])
+  const [selectedIcpId, setSelectedIcpId] = useState<string | 'none'>('none')
+  const [collapsibleVersion, setCollapsibleVersion] = useState(0)
+  const [sectionOpenDefaults, setSectionOpenDefaults] = useState({
+    name: false,
+    jobTitle: false,
+    personIndustry: false,
+    personLocation: false,
+    skills: false,
+    personLinkedin: false,
+    company: false,
+    domains: false,
+    compLocInd: false,
+    sizeFounded: false,
+    foundedDate: false,
+    companyLinkedin: false,
+    jobPostings: false,
+    funding: false,
+    technologies: false,
+    signals: false,
+  })
 
   useEffect(() => {
     setSidebarLeft(isLayoutCollapsed ? "64px" : "256px")
@@ -481,6 +533,7 @@ export default function PeopleSearchPage() {
       role_position_end_date: roleEnd,
 
       person_name: personName || undefined,
+      person_headline: personHeadline || undefined,
       person_locations: (() => {
         const ids = locations
           .map(l => (typeof l.id === 'string' ? Number(l.id) : l.id))
@@ -494,6 +547,15 @@ export default function PeopleSearchPage() {
           .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
         return ids.length ? ids : undefined
       })(),
+
+      person_industries_exclude: (() => {
+        const ids = personIndustriesExclude
+          .map(l => (typeof l.id === 'string' ? Number(l.id) : l.id))
+          .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+        return ids.length ? ids : undefined
+      })(),
+
+      person_linkedin_public_identifiers: personLinkedinIds.length ? personLinkedinIds : undefined,
 
       person_skills: (() => {
         const ids = skills
@@ -514,7 +576,30 @@ export default function PeopleSearchPage() {
           .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
         return ids.length ? ids : undefined
       })(),
-      organization_domains: companyDomains.length ? companyDomains : undefined,
+      organization_domains: (() => {
+        const all = Array.from(new Set([...(companyDomains || []), ...(orgDomains || [])]))
+        return all.length ? all : undefined
+      })(),
+      organizations_bulk_domain: orgBulkDomain?.trim() ? orgBulkDomain.trim() : undefined,
+      organization_description: orgDescription?.trim() ? orgDescription.trim() : undefined,
+      organization_locations: (() => {
+        const ids = orgLocations
+          .map(l => (typeof l.id === 'string' ? Number(l.id) : l.id))
+          .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+        return ids.length ? ids : undefined
+      })(),
+      organization_industries: (() => {
+        const ids = orgIndustries
+          .map(l => (typeof l.id === 'string' ? Number(l.id) : l.id))
+          .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+        return ids.length ? ids : undefined
+      })(),
+      organization_industries_exclude: (() => {
+        const ids = orgIndustriesExclude
+          .map(l => (typeof l.id === 'string' ? Number(l.id) : l.id))
+          .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+        return ids.length ? ids : undefined
+      })(),
       organization_employees_start: typeof employeeFrom === 'number' ? employeeFrom : undefined,
       organization_employees_end: typeof employeeTo === 'number' ? employeeTo : undefined,
       organization_revenue_start: typeof revenueFrom === 'number' ? revenueFrom : undefined,
@@ -528,8 +613,15 @@ export default function PeopleSearchPage() {
         return ids.length ? ids : undefined
       })(),
 
-      simple_event_source: simpleEventSource || undefined,
-      simple_event_reason: simpleEventReason || undefined,
+      organization_founded_date_start: toYmd(orgFoundedRange.start),
+      organization_founded_date_end: toYmd(orgFoundedRange.end),
+
+      organization_linkedin_public_identifiers: orgLinkedinIds.length ? orgLinkedinIds : undefined,
+
+      simple_event_source: simpleEventSource ?? undefined,
+      simple_event_reason: simpleEventReason ?? undefined,
+      simple_event_date_featured_start: toYmd(simpleEventDateRange.start),
+      simple_event_date_featured_end: toYmd(simpleEventDateRange.end),
 
       funding_types: fundingType ? [fundingType] : undefined,
       funding_total_start: fundingRangeTouched ? fundingRange?.[0] : undefined,
@@ -560,12 +652,10 @@ export default function PeopleSearchPage() {
     return payload
   }
 
-  const handleSearch = async (page: number = 1) => {
+  const executeSearch = async (payload: FinderRequest) => {
     setLoading(true)
     setError(null)
     try {
-      const payload = buildFinderPayload(page)
-      console.log('[People] Finder payload:', payload)
       const [res, totals] = await Promise.all([
         apiClient.post<{ search_results: any[]; total_search_results: number }>(
           '/api/finder/person_role_search',
@@ -582,13 +672,11 @@ export default function PeopleSearchPage() {
           { includeAuth: false }
         )
       ])
-      console.log('[People] Finder raw response:', res)
       if (!res.success) {
         throw new Error(res.error?.message || 'Finder request failed')
       }
       const data = res.data as any
       const totalsData = totals?.data as any
-      console.log('[People] Finder parsed data:', { data, totals: totalsData })
       setSearchResults(Array.isArray(data?.search_results) ? data.search_results : [])
       const computedTotal = typeof totalsData?.total_persons === 'number'
         ? totalsData.total_persons
@@ -597,7 +685,6 @@ export default function PeopleSearchPage() {
     } catch (e: any) {
       console.error('[People] Finder error:', e)
       toast.error(e?.message || 'Finder request failed')
-      // Do not persist error in UI; reset to empty state
       setError(null)
       setSearchResults([])
       setTotalResults(0)
@@ -606,27 +693,63 @@ export default function PeopleSearchPage() {
     }
   }
 
+  const handleSearch = async (page: number = 1) => {
+    const payload = buildFinderPayload(page)
+    await executeSearch(payload)
+  }
+
   // Dynamic column widths depending on sidebar state to avoid horizontal scroll
   // Removed phone and emails columns; redistribute widths across remaining columns
   const tableColumnWidths = isSidebarCollapsed
-    ? { name: 30, role: 14, company: 24, location: 12, start: 10, end: 10 }
-    : { name: 28, role: 14, company: 22, location: 16, start: 10, end: 10 }
+    ? { name: 28, role: 14, company: 22, location: 12, start: 10, end: 10, links: 4 }
+    : { name: 26, role: 14, company: 20, location: 16, start: 10, end: 10, links: 4 }
 
   // Calculate dynamic max width for main content based on left nav and filters sidebar
   const leftNavWidth = isLayoutCollapsed ? 64 : 256
   const filtersWidth = isSidebarCollapsed ? 0 : 319
   const contentMaxWidth = `calc(100vw - ${leftNavWidth + filtersWidth}px)`
 
-  // Selection removed for now
+  // Open modal and fetch segments
   const handleAddToLeads = async () => {
+    setIsSegmentModalOpen(true)
+    if (!currentSite?.id) return
+    // Load only once per open if empty
+    if (availableSegments.length > 0) return
+    try {
+      setSegmentsLoading(true)
+      const res = await getSegments(currentSite.id)
+      if (res?.segments) {
+        setAvailableSegments(res.segments.map((s: any) => ({ id: s.id, name: s.name })))
+      }
+    } catch (e) {
+      console.error('[People] Load segments error:', e)
+    } finally {
+      setSegmentsLoading(false)
+    }
+  }
+
+  // Confirm add to leads with selected segment
+  const handleConfirmAddToLeads = async () => {
     try {
       setAddingToLeads(true)
-      const payload = buildFinderPayload(currentPage)
+      const payload = buildFinderPayload(currentPage) as any
+      if (!currentSite?.id) {
+        throw new Error('Missing site_id')
+      }
+      payload.site_id = currentSite.id
+      if (selectedSegmentId && selectedSegmentId !== 'none') {
+        payload.segment_id = selectedSegmentId
+      }
+      if (icpName && icpName.trim().length > 0) {
+        payload.name = icpName.trim()
+      }
       const res = await apiClient.post('/api/finder/person_role_search/createQuery', payload, { includeAuth: false })
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to create query')
       }
       toast.success('Leads query created successfully')
+      setIsSegmentModalOpen(false)
+      setIcpName("")
     } catch (e: any) {
       console.error('[People] Add to leads error:', e)
       toast.error(e?.message || 'Failed to add leads')
@@ -671,6 +794,12 @@ export default function PeopleSearchPage() {
       const location = r?.person?.location?.name || r?.person?.location || r?.location || '—'
       const start = r?.start_date || r?.role?.position_start_date || r?.position_start_date || r?.role_position_start_date
       const end = r?.end_date || r?.role?.position_end_date || r?.position_end_date || r?.role_position_end_date
+      const personLinkedInIdentifier = r?.person?.linkedin_info?.public_identifier
+      const personLinkedIn = r?.person?.linkedin_info?.public_profile_url || (personLinkedInIdentifier ? `https://www.linkedin.com/in/${personLinkedInIdentifier}/` : undefined)
+      const companyLinkedInIdentifier = r?.organization?.linkedin_info?.public_identifier
+      const companyLinkedIn = r?.organization?.linkedin_info?.public_profile_url || (companyLinkedInIdentifier ? `https://www.linkedin.com/company/${companyLinkedInIdentifier}/` : undefined)
+      const companyWebsite = r?.organization?.website
+      const companyDomain = r?.organization?.domain
       const isCurrent = Boolean(r?.is_current)
       const roleTitle = r?.role_title || r?.role?.title || '—'
       const key = `${personId || personName}::${companyId || companyName}`
@@ -685,6 +814,10 @@ export default function PeopleSearchPage() {
           companyName,
           companyLogoUrl,
           location,
+          personLinkedIn,
+          companyLinkedIn,
+          companyWebsite,
+          companyDomain,
           roles: [] as Array<{ id: string; title: string; start?: string; end?: string; isCurrent?: boolean }>
         })
       }
@@ -722,12 +855,28 @@ export default function PeopleSearchPage() {
             <div className="space-y-3">
               <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>Person Criteria</h3>
               <div className="space-y-3">
-                <CollapsibleField title="Name" defaultOpen={false}>
-                  <p className="text-xs text-muted-foreground mb-2">Use “quotation marks” for exact matches.</p>
-                  <Input className="h-10" placeholder="Search" value={personName} onChange={(e)=> setPersonName(e.target.value)} />
+                <CollapsibleField title="Name" defaultOpen={sectionOpenDefaults.name} onClear={() => { setPersonName(""); setPersonHeadline(""); setPersonLinkedinIds([]) }}>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Use “quotation marks" for exact matches.</p>
+                      <Input className="h-10" placeholder="Search" value={personName} onChange={(e)=> setPersonName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Headline</p>
+                      <Input className="h-10" placeholder="Search" value={personHeadline} onChange={(e)=> setPersonHeadline(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">LinkedIn Identifiers</p>
+                      <ChipsInput 
+                        values={personLinkedinIds}
+                        onChange={setPersonLinkedinIds}
+                        placeholder="linkedin.com/in/slug"
+                      />
+                    </div>
+                  </div>
                 </CollapsibleField>
-                <CollapsibleField title="Job Title" defaultOpen={false}>
-                  <p className="text-xs text-muted-foreground mb-2">Use “quotation marks” for exact matches</p>
+                <CollapsibleField title="Job Title" defaultOpen={sectionOpenDefaults.jobTitle} onClear={() => { setJobTitle(""); setQuery(""); setIsCurrentRole(true); setRoleDateRange({}) }}>
+                  <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches</p>
                   <Input className="h-10" placeholder="Search" value={jobTitle} onChange={(e)=> setJobTitle(e.target.value)} />
                   {/* Job description (boolean search) */}
                   <div className="mt-4 flex flex-col items-start space-y-2">
@@ -747,15 +896,29 @@ export default function PeopleSearchPage() {
                     <Switch id="current-role" checked={isCurrentRole} onCheckedChange={setIsCurrentRole} />
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Industry" defaultOpen={false} countBadge={industries.length} onClear={() => setIndustries([])}>
-                  <LookupChipsInput 
-                    values={industries}
-                    onChange={setIndustries}
-                    placeholder="Search industries"
-                    fetcher={(q) => lookupFetcher('industries', q)}
-                  />
+                <CollapsibleField title="Industry" defaultOpen={sectionOpenDefaults.personIndustry} countBadge={industries.length + personIndustriesExclude.length} onClear={() => { setIndustries([]); setPersonIndustriesExclude([]) }}>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Include</p>
+                      <LookupChipsInput 
+                        values={industries}
+                        onChange={setIndustries}
+                        placeholder="Search industries"
+                        fetcher={(q) => lookupFetcher('industries', q)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Exclude</p>
+                      <LookupChipsInput 
+                        values={personIndustriesExclude}
+                        onChange={setPersonIndustriesExclude}
+                        placeholder="Search industries to exclude"
+                        fetcher={(q) => lookupFetcher('industries', q)}
+                      />
+                    </div>
+                  </div>
                 </CollapsibleField>
-                <CollapsibleField title="Location" defaultOpen={false} countBadge={locations.length} onClear={() => setLocations([])}>
+                <CollapsibleField title="Location" defaultOpen={sectionOpenDefaults.personLocation} countBadge={locations.length} onClear={() => setLocations([])}>
                   <LookupChipsInput 
                     values={locations}
                     onChange={setLocations}
@@ -763,12 +926,19 @@ export default function PeopleSearchPage() {
                     fetcher={(q) => lookupFetcher('locations', q)}
                   />
                 </CollapsibleField>
-                <CollapsibleField title="Skills" countBadge={skills.length} onClear={() => setSkills([])} defaultOpen={false}>
+                <CollapsibleField title="Skills" countBadge={skills.length} onClear={() => setSkills([])} defaultOpen={sectionOpenDefaults.skills}>
                   <LookupChipsInput 
                     values={skills} 
                     onChange={setSkills} 
                     placeholder="Search skills"
                     fetcher={(q) => lookupFetcher('skills', q)}
+                  />
+                </CollapsibleField>
+                <CollapsibleField title="LinkedIn Identifiers" defaultOpen={sectionOpenDefaults.personLinkedin} countBadge={personLinkedinIds.length} onClear={() => setPersonLinkedinIds([])}>
+                  <ChipsInput 
+                    values={personLinkedinIds}
+                    onChange={setPersonLinkedinIds}
+                    placeholder="linkedin.com/in/slug"
                   />
                 </CollapsibleField>
               </div>
@@ -777,16 +947,90 @@ export default function PeopleSearchPage() {
             <div className="space-y-3">
               <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>Company Criteria</h3>
               <div className="space-y-3">
-                <CollapsibleField title="Company" countBadge={companies.length} onClear={() => setCompanies([])} defaultOpen={false}>
-                  <LookupChipsInput 
-                    values={companies}
-                    onChange={setCompanies}
-                    placeholder="Search companies"
-                    fetcher={(q) => lookupFetcher('organizations', q)}
-                  />
+                <CollapsibleField title="Company" countBadge={companies.length} onClear={() => { setCompanies([]); setOrgLinkedinIds([]); setOrgDescription("") }} defaultOpen={sectionOpenDefaults.company}>
+                  <div className="space-y-3">
+                    <LookupChipsInput 
+                      values={companies}
+                      onChange={setCompanies}
+                      placeholder="Search companies"
+                      fetcher={(q) => lookupFetcher('organizations', q)}
+                    />
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Description</p>
+                      <Input className="h-10" placeholder="Boolean text query" value={orgDescription} onChange={(e)=> setOrgDescription(e.target.value)} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">LinkedIn Identifiers</p>
+                      <ChipsInput 
+                        values={orgLinkedinIds}
+                        onChange={setOrgLinkedinIds}
+                        placeholder="linkedin.com/company/slug"
+                      />
+                    </div>
+                  </div>
                 </CollapsibleField>
-                <CollapsibleField title="Employee Range" defaultOpen={false}>
-                  <div className="grid grid-cols-12 items-end gap-2">
+                <CollapsibleField title="Domains" defaultOpen={sectionOpenDefaults.domains} countBadge={orgDomains.length + (orgBulkDomain ? 1 : 0)} onClear={() => { setOrgDomains([]); setOrgBulkDomain("") }}>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Domains</p>
+                      <ChipsInput 
+                        values={orgDomains}
+                        onChange={setOrgDomains}
+                        placeholder="example.com"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">You can also type domains in Company chips above.</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Bulk Domain</p>
+                      <Input className="h-10" placeholder="example.com" value={orgBulkDomain} onChange={(e)=> setOrgBulkDomain(e.target.value)} />
+                    </div>
+                  </div>
+                </CollapsibleField>
+                <CollapsibleField title="Location & Industry" defaultOpen={sectionOpenDefaults.compLocInd} countBadge={orgLocations.length + orgIndustries.length + orgIndustriesExclude.length + keywords.length} onClear={() => { setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setKeywords([]) }}>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Locations</p>
+                      <LookupChipsInput 
+                        values={orgLocations}
+                        onChange={setOrgLocations}
+                        placeholder="Search locations"
+                        fetcher={(q) => lookupFetcher('locations', q)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Industries (Include)</p>
+                      <LookupChipsInput 
+                        values={orgIndustries}
+                        onChange={setOrgIndustries}
+                        placeholder="Search industries"
+                        fetcher={(q) => lookupFetcher('industries', q)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Industries (Exclude)</p>
+                      <LookupChipsInput 
+                        values={orgIndustriesExclude}
+                        onChange={setOrgIndustriesExclude}
+                        placeholder="Search industries to exclude"
+                        fetcher={(q) => lookupFetcher('industries', q)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Keywords</p>
+                      <LookupChipsInput 
+                        values={keywords} 
+                        onChange={setKeywords} 
+                        placeholder="Keywords"
+                        fetcher={(q) => lookupFetcher('org_keywords', q)}
+                      />
+                    </div>
+                  </div>
+                </CollapsibleField>
+                <CollapsibleField title="Company Size & Founded" defaultOpen={sectionOpenDefaults.sizeFounded}>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground mb-1">Employees</p>
+                      <div className="grid grid-cols-12 items-end gap-2">
                     <div className="col-span-5">
                       <p className="text-xs text-muted-foreground mb-1">From</p>
                       <Input
@@ -819,56 +1063,71 @@ export default function PeopleSearchPage() {
                         className="h-10"
                         placeholder="0"
                       />
+                      </div>
                     </div>
                   </div>
-                </CollapsibleField>
-                <CollapsibleField title="Revenue Range (USD)" defaultOpen={false}>
-                  <div className="grid grid-cols-12 items-end gap-2">
-                    <div className="col-span-5">
-                      <p className="text-xs text-muted-foreground mb-1">From</p>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={1000}
-                        value={revenueFrom === "" ? "" : revenueFrom}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          setRevenueFrom(v === "" ? "" : Number(v))
-                        }}
-                        className="h-10"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div className="col-span-2 flex items-center justify-center pb-2">-</div>
-                    <div className="col-span-5">
-                      <p className="text-xs text-muted-foreground mb-1">To</p>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={1000}
-                        value={revenueTo === "" ? "" : revenueTo}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          setRevenueTo(v === "" ? "" : Number(v))
-                        }}
-                        className="h-10"
-                        placeholder="0"
-                      />
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground mb-1">Revenue (USD)</p>
+                    <div className="grid grid-cols-12 items-end gap-2">
+                      <div className="col-span-5">
+                        <p className="text-xs text-muted-foreground mb-1">From</p>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={1000}
+                          value={revenueFrom === "" ? "" : revenueFrom}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            setRevenueFrom(v === "" ? "" : Number(v))
+                          }}
+                          className="h-10"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="col-span-2 flex items-center justify-center pb-2">-</div>
+                      <div className="col-span-5">
+                        <p className="text-xs text-muted-foreground mb-1">To</p>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={1000}
+                          value={revenueTo === "" ? "" : revenueTo}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            setRevenueTo(v === "" ? "" : Number(v))
+                          }}
+                          className="h-10"
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-left text-xs text-muted-foreground">Founded Date Range</label>
+                    <CalendarDateRangePicker 
+                      onRangeChange={(start, end) => setOrgFoundedRange({ start, end })}
+                      className="w-full [&_.btn]:h-10 [&_.btn]:items-start"
+                    />
+                    <p className="text-left text-xs text-muted-foreground">Pick the period for the company founding.</p>
+                  </div>
+                  </div>
                 </CollapsibleField>
-                <CollapsibleField title="Keywords" countBadge={keywords.length} onClear={() => setKeywords([])} defaultOpen={false}>
-                  <LookupChipsInput 
-                    values={keywords} 
-                    onChange={setKeywords} 
-                    placeholder="Keywords"
-                    fetcher={(q) => lookupFetcher('org_keywords', q)}
-                  />
-                </CollapsibleField>
-                <CollapsibleField title="Domain Rank" defaultOpen={false}>
-                  <div className="grid grid-cols-12 items-end gap-2">
+                <CollapsibleField title="Web & Tech" defaultOpen={false}>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Technologies</p>
+                      <LookupChipsInput 
+                        values={technologies}
+                        onChange={setTechnologies}
+                        placeholder="Search technologies"
+                        fetcher={(q) => lookupFetcher('web_technologies', q)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground mb-1">Domain Rank</p>
+                      <div className="grid grid-cols-12 items-end gap-2">
                     <div className="col-span-5">
                       <p className="text-xs text-muted-foreground mb-1">From</p>
                       <Input
@@ -902,7 +1161,27 @@ export default function PeopleSearchPage() {
                         placeholder="0"
                       />
                     </div>
+                      </div>
+                    </div>
                   </div>
+                </CollapsibleField>
+                
+                <CollapsibleField title="Founded Date" defaultOpen={sectionOpenDefaults.foundedDate}>
+                  <div className="space-y-2">
+                    <label className="text-left text-xs text-muted-foreground">Founded Date Range</label>
+                    <CalendarDateRangePicker 
+                      onRangeChange={(start, end) => setOrgFoundedRange({ start, end })}
+                      className="w-full [&_.btn]:h-10 [&_.btn]:items-start"
+                    />
+                    <p className="text-left text-xs text-muted-foreground">Pick the period for the company founding.</p>
+                  </div>
+                </CollapsibleField>
+                <CollapsibleField title="LinkedIn Identifiers" defaultOpen={sectionOpenDefaults.companyLinkedin} countBadge={orgLinkedinIds.length} onClear={() => setOrgLinkedinIds([])}>
+                  <ChipsInput 
+                    values={orgLinkedinIds}
+                    onChange={setOrgLinkedinIds}
+                    placeholder="linkedin.com/company/slug"
+                  />
                 </CollapsibleField>
               </div>
             </div>
@@ -910,11 +1189,11 @@ export default function PeopleSearchPage() {
             <div className="space-y-3">
               <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>Buying Intent</h3>
               <div className="space-y-3">
-                <CollapsibleField title="Job Postings" defaultOpen={false}>
+                <CollapsibleField title="Job Postings" defaultOpen={sectionOpenDefaults.jobPostings}>
                   <div className="space-y-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Title</p>
-                      <p className="text-xs text-muted-foreground mb-2">Use “quotation marks” for exact matches</p>
+                      <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches</p>
                       <Input className="h-10" placeholder="Search" value={jobPostingTitle} onChange={(e)=> setJobPostingTitle(e.target.value)} />
                     </div>
                     <div className="flex flex-col items-start space-y-2">
@@ -955,7 +1234,7 @@ export default function PeopleSearchPage() {
                     </div>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Funding" defaultOpen={false}>
+                <CollapsibleField title="Funding" defaultOpen={sectionOpenDefaults.funding}>
                   <div className="space-y-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Funding Date</p>
@@ -1015,7 +1294,7 @@ export default function PeopleSearchPage() {
                     </div>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Technologies" countBadge={technologies.length} defaultOpen={false}>
+                <CollapsibleField title="Technologies" countBadge={technologies.length} defaultOpen={sectionOpenDefaults.technologies}>
                   <LookupChipsInput 
                     values={technologies}
                     onChange={setTechnologies}
@@ -1023,11 +1302,11 @@ export default function PeopleSearchPage() {
                     fetcher={(q) => lookupFetcher('web_technologies', q)}
                   />
                 </CollapsibleField>
-                <CollapsibleField title="Signals" defaultOpen={false}>
+                <CollapsibleField title="Signals" defaultOpen={sectionOpenDefaults.signals}>
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Simple Event Source</p>
-                      <Select value={simpleEventSource} onValueChange={setSimpleEventSource}>
+                      <Select value={simpleEventSource ?? ""} onValueChange={(v) => setSimpleEventSource(v as FinderSimpleEventSource)}>
                         <SelectTrigger className="h-10"><SelectValue placeholder="Select source" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="product_hunt">Product Hunt</SelectItem>
@@ -1038,13 +1317,20 @@ export default function PeopleSearchPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Simple Event Reason</p>
-                      <Select value={simpleEventReason} onValueChange={setSimpleEventReason}>
+                      <Select value={simpleEventReason ?? ""} onValueChange={(v) => setSimpleEventReason(v as FinderSimpleEventReason)}>
                         <SelectTrigger className="h-10"><SelectValue placeholder="Select reason" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="report_released">Report released</SelectItem>
                           <SelectItem value="promoted_on_site">Promoted on site</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Simple Event Featured Date</p>
+                      <CalendarDateRangePicker 
+                        onRangeChange={(start, end)=> setSimpleEventDateRange({ start, end })}
+                        className="w-full"
+                      />
                     </div>
                   </div>
                 </CollapsibleField>
@@ -1064,7 +1350,7 @@ export default function PeopleSearchPage() {
               <Button 
                 variant="outline" 
                 className="w-1/2 h-10"
-                onClick={()=>{ setQuery(""); setIndustries([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedRange({}); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRangeTouched(false); }}
+                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setPersonHeadline(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedRange({}); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRangeTouched(false); setPersonLinkedinIds([]); setOrgDomains([]); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); }}
               >
                 Clear
               </Button>
@@ -1099,7 +1385,52 @@ export default function PeopleSearchPage() {
           />
           <div className="ml-[120px] mr-16 transition-all duration-300 ease-in-out">
             <div className="flex items-center justify-between">
-              <div></div>
+              <div>
+                <Button
+                  variant="secondary"
+                  className="h-9"
+                  onClick={async () => {
+                    setIsIcpModalOpen(true)
+                    if (!currentSite?.id) return
+                    if (availableIcps.length > 0) return
+                    try {
+                      setIcpListLoading(true)
+                      const supabase = createClient()
+                      // 1) Get segment ids for current site
+                      const { data: segs, error: segErr } = await supabase
+                        .from('segments')
+                        .select('id')
+                        .eq('site_id', currentSite.id)
+                      if (segErr) throw segErr
+                      const segmentIds = (segs || []).map((s: any) => s.id)
+                      if (segmentIds.length === 0) { setAvailableIcps([]); return }
+                      // 2) Get role_query_ids related to those segments
+                      const { data: rqs, error: rqErr } = await supabase
+                        .from('role_query_segments')
+                        .select('role_query_id')
+                        .in('segment_id', segmentIds)
+                      if (rqErr) throw rqErr
+                      const roleQueryIds = Array.from(new Set((rqs || []).map((r: any) => r.role_query_id)))
+                      if (roleQueryIds.length === 0) { setAvailableIcps([]); return }
+                      // 3) List ICPs for those role_query_ids
+                      const { data: icps, error: icpErr } = await supabase
+                        .from('icp_mining')
+                        .select('id, name, status, role_query_id')
+                        .in('role_query_id', roleQueryIds)
+                        .order('created_at', { ascending: false })
+                      if (icpErr) throw icpErr
+                      setAvailableIcps(icps || [])
+                    } catch (e) {
+                      console.error('[People] Load ICP list error:', e)
+                      setAvailableIcps([])
+                    } finally {
+                      setIcpListLoading(false)
+                    }
+                  }}
+                >
+                  Load saved lists
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 <Button variant="secondary" className="h-9" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
                   {`Add ${(totalResults || 0).toLocaleString()} results to leads`}
@@ -1162,6 +1493,9 @@ export default function PeopleSearchPage() {
                       <TableHead style={{ width: `${tableColumnWidths.location}%` }}>Person Location</TableHead>
                       <TableHead className="whitespace-nowrap" style={{ width: `${tableColumnWidths.start}%` }}>Start Date</TableHead>
                       <TableHead className="whitespace-nowrap" style={{ width: `${tableColumnWidths.end}%` }}>End Date</TableHead>
+                      <TableHead className="w-[56px] text-right" style={{ width: `${tableColumnWidths.links}%` }}>
+                        <span className="sr-only">Links</span>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1177,7 +1511,7 @@ export default function PeopleSearchPage() {
                             const isExpanded = !!expandedGroups[group.key]
                             const primary = group.roles[0]
                             return (
-                              <>
+                              <Fragment key={group.key}>
                                 <TableRow 
                                   key={`${group.key}-row`}
                                   className={cn("group hover:bg-muted/50 transition-colors", isExpandable ? 'cursor-pointer' : '')}
@@ -1231,6 +1565,57 @@ export default function PeopleSearchPage() {
                                   </TableCell>
                                   <TableCell className="font-medium whitespace-nowrap">{primary.start ?? "N/A"}</TableCell>
                                   <TableCell className="font-medium whitespace-nowrap">{primary.end ?? (primary.start ? "Present" : "N/A")}</TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end" onClick={(e)=> e.stopPropagation()}>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0"
+                                          >
+                                            <span className="sr-only">Open links</span>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem asChild disabled={!group.personLinkedIn}>
+                                            <a
+                                              href={group.personLinkedIn || '#'}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-2"
+                                            >
+                                              <LinkedInIcon size={16} />
+                                              <span>Person LinkedIn</span>
+                                            </a>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem asChild disabled={!group.companyLinkedIn}>
+                                            <a
+                                              href={group.companyLinkedIn || '#'}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-2"
+                                            >
+                                              <LinkedInIcon size={16} />
+                                              <span>Company LinkedIn</span>
+                                            </a>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem asChild disabled={!(group.companyWebsite || group.companyDomain)}>
+                                            <a
+                                              href={(group.companyWebsite || (group.companyDomain ? `https://${group.companyDomain}` : '#'))}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-2"
+                                            >
+                                              <Globe className="h-4 w-4" />
+                                              <span>Company Website</span>
+                                            </a>
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+                                  </TableCell>
                                 </TableRow>
 
                                 {isExpandable && isExpanded && group.roles.slice(1).map((role: any) => (
@@ -1257,9 +1642,10 @@ export default function PeopleSearchPage() {
                                     </TableCell>
                                     <TableCell className="font-medium whitespace-nowrap">{role.start ?? "N/A"}</TableCell>
                                     <TableCell className="font-medium whitespace-nowrap">{role.end ?? (role.start ? "Present" : "N/A")}</TableCell>
+                                    <TableCell></TableCell>
                                   </TableRow>
                                 ))}
-                              </>
+                              </Fragment>
                             )
                           })}
                   </TableBody>
@@ -1275,7 +1661,44 @@ export default function PeopleSearchPage() {
                             ) : 'No results'}
                     </p>
                   </div>
-                        <Pagination currentPage={currentPage} totalPages={Math.max(1, Math.ceil((totalResults || 0) / (itemsPerPage || DEFAULT_PAGE_SIZE)))} onPageChange={onPageChange} disabled={loading} />
+                        <div className="flex items-center gap-3">
+                          <Pagination currentPage={currentPage} totalPages={Math.max(1, Math.ceil((totalResults || 0) / (itemsPerPage || DEFAULT_PAGE_SIZE)))} onPageChange={onPageChange} disabled={loading} />
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={Math.max(1, Math.ceil((totalResults || 0) / (itemsPerPage || DEFAULT_PAGE_SIZE)))}
+                              placeholder="Go to"
+                              className="h-8 w-[88px]"
+                              value={pageJump}
+                              onChange={(e) => setPageJump(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const value = Number(pageJump)
+                                  const maxPages = Math.max(1, Math.ceil((totalResults || 0) / (itemsPerPage || DEFAULT_PAGE_SIZE)))
+                                  const next = Math.min(Math.max(1, isNaN(value) ? 1 : value), maxPages)
+                                  onPageChange(next)
+                                  setPageJump('')
+                                }
+                              }}
+                              aria-label="Go to page"
+                            />
+                            <Button
+                              variant="outline"
+                              className="h-8"
+                              onClick={() => {
+                                const value = Number(pageJump)
+                                const maxPages = Math.max(1, Math.ceil((totalResults || 0) / (itemsPerPage || DEFAULT_PAGE_SIZE)))
+                                const next = Math.min(Math.max(1, isNaN(value) ? 1 : value), maxPages)
+                                onPageChange(next)
+                                setPageJump('')
+                              }}
+                            >
+                              Go
+                            </Button>
+                          </div>
+                        </div>
                 </div>
                     </>
                   )}
@@ -1285,6 +1708,183 @@ export default function PeopleSearchPage() {
           </div>
         </div>
       </div>
+      {/* Segment selection modal */}
+      <Dialog open={isSegmentModalOpen} onOpenChange={setIsSegmentModalOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Select segment</DialogTitle>
+            <DialogDescription>Choose a segment to associate with the new leads query.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Segment</p>
+            <Select value={selectedSegmentId} onValueChange={(v) => setSelectedSegmentId(v)}>
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder={segmentsLoading ? 'Loading segments…' : 'Select segment'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No segment</SelectItem>
+                {availableSegments.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="pt-2">
+              <p className="text-xs text-muted-foreground mb-1">ICP name</p>
+              <Input
+                placeholder="e.g. SaaS US - Heads of Growth"
+                value={icpName}
+                onChange={(e) => setIcpName(e.target.value)}
+                className="h-10"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSegmentModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleConfirmAddToLeads} disabled={addingToLeads || segmentsLoading}>
+              {addingToLeads ? 'Adding…' : 'Add to leads'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ICP selection modal */}
+      <Dialog open={isIcpModalOpen} onOpenChange={setIsIcpModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Load saved lists</DialogTitle>
+            <DialogDescription>Select a saved list to load its query.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Saved list</p>
+            <Select value={selectedIcpId} onValueChange={(v) => setSelectedIcpId(v)}>
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder={icpListLoading ? 'Loading lists…' : 'Select saved list'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Select saved list</SelectItem>
+                {availableIcps.map((i) => (
+                  <SelectItem key={i.id} value={i.id}>
+                    {(i.name && i.name.trim()) ? i.name : `List ${i.id.slice(0,8)}…`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsIcpModalOpen(false)}>Cancel</Button>
+            <Button
+              disabled={icpListLoading || selectedIcpId === 'none'}
+              onClick={async () => {
+                try {
+                  if (selectedIcpId === 'none') return
+                  const icp = availableIcps.find(x => x.id === selectedIcpId)
+                  if (!icp) return
+                  const res = await apiClient.get(`/api/finder/icp?icp_id=${encodeURIComponent(selectedIcpId)}&site_id=${encodeURIComponent(currentSite!.id)}`)
+                  if (!res.success) {
+                    throw new Error(res.error?.message || 'Failed to load saved list')
+                  }
+                  const q = (res.data as any)?.role_query?.query || {}
+                  // Apply basic fields to UI
+                  const parseDate = (s?: string) => (s ? new Date(s) : undefined)
+                  const toLookupFromIds = (arr?: any[]) => (Array.isArray(arr) ? arr.map((id: any) => ({ id: (typeof id === 'string' ? Number(id) : id), text: `ID ${id}` })) : [])
+                  setJobTitle(q.role_title || '')
+                  setQuery(q.role_description || '')
+                  setIsCurrentRole(Boolean(q.role_is_current))
+                  setRoleDateRange({ start: parseDate(q.role_position_start_date), end: parseDate(q.role_position_end_date) })
+                  setPersonName(q.person_name || '')
+                  setPersonHeadline(q.person_headline || '')
+                  // Clear complex chip-based filters; user can refine as needed
+                  setSkills([])
+                  // Person locations from IDs
+                  setLocations(toLookupFromIds(q.person_locations))
+                  setIndustries([])
+                  setPersonIndustriesExclude([])
+                  setCompanies([])
+                  setKeywords([])
+                  setOrgDomains([])
+                  setOrgLinkedinIds([])
+                  // Organization locations from IDs
+                  setOrgLocations(toLookupFromIds(q.organization_locations))
+                  setOrgIndustries([])
+                  setOrgIndustriesExclude([])
+                  // Job posting locations from IDs
+                  setJobLocations(toLookupFromIds(q.job_post_locations))
+                  setJobLocationsExclude(toLookupFromIds(q.job_post_locations_exclude))
+                  setIncludeRemote(Boolean(q.job_post_is_remote))
+                  setIsJobActive(Boolean(q.job_post_is_active))
+                  setJobPostingTitle(q.job_post_title || '')
+                  setJobPostingDescription(q.job_post_description || '')
+                  setJobFeaturedRange({ start: parseDate(q.job_post_date_featured_start), end: parseDate(q.job_post_date_featured_end) })
+                  setFundingDateRange({ start: parseDate(q.funding_event_date_featured_start), end: parseDate(q.funding_event_date_featured_end) })
+                  if (typeof q.funding_total_start === 'number' && typeof q.funding_total_end === 'number') {
+                    setFundingRange([q.funding_total_start, q.funding_total_end])
+                    setFundingRangeTouched(true)
+                  } else {
+                    setFundingRange([50000, 50000])
+                    setFundingRangeTouched(false)
+                  }
+                  // Company size (employees)
+                  if (typeof q.organization_employees_start === 'number') {
+                    setEmployeeFrom(q.organization_employees_start)
+                  }
+                  if (typeof q.organization_employees_end === 'number') {
+                    setEmployeeTo(q.organization_employees_end)
+                  }
+                  setSimpleEventSource(q.simple_event_source ?? null)
+                  setSimpleEventReason(q.simple_event_reason ?? null)
+                  setSimpleEventDateRange({ start: parseDate(q.simple_event_date_featured_start), end: parseDate(q.simple_event_date_featured_end) })
+                  // Decide which cards to open by default based on loaded query
+                  const openDefaults = {
+                    name: Boolean(q.person_name || q.person_headline || (q.person_linkedin_public_identifiers && q.person_linkedin_public_identifiers.length > 0)),
+                    jobTitle: Boolean(q.role_title || q.role_description || q.role_position_start_date || q.role_position_end_date || q.role_is_current),
+                    personIndustry: Boolean((q.person_industries && q.person_industries.length) || (q.person_industries_exclude && q.person_industries_exclude.length)),
+                    personLocation: Boolean(q.person_locations && q.person_locations.length),
+                    skills: Boolean(q.person_skills && q.person_skills.length),
+                    personLinkedin: Boolean(q.person_linkedin_public_identifiers && q.person_linkedin_public_identifiers.length),
+                    company: Boolean(q.organizations || q.organization_description || q.organization_linkedin_public_identifiers),
+                    domains: Boolean((q.organization_domains && q.organization_domains.length) || q.organizations_bulk_domain),
+                    compLocInd: Boolean((q.organization_locations && q.organization_locations.length) || (q.organization_industries && q.organization_industries.length) || (q.organization_industries_exclude && q.organization_industries_exclude.length) || (q.organization_keywords && q.organization_keywords.length)),
+                    sizeFounded: Boolean(q.organization_employees_start || q.organization_employees_end || q.organization_revenue_start || q.organization_revenue_end || q.organization_founded_date_start || q.organization_founded_date_end),
+                    foundedDate: Boolean(q.organization_founded_date_start || q.organization_founded_date_end),
+                    companyLinkedin: Boolean(q.organization_linkedin_public_identifiers && q.organization_linkedin_public_identifiers.length),
+                    jobPostings: Boolean(q.job_post_title || q.job_post_description || q.job_post_is_remote || q.job_post_is_active || q.job_post_date_featured_start || q.job_post_date_featured_end || (q.job_post_locations && q.job_post_locations.length) || (q.job_post_locations_exclude && q.job_post_locations_exclude.length)),
+                    funding: Boolean(q.funding_types || typeof q.funding_total_start === 'number' || typeof q.funding_total_end === 'number' || q.funding_event_date_featured_start || q.funding_event_date_featured_end),
+                    technologies: Boolean(q.organization_web_technologies && q.organization_web_technologies.length),
+                    signals: Boolean(q.simple_event_source || q.simple_event_reason || q.simple_event_date_featured_start || q.simple_event_date_featured_end),
+                  }
+                  setSectionOpenDefaults(openDefaults)
+                  setCollapsibleVersion(v => v + 1)
+                  setIsIcpModalOpen(false)
+                  toast.success('Saved list loaded')
+                  // Trigger search with the loaded setup (build payload directly from q to avoid async state race)
+                  setCurrentPage(1)
+                  const payloadFromQ: FinderRequest = {
+                    page: 0,
+                    role_title: q.role_title || undefined,
+                    role_description: q.role_description || undefined,
+                    role_is_current: q.role_is_current,
+                    role_position_start_date: q.role_position_start_date,
+                    role_position_end_date: q.role_position_end_date,
+                    person_name: q.person_name || undefined,
+                    person_headline: q.person_headline || undefined,
+                    person_locations: Array.isArray(q.person_locations) ? q.person_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
+                    organization_locations: Array.isArray(q.organization_locations) ? q.organization_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
+                    organization_employees_start: typeof q.organization_employees_start === 'number' ? q.organization_employees_start : undefined,
+                    organization_employees_end: typeof q.organization_employees_end === 'number' ? q.organization_employees_end : undefined,
+                    job_post_locations: Array.isArray(q.job_post_locations) ? q.job_post_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
+                    job_post_locations_exclude: Array.isArray(q.job_post_locations_exclude) ? q.job_post_locations_exclude.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
+                  }
+                  await executeSearch(payloadFromQ)
+                } catch (e) {
+                  console.error('[People] Load saved list error:', e)
+                  toast.error('Failed to load saved list')
+                }
+              }}
+            >
+              Load
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

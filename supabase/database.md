@@ -1939,6 +1939,7 @@ You can subscribe an endpoint to any of these. Deliveries are recorded in `webho
 
 - icp_mining (system)
   - id (uuid, pk)
+  - name (text)
   - role_query_id (uuid → role_queries.id on delete cascade)
   - icp_criteria (jsonb, required)
   - icp_hash (text, generated: sha256 of icp_criteria::text)
@@ -1974,6 +1975,8 @@ $$;
 -- Table: icp_mining
 create table if not exists public.icp_mining (
   id uuid primary key default gen_random_uuid(),
+
+  name text,
 
   role_query_id uuid not null
     references public.role_queries(id)

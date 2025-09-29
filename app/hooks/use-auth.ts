@@ -66,12 +66,12 @@ const identifyUserInChat = async (user: User | null, supabaseClient: any, retryC
         phone: user.user_metadata?.phone || ''
       }
 
-      console.log('[MarketFit Chat] Identifying user:', userData.email)
+      
       
       // Llamar a la función identify del chat
       await window.MarketFit.chat.identify(userData)
       
-      console.log('[MarketFit Chat] User identified successfully')
+      
     } else {
       // Si MarketFit no está disponible aún, esperar un poco y reintentar
       if (retryCount < maxRetries) {
@@ -79,7 +79,7 @@ const identifyUserInChat = async (user: User | null, supabaseClient: any, retryC
           identifyUserInChat(user, supabaseClient, retryCount + 1)
         }, 1000)
       } else {
-        console.warn('[MarketFit Chat] Failed to identify user after maximum retries - MarketFit may not be loaded')
+        
       }
     }
   } catch (error) {
@@ -104,7 +104,7 @@ export function useAuth() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('[Auth Debug] Checking initial auth state...')
+        
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
@@ -113,8 +113,7 @@ export function useAuth() {
           return
         }
         
-        console.log('[Auth Debug] Session state:', session ? 'Active' : 'No session', 
-                   session?.user?.id ? `User ID: ${session.user.id.substring(0, 8)}...` : '')
+        
         
         setUser(session?.user ?? null)
         
@@ -127,7 +126,7 @@ export function useAuth() {
         if (session?.user && typeof window !== 'undefined' && window.location.pathname.startsWith('/auth')) {
           const url = new URL(window.location.href)
           const returnTo = url.searchParams.get('returnTo') || '/projects'
-          console.log('[Auth Debug] Initial redirect to:', returnTo)
+          
           router.push(returnTo)
         }
       } catch (error) {
@@ -143,8 +142,7 @@ export function useAuth() {
     // Suscribirse a cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
-        console.log('[Auth Debug] Auth state changed:', event, 
-                   session?.user?.id ? `User ID: ${session.user.id.substring(0, 8)}...` : 'No user')
+        
         
         // Actualizar el usuario en el estado
         setUser(session?.user ?? null)
@@ -153,7 +151,6 @@ export function useAuth() {
         if (typeof window === 'undefined') return;
         
         const currentPath = window.location.pathname
-        console.log('[Auth Debug] Current path:', currentPath)
         
         // Manejar eventos específicos de autenticación
         if (event === 'SIGNED_IN') {
@@ -165,7 +162,7 @@ export function useAuth() {
             // Obtener el returnTo desde la URL
             const url = new URL(window.location.href)
             const returnTo = url.searchParams.get('returnTo') || '/projects'
-            console.log('[Auth Debug] User signed in, redirecting to:', returnTo)
+            
             
             // Redirigir inmediatamente
             router.push(returnTo)
@@ -174,15 +171,15 @@ export function useAuth() {
           // Solo redirigir a auth si no estamos ya en páginas de auth o api
           // Y evitar redirecciones cuando estamos en confirmación
           if (!currentPath.startsWith('/auth') && !currentPath.startsWith('/api') && currentPath !== '/') {
-            console.log('[Auth Debug] User signed out, redirecting to auth page')
+            
             router.push('/auth')
           }
         } else if (event === 'TOKEN_REFRESHED') {
           // Actualizar la sesión sin redirección
-          console.log('[Auth Debug] Token refreshed, updating session')
+          
         } else if (event === 'USER_UPDATED') {
           // El perfil del usuario fue actualizado, actualizar la sesión
-          console.log('[Auth Debug] User updated, refreshing session')
+          
           const { data } = await supabase.auth.getSession()
           setUser(data.session?.user ?? null)
         }
@@ -190,14 +187,14 @@ export function useAuth() {
     )
 
     return () => {
-      console.log('[Auth Debug] Unsubscribing from auth changes')
+      
       subscription.unsubscribe()
     }
   }, [router, supabase])
 
   // Función para iniciar sesión con email/password
   const signInWithEmail = useCallback(async (email: string, password: string) => {
-    console.log('[Auth Debug] Attempting to sign in with email')
+    
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -207,16 +204,16 @@ export function useAuth() {
       console.error('[Auth Debug] Sign in error:', error.message)
       throw error
     }
-    console.log('[Auth Debug] Sign in successful')
+    
   }, [supabase])
 
   // Función para iniciar sesión con OAuth
   const signInWithOAuth = useCallback(async (provider: Provider) => {
-    console.log('[Auth Debug] Attempting to sign in with OAuth provider:', provider)
+    
     
     try {
       // Clear any existing auth state to prevent PKCE conflicts
-      console.log('🧹 Clearing auth state before OAuth to prevent PKCE conflicts')
+      
       await supabase.auth.signOut({ scope: 'local' })
       
       // Small delay to ensure state is cleared
@@ -245,7 +242,7 @@ export function useAuth() {
         }
       }
       
-      console.log('🔄 Starting OAuth flow with clean state, redirectTo:', options.redirectTo)
+      
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -257,7 +254,7 @@ export function useAuth() {
         throw error
       }
       
-      console.log('✅ OAuth initiated successfully')
+      
     } catch (error: any) {
       console.error('[Auth Debug] OAuth error:', error)
       throw error
@@ -266,7 +263,7 @@ export function useAuth() {
 
   // Función para registrar usuario con email/password
   const signUpWithEmail = useCallback(async (email: string, password: string) => {
-    console.log('[Auth Debug] Attempting to sign up with email')
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -279,12 +276,12 @@ export function useAuth() {
       console.error('[Auth Debug] Sign up error:', error.message)
       throw error
     }
-    console.log('[Auth Debug] Sign up successful, confirmation email may have been sent')
+    
   }, [supabase])
 
   // Función para cerrar sesión
   const signOut = useCallback(async () => {
-    console.log('[Auth Debug] Attempting to sign out')
+    
     try {
       // Primero intentamos cerrar sesión en Supabase
       const { error } = await supabase.auth.signOut()
@@ -306,7 +303,7 @@ export function useAuth() {
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/;`
       })
       
-      console.log('[Auth Debug] Sign out successful, redirecting to logout endpoint')
+      
       // Luego redirigimos a la ruta de logout para limpiar cookies del servidor
       window.location.href = '/api/auth/logout'
     } catch (error) {

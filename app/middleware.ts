@@ -81,6 +81,23 @@ function isStaticOrResourceFile(pathname: string): boolean {
          /\.[a-z0-9]+$/i.test(pathname) // Cualquier archivo con extensión
 }
 
+// Detect if request is for API or expects JSON
+function isApiLikeRequest(request: NextRequest): boolean {
+  const pathname = request.nextUrl.pathname
+  const accept = request.headers.get('accept') || ''
+  const requestedWith = request.headers.get('x-requested-with') || ''
+  return pathname.startsWith('/api') || accept.includes('application/json') || requestedWith === 'XMLHttpRequest'
+}
+
+// Create a standard 403 Forbidden response with proper headers
+function forbiddenResponse(): NextResponse {
+  const response = new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+    status: 403,
+    headers: { 'content-type': 'application/json' }
+  })
+  return getCorsHeaders(response)
+}
+
 // Rutas que deben ser excluidas del middleware completamente
 const EXCLUDED_PATHS = [
   '/api/auth/logout'
@@ -102,7 +119,7 @@ export async function middleware(request: NextRequest) {
   
   // Block suspicious requests immediately
   if (isSuspiciousRequest(pathname)) {
-    console.log('Middleware: Blocked suspicious request:', pathname)
+    // Avoid logging as error to keep console clean
     return new NextResponse(null, { status: 404 })
   }
   
@@ -163,7 +180,11 @@ export async function middleware(request: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
-      // Si no hay sesión, redirigir a login
+      // API-like requests get 403 to avoid client-side errors
+      if (isApiLikeRequest(request)) {
+        return forbiddenResponse()
+      }
+      // Si no hay sesión en rutas de páginas, redirigir a login
       const url = request.nextUrl.clone()
       url.pathname = '/auth'
       url.search = `?returnTo=${encodeURIComponent(pathname)}`
@@ -173,15 +194,14 @@ export async function middleware(request: NextRequest) {
     // Usuario autenticado: permitir acceso
     return res
   } catch (error) {
-    console.error('[Middleware] Error:', error)
-    
-    const res = getCorsHeaders(NextResponse.next());
-    
-    // En caso de error, redirigir a login
+    // Avoid console.error noise; respond appropriately
+    if (isApiLikeRequest(request)) {
+      return forbiddenResponse()
+    }
+    // En caso de error en rutas de páginas, redirigir a login
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
     url.search = `?returnTo=${encodeURIComponent(pathname)}`
-    
     return NextResponse.redirect(url)
   }
 }

@@ -721,7 +721,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         } else if (event === 'TOKEN_REFRESHED') {
           // Token refresh happens automatically when window regains focus
           // Don't reload sites to prevent interrupting user work on settings page
-          console.log('Token refreshed - no action needed, prevention in place')
+          
           // Update session validity without reloading sites
           setHasValidSession(!!session)
         }

@@ -210,7 +210,6 @@ export function Sidebar({
   isCollapsed, 
   onCollapse 
 }: SidebarProps) {
-  const SHOW_FIND_PEOPLE = process.env.NEXT_PUBLIC_SHOW_FINDER === 'true'
   const pathname = usePathname()
   const router = useRouter()
   const { user, isLoading } = useAuth()
@@ -511,9 +510,7 @@ export function Sidebar({
               "flex flex-col space-y-1",
               isCollapsed ? "px-[14px]" : "px-3"
             )}>
-            {humanInTheLoopItems
-              .filter(item => item.title !== "Find People" || SHOW_FIND_PEOPLE)
-              .map((item) => (
+            {humanInTheLoopItems.map((item) => (
                 <MenuItem
                   key={item.href}
                   href={item.href}
