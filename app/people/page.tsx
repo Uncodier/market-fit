@@ -646,6 +646,17 @@ export default function PeopleSearchPage() {
   const toYmd = (d?: Date) => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : undefined
 
   // build payload for server (page is 0-based)
+  // Utility function to wrap multi-word inputs in quotes for API compatibility
+  const wrapInQuotesIfNeeded = (value: string | undefined): string | undefined => {
+    if (!value || value.trim() === '') return value
+    const trimmed = value.trim()
+    // If it contains spaces and is not already wrapped in quotes, wrap it
+    if (trimmed.includes(' ') && !trimmed.startsWith('"') && !trimmed.endsWith('"')) {
+      return `"${trimmed}"`
+    }
+    return trimmed
+  }
+
   const buildFinderPayload = (pageOneBased: number): FinderRequest => {
     const roleStart = toYmd(roleDateRange.start)
     const roleEnd = toYmd(roleDateRange.end)
@@ -661,14 +672,14 @@ export default function PeopleSearchPage() {
 
     const payload: FinderRequest = {
       page: Math.max(0, pageOneBased - 1),
-      role_title: jobTitle || undefined,
-      role_description: query || undefined,
+      role_title: wrapInQuotesIfNeeded(jobTitle) || undefined,
+      role_description: wrapInQuotesIfNeeded(query) || undefined,
       role_is_current: isCurrentRole,
       role_position_start_date: roleStart,
       role_position_end_date: roleEnd,
 
-      person_name: personName || undefined,
-      person_headline: personHeadline || undefined,
+      person_name: wrapInQuotesIfNeeded(personName) || undefined,
+      person_headline: wrapInQuotesIfNeeded(personHeadline) || undefined,
       person_locations: (() => {
         const ids = locations
           .map(l => (typeof l.id === 'string' ? Number(l.id) : l.id))
@@ -715,8 +726,8 @@ export default function PeopleSearchPage() {
         const all = Array.from(new Set([...(companyDomains || []), ...(orgDomains || [])]))
         return all.length ? all : undefined
       })(),
-      organizations_bulk_domain: orgBulkDomain?.trim() ? orgBulkDomain.trim() : undefined,
-      organization_description: orgDescription?.trim() ? orgDescription.trim() : undefined,
+      organizations_bulk_domain: wrapInQuotesIfNeeded(orgBulkDomain) || undefined,
+      organization_description: wrapInQuotesIfNeeded(orgDescription) || undefined,
       organization_locations: (() => {
         const ids = orgLocations
           .map(l => (typeof l.id === 'string' ? Number(l.id) : l.id))
@@ -764,8 +775,8 @@ export default function PeopleSearchPage() {
       funding_event_date_featured_start: fundStart,
       funding_event_date_featured_end: fundEnd,
 
-      job_post_title: jobPostingTitle || undefined,
-      job_post_description: jobPostingDescription || undefined,
+      job_post_title: wrapInQuotesIfNeeded(jobPostingTitle) || undefined,
+      job_post_description: wrapInQuotesIfNeeded(jobPostingDescription) || undefined,
       job_post_is_remote: includeRemote || undefined,
       job_post_is_active: isJobActive || undefined,
       job_post_date_featured_start: jobStart,
