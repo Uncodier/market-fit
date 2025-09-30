@@ -167,10 +167,6 @@ export function GridAgentRow({
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <Avatar className="h-10 w-10 ring-1 ring-border shadow-sm">
-            <AvatarImage 
-              src={`/avatars/agent-${agent.id}.png`} 
-              alt={`${displayName}'s avatar`} 
-            />
             <AvatarFallback className="bg-primary/5">
               {displayName.length >= 2 
                 ? displayName.substring(0, 2).toUpperCase()

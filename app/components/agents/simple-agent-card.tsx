@@ -132,10 +132,6 @@ export function SimpleAgentCard({
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start space-x-3 min-w-0">
               <Avatar className="h-10 w-10 ring-2 ring-background flex-none">
-                <AvatarImage 
-                  src={`/avatars/agent-${agent.id}.png`} 
-                  alt={`${displayName}'s avatar`} 
-                />
                 <AvatarFallback className="bg-primary/10">
                   {displayName.length >= 2 
                     ? displayName.substring(0, 2).toUpperCase()
