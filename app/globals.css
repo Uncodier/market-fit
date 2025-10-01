@@ -983,6 +983,44 @@ html.safari [class*="select-trigger"] svg {
     .chat-input-container [role="tab"] svg { margin: 0 auto; }
     .chat-input-container button svg { margin: 0 auto; }
   }
+}
+
+/* Safari backdrop blur fix - Simple !important override */
+html.safari .backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+html.safari .backdrop-blur {
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+html.safari .backdrop-blur-md {
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+html.safari .backdrop-blur-lg {
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+html.safari .backdrop-blur-xl {
+  -webkit-backdrop-filter: blur(24px) !important;
+}
+
+html.safari .backdrop-blur-2xl {
+  -webkit-backdrop-filter: blur(40px) !important;
+}
+
+html.safari .backdrop-blur-3xl {
+  -webkit-backdrop-filter: blur(64px) !important;
+}
+
+html.safari .backdrop-blur-\[5px\] {
+  -webkit-backdrop-filter: blur(5px) !important;
+}
+
+/* Universal Safari backdrop blur fix */
+html.safari [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: blur(8px) !important;
 } 
 .-top-1 { top: -0.75rem; } 
 

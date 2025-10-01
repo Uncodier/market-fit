@@ -19,6 +19,7 @@ import { DelayTimer } from "./DelayTimer"
 import { EditMessageModal } from "./EditMessageModal"
 import { formatEmailForChat, isMimeMultipartMessage } from "@/app/utils/email-formatter"
 import { extractCleanText } from "@/app/utils/text-cleaning"
+import { EmailViewer } from "@/app/components/email/EmailViewer"
 import { useSite } from "@/app/context/SiteContext"
 import { useRef } from "react"
 import { getConversationMessages } from "../../services/getConversationMessages.client"
@@ -69,6 +70,12 @@ const removeAllHtmlTags = (text: string): string => {
   return cleaned
 }
 
+// Helper function to check if content is an email
+const isEmailContent = (text: string): boolean => {
+  // Only detect as email if it's clearly a MIME multipart message
+  return isMimeMultipartMessage(text)
+}
+
 // Helper function to format message content
 const formatMessageContent = (text: string, metadata?: any): string => {
   console.log('🔍 [formatMessageContent] RAW MESSAGE:', text)
@@ -76,31 +83,21 @@ const formatMessageContent = (text: string, metadata?: any): string => {
   console.log('🔍 [formatMessageContent] Text type:', typeof text)
   console.log('🔍 [formatMessageContent] Text length:', text?.length)
   
-  // Check if text contains < character
-  const hasAngleBracket = text && text.includes('<')
-  console.log('🔍 [formatMessageContent] Has < character?', hasAngleBracket)
-  
-  // Check regex test result
-  const regexTest = text && /<[^>]+>/.test(text)
-  console.log('🔍 [formatMessageContent] Regex test result:', regexTest)
-  
-  // Only format if it's clearly a MIME multipart email
-  if (isMimeMultipartMessage(text)) {
-    console.log('✅ [formatMessageContent] Processing MIME email...')
-    const formatted = formatEmailForChat(text, 'clean')
-    console.log('✅ [formatMessageContent] Formatted result:', formatted.substring(0, 100) + '...')
-    return formatted
+  // If it's an email, return a special marker that we'll handle in the render
+  if (isEmailContent(text)) {
+    console.log('✅ [formatMessageContent] Email content detected')
+    return 'email-content-token'
   }
   
-  // FORCE HTML CLEANING FOR DEBUG - removing condition temporarily
-  if (text && text.includes('<')) {
-    console.log('🧽 [formatMessageContent] FORCING HTML cleanup for debug...')
+  // Only clean HTML if it's clearly HTML content (not markdown)
+  if (text && text.includes('<') && /<[^>]+>/.test(text) && !text.includes('**') && !text.includes('##')) {
+    console.log('🧽 [formatMessageContent] HTML cleanup for HTML content...')
     const cleaned = removeAllHtmlTags(text)
     console.log('✨ [formatMessageContent] Cleaned HTML result:', cleaned.substring(0, 100) + '...')
     return cleaned
   }
   
-  console.log('⚠️ [formatMessageContent] No HTML detected, returning original text')
+  console.log('⚠️ [formatMessageContent] Returning original text for markdown/plain text')
   return text
 };
 
@@ -109,6 +106,25 @@ const isSameDay = (date1: Date, date2: Date) => {
   return date1.getFullYear() === date2.getFullYear() &&
     date1.getMonth() === date2.getMonth() &&
     date1.getDate() === date2.getDate();
+};
+
+// Helper function to render message content with email detection
+const renderMessageContent = (msg: ChatMessage, markdownComponents: any) => {
+  const formattedContent = formatMessageContent(msg.text, msg.metadata);
+  console.log('🔍 [renderMessageContent] Message text length:', msg.text?.length);
+  console.log('🔍 [renderMessageContent] Formatted content:', formattedContent);
+  console.log('🔍 [renderMessageContent] Is email content?', formattedContent === 'email-content-token');
+  
+  return formattedContent === 'email-content-token' ? (
+    <EmailViewer 
+      emailContent={msg.text}
+      className="w-full"
+    />
+  ) : (
+    <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+      <ReactMarkdown components={markdownComponents}>{formattedContent}</ReactMarkdown>
+    </div>
+  );
 };
 
 interface ChatMessagesProps {
@@ -712,9 +728,7 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
-                            </div>
+                            {renderMessageContent(msg, markdownComponents)}
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
@@ -822,9 +836,7 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
-                            </div>
+                            {renderMessageContent(msg, markdownComponents)}
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
@@ -943,9 +955,7 @@ export function ChatMessages({
                             </span>
                           </div>
                           <div className="ml-9">
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
-                            </div>
+                            {renderMessageContent(msg, markdownComponents)}
                             
                             {/* Debug the command_id */}
                             {msg.command_id && (
@@ -995,9 +1005,7 @@ export function ChatMessages({
                               filter: 'none' 
                             }}
                           >
-                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                              <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
-                            </div>
+                            {renderMessageContent(msg, markdownComponents)}
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
@@ -1092,9 +1100,7 @@ export function ChatMessages({
                             filter: 'none' 
                           }}
                         >
-                          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                            <ReactMarkdown components={markdownComponents}>{formatMessageContent(msg.text, msg.metadata)}</ReactMarkdown>
-                          </div>
+                          {renderMessageContent(msg, markdownComponents)}
                           <div className="flex items-center justify-between mt-1.5">
                             <div className="flex items-center gap-2">
                               {msg.metadata?.status === "pending" && (
