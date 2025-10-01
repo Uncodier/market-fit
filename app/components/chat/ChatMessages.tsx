@@ -1,6 +1,6 @@
 "use client"
 
-import React, { RefObject, useState, useEffect } from "react"
+import React, { RefObject, useState, useEffect, useMemo } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Badge } from "@/app/components/ui/badge"
 import Link from "next/link"
@@ -479,6 +479,22 @@ export function ChatMessages({
     || (user?.user_metadata?.picture as string | undefined)
     || (user?.identities?.[0]?.identity_data as any)?.avatar_url
   
+  // Pre-process messages to determine user types before rendering
+  const processedMessages = useMemo(() => {
+    if (!chatMessages.length) return []
+    
+    return chatMessages.map((msg) => {
+      const isCurrentUserMessage = (msg.sender_id === currentUserId) || 
+        (msg.role === "user") ||
+        (msg.sender_name && msg.sender_name.includes(currentUserName || ""))
+      
+      return {
+        ...msg,
+        isCurrentUserMessage
+      }
+    })
+  }, [chatMessages, currentUserId, currentUserName])
+  
   // State for edit message modal
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null)
@@ -674,13 +690,11 @@ export function ChatMessages({
                 agentName={agentName}
               />
             ) : (
-              chatMessages.map((msg, index) => {
-
-
+              processedMessages.map((msg, index) => {
                 // Check if we need to show a date separator
                 const showDateSeparator = index > 0 && 
                   !isSameDay(
-                    new Date(chatMessages[index-1].timestamp), 
+                    new Date(processedMessages[index-1].timestamp), 
                     new Date(msg.timestamp)
                   );
                 
@@ -695,22 +709,22 @@ export function ChatMessages({
                     )}
                     <div
                       className={`flex ${
-                        msg.role === "team_member" 
-                        ? (isAgentOnlyConversation ? "justify-end" : "justify-start")
-                        : (msg.role === "user" || msg.role === "visitor") ? "justify-end" : "justify-start"
+                        msg.isCurrentUserMessage 
+                        ? "justify-end" 
+                        : "justify-start"
                       } animate-slide-in-fade`}
                     >
-                      {msg.role === "team_member" && !isAgentOnlyConversation ? (
+                      {!msg.isCurrentUserMessage && msg.role === "team_member" && !isAgentOnlyConversation ? (
                         <div className="flex flex-col max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : undefined) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : currentUserAvatar) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
-                                backgroundColor: (hasAssignee ? leadData.assignee.id : msg.sender_id)
-                                  ? `hsl(${parseInt((hasAssignee ? leadData.assignee.id : msg.sender_id).replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                backgroundColor: (hasAssignee ? leadData.assignee.id : (msg.sender_id || currentUserId))
+                                  ? `hsl(${parseInt((hasAssignee ? leadData.assignee.id : (msg.sender_id || currentUserId)).replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {(hasAssignee ? leadData.assignee.name : msg.sender_name) ? (hasAssignee ? leadData.assignee.name : msg.sender_name).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {(hasAssignee ? leadData.assignee.name : (msg.sender_name || currentUserName)) ? (hasAssignee ? leadData.assignee.name : (msg.sender_name || currentUserName)).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
@@ -808,17 +822,17 @@ export function ChatMessages({
                             </div>
                           </div>
                         </div>
-                      ) : msg.role === "team_member" && isAgentOnlyConversation ? (
+                      ) : !msg.isCurrentUserMessage && msg.role === "team_member" && isAgentOnlyConversation ? (
                         <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : undefined) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : currentUserAvatar) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
-                                backgroundColor: (hasAssignee ? leadData.assignee.id : msg.sender_id)
-                                  ? `hsl(${parseInt((hasAssignee ? leadData.assignee.id : msg.sender_id).replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                backgroundColor: (hasAssignee ? leadData.assignee.id : (msg.sender_id || currentUserId))
+                                  ? `hsl(${parseInt((hasAssignee ? leadData.assignee.id : (msg.sender_id || currentUserId)).replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {(hasAssignee ? leadData.assignee.name : msg.sender_name) ? (hasAssignee ? leadData.assignee.name : msg.sender_name).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {(hasAssignee ? leadData.assignee.name : (msg.sender_name || currentUserName)) ? (hasAssignee ? leadData.assignee.name : (msg.sender_name || currentUserName)).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
@@ -916,7 +930,7 @@ export function ChatMessages({
                             </div>
                           </div>
                         </div>
-                      ) : (msg.role === "agent" || msg.role === "assistant") ? (
+                      ) : !msg.isCurrentUserMessage && (msg.role === "agent" || msg.role === "assistant") ? (
                         <div className="max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <div className="relative">
@@ -981,7 +995,111 @@ export function ChatMessages({
                             )}
                           </div>
                         </div>
-                      ) : (msg.role === "user" || msg.role === "visitor") ? (
+                      ) : msg.isCurrentUserMessage ? (
+                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
+                          <div className="flex items-center mb-1 gap-2 flex-row-reverse">
+                            <Avatar className="h-7 w-7 border border-primary/20">
+                              <AvatarImage src={currentUserAvatar || undefined} alt={currentUserName || "You"} />
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {currentUserName ? currentUserName.split(' ').map((n: string) => n[0]).join('').substring(0, 2) : "Y"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-primary">{currentUserName || "You"}</span>
+                          </div>
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
+                            msg.metadata?.status === "pending" ? "opacity-60" : ""
+                          }`}
+                            style={{ 
+                              backgroundColor: msg.metadata?.status === "pending" 
+                                ? (isDarkMode ? '#2a2a3a' : '#f8f8f8')
+                                : (isDarkMode ? '#2d2d3d' : '#f0f0f5'),
+                              border: 'none', 
+                              boxShadow: 'none', 
+                              outline: 'none',
+                              filter: 'none' 
+                            }}
+                          >
+                            {renderMessageContent(msg, markdownComponents)}
+                            <div className="flex items-center justify-between mt-1.5">
+                              <div className="flex items-center gap-2">
+                                {msg.metadata?.status === "pending" && (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-amber-500">
+                                            <Icons.Clock className="h-3 w-3 mr-1" />
+                                            {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Sending..."}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Message is being sent</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={() => handleEditMessage(msg)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
+                                            type="button"
+                                          >
+                                            <Icons.Pencil className="h-3 w-3 mr-1" />
+                                            Edit
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Edit message before sending</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </>
+                                )}
+                                {msg.metadata?.command_status === "failed" && (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-red-500">
+                                            <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                            Failed to send
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    {onRetryMessage && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              onClick={() => onRetryMessage(msg)}
+                                              className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5 transition-colors"
+                                              type="button"
+                                            >
+                                              <Icons.RotateCcw className="h-3 w-3 mr-1" />
+                                              Retry
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Retry sending this message</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                              <p className="text-xs opacity-70 text-right">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (msg.role === "visitor") ? (
                         <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
