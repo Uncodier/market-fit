@@ -704,16 +704,16 @@ export function ChatMessages({
                         <div className="flex flex-col max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || currentUserAvatar || undefined} alt={msg.sender_name || currentUserName || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : undefined) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
-                                backgroundColor: msg.sender_id 
-                                  ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                backgroundColor: (hasAssignee ? leadData.assignee.id : msg.sender_id)
+                                  ? `hsl(${parseInt((hasAssignee ? leadData.assignee.id : msg.sender_id).replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {msg.sender_name ? msg.sender_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {(hasAssignee ? leadData.assignee.name : msg.sender_name) ? (hasAssignee ? leadData.assignee.name : msg.sender_name).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || currentUserName || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
@@ -812,16 +812,16 @@ export function ChatMessages({
                         <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || currentUserAvatar || undefined} alt={msg.sender_name || currentUserName || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : undefined) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
-                                backgroundColor: msg.sender_id 
-                                  ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                backgroundColor: (hasAssignee ? leadData.assignee.id : msg.sender_id)
+                                  ? `hsl(${parseInt((hasAssignee ? leadData.assignee.id : msg.sender_id).replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {msg.sender_name ? msg.sender_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {(hasAssignee ? leadData.assignee.name : msg.sender_name) ? (hasAssignee ? leadData.assignee.name : msg.sender_name).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || currentUserName || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
