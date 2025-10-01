@@ -480,6 +480,7 @@ function ChatPageContent() {
           agentId={agentId}
           agentName={agentName}
           isAgentOnlyConversation={isAgentOnlyConversation}
+          isLead={Boolean(leadData && (leadData.id || (leadData as any)?.lead_id))}
           leadData={leadData}
           conversationId={conversationId}
           onRetryMessage={handleRetryMessage}

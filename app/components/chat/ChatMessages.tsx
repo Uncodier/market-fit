@@ -137,6 +137,7 @@ interface ChatMessagesProps {
   agentId: string
   agentName: string
   isAgentOnlyConversation: boolean
+  isLead: boolean
   leadData: any
   conversationId?: string
   onRetryMessage?: (failedMessage: ChatMessage) => Promise<void>
@@ -458,14 +459,16 @@ export function ChatMessages({
   agentId,
   agentName,
   isAgentOnlyConversation,
+  isLead,
   leadData,
   conversationId,
   onRetryMessage,
   onMessagesUpdate
 }: ChatMessagesProps) {
   // Determine if we should show assignee instead of agent (same logic as ChatHeader)
-  const isLead = leadData !== null
-  const hasAssignee = !!(isLead && leadData?.assignee)
+  // Prefer prop for immediate rendering to avoid layout jumps; fallback to leadData if available
+  const hasLead = isLead || !!(leadData && (leadData.id || leadData.lead_id))
+  const hasAssignee = !!(hasLead && leadData?.assignee)
 
   // Use theme context for dark mode detection
   const { isDarkMode } = useTheme()
@@ -489,14 +492,38 @@ export function ChatMessages({
     console.log(`📝 Message order:`, chatMessages.map((msg, index) => `${index + 1}. ${msg.role} at ${msg.timestamp.toISOString()}`).slice(0, 5))
     
     return chatMessages.map((msg) => {
-      // Use sender_id to determine if message is from current user, not role assumption
-      const isCurrentUserMessage = (msg.sender_id === currentUserId) || 
-        (msg.sender_name && msg.sender_name.includes(currentUserName || ""))
+      // CORRECTIVE LOGIC: Fix incorrect roles based on context FIRST
+      let correctedRole = msg.role
+      
+      // Apply corrective logic for roles
+      if (msg.role === "user" && msg.sender_id && msg.sender_id !== currentUserId) {
+        // This is a lead/visitor message (correct)
+        correctedRole = "user"
+      } else if (msg.role === "team_member") {
+        // This is a team member message (correct)
+        correctedRole = "team_member"
+      } else if (msg.role === "visitor") {
+        // This is a visitor message (correct)
+        correctedRole = "visitor"
+      } else if (msg.role === "user" && msg.sender_id === "541396e1-a904-4a81-8cbf-0ca4e3b8b2b4") {
+        // Special case: System user ID with "user" role should be treated as visitor/lead
+        correctedRole = "visitor"
+      }
+      
+      // Determine alignment and ownership flags per business rules
+      // - agent/assistant/system => left
+      // - team_member => left if there is a lead present, right when there's no lead (team/private) or agent-only mode
+      // - user/visitor => always right
+      const isTeamMemberRight = correctedRole === "team_member" && (!hasLead || isAgentOnlyConversation)
+      const isRightAligned = (correctedRole === "user" || correctedRole === "visitor") || isTeamMemberRight
+      const isCurrentUserMessage = msg.sender_id === currentUserId
       
       // Debug logging for user identification
+      // Note: "user" role = lead/visitor, "team_member" role = team member
       if (msg.role === "user" || msg.role === "team_member") {
         console.log(`🔍 [User Identification] Message ${msg.id}:`, {
-          role: msg.role,
+          originalRole: msg.role,
+          correctedRole: correctedRole,
           sender_id: msg.sender_id,
           currentUserId: currentUserId,
           sender_name: msg.sender_name,
@@ -507,10 +534,12 @@ export function ChatMessages({
       
       return {
         ...msg,
-        isCurrentUserMessage
+        role: correctedRole, // Use corrected role
+        isCurrentUserMessage,
+        isRightAligned
       }
     })
-  }, [chatMessages, currentUserId, currentUserName])
+  }, [chatMessages, currentUserId, currentUserName, isAgentOnlyConversation, hasLead])
   
   // State for edit message modal
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -765,12 +794,13 @@ export function ChatMessages({
                     )}
                     <div
                       className={`flex ${
-                        msg.isCurrentUserMessage 
+                        msg.isRightAligned 
                         ? "justify-end" 
                         : "justify-start"
                       } animate-slide-in-fade`}
                     >
-                      {!msg.isCurrentUserMessage && msg.role === "team_member" && !isAgentOnlyConversation ? (
+                      {/* Team Member Messages - Left aligned when there is a lead */}
+                      {msg.role === "team_member" && hasLead ? (
                         <div className="flex flex-col max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
@@ -878,7 +908,7 @@ export function ChatMessages({
                             </div>
                           </div>
                         </div>
-                      ) : !msg.isCurrentUserMessage && msg.role === "team_member" && isAgentOnlyConversation ? (
+                      ) : msg.role === "team_member" && !hasLead && !msg.isCurrentUserMessage ? (
                         <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
@@ -986,30 +1016,30 @@ export function ChatMessages({
                             </div>
                           </div>
                         </div>
-                      ) : !msg.isCurrentUserMessage && msg.role === "user" && msg.sender_id && msg.sender_id !== currentUserId ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] group">
-                          <div className="flex items-center mb-1 gap-2">
-                            <Avatar className="h-7 w-7 border border-primary/10">
+                      ) : /* Lead/Visitor Messages - Amber avatar, right aligned */ msg.role === "user" ? (
+                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
+                          <div className="flex items-center mb-1 gap-2 flex-row-reverse">
+                            <Avatar className="h-7 w-7 border border-amber-500/20">
                               <AvatarImage 
-                                src={msg.sender_avatar || userDataCache[msg.sender_id]?.avatar_url || undefined} 
-                                alt={msg.sender_name || userDataCache[msg.sender_id]?.name || "Team Member"} 
+                                src={leadData?.avatarUrl || undefined} 
+                                alt={leadData?.name || "Visitor"} 
                                 style={{ objectFit: 'cover' }} 
                               />
-                              <AvatarFallback className="text-xs bg-primary/10" style={{
+                              <AvatarFallback className="text-xs bg-amber-500/10 text-amber-600" style={{
                                 backgroundColor: msg.sender_id
                                   ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {(msg.sender_name || userDataCache[msg.sender_id]?.name) 
-                                  ? (msg.sender_name || userDataCache[msg.sender_id]?.name).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() 
-                                  : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {leadData?.name 
+                                  ? leadData.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() 
+                                  : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "V")}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                              {msg.sender_name || userDataCache[msg.sender_id]?.name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}
+                            <span className="text-sm font-medium text-amber-600 dark:text-amber-500">
+                              {truncateLeadName(leadData?.name || "Visitor")}
                             </span>
                           </div>
-                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 ${
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                             style={{ 
@@ -1102,7 +1132,7 @@ export function ChatMessages({
                             </div>
                           </div>
                         </div>
-                      ) : !msg.isCurrentUserMessage && (msg.role === "agent" || msg.role === "assistant") ? (
+                      ) : (msg.role === "agent" || msg.role === "assistant") ? (
                         <div className="max-w-[calc(100%-240px)] group">
                           <div className="flex items-center mb-1 gap-2">
                             <div className="relative">
@@ -1167,7 +1197,7 @@ export function ChatMessages({
                             )}
                           </div>
                         </div>
-                      ) : msg.isCurrentUserMessage ? (
+                      ) : (msg.role === "team_member" && !hasLead && msg.isCurrentUserMessage) ? (
                         <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/20">
@@ -1271,7 +1301,7 @@ export function ChatMessages({
                             </div>
                           </div>
                         </div>
-                      ) : (msg.role === "visitor") ? (
+                      ) : /* Visitor Messages - Amber avatar, right aligned */ (msg.role === "visitor") ? (
                         <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">

@@ -772,9 +772,9 @@ export function ChatList({
       {/* Top bar with search input - adaptable to dark mode */}
       <div className={cn(
         "flex items-center justify-center h-[71px] border-b transition-colors duration-300 flex-shrink-0",
-        isDarkMode ? "bg-background" : "bg-white",
+        "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         "fixed w-[319px] z-[999]"
-      )} style={{ background: isDarkMode ? 'var(--background)' : '#ffffffed', backdropFilter: 'blur(10px)' }}>
+      )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
         <div className="relative w-[80%]">
           <Input
             placeholder="Search conversations..."
@@ -831,8 +831,8 @@ export function ChatList({
                 <div className="mb-2">
                   <div className={cn(
                     "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-0 z-10",
-                    isDarkMode ? "bg-background/95 text-muted-foreground" : "bg-white/95 text-muted-foreground"
-                  )} style={{ backdropFilter: 'blur(10px)' }}>
+                    "bg-background/80 text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80"
+                  )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
                     Pending ({pendingConversations.length})
                   </div>
                   {pendingConversations.map(conversation => (
@@ -855,8 +855,8 @@ export function ChatList({
                   {pendingConversations.length > 0 && (
                     <div className={cn(
                       "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-0 z-10",
-                      isDarkMode ? "bg-background/95 text-muted-foreground" : "bg-white/95 text-muted-foreground"
-                    )} style={{ backdropFilter: 'blur(10px)' }}>
+                      "bg-background/80 text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80"
+                    )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
                       Active Conversations
                     </div>
                   )}
