@@ -7,49 +7,49 @@ import { createClient } from "@/utils/supabase/client"
 
 export function ContentBadge({ isActive = false }: { isActive?: boolean }) {
   const { currentSite } = useSite()
-  const [draftContentCount, setDraftContentCount] = useState(0)
+  const [reviewContentCount, setReviewContentCount] = useState(0)
   
   useEffect(() => {
-    const countDraftContent = async () => {
+    const countReviewContent = async () => {
       if (!currentSite?.id) {
-        setDraftContentCount(0)
+        setReviewContentCount(0)
         return
       }
 
       try {
         const supabase = createClient()
         
-        // Get all content items with draft status for the current site
+        // Get all content items with review status for the current site
         const { data: content, error } = await supabase
           .from('content')
           .select('id, status')
           .eq('site_id', currentSite.id)
-          .eq('status', 'draft')
+          .eq('status', 'review')
         
         if (error) {
-          console.error('Error fetching draft content:', error)
-          setDraftContentCount(0)
+          console.error('Error fetching review content:', error)
+          setReviewContentCount(0)
           return
         }
 
-        setDraftContentCount(content?.length || 0)
+        setReviewContentCount(content?.length || 0)
 
       } catch (error) {
-        console.error('Error counting draft content:', error)
-        setDraftContentCount(0)
+        console.error('Error counting review content:', error)
+        setReviewContentCount(0)
       }
     }
 
-    countDraftContent()
+    countReviewContent()
     
     // Refresh count every 30 seconds
-    const interval = setInterval(countDraftContent, 30000)
+    const interval = setInterval(countReviewContent, 30000)
     
     return () => clearInterval(interval)
   }, [currentSite?.id])
   
-  // Don't show badge if there are no draft content items
-  if (draftContentCount === 0) {
+  // Don't show badge if there are no content items in review
+  if (reviewContentCount === 0) {
     return null
   }
   
@@ -57,7 +57,7 @@ export function ContentBadge({ isActive = false }: { isActive?: boolean }) {
     <Badge 
       className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black badge-gradient-green"
     >
-      {draftContentCount > 99 ? "99+" : draftContentCount}
+      {reviewContentCount > 99 ? "99+" : reviewContentCount}
     </Badge>
   )
 } 

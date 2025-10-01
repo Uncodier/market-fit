@@ -25,6 +25,7 @@ import { useRef } from "react"
 import { getConversationMessages } from "../../services/getConversationMessages.client"
 import { truncateAgentName, truncateLeadName } from "@/app/utils/name-utils"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
+import { getUserData } from "@/app/services/user-service"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -483,10 +484,26 @@ export function ChatMessages({
   const processedMessages = useMemo(() => {
     if (!chatMessages.length) return []
     
+    // Debug logging to help identify ordering issues
+    console.log(`🔍 [ChatMessages] Rendering ${chatMessages.length} messages:`)
+    console.log(`📝 Message order:`, chatMessages.map((msg, index) => `${index + 1}. ${msg.role} at ${msg.timestamp.toISOString()}`).slice(0, 5))
+    
     return chatMessages.map((msg) => {
+      // Use sender_id to determine if message is from current user, not role assumption
       const isCurrentUserMessage = (msg.sender_id === currentUserId) || 
-        (msg.role === "user") ||
         (msg.sender_name && msg.sender_name.includes(currentUserName || ""))
+      
+      // Debug logging for user identification
+      if (msg.role === "user" || msg.role === "team_member") {
+        console.log(`🔍 [User Identification] Message ${msg.id}:`, {
+          role: msg.role,
+          sender_id: msg.sender_id,
+          currentUserId: currentUserId,
+          sender_name: msg.sender_name,
+          currentUserName: currentUserName,
+          isCurrentUserMessage: isCurrentUserMessage
+        })
+      }
       
       return {
         ...msg,
@@ -498,6 +515,45 @@ export function ChatMessages({
   // State for edit message modal
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null)
+  
+  // State for user data cache
+  const [userDataCache, setUserDataCache] = useState<Record<string, { name: string, avatar_url: string | null }>>({})
+
+  // Effect to fetch user data for messages with user_id that are not current user
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const userIdsToFetch: string[] = []
+      
+      // Find all unique user IDs that are not current user and not in cache
+      chatMessages.forEach(msg => {
+        if (msg.sender_id && 
+            msg.sender_id !== currentUserId && 
+            !userDataCache[msg.sender_id] &&
+            (msg.role === "user" || msg.role === "team_member")) {
+          userIdsToFetch.push(msg.sender_id)
+        }
+      })
+      
+      // Fetch user data for each unique ID
+      for (const userId of userIdsToFetch) {
+        try {
+          const userData = await getUserData(userId)
+          if (userData) {
+            setUserDataCache(prev => ({
+              ...prev,
+              [userId]: userData
+            }))
+          }
+        } catch (error) {
+          console.error(`Error fetching user data for ${userId}:`, error)
+        }
+      }
+    }
+    
+    if (chatMessages.length > 0) {
+      fetchUserData()
+    }
+  }, [chatMessages, currentUserId, userDataCache])
 
   // Function to handle editing a message
   const handleEditMessage = (message: ChatMessage) => {
@@ -925,6 +981,122 @@ export function ChatMessages({
                                 )}
                               </div>
                               <p className="text-xs opacity-70 text-right">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : !msg.isCurrentUserMessage && msg.role === "user" && msg.sender_id && msg.sender_id !== currentUserId ? (
+                        <div className="flex flex-col max-w-[calc(100%-240px)] group">
+                          <div className="flex items-center mb-1 gap-2">
+                            <Avatar className="h-7 w-7 border border-primary/10">
+                              <AvatarImage 
+                                src={msg.sender_avatar || userDataCache[msg.sender_id]?.avatar_url || undefined} 
+                                alt={msg.sender_name || userDataCache[msg.sender_id]?.name || "Team Member"} 
+                                style={{ objectFit: 'cover' }} 
+                              />
+                              <AvatarFallback className="text-xs bg-primary/10" style={{
+                                backgroundColor: msg.sender_id
+                                  ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                  : undefined
+                              }}>
+                                {(msg.sender_name || userDataCache[msg.sender_id]?.name) 
+                                  ? (msg.sender_name || userDataCache[msg.sender_id]?.name).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() 
+                                  : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                              {msg.sender_name || userDataCache[msg.sender_id]?.name || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}
+                            </span>
+                          </div>
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 ${
+                            msg.metadata?.status === "pending" ? "opacity-60" : ""
+                          }`}
+                            style={{ 
+                              backgroundColor: msg.metadata?.status === "pending" 
+                                ? (isDarkMode ? '#2a2a3a' : '#f8f8f8')
+                                : (isDarkMode ? '#2d2d3d' : '#f0f0f5'),
+                              border: 'none', 
+                              boxShadow: 'none', 
+                              outline: 'none',
+                              filter: 'none' 
+                            }}
+                          >
+                            {renderMessageContent(msg, markdownComponents)}
+                            <div className="flex items-center justify-between mt-1.5">
+                              <div className="flex items-center gap-2">
+                                {msg.metadata?.status === "pending" && (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-amber-500">
+                                            <Icons.Clock className="h-3 w-3 mr-1" />
+                                            {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Sending..."}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Message is being sent</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={() => handleEditMessage(msg)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
+                                            type="button"
+                                          >
+                                            <Icons.Pencil className="h-3 w-3 mr-1" />
+                                            Edit
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Edit message before sending</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </>
+                                )}
+                                {msg.metadata?.command_status === "failed" && (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center text-xs text-red-500">
+                                            <Icons.AlertCircle className="h-3 w-3 mr-1" />
+                                            Failed to send
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{msg.metadata?.error_message || "Message failed to reach the server"}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    {onRetryMessage && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              onClick={() => onRetryMessage(msg)}
+                                              className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5 transition-colors"
+                                              type="button"
+                                            >
+                                              <Icons.RotateCcw className="h-3 w-3 mr-1" />
+                                              Retry
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Retry sending this message</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                              <p className="text-xs opacity-70">
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </p>
                             </div>

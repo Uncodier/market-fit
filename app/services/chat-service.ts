@@ -761,9 +761,18 @@ export function convertMessagesToChatFormat(messages: Message[]): Promise<ChatMe
       command_id: msg.command_id ?? undefined
     };
     
-    // Caso específico: mensajes de miembros del equipo (team_member)
-    if (role === "team_member") {
+    // Caso específico: mensajes de miembros del equipo (team_member) y usuarios (user)
+    if (role === "team_member" || role === "user") {
       const userId = msg.user_id;
+      
+      // Debug logging for role and user_id mapping
+      console.log(`🔍 [convertMessagesToChatFormat] Message ${msg.id?.substring(0, 8)}:`, {
+        role: role,
+        user_id: userId,
+        agent_id: msg.agent_id,
+        visitor_id: msg.visitor_id,
+        content: msg.content?.substring(0, 30) + '...'
+      });
       
       // Guardar el user_id en el mensaje de chat para la UI
       if (userId) {

@@ -7,12 +7,12 @@ import { createClient } from "@/utils/supabase/client"
 
 export function RequirementsBadge({ isActive = false }: { isActive?: boolean }) {
   const { currentSite } = useSite()
-  const [backlogPendingCount, setBacklogPendingCount] = useState(0)
+  const [reviewCount, setReviewCount] = useState(0)
   
   useEffect(() => {
-    const countBacklogPendingRequirements = async () => {
+    const countReviewRequirements = async () => {
       if (!currentSite?.id) {
-        setBacklogPendingCount(0)
+        setReviewCount(0)
         return
       }
 
@@ -22,45 +22,38 @@ export function RequirementsBadge({ isActive = false }: { isActive?: boolean }) 
         // Get all requirements for the current site
         const { data: requirements, error } = await supabase
           .from('requirements')
-          .select('id, completion_status, status')
+          .select('id, status')
           .eq('site_id', currentSite.id)
         
         if (error) {
           console.error('Error fetching requirements:', error)
-          setBacklogPendingCount(0)
+          setReviewCount(0)
           return
         }
 
-        // Count only requirements that are in backlog and pending:
-        // - status = 'backlog' (not yet started)
-        // - completion_status = 'pending' (not completed)
-        const backlogPendingRequirements = (requirements || []).filter(req => {
-          const isBacklog = req.status === 'backlog'
-          const isPending = req.completion_status === 'pending'
-          
-          const shouldCount = isBacklog && isPending
-          
-          return shouldCount
+        // Count only requirements that are in review status
+        const reviewRequirements = (requirements || []).filter(req => {
+          return req.status === 'on-review'
         })
 
-        setBacklogPendingCount(backlogPendingRequirements.length)
+        setReviewCount(reviewRequirements.length)
 
       } catch (error) {
-        console.error('Error counting backlog pending requirements:', error)
-        setBacklogPendingCount(0)
+        console.error('Error counting review requirements:', error)
+        setReviewCount(0)
       }
     }
 
-    countBacklogPendingRequirements()
+    countReviewRequirements()
     
     // Refresh count every 30 seconds
-    const interval = setInterval(countBacklogPendingRequirements, 30000)
+    const interval = setInterval(countReviewRequirements, 30000)
     
     return () => clearInterval(interval)
   }, [currentSite?.id])
   
-  // Don't show badge if there are no backlog pending requirements
-  if (backlogPendingCount === 0) {
+  // Don't show badge if there are no requirements in review
+  if (reviewCount === 0) {
     return null
   }
   
@@ -68,7 +61,7 @@ export function RequirementsBadge({ isActive = false }: { isActive?: boolean }) 
     <Badge 
       className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black badge-gradient-green"
     >
-      {backlogPendingCount > 99 ? "99+" : backlogPendingCount}
+      {reviewCount > 99 ? "99+" : reviewCount}
     </Badge>
   )
 }
