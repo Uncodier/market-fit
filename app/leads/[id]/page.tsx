@@ -313,7 +313,7 @@ export default function LeadDetailPage() {
           {lead && (
             <div className="flex flex-row space-x-6">
               {/* Tab Content - Left Side (60%) */}
-              <div className="w-[60%]">
+              <div className="w-[60%] min-w-0">
                 <TabsContent value="journey" className="mt-0 pt-0">
                   <JourneyView leadId={lead.id} />
                 </TabsContent>

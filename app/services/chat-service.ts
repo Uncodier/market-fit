@@ -761,6 +761,14 @@ export function convertMessagesToChatFormat(messages: Message[]): Promise<ChatMe
       command_id: msg.command_id ?? undefined
     };
     
+    // Caso específico: mensajes de agentes (agent o assistant)
+    if (role === "agent" || role === "assistant") {
+      // Agregar el agent_id al mensaje para que pueda ser usado en la UI
+      if (msg.agent_id) {
+        chatMessage.agent_id = msg.agent_id;
+      }
+    }
+    
     // Caso específico: mensajes de miembros del equipo (team_member) y usuarios (user)
     if (role === "team_member" || role === "user") {
       const userId = msg.user_id;

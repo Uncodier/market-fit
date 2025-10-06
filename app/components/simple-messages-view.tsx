@@ -1,6 +1,6 @@
 "use client"
 
-import { MessageSquare, User, Settings, ChevronRight, ChevronDown, ChevronUp, Clock, CheckCircle, Target, Pencil, Trash2, Eye, EyeOff, Code, Zap, LayoutGrid } from "@/app/components/ui/icons"
+import { MessageSquare, User, Settings, ChevronRight, ChevronDown, ChevronUp, Clock, CheckCircle, Target, Pencil, Trash2, Eye, EyeOff, Code, Zap, LayoutGrid, Pause, Play } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
@@ -192,7 +192,7 @@ export interface InstancePlan {
   title: string
   description?: string
   plan_type: 'objective' | 'task' | 'verification' | 'milestone'
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'blocked'
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'blocked' | 'paused'
   instructions?: string
   expected_output?: string
   progress_percentage: number
@@ -211,6 +211,7 @@ interface PlanStep {
   description?: string
   status: 'pending' | 'in_progress' | 'completed'
   order: number
+  planId?: string // Track which plan this step belongs to
 }
 
 export function SimpleMessagesView({ className = "", activeRobotInstance }: SimpleMessagesViewProps) {
@@ -326,7 +327,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
 
       return (
         <div 
-          className="text-xs bg-muted p-3 rounded overflow-x-auto transition-colors"
+          className="text-xs bg-muted p-3 rounded overflow-hidden transition-colors"
           style={{
             borderLeft: `3px solid ${style.borderColor}`,
           }}
@@ -436,7 +437,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
       )
     }
     
-    return <span className="font-mono text-xs">{JSON.stringify(obj, null, 2)}</span>
+    return <span className="font-mono text-xs break-words whitespace-pre-wrap overflow-hidden block">{JSON.stringify(obj, null, 2)}</span>
   }
 
   // Toggle collapse for system messages
@@ -722,6 +723,78 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
     }
   }
 
+  // Toggle plan pause/resume status
+  const togglePlanPause = async () => {
+    if (!activeRobotInstance?.id || instancePlans.length === 0) return
+
+    try {
+      const supabase = createClient()
+      
+      // Find the currently active plan (in_progress or paused)
+      const activePlan = instancePlans.find(plan => 
+        plan.status === 'in_progress' || plan.status === 'paused'
+      )
+      
+      if (!activePlan) {
+        toast({
+          title: "No active plan",
+          description: "There is no plan to pause or resume.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const newStatus = activePlan.status === 'in_progress' ? 'paused' : 'in_progress'
+      
+      console.log('🔄 Toggling plan status:', {
+        planId: activePlan.id,
+        currentStatus: activePlan.status,
+        newStatus: newStatus
+      })
+      
+      // Update only the status in the database
+      const { data, error } = await supabase
+        .from('instance_plans')
+        .update({ status: newStatus })
+        .eq('id', activePlan.id)
+        .select()
+
+      console.log('📤 Update result:', { data, error, planId: activePlan.id, newStatus })
+
+      if (error) {
+        console.error('❌ Error toggling plan pause:', {
+          error,
+          errorMessage: error.message,
+          errorDetails: error.details,
+          errorHint: error.hint,
+          errorCode: error.code,
+          planId: activePlan.id
+        })
+        toast({
+          title: "Error",
+          description: `Failed to update plan status: ${error.message || 'Unknown error'}`,
+          variant: "destructive"
+        })
+      } else {
+        console.log(`Plan ${newStatus === 'paused' ? 'paused' : 'resumed'} successfully`)
+        toast({
+          title: newStatus === 'paused' ? "Plan Paused" : "Plan Resumed",
+          description: newStatus === 'paused' 
+            ? "The plan has been paused successfully." 
+            : "The plan has been resumed successfully."
+        })
+        // The real-time subscription will handle updating the local state
+      }
+    } catch (error) {
+      console.error('Error toggling plan pause:', error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive"
+      })
+    }
+  }
+
   // Mark all instance plans as completed when all steps are done
   const markAllInstancePlansCompleted = async () => {
     if (!activeRobotInstance?.id || !currentSite?.id) return
@@ -904,7 +977,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
 
 
 
-  // Load instance plans
+  // Load instance plans with proper status management
   const loadInstancePlans = async () => {
     console.log('🔍 loadInstancePlans called with activeRobotInstance:', activeRobotInstance)
     
@@ -985,21 +1058,45 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
         const allPlans = data || []
         console.log('🔍 RAW PLANS FROM DATABASE:', JSON.stringify(allPlans, null, 2))
         
-        // Separate completed plans from active/pending plans
-        const activePlans = allPlans.filter((plan: InstancePlan) => 
-          plan.status !== 'completed' || 
-          (plan.steps && Array.isArray(plan.steps) && plan.steps.some((step: any) => step.status !== 'completed'))
-        )
-        const completedPlansData = allPlans.filter((plan: InstancePlan) => 
-          plan.status === 'completed' && 
-          (!plan.steps || !Array.isArray(plan.steps) || plan.steps.every((step: any) => step.status === 'completed'))
-        )
+        // Categorize plans by status for better management
+        // Only ONE plan should be in_progress at a time
+        const inProgressPlans = allPlans.filter((plan: InstancePlan) => plan.status === 'in_progress')
+        const pausedPlans = allPlans.filter((plan: InstancePlan) => plan.status === 'paused')
+        const pendingPlans = allPlans.filter((plan: InstancePlan) => plan.status === 'pending')
+        const failedPlans = allPlans.filter((plan: InstancePlan) => plan.status === 'failed')
+        const cancelledPlans = allPlans.filter((plan: InstancePlan) => plan.status === 'cancelled')
+        const blockedPlans = allPlans.filter((plan: InstancePlan) => plan.status === 'blocked')
+        const completedPlansData = allPlans.filter((plan: InstancePlan) => plan.status === 'completed')
         
-        console.log('🔍 ACTIVE PLANS:', activePlans.length)
-        console.log('🔍 COMPLETED PLANS:', completedPlansData.length)
+        // Log plan status distribution for debugging
+        console.log('📊 Plan Status Distribution:', {
+          in_progress: inProgressPlans.length,
+          paused: pausedPlans.length,
+          pending: pendingPlans.length,
+          failed: failedPlans.length,
+          cancelled: cancelledPlans.length,
+          blocked: blockedPlans.length,
+          completed: completedPlansData.length
+        })
+        
+        // Warn if multiple plans are in_progress (should only be one)
+        if (inProgressPlans.length > 1) {
+          console.warn('⚠️ Multiple plans in progress detected! Only one plan should be in_progress at a time:', 
+            inProgressPlans.map((p: InstancePlan) => ({ id: p.id, title: p.title }))
+          )
+        }
+        
+        // Active plans include: in_progress, paused, pending, and blocked (but NOT failed, cancelled, or completed)
+        const activePlans = [...inProgressPlans, ...pausedPlans, ...pendingPlans, ...blockedPlans]
+        
+        // Historical plans include: completed, failed, and cancelled
+        const historicalPlans = [...completedPlansData, ...failedPlans, ...cancelledPlans]
+        
+        console.log('🔍 ACTIVE PLANS:', activePlans.length, '(in_progress:', inProgressPlans.length, ', paused:', pausedPlans.length, ', pending:', pendingPlans.length, ', blocked:', blockedPlans.length, ')')
+        console.log('🔍 HISTORICAL PLANS:', historicalPlans.length, '(completed:', completedPlansData.length, ', failed:', failedPlans.length, ', cancelled:', cancelledPlans.length, ')')
         
         setInstancePlans(activePlans)
-        setCompletedPlans(completedPlansData)
+        setCompletedPlans(historicalPlans)
         
         // If no active plans found, just continue without creating test data
         if (activePlans.length === 0) {
@@ -1020,11 +1117,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
             const planSteps = plan.steps.map((step: any, stepIndex: number) => {
               let stepId = step.id
               
-              // Ensure unique ID
+              // Ensure unique ID - use plan ID as prefix for uniqueness across plans
               if (!stepId || usedIds.has(stepId)) {
-                stepId = `plan_${planIndex}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
+                stepId = `${plan.id}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
                 while (usedIds.has(stepId)) {
-                  stepId = `plan_${planIndex}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
+                  stepId = `${plan.id}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
                 }
               }
               usedIds.add(stepId)
@@ -1034,7 +1131,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                 title: step.title || `Step ${stepIndex + 1}`,
                 description: step.description || undefined,
                 status: step.status || 'pending' as const,
-                order: convertedSteps.length + stepIndex + 1
+                order: convertedSteps.length + stepIndex + 1,
+                planId: plan.id // Track which plan this step belongs to
               }
             })
             convertedSteps = [...convertedSteps, ...planSteps]
@@ -1057,7 +1155,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
               description: plan.description || undefined,
               status: plan.status === 'in_progress' ? 'in_progress' : 
                      plan.status === 'completed' ? 'completed' : 'pending',
-              order: convertedSteps.length + 1
+              order: convertedSteps.length + 1,
+              planId: plan.id // Track which plan this step belongs to
             })
           }
         })
@@ -1382,7 +1481,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                         title: step.title || `Step ${stepIndex + 1}`,
                         description: step.description || undefined,
                         status: step.status || 'pending' as const,
-                        order: stepIndex + 1 // Will be reordered below
+                        order: stepIndex + 1, // Will be reordered below
+                        planId: newPlan.id
                       }
                     })
                     
@@ -1414,7 +1514,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                       description: newPlan.description || undefined,
                       status: newPlan.status === 'in_progress' ? 'in_progress' : 
                              newPlan.status === 'completed' ? 'completed' : 'pending',
-                      order: updatedPlans.length
+                      order: updatedPlans.length,
+                      planId: newPlan.id
                     }
                     
                     const allSteps = [...prevSteps, newStep]
@@ -1432,38 +1533,57 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                 )
               )
               
-              // Update steps - rebuild all steps from all plans to ensure consistency
-              setInstancePlans(currentPlans => {
-                const allPlans = currentPlans.map(plan => 
-                  plan.id === updatedPlan.id ? updatedPlan : plan
+              // Check if plan transitioned to completed/failed/cancelled - move to historical
+              if (['completed', 'failed', 'cancelled'].includes(updatedPlan.status)) {
+                // Remove from active plans
+                setInstancePlans(prevPlans => 
+                  prevPlans.filter(plan => plan.id !== updatedPlan.id)
                 )
-                
-                let convertedSteps: PlanStep[] = []
-                allPlans.forEach((plan: InstancePlan) => {
-                  if (plan.steps && Array.isArray(plan.steps)) {
-                    const planSteps = plan.steps.map((step: any, stepIndex: number) => ({
-                      id: step.id || `${plan.id}-${stepIndex}`,
-                      title: step.title || `Step ${stepIndex + 1}`,
-                      description: step.description || undefined,
-                      status: step.status || 'pending' as const,
-                      order: convertedSteps.length + stepIndex + 1
-                    }))
-                    convertedSteps = [...convertedSteps, ...planSteps]
-                  } else {
-                    convertedSteps.push({
-                      id: plan.id,
-                      title: plan.title,
-                      description: plan.description || undefined,
-                      status: plan.status === 'in_progress' ? 'in_progress' : 
-                             plan.status === 'completed' ? 'completed' : 'pending',
-                      order: convertedSteps.length + 1
-                    })
-                  }
+                // Add to completed/historical plans
+                setCompletedPlans(prevCompleted => [...prevCompleted, updatedPlan])
+                // Remove steps associated with this plan
+                setSteps(prevSteps => 
+                  prevSteps.filter(step => step.planId !== updatedPlan.id)
+                )
+              } else {
+                // Update steps - rebuild all steps from all plans to ensure consistency
+                setInstancePlans(currentPlans => {
+                  const allPlans = currentPlans.map(plan => 
+                    plan.id === updatedPlan.id ? updatedPlan : plan
+                  )
+                  
+                  let convertedSteps: PlanStep[] = []
+                  allPlans.forEach((plan: InstancePlan) => {
+                    // Only include active plans (in_progress, pending, blocked)
+                    if (!['completed', 'failed', 'cancelled'].includes(plan.status)) {
+                      if (plan.steps && Array.isArray(plan.steps)) {
+                        const planSteps = plan.steps.map((step: any, stepIndex: number) => ({
+                          id: step.id || `${plan.id}-${stepIndex}`,
+                          title: step.title || `Step ${stepIndex + 1}`,
+                          description: step.description || undefined,
+                          status: step.status || 'pending' as const,
+                          order: convertedSteps.length + stepIndex + 1,
+                          planId: plan.id
+                        }))
+                        convertedSteps = [...convertedSteps, ...planSteps]
+                      } else {
+                        convertedSteps.push({
+                          id: plan.id,
+                          title: plan.title,
+                          description: plan.description || undefined,
+                          status: plan.status === 'in_progress' ? 'in_progress' : 
+                                 plan.status === 'completed' ? 'completed' : 'pending',
+                          order: convertedSteps.length + 1,
+                          planId: plan.id
+                        })
+                      }
+                    }
+                  })
+                  
+                  setSteps(convertedSteps)
+                  return allPlans
                 })
-                
-                setSteps(convertedSteps)
-                return allPlans
-              })
+              }
             } else if (payload.eventType === 'DELETE') {
               setInstancePlans(prevPlans => 
                 prevPlans.filter(plan => plan.id !== payload.old.id)
@@ -1640,11 +1760,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
   }
 
   return (
-    <div className={`flex flex-col h-full max-w-full overflow-hidden relative ${className}`}>
+    <div className={`flex flex-col h-full w-full min-w-0 overflow-hidden relative ${className}`}>
 
 
       {/* Messages list */}
-      <div className="flex-1 overflow-y-auto px-[30px] py-4 space-y-6 max-w-full pb-[175px]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-[30px] py-4 space-y-6 w-full min-w-0 pb-[175px]">
         {!activeRobotInstance ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             {/* Custom fancy empty card without bubbles */}
@@ -1684,7 +1804,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
               if (item.type === 'completed_plan') {
                 const plan = item.data as InstancePlan
                 return (
-                  <div key={`plan-${plan.id}`} className="space-y-4 max-w-full overflow-hidden">
+                  <div key={`plan-${plan.id}`} className="space-y-4 w-full min-w-0 overflow-hidden">
                     <div className="bg-green-50/50 border border-green-200/50 rounded-lg p-4">
                       <div className="mb-3">
                         <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
@@ -1747,25 +1867,25 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   const structuredOutput = renderStructuredOutput(log)
                   if (structuredOutput) {
                     return (
-                      <div key={log.id} className="space-y-2 max-w-full overflow-hidden">
+                      <div key={log.id} className="space-y-2 w-full min-w-0 overflow-hidden">
                         {structuredOutput}
                       </div>
                     )
                   }
                 }
-
+                
                 // Regular tool call rendering
                 return (
-                  <div key={log.id} className="space-y-2 max-w-full overflow-hidden">
+                  <div key={log.id} className="space-y-2 w-full min-w-0 overflow-hidden">
                     <div 
-                      className="text-xs bg-muted p-3 rounded overflow-x-auto cursor-pointer hover:bg-muted/60 hover:shadow-sm transition-all duration-200 border border-transparent hover:border-muted-foreground/20"
+                      className="text-xs bg-muted p-3 rounded overflow-hidden cursor-pointer hover:bg-muted/60 hover:shadow-sm transition-all duration-200 border border-transparent hover:border-muted-foreground/20"
                       onClick={() => toggleToolDetails(log.id)}
                     >
                       <div className="flex items-center gap-2">
                         {getToolIcon(toolName || '')}
                         <div className="flex-1 min-w-0">
                           {log.message && (
-                            <div className="text-sm leading-relaxed truncate">
+                            <div className="text-sm leading-relaxed break-words whitespace-pre-wrap overflow-hidden">
                               {log.message}
                             </div>
                           )}
@@ -1801,7 +1921,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                                 <Eye className="h-3.5 w-3.5 text-blue-600" />
                                 <strong className="text-sm text-blue-600">Details Overview:</strong>
                               </div>
-                              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-hidden break-words">
                                 {renderObjectWithImages(log.details)}
                               </div>
                             </div>
@@ -1814,7 +1934,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
               }
 
               return (
-              <div key={`log-${log.id}`} className="space-y-4 max-w-full overflow-hidden">
+              <div key={`log-${log.id}`} className="space-y-4 w-full min-w-0 overflow-hidden">
               
               {log.log_type === "user_action" ? (
                 // User message - styled like visitor messages in chat
@@ -1832,7 +1952,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                     </span>
                   </div>
                   <div 
-                    className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-8 max-w-full"
+                    className="rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-8 w-full min-w-0 overflow-hidden"
                     style={{ 
                       backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
                       border: 'none', 
@@ -1841,7 +1961,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                       filter: 'none' 
                     }}
                   >
-                    <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', maxWidth: '100%' }}>
+                    <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                       {log.message}
                       {toolName && (
                         <div className="mt-2 text-xs bg-muted p-2 rounded overflow-hidden">
@@ -1917,7 +2037,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                 </div>
               ) : (
                 // System/Agent/Instance message - styled like agent messages in chat
-                <div className="flex flex-col w-full items-start group max-w-full">
+                <div className="flex flex-col w-full min-w-0 items-start group">
                   <div className="flex items-center mb-1 gap-2 w-full">
                     <div className="relative">
                       <Avatar className={`h-7 w-7 border ${
@@ -1978,11 +2098,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   
                   {/* Message content - collapsible for system messages */}
                   {!(log.log_type === 'system' && collapsedSystemMessages.has(log.id)) && (
-                    <div className="mr-8 w-full max-w-full">
-                      <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', maxWidth: '100%' }}>
+                    <div className="mr-8 w-full min-w-0 overflow-hidden">
+                      <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                       {log.message}
                       {toolName && (
-                          <div className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
+                          <div className="mt-2 text-xs bg-muted p-2 rounded overflow-hidden">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span><strong>Tool:</strong> {toolName}</span>
@@ -2056,7 +2176,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                   
                   {/* Collapsed preview for system messages */}
                   {log.log_type === 'system' && collapsedSystemMessages.has(log.id) && (
-                    <div className="mr-8 w-full max-w-full">
+                    <div className="mr-8 w-full min-w-0 overflow-hidden">
                       <div className="text-sm text-muted-foreground italic truncate">
                         {log.message.substring(0, 100)}...
             </div>
@@ -2070,8 +2190,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
             
             {/* Loading indicator when waiting for response */}
             {isWaitingForResponse && (
-              <div className="flex flex-col w-full items-start group max-w-full">
-                <div className="flex items-center mb-1 gap-2 w-full">
+              <div className="flex flex-col w-full min-w-0 items-start group">
+                <div className="flex items-center mb-1 gap-2 w-full min-w-0">
                   <div className="relative">
                     <Avatar className="h-7 w-7 border border-primary/20">
                       <AvatarFallback className="bg-primary/10 text-primary">
@@ -2089,7 +2209,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                 </div>
                 
                 {/* Loading message content */}
-                <div className="mr-8 w-full max-w-full">
+                <div className="mr-8 w-full min-w-0 overflow-hidden">
                   <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap bg-background/50 rounded-lg p-4 border border-dashed border-primary/20">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <div className="flex gap-1">
@@ -2148,14 +2268,40 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                         <span className="text-xs truncate">- {getCurrentStep()?.title}</span>
                       </>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsStepIndicatorExpanded(false)}
-                      className="h-6 w-6 p-0 ml-auto hover:bg-muted"
-                    >
-                      <ChevronUp className="h-3 w-3" />
-                    </Button>
+                    
+                    {/* Play/Pause buttons */}
+                    <div className="flex items-center gap-1 ml-auto">
+                      {instancePlans.some(plan => plan.status === 'in_progress') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={togglePlanPause}
+                          className="h-6 w-6 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                          title="Pause plan"
+                        >
+                          <Pause className="h-3 w-3 text-amber-600" />
+                        </Button>
+                      )}
+                      {instancePlans.some(plan => plan.status === 'paused') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={togglePlanPause}
+                          className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30"
+                          title="Resume plan"
+                        >
+                          <Play className="h-3 w-3 text-green-600" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsStepIndicatorExpanded(false)}
+                        className="h-6 w-6 p-0 hover:bg-muted"
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                   
                   {/* Divider */}
@@ -2268,14 +2414,40 @@ export function SimpleMessagesView({ className = "", activeRobotInstance }: Simp
                       <span className="text-xs truncate">- {getCurrentStep()?.title}</span>
                     </>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsStepIndicatorExpanded(true)}
-                    className="h-6 w-6 p-0 ml-auto hover:bg-muted"
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
+                  
+                  {/* Play/Pause buttons */}
+                  <div className="flex items-center gap-1 ml-auto">
+                    {instancePlans.some(plan => plan.status === 'in_progress') && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={togglePlanPause}
+                        className="h-6 w-6 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                        title="Pause plan"
+                      >
+                        <Pause className="h-3 w-3 text-amber-600" />
+                      </Button>
+                    )}
+                    {instancePlans.some(plan => plan.status === 'paused') && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={togglePlanPause}
+                        className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30"
+                        title="Resume plan"
+                      >
+                        <Play className="h-3 w-3 text-green-600" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsStepIndicatorExpanded(true)}
+                      className="h-6 w-6 p-0 hover:bg-muted"
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

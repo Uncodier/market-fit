@@ -77,7 +77,8 @@ export function TopBarTitle({
       'chat': 'Chat',
       'campaigns': 'Campaigns',
       'control-center': 'Control Center',
-      'billing': 'Billing'
+      'billing': 'Billing',
+      'robots': 'Makina'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)

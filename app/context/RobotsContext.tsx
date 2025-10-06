@@ -51,6 +51,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hasInitiallyLoadedRef = useRef(false)
 
   // Map activity names
   const activityMap: Record<string, string> = {
@@ -93,11 +94,15 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       setRobotsByActivity({})
       setTotalActiveRobots(0)
       setIsLoading(false)
+      hasInitiallyLoadedRef.current = true
       return
     }
 
     try {
-      setIsLoading(true)
+      // Only show loading state on initial load, not on refreshes
+      if (!hasInitiallyLoadedRef.current) {
+        setIsLoading(true)
+      }
       setError(null)
       
       const supabase = createClient()
@@ -161,14 +166,20 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       console.error('Error refreshing robots:', error)
       setError('Failed to refresh robots')
     } finally {
-      setIsLoading(false)
+      if (!hasInitiallyLoadedRef.current) {
+        setIsLoading(false)
+        hasInitiallyLoadedRef.current = true
+      }
     }
   }, [currentSite?.id])
 
   // Initial load when site changes
   useEffect(() => {
+    // Reset loading state when site changes
+    hasInitiallyLoadedRef.current = false
+    setIsLoading(true)
     refreshRobots()
-  }, [refreshRobots])
+  }, [currentSite?.id, refreshRobots])
 
   // Setup real-time monitoring
   useEffect(() => {

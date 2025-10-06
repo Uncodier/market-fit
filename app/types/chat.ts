@@ -43,4 +43,6 @@ export interface ChatMessage {
   sender_avatar?: string
   // ID del comando asociado al mensaje (para feedback)
   command_id?: string
+  // ID del agente que envió el mensaje (para mensajes de tipo "assistant")
+  agent_id?: string
 } 

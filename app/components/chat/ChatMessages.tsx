@@ -547,6 +547,9 @@ export function ChatMessages({
   
   // State for user data cache
   const [userDataCache, setUserDataCache] = useState<Record<string, { name: string, avatar_url: string | null }>>({})
+  
+  // State for agent data cache
+  const [agentDataCache, setAgentDataCache] = useState<Record<string, { name: string, avatar_url?: string | null }>>({})
 
   // Effect to fetch user data for messages with user_id that are not current user
   useEffect(() => {
@@ -583,6 +586,46 @@ export function ChatMessages({
       fetchUserData()
     }
   }, [chatMessages, currentUserId, userDataCache])
+  
+  // Effect to fetch agent data for messages with agent_id (for assistant role)
+  useEffect(() => {
+    const fetchAgentData = async () => {
+      const agentIdsToFetch: string[] = []
+      
+      // Find all unique agent IDs that are not in cache
+      chatMessages.forEach(msg => {
+        const msgAgentId = msg.agent_id
+        if (msgAgentId && 
+            !agentDataCache[msgAgentId] &&
+            (msg.role === "assistant" || msg.role === "agent")) {
+          agentIdsToFetch.push(msgAgentId)
+        }
+      })
+      
+      // Fetch agent data for each unique ID
+      for (const agentId of agentIdsToFetch) {
+        try {
+          const { getAgentForConversation } = await import("@/app/services/chat-service.client")
+          const agentData = await getAgentForConversation(agentId)
+          if (agentData) {
+            setAgentDataCache(prev => ({
+              ...prev,
+              [agentId]: {
+                name: agentData.name,
+                avatar_url: null // Agents typically don't have avatars
+              }
+            }))
+          }
+        } catch (error) {
+          console.error(`Error fetching agent data for ${agentId}:`, error)
+        }
+      }
+    }
+    
+    if (chatMessages.length > 0) {
+      fetchAgentData()
+    }
+  }, [chatMessages, agentDataCache])
 
   // Function to handle editing a message
   const handleEditMessage = (message: ChatMessage) => {
@@ -722,14 +765,14 @@ export function ChatMessages({
   }
 
   return (
-    <div className="flex-1 overflow-visible py-6 transition-colors duration-300 ease-in-out pt-[91px] pb-44">
-      <div className="max-w-[calc(100%-240px)] mx-auto">
+    <div className="flex-1 overflow-visible py-6 transition-colors duration-300 ease-in-out pt-[91px] pb-44 min-w-0">
+      <div className="max-w-[calc(100%-240px)] mx-auto min-w-0">
         {(isLoadingMessages || isTransitioningConversation) ? (
           <div className="space-y-6 w-full">
             {[1, 2, 3].map((i) => (
               <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"} animate-pulse`}>
                 {i % 2 === 0 ? (
-                  <div className="flex items-start gap-3 max-w-[calc(100%-240px)]">
+                  <div className="flex items-start gap-3 max-w-[calc(100%-240px)] min-w-0">
                     <div className="flex-shrink-0 mt-1">
                       <div className="w-8 h-8 rounded-full bg-primary/20"></div>
                     </div>
@@ -750,7 +793,7 @@ export function ChatMessages({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start justify-end gap-3 max-w-[calc(100%-240px)]">
+                  <div className="flex items-start justify-end gap-3 max-w-[calc(100%-240px)] min-w-0">
                     <div className="space-y-2 w-[350px]">
                       <div className="rounded-lg p-4 bg-background" style={{ 
                         boxShadow: 'var(--shadow-sm)',
@@ -801,7 +844,7 @@ export function ChatMessages({
                     >
                       {/* Team Member Messages - Left aligned when there is a lead */}
                       {msg.role === "team_member" && hasLead ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
                               <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : currentUserAvatar) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
@@ -815,7 +858,7 @@ export function ChatMessages({
                             </Avatar>
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
-                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 ${
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 min-w-0 overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                             style={{ 
@@ -909,7 +952,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : msg.role === "team_member" && !hasLead && !msg.isCurrentUserMessage ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
                               <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : currentUserAvatar) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
@@ -923,7 +966,7 @@ export function ChatMessages({
                             </Avatar>
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
-                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 min-w-0 overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                             style={{ 
@@ -1017,7 +1060,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : /* Lead/Visitor Messages - Amber avatar, right aligned */ msg.role === "user" ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
                               <AvatarImage 
@@ -1039,7 +1082,7 @@ export function ChatMessages({
                               {truncateLeadName(leadData?.name || "Visitor")}
                             </span>
                           </div>
-                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 min-w-0 overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                             style={{ 
@@ -1133,7 +1176,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "agent" || msg.role === "assistant") ? (
-                        <div className="max-w-[calc(100%-240px)] group">
+                        <div className="max-w-[calc(100%-240px)] min-w-0 group">
                           <div className="flex items-center mb-1 gap-2">
                             <div className="relative">
                               <Avatar className={`h-7 w-7 border ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'border-blue-500/20' : 'border-primary/10'}`}>
@@ -1144,13 +1187,13 @@ export function ChatMessages({
                                   } 
                                   alt={(hasAssignee && msg.sender_id === leadData?.assignee?.id) 
                                     ? leadData.assignee.name 
-                                    : agentName
+                                    : (msg.agent_id && agentDataCache[msg.agent_id]?.name) || agentName
                                   } 
                                 />
                                 <AvatarFallback className={(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? "bg-blue-500/10 text-blue-600" : "bg-primary/10"}>
                                   {((hasAssignee && msg.sender_id === leadData?.assignee?.id) 
                                     ? leadData.assignee.name 
-                                    : agentName
+                                    : (msg.agent_id && agentDataCache[msg.agent_id]?.name) || agentName
                                   ).split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                                 </AvatarFallback>
                               </Avatar>
@@ -1166,7 +1209,7 @@ export function ChatMessages({
                             <span className={`text-sm font-medium ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}`}>
                               {(hasAssignee && msg.sender_id === leadData?.assignee?.id) 
                                 ? truncateAgentName(leadData.assignee.name)
-                                : truncateAgentName(agentName)
+                                : truncateAgentName((msg.agent_id && agentDataCache[msg.agent_id]?.name) || agentName)
                               }
                             </span>
                           </div>
@@ -1198,7 +1241,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "team_member" && !hasLead && msg.isCurrentUserMessage) ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/20">
                               <AvatarImage src={currentUserAvatar || undefined} alt={currentUserName || "You"} />
@@ -1208,7 +1251,7 @@ export function ChatMessages({
                             </Avatar>
                             <span className="text-sm font-medium text-primary">{currentUserName || "You"}</span>
                           </div>
-                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 min-w-0 overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                             style={{ 
@@ -1302,7 +1345,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : /* Visitor Messages - Amber avatar, right aligned */ (msg.role === "visitor") ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] items-end group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
                               <AvatarImage src={leadData?.avatarUrl || undefined} alt={leadData?.name || "Visitor"} />
@@ -1312,7 +1355,7 @@ export function ChatMessages({
                             </Avatar>
                             <span className="text-sm font-medium text-amber-600 dark:text-amber-500">{truncateLeadName(leadData?.name || "Visitor")}</span>
                           </div>
-                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 ${
+                          <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 min-w-0 overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                             style={{ 
@@ -1407,7 +1450,7 @@ export function ChatMessages({
                         </div>
                       ) : (
                         <div 
-                          className={`max-w-[calc(100%-240px)] rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground group ${
+                          className={`max-w-[calc(100%-240px)] min-w-0 rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground group overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                           style={{ 

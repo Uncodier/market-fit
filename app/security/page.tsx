@@ -665,7 +665,7 @@ export default function SecurityPage() {
               </CardHeader>
               <CardContent className="space-y-8 px-8 pb-8 w-full">
                 <div className="text-sm text-muted-foreground">
-                  Manage automation authentication sessions for robots. These sessions store browser authentication data that can be reused across automation instances.
+                  Manage automation authentication sessions for makinas. These sessions store browser authentication data that can be reused across automation instances.
                 </div>
                 <RobotSessionsList />
               </CardContent>

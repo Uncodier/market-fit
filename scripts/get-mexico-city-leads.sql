@@ -38,18 +38,3 @@ WHERE
     )
 ORDER BY l.created_at DESC;
 
--- Get count of matching leads
-SELECT COUNT(*) as total_leads
-FROM public.leads l
-WHERE 
-    l.site_id IS NOT NULL 
-    AND l.email IS NOT NULL 
-    AND l.email != ''
-    AND (
-        l.address->>'city' ILIKE '%ciudad de méxico%'
-        OR l.address->>'city' ILIKE '%ciudad de mexico%'
-        OR l.address->>'city' ILIKE '%cdmx%'
-        OR l.address->>'city' ILIKE '%mexico city%'
-        OR l.address->>'city' ILIKE '%df%'
-        OR l.address->>'city' ILIKE '%distrito federal%'
-    );

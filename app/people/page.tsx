@@ -889,8 +889,8 @@ export default function PeopleSearchPage() {
       if (icpName && icpName.trim().length > 0) {
         payload.name = icpName.trim()
       }
-      // Add target_totals with current search results total
-      payload.target_totals = totalResults
+      // Add total_targets with current search results total
+      payload.total_targets = totalResults
       const res = await apiClient.post('/api/finder/person_role_search/createQuery', payload, { includeAuth: false })
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to create query')

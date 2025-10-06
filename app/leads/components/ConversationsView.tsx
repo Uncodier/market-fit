@@ -184,7 +184,7 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
               <TableHead className="w-[120px]">Date</TableHead>
               <TableHead className="w-[100px]">Channel</TableHead>
               <TableHead className="w-[100px]">Status</TableHead>
-              <TableHead className="w-[200px]">Subject</TableHead>
+              <TableHead className="w-[220px] min-w-[160px] max-w-[260px]">Subject</TableHead>
               <TableHead>Message</TableHead>
             </TableRow>
           </TableHeader>
@@ -222,10 +222,10 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
                       {conversation.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-medium">
-                    {conversation.subject}
+                  <TableCell className="font-medium overflow-hidden text-ellipsis whitespace-nowrap max-w-[260px]">
+                    {conversation.subject || "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground overflow-hidden max-w-[1px] whitespace-nowrap text-ellipsis">
                     {truncateText(conversation.message)}
                   </TableCell>
                 </TableRow>

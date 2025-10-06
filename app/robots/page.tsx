@@ -396,13 +396,13 @@ function RobotsPageContent() {
             {/* Web View - 2/3 of available space */}
             <div className="w-2/3 h-full border-r border-border iframe-container">
               <div className="h-full flex flex-col m-0 bg-card">
-                <div className="flex-1 p-0 overflow-hidden">
+                <div className="flex-1 p-0 overflow-hidden relative">
                   {isLoadingRobots ? (
-                  <div className="h-full flex flex-col relative">
+                  <div className="absolute inset-0 flex flex-col">
                     <BrowserSkeleton />
                     
                     {/* Loading status overlay - minimal and unobtrusive */}
-                    <div className="absolute bottom-4 left-4 right-4">
+                    <div className="absolute bottom-4 left-4 right-4 z-10">
                       <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3">
                         <div className="flex items-center gap-3">
                           <div className="flex gap-1">
@@ -424,11 +424,11 @@ function RobotsPageContent() {
                     </div>
                   </div>
                 ) : !activeRobotInstance ? (
-                  <div className="h-full flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center">
                     <EmptyState
                       icon={<Globe className="h-16 w-16 text-primary/40" />}
-                      title="No robots running"
-                      description="Start a robot to see the web browser automation in action."
+                      title="No makinas running"
+                      description="Start a makina to see the web browser automation in action."
                       variant="fancy"
                     />
                   </div>
@@ -535,15 +535,15 @@ function RobotsPageContent() {
             </div>
 
             {/* Messages View - 1/3 of available space */}
-            <div className="w-1/3 h-full messages-area">
-              <div className="h-full flex flex-col m-0 bg-card">
-                <div className="flex-1 p-0 overflow-hidden">
+            <div className="w-1/3 h-full min-w-0 messages-area">
+              <div className="h-full flex flex-col m-0 bg-card min-w-0">
+                <div className="flex-1 p-0 overflow-hidden min-w-0 relative">
                   {isLoadingRobots ? (
-                    <div className="h-full flex items-center justify-center p-6">
+                    <div className="absolute inset-0 flex items-center justify-center p-6">
                       <LoadingSkeleton variant="fullscreen" size="lg" />
                     </div>
                   ) : !activeRobotInstance ? (
-                    <div className="h-full flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center">
                       <EmptyCard
                         icon={<Settings className="h-16 w-16 text-primary/40" />}
                         title="No active sessions"
@@ -553,10 +553,12 @@ function RobotsPageContent() {
                       />
                     </div>
                   ) : (
-                    <SimpleMessagesView 
-                      className="h-full" 
-                      activeRobotInstance={activeRobotInstance}
-                    />
+                    <div className="absolute inset-0">
+                      <SimpleMessagesView 
+                        className="h-full" 
+                        activeRobotInstance={activeRobotInstance}
+                      />
+                    </div>
                   )}
                 </div>
               </div>

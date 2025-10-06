@@ -69,7 +69,8 @@ export async function getConversationMessages(conversationId: string): Promise<C
       command_id: msg.command_id || undefined,
       sender_id: msg.user_id || msg.agent_id || msg.visitor_id || undefined,
       sender_name: msg.custom_data?.user_name || msg.custom_data?.sender_name,
-      sender_avatar: msg.custom_data?.avatar_url || msg.custom_data?.sender_avatar
+      sender_avatar: msg.custom_data?.avatar_url || msg.custom_data?.sender_avatar,
+      agent_id: msg.agent_id || undefined
     }))
   } catch (e) {
     console.error("getConversationMessages (client) error:", e)

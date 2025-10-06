@@ -117,7 +117,7 @@ const humanInTheLoopItems = [
 // Robots category
 const robotsItems = [
   {
-    title: "Robots",
+    title: "Makinas",
     href: "/robots",
     icon: Bot,
   },
@@ -554,7 +554,7 @@ export function Sidebar({
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={isCollapsed}
                 >
-                  {item.title === "Robots" && (
+                  {item.title === "Makinas" && (
                     <RobotsBadge isActive={pathname.startsWith("/robots")} />
                   )}
                 </MenuItem>

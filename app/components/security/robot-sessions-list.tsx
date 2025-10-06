@@ -121,7 +121,7 @@ function RobotSessionRow({
                       Authentication Session
                     </p>
                     <p className="text-xs text-blue-700 dark:text-blue-300">
-                      This session contains browser authentication data that can be reused by robots to access {session.domain} without re-authenticating.
+                      This session contains browser authentication data that can be reused by makinas to access {session.domain} without re-authenticating.
                     </p>
                   </div>
                 </div>
