@@ -67,7 +67,7 @@
 /* Ensure text areas and inputs are not blocked by iframe overlays */
 textarea, input[type="text"], input[type="email"] {
   position: relative;
-  z-index: 15;
+  z-index: 5;
   isolation: isolate;
 }
 
