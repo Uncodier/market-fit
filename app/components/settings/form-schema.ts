@@ -469,6 +469,22 @@ export const siteFormSchema = z.object({
     tags: z.array(z.string()).optional().default([]),
     status: z.enum(["draft", "review", "approved", "published", "archived"]).optional().default("draft")
   })).optional().default([]),
+  // Activities configuration (nested object to support future params)
+  activities: z.object({
+    daily_resume_and_stand_up: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
+    local_lead_generation: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
+    icp_lead_generation: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
+    leads_initial_cold_outreach: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
+    leads_follow_up: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
+    email_sync: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
+  }).optional().default({
+    daily_resume_and_stand_up: { status: "default" },
+    local_lead_generation: { status: "default" },
+    icp_lead_generation: { status: "default" },
+    leads_initial_cold_outreach: { status: "default" },
+    leads_follow_up: { status: "default" },
+    email_sync: { status: "default" },
+  }),
 })
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>

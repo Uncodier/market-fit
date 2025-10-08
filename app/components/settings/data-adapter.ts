@@ -327,6 +327,19 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       plan: "commission",
       auto_renew: true
     },
+    // Activities configuration
+    activities: (() => {
+      const incoming = (site.settings as any)?.activities || {};
+      const coerce = (v: any) => (v === "inactive" ? "inactive" : "default");
+      return {
+        daily_resume_and_stand_up: { status: coerce(incoming?.daily_resume_and_stand_up?.status ?? incoming?.daily_resume_and_stand_up) },
+        local_lead_generation: { status: coerce(incoming?.local_lead_generation?.status ?? incoming?.local_lead_generation) },
+        icp_lead_generation: { status: coerce(incoming?.icp_lead_generation?.status ?? incoming?.icp_lead_generation) },
+        leads_initial_cold_outreach: { status: coerce(incoming?.leads_initial_cold_outreach?.status ?? incoming?.leads_initial_cold_outreach) },
+        leads_follow_up: { status: coerce(incoming?.leads_follow_up?.status ?? incoming?.leads_follow_up) },
+        email_sync: { status: coerce(incoming?.email_sync?.status ?? incoming?.email_sync) },
+      } as const;
+    })(),
     // Agregar datos de company (este campo es requerido por el esquema)
     company: {
       name: "",

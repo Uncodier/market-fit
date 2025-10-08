@@ -16,6 +16,7 @@ import { SocialSection } from "./SocialSection"
 import { ChannelsSection } from "./ChannelsSection"
 import { TeamSection } from "./TeamSection"
 import { BillingSection } from "./BillingSection"
+import { ActivitiesSection } from "./ActivitiesSection"
 import { RotateCcw } from "../ui/icons"
 import { useDropzone } from "react-dropzone"
 import { cn } from "../../lib/utils"
@@ -213,6 +214,15 @@ export function SiteForm({
         purchase: { metrics: [], actions: [], tactics: [] },
         retention: { metrics: [], actions: [], tactics: [] },
         referral: { metrics: [], actions: [], tactics: [] }
+      }
+      ,
+      activities: initialData?.activities || {
+        daily_resume_and_stand_up: { status: "default" },
+        local_lead_generation: { status: "default" },
+        icp_lead_generation: { status: "default" },
+        leads_initial_cold_outreach: { status: "default" },
+        leads_follow_up: { status: "default" },
+        email_sync: { status: "default" }
       }
     }
   })
@@ -543,6 +553,10 @@ export function SiteForm({
 
           {renderCard("social",
             <SocialSection active={true} />
+          )}
+
+          {renderCard("activities",
+            <ActivitiesSection active={true} />
           )}
 
           {renderCard("channels",

@@ -53,12 +53,13 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels, 
       social_media, company, customer_journey, copywriting
     } = data;
+    const activities = (data as any).activities;
     
     // Create settingsData object explicitly without any tracking fields
     const settingsData = {
       about, company_size, industry, products, services, locations,
       business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels,
-      social_media, company, customer_journey, copywriting
+      social_media, company, customer_journey, copywriting, activities
     };
     
     console.log("SAVE 3: Datos extraídos del formulario:", {
@@ -297,7 +298,19 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
         purchase: { metrics: [], actions: [], tactics: [] },
         retention: { metrics: [], actions: [], tactics: [] },
         referral: { metrics: [], actions: [], tactics: [] }
-      }
+      },
+      activities: (() => {
+        const a = (settingsData.activities || {}) as any;
+        const coerce = (v: any) => (v === 'inactive' ? 'inactive' : 'default');
+        return {
+          daily_resume_and_stand_up: { status: coerce(a?.daily_resume_and_stand_up?.status ?? a?.daily_resume_and_stand_up) },
+          local_lead_generation: { status: coerce(a?.local_lead_generation?.status ?? a?.local_lead_generation) },
+          icp_lead_generation: { status: coerce(a?.icp_lead_generation?.status ?? a?.icp_lead_generation) },
+          leads_initial_cold_outreach: { status: coerce(a?.leads_initial_cold_outreach?.status ?? a?.leads_initial_cold_outreach) },
+          leads_follow_up: { status: coerce(a?.leads_follow_up?.status ?? a?.leads_follow_up) },
+          email_sync: { status: coerce(a?.email_sync?.status ?? a?.email_sync) },
+        } as const
+      })()
     };
     
     // Handle secure token storage if new values are provided

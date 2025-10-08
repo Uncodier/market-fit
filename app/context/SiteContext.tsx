@@ -185,6 +185,14 @@ export interface SiteSettings {
       tactics?: string[]
     }
   } | null
+  activities?: {
+    daily_resume_and_stand_up?: 'default' | 'inactive'
+    local_lead_generation?: 'default' | 'inactive'
+    icp_lead_generation?: 'default' | 'inactive'
+    leads_initial_cold_outreach?: 'default' | 'inactive'
+    leads_follow_up?: 'default' | 'inactive'
+    email_sync?: 'default' | 'inactive'
+  } | null
   // allowed_domains is handled in a separate table, not in settings
   // allowed_domains?: Array<{
   //   id?: string
@@ -944,6 +952,14 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 team_members: parseJsonField(settingsData.team_members, []),
                 team_roles: parseJsonField(settingsData.team_roles, []),
                 org_structure: parseJsonField(settingsData.org_structure, {}),
+                activities: parseJsonField(settingsData.activities, {
+                  daily_resume_and_stand_up: { status: 'default' },
+                  local_lead_generation: { status: 'default' },
+                  icp_lead_generation: { status: 'default' },
+                  leads_initial_cold_outreach: { status: 'default' },
+                  leads_follow_up: { status: 'default' },
+                  email_sync: { status: 'default' }
+                }),
                 created_at: settingsData.created_at,
                 updated_at: settingsData.updated_at,
                 competitors: parseJsonField(settingsData.competitors, []),

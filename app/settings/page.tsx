@@ -120,6 +120,34 @@ function SettingsFormSkeleton() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Activities skeleton */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              <Skeleton className="h-6 w-24" />
+            </CardTitle>
+            <Skeleton className="h-9 w-32" />
+          </div>
+          <Skeleton className="h-4 w-2/3 mt-2" />
+        </CardHeader>
+      </Card>
+      <div className="space-y-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="px-6 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-3/4 mt-2" />
+                </div>
+                <Skeleton className="h-9 w-40" />
+              </div>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
       
       <Card>
         <CardHeader>
@@ -156,7 +184,7 @@ export default function SettingsPage() {
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "channels", "team"].includes(tab)) {
+    if (tab && ["general", "channels", "team", "activities"].includes(tab)) {
       setActiveSegment(tab)
     }
   }, [searchParams])
@@ -270,6 +298,7 @@ export default function SettingsPage() {
                 <TabsTrigger value="general">General Settings</TabsTrigger>
                 <TabsTrigger value="channels">Channels</TabsTrigger>
                 <TabsTrigger value="team">Team</TabsTrigger>
+                <TabsTrigger value="activities">Activities</TabsTrigger>
               </TabsList>
             </Tabs>
             <Button disabled>
@@ -301,6 +330,7 @@ export default function SettingsPage() {
               <TabsTrigger value="general" className="whitespace-nowrap">General Settings</TabsTrigger>
               <TabsTrigger value="channels" className="whitespace-nowrap">Channels</TabsTrigger>
               <TabsTrigger value="team" className="whitespace-nowrap">Team</TabsTrigger>
+              <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="flex items-center gap-2">
