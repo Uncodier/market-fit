@@ -59,7 +59,7 @@ export function useOptimizedMessageState(initialValue = ""): UseOptimizedMessage
     }
   }, [autoResize])
   
-  // PERFORMANCE-FIRST: Update ref immediately, debounce React state heavily
+  // PERFORMANCE-FIRST: Update ref immediately, minimal debounce for React state
   const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textarea = e.target
     const newValue = textarea.value
@@ -75,10 +75,10 @@ export function useOptimizedMessageState(initialValue = ""): UseOptimizedMessage
       clearTimeout(debounceRef.current)
     }
     
-    // 4. Heavy debounce for React state (only for UI updates that need it)
+    // 4. Minimal debounce for React state (only for non-critical UI updates)
     debounceRef.current = setTimeout(() => {
       setMessageState(newValue)
-    }, 300) // Long delay - React state only for non-critical updates
+    }, 50) // Much shorter delay for better responsiveness
     
   }, [autoResize])
   

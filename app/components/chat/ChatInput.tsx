@@ -1,6 +1,6 @@
 "use client"
 
-import React, { FormEvent, useCallback, useRef, useMemo, memo } from "react"
+import React, { FormEvent, useCallback, useRef, useMemo, memo, useState, useEffect } from "react"
 import { Button } from "@/app/components/ui/button"
 import { OptimizedTextarea } from "@/app/components/ui/optimized-textarea"
 import * as Icons from "@/app/components/ui/icons"
@@ -47,6 +47,9 @@ export const ChatInput = memo(function ChatInput({
   const internalRef = useRef<HTMLTextAreaElement>(null)
   // Dynamic width calculation removed; rely on static container matching messages
   
+  // Track whether the textarea has any user input to control send button fill/enable
+  const [hasInput, setHasInput] = useState(false)
+
   // Channel selector hook - now optimized
   const {
     selectedChannel,
@@ -68,6 +71,8 @@ export const ChatInput = memo(function ChatInput({
       // Fallback to direct state update
       setMessage(e.target.value)
     }
+    // Update input presence state for send button behavior
+    setHasInput(e.target.value.trim().length > 0)
   }, [handleMessageChange, setMessage])
   
   // Optimized keyboard handler
@@ -92,10 +97,17 @@ export const ChatInput = memo(function ChatInput({
     return conversationId && conversationId !== "" && !conversationId.startsWith("new-")
   }, [conversationId])
   
-  // Memoize send button state - for uncontrolled mode, always enabled when not loading
+  // Initialize hasInput when a controlled message value is provided
+  useEffect(() => {
+    if (typeof message === 'string') {
+      setHasInput(message.trim().length > 0)
+    }
+  }, [message])
+
+  // Send button is enabled and filled only when there is input and not loading
   const canSend = useMemo(() => {
-    return !isLoading
-  }, [isLoading])
+    return hasInput && !isLoading
+  }, [hasInput, isLoading])
   
   // If no conversation is selected, don't render the input
   if (!hasSelectedConversation) {
@@ -138,8 +150,10 @@ export const ChatInput = memo(function ChatInput({
                   variant="ghost"
                   disabled={!canSend}
                   className={cn(
-                    "rounded-xl h-[39px] w-[39px] text-primary hover:text-primary/90 transition-colors hover:bg-muted",
-                    canSend ? "opacity-100" : "opacity-50"
+                    "rounded-[9999px] h-[39px] w-[39px] transition-all duration-200",
+                    canSend
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100"
+                      : "text-muted-foreground opacity-50 hover:bg-transparent"
                   )}
                 >
                   {isLoading ? (

@@ -6,32 +6,11 @@ import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/utils/supabase/client"
 import { Lead } from "@/app/leads/types"
 
-// Función para obtener el nombre de la compañía (misma lógica que en leads/page.tsx)
-const getCompanyName = (lead: Lead) => {
-  if (lead.companies && lead.companies.name) {
-    return lead.companies.name
-  }
-  if (lead.company && typeof lead.company === 'object' && lead.company.name) {
-    return lead.company.name
-  }
-  if (typeof lead.company === 'string') {
-    return lead.company
-  }
-  // Si no hay compañía, usar el nombre del lead como "compañía"
-  return lead.name
-}
-
-// Función para obtener una clave única por empresa (misma lógica que en leads/page.tsx)
+// Use company_id as the unique grouping key; fall back to lead id when absent
 const getCompanyKey = (lead: Lead) => {
-  // Si hay compañía real, usar el nombre de la compañía
-  if ((lead.companies && lead.companies.name) || 
-      (lead.company && typeof lead.company === 'object' && lead.company.name) ||
-      (typeof lead.company === 'string')) {
-    const companyName = getCompanyName(lead)
-    return companyName.toLowerCase().trim()
+  if (lead.company_id) {
+    return String(lead.company_id)
   }
-  
-  // Si no hay compañía, usar el ID del lead para asegurar unicidad
   return `lead_${lead.id}`
 }
 
@@ -49,11 +28,12 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
       try {
         const supabase = createClient()
         
-        // Get all leads for the current site with company information
+        // Get all NEW leads for the current site (only need ids and company_id)
         const { data: leads, error: leadsError } = await supabase
           .from('leads')
-          .select('id, status, site_id, name, company, companies(name)')
+          .select('id, status, site_id, company_id')
           .eq('site_id', currentSite.id)
+          .eq('status', 'new')
         
         if (leadsError) {
           console.error('Error fetching leads:', leadsError)
@@ -66,31 +46,13 @@ export function LeadsBadge({ isActive = false }: { isActive?: boolean }) {
           return
         }
 
-        // Group leads by company (avoid expensive tasks fetch here)
-        const companiesByKey: Record<string, any[]> = {}
-        
-        leads.forEach(lead => {
-          const companyKey = getCompanyKey(lead as unknown as Lead)
-          if (!companiesByKey[companyKey]) {
-            companiesByKey[companyKey] = []
-          }
-          companiesByKey[companyKey].push(lead)
-        })
-        
-        // Count companies that have at least one "new" lead (matches what users see in New tab)
-        const relevantCompanies = new Set<string>()
-        
-        Object.entries(companiesByKey).forEach(([companyKey, companyLeads]) => {
-          // Check if company has at least one "new" lead
-          const hasNewLead = companyLeads.some(lead => lead.status === 'new')
-          
-          // Company counts ONLY if it has at least one new lead (matches New tab filter)
-          if (hasNewLead) {
-            relevantCompanies.add(companyKey)
-          }
-        })
-        
-        setNewCompaniesCount(relevantCompanies.size)
+        // Count unique companies among NEW leads (grouped by company_id, fallback to lead id)
+        const companyKeys = new Set<string>()
+        for (const lead of leads as unknown as Lead[]) {
+          companyKeys.add(getCompanyKey(lead))
+        }
+
+        setNewCompaniesCount(companyKeys.size)
 
       } catch (error) {
         console.error('Error counting new companies:', error)

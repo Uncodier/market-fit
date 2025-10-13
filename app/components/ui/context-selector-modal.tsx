@@ -340,9 +340,9 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
         <div className="flex items-center gap-2 flex-wrap relative z-51">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
-            className="h-8 px-3 hover:bg-muted transition-colors duration-200 text-xs"
+            className="h-8 px-3 hover:bg-secondary/80 transition-colors duration-200 text-xs"
           >
             @ context
           </Button>

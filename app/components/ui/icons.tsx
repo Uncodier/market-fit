@@ -1203,22 +1203,14 @@ export function Redo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-export const Image = ({ className, ...props }: IconProps) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={cn("h-4 w-4", className)}
-    {...props}
-  >
-    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-    <circle cx="9" cy="9" r="2" />
-    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-  </svg>
+export const Image = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </svg>
+  </IconWrapper>
 );
 
 export const Link = ({ className, ...props }: IconProps) => (
@@ -1610,6 +1602,17 @@ export const Bot = ({ className = "", size = 20, ...props }: IconProps) => (
       <path d="M20 14h2" />
       <path d="M15 13v2" />
       <path d="M9 13v2" />
+    </svg>
+  </IconWrapper>
+)
+
+// Speaker icon (for audio)
+export const Speaker = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 5 6 9H3v6h3l5 4V5z" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
     </svg>
   </IconWrapper>
 )

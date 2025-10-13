@@ -42,76 +42,67 @@ import { subMonths, format } from "date-fns"
 import { safeReload } from "../../utils/safe-reload"
 import { useSearchParams } from "next/navigation"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { useBillingCheck } from "@/app/hooks/use-billing-check"
-import { UpgradeToStartupButton } from "@/app/components/billing/upgrade-to-startup-button"
 
 
 // Robot Start Button Component
 function RobotStartButton({ currentSite }: { currentSite: any }) {
   const [isStartingRobot, setIsStartingRobot] = useState(false)
   const [isStoppingRobot, setIsStoppingRobot] = useState(false)
-  const { getActiveRobotForActivity, refreshRobots, isLoading: isLoadingRobots } = useRobots()
-  const { canStartRobot, hasStartupPlan, hasActiveCredits, creditsAvailable } = useBillingCheck()
+  const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots } = useRobots()
   const searchParams = useSearchParams()
   
-  // Get current tab from URL or default to free-agent
-  const activeTab = searchParams.get('tab') || 'free-agent'
-  const activeRobotInstance = getActiveRobotForActivity(activeTab)
-  const activeTabRef = useRef(activeTab)
+  // Use instance param instead of tab
+  const selectedInstanceParam = searchParams.get('instance')
+  const selectedInstanceId = selectedInstanceParam || 'new'
+  const activeRobotInstance = selectedInstanceId !== 'new' ? getInstanceById(selectedInstanceId) : null
+  const activeTabRef = useRef(selectedInstanceId)
 
-  // Map tab values to activity names
+  // Map tab values to activity names (fallback for create-from-new)
   const getActivityName = (tabValue: string): string => {
     const activityMap: Record<string, string> = {
-      "free-agent": "Free Agent",
+      "ask": "Ask",
       "channel-market-fit": "Channel Market Fit",
       "engage": "Engage in Social Networks", 
       "seo": "SEO",
       "publish-content": "Publish Content",
       "publish-ads": "Publish Ads",
       "ux-analysis": "UX Analysis",
-      "build-requirements": "Build Requirements"
+      "build-requirements": "Build Requirements",
+      "execute-plan": "Execute Plan",
+      "deep-research": "Deep Research"
     }
     return activityMap[tabValue] || tabValue
   }
 
   // Note: Robot checking now handled by RobotsContext
 
-  // Update activeTab ref when activeTab changes
+  // Update ref when selected instance changes
   useEffect(() => {
-    activeTabRef.current = activeTab
-  }, [activeTab])
+    activeTabRef.current = selectedInstanceId
+  }, [selectedInstanceId])
 
   // Note: Robot state monitoring now handled by RobotsContext
 
   // Note: Real-time monitoring now handled by RobotsContext
   // This component just reacts to context changes
 
-  // Function to start robot
+  // Function to start robot (used only for New Makina)
   const handleStartRobot = async () => {
     if (!currentSite) {
       toast.error("No site selected")
       return
     }
 
-    // Check billing requirements
-    if (!canStartRobot) {
-      if (!hasStartupPlan && !hasActiveCredits) {
-        toast.error("Robot feature requires Startup plan or active credits")
-      } else if (!hasActiveCredits) {
-        toast.error("No credits available to start robot")
-      }
-      return
-    }
 
     setIsStartingRobot(true)
     
     try {
       const { apiClient } = await import('@/app/services/api-client-service')
       
-      const response = await apiClient.post('/api/workflow/startRobot', {
+        const response = await apiClient.post('/api/workflow/startRobot', {
         site_id: currentSite.id,
         user_id: currentSite.user_id,
-        activity: getActivityName(activeTab)
+          activity: getActivityName('execute-plan')
       })
       
       if (response.success) {
@@ -144,7 +135,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             await refreshRobots()
             
             // Check if robot is now running - if so, stop polling and clear loading state
-            const activityName = getActivityName(activeTab)
+            const activityName = getActivityName('execute-plan')
             const supabase = createClient()
             
             const { data: currentInstance, error: instanceError } = await supabase
@@ -190,7 +181,6 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
               toast.warning("Robot startup is taking longer than expected. Please check the robots page.")
               // Final refresh attempt
               setTimeout(() => {
-                console.log('Final refresh attempt after robot start')
                 refreshRobots()
               }, 3000)
             }
@@ -290,12 +280,11 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           if (!refreshActive) return
           
           refreshAttempts++
-          console.log(`Refreshing stopped robot status (attempt ${refreshAttempts}/${maxRefreshAttempts})`)
           
           await refreshRobots()
           
           // Check if there's still an active robot - if not, stop refreshing
-          const activityName = getActivityName(activeTab)
+          const activityName = activeRobotInstance?.name || getActivityName('execute-plan')
           const supabase = createClient()
           
           const { data: currentInstance } = await supabase
@@ -316,11 +305,9 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           if (refreshAttempts < maxRefreshAttempts && refreshActive) {
             setTimeout(refreshStoppedStatus, 2000) // Refresh every 2 seconds
           } else if (refreshActive) {
-            console.log('Max refresh attempts reached for robot stop')
             refreshActive = false
             // Final refresh attempt
             setTimeout(() => {
-              console.log('Final refresh attempt after robot stop')
               refreshRobots()
             }, 3000)
           }
@@ -386,8 +373,51 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     )
   }
 
-  // If there's an active robot instance, show stop button and save auth button
-  if (activeRobotInstance) {
+  // If there's an active robot instance or a paused one selected, decide which controls to show
+  if (activeRobotInstance && selectedInstanceId !== 'new') {
+    const isPaused = ['paused', 'uninstantiated'].includes(activeRobotInstance.status)
+    if (isPaused) {
+      // Show resume button for paused instance
+      const handleResume = async () => {
+        // Immediately show loading in robots page (left explorer)
+        try {
+          console.log('▶️ Resume clicked', { instanceId: activeRobotInstance.id })
+          window.dispatchEvent(new CustomEvent('robot:resume-start', {
+            detail: { instanceId: activeRobotInstance.id }
+          }))
+
+          const { apiClient } = await import('@/app/services/api-client-service')
+          await apiClient.post('/api/workflow/startRobot', {
+            site_id: currentSite.id,
+            user_id: currentSite.user_id,
+            instance_id: activeRobotInstance.id,
+            activity: getActivityName('execute-plan')
+          })
+          // quiet log
+          toast.success('Resuming robot...')
+          setTimeout(async () => { await refreshRobots() }, 1000)
+        } catch (e) {
+          // quiet log
+          toast.error('Failed to resume robot')
+          try {
+            window.dispatchEvent(new CustomEvent('robot:resume-failed', {
+              detail: { instanceId: activeRobotInstance.id }
+            }))
+          } catch {}
+        }
+      }
+      return (
+        <Button 
+          variant="secondary"
+          size="default"
+          className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+          onClick={handleResume}
+        >
+          <PlayCircle className="h-4 w-4" />
+          Resume Robot
+        </Button>
+      )
+    }
     const handleSaveAuthSession = async () => {
       if (!activeRobotInstance) {
         toast.error("No active robot instance to save auth session")
@@ -478,23 +508,11 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     )
   }
 
-  // Check if billing requirements are met
-  if (!canStartRobot) {
-    return (
-      <div className="flex items-center gap-2">
-        <UpgradeToStartupButton
-          className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-all duration-200"
-        />
-        {hasActiveCredits && (
-          <div className="text-xs text-muted-foreground">
-            {creditsAvailable} credits available
-          </div>
-        )}
-      </div>
-    )
-  }
 
-  // Default state: show start button
+  // Default state: if New Makina is selected, hide start (chat handles start-on-send)
+  if (selectedInstanceId === 'new') return null
+
+  // Otherwise, show start button as fallback (should rarely show)
   return (
     <Button 
       size="default"

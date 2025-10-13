@@ -13,6 +13,7 @@ interface Robot {
   provider_instance_id?: string;
   cdp_url?: string;
   site_id: string;
+  created_at?: string;
 }
 
 interface RobotsByActivity {
@@ -24,9 +25,13 @@ interface RobotsContextValue {
   totalActiveRobots: number;
   isLoading: boolean;
   error: string | null;
+  lastRefreshAt: number | null;
+  refreshCount: number;
   getRobotsForActivity: (activityName: string) => Robot[];
   getActiveRobotForActivity: (activityName: string) => Robot | null;
   hasActiveRobotsForActivity: (activityName: string) => boolean;
+  getAllInstances: () => Robot[];
+  getInstanceById: (id: string) => Robot | null;
   refreshRobots: () => Promise<void>;
 }
 
@@ -52,6 +57,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const [error, setError] = useState<string | null>(null)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const hasInitiallyLoadedRef = useRef(false)
+  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
+  const [refreshCount, setRefreshCount] = useState(0)
 
   // Map activity names
   const activityMap: Record<string, string> = {
@@ -62,7 +69,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     "publish-content": "Publish Content",
     "publish-ads": "Publish Ads",
     "ux-analysis": "UX Analysis",
-    "build-requirements": "Build Requirements"
+    "build-requirements": "Build Requirements",
+    "execute-plan": "Execute Plan"
   }
 
   // Get robots for a specific activity
@@ -88,6 +96,20 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     )
   }, [getRobotsForActivity])
 
+  // Return all instances across activities (includes paused)
+  const getAllInstances = useCallback((): Robot[] => {
+    return Object.values(robotsByActivity).flat()
+  }, [robotsByActivity])
+
+  // Find instance by id
+  const getInstanceById = useCallback((id: string): Robot | null => {
+    for (const list of Object.values(robotsByActivity)) {
+      const found = list.find(r => r.id === id)
+      if (found) return found
+    }
+    return null
+  }, [robotsByActivity])
+
   // Function to fetch all robots and organize by activity
   const refreshRobots = useCallback(async () => {
     if (!currentSite?.id) {
@@ -107,13 +129,14 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       
       const supabase = createClient()
       
-      // Get all robots for the current site
+      // Get all robots for the current site (include paused and uninstantiated, exclude stopped/error)
       const { data: robots, error: robotsError } = await supabase
         .from('remote_instances')
-        .select('id, status, instance_type, name, provider_instance_id, cdp_url, site_id')
+        .select('id, status, instance_type, name, provider_instance_id, cdp_url, site_id, created_at')
         .eq('site_id', currentSite.id)
         .neq('status', 'stopped')
         .neq('status', 'error')
+        .order('created_at', { ascending: true }) // Oldest first
 
       if (robotsError) {
         console.error('Error fetching robots:', robotsError)
@@ -131,36 +154,38 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         }
         organizedRobots[robot.name].push(robot)
 
-        // Count active robots
+        // Count active robots (exclude paused and uninstantiated)
         if (['running', 'active', 'starting', 'pending', 'initializing'].includes(robot.status)) {
           activeCount++
         }
+      })
+
+      // Sort instances within each activity by creation date (oldest first)
+      Object.keys(organizedRobots).forEach(activityName => {
+        organizedRobots[activityName].sort((a, b) => {
+          const dateA = new Date(a.created_at || 0).getTime()
+          const dateB = new Date(b.created_at || 0).getTime()
+          return dateA - dateB // Oldest first
+        })
       })
 
       // Only update state if data actually changed to prevent unnecessary re-renders
       setRobotsByActivity(prevRobots => {
         const hasChanged = JSON.stringify(prevRobots) !== JSON.stringify(organizedRobots)
         if (hasChanged) {
-          console.log('🤖 RobotsContext: Robots data changed, updating state')
           return organizedRobots
         }
-        console.log('🤖 RobotsContext: Robots data unchanged, skipping state update')
         return prevRobots
       })
       
       setTotalActiveRobots(prevCount => {
         if (prevCount !== activeCount) {
-          console.log('🤖 RobotsContext: Active robots count changed:', { from: prevCount, to: activeCount })
           return activeCount
         }
         return prevCount
       })
 
-      console.log('🤖 RobotsContext: Refreshed robots data', {
-        totalActivities: Object.keys(organizedRobots).length,
-        totalActiveRobots: activeCount,
-        robotsByActivity: organizedRobots
-      })
+      // quiet: omit detailed logs
 
     } catch (error) {
       console.error('Error refreshing robots:', error)
@@ -170,6 +195,10 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         setIsLoading(false)
         hasInitiallyLoadedRef.current = true
       }
+      const now = Date.now()
+      setLastRefreshAt(now)
+      setRefreshCount(prev => prev + 1)
+      // quiet: omit refresh completed log
     }
   }, [currentSite?.id])
 
@@ -198,8 +227,6 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
           filter: `site_id=eq.${currentSite.id}`
         },
         (payload: any) => {
-          console.log('🔄 RobotsContext: Real-time robot update:', payload)
-          
           // Debounce refresh to avoid too many calls
           if (refreshTimeoutRef.current) {
             clearTimeout(refreshTimeoutRef.current)
@@ -234,9 +261,13 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     totalActiveRobots,
     isLoading,
     error,
+    lastRefreshAt,
+    refreshCount,
     getRobotsForActivity,
     getActiveRobotForActivity,
     hasActiveRobotsForActivity,
+    getAllInstances,
+    getInstanceById,
     refreshRobots
   }
 

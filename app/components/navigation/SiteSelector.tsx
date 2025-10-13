@@ -225,17 +225,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                         )}
                         onClick={() => {
                           setCurrentSite(site)
-                          // Solo redirigir al dashboard si estamos en una ruta anidada que lo requiera
-                          const currentPath = window.location.pathname
-                          const pathSegments = currentPath.split('/').filter(Boolean)
-                          
-                          // Rutas que no requieren redirección al cambiar de sitio
-                          const safeRoutes = ['settings', 'billing', 'dashboard', 'content', 'sales', 'marketing']
-                          
-                          // Si estamos en una ruta anidada que no es segura, redirigir al dashboard
-                          if (pathSegments.length >= 2 && !safeRoutes.includes(pathSegments[0])) {
-                            router.push("/dashboard")
-                          }
+                          router.push("/dashboard")
                         }}
                       >
                         <MenuAvatar className="h-6 w-6 flex-shrink-0">

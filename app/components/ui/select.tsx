@@ -24,10 +24,10 @@ const SelectValue = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Value>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>
 >(({ className, ...props }, ref) => (
-  <div className="flex-1 overflow-hidden">
+  <div className="flex-1 min-w-0 overflow-hidden">
     <SelectPrimitive.Value
       ref={ref}
-      className={cn("text-left", className)}
+      className={cn("text-left block whitespace-nowrap overflow-hidden text-ellipsis truncate w-full max-w-full", className)}
       style={{ pointerEvents: 'none' }}
       {...props}
     />
@@ -42,7 +42,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left",
+      "flex h-10 w-full min-w-0 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left overflow-hidden",
       className
     )}
     {...props}
@@ -99,23 +99,24 @@ SelectLabel.displayName = SelectPrimitive.Label.displayName
 
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & { hideIndicator?: boolean }
+>(({ className, children, hideIndicator = false, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-muted transition-colors duration-150 text-left",
+      "flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-muted transition-colors duration-150 text-left leading-none",
       className
     )}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <SelectPrimitive.ItemIndicator>
+    {!hideIndicator && (
+      <SelectPrimitive.ItemIndicator className="mr-2 flex h-3.5 w-3.5 items-center justify-center flex-shrink-0">
         <Check className="h-4 w-4" />
       </SelectPrimitive.ItemIndicator>
-    </span>
-
-    <SelectPrimitive.ItemText className="overflow-hidden text-ellipsis whitespace-nowrap text-left">{children}</SelectPrimitive.ItemText>
+    )}
+    <SelectPrimitive.ItemText className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-left flex items-center gap-2">
+      {children}
+    </SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ))
 SelectItem.displayName = SelectPrimitive.Item.displayName
