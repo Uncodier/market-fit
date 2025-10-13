@@ -47,13 +47,13 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   onAudioParameterChange
 }) => {
   return (
-    <div className="flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20]">
-      <div className="px-[30px]">
-        <form className="relative" style={{ width: '100%' }} onSubmit={(e) => {
+    <div className="flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20] w-full" style={{ width: '100%', minWidth: '100%' }}>
+      <div className="px-[30px] w-full" style={{ width: '100%', minWidth: '100%' }}>
+        <form className="relative w-full" style={{ width: '100%', minWidth: '100%' }} onSubmit={(e) => {
           e.preventDefault()
           onSubmit()
         }}>
-          <div className="relative">
+          <div className="relative w-full" style={{ width: '100%', minWidth: '100%' }}>
             <OptimizedTextarea
               ref={textareaRef}
               value={message}
@@ -74,7 +74,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 paddingBottom: '50px',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                height: '135px' // Initial height, will be auto-adjusted
+                height: '135px', // Initial height, will be auto-adjusted
+                width: '100%',
+                minWidth: '100%',
+                maxWidth: '100%'
               }}
             />
             
@@ -83,15 +86,27 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
               <div className="flex items-center gap-2">
                 {/* Activity selector replaced with new options */}
                 <Select value={selectedActivity} onValueChange={onActivityChange}>
-                  <SelectTrigger className="h-8 text-xs w-[160px] bg-secondary hover:bg-secondary/80 border-secondary">
-                    <SelectValue className="truncate" placeholder="Select activity" />
+                  <SelectTrigger className="h-8 text-xs w-[160px] bg-secondary hover:bg-secondary/80 border-secondary flex items-center">
+                    <SelectValue className="truncate flex items-center gap-2" placeholder="Select activity">
+                      {selectedActivity === 'ask' && <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" style={{ verticalAlign: 'middle', display: 'inline-block', position: 'relative' }} />}
+                      {selectedActivity === 'robot' && <Bot className="h-3.5 w-3.5 flex-shrink-0 text-purple-600" style={{ verticalAlign: 'middle', display: 'inline-block', position: 'relative' }} />}
+                      <span style={{ verticalAlign: 'middle' }}>
+                        {selectedActivity === 'ask' ? 'Ask' : selectedActivity === 'robot' ? 'Robot' : 'Select activity'}
+                      </span>
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ask" textValue="Ask" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">
-                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap"><MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" /><span className="truncate">Ask</span></span>
+                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap" style={{ alignItems: 'center', display: 'flex' }}>
+                        <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" style={{ verticalAlign: 'middle', display: 'inline-block', position: 'relative' }} />
+                        <span className="truncate" style={{ verticalAlign: 'middle' }}>Ask</span>
+                      </span>
                     </SelectItem>
                     <SelectItem value="robot" textValue="Robot" hideIndicator className="data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700">
-                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap"><Bot className="h-3.5 w-3.5 flex-shrink-0 text-purple-600" /><span className="truncate">Robot</span></span>
+                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap" style={{ alignItems: 'center', display: 'flex' }}>
+                        <Bot className="h-3.5 w-3.5 flex-shrink-0 text-purple-600" style={{ verticalAlign: 'middle', display: 'inline-block', position: 'relative' }} />
+                        <span className="truncate" style={{ verticalAlign: 'middle' }}>Robot</span>
+                      </span>
                     </SelectItem>
                     {/* Hidden media generation options */}
                     {/* <SelectItem value="generate-image" textValue="Generate Image" hideIndicator className="data-[state=checked]:bg-green-50 data-[state=checked]:text-green-700">

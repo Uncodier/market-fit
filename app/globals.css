@@ -1022,6 +1022,56 @@ html.safari .backdrop-blur-\[5px\] {
 html.safari [class*="backdrop-blur"] {
   -webkit-backdrop-filter: blur(8px) !important;
 } 
+
+/* Safari-specific fixes for select dropdown icons */
+html.safari [data-radix-select-content] svg,
+html.safari [data-radix-select-item] svg,
+html.safari .select-content svg,
+html.safari .select-item svg {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  position: relative !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Safari-specific fixes for select trigger icons */
+html.safari [data-radix-select-trigger] svg,
+html.safari .select-trigger svg {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  position: relative !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Safari-specific fixes for flex containers with icons */
+html.safari .flex.items-center svg {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  position: relative !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Safari-specific fixes for select items with icons */
+html.safari [data-radix-select-item] .flex.items-center,
+html.safari .select-item .flex.items-center {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+html.safari [data-radix-select-item] .flex.items-center svg,
+html.safari .select-item .flex.items-center svg {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  position: relative !important;
+  margin: 0 !important;
+  transform: none !important;
+  flex-shrink: 0 !important;
+}
+
 .-top-1 { top: -0.75rem; } 
 
 /* Removed fixed positioning and width override for chat input/textarea to rely on sticky container */

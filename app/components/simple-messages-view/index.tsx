@@ -486,7 +486,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
       )}
 
       {/* Message input area - centered when no instance and no message sent, bottom when active or message sent */}
-      <div className={`${(!activeRobotInstance && !hasMessageBeenSent) ? 'absolute inset-x-0 top-1/2 -translate-y-1/2 transform' : 'absolute bottom-4 left-0 right-0'} flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20]`}>
+      <div className={`${(!activeRobotInstance && !hasMessageBeenSent) ? 'absolute inset-x-0 top-1/2 -translate-y-1/2 transform' : 'absolute bottom-4 left-0 right-0'} flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20] w-full`}>
         <MessageInput
           message={message}
           selectedActivity={selectedActivity}
