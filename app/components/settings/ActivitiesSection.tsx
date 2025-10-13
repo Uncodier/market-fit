@@ -44,6 +44,11 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
     key: "email_sync",
     title: "Email Sync",
     description: "Keep email conversations synchronized for context-aware automations and tracking."
+  },
+  {
+    key: "assign_leads_to_team",
+    title: "Assign Leads to Team",
+    description: "Assign key leads to the most suitable team member based on AI recommendations"
   }
 ]
 
@@ -69,8 +74,14 @@ export function ActivitiesSection({ active }: ActivitiesSectionProps) {
 
       <div className="space-y-4">
         {ACTIVITIES.map(({ key, title, description }) => {
-          const status = form.watch(`activities.${key}.status` as const) as 'default' | 'inactive' | undefined
+          const status = form.watch(`activities.${key}.status` as const) as 'default' | 'inactive' | 'active' | undefined
           const isInactive = status === 'inactive'
+          
+          // Check dependency for assign_leads_to_team
+          const isAssignLeads = key === 'assign_leads_to_team'
+          const coldOutreachStatus = form.watch('activities.leads_initial_cold_outreach.status')
+          const isDependencyInactive = isAssignLeads && coldOutreachStatus === 'inactive'
+          
           return (
           <Card key={key} className={cn(
             "border shadow-sm hover:shadow-md transition-shadow duration-200",
@@ -83,28 +94,53 @@ export function ActivitiesSection({ active }: ActivitiesSectionProps) {
                 <div>
                   <CardTitle className="text-base font-semibold">{title}</CardTitle>
                   <div className="text-sm text-muted-foreground mt-1">{description}</div>
+                  {isDependencyInactive && (
+                    <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Requires "Leads Initial Cold Outreach" to be active
+                    </div>
+                  )}
                 </div>
                 <div className="w-40">
                   <FormField
                     control={form.control}
                     name={`activities.${key}.status` as const}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-muted-foreground">Status</FormLabel>
-                        <FormControl>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className="h-9">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="default">Default</SelectItem>
-                              <SelectItem value="inactive">Inactive</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      // Auto-set to inactive if dependency is inactive
+                      if (isDependencyInactive && field.value !== 'inactive') {
+                        field.onChange('inactive')
+                      }
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel className="text-xs text-muted-foreground">Status</FormLabel>
+                          <FormControl>
+                            <Select 
+                              value={field.value} 
+                              onValueChange={field.onChange}
+                              disabled={isDependencyInactive}
+                            >
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {isAssignLeads ? (
+                                  <>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                    <SelectItem value="active">Active</SelectItem>
+                                  </>
+                                ) : (
+                                  <>
+                                    <SelectItem value="default">Default</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                  </>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )
+                    }}
                   />
                 </div>
               </div>

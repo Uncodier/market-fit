@@ -477,6 +477,7 @@ export const siteFormSchema = z.object({
     leads_initial_cold_outreach: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
     leads_follow_up: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
     email_sync: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
+    assign_leads_to_team: z.object({ status: z.enum(["inactive", "active"]).default("inactive") }).default({ status: "inactive" }),
   }).optional().default({
     daily_resume_and_stand_up: { status: "default" },
     local_lead_generation: { status: "default" },
@@ -484,6 +485,7 @@ export const siteFormSchema = z.object({
     leads_initial_cold_outreach: { status: "default" },
     leads_follow_up: { status: "default" },
     email_sync: { status: "default" },
+    assign_leads_to_team: { status: "inactive" },
   }),
 })
 

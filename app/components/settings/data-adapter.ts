@@ -331,6 +331,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     activities: (() => {
       const incoming = (site.settings as any)?.activities || {};
       const coerce = (v: any) => (v === "inactive" ? "inactive" : "default");
+      const coerceAssign = (v: any) => (v === "active" ? "active" : "inactive");
       return {
         daily_resume_and_stand_up: { status: coerce(incoming?.daily_resume_and_stand_up?.status ?? incoming?.daily_resume_and_stand_up) },
         local_lead_generation: { status: coerce(incoming?.local_lead_generation?.status ?? incoming?.local_lead_generation) },
@@ -338,6 +339,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         leads_initial_cold_outreach: { status: coerce(incoming?.leads_initial_cold_outreach?.status ?? incoming?.leads_initial_cold_outreach) },
         leads_follow_up: { status: coerce(incoming?.leads_follow_up?.status ?? incoming?.leads_follow_up) },
         email_sync: { status: coerce(incoming?.email_sync?.status ?? incoming?.email_sync) },
+        assign_leads_to_team: { status: coerceAssign(incoming?.assign_leads_to_team?.status ?? incoming?.assign_leads_to_team) },
       } as const;
     })(),
     // Agregar datos de company (este campo es requerido por el esquema)

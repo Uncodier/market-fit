@@ -222,7 +222,8 @@ export function SiteForm({
         icp_lead_generation: { status: "default" },
         leads_initial_cold_outreach: { status: "default" },
         leads_follow_up: { status: "default" },
-        email_sync: { status: "default" }
+        email_sync: { status: "default" },
+        assign_leads_to_team: { status: "inactive" }
       }
     }
   })
