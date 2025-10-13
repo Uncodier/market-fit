@@ -13,7 +13,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
  
-    --primary: 232 60% 65%;
+    --primary: 222 47% 11%;
     --primary-foreground: 210 40% 98%;
  
     --secondary: 210 40% 96.1%;
@@ -955,17 +955,17 @@ html.safari [class*="select-trigger"] svg {
 
 /* Primary gradient styles */
 .bg-gradient-primary {
-  background: linear-gradient(123deg, rgb(89, 103, 181) -12%, rgb(144, 142, 237) 88.6903%);
+  background: hsl(var(--primary));
 }
 
 /* Primary button with gradient - applies to default variant */
 .inline-flex.items-center.justify-center[class*="min-w-[180px]"] {
-  background: linear-gradient(123deg, rgb(89, 103, 181) -12%, rgb(144, 142, 237) 88.6903%);
+  background: hsl(var(--primary));
 }
 
 /* Navigation menu item active state gradient */
 .bg-primary {
-  background: linear-gradient(123deg, rgb(89, 103, 181) -12%, rgb(144, 142, 237) 88.6903%) !important;
+  background: hsl(var(--primary)) !important;
 } 
 
 .badge-gradient-green {
