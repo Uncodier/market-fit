@@ -134,7 +134,7 @@ export function CalendarDateRangePicker({
   const rangeDisplay = `${format(safeStartDate, "MMM d")} - ${format(safeEndDate, "MMM d")} ${format(safeEndDate, "yyyy")}`;
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className={cn("flex items-center", className)}>
       <DatePicker
         date={startDate}
         setDate={setStartDate}

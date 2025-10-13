@@ -36,6 +36,7 @@ import { isSameDay, isSameMonth } from "date-fns"
 import { useRequestController } from "@/app/hooks/useRequestController"
 import OnboardingItinerary from "@/app/components/dashboard/onboarding-itinerary"
 import { useProfile } from "@/app/hooks/use-profile"
+import { createClient } from "@/lib/supabase/client"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -68,24 +69,79 @@ export default function DashboardPage() {
   const [formattedTotal, setFormattedTotal] = useState("")
   const { settings } = useProfile()
   const userSettings = (settings as Record<string, any>) || {}
-  const onboardingCompleted = !!userSettings?.onboarding?.completed
-  const [activeTab, setActiveTab] = useState(onboardingCompleted ? "overview" : "onboarding")
+  
+  // Check onboarding completion from site settings instead of user profile
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false)
+  const [activeTab, setActiveTab] = useState("onboarding")
+  
+  // Check onboarding completion from site settings
+  useEffect(() => {
+    const checkOnboardingCompletion = async () => {
+      if (!currentSite?.id) return
+      
+      try {
+        const supabase = createClient()
+        const { data: siteSettings } = await supabase
+          .from('settings')
+          .select('onboarding')
+          .eq('site_id', currentSite.id)
+          .single()
+        
+        if (siteSettings?.onboarding) {
+          const onboardingTasks = siteSettings.onboarding
+          const allTaskIds = [
+            "configure_channels", "install_tracking_script", "set_business_hours",
+            "setup_branding", "setup_billing", "validate_geographic_restrictions",
+            "fine_tune_segments", "create_campaign", "setup_content", "configure_agents",
+            "complete_requirement", "publish_and_feedback", "personalize_customer_journey",
+            "assign_attribution_link", "import_leads", "pay_first_campaign", "invite_team",
+            "create_coordination_task"
+          ]
+          
+          // Check if all tasks are completed
+          const allCompleted = allTaskIds.every(taskId => onboardingTasks[taskId] === true)
+          setOnboardingCompleted(allCompleted)
+          
+          // Set initial tab based on completion status
+          if (allCompleted) {
+            setActiveTab("overview")
+          }
+        }
+      } catch (error) {
+        console.error('Error checking onboarding completion:', error)
+      }
+    }
+    
+    checkOnboardingCompletion()
+  }, [currentSite?.id])
   
   // Update URL when tab changes and get tab from URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const urlTab = params.get('tab')
-      if (urlTab && ['onboarding', 'overview', 'analytics', 'traffic', 'costs', 'sales'].includes(urlTab)) {
+      const validTabs = ['overview', 'analytics', 'traffic', 'costs', 'sales']
+      
+      // Only include onboarding in valid tabs if not completed
+      if (!onboardingCompleted) {
+        validTabs.unshift('onboarding')
+      }
+      
+      if (urlTab && validTabs.includes(urlTab)) {
         setActiveTab(urlTab)
       } else {
-        // If no tab in URL, set URL to match current activeTab
-        const currentTab = onboardingCompleted ? "overview" : "onboarding"
-        if (currentTab === "onboarding") {
-          const url = new URL(window.location.href)
-          url.searchParams.set('tab', 'onboarding')
-          window.history.replaceState({}, '', url.toString())
+        // Default to overview if onboarding is complete
+        const defaultTab = onboardingCompleted ? "overview" : "onboarding"
+        setActiveTab(defaultTab)
+        
+        // Update URL to match
+        const url = new URL(window.location.href)
+        if (defaultTab === 'overview') {
+          url.searchParams.delete('tab')
+        } else {
+          url.searchParams.set('tab', defaultTab)
         }
+        window.history.replaceState({}, '', url.toString())
       }
     }
   }, [onboardingCompleted])
@@ -360,7 +416,6 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 p-0">
       <Tabs 
-        defaultValue={onboardingCompleted ? "overview" : "onboarding"} 
         className="space-y-4"
         value={activeTab}
         onValueChange={handleTabChange}
@@ -415,12 +470,15 @@ export default function DashboardPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <CalendarDateRangePicker 
-                    onRangeChange={handleDateRangeChange} 
-                    initialStartDate={dateRange.startDate}
-                    initialEndDate={dateRange.endDate}
-                    key={`date-range-${format(dateRange.startDate, 'yyyy-MM-dd')}-${format(dateRange.endDate, 'yyyy-MM-dd')}`}
-                  />
+                  <div className="flex items-center">
+                    <CalendarDateRangePicker 
+                      onRangeChange={handleDateRangeChange} 
+                      initialStartDate={dateRange.startDate}
+                      initialEndDate={dateRange.endDate}
+                      key={`date-range-${format(dateRange.startDate, 'yyyy-MM-dd')}-${format(dateRange.endDate, 'yyyy-MM-dd')}`}
+                      className="flex items-center"
+                    />
+                  </div>
                 </div>
               )}
             </div>
