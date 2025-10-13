@@ -47,7 +47,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   onAudioParameterChange
 }) => {
   return (
-    <div className="flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20] w-full" style={{ width: '100%', minWidth: '100%' }}>
+    <div className="flex-none transition-all duration-300 ease-in-out w-full" style={{ width: '100%', minWidth: '100%' }}>
       <div className="px-[30px] w-full" style={{ width: '100%', minWidth: '100%' }}>
         <form className="relative w-full" style={{ width: '100%', minWidth: '100%' }} onSubmit={(e) => {
           e.preventDefault()

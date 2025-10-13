@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
@@ -313,6 +313,13 @@ export const useMessageSending = ({
     console.log('🔄 Resetting message sent state')
     setHasMessageBeenSent(false)
   }
+
+  // Reset hasMessageBeenSent when switching to no active instance
+  useEffect(() => {
+    if (!activeRobotInstance) {
+      setHasMessageBeenSent(false)
+    }
+  }, [activeRobotInstance])
 
   return {
     isSendingMessage,

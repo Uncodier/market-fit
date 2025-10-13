@@ -77,6 +77,13 @@ function RobotsPageContent() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [hasMessageBeenSent, setHasMessageBeenSent] = useState(false)
 
+  // Reset hasMessageBeenSent when there's no active robot instance
+  useEffect(() => {
+    if (!activeRobotInstance) {
+      setHasMessageBeenSent(false)
+    }
+  }, [activeRobotInstance])
+
   // No activity tabs anymore
 
   // Note: Polling logic removed - RobotsContext handles robot state management

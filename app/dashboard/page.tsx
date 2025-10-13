@@ -37,6 +37,8 @@ import { useRequestController } from "@/app/hooks/useRequestController"
 import OnboardingItinerary from "@/app/components/dashboard/onboarding-itinerary"
 import { useProfile } from "@/app/hooks/use-profile"
 import { createClient } from "@/lib/supabase/client"
+import { usePageRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
+import { useContextEntities } from "@/app/hooks/use-context-entities"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -46,6 +48,14 @@ export default function DashboardPage() {
   const [selectedSegment, setSelectedSegment] = useState<string>("all")
   const [isLoadingSegments, setIsLoadingSegments] = useState(false)
   const { cancelAllRequests } = useRequestController()
+  
+  // Add navigation blocking and hook subscriptions
+  const { shouldPreventRefresh } = usePageRefreshPrevention()
+  const { leads, contents, requirements, tasks, loading: contextLoading, refreshLeads, refreshContents, refreshRequirements, refreshTasks } = useContextEntities()
+  
+  // Navigation blocking state
+  const [isNavigating, setIsNavigating] = useState(false)
+  const [navigationBlocked, setNavigationBlocked] = useState(false)
   
   // Initialize dates and range type with safe values (one month ago to today) - ENHANCED
   const today = new Date()
@@ -355,6 +365,28 @@ export default function DashboardPage() {
     }
   }, [isInitialized, determineRangeType, validateDates]);
 
+  // Handle site changes with proper state reset and data reloading
+  useEffect(() => {
+    if (currentSite?.id) {
+      console.log('🔄 Dashboard: Site changed, resetting state and reloading data for site:', currentSite.id)
+      
+      // Cancel all in-flight requests when site changes
+      cancelAllRequests()
+      
+      // Reset dashboard state
+      setSelectedSegment("all")
+      setFormattedTotal("")
+      setIsNavigating(false)
+      setNavigationBlocked(false)
+      
+      // Force reload of all context data
+      refreshLeads()
+      refreshContents()
+      refreshRequirements()
+      refreshTasks()
+    }
+  }, [currentSite?.id, cancelAllRequests, refreshLeads, refreshContents, refreshRequirements, refreshTasks])
+
   useEffect(() => {
     const loadSegments = async () => {
       if (!currentSite || currentSite.id === "default") return
@@ -387,9 +419,25 @@ export default function DashboardPage() {
     setFormattedTotal(total);
   }, []);
 
+  // Navigation blocking logic
+  useEffect(() => {
+    if (shouldPreventRefresh) {
+      setNavigationBlocked(true)
+      console.log('🚫 Dashboard: Navigation blocked due to refresh prevention')
+    } else {
+      setNavigationBlocked(false)
+    }
+  }, [shouldPreventRefresh])
+
   // Reset states when tab changes
   const handleTabChange = (newTab: string) => {
     if (newTab !== activeTab) {
+      // Check if navigation is blocked
+      if (navigationBlocked) {
+        console.log('🚫 Dashboard: Tab change blocked due to navigation prevention')
+        return
+      }
+      
       console.log(`[Dashboard] Changing tab from ${activeTab} to ${newTab}, cancelling all requests`);
       cancelAllRequests();
       setActiveTab(newTab);
@@ -415,6 +463,19 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 p-0">
+      {/* Navigation blocking indicator */}
+      {navigationBlocked && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Navigation is temporarily blocked to protect your work. Please wait for the current operation to complete.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <Tabs 
         className="space-y-4"
         value={activeTab}

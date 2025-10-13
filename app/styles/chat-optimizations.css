@@ -1,9 +1,7 @@
 /* Advanced CSS optimizations for chat performance */
 
 /* GPU acceleration and smooth animations */
-.chat-input-container, .optimized-textarea {
-  position: sticky;
-  bottom: 16px;
+.optimized-textarea {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   width: 100%;
