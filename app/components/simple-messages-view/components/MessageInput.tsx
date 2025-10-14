@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { MessageSquare, Bot, Image as ImageIcon, PlayCircle, Speaker, ChevronRight } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -46,6 +46,45 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   onVideoParameterChange,
   onAudioParameterChange
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [dropdownDirection, setDropdownDirection] = useState<'down' | 'up'>('down')
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isDropdownOpen])
+
+  // Calculate dropdown direction based on position
+  const handleDropdownToggle = () => {
+    if (!isDropdownOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const spaceBelow = viewportHeight - rect.bottom
+      const dropdownHeight = 80 // Approximate height of dropdown
+      
+      // Since this dropdown is at the bottom of the screen, always check if there's enough space
+      // If less than 100px below, open upward
+      if (spaceBelow < 100) {
+        setDropdownDirection('up')
+      } else {
+        setDropdownDirection('down')
+      }
+    }
+    setIsDropdownOpen(!isDropdownOpen)
+  }
   return (
     <div className="flex-none transition-all duration-300 ease-in-out w-full" style={{ width: '100%', minWidth: '100%' }}>
       <div className="px-[30px] w-full" style={{ width: '100%', minWidth: '100%' }}>
@@ -84,42 +123,66 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
             {/* Context selector button in bottom left */}
             <div className="absolute bottom-[15px] left-[15px] z-50">
               <div className="flex items-center gap-2">
-                {/* Activity selector replaced with new options */}
-                <Select value={selectedActivity} onValueChange={onActivityChange}>
-                  <SelectTrigger className="h-8 text-xs w-[160px] bg-secondary hover:bg-secondary/80 border-secondary flex items-center">
-                    <SelectValue className="truncate flex items-center gap-2" placeholder="Select activity">
-                      {selectedActivity === 'ask' && <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" style={{ verticalAlign: 'middle', display: 'inline-block', position: 'relative' }} />}
-                      {selectedActivity === 'robot' && <Bot className="h-3.5 w-3.5 flex-shrink-0 text-purple-600" style={{ verticalAlign: 'middle', display: 'inline-block', position: 'relative' }} />}
-                      <span style={{ verticalAlign: 'middle' }}>
-                        {selectedActivity === 'ask' ? 'Ask' : selectedActivity === 'robot' ? 'Robot' : 'Select activity'}
-                      </span>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ask" textValue="Ask" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">
-                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap" style={{ alignItems: 'center', display: 'flex' }}>
-                        <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" style={{ verticalAlign: 'middle', display: 'inline-block', position: 'relative' }} />
-                        <span className="truncate" style={{ verticalAlign: 'middle' }}>Ask</span>
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="robot" textValue="Robot" hideIndicator className="data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700">
-                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap" style={{ alignItems: 'center', display: 'flex' }}>
-                        <Bot className="h-3.5 w-3.5 flex-shrink-0 text-purple-600" style={{ verticalAlign: 'middle', display: 'inline-block', position: 'relative' }} />
-                        <span className="truncate" style={{ verticalAlign: 'middle' }}>Robot</span>
-                      </span>
-                    </SelectItem>
-                    {/* Hidden media generation options */}
-                    {/* <SelectItem value="generate-image" textValue="Generate Image" hideIndicator className="data-[state=checked]:bg-green-50 data-[state=checked]:text-green-700">
-                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap"><ImageIcon className="h-3.5 w-3.5 flex-shrink-0 text-green-600" /><span className="truncate">Generate Image</span></span>
-                    </SelectItem>
-                    <SelectItem value="generate-video" textValue="Generate Video" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">
-                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap"><PlayCircle className="h-3.5 w-3.5 flex-shrink-0 text-red-600" /><span className="truncate">Generate Video</span></span>
-                    </SelectItem>
-                    <SelectItem value="generate-audio" textValue="Generate Audio" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">
-                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap"><Speaker className="h-3.5 w-3.5 flex-shrink-0 text-amber-600" /><span className="truncate">Generate Audio</span></span>
-                    </SelectItem> */}
-                  </SelectContent>
-                </Select>
+                {/* Activity selector - Custom component for Safari compatibility */}
+                <div className="relative" ref={dropdownRef}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 px-3 hover:bg-secondary/80 transition-colors duration-200 text-xs w-40 justify-start"
+                    onClick={handleDropdownToggle}
+                  >
+                    <div className="flex items-center w-full">
+                      <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
+                        {selectedActivity === 'ask' && <MessageSquare className="h-[18px] w-[18px] shrink-0 text-blue-600" />}
+                        {selectedActivity === 'robot' && <Bot className="h-[18px] w-[18px] shrink-0 text-purple-600" />}
+                      </div>
+                      <div className="flex flex-col min-w-0 ml-2">
+                        <span className="truncate">{selectedActivity === 'ask' ? 'Ask' : selectedActivity === 'robot' ? 'Robot' : 'Select activity'}</span>
+                      </div>
+                      <ChevronRight className="h-3 w-3 ml-auto rotate-90" />
+                    </div>
+                  </Button>
+                  
+                  {isDropdownOpen && (
+                    <div className={`absolute left-0 w-40 bg-background border border-border rounded-md shadow-lg z-50 ${
+                      dropdownDirection === 'up' 
+                        ? 'bottom-full mb-1' 
+                        : 'top-full mt-1'
+                    }`}>
+                      <div className="p-1">
+                        <div 
+                          className="flex items-center px-2 py-1.5 hover:bg-accent cursor-pointer rounded-sm"
+                          onClick={() => {
+                            onActivityChange('ask')
+                            setIsDropdownOpen(false)
+                          }}
+                        >
+                          <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
+                            <MessageSquare className="h-[18px] w-[18px] shrink-0 text-blue-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Ask</span>
+                          </div>
+                        </div>
+                        <div 
+                          className="flex items-center px-2 py-1.5 hover:bg-accent cursor-pointer rounded-sm"
+                          onClick={() => {
+                            onActivityChange('robot')
+                            setIsDropdownOpen(false)
+                          }}
+                        >
+                          <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
+                            <Bot className="h-[18px] w-[18px] shrink-0 text-purple-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Robot</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Media Parameters Toolbar */}
                 <MediaParametersToolbar

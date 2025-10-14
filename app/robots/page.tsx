@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, Trash2 } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, Trash2, Plus } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useSite } from "@/app/context/SiteContext"
@@ -43,20 +43,91 @@ export default function RobotsPage() {
 function RobotsPageContent() {
   const { isLayoutCollapsed } = useLayout()
   const { currentSite } = useSite()
-  const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount } = useRobots()
+  const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount, setAutoRefreshEnabled } = useRobots()
   const searchParams = useSearchParams()
   const router = useRouter()
   
   // No campaigns view here
 
+  // Local state for tracking selected instance without URL navigation
+  const [localSelectedInstanceId, setLocalSelectedInstanceId] = useState<string | null>(null)
+  const [shouldAutoConvertTab, setShouldAutoConvertTab] = useState(false)
+  const [pendingInstanceId, setPendingInstanceId] = useState<string | null>(null)
+  
+  // Force component refresh when site changes
+  const [siteChangeKey, setSiteChangeKey] = useState(0)
+  
+  // 🆕 Show reload message in sticky header
+  const [showReloadMessage, setShowReloadMessage] = useState(false)
+  
+  // 🆕 Force loading state when entering component or changing site
+  const [forceLoading, setForceLoading] = useState(true)
+  
+  // Simplified site change handling - only reset when site actually changes
+  useEffect(() => {
+    const siteId = currentSite?.id
+    if (siteId && siteId !== prevSiteIdRef.current) {
+      console.log('🔄 [Robots] Site changed, resetting state for site:', siteId)
+      
+      // Only reset when site actually changes
+      setLocalSelectedInstanceId(null)
+      setPendingInstanceId(null)
+      setShouldAutoConvertTab(false)
+      setSiteChangeKey(prev => prev + 1)
+      
+      // Refresh robots for new site
+      refreshRobots(siteId)
+      
+      prevSiteIdRef.current = siteId
+    }
+  }, [currentSite?.id, refreshRobots])
+
+  // 🆕 Wait for site context to be fully synchronized before proceeding
+  const [isSiteContextReady, setIsSiteContextReady] = useState(false)
+  
+  useEffect(() => {
+    // 🆕 Homologated site ID validation (same pattern as RobotsProvider)
+    const siteId = currentSite?.id
+    if (siteId) {
+      // Add a small delay to ensure site context is fully synchronized
+      const syncTimer = setTimeout(() => {
+        console.log('🔄 [Robots] Site context synchronized for site:', siteId)
+        setIsSiteContextReady(true)
+      }, 100) // 100ms delay to ensure synchronization
+      
+      return () => clearTimeout(syncTimer)
+    } else {
+      setIsSiteContextReady(false)
+    }
+  }, [currentSite?.id])
+
+  // Simplified initial loading - clear forceLoading after robots are loaded
+  useEffect(() => {
+    if (!isLoadingRobots && forceLoading) {
+      console.log('🔄 [Robots] Robots loaded, clearing force loading')
+      setForceLoading(false)
+    }
+  }, [isLoadingRobots, forceLoading])
+
   // Instance selection via URL param
   const selectedInstanceParam = searchParams.get('instance')
   const allInstances = getAllInstances()
-  // Default to 'new' when no instance param is provided
-  const selectedInstanceId = selectedInstanceParam
-    ? selectedInstanceParam
-    : 'new'
+  
+  // 🆕 Debug logging for instances
+  console.log('🔍 [Robots] Current instances:', {
+    siteId: currentSite?.id,
+    instancesCount: allInstances.length,
+    instances: allInstances.map(i => ({ id: i.id, name: i.name, site_id: i.site_id })),
+    isLoadingRobots,
+    refreshCount
+  })
+  
+  // Use local state if available, otherwise fall back to URL param, then default to "new" or first instance
+  const selectedInstanceId = localSelectedInstanceId || selectedInstanceParam || (allInstances.length > 0 ? allInstances[0].id : 'new')
+  
+  // Get instance without site filtering
   const activeRobotInstance = selectedInstanceId !== 'new' ? getInstanceById(selectedInstanceId) : null
+
   
   // Activity param for controlling explorer visibility
   const activityParam = searchParams.get('activity')
@@ -76,6 +147,8 @@ function RobotsPageContent() {
   const prevSiteIdRef = useRef<string | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [hasMessageBeenSent, setHasMessageBeenSent] = useState(false)
+  const [isAutoCreatingInstance, setIsAutoCreatingInstance] = useState(false)
+  const [lastAutoCreationAttempt, setLastAutoCreationAttempt] = useState<number>(0)
 
   // Reset hasMessageBeenSent when there's no active robot instance
   useEffect(() => {
@@ -221,6 +294,9 @@ function RobotsPageContent() {
   // Note: Robot events are now handled by the RobotsContext automatically
   // No need for manual event listeners here
 
+    // Note: Auto-creation of placeholder instances removed
+    // startRobot and assistant already create instances when needed
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
@@ -246,15 +322,23 @@ function RobotsPageContent() {
     activeTabRef.current = selectedInstanceId
   }, [selectedInstanceId])
 
-  // Reset and realign selected instance when site changes
+  // Reset connection state when site changes (simplified - main logic is in mount effect)
   useEffect(() => {
     const newSiteId = currentSite?.id || null
     if (newSiteId && newSiteId !== prevSiteIdRef.current) {
-      // Reset connection state only; allow global navigation to dashboard to proceed
+      console.log('🔄 [Robots] Site changed, resetting connection state:', { 
+        from: prevSiteIdRef.current, 
+        to: newSiteId 
+      })
+      console.log('🔄 [Robots] Full currentSite object during site change:', currentSite)
+      
+      // Reset connection state only
       setReconnectAttempts(0)
       setConnectionStatus('disconnected')
       setIsResuming(false)
       setStreamUrl(null)
+      setIsAutoCreatingInstance(false)
+      
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
         reconnectTimeoutRef.current = null
@@ -265,21 +349,104 @@ function RobotsPageContent() {
     }
   }, [currentSite?.id])
 
-  // After robots list refreshes, ensure selected instance exists for current site
+
+  // Auto-create instance when no instances exist after successful load
   useEffect(() => {
-    const all = getAllInstances()
-    // If user explicitly selected 'new', honor it
-    if (selectedInstanceId === 'new') return
-    // If selected instance no longer exists (site switch or data refresh), fallback to 'new'
-    const stillExists = all.some(inst => inst.id === selectedInstanceId)
-    if (!stillExists) {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set('instance', 'new')
-      router.replace(`/robots?${params.toString()}`)
+    // 🆕 Only proceed if site context is ready
+    if (!isSiteContextReady) {
+      console.log('🔄 [Robots] Waiting for site context before auto-creating instance...')
+      return
     }
-  }, [refreshCount, getAllInstances, selectedInstanceId, router, searchParams])
+    
+    // Only run this logic if:
+    // 1. We're not loading robots anymore
+    // 2. We have a current site
+    // 3. There are no instances
+    // 4. We're not already in the process of creating an instance
+    // 5. We're not in the middle of auto-converting a tab
+    // 6. We're not already auto-creating an instance
+    // 7. We have successfully loaded robots at least once (not just initial loading)
+    // 8. We're not in a reconnection state
+    // 9. We haven't attempted auto-creation recently (debouncing)
+    const hasSuccessfullyLoaded = refreshCount > 0
+    const isNotReconnecting = connectionStatus !== 'reconnecting' && connectionStatus !== 'error'
+    const now = Date.now()
+    const timeSinceLastAttempt = now - lastAutoCreationAttempt
+    const debounceDelay = 5000 // 5 seconds debounce
+    
+    if (!isLoadingRobots && 
+        currentSite?.id && 
+        getAllInstances().length === 0 && 
+        !shouldAutoConvertTab && 
+        !pendingInstanceId && 
+        !isAutoCreatingInstance &&
+        hasSuccessfullyLoaded &&
+        isNotReconnecting &&
+        timeSinceLastAttempt > debounceDelay) {
+      
+      console.log('🔄 No instances found after successful load, auto-creating new instance')
+      
+      // Set flag to prevent multiple creations and record attempt timestamp
+      setIsAutoCreatingInstance(true)
+      setLastAutoCreationAttempt(now)
+      
+      // Create a new instance automatically
+      createPlaceholderInstance().then((newInstance) => {
+        if (newInstance) {
+          console.log('✅ Auto-created instance:', newInstance.id)
+          // Refresh robots to get the new instance
+          refreshRobots(currentSite?.id).then(() => {
+            // Select the new instance
+            setLocalSelectedInstanceId(newInstance.id)
+            setPendingInstanceId(newInstance.id)
+            setShouldAutoConvertTab(true)
+            
+            // Update URL to reflect the new instance
+            const params = new URLSearchParams(searchParams.toString())
+            params.set('instance', newInstance.id)
+            router.replace(`/robots?${params.toString()}`)
+            
+            // Reset the auto-creating flag after a delay to allow for proper state updates
+            setTimeout(() => {
+              setIsAutoCreatingInstance(false)
+            }, 1000)
+          })
+        } else {
+          // Reset flag if creation failed
+          setIsAutoCreatingInstance(false)
+        }
+      }).catch((error) => {
+        console.error('❌ Error auto-creating instance:', error)
+        // Reset flag on error
+        setIsAutoCreatingInstance(false)
+      })
+    }
+  }, [isLoadingRobots, currentSite?.id, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, refreshRobots, searchParams, router, refreshCount, connectionStatus, isSiteContextReady])
 
   // No campaigns effect
+
+  // Detect when pending instance becomes available and convert the tab
+  useEffect(() => {
+    if (pendingInstanceId && shouldAutoConvertTab && allInstances.length > 0) {
+      // Check if the pending instance is now available
+      const instanceExists = allInstances.some(inst => inst.id === pendingInstanceId)
+      
+      if (instanceExists) {
+        console.log('🔄 Pending instance now available, converting tab:', pendingInstanceId)
+        
+        // Transform the "new" tab into the new instance tab
+        setLocalSelectedInstanceId(pendingInstanceId)
+        setPendingInstanceId(null)
+        setShouldAutoConvertTab(false)
+        
+        // Re-enable auto-refresh after conversion
+        setAutoRefreshEnabled(true)
+        
+        // Don't update URL immediately - let the local state handle the selection
+        // The URL will be updated when the user manually navigates or when the component unmounts
+      }
+    }
+  }, [pendingInstanceId, shouldAutoConvertTab, allInstances, setAutoRefreshEnabled])
 
   // Derive instance status flags
   const isInstanceStarting = !!(activeRobotInstance && ['starting','pending','initializing'].includes((activeRobotInstance as any).status))
@@ -308,12 +475,14 @@ function RobotsPageContent() {
     }
   }, [activeRobotInstance && (activeRobotInstance as any).id])
 
+
   // Clear forced resume loading once instance transitions to starting/running
   useEffect(() => {
     if (isInstanceStarting || isInstanceRunning) {
       setIsResuming(false)
     }
   }, [isInstanceStarting, isInstanceRunning])
+
 
   // Ensure stream URL only when instance is running/active
   useEffect(() => {
@@ -329,7 +498,7 @@ function RobotsPageContent() {
   useEffect(() => {
     if (!activeRobotInstance || (!isInstanceStarting && !isResuming)) return
     let intervalId = setInterval(async () => {
-      await refreshRobots()
+      await refreshRobots(currentSite?.id)
       const updated = getInstanceById((activeRobotInstance as any).id)
       if (updated && ['running','active','error','stopped','failed'].includes((updated as any).status)) {
         if (['running','active'].includes((updated as any).status)) {
@@ -351,57 +520,177 @@ function RobotsPageContent() {
   // Note: Real-time monitoring is now handled by RobotsContext
   // This ensures efficient data sharing across all components
 
+  // Function to create placeholder instance
+  const createPlaceholderInstance = async () => {
+    if (!currentSite?.id) {
+      console.error('❌ Cannot create placeholder: No current site')
+      return null
+    }
+    
+    console.log('🔄 Creating placeholder instance for site:', currentSite.id)
+    
+    try {
+      const supabase = createClient()
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('❌ Cannot get current user:', userError)
+        return null
+      }
+      
+      const { data, error } = await supabase
+        .from('remote_instances')
+        .insert({
+          site_id: currentSite.id,
+          user_id: user.id,
+          created_by: user.id,
+          name: 'Assistant Session',
+          status: 'uninstantiated',
+          instance_type: 'ubuntu'
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('❌ Supabase error creating placeholder instance:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        return null
+      }
+      
+      if (!data) {
+        console.error('❌ No data returned from placeholder creation')
+        return null
+      }
+      
+      console.log('✅ Created placeholder instance:', data.id)
+      return data
+    } catch (error) {
+      console.error('❌ Exception creating placeholder instance:', error)
+      return null
+    }
+  }
+
+  // Function to handle creating new instance (button click)
+  const handleCreateNewInstance = async () => {
+    const newInstance = await createPlaceholderInstance()
+    if (newInstance) {
+      // Refresh robots to get the new instance
+      await refreshRobots(currentSite?.id)
+      // Select the new instance
+      setLocalSelectedInstanceId(newInstance.id)
+      console.log('🔄 New instance created and selected:', newInstance.id)
+    }
+  }
+
   // Function to handle instance tab change
   const handleTabChange = (newInstance: string) => {
-    const currentParams = new URLSearchParams(searchParams.toString())
-    currentParams.set('instance', newInstance)
-    router.push(`/robots?${currentParams.toString()}`)
+    if (newInstance === 'new') {
+      // Reset to new makina mode
+      setLocalSelectedInstanceId(null)
+      const currentParams = new URLSearchParams(searchParams.toString())
+      currentParams.set('instance', 'new')
+      router.push(`/robots?${currentParams.toString()}`)
+    } else {
+      // Set the selected instance
+      setLocalSelectedInstanceId(newInstance)
+      const currentParams = new URLSearchParams(searchParams.toString())
+      currentParams.set('instance', newInstance)
+      router.push(`/robots?${currentParams.toString()}`)
+    }
   }
+
+  // Function to enable auto-conversion when a new instance is created
+  const handleNewInstanceCreated = useCallback((instanceId: string) => {
+    console.log('🔄 New instance created, setting pending conversion:', instanceId)
+    // Disable auto-refresh to prevent subscription from interfering
+    setAutoRefreshEnabled(false)
+    // Set the pending instance ID but don't change selectedInstanceId yet
+    setPendingInstanceId(instanceId)
+    setShouldAutoConvertTab(true)
+  }, [setAutoRefreshEnabled])
 
   
 
   return (
     <div className="flex-1 p-0">
-      <StickyHeader>
+      <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`}>
         <div className="px-16 pt-0">
           <div className="flex items-center gap-4">
-            <Tabs value={selectedInstanceId} onValueChange={handleTabChange}>
-              <TabsList>
-                {allInstances.length === 0 ? (
-                  <TabsTrigger value="new">New Makina</TabsTrigger>
-                ) : (
-                  <>
-                    {allInstances.map((inst) => (
-                      <TabsTrigger key={inst.id} value={inst.id}>
+            <div className="flex items-center w-full">
+              <div className="flex items-center gap-2 flex-1">
+                <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange}>
+                  <TabsList>
+                    {/* Show New Makina tab if no instances or while loading */}
+                    {(allInstances.length === 0 || isLoadingRobots || forceLoading) && (
+                      <TabsTrigger value="new">
                         <span className="flex items-center gap-2">
-                          {['running','active'].includes((inst as any).status) ? (
-                            <Play className="h-3 w-3 text-green-600" />
-                          ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
-                            <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                          ) : (
-                            <Pause className="h-3 w-3 text-muted-foreground" />
-                          ))}
-                          {`${inst.name || 'mk'}-${inst.id.slice(-4)}`}
+                          <Plus className="h-3 w-3 text-muted-foreground" />
+                          New Makina
                         </span>
                       </TabsTrigger>
-                    ))}
-                    <TabsTrigger value="new">New Makina</TabsTrigger>
-                  </>
-                )}
-              </TabsList>
-            </Tabs>
-            
-            {/* Delete button - only show when viewing a specific instance */}
-            {selectedInstanceId !== 'new' && activeRobotInstance && (
-              <Button
-                variant="secondary"
-                className="h-9"
-                onClick={() => setIsDeleteModalOpen(true)}
-                title="Delete robot instance"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
+                    )}
+                    
+                    {/* Show all instances - always show when instances are available */}
+                    {(() => {
+                      console.log('🔍 [Robots] Rendering tabs for instances:', {
+                        siteId: currentSite?.id,
+                        siteChangeKey,
+                        forceLoading,
+                        instances: allInstances.map(i => ({ id: i.id, name: i.name, site_id: i.site_id }))
+                      })
+                      return allInstances
+                        .sort((a, b) => {
+                          // Sort by created_at in ascending order (oldest first)
+                          const aTime = new Date((a as any).created_at || 0).getTime()
+                          const bTime = new Date((b as any).created_at || 0).getTime()
+                          return aTime - bTime
+                        })
+                        .map((inst) => (
+                        <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id}>
+                          <span className="flex items-center gap-2">
+                            {['running','active'].includes((inst as any).status) ? (
+                              <Play className="h-3 w-3 text-green-600" />
+                            ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
+                              <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                            ) : (
+                              <Pause className="h-3 w-3 text-muted-foreground" />
+                            ))}
+                            {`${inst.name || 'mk'}-${inst.id.slice(-4)}`}
+                          </span>
+                        </TabsTrigger>
+                      ))
+                    })()}
+                  </TabsList>
+                </Tabs>
+                
+                {/* Create new instance button - pegado a los tabs */}
+                <Button
+                  variant="secondary"
+                  className="h-9"
+                  onClick={handleCreateNewInstance}
+                  title="Create new robot instance"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Delete button - solo a la derecha cuando hay instancia activa */}
+              {activeRobotInstance && (
+                <Button
+                  variant="secondary"
+                  className="h-9"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  title="Delete robot instance"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </StickyHeader>
@@ -413,19 +702,81 @@ function RobotsPageContent() {
           onOpenChange={setIsDeleteModalOpen}
           instanceId={activeRobotInstance.id}
           instanceName={activeRobotInstance.name || 'mk'}
-          onDeleteSuccess={() => {
-            refreshRobots()
+          onDeleteSuccess={async () => {
+            console.log('🗑️ [Delete] Starting delete success callback')
+            
+            // Clear local selection immediately
+            setLocalSelectedInstanceId(null)
+            
+            try {
+              // First refresh robots to get updated instance list (without the deleted one)
+              console.log('🗑️ [Delete] Refreshing robots after delete...')
+              await refreshRobots(currentSite?.id)
+              console.log('🗑️ [Delete] Robots refreshed successfully')
+              
+              // Wait a bit more to ensure state is fully updated
+              await new Promise(resolve => setTimeout(resolve, 200))
+              
+              // Now get the updated instances after delete
+              const currentInstances = getAllInstances()
+              const deletedInstanceId = activeRobotInstance?.id
+              
+              console.log('🗑️ [Delete] Current instances after refresh:', {
+                count: currentInstances.length,
+                instances: currentInstances.map(i => ({ id: i.id, name: i.name })),
+                deletedInstanceId
+              })
+              
+              // Find the best instance to navigate to
+              let targetInstanceId = 'new'
+              
+              if (currentInstances.length > 0) {
+                // Sort instances by created_at (newest first)
+                const sortedInstances = [...currentInstances].sort((a, b) => {
+                  const dateA = new Date((a as any).created_at || 0).getTime()
+                  const dateB = new Date((b as any).created_at || 0).getTime()
+                  return dateB - dateA // Newest first
+                })
+                
+                console.log('🗑️ [Delete] Sorted instances:', sortedInstances.map(i => ({ id: i.id, name: i.name, created_at: i.created_at })))
+                
+                // If we deleted the newest instance, go to the next newest
+                // Otherwise, go to the newest available
+                if (deletedInstanceId && sortedInstances[0]?.id === deletedInstanceId) {
+                  targetInstanceId = sortedInstances[1]?.id || 'new'
+                  console.log('🗑️ [Delete] Deleted newest instance, going to second newest:', targetInstanceId)
+                } else {
+                  targetInstanceId = sortedInstances[0]?.id || 'new'
+                  console.log('🗑️ [Delete] Going to newest instance:', targetInstanceId)
+                }
+              } else {
+                console.log('🗑️ [Delete] No instances available, going to new')
+              }
+              
+              // Navigate to the selected instance after refresh
+              console.log('🗑️ [Delete] Navigating to:', targetInstanceId)
+              const params = new URLSearchParams(searchParams.toString())
+              params.set('instance', targetInstanceId)
+              router.replace(`/robots?${params.toString()}`)
+              
+            } catch (error) {
+              console.error('🗑️ [Delete] Error in delete success callback:', error)
+              // Fallback: just navigate to 'new' if something goes wrong
+              const params = new URLSearchParams(searchParams.toString())
+              params.set('instance', 'new')
+              router.replace(`/robots?${params.toString()}`)
+            }
           }}
         />
       )}
       
       <div className="flex h-[calc(100vh-136px)]">
           <>
-            {((selectedInstanceId !== 'new' && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && (
+            {((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId && (
               <div className="w-2/3 h-full border-r border-border iframe-container">
                 <div className="h-full flex flex-col m-0 bg-card">
                   <div className="flex-1 p-0 overflow-hidden relative">
-                    {(isLoadingRobots && !isInstanceRunning) || isResuming || isInstanceStarting ? (
+                    {isResuming || isInstanceStarting ? (
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
                       </div>
@@ -533,14 +884,16 @@ function RobotsPageContent() {
             )}
 
             {/* Messages View */}
-            <div className={`${((selectedInstanceId !== 'new' && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) ? 'w-1/3' : 'w-full md:w-2/3 mx-auto'} h-full min-w-0 messages-area`}>
+            <div className={`${((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId ? 'w-1/3' : 'w-full md:w-2/3 mx-auto'} h-full min-w-0 messages-area`}>
               <div className="h-full flex flex-col m-0 bg-card min-w-0">
                 <div className="flex-1 p-0 overflow-hidden min-w-0 relative">
                   <div className="absolute inset-0">
                     <SimpleMessagesView 
+                      key={`${currentSite?.id}-${siteChangeKey}`}
                       className="h-full" 
                       activeRobotInstance={activeRobotInstance}
                       onMessageSent={setHasMessageBeenSent}
+                      onNewInstanceCreated={handleNewInstanceCreated}
                     />
                   </div>
                 </div>

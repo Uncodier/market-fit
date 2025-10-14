@@ -37,7 +37,7 @@ import { StepCompletedItem } from './components/StepCompletedItem'
 // Import utilities
 import { getActivityName } from './utils'
 
-export function SimpleMessagesView({ className = "", activeRobotInstance, onMessageSent }: SimpleMessagesViewProps) {
+export function SimpleMessagesView({ className = "", activeRobotInstance, onMessageSent, onNewInstanceCreated }: SimpleMessagesViewProps) {
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
   const { toast } = useToast()
@@ -47,6 +47,47 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
   const { message, setMessage, messageRef, handleMessageChange, clearMessage, textareaRef } = useOptimizedMessageState()
   const { user } = useAuthContext()
   const { userProfile } = useUserProfile(user?.id)
+  
+  // Log activeRobotInstance changes
+  useEffect(() => {
+    console.log('🔄 [SimpleMessagesView] activeRobotInstance changed:', {
+      activeRobotInstance: activeRobotInstance ? { 
+        id: activeRobotInstance.id, 
+        name: activeRobotInstance.name, 
+        status: activeRobotInstance.status 
+      } : null,
+      hasActiveRobotInstance: !!activeRobotInstance,
+      hasActiveRobotInstanceId: !!(activeRobotInstance?.id)
+    })
+  }, [activeRobotInstance])
+
+  // Reset state when site changes
+  useEffect(() => {
+    console.log('🔄 [SimpleMessagesView] Site changed, resetting state for site:', currentSite?.id)
+    
+    // Reset selected context when site changes
+    setSelectedContext({
+      leads: [],
+      contents: [],
+      requirements: [],
+      tasks: [],
+      campaigns: []
+    })
+    
+    // Reset activity selection
+    setSelectedActivity('ask')
+    
+    // Reset step indicator
+    setIsStepIndicatorExpanded(false)
+    
+    // Clear recent user message IDs
+    setRecentUserMessageIds(new Set())
+    setLastUserMessage('')
+    
+    // Clear message input
+    clearMessage()
+    
+  }, [currentSite?.id, clearMessage])
   
   // Create a RefObject for MessageInput compatibility
   const messageInputTextareaRef = useRef<HTMLTextAreaElement>(null) as React.RefObject<HTMLTextAreaElement>
@@ -128,8 +169,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
   const resetMessageSentStateRef = useRef<(() => void) | null>(null)
 
   // Handle new instance creation - defined before hook initialization
-  const handleNewInstanceCreated = useCallback(async (instanceId: string) => {
-    console.log('🔄 New instance created, refreshing robots and navigating:', instanceId)
+  const handleNewInstanceCreated = useCallback(async (instanceId: string, shouldNavigate: boolean = true) => {
+    console.log('🔄 New instance created, refreshing robots:', instanceId, 'shouldNavigate:', shouldNavigate)
     
     // Clear the temporary user message since we now have a real instance
     setLastUserMessage('')
@@ -137,18 +178,33 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
     // Refresh the robots list to pick up the new instance
     await refreshRobots()
     
-    // Navigate to the new instance
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('instance', instanceId)
-    router.push(`/robots?${params.toString()}`)
-    
-    // Reset message sent state AFTER navigation to avoid visual refresh
-    // Use setTimeout to ensure this happens after the navigation is complete
-    setTimeout(() => {
-      if (resetMessageSentStateRef.current) {
-        resetMessageSentStateRef.current()
-      }
-    }, 100)
+    if (shouldNavigate) {
+      // Navigate to the new instance (original behavior)
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('instance', instanceId)
+      router.push(`/robots?${params.toString()}`)
+      
+      // Reset message sent state AFTER navigation to avoid visual refresh
+      // Use setTimeout to ensure this happens after the navigation is complete
+      setTimeout(() => {
+        if (resetMessageSentStateRef.current) {
+          resetMessageSentStateRef.current()
+        }
+      }, 100)
+    } else {
+      // New behavior: just refresh robots, let parent component handle tab conversion
+      console.log('🔄 No navigation requested, parent will handle tab conversion')
+      
+      // Notify parent component to convert the tab immediately
+      onNewInstanceCreated?.(instanceId)
+      
+      // Reset message sent state immediately since we're not navigating
+      setTimeout(() => {
+        if (resetMessageSentStateRef.current) {
+          resetMessageSentStateRef.current()
+        }
+      }, 100)
+    }
   }, [refreshRobots, searchParams, router])
 
   // Create ref for clearNewMakinaThinking function
@@ -210,8 +266,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
     activeRobotInstance,
     waitingForMessageId,
     onScrollToBottom: scrollToBottom,
-    onResponseReceived: clearThinkingState
+    onResponseReceived: clearThinkingState,
+    currentSiteId: currentSite?.id
   })
+  
 
   // Update the ref with the real function
   useEffect(() => {
@@ -277,7 +335,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
     }
   }, [selectedActivity, router])
 
-
   // Show loading skeleton when loading logs
   if (isLoadingLogs) {
     return <MessagesSkeleton />
@@ -287,7 +344,23 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
     <div className={`flex flex-col h-full w-full min-w-0 overflow-hidden relative ${className}`}>
       {/* Messages list */}
       <div className={`flex-1 overflow-y-auto overflow-x-hidden px-[30px] py-4 space-y-6 w-full min-w-0 ${!activeRobotInstance ? 'pb-0' : 'pb-[175px]'}`}>
-        {!activeRobotInstance || !activeRobotInstance.id ? (
+        {(() => {
+          // Show New Makina view if no instance, or if instance is uninstantiated AND has no logs
+          const shouldShowNewMakina = !activeRobotInstance || !activeRobotInstance.id || (activeRobotInstance.status === 'uninstantiated' && logs.length === 0)
+          console.log('🔄 [SimpleMessagesView] Render decision:', {
+            shouldShowNewMakina,
+            activeRobotInstance: activeRobotInstance ? { id: activeRobotInstance.id, name: activeRobotInstance.name, status: activeRobotInstance.status } : null,
+            hasActiveRobotInstance: !!activeRobotInstance,
+            hasActiveRobotInstanceId: !!(activeRobotInstance?.id),
+            logsLength: logs.length,
+            isLoadingLogs,
+            isWaitingForResponse,
+            isNewMakinaThinking
+          })
+          
+          if (shouldShowNewMakina) {
+            console.log('🔄 [SimpleMessagesView] Rendering New Makina view')
+            return (
           // New Makina context - show user messages and thinking state
           <>
             {/* Show user message if one was sent */}
@@ -343,8 +416,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
             {/* Show thinking indicator using existing LoadingIndicator component */}
             <LoadingIndicator isVisible={isNewMakinaThinking} />
           </>
-        ) : (
-          <>
+            )
+          } else {
+            console.log('🔄 [SimpleMessagesView] Rendering Explorer view')
+            return (
+            <>
             {/* Create unified timeline of logs and completed plans */}
             {(() => {
               // Create timeline items with timestamps
@@ -379,6 +455,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
               )
 
               if (sortedTimeline.length === 0) {
+                console.log('🔄 [SimpleMessagesView] No timeline items, showing empty state')
                 return (
                   <div className="flex items-center justify-center h-full w-full absolute inset-0">
                     <EmptyCard
@@ -392,6 +469,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
                   </div>
                 )
               }
+              
+              console.log('🔄 [SimpleMessagesView] Rendering timeline with', sortedTimeline.length, 'items')
 
               
               return sortedTimeline.map((item, index) => {
@@ -454,7 +533,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
               isVisible={isWaitingForResponse || isNewMakinaThinking}
             />
           </>
-        )}
+            )
+          }
+        })()}
         
         {/* Extra padding to avoid floating step indicator overlap */}
         <div className="pb-48"></div>
@@ -485,8 +566,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
         />
       )}
 
-      {/* Message input area - centered when no instance and no message sent, bottom when active or message sent */}
-      <div className={`${(!activeRobotInstance && !hasMessageBeenSent) ? 'absolute inset-x-0 top-1/2 -translate-y-1/2 transform' : 'absolute bottom-4 left-0 right-0'} flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20] w-full`}>
+      {/* Message input area - centered when no instance or uninstantiated without messages, bottom when active or message sent */}
+      <div className={`${(!activeRobotInstance || (activeRobotInstance?.status === 'uninstantiated' && logs.length === 0)) && !hasMessageBeenSent ? 'absolute inset-x-0 top-1/2 -translate-y-1/2 transform' : 'absolute bottom-4 left-0 right-0'} flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20] w-full`}>
         <MessageInput
           message={message}
           selectedActivity={selectedActivity}

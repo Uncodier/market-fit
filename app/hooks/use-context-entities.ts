@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSite } from '@/app/context/SiteContext'
 import { 
   ContextEntitiesService,
@@ -57,8 +57,8 @@ export function useContextEntities(): UseContextEntitiesReturn {
     tasks: null as string | null
   })
 
-  // Individual fetch functions
-  const refreshLeads = async () => {
+  // Individual fetch functions - memoized to prevent infinite loops
+  const refreshLeads = useCallback(async () => {
     if (!currentSite?.id || leads.length > 0) return
 
     setLoading(prev => ({ ...prev, leads: true }))
@@ -80,9 +80,9 @@ export function useContextEntities(): UseContextEntitiesReturn {
     } finally {
       setLoading(prev => ({ ...prev, leads: false }))
     }
-  }
+  }, [currentSite?.id, leads.length, service])
 
-  const refreshContents = async () => {
+  const refreshContents = useCallback(async () => {
     if (!currentSite?.id || contents.length > 0) return
 
     setLoading(prev => ({ ...prev, contents: true }))
@@ -104,9 +104,9 @@ export function useContextEntities(): UseContextEntitiesReturn {
     } finally {
       setLoading(prev => ({ ...prev, contents: false }))
     }
-  }
+  }, [currentSite?.id, contents.length, service])
 
-  const refreshRequirements = async () => {
+  const refreshRequirements = useCallback(async () => {
     if (!currentSite?.id || requirements.length > 0) return
 
     setLoading(prev => ({ ...prev, requirements: true }))
@@ -128,9 +128,9 @@ export function useContextEntities(): UseContextEntitiesReturn {
     } finally {
       setLoading(prev => ({ ...prev, requirements: false }))
     }
-  }
+  }, [currentSite?.id, requirements.length, service])
 
-  const refreshTasks = async () => {
+  const refreshTasks = useCallback(async () => {
     if (!currentSite?.id || tasks.length > 0) return
 
     setLoading(prev => ({ ...prev, tasks: true }))
@@ -152,7 +152,7 @@ export function useContextEntities(): UseContextEntitiesReturn {
     } finally {
       setLoading(prev => ({ ...prev, tasks: false }))
     }
-  }
+  }, [currentSite?.id, tasks.length, service])
 
   // Clear data when site changes
   useEffect(() => {

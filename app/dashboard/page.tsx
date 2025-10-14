@@ -68,13 +68,6 @@ export default function DashboardPage() {
     endDate: today
   })
   
-  // Monitor when dateRange changes
-  useEffect(() => {
-    // Check if dates are in the future
-    const now = new Date();
-    if (dateRange.startDate > now || dateRange.endDate > now) {
-    }
-  }, [dateRange.startDate, dateRange.endDate]);
   
   const [formattedTotal, setFormattedTotal] = useState("")
   const { settings } = useProfile()
@@ -258,13 +251,6 @@ export default function DashboardPage() {
       
       console.log(`[Dashboard] After validation: ${format(validatedDates.startDate, 'yyyy-MM-dd')} - ${format(validatedDates.endDate, 'yyyy-MM-dd')}`);
       
-      // Avoid unnecessary state updates if no real changes
-      if (isSameDay(validatedDates.startDate, dateRange.startDate) && 
-          isSameDay(validatedDates.endDate, dateRange.endDate)) {
-        console.log(`[Dashboard] No changes detected, skipping update`);
-        return;
-      }
-      
       // Cancel all in-flight requests first to avoid race conditions
       cancelAllRequests();
       
@@ -284,7 +270,7 @@ export default function DashboardPage() {
       console.log(`[Dashboard] Using error fallback in handleDateRangeChange: ${format(safeDefaults.startDate, 'yyyy-MM-dd')} - ${format(safeDefaults.endDate, 'yyyy-MM-dd')}`);
       setDateRange(safeDefaults);
     }
-  }, [cancelAllRequests, dateRange, determineRangeType, validateDates]);
+  }, [cancelAllRequests, determineRangeType, validateDates]);
 
   // Safety effect to detect and fix future dates that might slip through
   useEffect(() => {
@@ -321,7 +307,7 @@ export default function DashboardPage() {
         determineRangeType(safeStartDate, safeEndDate);
       }
     }
-  }, [isInitialized, dateRange.startDate, dateRange.endDate, cancelAllRequests, determineRangeType]);
+  }, [isInitialized, cancelAllRequests, determineRangeType]);
 
   // Initialize date range when the component mounts - ENHANCED
   useEffect(() => {
@@ -363,7 +349,7 @@ export default function DashboardPage() {
         setIsInitialized(true);
       }
     }
-  }, [isInitialized, determineRangeType, validateDates]);
+  }, [isInitialized]);
 
   // Handle site changes with proper state reset and data reloading
   useEffect(() => {

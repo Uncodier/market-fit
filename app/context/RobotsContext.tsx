@@ -32,7 +32,8 @@ interface RobotsContextValue {
   hasActiveRobotsForActivity: (activityName: string) => boolean;
   getAllInstances: () => Robot[];
   getInstanceById: (id: string) => Robot | null;
-  refreshRobots: () => Promise<void>;
+  refreshRobots: (siteId?: string) => Promise<void>;
+  setAutoRefreshEnabled: (enabled: boolean) => void;
 }
 
 const RobotsContext = createContext<RobotsContextValue | undefined>(undefined)
@@ -51,6 +52,7 @@ interface RobotsProviderProps {
 
 export function RobotsProvider({ children }: RobotsProviderProps) {
   const { currentSite } = useSite()
+  console.log('🔄 [RobotsProvider] Component mounted/updated - currentSite:', currentSite)
   const [robotsByActivity, setRobotsByActivity] = useState<RobotsByActivity>({})
   const [totalActiveRobots, setTotalActiveRobots] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -59,6 +61,30 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const hasInitiallyLoadedRef = useRef(false)
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
   const [refreshCount, setRefreshCount] = useState(0)
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true)
+  
+  // 🆕 Wait for site context to be fully synchronized (same logic as robots page)
+  const [isSiteContextReady, setIsSiteContextReady] = useState(false)
+  
+  useEffect(() => {
+    if (currentSite?.id) {
+      // Add a small delay to ensure site context is fully synchronized
+      const syncTimer = setTimeout(() => {
+        console.log('🔄 [RobotsProvider] Site context synchronized for site:', currentSite.id)
+        setIsSiteContextReady(true)
+      }, 100) // 100ms delay to ensure synchronization
+      
+      return () => clearTimeout(syncTimer)
+    } else {
+      setIsSiteContextReady(false)
+    }
+  }, [currentSite?.id])
+  
+  // Log auto-refresh state changes
+  useEffect(() => {
+    console.log('🔄 [RobotsContext] Auto-refresh enabled:', autoRefreshEnabled)
+  }, [autoRefreshEnabled])
+  
 
   // Map activity names
   const activityMap: Record<string, string> = {
@@ -70,7 +96,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     "publish-ads": "Publish Ads",
     "ux-analysis": "UX Analysis",
     "build-requirements": "Build Requirements",
-    "execute-plan": "Execute Plan"
+    "execute-plan": "Execute Plan",
+    "Assistant Session": "Assistant Session"
   }
 
   // Get robots for a specific activity
@@ -98,8 +125,18 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
 
   // Return all instances across activities (includes paused)
   const getAllInstances = useCallback((): Robot[] => {
-    return Object.values(robotsByActivity).flat()
-  }, [robotsByActivity])
+    console.log('🔄 [RobotsContext] getAllInstances called - currentSite.id:', currentSite?.id)
+    
+    const allInstances = Object.values(robotsByActivity).flat()
+    
+    console.log('🔄 [RobotsContext] getAllInstances result:', {
+      currentSiteId: currentSite?.id,
+      totalInstances: allInstances.length,
+      instances: allInstances.map(i => ({ id: i.id, name: i.name, site_id: i.site_id }))
+    })
+    
+    return allInstances
+  }, [robotsByActivity, currentSite?.id])
 
   // Find instance by id
   const getInstanceById = useCallback((id: string): Robot | null => {
@@ -111,8 +148,27 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   }, [robotsByActivity])
 
   // Function to fetch all robots and organize by activity
-  const refreshRobots = useCallback(async () => {
-    if (!currentSite?.id) {
+  const refreshRobots = useCallback(async (siteId?: string) => {
+    // 🆕 Use passed siteId or fallback to currentSite?.id
+    const targetSiteId = siteId || currentSite?.id
+    console.log('🔄 [RobotsContext] refreshRobots called for site:', targetSiteId)
+    console.log('🔄 [RobotsContext] refreshRobots - passed siteId:', siteId, 'currentSite.id:', currentSite?.id, 'using:', targetSiteId)
+    
+    // 🆕 CRITICAL: Force use of the most recent currentSite
+    if (!targetSiteId) {
+      console.error('🔄 [RobotsContext] CRITICAL: No siteId available, cannot proceed')
+      return
+    }
+    
+    // 🆕 Only proceed if site context is ready
+    if (!isSiteContextReady) {
+      console.log('🔄 [RobotsContext] Waiting for site context to be ready...')
+      return
+    }
+    
+    // 🆕 Homologated validation: same pattern as message temporal
+    if (!siteId) {
+      console.log('🔄 [RobotsContext] No current site, clearing robots')
       setRobotsByActivity({})
       setTotalActiveRobots(0)
       setIsLoading(false)
@@ -129,14 +185,40 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       
       const supabase = createClient()
       
-      // Get all robots for the current site (include paused and uninstantiated, exclude stopped/error)
+      console.log('🔄 [RobotsContext] Fetching robots for site:', targetSiteId)
+      console.log('🔄 [RobotsContext] CRITICAL: About to query with siteId:', targetSiteId, 'Type:', typeof targetSiteId)
+      
+      // Get all robots for the current site (exclude stopped instances)
       const { data: robots, error: robotsError } = await supabase
         .from('remote_instances')
         .select('id, status, instance_type, name, provider_instance_id, cdp_url, site_id, created_at')
-        .eq('site_id', currentSite.id)
+        .eq('site_id', targetSiteId)  // 🆕 Use targetSiteId variable
         .neq('status', 'stopped')
-        .neq('status', 'error')
         .order('created_at', { ascending: true }) // Oldest first
+      
+      console.log('🔄 [RobotsContext] Query result:', {
+        requestedSiteId: targetSiteId,  // 🆕 Use targetSiteId variable
+        currentSiteId: currentSite?.id,  // 🆕 Debug: compare with currentSite
+        robotsCount: robots?.length || 0,
+        robots: robots?.map((r: any) => ({ id: r.id, name: r.name, site_id: r.site_id })) || []
+      })
+      
+      // 🆕 CRITICAL: Log if we got no robots for the current site
+      if (!robots || robots.length === 0) {
+        console.warn('🔄 [RobotsContext] WARNING: No robots found for site:', targetSiteId)
+        console.warn('🔄 [RobotsContext] This might mean the site has no instances or there was a query error')
+      }
+      
+      // 🆕 CRITICAL: Check if we got robots for the correct site
+      if (robots && robots.length > 0) {
+        const wrongSiteRobots = robots.filter((r: any) => r.site_id !== targetSiteId)
+        if (wrongSiteRobots.length > 0) {
+          console.error('🔄 [RobotsContext] CRITICAL: Got robots from wrong site!', {
+            requestedSiteId: targetSiteId,
+            wrongSiteRobots: wrongSiteRobots.map((r: any) => ({ id: r.id, site_id: r.site_id }))
+          })
+        }
+      }
 
       if (robotsError) {
         console.error('Error fetching robots:', robotsError)
@@ -169,23 +251,19 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         })
       })
 
-      // Only update state if data actually changed to prevent unnecessary re-renders
-      setRobotsByActivity(prevRobots => {
-        const hasChanged = JSON.stringify(prevRobots) !== JSON.stringify(organizedRobots)
-        if (hasChanged) {
-          return organizedRobots
-        }
-        return prevRobots
-      })
-      
-      setTotalActiveRobots(prevCount => {
-        if (prevCount !== activeCount) {
-          return activeCount
-        }
-        return prevCount
+      console.log('🔄 [RobotsContext] Fetched robots:', {
+        siteId: siteId,  // 🆕 Use homologated siteId variable
+        robotsCount: robots?.length || 0,
+        robots: robots?.map((r: any) => ({ id: r.id, name: r.name, site_id: r.site_id })),
+        organizedActivities: Object.keys(organizedRobots),
+        activeCount
       })
 
-      // quiet: omit detailed logs
+      // Always update state when site changes to ensure fresh data
+      setRobotsByActivity(organizedRobots)
+      setTotalActiveRobots(activeCount)
+
+      console.log('🔄 [RobotsContext] State updated successfully')
 
     } catch (error) {
       console.error('Error refreshing robots:', error)
@@ -200,19 +278,26 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       setRefreshCount(prev => prev + 1)
       // quiet: omit refresh completed log
     }
-  }, [currentSite?.id])
+  }, [currentSite?.id, isSiteContextReady])
 
-  // Initial load when site changes
+  // Initial load when site changes - SIMPLIFIED to avoid clearing instances unnecessarily
   useEffect(() => {
-    // Reset loading state when site changes
-    hasInitiallyLoadedRef.current = false
-    setIsLoading(true)
-    refreshRobots()
+    console.log('🔄 [RobotsContext] Site changed for site:', currentSite?.id)
+    
+    // Only reset if we have a valid site
+    if (currentSite?.id) {
+      console.log('🔄 [RobotsContext] Calling refreshRobots for site:', currentSite.id)
+      refreshRobots(currentSite.id)
+    } else {
+      console.log('🔄 [RobotsContext] No site available, clearing robots')
+      setRobotsByActivity({})
+      setTotalActiveRobots(0)
+    }
   }, [currentSite?.id, refreshRobots])
 
   // Setup real-time monitoring
   useEffect(() => {
-    if (!currentSite?.id) return
+    if (!currentSite?.id || !isSiteContextReady) return
 
     const supabase = createClient()
     
@@ -227,17 +312,30 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
           filter: `site_id=eq.${currentSite.id}`
         },
         (payload: any) => {
-          // Debounce refresh to avoid too many calls
+          if (!autoRefreshEnabled) {
+            return
+          }
+          
+          // Refresh on any instance change (INSERT, UPDATE, DELETE)
           if (refreshTimeoutRef.current) {
             clearTimeout(refreshTimeoutRef.current)
           }
           
+          // Use different delays based on event type
+          const delay = payload.eventType === 'INSERT' ? 300 : 500
           refreshTimeoutRef.current = setTimeout(() => {
-            refreshRobots()
-          }, 500) // Refresh after 500ms of no changes
+            refreshRobots(currentSite?.id)
+          }, delay)
         }
       )
-      .subscribe()
+      .subscribe((status: any) => {
+        console.log('🔄 [RobotsContext] Subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('🔄 [RobotsContext] Subscription is active and ready to receive events')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('🔄 [RobotsContext] Subscription error - check Supabase configuration')
+        }
+      })
 
     return () => {
       robotsSubscription.unsubscribe()
@@ -245,7 +343,15 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         clearTimeout(refreshTimeoutRef.current)
       }
     }
-  }, [currentSite?.id, refreshRobots])
+  }, [currentSite?.id, refreshRobots, autoRefreshEnabled])
+
+  // 🆕 Separate useEffect to handle site context synchronization
+  useEffect(() => {
+    if (isSiteContextReady && currentSite?.id) {
+      console.log('🔄 [RobotsContext] Site context is ready, setting up real-time monitoring for site:', currentSite.id)
+      // The real-time monitoring will be handled by the previous useEffect
+    }
+  }, [isSiteContextReady, currentSite?.id])
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -268,7 +374,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     hasActiveRobotsForActivity,
     getAllInstances,
     getInstanceById,
-    refreshRobots
+    refreshRobots,
+    setAutoRefreshEnabled
   }
 
   return (

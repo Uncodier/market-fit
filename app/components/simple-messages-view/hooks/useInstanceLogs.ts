@@ -7,13 +7,15 @@ interface UseInstanceLogsProps {
   waitingForMessageId?: string | null
   onScrollToBottom?: () => void
   onResponseReceived?: () => void
+  currentSiteId?: string | null
 }
 
 export const useInstanceLogs = ({
   activeRobotInstance,
   waitingForMessageId,
   onScrollToBottom,
-  onResponseReceived
+  onResponseReceived,
+  currentSiteId
 }: UseInstanceLogsProps) => {
   const [logs, setLogs] = useState<InstanceLog[]>([])
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
@@ -21,6 +23,19 @@ export const useInstanceLogs = ({
   const [collapsedToolDetails, setCollapsedToolDetails] = useState<Set<string>>(new Set())
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const currentRobotInstanceIdRef = useRef<string | null>(null)
+  const prevSiteIdRef = useRef<string | null>(null)
+
+  // Clear logs when site changes
+  useEffect(() => {
+    if (currentSiteId && currentSiteId !== prevSiteIdRef.current) {
+      console.log('🔄 [useInstanceLogs] Site changed, clearing logs for new site:', currentSiteId)
+      setLogs([])
+      setCollapsedSystemMessages(new Set())
+      setCollapsedToolDetails(new Set())
+      setDebugInfo(null)
+      prevSiteIdRef.current = currentSiteId
+    }
+  }, [currentSiteId])
 
   // Load instance logs
   const loadInstanceLogs = async () => {
@@ -37,9 +52,9 @@ export const useInstanceLogs = ({
       instanceStatus: activeRobotInstance.status
     })
 
-    // Special handling for uninstantiated instances - they should still show logs
+    // For uninstantiated instances, still try to load logs to see if they have any
     if (activeRobotInstance.status === 'uninstantiated') {
-      console.log('⚠️ Instance is uninstantiated but should still show logs for UX')
+      console.log('⚠️ Instance is uninstantiated, but checking for existing logs')
     }
 
     setIsLoadingLogs(true)
@@ -68,7 +83,7 @@ export const useInstanceLogs = ({
           console.log('🔍 Uninstantiated instance logs debug:', {
             instanceId: activeRobotInstance.id,
             logsCount: logs.length,
-            logs: logs.map(log => ({ id: log.id, log_type: log.log_type, message: log.message?.substring(0, 50) + '...' }))
+            logs: logs.map((log: any) => ({ id: log.id, log_type: log.log_type, message: log.message?.substring(0, 50) + '...' }))
           })
         }
         // Scroll to bottom after logs are loaded
@@ -97,7 +112,7 @@ export const useInstanceLogs = ({
           .map((log: InstanceLog) => log.id)
         
         console.log('🔧 Auto-collapsing tool details for logs:', logsWithToolDetails)
-        console.log('🔧 Logs with tool details:', logs.filter(log => {
+        console.log('🔧 Logs with tool details:', logs.filter((log: any) => {
           const hasToolResult = log.tool_result && Object.keys(log.tool_result).length > 0
           const hasDetails = log.details && Object.keys(log.details).length > 0
           const hasScreenshot = log.screenshot_base64
@@ -156,13 +171,11 @@ export const useInstanceLogs = ({
   const addOptimisticUserMessage = useCallback((message: string) => {
     const tempLog: InstanceLog = {
       id: `temp-${Date.now()}`,
-      instance_id: activeRobotInstance?.id || '',
       log_type: 'user_action',
+      level: 'info',
       message: message,
       created_at: new Date().toISOString(),
-      details: { temp_message: true },
-      role: 'user',
-      metadata: null
+      details: { temp_message: true }
     }
     
     console.log('📝 Adding optimistic user message:', tempLog.id)
@@ -322,7 +335,7 @@ export const useInstanceLogs = ({
                     newLog.message.toLowerCase().includes('answer')
                   )) ||
                   // Any log that indicates the system is responding
-                  (newLog.log_type === 'instance' && newLog.message.length > 10) ||
+                  (newLog.log_type === 'system' && newLog.message.length > 10) ||
                   // Any log that's not a user action (indicating system response)
                   (newLog.log_type !== 'user_action' && newLog.message.length > 5)
                 )

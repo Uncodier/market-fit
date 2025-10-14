@@ -20,7 +20,7 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
   const { refreshRobots } = useRobots()
 
   // Start polling for a newly created or resumed instance until it becomes running/active or fails
-  const startInstancePolling = useCallback(async (activityName: string, instanceId?: string) => {
+  const startInstancePolling = useCallback(async (activityName: string, instanceId?: string, shouldAutoNavigate: boolean = true) => {
     let attempts = 0
     const maxAttempts = 40 // ~60s at 1.5s interval
     let active = true
@@ -57,7 +57,7 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
               startTimeoutRef.current = null
             }
             setIsStartingRobot(false)
-            if (!instanceId) {
+            if (!instanceId && shouldAutoNavigate) {
               const params = new URLSearchParams(window.location.search)
               params.set('instance', inst.id)
               router.push(`/robots?${params.toString()}`)
@@ -67,6 +67,11 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
               onClearNewMakinaThinking?.()
               // Force scroll to bottom when switching to new instance - wait for navigation
               setTimeout(() => onScrollToBottom?.(), 500)
+            } else if (!instanceId && !shouldAutoNavigate) {
+              // Just refresh robots and clear thinking state without navigation
+              refreshRobots()
+              onClearNewMakinaThinking?.()
+              onScrollToBottom?.()
             }
             return
           }

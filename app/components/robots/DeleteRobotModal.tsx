@@ -56,9 +56,6 @@ export function DeleteRobotModal({
           onDeleteSuccess()
         }
         
-        // Navigate to 'new' tab
-        router.push('/robots?instance=new')
-        
         // Close modal
         onOpenChange(false)
       } else {

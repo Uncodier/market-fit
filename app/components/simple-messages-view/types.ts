@@ -2,6 +2,7 @@ export interface SimpleMessagesViewProps {
   className?: string
   activeRobotInstance?: any
   onMessageSent?: (hasMessageBeenSent: boolean) => void
+  onNewInstanceCreated?: (instanceId: string) => void
 }
 
 // Media Parameter Types
@@ -23,8 +24,14 @@ export interface AudioParameters {
   channels: 'mono' | 'stereo'
 }
 
-// Re-export SelectedContextIds from context-service to avoid conflicts
-export { SelectedContextIds } from '@/app/services/context-service'
+// Define SelectedContextIds interface locally to avoid import issues
+export interface SelectedContextIds {
+  leads: string[]
+  contents: string[]
+  requirements: string[]
+  tasks: string[]
+  campaigns: string[]
+}
 
 export interface InstanceLog {
   id: string

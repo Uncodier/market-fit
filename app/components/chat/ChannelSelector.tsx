@@ -53,7 +53,7 @@ export const ChannelSelector = memo(function ChannelSelector({
         className="w-auto"
       >
         <TabsList className={cn(
-          "h-8 p-0.5 bg-muted/30 rounded-md transition-opacity duration-200",
+          "h-8 p-0.5 bg-secondary/50 rounded-md transition-opacity duration-200",
           isUpdating && "opacity-70"
         )}>
           {availableChannels.map((channel) => {

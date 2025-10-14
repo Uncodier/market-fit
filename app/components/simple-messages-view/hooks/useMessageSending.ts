@@ -14,8 +14,8 @@ interface UseMessageSendingProps {
   onMessageSent?: (hasMessageBeenSent: boolean) => void
   onClearMessage?: () => void
   onScrollToBottom?: () => void
-  onNewInstanceCreated?: (instanceId: string) => void
-  startInstancePolling?: (activityName: string, instanceId?: string) => Promise<void>
+  onNewInstanceCreated?: (instanceId: string, shouldNavigate?: boolean) => void
+  startInstancePolling?: (activityName: string, instanceId?: string, shouldAutoNavigate?: boolean) => Promise<void>
   onAddOptimisticMessage?: (message: string) => void
 }
 
@@ -60,8 +60,10 @@ export const useMessageSending = ({
   }
 
   const clearNewMakinaThinking = () => {
-    console.log('🛡️ Clearing New Makina thinking state')
+    console.log('🛡️ [useMessageSending] Clearing New Makina thinking state')
+    console.log('🛡️ [useMessageSending] Current isNewMakinaThinking:', isNewMakinaThinking)
     setIsNewMakinaThinking(false)
+    console.log('🛡️ [useMessageSending] New Makina thinking state cleared')
   }
 
   // Set thinking state with safety timeout
@@ -104,29 +106,21 @@ export const useMessageSending = ({
         system_prompt: systemPrompt
       }
       
-      // Add instance_id if we have an active robot instance
-      if (activeRobotInstance?.id) {
-        requestPayload.instance_id = activeRobotInstance.id
-        console.log('🤖 Sending message with instance_id:', activeRobotInstance.id)
+      // For assistant messages, we don't need to create instances
+      // Only use instance_id if we have an active robot instance
+      let instanceId = activeRobotInstance?.id
+      
+      if (instanceId) {
+        requestPayload.instance_id = instanceId
+        console.log('🤖 Sending assistant message with existing instance_id:', instanceId)
       } else {
-        console.log('🤖 Sending message without instance_id (new_makina context)')
+        console.log('🤖 Sending assistant message without instance_id (new_makina context)')
       }
       
       const response = await apiClient.post('/api/robots/instance/assistant', requestPayload)
 
       if (response.success) {
         console.log('✅ Assistant message sent successfully:', response.data)
-        
-        // If this was a new_makina context and we got a new instance_id back
-        if (!activeRobotInstance && response.data?.instance_id) {
-          console.log('🔄 New instance created, triggering refresh and navigation')
-          
-          // Clear New Makina thinking state since we now have an instance
-          clearNewMakinaThinking()
-          
-          // Notify parent component about the new instance
-          onNewInstanceCreated?.(response.data.instance_id)
-        }
       } else {
         console.error('Assistant API error:', response.error)
         toast({
@@ -220,20 +214,19 @@ export const useMessageSending = ({
           const isRobotRunning = ['running', 'active'].includes((activeRobotInstance as any).status)
           if (!isRobotRunning) {
             console.log('🔄 Starting polling for existing robot instance:', activeRobotInstance.id)
-            startInstancePolling?.('robot', activeRobotInstance.id)
+            startInstancePolling?.('robot', activeRobotInstance.id, true) // Allow navigation for existing robots
           } else {
             console.log('✅ Robot already running, no polling needed')
           }
         } else if (response.data?.instance_id) {
-          // For new robots, poll the newly created instance
-          console.log('🔄 New robot instance created, starting polling:', response.data.instance_id)
-          startInstancePolling?.('robot', response.data.instance_id)
+          // For new robots, we now have the instance_id immediately
+          console.log('🔄 New robot instance created:', response.data.instance_id)
           
           // Clear New Makina thinking state since we now have an instance
           clearNewMakinaThinking()
           
-          // Notify parent component about the new instance
-          onNewInstanceCreated?.(response.data.instance_id)
+          // Notify parent component about the new instance with no-navigation flag
+          onNewInstanceCreated?.(response.data.instance_id, false)
         }
       } else {
         console.error('Robot workflow API error:', response.error)
