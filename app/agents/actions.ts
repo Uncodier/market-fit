@@ -64,6 +64,39 @@ const SingleCommandSchema = z.object({
 
 export type SingleCommandResponse = z.infer<typeof SingleCommandSchema>
 
+// Schema for single instance log response
+const SingleInstanceLogResponseSchema = z.object({
+  log: z.object({
+    id: z.string(),
+    log_type: z.enum(['system', 'user_action', 'agent_action', 'tool_call', 'tool_result', 'error', 'performance']),
+    level: z.enum(['debug', 'info', 'warn', 'error', 'critical']),
+    message: z.string(),
+    details: z.any().optional(),
+    created_at: z.string(),
+    user_id: z.string().nullable().optional(),
+    tool_name: z.string().nullable().optional(),
+    tool_result: z.any().optional(),
+    screenshot_base64: z.string().nullable().optional(),
+    parent_log_id: z.string().nullable().optional(),
+    step_id: z.string().nullable().optional(),
+    tool_call_id: z.string().nullable().optional(),
+    tool_args: z.any().optional(),
+    duration_ms: z.number().nullable().optional(),
+    tokens_used: z.any().optional(),
+    artifacts: z.any().optional(),
+    instance_id: z.string().nullable().optional(),
+    site_id: z.string().nullable().optional(),
+    agent_id: z.string().nullable().optional(),
+    command_id: z.string().nullable().optional(),
+    agents: z.object({
+      name: z.string()
+    }).nullable().optional()
+  }).nullable(),
+  error: z.string().optional()
+})
+
+export type SingleInstanceLogResponse = z.infer<typeof SingleInstanceLogResponseSchema>
+
 export async function getCommands(site_id: string, page: number = 1, pageSize: number = 40): Promise<CommandsResponse> {
   try {
     const supabase = await createClient()
@@ -352,5 +385,53 @@ export async function getAgentById(id: string): Promise<AgentResponse> {
         updated_at: null
       }
     };
+  }
+}
+
+export async function getInstanceLogById(id: string): Promise<SingleInstanceLogResponse> {
+  try {
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase
+      .from("instance_logs")
+      .select(`
+        id,
+        log_type,
+        level,
+        message,
+        details,
+        created_at,
+        user_id,
+        tool_name,
+        tool_result,
+        screenshot_base64,
+        parent_log_id,
+        step_id,
+        tool_call_id,
+        tool_args,
+        duration_ms,
+        tokens_used,
+        artifacts,
+        instance_id,
+        site_id,
+        agent_id,
+        command_id,
+        agents!left(name)
+      `)
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return { error: "Instance log not found", log: null }
+      }
+      console.error("Error loading instance log:", error)
+      return { error: "Error loading instance log", log: null }
+    }
+
+    return { log: data, error: null }
+  } catch (error) {
+    console.error("Error loading instance log:", error)
+    return { error: "Error loading instance log", log: null }
   }
 } 
