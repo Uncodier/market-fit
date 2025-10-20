@@ -1,5 +1,5 @@
 import React from 'react'
-import { User, ChevronRight, ChevronDown } from "@/app/components/ui/icons"
+import { User, ChevronRight, ChevronDown, File } from "@/app/components/ui/icons"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
@@ -21,15 +21,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 }) => {
   const { userProfile } = useUserProfile(log.user_id || null)
 
-  // Debug logging for user_action messages
-  if (log.log_type === 'user_action') {
-    console.log('🔍 User action log debug:', {
-      logId: log.id,
-      userId: log.user_id,
-      message: log.message?.substring(0, 50),
-      userProfile: userProfile
-    })
-  }
 
   // User action message - styled like user messages in chat
   if (log.log_type === 'user_action') {
@@ -77,6 +68,37 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             >
               {log.message}
             </div>
+            
+            {/* Display attachments if they exist */}
+            {log.details?.attachments && Array.isArray(log.details.attachments) && log.details.attachments.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {log.details.attachments.map((attachment: any, index: number) => {
+                  const isImage = attachment.type?.startsWith('image/')
+                  return (
+                    <div key={index} className="relative group">
+                      {isImage ? (
+                        <img
+                          src={attachment.url}
+                          alt={attachment.name || `Attachment ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => window.open(attachment.url, '_blank')}
+                        />
+                      ) : (
+                        <div 
+                          className="w-16 h-16 bg-muted rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                          onClick={() => window.open(attachment.url, '_blank')}
+                        >
+                          <File className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity truncate">
+                        {attachment.name || `Attachment ${index + 1}`}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

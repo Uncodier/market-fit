@@ -263,58 +263,13 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
         
         console.log('✅ Robot stopped successfully')
         
-        // Emit custom event to notify robots page to refresh
+        // Emit custom event to notify robots page
         window.dispatchEvent(new CustomEvent('robotStopped', { 
           detail: { instanceId: activeRobotInstance.id }
         }))
         
-        // Refresh to double-check status
-        await refreshRobots()
-        
-        // Setup fallback refresh in case real-time updates fail
-        let refreshAttempts = 0
-        const maxRefreshAttempts = 5 // Reduced to 5 attempts since we already cleared the state
-        let refreshActive = true
-        
-        const refreshStoppedStatus = async () => {
-          if (!refreshActive) return
-          
-          refreshAttempts++
-          
-          await refreshRobots()
-          
-          // Check if there's still an active robot - if not, stop refreshing
-          const activityName = activeRobotInstance?.name || getActivityName('execute-plan')
-          const supabase = createClient()
-          
-          const { data: currentInstance } = await supabase
-            .from('remote_instances')
-            .select('id, status, name')
-            .eq('site_id', currentSite.id)
-            .eq('name', activityName)
-            .neq('status', 'stopped')
-            .neq('status', 'error')
-            .limit(1)
-          
-          if (!currentInstance || currentInstance.length === 0) {
-            console.log('✅ Confirmed no active robots, stopping refresh')
-            refreshActive = false
-            return
-          }
-          
-          if (refreshAttempts < maxRefreshAttempts && refreshActive) {
-            setTimeout(refreshStoppedStatus, 2000) // Refresh every 2 seconds
-          } else if (refreshActive) {
-            refreshActive = false
-            // Final refresh attempt
-            setTimeout(() => {
-              refreshRobots()
-            }, 3000)
-          }
-        }
-        
-        // Start refreshing after 2 seconds (allow real-time to work first)
-        setTimeout(refreshStoppedStatus, 2000)
+        // REMOVED: refreshRobots() and polling loop
+        // Real-time subscription will handle the update automatically
         
       } else {
         // Handle API response errors
@@ -393,9 +348,11 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             instance_id: activeRobotInstance.id,
             activity: getActivityName('execute-plan')
           })
-          // quiet log
+          
           toast.success('Resuming robot...')
-          setTimeout(async () => { await refreshRobots() }, 1000)
+          
+          // REMOVED: setTimeout(async () => { await refreshRobots() }, 1000)
+          // Real-time subscription will handle the update automatically
         } catch (e) {
           // quiet log
           toast.error('Failed to resume robot')

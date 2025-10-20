@@ -28,6 +28,7 @@ import { useCommandK } from "@/app/hooks/use-command-k"
 import { useActivityExecution } from "@/app/hooks/use-activity-execution"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { CommandsPanel } from "@/app/components/agents/commands-panel"
+import { AgentToolsPanel } from "@/app/components/agents/agent-tools-panel"
 
 
 
@@ -80,7 +81,7 @@ function AgentsPageContent() {
   const [expandedAgentIds, setExpandedAgentIds] = useState<string[]>([])
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [selectedActivity, setSelectedActivity] = useState<AgentActivity | null>(null)
-  const [mainTab, setMainTab] = useState<"agents" | "commands">("agents")
+  const [mainTab, setMainTab] = useState<"agents" | "commands" | "tools">("agents")
   const { isLayoutCollapsed } = useLayout()
 
   const router = useRouter()
@@ -1080,10 +1081,11 @@ function AgentsPageContent() {
                     <div className="flex items-center gap-4">
                       <div className="flex-1 flex items-center gap-4">
                         <div>
-                          <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "agents" | "commands")}>
+                          <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "agents" | "commands" | "tools")}>
                             <TabsList className="h-9">
                               <TabsTrigger value="agents" className="text-xs">Agents</TabsTrigger>
                               <TabsTrigger value="commands" className="text-xs">Commands</TabsTrigger>
+                              <TabsTrigger value="tools" className="text-xs">Agent Tools</TabsTrigger>
                             </TabsList>
                           </Tabs>
                         </div>
@@ -1395,17 +1397,18 @@ function AgentsPageContent() {
                 </div>
               </div>
               </>
-            ) : (
+            ) : mainTab === "commands" ? (
               <>
                 <StickyHeader>
                   <div className="px-16 pt-0">
                     <div className="flex items-center gap-4">
                       <div className="flex-1 flex items-center gap-4">
                         <div>
-                          <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "agents" | "commands")}>
+                          <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "agents" | "commands" | "tools")}>
                             <TabsList className="h-9">
                               <TabsTrigger value="agents" className="text-xs">Agents</TabsTrigger>
                               <TabsTrigger value="commands" className="text-xs">Commands</TabsTrigger>
+                              <TabsTrigger value="tools" className="text-xs">Agent Tools</TabsTrigger>
                             </TabsList>
                           </Tabs>
                         </div>
@@ -1414,6 +1417,27 @@ function AgentsPageContent() {
                   </div>
                 </StickyHeader>
                 <CommandsPanel />
+              </>
+            ) : (
+              <>
+                <StickyHeader>
+                  <div className="px-16 pt-0">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 flex items-center gap-4">
+                        <div>
+                          <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "agents" | "commands" | "tools")}>
+                            <TabsList className="h-9">
+                              <TabsTrigger value="agents" className="text-xs">Agents</TabsTrigger>
+                              <TabsTrigger value="commands" className="text-xs">Commands</TabsTrigger>
+                              <TabsTrigger value="tools" className="text-xs">Agent Tools</TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </StickyHeader>
+                <AgentToolsPanel />
               </>
             )}
           </div>

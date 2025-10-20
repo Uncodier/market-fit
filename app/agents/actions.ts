@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { z } from "zod"
 import { Command, CommandsResponse } from "./types"
+import { InstanceLog } from "@/app/components/simple-messages-view/types"
 
 // Define response schema
 const CommandSchema = z.object({
@@ -433,5 +434,55 @@ export async function getInstanceLogById(id: string): Promise<SingleInstanceLogR
   } catch (error) {
     console.error("Error loading instance log:", error)
     return { error: "Error loading instance log", log: null }
+  }
+}
+
+export async function getInstanceLogs(site_id: string, page: number = 1): Promise<{ logs?: InstanceLog[], error?: string }> {
+  try {
+    const supabase = await createClient()
+    
+    const pageSize = 40
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    
+    const { data, error } = await supabase
+      .from("instance_logs")
+      .select(`
+        id,
+        log_type,
+        level,
+        message,
+        details,
+        created_at,
+        user_id,
+        tool_name,
+        tool_result,
+        screenshot_base64,
+        parent_log_id,
+        step_id,
+        tool_call_id,
+        tool_args,
+        duration_ms,
+        tokens_used,
+        artifacts,
+        instance_id,
+        site_id,
+        agent_id,
+        command_id,
+        agents!left(name)
+      `)
+      .eq('site_id', site_id)
+      .order('created_at', { ascending: false })
+      .range(from, to)
+
+    if (error) {
+      console.error("Error loading instance logs:", error)
+      return { error: "Error loading instance logs", logs: [] }
+    }
+
+    return { logs: data || [], error: null }
+  } catch (error) {
+    console.error("Error loading instance logs:", error)
+    return { error: "Error loading instance logs", logs: [] }
   }
 } 

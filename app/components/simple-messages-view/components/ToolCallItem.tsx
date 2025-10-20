@@ -1,8 +1,9 @@
-import React from 'react'
-import { Eye, EyeOff, Code, LayoutGrid, Zap } from "@/app/components/ui/icons"
+import React, { useState } from 'react'
+import { Eye, EyeOff, Code, LayoutGrid, Zap, Copy, Check } from "@/app/components/ui/icons"
 import { InstanceLog } from '../types'
 import { getToolName, getToolResult, formatBase64Image } from '../utils'
 import { renderObjectWithImages } from '../render-helpers'
+import { GeneratedImageDisplay, GeneratedImageDisplayCollapsed } from './GeneratedImageDisplay'
 
 interface ToolCallItemProps {
   log: InstanceLog
@@ -31,7 +32,36 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
 }) => {
   const toolName = getToolName(log)
   const toolResult = getToolResult(log)
+  const [copied, setCopied] = useState(false)
 
+  // Function to copy tool content to clipboard
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent triggering the toggle details
+    
+    const contentToCopy = {
+      toolName: toolName || 'Unknown',
+      message: log.message || '',
+      result: toolResult ? JSON.stringify(toolResult, null, 2) : '',
+      details: log.details ? JSON.stringify(log.details, null, 2) : ''
+    }
+    
+    const textToCopy = `Tool: ${contentToCopy.toolName}
+Message: ${contentToCopy.message}
+Result: ${contentToCopy.result}
+Details: ${contentToCopy.details}`
+    
+    try {
+      await navigator.clipboard.writeText(textToCopy)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000) // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy: ', err)
+    }
+  }
+
+  // Helper to check if tool result has an error
+  const hasError = toolResult && (toolResult.error || toolResult.success === false)
+  const errorMessage = toolResult?.error || toolResult?.output
 
   return (
     <div className="w-full min-w-0 overflow-hidden">
@@ -47,31 +77,182 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
           outline: 'none',
           filter: 'none'
         }}
-        onClick={() => onToggleToolDetails(log.id)}
-        title={collapsedToolDetails.has(log.id) ? "Click to show details" : "Click to hide details"}
+        onClick={() => {
+          // Only toggle if there are collapsible elements
+          const hasCollapsibleElements = log.screenshot_base64 || 
+            (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image') || 
+            (log.details && Object.keys(log.details).length > 0)
+          
+          if (hasCollapsibleElements) {
+            onToggleToolDetails(log.id)
+          }
+        }}
+        title={
+          (log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image') || (log.details && Object.keys(log.details).length > 0))
+            ? (collapsedToolDetails.has(log.id) ? "Click to show details" : "Click to hide details")
+            : "Tool call completed"
+        }
       >
         <div className="flex items-center gap-2">
           {toolName && renderToolIcon(toolName)}
           <span className="font-medium text-muted-foreground">
             {log.log_type === 'tool_call' ? 'Tool Call' : 'Tool Result'}: {toolName || 'Unknown'}
           </span>
-          {log.message && (
+          {log.message && toolName !== 'generate_image' && (
             <span className="text-muted-foreground/70 ml-2">
               - {log.message}
             </span>
           )}
-          <div className="ml-auto">
-            {collapsedToolDetails.has(log.id) ? (
-              <Eye className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
-            ) : (
-              <EyeOff className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+          {hasError && (
+            <span className="text-red-600 ml-2">
+              - {toolName === 'generate_image' ? 'Generation failed' : 'Tool failed'}
+            </span>
+          )}
+          {toolName === 'generate_image' && toolResult?.output?.images && (
+            <span className="text-muted-foreground/70 ml-2">
+              - Generated {toolResult.output.images.length} image(s)
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Copy button */}
+            <button
+              onClick={handleCopy}
+              className="p-1 rounded hover:bg-muted-foreground/10 transition-colors"
+              title={copied ? "Copied!" : "Copy tool content"}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-600" />
+              ) : (
+                <Copy className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+              )}
+            </button>
+            
+            {/* Visibility toggle - only show if there are collapsible elements */}
+            {(log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image') || (log.details && Object.keys(log.details).length > 0)) && (
+              collapsedToolDetails.has(log.id) ? (
+                <Eye className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+              ) : (
+                <EyeOff className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+              )
             )}
           </div>
         </div>
 
+        {/* Generated images - always show for generate_image tool (collapsed view) */}
+        {toolName === 'generate_image' && toolResult?.output?.images && (
+          <div className="mt-3">
+            <GeneratedImageDisplayCollapsed 
+              toolResult={toolResult} 
+              isDarkMode={isDarkMode} 
+            />
+          </div>
+        )}
+
         {/* Tool details - only show when NOT collapsed (default to collapsed) */}
         {!collapsedToolDetails.has(log.id) && (
           <>
+            {/* Full details for generate_image when expanded */}
+            {toolName === 'generate_image' && (toolResult?.output?.images || hasError) && (
+              <div className="mt-2 text-muted-foreground">
+                <div className="space-y-3">
+                  {/* Original prompt */}
+                  {log.message && (
+                    <div>
+                      <strong>Prompt:</strong>
+                      <div className="mt-1 p-2 bg-muted/30 rounded text-sm">
+                        {log.message}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Generation details */}
+                  {toolResult.output.metadata && (
+                    <div>
+                      <strong>Generation Details:</strong>
+                      <div className="mt-1 text-xs bg-muted/30 rounded p-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          {toolResult.output.metadata.size && (
+                            <div>
+                              <span className="font-medium">Size:</span> {toolResult.output.metadata.size}
+                            </div>
+                          )}
+                          {toolResult.output.metadata.quality && (
+                            <div>
+                              <span className="font-medium">Quality:</span> {toolResult.output.metadata.quality}
+                            </div>
+                          )}
+                          {toolResult.output.metadata.generated_at && (
+                            <div>
+                              <span className="font-medium">Generated:</span> {new Date(toolResult.output.metadata.generated_at).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Success message */}
+                  {toolResult.output.message && (
+                    <div>
+                      <strong>Status:</strong>
+                      <div className="mt-1 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 rounded p-2">
+                        {toolResult.output.message}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Error display for failed image generation */}
+                  {hasError && !toolResult?.output?.images && (
+                    <div>
+                      <strong className="text-red-600">Error:</strong>
+                      <div className="mt-1 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded p-3 border border-red-200 dark:border-red-800">
+                        {errorMessage}
+                      </div>
+                      
+                      {/* Technical details (collapsible) */}
+                      {toolResult && (
+                        <details className="text-xs mt-2">
+                          <summary className="cursor-pointer text-muted-foreground/70 hover:text-muted-foreground">
+                            View technical details
+                          </summary>
+                          <div className="mt-2 p-2 bg-muted/30 rounded font-mono text-xs overflow-x-auto">
+                            <pre>{JSON.stringify(toolResult, null, 2)}</pre>
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Error display for other tool types */}
+            {hasError && toolName !== 'generate_image' && (
+              <div className="mt-2 text-muted-foreground">
+                <div className="space-y-3">
+                  {/* Error message */}
+                  <div>
+                    <strong className="text-red-600">Error:</strong>
+                    <div className="mt-1 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded p-3 border border-red-200 dark:border-red-800">
+                      {errorMessage}
+                    </div>
+                  </div>
+                  
+                  {/* Technical details (collapsible) */}
+                  {toolResult && (
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-muted-foreground/70 hover:text-muted-foreground">
+                        View technical details
+                      </summary>
+                      <div className="mt-2 p-2 bg-muted/30 rounded font-mono text-xs overflow-x-auto">
+                        <pre>{JSON.stringify(toolResult, null, 2)}</pre>
+                      </div>
+                    </details>
+                  )}
+                </div>
+              </div>
+            )}
+            
             {log.screenshot_base64 && (
               <div className="mt-2 text-muted-foreground">
                 <strong>Screenshot:</strong>
@@ -85,7 +266,7 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
                 </div>
               </div>
             )}
-            {toolResult && Object.keys(toolResult).length > 0 && (
+            {toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && (
               <div className="mt-2 text-muted-foreground">
                 <strong>Result:</strong> 
                 <div className="mt-1">
@@ -115,6 +296,7 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
             )}
           </>
         )}
+
       </div>
     </div>
   )

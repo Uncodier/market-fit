@@ -4,7 +4,7 @@ import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
 import { contextService, type SelectedContextIds } from '@/app/services/context-service'
 import { getActivityName, getSystemPromptForActivity } from '../utils'
-import { InstanceLog } from '../types'
+import { InstanceLog, ImageParameters, VideoParameters, AudioParameters } from '../types'
 
 interface UseMessageSendingProps {
   activeRobotInstance?: any
@@ -17,6 +17,10 @@ interface UseMessageSendingProps {
   onNewInstanceCreated?: (instanceId: string, shouldNavigate?: boolean) => void
   startInstancePolling?: (activityName: string, instanceId?: string, shouldAutoNavigate?: boolean) => Promise<void>
   onAddOptimisticMessage?: (message: string) => void
+  // Media parameters
+  imageParameters?: ImageParameters
+  videoParameters?: VideoParameters
+  audioParameters?: AudioParameters
 }
 
 export const useMessageSending = ({
@@ -29,7 +33,10 @@ export const useMessageSending = ({
   onScrollToBottom,
   onNewInstanceCreated,
   startInstancePolling,
-  onAddOptimisticMessage
+  onAddOptimisticMessage,
+  imageParameters,
+  videoParameters,
+  audioParameters
 }: UseMessageSendingProps) => {
   const [isSendingMessage, setIsSendingMessage] = useState(false)
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false)
@@ -95,7 +102,11 @@ export const useMessageSending = ({
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
-      const systemPrompt = getSystemPromptForActivity(selectedActivity)
+      const systemPrompt = getSystemPromptForActivity(selectedActivity, {
+        imageParameters,
+        videoParameters,
+        audioParameters
+      })
       
       // Prepare request payload
       const requestPayload: any = {

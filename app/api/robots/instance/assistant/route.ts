@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
       user_id, 
       context, 
       system_prompt, 
-      instance_id 
+      instance_id,
+      attachments 
     } = body
 
     // Validate required fields
@@ -119,7 +120,8 @@ export async function POST(request: NextRequest) {
           site_id,
           user_id,
           context: context || null,
-          system_prompt: system_prompt || null
+          system_prompt: system_prompt || null,
+          attachments: attachments || null
         }
       })
       .select()

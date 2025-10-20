@@ -108,7 +108,9 @@ export const renderObjectWithImages = (obj: any, depth: number = 0): React.React
   if (obj && typeof obj === 'object') {
     return (
       <div>
-        {Object.entries(obj).map(([key, value]) => (
+        {Object.entries(obj)
+          .filter(([key]) => key !== 'provider') // Filter out provider field
+          .map(([key, value]) => (
           <div key={key} className="mb-2">
             <div className="text-xs text-gray-600 font-medium">{key}:</div>
             <div className="ml-2">

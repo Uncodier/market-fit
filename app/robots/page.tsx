@@ -142,6 +142,7 @@ function RobotsPageContent() {
   const [reconnectTimeoutId, setReconnectTimeoutId] = useState<NodeJS.Timeout | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [showConnectedIndicator, setShowConnectedIndicator] = useState(false)
+  const prevConnectionStatusRef = useRef<string>('disconnected')
   
   const activeTabRef = useRef(selectedInstanceId)
   const prevSiteIdRef = useRef<string | null>(null)
@@ -163,13 +164,22 @@ function RobotsPageContent() {
 
   // Function to ensure we have a stream URL for the robot instance
   const ensureStreamUrl = async (instance: any) => {
+    console.log('🔍 ensureStreamUrl called with status:', prevConnectionStatusRef.current)
     try {
       // Construct the stream URL using provider_instance_id
       if (instance.provider_instance_id) {
         const streamUrl = `https://api.proxy.scrapybara.com/v1/instance/${instance.provider_instance_id}/stream`
         setStreamUrl(streamUrl)
         setConnectionStatus('connected')
-        setShowConnectedIndicator(true)
+        
+        // Only show indicator if status actually changed from non-connected to connected
+        if (prevConnectionStatusRef.current !== 'connected') {
+          console.log('✅ Showing connected indicator - status changed from', prevConnectionStatusRef.current, 'to connected')
+          setShowConnectedIndicator(true)
+        } else {
+          console.log('⏭️ Skipping indicator - already connected')
+        }
+        prevConnectionStatusRef.current = 'connected'
         
         // Update the database with the stream URL
         try {
@@ -186,14 +196,24 @@ function RobotsPageContent() {
         const fallbackUrl = `https://api.proxy.scrapybara.com/v1/instance/${instance.id}/stream`
         setStreamUrl(fallbackUrl)
         setConnectionStatus('connected')
-        setShowConnectedIndicator(true)
+        
+        // Only show indicator if status actually changed from non-connected to connected
+        if (prevConnectionStatusRef.current !== 'connected') {
+          console.log('✅ Showing connected indicator (fallback) - status changed from', prevConnectionStatusRef.current, 'to connected')
+          setShowConnectedIndicator(true)
+        } else {
+          console.log('⏭️ Skipping indicator (fallback) - already connected')
+        }
+        prevConnectionStatusRef.current = 'connected'
       } else {
         console.error('No valid instance ID found')
         setConnectionStatus('error')
+        prevConnectionStatusRef.current = 'error'
       }
     } catch (error) {
       console.error('Error ensuring stream URL:', error)
       setConnectionStatus('error')
+      prevConnectionStatusRef.current = 'error'
     }
   }
 
@@ -209,11 +229,13 @@ function RobotsPageContent() {
   const attemptReconnection = useCallback(async () => {
     if (!activeRobotInstance || reconnectAttempts >= maxReconnectAttempts) {
       setConnectionStatus('error')
+      prevConnectionStatusRef.current = 'error'
       return
     }
 
     console.log(`Attempting reconnection ${reconnectAttempts + 1}/${maxReconnectAttempts}`)
     setConnectionStatus('reconnecting')
+    prevConnectionStatusRef.current = 'reconnecting'
     setReconnectAttempts(prev => prev + 1)
 
     try {
@@ -237,6 +259,7 @@ function RobotsPageContent() {
   const handleConnectionLoss = useCallback(() => {
     console.log('Connection lost detected')
     setConnectionStatus('disconnected')
+    prevConnectionStatusRef.current = 'disconnected'
     setStreamUrl(null)
     
     // Clear any existing reconnect timeout
@@ -271,6 +294,7 @@ function RobotsPageContent() {
     // Reset attempts and try reconnection immediately
     setReconnectAttempts(0)
     setConnectionStatus('reconnecting')
+    prevConnectionStatusRef.current = 'reconnecting'
     
     if (activeRobotInstance) {
       attemptReconnection()
@@ -283,6 +307,7 @@ function RobotsPageContent() {
   useEffect(() => {
     setReconnectAttempts(0)
     setConnectionStatus('disconnected')
+    prevConnectionStatusRef.current = 'disconnected'
     
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
@@ -335,6 +360,7 @@ function RobotsPageContent() {
       // Reset connection state only
       setReconnectAttempts(0)
       setConnectionStatus('disconnected')
+      prevConnectionStatusRef.current = 'disconnected'
       setIsResuming(false)
       setStreamUrl(null)
       setIsAutoCreatingInstance(false)
@@ -349,6 +375,28 @@ function RobotsPageContent() {
     }
   }, [currentSite?.id])
 
+  // Function to check if instances exist in database (bypassing state)
+  const checkInstancesExistInDB = useCallback(async (siteId: string): Promise<boolean> => {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('remote_instances')
+        .select('id', { count: 'exact', head: true })
+        .eq('site_id', siteId)
+        .neq('status', 'stopped')
+        .limit(1)
+      
+      if (error) {
+        console.error('Error checking instances in DB:', error)
+        return true // Assume instances exist on error to prevent false creation
+      }
+      
+      return (data && data.length > 0)
+    } catch (error) {
+      console.error('Error in checkInstancesExistInDB:', error)
+      return true // Assume instances exist on error
+    }
+  }, [])
 
   // Auto-create instance when no instances exist after successful load
   useEffect(() => {
@@ -384,44 +432,55 @@ function RobotsPageContent() {
         isNotReconnecting &&
         timeSinceLastAttempt > debounceDelay) {
       
-      console.log('🔄 No instances found after successful load, auto-creating new instance')
+      console.log('🔄 State shows no instances, verifying in database...')
       
-      // Set flag to prevent multiple creations and record attempt timestamp
-      setIsAutoCreatingInstance(true)
-      setLastAutoCreationAttempt(now)
-      
-      // Create a new instance automatically
-      createPlaceholderInstance().then((newInstance) => {
-        if (newInstance) {
-          console.log('✅ Auto-created instance:', newInstance.id)
-          // Refresh robots to get the new instance
-          refreshRobots(currentSite?.id).then(() => {
-            // Select the new instance
-            setLocalSelectedInstanceId(newInstance.id)
-            setPendingInstanceId(newInstance.id)
-            setShouldAutoConvertTab(true)
-            
-            // Update URL to reflect the new instance
-            const params = new URLSearchParams(searchParams.toString())
-            params.set('instance', newInstance.id)
-            router.replace(`/robots?${params.toString()}`)
-            
-            // Reset the auto-creating flag after a delay to allow for proper state updates
-            setTimeout(() => {
-              setIsAutoCreatingInstance(false)
-            }, 1000)
-          })
-        } else {
-          // Reset flag if creation failed
+      // CRITICAL: Double-check database before auto-creating
+      checkInstancesExistInDB(currentSite.id).then((instancesExist) => {
+        if (instancesExist) {
+          console.log('✅ Instances exist in DB, skipping auto-create (false positive avoided)')
           setIsAutoCreatingInstance(false)
+          return
         }
-      }).catch((error) => {
-        console.error('❌ Error auto-creating instance:', error)
-        // Reset flag on error
-        setIsAutoCreatingInstance(false)
+        
+        console.log('🔄 Confirmed: No instances in DB, proceeding with auto-create')
+        
+        // Set flag to prevent multiple creations and record attempt timestamp
+        setIsAutoCreatingInstance(true)
+        setLastAutoCreationAttempt(Date.now())
+        
+        // Create a new instance automatically
+        createPlaceholderInstance().then((newInstance) => {
+          if (newInstance) {
+            console.log('✅ Auto-created instance:', newInstance.id)
+            // Refresh robots to get the new instance
+            refreshRobots(currentSite?.id).then(() => {
+              // Select the new instance
+              setLocalSelectedInstanceId(newInstance.id)
+              setPendingInstanceId(newInstance.id)
+              setShouldAutoConvertTab(true)
+              
+              // Update URL to reflect the new instance
+              const params = new URLSearchParams(searchParams.toString())
+              params.set('instance', newInstance.id)
+              router.replace(`/robots?${params.toString()}`)
+              
+              // Reset the auto-creating flag after a delay to allow for proper state updates
+              setTimeout(() => {
+                setIsAutoCreatingInstance(false)
+              }, 1000)
+            })
+          } else {
+            // Reset flag if creation failed
+            setIsAutoCreatingInstance(false)
+          }
+        }).catch((error) => {
+          console.error('❌ Error auto-creating instance:', error)
+          // Reset flag on error
+          setIsAutoCreatingInstance(false)
+        })
       })
     }
-  }, [isLoadingRobots, currentSite?.id, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, refreshRobots, searchParams, router, refreshCount, connectionStatus, isSiteContextReady])
+  }, [isLoadingRobots, currentSite?.id, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, refreshRobots, searchParams, router, refreshCount, connectionStatus, isSiteContextReady, checkInstancesExistInDB])
 
   // No campaigns effect
 
@@ -486,11 +545,13 @@ function RobotsPageContent() {
 
   // Ensure stream URL only when instance is running/active
   useEffect(() => {
+    console.log('🔍 useEffect triggered - activeRobotInstance:', !!activeRobotInstance, 'isInstanceRunning:', isInstanceRunning)
     if (activeRobotInstance && isInstanceRunning) {
       ensureStreamUrl(activeRobotInstance)
     } else {
       setStreamUrl(null)
       setConnectionStatus('disconnected')
+      prevConnectionStatusRef.current = 'disconnected'
     }
   }, [activeRobotInstance, isInstanceRunning])
 
@@ -503,7 +564,13 @@ function RobotsPageContent() {
       if (updated && ['running','active','error','stopped','failed'].includes((updated as any).status)) {
         if (['running','active'].includes((updated as any).status)) {
           try {
-            await ensureStreamUrl(updated)
+            // Only call ensureStreamUrl if we don't already have a stream URL or if status changed
+            if (!streamUrl || prevConnectionStatusRef.current !== 'connected') {
+              console.log('🔄 Polling: calling ensureStreamUrl')
+              await ensureStreamUrl(updated)
+            } else {
+              console.log('⏭️ Polling: skipping ensureStreamUrl - already connected')
+            }
           } catch (e) {
             console.error('Error ensuring stream after polling:', e)
           }
@@ -830,9 +897,8 @@ function RobotsPageContent() {
                         )}
                         {showConnectedIndicator && (
                           <div className="absolute top-4 left-4 z-10 animate-in fade-in duration-300">
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-green-100/90 text-green-800 border border-green-200 shadow-lg backdrop-blur-sm">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-lg text-sm font-medium bg-green-100/90 text-green-800 border border-green-200 shadow-lg backdrop-blur-sm">
                               <div className="w-4 h-4 bg-green-600 rounded-full animate-pulse"></div>
-                              <span>Connected to Robot Session</span>
                             </div>
                           </div>
                         )}
@@ -865,7 +931,16 @@ function RobotsPageContent() {
                               onLoad={() => {
                                 if (streamUrl) {
                                   setConnectionStatus('connected')
-                                  setShowConnectedIndicator(true)
+                                  
+                                  // Only show indicator if status actually changed from non-connected to connected
+                                  if (prevConnectionStatusRef.current !== 'connected') {
+                                    console.log('✅ Showing connected indicator (iframe) - status changed from', prevConnectionStatusRef.current, 'to connected')
+                                    setShowConnectedIndicator(true)
+                                  } else {
+                                    console.log('⏭️ Skipping indicator (iframe) - already connected')
+                                  }
+                                  prevConnectionStatusRef.current = 'connected'
+                                  
                                   setReconnectAttempts(0)
                                 }
                               }}
@@ -892,6 +967,7 @@ function RobotsPageContent() {
                       key={`${currentSite?.id}-${siteChangeKey}`}
                       className="h-full" 
                       activeRobotInstance={activeRobotInstance}
+                      isBrowserVisible={((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId}
                       onMessageSent={setHasMessageBeenSent}
                       onNewInstanceCreated={handleNewInstanceCreated}
                     />

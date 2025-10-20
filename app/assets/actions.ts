@@ -28,6 +28,7 @@ const CreateAssetSchema = z.object({
   file_size: z.number().optional(),
   tags: z.array(z.string()).optional(),
   site_id: z.string().min(1, "Site ID is required"),
+  instance_id: z.string().optional(),
 })
 
 export type CreateAssetInput = z.infer<typeof CreateAssetSchema>
@@ -243,7 +244,8 @@ export async function createAsset(data: CreateAssetInput): Promise<{ error?: str
           file_size: validatedData.file_size || 0,
           metadata,
           site_id: validatedData.site_id,
-          user_id: user.id
+          user_id: user.id,
+          instance_id: validatedData.instance_id || null
         }
       ])
       .select()

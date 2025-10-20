@@ -15,7 +15,7 @@ import { User, Bot } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 
 // Import types
-import { SimpleMessagesViewProps, InstanceLog, SelectedContextIds, ImageParameters, VideoParameters, AudioParameters } from './types'
+import { SimpleMessagesViewProps, InstanceLog, SelectedContextIds, ImageParameters, VideoParameters, AudioParameters, MessageAttachment } from './types'
 
 // Import hooks
 import { useInstanceLogs } from './hooks/useInstanceLogs'
@@ -23,6 +23,7 @@ import { useInstancePlans } from './hooks/useInstancePlans'
 import { useRobotInstance } from './hooks/useRobotInstance'
 import { useMessageSending } from './hooks/useMessageSending'
 import { useStepManagement } from './hooks/useStepManagement'
+import { useInstanceAssets } from './hooks/useInstanceAssets'
 
 // Import components
 import { LoadingIndicator } from './components/LoadingIndicator'
@@ -37,7 +38,7 @@ import { StepCompletedItem } from './components/StepCompletedItem'
 // Import utilities
 import { getActivityName } from './utils'
 
-export function SimpleMessagesView({ className = "", activeRobotInstance, onMessageSent, onNewInstanceCreated }: SimpleMessagesViewProps) {
+export function SimpleMessagesView({ className = "", activeRobotInstance, isBrowserVisible = false, onMessageSent, onNewInstanceCreated }: SimpleMessagesViewProps) {
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
   const { toast } = useToast()
@@ -122,6 +123,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
     channels: 'stereo'
   })
   
+  
   // Memoize the setRecentUserMessageIds function to prevent infinite loops
   const handleSetRecentUserMessageIds = useCallback((ids: Set<string>) => {
     setRecentUserMessageIds(ids)
@@ -139,6 +141,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
   const handleAudioParameterChange = useCallback((key: keyof AudioParameters, value: any) => {
     setAudioParameters(prev => ({ ...prev, [key]: value }))
   }, [])
+  
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -248,7 +251,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
     onScrollToBottom: scrollToBottom,
     onNewInstanceCreated: handleNewInstanceCreated,
     startInstancePolling,
-    onAddOptimisticMessage: (message: string) => addOptimisticUserMessageRef.current?.(message)
+    onAddOptimisticMessage: (message: string) => addOptimisticUserMessageRef.current?.(message),
+    imageParameters,
+    videoParameters,
+    audioParameters
   })
 
   const {
@@ -320,6 +326,28 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
     instancePlans,
     onSetSteps: () => {}
   })
+
+  // Instance assets management
+  const {
+    assets,
+    isLoading: isLoadingAssets,
+    deleteAsset
+  } = useInstanceAssets({
+    instanceId: activeRobotInstance?.id
+  })
+
+  // Auto-expand step indicator when assets are uploaded for the first time
+  useEffect(() => {
+    console.log('🔄 Auto-expand effect triggered:', {
+      assetsLength: assets.length,
+      isStepIndicatorExpanded,
+      shouldExpand: assets.length > 0 && !isStepIndicatorExpanded
+    })
+    if (assets.length > 0 && !isStepIndicatorExpanded) {
+      console.log('🔄 Auto-expanding StepIndicator')
+      setIsStepIndicatorExpanded(true)
+    }
+  }, [assets.length]) // Removed isStepIndicatorExpanded from dependencies to allow manual collapse
 
   // Timeline is now created inline in the render to ensure proper chronological order
 
@@ -545,7 +573,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
       </div>
 
       {/* Floating Step Indicator - Expandable */}
-      {steps.length > 0 && (
+      {(() => {
+        const shouldShow = steps.length > 0 || assets.length > 0
+        console.log('StepIndicator should show:', shouldShow, 'steps:', steps.length, 'assets:', assets.length)
+        return shouldShow
+      })() && (
         <StepIndicator
           steps={steps}
           instancePlans={instancePlans}
@@ -563,6 +595,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
           onDeleteStep={deleteStep}
           onToggleStepStatus={toggleStepStatus}
           canEditOrDeleteStep={canEditOrDeleteStep}
+          assets={assets}
+          onDeleteAsset={deleteAsset}
         />
       )}
 
@@ -585,6 +619,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, onMess
           onImageParameterChange={handleImageParameterChange}
           onVideoParameterChange={handleVideoParameterChange}
           onAudioParameterChange={handleAudioParameterChange}
+          activeRobotInstance={activeRobotInstance}
+          isBrowserVisible={isBrowserVisible}
         />
       </div>
 

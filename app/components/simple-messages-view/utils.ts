@@ -1,4 +1,4 @@
-import { InstanceLog, PlanStep, EventType, StructuredOutputStyle, StructuredOutputStylesLight } from "./types"
+import { InstanceLog, PlanStep, EventType, StructuredOutputStyle, StructuredOutputStylesLight, ImageParameters, VideoParameters, AudioParameters } from "./types"
 
 // Helper function to get style per theme
 export const getStructuredStyle = (event: EventType, isDark: boolean): StructuredOutputStyle => {
@@ -53,14 +53,47 @@ export const getActivityName = (tabValue: string): string => {
   return activityMap[tabValue] || tabValue
 }
 
-export const getSystemPromptForActivity = (activity: string): string => {
-  const promptMap: Record<string, string> = {
+export const getSystemPromptForActivity = (
+  activity: string,
+  mediaParams?: {
+    imageParameters?: ImageParameters
+    videoParameters?: VideoParameters
+    audioParameters?: AudioParameters
+    attachments?: Array<{ url: string; name: string }>
+  }
+): string => {
+  const basePromptMap: Record<string, string> = {
     "ask": "answer",
     "generate-image": "generate image",
     "generate-video": "generate video",
     "generate-audio": "generate audio"
   }
-  return promptMap[activity] || "answer"
+  
+  const basePrompt = basePromptMap[activity] || "answer"
+  
+  // Add media parameters if available
+  if (activity === 'generate-image' && mediaParams?.imageParameters) {
+    const { format, aspectRatio, quality } = mediaParams.imageParameters
+    return `Generate an image with format: ${format}, aspect ratio: ${aspectRatio}, quality: ${quality}`
+  }
+  
+  if (activity === 'generate-video' && mediaParams?.videoParameters) {
+    const { aspectRatio, resolution, duration } = mediaParams.videoParameters
+    return `Generate a video with aspect ratio: ${aspectRatio}, resolution: ${resolution}, duration: ${duration}s`
+  }
+  
+  if (activity === 'generate-audio' && mediaParams?.audioParameters) {
+    const { format, sampleRate, channels } = mediaParams.audioParameters
+    return `Generate audio with format: ${format}, sample rate: ${sampleRate}, channels: ${channels}`
+  }
+  
+  // Add attachments to system prompt if provided
+  if (mediaParams?.attachments && mediaParams.attachments.length > 0) {
+    const attachmentUrls = mediaParams.attachments.map(att => att.url).join(', ')
+    return `${basePrompt}\n\nAttachments: ${attachmentUrls}`
+  }
+  
+  return basePrompt
 }
 
 // Helper function to remove duplicate steps

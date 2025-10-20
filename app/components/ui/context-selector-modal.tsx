@@ -31,9 +31,10 @@ interface SelectedContext {
 interface ContextSelectorModalProps {
   onContextChange: (context: SelectedContext) => void
   selectedContext: SelectedContext
+  isBrowserVisible?: boolean
 }
 
-export function ContextSelectorModal({ onContextChange, selectedContext }: ContextSelectorModalProps) {
+export function ContextSelectorModal({ onContextChange, selectedContext, isBrowserVisible = false }: ContextSelectorModalProps) {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("leads")
   const [searchTerm, setSearchTerm] = useState("")
@@ -342,9 +343,13 @@ export function ContextSelectorModal({ onContextChange, selectedContext }: Conte
             type="button"
             variant="secondary"
             size="sm"
-            className="h-8 px-3 hover:bg-secondary/80 transition-colors duration-200 text-xs"
+            className={`h-8 hover:bg-secondary/80 transition-colors duration-200 ${
+              isBrowserVisible ? 'w-8 p-0 justify-center' : 'px-3'
+            }`}
+            title="Add context"
           >
-            @ context
+            @
+            {!isBrowserVisible && <span className="ml-1">context</span>}
           </Button>
           
           {/* Show individual chips for selected items */}

@@ -1,6 +1,7 @@
 export interface SimpleMessagesViewProps {
   className?: string
   activeRobotInstance?: any
+  isBrowserVisible?: boolean
   onMessageSent?: (hasMessageBeenSent: boolean) => void
   onNewInstanceCreated?: (instanceId: string) => void
 }
@@ -22,6 +23,26 @@ export interface AudioParameters {
   format: 'MP3' | 'WAV' | 'AAC'
   sampleRate: '44.1kHz' | '48kHz'
   channels: 'mono' | 'stereo'
+}
+
+export interface MessageAttachment {
+  id: string
+  name: string
+  url: string
+  type: string
+  size: number
+  uploaded_at: string
+}
+
+export interface InstanceAsset {
+  id: string
+  name: string
+  file_path: string
+  file_type: string
+  file_size: number
+  site_id: string
+  instance_id: string
+  created_at: string
 }
 
 // Define SelectedContextIds interface locally to avoid import issues
