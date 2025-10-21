@@ -117,8 +117,9 @@ export const ChatInput = memo(function ChatInput({
   return (
     <div 
       className={cn(
-        "sticky bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10"
+        "sticky bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10 mb-[20px]"
       )}
+      style={{ bottom: '20px' }}
     >
       <div>
         <div className="max-w-[calc(100%-240px)] mx-auto">

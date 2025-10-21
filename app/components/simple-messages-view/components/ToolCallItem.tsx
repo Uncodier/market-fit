@@ -63,6 +63,9 @@ Details: ${contentToCopy.details}`
   const hasError = toolResult && (toolResult.error || toolResult.success === false)
   const errorMessage = toolResult?.error || toolResult?.output
 
+  // Extract status from details object
+  const status = log.details?.status
+
   return (
     <div className="w-full min-w-0 overflow-hidden">
       <div 
@@ -98,6 +101,15 @@ Details: ${contentToCopy.details}`
           <span className="font-medium text-muted-foreground">
             {log.log_type === 'tool_call' ? 'Tool Call' : 'Tool Result'}: {toolName || 'Unknown'}
           </span>
+          
+          {/* Status badge - only show for pending status */}
+          {status === 'pending' && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border bg-yellow-100/90 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
+              <div className="w-2 h-2 bg-yellow-600 rounded-full animate-pulse"></div>
+              Pending
+            </span>
+          )}
+          
           {log.message && toolName !== 'generate_image' && (
             <span className="text-muted-foreground/70 ml-2">
               - {log.message}

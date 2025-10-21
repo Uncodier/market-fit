@@ -1,5 +1,5 @@
 import React from 'react'
-import { User, ChevronRight, ChevronDown, File } from "@/app/components/ui/icons"
+import { User, ChevronRight, ChevronDown, File, Check } from "@/app/components/ui/icons"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
@@ -20,6 +20,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onToggleSystemMessageCollapse
 }) => {
   const { userProfile } = useUserProfile(log.user_id || null)
+  
+  // Extract status from details object
+  const status = log.details?.status
 
 
   // User action message - styled like user messages in chat
@@ -152,6 +155,14 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         <span className="text-xs text-muted-foreground">
           {formatTime(new Date(log.created_at))}
         </span>
+        
+        {/* Status badge - only show for pending status */}
+        {status === 'pending' && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border bg-yellow-100/90 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
+            <div className="w-2 h-2 bg-yellow-600 rounded-full animate-pulse"></div>
+            Pending
+          </span>
+        )}
         
         {/* Collapse button for system messages */}
         {log.log_type === 'system' && (
