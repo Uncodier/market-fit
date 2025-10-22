@@ -15,12 +15,13 @@ interface MessageInputProps {
   selectedActivity: string
   selectedContext: SelectedContextIds
   onMessageChange: (message: string) => void
+  handleMessageChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   onActivityChange: (activity: string) => void
   onContextChange: (context: SelectedContextIds) => void
   onSubmit: () => void
   disabled: boolean
   placeholder: string
-  textareaRef: React.RefObject<HTMLTextAreaElement>
+  textareaRef: React.RefObject<HTMLTextAreaElement> | React.MutableRefObject<HTMLTextAreaElement | null>
   // Media parameters
   imageParameters: ImageParameters
   videoParameters: VideoParameters
@@ -38,6 +39,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   selectedActivity,
   selectedContext,
   onMessageChange,
+  handleMessageChange,
   onActivityChange,
   onContextChange,
   onSubmit,
@@ -128,8 +130,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
           <div className="relative w-full" style={{ width: '100%', minWidth: '100%' }}>
             <OptimizedTextarea
               ref={textareaRef}
-              value={message}
-              onChange={(e) => onMessageChange(e.target.value)}
+              onChange={handleMessageChange || ((e) => onMessageChange(e.target.value))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()

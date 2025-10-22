@@ -22,7 +22,6 @@ import {
   Search,
   Mail,
   Users,
-  Check,
   ChevronDown,
   Home
 } from "@/app/components/ui/icons"
@@ -856,19 +855,17 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                           filteredAssigneeOptions.map((option) => (
                             <div
                               key={option.id}
-                              className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                              className={cn(
+                                "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                                option.isSelected && "bg-accent/50 text-accent-foreground"
+                              )}
                               onClick={() => !assigningLead && (
                                 option.isAITeam 
                                   ? handleUnassignLead()
                                   : handleAssignToMember(option.id)
                               )}
                             >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  option.isSelected ? "opacity-100" : "opacity-0"
-                                )}
-                              />
+                              {/* Removed check icon - selection indicated by background color */}
                               <div className="flex-1">
                                 <p className="font-medium">
                                   {option.isAITeam 

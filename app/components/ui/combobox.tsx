@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronDown, X, Search } from "@/app/components/ui/icons"
+import { ChevronDown, X, Search } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/ui/button"
 import {
@@ -131,7 +131,7 @@ export function Combobox({
         </PopoverTrigger>
         <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px]" align="start">
           <div className="p-2">
-            <div className="flex items-center border-b border-border px-3 pb-2 mb-2">
+            <div className="flex items-center px-3 pb-2 mb-2">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
               <Input
                 placeholder={searchPlaceholder}
@@ -151,12 +151,6 @@ export function Combobox({
                     )}
                     onClick={() => handleSelectOption(option)}
                   >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === option.value ? "opacity-100" : "opacity-0"
-                      )}
-                    />
                     {option.label}
                   </div>
                 ))

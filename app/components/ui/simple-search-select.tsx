@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { cn } from "@/lib/utils"
-import { X, ChevronDown, User, Check } from "@/app/components/ui/icons"
+import { X, ChevronDown, User } from "@/app/components/ui/icons"
 
 export interface Option {
   value: string
@@ -137,9 +137,7 @@ export function SimpleSearchSelect({
                   )}
                   onClick={() => handleSelect(option)}
                 >
-                  {option.value === value && (
-                    <Check className="h-4 w-4 mr-2 text-primary" />
-                  )}
+                  {/* Removed check icon - selection indicated by background color */}
                   <span>{option.label}</span>
                 </div>
               ))

@@ -708,7 +708,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         </div>
       </CardContent>
       
-      {(hasUnsavedChanges || pendingMembers.length > 0) && (
+      {((hasUnsavedChanges && teamList.some(member => !member.id)) || pendingMembers.length > 0) && (
         <ActionFooter>
           <div className="flex items-center gap-2 flex-wrap">
             {hasUnsavedChanges && (
@@ -717,8 +717,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                 onClick={handleSaveTeamMembers}
                 disabled={isSaving || isLoading}
               >
-                <Save className="w-4 h-4 mr-2" />
-                {isSaving ? "Saving..." : "Save Team Members"}
+                <PlusCircle className="w-4 h-4 mr-2" />
+                {isSaving ? "Adding..." : "Add Team Members"}
               </Button>
             )}
             {pendingMembers.map((member, originalIndex) => {

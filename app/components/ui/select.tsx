@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
-import { Check, ChevronDown } from "@/app/components/ui/icons"
+import { ChevronDown } from "@/app/components/ui/icons"
 
 import { cn } from "@/lib/utils"
 
@@ -106,16 +106,12 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-muted transition-colors duration-150 text-left leading-none",
+      "flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[state=checked]:bg-accent/50 data-[state=checked]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-muted transition-colors duration-150 text-left leading-none",
       className
     )}
     {...props}
   >
-    {!hideIndicator && (
-      <SelectPrimitive.ItemIndicator className="mr-2 flex h-3.5 w-3.5 items-center justify-center flex-shrink-0">
-        <Check className="h-4 w-4" />
-      </SelectPrimitive.ItemIndicator>
-    )}
+    {/* Removed check icon - selection indicated by background color */}
     <SelectPrimitive.ItemText className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-left flex items-center gap-2">
       {children}
     </SelectPrimitive.ItemText>
