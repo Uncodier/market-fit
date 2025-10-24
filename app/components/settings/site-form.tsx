@@ -51,7 +51,6 @@ import {
   Link,
   PlusCircle,
   Tag,
-  Trash2,
   UploadCloud,
   User
 } from "../ui/icons"
@@ -599,30 +598,6 @@ export function SiteForm({
             </Card>
           )}
 
-          {renderCard("general",
-            <Card className="border border-destructive/30 shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold text-destructive">Danger Zone</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Once you delete a site, there is no going back. Please be certain.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="w-full h-12"
-                    onClick={onDeleteSite}
-                    disabled={isSaving}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Site
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {renderCard("billing",
             <BillingSection />

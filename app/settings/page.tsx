@@ -11,21 +11,10 @@ import { StickyHeader } from "../components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Skeleton } from "../components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../components/ui/alert-dialog"
 import { SiteForm } from "../components/settings/site-form"
 import { type SiteFormValues } from "../components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
-import { handleSave, handleCacheAndRebuild, handleDeleteSite } from "../components/settings/save-handlers"
-import { Input } from "../components/ui/input"
+import { handleSave, handleCacheAndRebuild } from "../components/settings/save-handlers"
 import { useAuthContext } from "../components/auth/auth-provider"
 
 function SettingsFormSkeleton() {
@@ -175,9 +164,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("general")
   const searchParams = useSearchParams()
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [formKey, setFormKey] = useState(0)
-  const [confirmationName, setConfirmationName] = useState("")
 
   // Simple refresh prevention specifically for settings page
   useSimpleRefreshPrevention()
@@ -245,13 +232,6 @@ export default function SettingsPage() {
     await handleCacheAndRebuild(setIsSaving, currentSite || undefined, user)
   }
 
-  const onDeleteSite = async () => {
-    if (confirmationName !== currentSite?.name) {
-      return // Don't proceed if names don't match
-    }
-    await handleDeleteSite(currentSite, deleteSite, setIsSaving, setShowDeleteDialog)
-    setConfirmationName("") // Reset confirmation after deletion
-  }
 
   // Función para guardar manualmente (sin depender del submit)
   const handleManualSave = async () => {
@@ -350,62 +330,12 @@ export default function SettingsPage() {
           id="settings-form"
           initialData={adaptedSiteData || undefined}
           onSubmit={onSave}
-          onDeleteSite={() => setShowDeleteDialog(true)}
           onCacheAndRebuild={onCacheAndRebuild}
           isSaving={isSaving}
           activeSegment={activeSegment}
           siteId={currentSite.id}
         />
       </div>
-      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
-        setShowDeleteDialog(open)
-        if (!open) setConfirmationName("") // Reset when dialog closes
-      }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Site</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the site
-              "{currentSite?.name}" and all of its data including pages, assets, and settings.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-2">
-              To confirm, type the site name <span className="font-semibold">"{currentSite?.name}"</span> below:
-            </p>
-            <div className="space-y-2">
-              <Input
-                type="text"
-                value={confirmationName}
-                onChange={(e) => setConfirmationName(e.target.value)}
-                placeholder="Enter site name"
-                disabled={isSaving}
-                className={confirmationName === currentSite?.name ? "border-green-500 focus-visible:ring-green-500" : ""}
-              />
-              {confirmationName && confirmationName !== currentSite?.name && (
-                <p className="text-xs text-red-500">
-                  Site name doesn't match. Please type "{currentSite?.name}" exactly.
-                </p>
-              )}
-              {confirmationName === currentSite?.name && (
-                <p className="text-xs text-green-600">
-                  ✓ Site name confirmed
-                </p>
-              )}
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={onDeleteSite}
-              className="bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSaving || confirmationName !== currentSite?.name}
-            >
-              {isSaving ? "Deleting..." : "Delete Site"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 } 
