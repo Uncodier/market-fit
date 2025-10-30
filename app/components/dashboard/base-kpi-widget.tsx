@@ -2,8 +2,7 @@
 
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
-import { HelpCircle, CalendarIcon } from "@/app/components/ui/icons";
+import { CalendarIcon } from "@/app/components/ui/icons";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { DatePicker } from "@/app/components/ui/date-picker";
 import { format } from "date-fns";
@@ -14,7 +13,6 @@ import { useTheme } from "@/app/context/ThemeContext";
 
 export interface BaseKpiWidgetProps {
   title: string;
-  tooltipText: string;
   value: string | number | null;
   changeText: string;
   isPositiveChange?: boolean;
@@ -125,7 +123,6 @@ function useCountUp(value: string | number | null, isLoading: boolean) {
 
 export function BaseKpiWidget({
   title,
-  tooltipText,
   value,
   changeText,
   isPositiveChange,
@@ -215,14 +212,6 @@ export function BaseKpiWidget({
               </PopoverContent>
             </Popover>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <HelpCircle className="h-4 w-4 text-muted-foreground" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{tooltipText}</p>
-            </TooltipContent>
-          </Tooltip>
         </div>
       </CardHeader>
 

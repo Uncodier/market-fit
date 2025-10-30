@@ -3,7 +3,6 @@
 import { Sidebar } from "./components/navigation/Sidebar"
 import { TopBar } from "./components/navigation/TopBar"
 import { usePathname } from "next/navigation"
-import { TooltipProvider } from "./components/ui/tooltip"
 import { useState, useEffect } from "react"
 import { SiteProvider } from "./context/SiteContext"
 import { cn } from "@/lib/utils"
@@ -232,11 +231,10 @@ function LayoutClientInner({
   }
 
   return (
-    <TooltipProvider>
-      <div className={cn(
-        "flex min-h-screen w-full bg-background transition-all duration-300",
-        isLayoutCollapsed ? "collapsed" : ""
-      )}>
+    <div className={cn(
+      "flex min-h-screen w-full bg-background transition-all duration-300",
+      isLayoutCollapsed ? "collapsed" : ""
+    )}>
         {fetchError && (
           <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
             Error: {fetchError}
@@ -294,7 +292,6 @@ function LayoutClientInner({
         )}
         <Toaster />
       </div>
-    </TooltipProvider>
   )
 }
 

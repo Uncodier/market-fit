@@ -39,6 +39,22 @@ import { useProfile } from "@/app/hooks/use-profile"
 import { createClient } from "@/lib/supabase/client"
 import { usePageRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
 import { useContextEntities } from "@/app/hooks/use-context-entities"
+import { TasksWidget } from "@/app/components/dashboard/tasks-widget"
+import { ConversationsWidget } from "@/app/components/dashboard/conversations-widget"
+import { ContentsApprovedWidget } from "@/app/components/dashboard/contents-approved-widget"
+import { RequirementsCompletedWidget } from "@/app/components/dashboard/requirements-completed-widget"
+import { LeadsContactedWidget } from "@/app/components/dashboard/leads-contacted-widget"
+import { LeadsInConversationWidget } from "@/app/components/dashboard/leads-in-conversation-widget"
+import { MeetingsWidget } from "@/app/components/dashboard/meetings-widget"
+import { SalesKpiWidget } from "@/app/components/dashboard/sales-kpi-widget"
+import { InputTokensWidget } from "@/app/components/dashboard/input-tokens-widget"
+import { OutputTokensWidget } from "@/app/components/dashboard/output-tokens-widget"
+import { VideoMinutesWidget } from "@/app/components/dashboard/video-minutes-widget"
+import { ImagesGeneratedWidget } from "@/app/components/dashboard/images-generated-widget"
+import { TokenUsageChart } from "@/app/components/dashboard/token-usage-chart"
+import { PerformanceMetricsChart } from "@/app/components/dashboard/performance-metrics-chart"
+import { LeadsTasksChart } from "@/app/components/dashboard/leads-tasks-chart"
+import { HelpButton } from "@/app/components/ui/help-button"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -75,13 +91,24 @@ export default function DashboardPage() {
   
   // Check onboarding completion from site settings instead of user profile
   const [onboardingCompleted, setOnboardingCompleted] = useState(false)
-  const [activeTab, setActiveTab] = useState("onboarding")
+  const [activeTab, setActiveTab] = useState("performance")
   
   // Check onboarding completion from site settings
   useEffect(() => {
     const checkOnboardingCompletion = async () => {
       if (!currentSite?.id) return
       
+      const cacheKey = `onboarding_completed_${currentSite.id}`
+      
+      // Check cache first
+      const cachedStatus = localStorage.getItem(cacheKey)
+      if (cachedStatus === 'true') {
+        setOnboardingCompleted(true)
+        setActiveTab("performance")
+        return // Skip DB query
+      }
+      
+      // Query DB if not cached or cache is false
       try {
         const supabase = createClient()
         const { data: siteSettings } = await supabase
@@ -105,9 +132,10 @@ export default function DashboardPage() {
           const allCompleted = allTaskIds.every(taskId => onboardingTasks[taskId] === true)
           setOnboardingCompleted(allCompleted)
           
-          // Set initial tab based on completion status
+          // Cache completion status
           if (allCompleted) {
-            setActiveTab("overview")
+            localStorage.setItem(cacheKey, 'true')
+            setActiveTab("performance")
           }
         }
       } catch (error) {
@@ -117,13 +145,26 @@ export default function DashboardPage() {
     
     checkOnboardingCompletion()
   }, [currentSite?.id])
+
+  // Update onboarding completion status when site changes
+  useEffect(() => {
+    if (currentSite?.id) {
+      const cacheKey = `onboarding_completed_${currentSite.id}`
+      const cachedStatus = localStorage.getItem(cacheKey)
+      if (cachedStatus === 'true') {
+        setOnboardingCompleted(true)
+      } else {
+        setOnboardingCompleted(false)
+      }
+    }
+  }, [currentSite?.id])
   
   // Update URL when tab changes and get tab from URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const urlTab = params.get('tab')
-      const validTabs = ['overview', 'analytics', 'traffic', 'costs', 'sales']
+      const validTabs = ['performance', 'overview', 'analytics', 'traffic', 'costs', 'sales']
       
       // Only include onboarding in valid tabs if not completed
       if (!onboardingCompleted) {
@@ -133,17 +174,12 @@ export default function DashboardPage() {
       if (urlTab && validTabs.includes(urlTab)) {
         setActiveTab(urlTab)
       } else {
-        // Default to overview if onboarding is complete
-        const defaultTab = onboardingCompleted ? "overview" : "onboarding"
-        setActiveTab(defaultTab)
+        // Always default to performance tab
+        setActiveTab("performance")
         
         // Update URL to match
         const url = new URL(window.location.href)
-        if (defaultTab === 'overview') {
-          url.searchParams.delete('tab')
-        } else {
-          url.searchParams.set('tab', defaultTab)
-        }
+        url.searchParams.delete('tab')
         window.history.replaceState({}, '', url.toString())
       }
     }
@@ -153,7 +189,7 @@ export default function DashboardPage() {
   // If onboarding gets completed, switch away from onboarding tab
   useEffect(() => {
     if (onboardingCompleted && activeTab === "onboarding") {
-      setActiveTab("overview")
+      setActiveTab("performance")
     }
   }, [onboardingCompleted, activeTab])
 
@@ -424,6 +460,14 @@ export default function DashboardPage() {
         return
       }
       
+      // If user is leaving onboarding tab, cache the completion status for retrocompatibility
+      if (activeTab === 'onboarding' && newTab !== 'onboarding' && currentSite?.id) {
+        const cacheKey = `onboarding_completed_${currentSite.id}`
+        localStorage.setItem(cacheKey, 'true')
+        setOnboardingCompleted(true)
+        console.log('💾 Cached onboarding completion for retrocompatibility')
+      }
+      
       console.log(`[Dashboard] Changing tab from ${activeTab} to ${newTab}, cancelling all requests`);
       cancelAllRequests();
       setActiveTab(newTab);
@@ -432,7 +476,7 @@ export default function DashboardPage() {
       // Update URL
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href)
-        if (newTab === 'overview') {
+        if (newTab === 'performance') {
           url.searchParams.delete('tab')
         } else {
           url.searchParams.set('tab', newTab)
@@ -475,6 +519,7 @@ export default function DashboardPage() {
                   {!onboardingCompleted && (
                     <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
                   )}
+                  <TabsTrigger value="performance">Performance</TabsTrigger>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="analytics">Analytics</TabsTrigger>
                   <TabsTrigger value="traffic">Traffic</TabsTrigger>
@@ -535,7 +580,15 @@ export default function DashboardPage() {
         <div className="px-16 pt-3 pb-4">
           <div className="flex items-center justify-between space-x-4">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
+                <HelpButton
+                  size="md"
+                  tooltipText="Open help chat"
+                  welcomeMessage="Hi! How can I help you with the dashboard?"
+                  task="Help with Dashboard overview and metrics"
+                />
+              </div>
               <p className="text-muted-foreground">
                 {activeTab === "onboarding" 
                   ? "Let's get your growth engine set up and ready to capture leads!"
@@ -550,6 +603,121 @@ export default function DashboardPage() {
           <TabsContent value="onboarding" className="space-y-4">
             {activeTab === "onboarding" && (
               <OnboardingItinerary />
+            )}
+          </TabsContent>
+          <TabsContent value="performance" className="space-y-4">
+            {activeTab === "performance" && (
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
+                  <LeadsContactedWidget 
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <LeadsInConversationWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <MeetingsWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <SalesKpiWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <TasksWidget 
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <ConversationsWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <ContentsApprovedWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <RequirementsCompletedWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                </div>
+                <div className="grid gap-4 grid-cols-1">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Performance Metrics</CardTitle>
+                      <CardDescription>Conversations, engagement, meetings, and sales over time</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PerformanceMetricsChart 
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="grid gap-4 grid-cols-1">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Customer Success Metrics</CardTitle>
+                      <CardDescription>Daily created leads and tasks over time</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <LeadsTasksChart
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="grid gap-4 grid-cols-1">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Token Usage</CardTitle>
+                      <CardDescription>Input vs Output token consumption over time</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <TokenUsageChart 
+                        segmentId={selectedSegment}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
+                  <InputTokensWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <OutputTokensWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <VideoMinutesWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                  <ImagesGeneratedWidget
+                    segmentId={selectedSegment}
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                  />
+                </div>
+              </>
             )}
           </TabsContent>
           <TabsContent value="overview" className="space-y-4">
