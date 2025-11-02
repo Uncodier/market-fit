@@ -7,6 +7,7 @@ import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface ActiveExperimentsWidgetProps {
   startDate?: Date;
@@ -88,17 +89,17 @@ export function ActiveExperimentsWidget({
         
         console.log("[ActiveExperimentsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
-        const response = await fetchWithController(`/api/active-experiments?${params.toString()}`);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/active-experiments?${params.toString()}`,
+          { maxRetries: 3 }
+        );
         
-        // Handle null response (aborted request)
-        if (response === null) {
-          console.log("[ActiveExperimentsWidget] Request was aborted");
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
         }
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch active experiments data');
-        }
         const data = await response.json();
         setActiveExperiments(data);
       } catch (error) {

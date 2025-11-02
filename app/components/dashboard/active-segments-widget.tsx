@@ -7,6 +7,7 @@ import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface ActiveSegmentsWidgetProps {
   startDate?: Date;
@@ -83,17 +84,15 @@ export function ActiveSegmentsWidget({
         const apiUrl = `/api/active-segments?${params.toString()}`;
         console.log("[ActiveSegmentsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
-        const response = await fetchWithController(apiUrl);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          apiUrl,
+          { maxRetries: 3 }
+        );
         
-        // Handle null response (aborted request)
-        if (response === null) {
-          console.log("[ActiveSegmentsWidget] Request was aborted");
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
-        }
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Error ${response.status}: ${errorText}`);
         }
         
         const data = await response.json();

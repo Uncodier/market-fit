@@ -12,6 +12,7 @@ import { SalesDistributionChart } from "@/app/components/dashboard/sales-distrib
 import { MonthlySalesEvolutionChart } from "@/app/components/dashboard/monthly-sales-evolution-chart"
 import { SalesBreakdownReport } from "@/app/components/dashboard/sales-breakdown-report"
 import { useRequestController } from "@/app/hooks/useRequestController"
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry"
 import { startOfMonth, format, subDays } from "date-fns"
 
 interface SalesData {
@@ -144,15 +145,16 @@ export function SalesReports({
           params.append("segmentId", segmentId);
         }
         
-        const response = await fetchWithController(`/api/revenue?${params.toString()}`);
-        // Check if request was aborted or component unmounted
-        if (response === null || !isMounted) {
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/revenue?${params.toString()}`,
+          { maxRetries: 3 }
+        );
+        
+        // Check if request was cancelled or component unmounted
+        if (!response || !isMounted) {
           console.log("[SalesReports] Request was cancelled or component unmounted");
           return; // Exit early, don't update state for cancelled requests
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch sales data');
         }
         
         const data = await response.json();

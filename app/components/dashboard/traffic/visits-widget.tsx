@@ -7,6 +7,7 @@ import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 const formatPeriodType = (periodType: string): string => {
   switch (periodType) {
     case "daily":
@@ -84,16 +85,15 @@ export function SessionsWidget({
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
-        const response = await fetchWithController(`/api/traffic/visits?${params.toString()}`);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/traffic/visits?${params.toString()}`,
+          { maxRetries: 3 }
+        );
         
-        // Handle null response (aborted request)
-        if (response === null) {
-          console.log("[SessionsWidget] Request was aborted");
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch sessions data');
         }
         const data = await response.json();
         setSessions(data);

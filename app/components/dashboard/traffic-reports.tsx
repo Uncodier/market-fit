@@ -10,6 +10,7 @@ import { TrafficPieChart } from "@/app/components/dashboard/traffic/traffic-pie-
 import { SessionEventsContainer } from "@/app/components/dashboard/traffic/session-events-container";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { format } from "date-fns";
@@ -199,17 +200,16 @@ export function TrafficReports({
             const urlParams = buildParams(endpoint);
             
             console.log(`[TrafficReports] Fetching ${endpoint} data...`);
-            const response = await fetchWithController(`/api/traffic/${endpoint}?${urlParams}`);
+            const response = await fetchWithRetry(
+              fetchWithController,
+              `/api/traffic/${endpoint}?${urlParams}`,
+              { maxRetries: 3 }
+            );
 
-            if (response === null) {
-              console.log(`[TrafficReports] Request for ${endpoint} was aborted`);
-              return;
-            }
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error(`[TrafficReports] Error fetching ${endpoint}: ${response.status} ${errorText}`);
-              throw new Error(`Error ${response.status}: ${errorText}`);
+            if (!response) {
+              console.log(`[TrafficReports] Request for ${endpoint} failed after retries`);
+              results.push({ endpoint, data: [] });
+              continue;
             }
 
             const responseData = await response.json();

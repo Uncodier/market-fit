@@ -6,6 +6,7 @@ import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useTheme } from "@/app/context/ThemeContext";
 import { PieChart } from "@/app/components/ui/icons";
 import { EmptyCard } from "@/app/components/ui/empty-card";
@@ -154,17 +155,15 @@ export function TrafficPieChart({
         }
 
         console.log(`[TrafficPieChart:${endpoint}] Making INDIVIDUAL API call (should not happen if batched correctly):`, params.toString());
-        const response = await fetchWithController(`/api/traffic/${endpoint}?${params.toString()}`);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/traffic/${endpoint}?${params.toString()}`,
+          { maxRetries: 3 }
+        );
 
-        // Handle null response (aborted request)
-        if (response === null) {
-          console.log(`[TrafficPieChart:${endpoint}] Request was aborted`);
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
-        }
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Error ${response.status}: ${errorText}`);
         }
 
         const responseData = await response.json();

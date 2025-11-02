@@ -7,6 +7,7 @@ import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 const formatPeriodType = (periodType: string): string => {
   switch (periodType) {
@@ -82,16 +83,15 @@ export function UniqueVisitorsWidget({
         console.log("[UniqueVisitorsWidget] Date range:", { startDate, endDate, segmentId });
         
         // Use the SAME endpoint as the chart for 100% consistency
-        const response = await fetchWithController(`/api/traffic/session-events-combined?${params.toString()}`);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/traffic/session-events-combined?${params.toString()}`,
+          { maxRetries: 3 }
+        );
         
-        // Handle null response (aborted request)
-        if (response === null) {
-          console.log("[UniqueVisitorsWidget] Request was aborted");
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch unique visitors data');
         }
         
         const data = await response.json();
@@ -114,10 +114,14 @@ export function UniqueVisitorsWidget({
         }
         prevParams.append("referrersLimit", "1");
         
-        const prevResponse = await fetchWithController(`/api/traffic/session-events-combined?${prevParams.toString()}`);
+        const prevResponse = await fetchWithRetry(
+          fetchWithController,
+          `/api/traffic/session-events-combined?${prevParams.toString()}`,
+          { maxRetries: 3 }
+        );
         
         let previousUniqueVisitors = 0;
-        if (prevResponse && prevResponse.ok) {
+        if (prevResponse) {
           const prevData = await prevResponse.json();
           previousUniqueVisitors = prevData.totals?.uniqueVisitors || 0;
         }

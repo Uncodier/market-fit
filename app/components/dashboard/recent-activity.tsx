@@ -10,6 +10,7 @@ import { ClipboardList, Circle } from "@/app/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
 import { format } from "date-fns";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useRouter } from "next/navigation";
 
 interface ActivityUser {
@@ -193,19 +194,17 @@ export function RecentActivity({
         const apiUrl = `/api/recent-activity?${queryParams.toString()}`;
         console.log("Requesting recent activities from:", apiUrl);
         
-        // Use the request controller instead of a local AbortController
-        const response = await fetchWithController(apiUrl);
+        // Use the request controller with retry logic
+        const response = await fetchWithRetry(
+          fetchWithController,
+          apiUrl,
+          { maxRetries: 3 }
+        );
         
-        // If request was aborted or component unmounted
-        if (response === null || !isMounted) {
+        // If request was cancelled or component unmounted
+        if (!response || !isMounted) {
           console.log("[RecentActivity] Request was cancelled or component unmounted");
           return;
-        }
-        
-        console.log("API response status:", response.status);
-        
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
         }
         
         // Get the response JSON
