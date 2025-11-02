@@ -7,6 +7,7 @@ import { useAuth } from "@/app/hooks/use-auth";
 import { useSite } from "@/app/context/SiteContext";
 import { useTheme } from "@/app/context/ThemeContext";
 import { Skeleton } from "@/app/components/ui/skeleton";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface LeadsTasksChartProps {
   startDate: Date;
@@ -27,7 +28,6 @@ interface MetricsData {
 export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: LeadsTasksChartProps) {
   const [data, setData] = useState<MetricsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { currentSite } = useSite();
   const { fetchWithController } = useRequestController();
@@ -38,29 +38,31 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
       if (!currentSite?.id || !user?.id) return;
 
       setIsLoading(true);
-      setError(null);
 
-      try {
-        const params = new URLSearchParams({
-          siteId: currentSite.id,
-          userId: user.id,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          segmentId: segmentId
-        });
+      const params = new URLSearchParams({
+        siteId: currentSite.id,
+        userId: user.id,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        segmentId: segmentId
+      });
 
-        const response = await fetchWithController(`/api/performance/metrics-overview?${params}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
-        setData({ chartData: result.chartData });
-      } catch (err) {
-        console.error("Error fetching leads/tasks metrics:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch data");
-      } finally {
+      const response = await fetchWithRetry(
+        fetchWithController,
+        `/api/performance/metrics-overview?${params}`,
+        { maxRetries: 3 }
+      );
+
+      if (!response) {
+        // All retries failed or request was cancelled - show empty state
         setIsLoading(false);
+        setData(null);
+        return;
       }
+
+      const result = await response.json();
+      setData({ chartData: result.chartData });
+      setIsLoading(false);
     };
 
     fetchData();
@@ -80,14 +82,6 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
     return (
       <div className="w-full h-[300px]">
         <Skeleton className="w-full h-full" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-full h-[300px] flex items-center justify-center">
-        <p className="text-red-500">Error loading chart data: {error}</p>
       </div>
     );
   }

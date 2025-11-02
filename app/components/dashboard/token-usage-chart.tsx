@@ -7,6 +7,7 @@ import { useAuth } from "@/app/hooks/use-auth";
 import { useSite } from "@/app/context/SiteContext";
 import { useTheme } from "@/app/context/ThemeContext";
 import { Skeleton } from "@/app/components/ui/skeleton";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface TokenUsageChartProps {
   startDate: Date;
@@ -37,7 +38,6 @@ export function TokenUsageChart({
 }: TokenUsageChartProps) {
   const [data, setData] = useState<TokensData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { currentSite } = useSite();
   const { fetchWithController } = useRequestController();
@@ -48,33 +48,31 @@ export function TokenUsageChart({
       if (!currentSite?.id || !user?.id) return;
 
       setIsLoading(true);
-      setError(null);
 
-      try {
-        const params = new URLSearchParams({
-          siteId: currentSite.id,
-          userId: user.id,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          segmentId: segmentId
-        });
+      const params = new URLSearchParams({
+        siteId: currentSite.id,
+        userId: user.id,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        segmentId: segmentId
+      });
 
-        const response = await fetchWithController(
-          `/api/performance/tokens?${params}`
-        );
+      const response = await fetchWithRetry(
+        fetchWithController,
+        `/api/performance/tokens?${params}`,
+        { maxRetries: 3 }
+      );
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        console.error("Error fetching token usage data:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch data");
-      } finally {
+      if (!response) {
+        // All retries failed or request was cancelled - show empty state
         setIsLoading(false);
+        setData(null);
+        return;
       }
+
+      const result = await response.json();
+      setData(result);
+      setIsLoading(false);
     };
 
     fetchData();
@@ -95,14 +93,6 @@ export function TokenUsageChart({
     return (
       <div className="w-full h-[300px]">
         <Skeleton className="w-full h-full" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-full h-[300px] flex items-center justify-center">
-        <p className="text-red-500">Error loading chart data: {error}</p>
       </div>
     );
   }

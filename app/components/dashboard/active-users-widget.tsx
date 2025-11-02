@@ -7,6 +7,7 @@ import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface ActiveUsersWidgetProps {
   segmentId?: string;
@@ -80,16 +81,15 @@ export function ActiveUsersWidget({
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
-        const response = await fetchWithController(`/api/active-users?${params.toString()}`);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/active-users?${params.toString()}`,
+          { maxRetries: 3 }
+        );
         
-        // Handle null response (aborted request)
-        if (response === null) {
-          console.log("[PaidActiveUsersWidget] Request was aborted");
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch paid active users data');
         }
         const data = await response.json();
         setActiveUsers(data);

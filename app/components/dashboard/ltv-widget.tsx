@@ -7,6 +7,7 @@ import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface LTVWidgetProps {
   segmentId?: string;
@@ -97,15 +98,15 @@ export function LTVWidget({
         
         console.log("[LTVWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
-        const response = await fetchWithController(`/api/ltv?${params.toString()}`);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/ltv?${params.toString()}`,
+          { maxRetries: 3 }
+        );
         
-        // Handle null response (aborted request)
-        if (response === null) {
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch LTV data');
         }
         const data = await response.json();
         setLtv(data);

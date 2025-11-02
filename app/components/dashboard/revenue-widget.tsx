@@ -7,6 +7,7 @@ import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface RevenueWidgetProps {
   segmentId?: string;
@@ -95,16 +96,15 @@ export function RevenueWidget({
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
-        const response = await fetchWithController(`/api/revenue?${params.toString()}`);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/revenue?${params.toString()}`,
+          { maxRetries: 3 }
+        );
         
-        // Handle null response (aborted request)
-        if (response === null) {
-          console.log("[RevenueWidget] Request was aborted");
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch revenue data');
         }
         const data = await response.json();
         

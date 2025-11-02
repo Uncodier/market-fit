@@ -7,6 +7,7 @@ import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
+import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface ActiveCampaignsWidgetProps {
   startDate?: Date;
@@ -88,17 +89,17 @@ export function ActiveCampaignsWidget({
         
         console.log("[ActiveCampaignsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
-        const response = await fetchWithController(`/api/active-campaigns?${params.toString()}`);
+        const response = await fetchWithRetry(
+          fetchWithController,
+          `/api/active-campaigns?${params.toString()}`,
+          { maxRetries: 3 }
+        );
         
-        // Handle null response (aborted request)
-        if (response === null) {
-          console.log("[ActiveCampaignsWidget] Request was aborted");
+        // Handle null response (all retries failed or request was cancelled)
+        if (!response) {
           return;
         }
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch active campaigns data');
-        }
         const data = await response.json();
         setActiveCampaigns(data);
       } catch (error) {
