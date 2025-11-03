@@ -1,15 +1,18 @@
 import React, { useState } from 'react'
-import { Eye, EyeOff, Code, LayoutGrid, Zap, Copy, Check } from "@/app/components/ui/icons"
+import { Eye, EyeOff, Code, LayoutGrid, Zap, Copy, Check, Download } from "@/app/components/ui/icons"
 import { InstanceLog } from '../types'
 import { getToolName, getToolResult, formatBase64Image } from '../utils'
 import { renderObjectWithImages } from '../render-helpers'
 import { GeneratedImageDisplay, GeneratedImageDisplayCollapsed } from './GeneratedImageDisplay'
+import { ImageFullscreenViewer } from './ImageFullscreenViewer'
+import { useToast } from '@/app/components/ui/use-toast'
 
 interface ToolCallItemProps {
   log: InstanceLog
   isDarkMode: boolean
   collapsedToolDetails: Set<string>
   onToggleToolDetails: (logId: string) => void
+  isBrowserVisible?: boolean
 }
 
 // Helper function to render tool icon
@@ -28,11 +31,14 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
   log,
   isDarkMode,
   collapsedToolDetails,
-  onToggleToolDetails
+  onToggleToolDetails,
+  isBrowserVisible = false
 }) => {
   const toolName = getToolName(log)
   const toolResult = getToolResult(log)
   const [copied, setCopied] = useState(false)
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false)
+  const { toast } = useToast()
 
   // Function to copy tool content to clipboard
   const handleCopy = async (e: React.MouseEvent) => {
@@ -59,6 +65,53 @@ Details: ${contentToCopy.details}`
     }
   }
 
+  // Function to download image
+  const handleDownloadImage = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    if (!toolResult?.output?.images || toolResult.output.images.length === 0) {
+      return
+    }
+
+    const images = toolResult.output.images
+    const downloadImage = async (imageObj: any, index: number) => {
+      try {
+        const imageUrl = typeof imageObj === 'string' ? imageObj : imageObj?.url || ''
+        const response = await fetch(imageUrl)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `image-${index + 1}.${blob.type.split('/')[1] || 'png'}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      } catch (err) {
+        console.error('Failed to download image:', err)
+        toast({
+          title: "Download failed",
+          description: `Could not download image ${index + 1}`,
+          variant: "destructive"
+        })
+      }
+    }
+
+    // Download all images
+    for (let i = 0; i < images.length; i++) {
+      await downloadImage(images[i], i)
+      // Small delay between downloads
+      if (i < images.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+    }
+
+    toast({
+      title: "Download started",
+      description: `Downloading ${images.length} image(s)...`,
+    })
+  }
+
   // Helper to check if tool result has an error
   const hasError = toolResult && (toolResult.error || toolResult.success === false)
   const errorMessage = toolResult?.error || toolResult?.output
@@ -66,8 +119,10 @@ Details: ${contentToCopy.details}`
   // Extract status from details object
   const status = log.details?.status
 
+  const isImageGeneration = toolName === 'generate_image' && toolResult?.output?.images
+  
   return (
-    <div className="w-full min-w-0 overflow-hidden">
+    <div className={`${isImageGeneration ? 'inline-block' : 'w-full'} min-w-0 overflow-hidden`} style={isImageGeneration ? { marginLeft: isBrowserVisible ? '0.75rem' : '2rem' } : undefined}>
       <div 
         className="rounded-lg p-3 text-xs cursor-pointer hover:opacity-80 transition-all duration-200 ease-in-out"
         style={{ 
@@ -126,6 +181,16 @@ Details: ${contentToCopy.details}`
             </span>
           )}
           <div className="ml-auto flex items-center gap-2">
+            {/* Download image button - only show for generate_image tool */}
+            {toolName === 'generate_image' && toolResult?.output?.images && (
+              <button
+                onClick={handleDownloadImage}
+                className="p-1 rounded hover:bg-muted-foreground/10 transition-colors"
+                title="Download images"
+              >
+                <Download className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+              </button>
+            )}
             {/* Copy button */}
             <button
               onClick={handleCopy}
@@ -152,10 +217,12 @@ Details: ${contentToCopy.details}`
 
         {/* Generated images - always show for generate_image tool (collapsed view) */}
         {toolName === 'generate_image' && toolResult?.output?.images && (
-          <div className="mt-3">
+          <div className="mt-3 inline-block">
             <GeneratedImageDisplayCollapsed 
               toolResult={toolResult} 
-              isDarkMode={isDarkMode} 
+              isDarkMode={isDarkMode}
+              onImageClick={() => setIsFullscreenOpen(true)}
+              isBrowserVisible={isBrowserVisible}
             />
           </div>
         )}
@@ -272,8 +339,8 @@ Details: ${contentToCopy.details}`
                   <img 
                     src={formatBase64Image(log.screenshot_base64)} 
                     alt="Tool Screenshot" 
-                    className="w-full h-auto rounded border shadow-sm"
-                    style={{ maxHeight: '400px' }}
+                    className={isBrowserVisible ? "w-full h-auto rounded border shadow-sm" : "max-w-[33vw] h-auto rounded border shadow-sm"}
+                    style={{ maxHeight: '400px', maxWidth: isBrowserVisible ? '100%' : undefined }}
                   />
                 </div>
               </div>
@@ -282,7 +349,7 @@ Details: ${contentToCopy.details}`
               <div className="mt-2 text-muted-foreground">
                 <strong>Result:</strong> 
                 <div className="mt-1">
-                  {renderObjectWithImages(toolResult)}
+                  {renderObjectWithImages(toolResult, 0, isBrowserVisible)}
                 </div>
               </div>
             )}
@@ -302,7 +369,7 @@ Details: ${contentToCopy.details}`
                     filter: 'none'
                   }}
                 >
-                  {renderObjectWithImages(log.details)}
+                  {renderObjectWithImages(log.details, 0, isBrowserVisible)}
                 </div>
               </div>
             )}
@@ -310,6 +377,17 @@ Details: ${contentToCopy.details}`
         )}
 
       </div>
+
+      {/* Fullscreen image viewer */}
+      {toolName === 'generate_image' && toolResult?.output?.images && (
+        <ImageFullscreenViewer
+          isOpen={isFullscreenOpen}
+          onClose={() => setIsFullscreenOpen(false)}
+          images={toolResult.output.images}
+          metadata={toolResult.output.metadata}
+          prompt={log.message}
+        />
+      )}
     </div>
   )
 }

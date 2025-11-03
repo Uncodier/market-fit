@@ -150,7 +150,7 @@ export function TopBar({
   return (
     <div
       className={cn(
-        "flex flex-col border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10",
+        "flex flex-col border-b bg-background/95 backdrop-blur-sm sticky top-0 z-[200]",
         // Hide breadcrumb in chat pages
         (breadcrumb && !pathname.startsWith("/chat")) ? "h-[calc(64px+41px)]" : "h-[64px]",
         className

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from '@/app/context/SiteContext'
+import { useLayout } from '@/app/context/LayoutContext'
 import { useToast } from '@/app/components/ui/use-toast'
 import { useSearchParams, useRouter } from "next/navigation"
 import { useRobots } from '@/app/context/RobotsContext'
@@ -11,8 +12,7 @@ import { useAuthContext } from '@/app/components/auth/auth-provider'
 import { useUserProfile } from './hooks/useUserProfile'
 import { MessagesSkeleton } from "@/app/components/skeletons/messages-skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
-import { User, Bot } from "@/app/components/ui/icons"
-import { EmptyCard } from "@/app/components/ui/empty-card"
+import { User } from "@/app/components/ui/icons"
 
 // Import types
 import { SimpleMessagesViewProps, InstanceLog, SelectedContextIds, ImageParameters, VideoParameters, AudioParameters, MessageAttachment } from './types'
@@ -41,6 +41,7 @@ import { getActivityName } from './utils'
 export function SimpleMessagesView({ className = "", activeRobotInstance, isBrowserVisible = false, onMessageSent, onNewInstanceCreated }: SimpleMessagesViewProps) {
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
+  const { isLayoutCollapsed } = useLayout()
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -145,10 +146,71 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   
   // Auto scroll to bottom when new logs arrive
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Try multiple methods to ensure scroll works correctly
+    const container = messagesContainerRef.current
+    const endElement = messagesEndRef.current
+    
+    if (container && endElement) {
+      // Use scrollIntoView with smooth behavior for animation
+      // block: 'end' ensures we scroll to the absolute bottom
+      const scrollToEnd = () => {
+        if (container && endElement) {
+          // First, ensure we're at the bottom position
+          endElement.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' })
+          
+          // Double-check with direct scrollTop assignment after a short delay
+          // This ensures we reach the absolute bottom even if scrollIntoView doesn't account for padding
+          setTimeout(() => {
+            if (container) {
+              const maxScroll = container.scrollHeight - container.clientHeight
+              // Only adjust if we're significantly off (more than 20px)
+              if (Math.abs(container.scrollTop - maxScroll) > 20) {
+                // Use smooth scroll by animating to the target
+                const targetScroll = maxScroll
+                const startScroll = container.scrollTop
+                const distance = targetScroll - startScroll
+                const duration = 300 // ms
+                let startTime: number | null = null
+                
+                const animateScroll = (currentTime: number) => {
+                  if (!startTime) startTime = currentTime
+                  const elapsed = currentTime - startTime
+                  const progress = Math.min(elapsed / duration, 1)
+                  
+                  // Ease-out function for smooth animation
+                  const easeOut = 1 - Math.pow(1 - progress, 3)
+                  container.scrollTop = startScroll + (distance * easeOut)
+                  
+                  if (progress < 1) {
+                    requestAnimationFrame(animateScroll)
+                  } else {
+                    // Final precise position
+                    container.scrollTop = targetScroll
+                  }
+                }
+                
+                requestAnimationFrame(animateScroll)
+              }
+            }
+          }, 100)
+        }
+      }
+      
+      // Try immediately
+      scrollToEnd()
+      
+      // Try again after delays to account for layout shifts and image loading
+      setTimeout(scrollToEnd, 100)
+      setTimeout(scrollToEnd, 300)
+      setTimeout(scrollToEnd, 600)
+    } else if (endElement) {
+      // Fallback to scrollIntoView if container ref is not available
+      endElement.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
   }, [])
 
   // Auto scroll when logs change or when waiting for response
@@ -292,6 +354,27 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     resetMessageSentStateRef.current = resetMessageSentState
   }, [resetMessageSentState])
 
+  // Scroll to bottom when logs change or activeRobotInstance changes
+  // This ensures proper scroll calculation after content is rendered
+  useEffect(() => {
+    if (activeRobotInstance && logs.length > 0) {
+      // Wait for images and other async content to load
+      // Use multiple RAF and timeout to ensure layout is complete
+      const scrollTimeout = setTimeout(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // Additional delay for images to load
+            setTimeout(() => {
+              scrollToBottom()
+            }, 100)
+          })
+        })
+      }, 100)
+      
+      return () => clearTimeout(scrollTimeout)
+    }
+  }, [logs, activeRobotInstance?.id, scrollToBottom])
+
   const {
     steps,
     instancePlans,
@@ -368,13 +451,48 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     return <MessagesSkeleton />
   }
 
+  // Calculate if chat is empty
+  const shouldShowNewMakina = !activeRobotInstance || !activeRobotInstance.id || (activeRobotInstance.status === 'uninstantiated' && logs.length === 0)
+  const isEmptyNewMakina = shouldShowNewMakina && !hasMessageBeenSent && !lastUserMessage && !isNewMakinaThinking
+  
+  // Calculate timeline for Explorer view
+  const timelineItems: Array<{
+    type: 'log' | 'completed_plan'
+    timestamp: string
+    data: any
+  }> = []
+  
+  logs.forEach(log => {
+    timelineItems.push({
+      type: 'log',
+      timestamp: log.created_at,
+      data: log
+    })
+  })
+  
+  completedPlans.forEach(plan => {
+    const timestamp = plan.completed_at || plan.updated_at || plan.created_at
+    timelineItems.push({
+      type: 'completed_plan',
+      timestamp: timestamp,
+      data: plan
+    })
+  })
+  
+  const sortedTimeline = timelineItems.sort((a, b) =>
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  )
+  
+  const isEmptyExplorer = !shouldShowNewMakina && sortedTimeline.length === 0
+  const isEmpty = isEmptyNewMakina || isEmptyExplorer
+
   return (
-    <div className={`flex flex-col h-full w-full min-w-0 overflow-hidden relative ${className}`}>
+    <div className={`flex flex-col w-full min-w-0 h-full relative ${className}`}>
       {/* Messages list */}
-      <div className={`flex-1 overflow-y-auto overflow-x-hidden px-[30px] py-4 space-y-6 w-full min-w-0 ${!activeRobotInstance ? 'pb-0' : 'pb-[175px]'}`}>
+      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto overflow-x-hidden py-6 w-full min-w-0 transition-colors duration-300 ease-in-out pt-[91px] pb-44`}>
+        <div className={isBrowserVisible ? "max-w-[calc(100%-80px)] mx-auto min-w-0" : "max-w-[calc(100%-240px)] mx-auto min-w-0"}>
+        <div className="space-y-6">
         {(() => {
-          // Show New Makina view if no instance, or if instance is uninstantiated AND has no logs
-          const shouldShowNewMakina = !activeRobotInstance || !activeRobotInstance.id || (activeRobotInstance.status === 'uninstantiated' && logs.length === 0)
           console.log('🔄 [SimpleMessagesView] Render decision:', {
             shouldShowNewMakina,
             activeRobotInstance: activeRobotInstance ? { id: activeRobotInstance.id, name: activeRobotInstance.name, status: activeRobotInstance.status } : null,
@@ -451,51 +569,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             <>
             {/* Create unified timeline of logs and completed plans */}
             {(() => {
-              // Create timeline items with timestamps
-              const timelineItems: Array<{
-                type: 'log' | 'completed_plan'
-                timestamp: string
-                data: any
-              }> = []
-
-              // Add logs to timeline
-              logs.forEach(log => {
-                timelineItems.push({
-                  type: 'log',
-                  timestamp: log.created_at,
-                  data: log
-                })
-              })
-
-              // Add completed plans to timeline
-              completedPlans.forEach(plan => {
-                const timestamp = plan.completed_at || plan.updated_at || plan.created_at
-                timelineItems.push({
-                  type: 'completed_plan',
-                  timestamp: timestamp,
-                  data: plan
-                })
-              })
-
-              // Sort by timestamp
-              const sortedTimeline = timelineItems.sort((a, b) =>
-                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-              )
-
               if (sortedTimeline.length === 0) {
-                console.log('🔄 [SimpleMessagesView] No timeline items, showing empty state')
-                return (
-                  <div className="flex items-center justify-center h-full w-full absolute inset-0">
-                    <EmptyCard
-                      icon={<Bot className="h-12 w-12 text-muted-foreground/60" />}
-                      title="No activity yet"
-                      description="Robot activity and logs will appear here once the robot starts working."
-                      variant="fancy"
-                      showShadow={false}
-                      className="max-w-md"
-                    />
-                  </div>
-                )
+                console.log('🔄 [SimpleMessagesView] No timeline items')
+                return null
               }
               
               console.log('🔄 [SimpleMessagesView] Rendering timeline with', sortedTimeline.length, 'items')
@@ -530,6 +606,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                         isDarkMode={isDarkMode}
                         collapsedToolDetails={collapsedToolDetails}
                         onToggleToolDetails={toggleToolDetails}
+                        isBrowserVisible={isBrowserVisible}
                       />
                     )
                   } else {
@@ -541,6 +618,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                         isDarkMode={isDarkMode}
                         collapsedSystemMessages={collapsedSystemMessages}
                         onToggleSystemMessageCollapse={toggleSystemMessageCollapse}
+                        isBrowserVisible={isBrowserVisible}
                       />
                     )
                   }
@@ -570,6 +648,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         
         {/* Invisible element for auto-scroll */}
         <div ref={messagesEndRef} />
+        </div>
+        </div>
       </div>
 
       {/* Floating Step Indicator - Expandable */}
@@ -597,11 +677,21 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           canEditOrDeleteStep={canEditOrDeleteStep}
           assets={assets}
           onDeleteAsset={deleteAsset}
+          isBrowserVisible={isBrowserVisible}
         />
       )}
 
-      {/* Message input area - centered when no instance or uninstantiated without messages, bottom when active or message sent */}
-      <div className={`${(!activeRobotInstance || (activeRobotInstance?.status === 'uninstantiated' && logs.length === 0)) && !hasMessageBeenSent ? 'absolute inset-x-0 top-1/2 -translate-y-1/2 transform' : 'absolute bottom-4 left-0 right-0'} flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-[20] w-full`}>
+      {/* Message input area - fixed positioning like ChatInput */}
+      <div 
+        className={`fixed flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10`}
+        style={{ 
+          bottom: isEmpty ? '50%' : '20px',
+          transform: isEmpty ? 'translateY(50%)' : 'none',
+          left: `calc(${isLayoutCollapsed ? '64px' : '256px'} + 120px)`,
+          right: '0px',
+          width: `calc(100vw - ${isLayoutCollapsed ? '64px' : '256px'} - 240px)`
+        }}
+      >
         <MessageInput
           message={message}
           selectedActivity={selectedActivity}

@@ -51,18 +51,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
             >
               <SelectTrigger 
                 hideIcon 
-                className={`h-8 bg-secondary hover:bg-secondary/80 border-secondary ${
-                  isBrowserVisible ? 'w-8 p-0 justify-center' : 'text-xs w-auto min-w-fit'
-                }`}
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                {isBrowserVisible ? (
+                <div className="flex items-center gap-2">
                   <LayoutGrid className="h-4 w-4" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <LayoutGrid className="h-4 w-4" />
-                    <span>{imageParameters.aspectRatio}</span>
-                  </div>
-                )}
+                  <span>{imageParameters.aspectRatio}</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="1:1" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">1:1</SelectItem>
@@ -86,18 +80,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
             >
               <SelectTrigger 
                 hideIcon 
-                className={`h-8 bg-secondary hover:bg-secondary/80 border-secondary ${
-                  isBrowserVisible ? 'w-8 p-0 justify-center' : 'text-xs w-auto min-w-fit'
-                }`}
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                {isBrowserVisible ? (
+                <div className="flex items-center gap-2">
                   <BarChart className="h-4 w-4" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <BarChart className="h-4 w-4" />
-                    <span>{imageParameters.quality}%</span>
-                  </div>
-                )}
+                  <span>{imageParameters.quality}%</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="25" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Low</SelectItem>
@@ -124,18 +112,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
             >
               <SelectTrigger 
                 hideIcon 
-                className={`h-8 bg-secondary hover:bg-secondary/80 border-secondary ${
-                  isBrowserVisible ? 'w-8 p-0 justify-center' : 'text-xs w-auto min-w-fit'
-                }`}
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                {isBrowserVisible ? (
+                <div className="flex items-center gap-2">
                   <LayoutGrid className="h-4 w-4" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <LayoutGrid className="h-4 w-4" />
-                    <span>{videoParameters.aspectRatio}</span>
-                  </div>
-                )}
+                  <span>{videoParameters.aspectRatio}</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="16:9" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">16:9</SelectItem>
@@ -157,18 +139,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
             >
               <SelectTrigger 
                 hideIcon 
-                className={`h-8 bg-secondary hover:bg-secondary/80 border-secondary ${
-                  isBrowserVisible ? 'w-8 p-0 justify-center' : 'text-xs w-auto min-w-fit'
-                }`}
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                {isBrowserVisible ? (
+                <div className="flex items-center gap-2">
                   <FileVideo className="h-4 w-4" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <FileVideo className="h-4 w-4" />
-                    <span>{videoParameters.resolution}</span>
-                  </div>
-                )}
+                  <span>{videoParameters.resolution}</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="720p" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">720p</SelectItem>
@@ -187,18 +163,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
             >
               <SelectTrigger 
                 hideIcon 
-                className={`h-8 bg-secondary hover:bg-secondary/80 border-secondary ${
-                  isBrowserVisible ? 'w-8 p-0 justify-center' : 'text-xs w-auto min-w-fit'
-                }`}
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                {isBrowserVisible ? (
+                <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    <span>{videoParameters.duration}s</span>
-                  </div>
-                )}
+                  <span>{videoParameters.duration}s</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="10" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">10s</SelectItem>
@@ -225,18 +195,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
             >
               <SelectTrigger 
                 hideIcon 
-                className={`h-8 bg-secondary hover:bg-secondary/80 border-secondary ${
-                  isBrowserVisible ? 'w-8 p-0 justify-center' : 'text-xs w-auto min-w-fit'
-                }`}
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                {isBrowserVisible ? (
+                <div className="flex items-center gap-2">
                   <Speaker className="h-4 w-4" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Speaker className="h-4 w-4" />
-                    <span>{audioParameters.format}</span>
-                  </div>
-                )}
+                  <span>{audioParameters.format}</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="MP3" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">MP3</SelectItem>
@@ -256,18 +220,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
             >
               <SelectTrigger 
                 hideIcon 
-                className={`h-8 bg-secondary hover:bg-secondary/80 border-secondary ${
-                  isBrowserVisible ? 'w-8 p-0 justify-center' : 'text-xs w-auto min-w-fit'
-                }`}
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                {isBrowserVisible ? (
+                <div className="flex items-center gap-2">
                   <BarChart className="h-4 w-4" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <BarChart className="h-4 w-4" />
-                    <span>{audioParameters.sampleRate}</span>
-                  </div>
-                )}
+                  <span>{audioParameters.sampleRate}</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="44.1kHz" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">44.1kHz</SelectItem>
@@ -286,18 +244,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
             >
               <SelectTrigger 
                 hideIcon 
-                className={`h-8 bg-secondary hover:bg-secondary/80 border-secondary ${
-                  isBrowserVisible ? 'w-8 p-0 justify-center' : 'text-xs w-auto min-w-fit'
-                }`}
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                {isBrowserVisible ? (
+                <div className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    <span>{audioParameters.channels}</span>
-                  </div>
-                )}
+                  <span>{audioParameters.channels}</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="mono" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">Mono</SelectItem>

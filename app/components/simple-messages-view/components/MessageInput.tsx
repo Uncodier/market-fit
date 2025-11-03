@@ -122,12 +122,15 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   }
   return (
     <div className="flex-none transition-all duration-300 ease-in-out w-full" style={{ width: '100%', minWidth: '100%' }}>
-      <div className="px-[30px] w-full" style={{ width: '100%', minWidth: '100%' }}>
-        <form className="relative w-full" style={{ width: '100%', minWidth: '100%' }} onSubmit={(e) => {
+      <div className="mx-auto" style={{ 
+        width: '100%',
+        maxWidth: '100%'
+      }}>
+        <form className="relative w-full" onSubmit={(e) => {
           e.preventDefault()
           onSubmit()
         }}>
-          <div className="relative w-full" style={{ width: '100%', minWidth: '100%' }}>
+          <div className="relative w-full">
             <OptimizedTextarea
               ref={textareaRef}
               onChange={handleMessageChange || ((e) => onMessageChange(e.target.value))}
@@ -173,9 +176,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className={`h-8 hover:bg-secondary/80 transition-colors duration-200 ${
-                      isBrowserVisible ? 'w-8 p-0 justify-center' : 'px-3 w-40 justify-start'
-                    }`}
+                    className="h-8 hover:bg-secondary/80 transition-colors duration-200 px-3 w-40 justify-start"
                     onClick={handleDropdownToggle}
                     title={
                       selectedActivity === 'ask' ? 'Ask' : 
@@ -184,46 +185,32 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                       'Select activity'
                     }
                   >
-                    {isBrowserVisible ? (
-                      // Modo compactado: solo icono centrado
-                      <div className="flex items-center justify-center w-full h-full">
-                        {selectedActivity === 'ask' && <MessageSquare className="h-4 w-4 text-blue-600" />}
-                        {selectedActivity === 'robot' && <Bot className="h-4 w-4 text-purple-600" />}
-                        {selectedActivity === 'generate-image' && <ImageIcon className="h-4 w-4 text-green-600" />}
+                    <div className="flex items-center w-full">
+                      <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
+                        {selectedActivity === 'ask' && <MessageSquare className="h-[18px] w-[18px] shrink-0 text-blue-600" />}
+                        {selectedActivity === 'robot' && <Bot className="h-[18px] w-[18px] shrink-0 text-purple-600" />}
+                        {selectedActivity === 'generate-image' && <ImageIcon className="h-[18px] w-[18px] shrink-0 text-green-600" />}
                       </div>
-                    ) : (
-                      // Modo expandido: icono + texto
-                      <div className="flex items-center w-full">
-                        <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
-                          {selectedActivity === 'ask' && <MessageSquare className="h-[18px] w-[18px] shrink-0 text-blue-600" />}
-                          {selectedActivity === 'robot' && <Bot className="h-[18px] w-[18px] shrink-0 text-purple-600" />}
-                          {selectedActivity === 'generate-image' && <ImageIcon className="h-[18px] w-[18px] shrink-0 text-green-600" />}
-                        </div>
-                        <div className="flex flex-col min-w-0 ml-2">
-                          <span className="truncate">
-                            {selectedActivity === 'ask' ? 'Ask' : 
-                             selectedActivity === 'robot' ? 'Robot' : 
-                             selectedActivity === 'generate-image' ? 'Generate Image' :
-                             'Select activity'}
-                          </span>
-                        </div>
+                      <div className="flex flex-col min-w-0 ml-2">
+                        <span className="truncate">
+                          {selectedActivity === 'ask' ? 'Ask' : 
+                           selectedActivity === 'robot' ? 'Robot' : 
+                           selectedActivity === 'generate-image' ? 'Generate Image' :
+                           'Select activity'}
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </Button>
                   
                   {isDropdownOpen && (
-                    <div className={`absolute left-0 bg-background border border-border rounded-md shadow-lg z-50 ${
-                      isBrowserVisible ? 'w-12' : 'w-40'
-                    } ${
+                    <div className={`absolute left-0 bg-background border border-border rounded-md shadow-lg z-50 w-40 ${
                       dropdownDirection === 'up' 
                         ? 'bottom-full mb-1' 
                         : 'top-full mt-1'
                     }`}>
                       <div className="p-1">
                         <div 
-                          className={`flex items-center hover:bg-accent cursor-pointer rounded-sm ${
-                            isBrowserVisible ? 'justify-center w-10 h-8' : 'px-2 py-1.5'
-                          }`}
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
                           onClick={() => {
                             onActivityChange('ask')
                             setIsDropdownOpen(false)
@@ -233,16 +220,12 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
                             <MessageSquare className="h-[18px] w-[18px] shrink-0 text-blue-600" />
                           </div>
-                          {!isBrowserVisible && (
-                            <div className="flex flex-col min-w-0 ml-2">
-                              <span className="truncate">Ask</span>
-                            </div>
-                          )}
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Ask</span>
+                          </div>
                         </div>
                         <div 
-                          className={`flex items-center hover:bg-accent cursor-pointer rounded-sm ${
-                            isBrowserVisible ? 'justify-center w-10 h-8' : 'px-2 py-1.5'
-                          }`}
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
                           onClick={() => {
                             onActivityChange('robot')
                             setIsDropdownOpen(false)
@@ -252,16 +235,12 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
                             <Bot className="h-[18px] w-[18px] shrink-0 text-purple-600" />
                           </div>
-                          {!isBrowserVisible && (
-                            <div className="flex flex-col min-w-0 ml-2">
-                              <span className="truncate">Robot</span>
-                            </div>
-                          )}
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Robot</span>
+                          </div>
                         </div>
                         <div 
-                          className={`flex items-center hover:bg-accent cursor-pointer rounded-sm ${
-                            isBrowserVisible ? 'justify-center w-10 h-8' : 'px-2 py-1.5'
-                          }`}
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
                           onClick={() => {
                             onActivityChange('generate-image')
                             setIsDropdownOpen(false)
@@ -271,11 +250,9 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
                             <ImageIcon className="h-[18px] w-[18px] shrink-0 text-green-600" />
                           </div>
-                          {!isBrowserVisible && (
-                            <div className="flex flex-col min-w-0 ml-2">
-                              <span className="truncate">Generate Image</span>
-                            </div>
-                          )}
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Generate Image</span>
+                          </div>
                         </div>
                       </div>
                     </div>

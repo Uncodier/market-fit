@@ -73,7 +73,7 @@ export const renderStructuredOutput = (log: InstanceLog, isDarkMode: boolean): R
 }
 
 // Helper function to render object with base64 images extracted
-export const renderObjectWithImages = (obj: any, depth: number = 0): React.ReactElement => {
+export const renderObjectWithImages = (obj: any, depth: number = 0, isBrowserVisible: boolean = false): React.ReactElement => {
   if (depth > 3) return <span>...</span> // Prevent infinite recursion
   
   if (typeof obj === 'string' && isBase64Image(obj)) {
@@ -83,8 +83,8 @@ export const renderObjectWithImages = (obj: any, depth: number = 0): React.React
         <img 
           src={formatBase64Image(obj)} 
           alt="Screenshot" 
-          className="w-full h-auto rounded border shadow-sm"
-          style={{ maxHeight: '400px' }}
+          className={isBrowserVisible ? "w-full h-auto rounded border shadow-sm" : "max-w-[33vw] h-auto rounded border shadow-sm"}
+          style={{ maxHeight: '400px', maxWidth: isBrowserVisible ? '100%' : undefined }}
         />
       </div>
     )
@@ -95,9 +95,9 @@ export const renderObjectWithImages = (obj: any, depth: number = 0): React.React
       <div>
         {obj.map((item, index) => (
           <div key={index} className="mb-2">
-            <div className="text-xs text-gray-500">[{index}]:</div>
+            <div className="text-xs text-gray-600">[{index}]:</div>
             <div className="ml-2">
-              {renderObjectWithImages(item, depth + 1)}
+              {renderObjectWithImages(item, depth + 1, isBrowserVisible)}
             </div>
           </div>
         ))}
@@ -114,7 +114,7 @@ export const renderObjectWithImages = (obj: any, depth: number = 0): React.React
           <div key={key} className="mb-2">
             <div className="text-xs text-gray-600 font-medium">{key}:</div>
             <div className="ml-2">
-              {renderObjectWithImages(value, depth + 1)}
+              {renderObjectWithImages(value, depth + 1, isBrowserVisible)}
             </div>
           </div>
         ))}

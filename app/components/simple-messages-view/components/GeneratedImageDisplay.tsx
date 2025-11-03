@@ -3,11 +3,14 @@ import React, { useState } from 'react'
 interface GeneratedImageDisplayProps {
   toolResult: any
   isDarkMode: boolean
+  onImageClick?: () => void
+  isBrowserVisible?: boolean
 }
 
 export const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
   toolResult,
-  isDarkMode
+  isDarkMode,
+  isBrowserVisible = false
 }) => {
   // Check if we have image URLs to display
   if (!toolResult?.output?.images || !Array.isArray(toolResult.output.images)) {
@@ -17,7 +20,7 @@ export const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
   const { images } = toolResult.output
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 inline-block">
       {/* Display generated images */}
       <div className="grid gap-3">
         {images.map((imageObj: any, index: number) => (
@@ -25,11 +28,11 @@ export const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
             <img 
               src={imageObj?.url || imageObj} 
               alt={`Generated image ${index + 1}`}
-              className="w-full h-auto rounded-lg border shadow-sm"
-              style={{ width: '100%', height: 'auto' }}
+              className={isBrowserVisible ? "w-full h-auto rounded-lg border shadow-sm" : "max-w-[33vw] h-auto rounded-lg border shadow-sm"}
+              style={{ height: 'auto', maxWidth: isBrowserVisible ? '100%' : undefined }}
               loading="lazy"
             />
-            <div className="text-xs text-muted-foreground/70 mt-1 text-center">
+            <div className="text-xs text-muted-foreground/70 mt-1">
               Generated Image {index + 1}
             </div>
           </div>
@@ -42,7 +45,9 @@ export const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
 // Component for collapsed view - only shows images
 export const GeneratedImageDisplayCollapsed: React.FC<GeneratedImageDisplayProps> = ({
   toolResult,
-  isDarkMode
+  isDarkMode,
+  onImageClick,
+  isBrowserVisible = false
 }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   
@@ -56,14 +61,15 @@ export const GeneratedImageDisplayCollapsed: React.FC<GeneratedImageDisplayProps
   // Single image - simple display
   if (images.length === 1) {
     return (
-      <div className="grid gap-3">
+      <div className="grid gap-3 inline-block">
         <div className="relative">
           <img 
             src={images[0]?.url || images[0]} 
             alt="Generated image"
-            className="w-full h-auto rounded-lg border shadow-sm"
-            style={{ width: '100%', height: 'auto' }}
+            className={isBrowserVisible ? "w-full h-auto rounded-lg border shadow-sm cursor-pointer hover:opacity-90 transition-opacity" : "max-w-[33vw] h-auto rounded-lg border shadow-sm cursor-pointer hover:opacity-90 transition-opacity"}
+            style={{ height: 'auto', maxWidth: isBrowserVisible ? '100%' : undefined }}
             loading="lazy"
+            onClick={onImageClick}
           />
         </div>
       </div>
@@ -72,15 +78,16 @@ export const GeneratedImageDisplayCollapsed: React.FC<GeneratedImageDisplayProps
 
   // Multiple images - carousel with thumbnails
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 inline-block">
       {/* Main image display */}
       <div className="relative">
         <img 
           src={images[selectedImageIndex]?.url || images[selectedImageIndex]} 
           alt={`Generated image ${selectedImageIndex + 1}`}
-          className="w-full h-auto rounded-lg border shadow-sm"
-          style={{ width: '100%', height: 'auto' }}
+          className={isBrowserVisible ? "w-full h-auto rounded-lg border shadow-sm cursor-pointer hover:opacity-90 transition-opacity" : "max-w-[33vw] h-auto rounded-lg border shadow-sm cursor-pointer hover:opacity-90 transition-opacity"}
+          style={{ height: 'auto', maxWidth: isBrowserVisible ? '100%' : undefined }}
           loading="lazy"
+          onClick={onImageClick}
         />
       </div>
       

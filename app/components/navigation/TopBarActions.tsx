@@ -20,7 +20,7 @@ import { CalendarDateRangePicker } from "../ui/date-range-picker"
 import { AIActionModal } from "@/app/components/ui/ai-action-modal"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter, usePathname } from "next/navigation"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useRobots } from "@/app/context/RobotsContext"
@@ -51,10 +51,49 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots } = useRobots()
   const searchParams = useSearchParams()
   
-  // Use instance param instead of tab
+  // Get all instances and find the appropriate one to display
+  const allInstances = getAllInstances()
   const selectedInstanceParam = searchParams.get('instance')
-  const selectedInstanceId = selectedInstanceParam || 'new'
-  const activeRobotInstance = selectedInstanceId !== 'new' ? getInstanceById(selectedInstanceId) : null
+  
+  // Determine the active robot instance with improved logic:
+  // 1. If URL has instance param, try to use that instance
+  // 2. Otherwise, find the first paused/uninstantiated instance from all instances
+  const activeRobotInstance = useMemo(() => {
+    // If URL param exists, try to get that instance first
+    if (selectedInstanceParam) {
+      const urlInstance = getInstanceById(selectedInstanceParam)
+      if (urlInstance && ['paused', 'uninstantiated'].includes(urlInstance.status)) {
+        console.log('🔍 [RobotStartButton] Using URL instance (paused):', urlInstance.id, urlInstance.status)
+        return urlInstance
+      }
+      // If URL instance exists but is not paused, still return it for stop button
+      if (urlInstance) {
+        console.log('🔍 [RobotStartButton] Using URL instance (running):', urlInstance.id, urlInstance.status)
+        return urlInstance
+      }
+    }
+    
+    // If no URL param or URL instance not found, find first paused instance
+    const pausedInstance = allInstances.find(instance => 
+      ['paused', 'uninstantiated'].includes(instance.status)
+    )
+    
+    if (pausedInstance) {
+      console.log('🔍 [RobotStartButton] Found paused instance (no URL param):', pausedInstance.id, pausedInstance.status)
+      return pausedInstance
+    }
+    
+    // Fallback: if URL param exists but instance not found, return null
+    if (selectedInstanceParam) {
+      console.log('🔍 [RobotStartButton] URL param exists but instance not found:', selectedInstanceParam)
+      return null
+    }
+    
+    console.log('🔍 [RobotStartButton] No paused instances found. Total instances:', allInstances.length)
+    return null
+  }, [selectedInstanceParam, allInstances, getInstanceById])
+  
+  const selectedInstanceId = activeRobotInstance?.id || selectedInstanceParam || 'new'
   const activeTabRef = useRef(selectedInstanceId)
 
   // Map tab values to activity names (fallback for create-from-new)
@@ -328,8 +367,8 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     )
   }
 
-  // If there's an active robot instance or a paused one selected, decide which controls to show
-  if (activeRobotInstance && selectedInstanceId !== 'new') {
+  // If there's an active robot instance (from URL param or found paused instance), decide which controls to show
+  if (activeRobotInstance) {
     const isPaused = ['paused', 'uninstantiated'].includes(activeRobotInstance.status)
     if (isPaused) {
       // Show resume button for paused instance

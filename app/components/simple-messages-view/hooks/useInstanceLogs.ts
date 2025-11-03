@@ -86,8 +86,18 @@ export const useInstanceLogs = ({
             logs: logs.map((log: any) => ({ id: log.id, log_type: log.log_type, message: log.message?.substring(0, 50) + '...' }))
           })
         }
-        // Scroll to bottom after logs are loaded
-        setTimeout(() => onScrollToBottom?.(), 200)
+        // Scroll to bottom after logs are loaded and DOM is rendered
+        // Wait for images and async content to load
+        setTimeout(() => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              // Additional delay for images to fully render
+              setTimeout(() => {
+                onScrollToBottom?.()
+              }, 150)
+            })
+          })
+        }, 100)
         
         // Auto-collapse long system messages (>200 characters)
         const longSystemMessages = logs
@@ -265,8 +275,6 @@ export const useInstanceLogs = ({
       
       // Always load logs when there's an active instance
       loadInstanceLogs()
-      // Scroll to bottom when switching to instance
-      setTimeout(() => onScrollToBottom?.(), 300)
 
       // Setup real-time subscription for logs
       const supabase = createClient()

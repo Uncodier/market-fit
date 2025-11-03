@@ -50,7 +50,16 @@ export const useAttachmentUpload = ({ siteId, instanceId }: UseAttachmentUploadP
       // Generate unique filename with timestamp
       const fileExt = file.name.split('.').pop()
       const timestamp = Date.now()
-      const fileName = `${file.name.replace(/\.[^/.]+$/, '')}_${timestamp}.${fileExt}`
+      
+      // Sanitize filename: replace spaces and problematic characters with underscores
+      const baseFileName = file.name.replace(/\.[^/.]+$/, '')
+      const sanitizedBaseName = baseFileName
+        .replace(/\s+/g, '_') // Replace spaces with underscores
+        .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace special characters with underscores
+        .replace(/_{2,}/g, '_') // Replace multiple underscores with single underscore
+        .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
+      
+      const fileName = `${sanitizedBaseName || 'file'}_${timestamp}.${fileExt}`
       
       // Determine file type folder based on MIME type
       const getFileTypeFolder = (mimeType: string) => {

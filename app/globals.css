@@ -1075,3 +1075,9 @@ html.safari .select-item .flex.items-center svg {
 .-top-1 { top: -0.75rem; } 
 
 /* Removed fixed positioning and width override for chat input/textarea to rely on sticky container */
+/* Safari fix for chat input container positioning */
+html.safari .chat-input-container[style*="position: fixed"],
+html.safari .chat-input-container[style*="fixed"] {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}

@@ -837,12 +837,14 @@ function RobotsPageContent() {
         />
       )}
       
-      <div className="flex h-[calc(100vh-136px)]">
-          <>
+      <div className="flex flex-col h-full">
+        {/* Content area - flex-1 with overflow-auto for natural scroll */}
+        <div className="flex-1 overflow-visible bg-muted/30 transition-colors duration-300 ease-in-out">
+          <div className="flex h-full">
             {((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId && (
-              <div className="w-2/3 h-full border-r border-border iframe-container">
-                <div className="h-full flex flex-col m-0 bg-card">
-                  <div className="flex-1 p-0 overflow-hidden relative">
+              <div className="w-2/3 border-r border-border iframe-container flex flex-col sticky top-[71px] h-[calc(100vh-136px)]" style={{ position: 'sticky' }}>
+                <div className="flex flex-col m-0 bg-card h-full">
+                  <div className="flex flex-col p-0 relative h-full">
                     {isResuming || isInstanceStarting ? (
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
@@ -958,24 +960,21 @@ function RobotsPageContent() {
               </div>
             )}
 
-            {/* Messages View */}
-            <div className={`${((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId ? 'w-1/3' : 'w-full md:w-2/3 mx-auto'} h-full min-w-0 messages-area`}>
-              <div className="h-full flex flex-col m-0 bg-card min-w-0">
-                <div className="flex-1 p-0 overflow-hidden min-w-0 relative">
-                  <div className="absolute inset-0">
-                    <SimpleMessagesView 
-                      key={`${currentSite?.id}-${siteChangeKey}`}
-                      className="h-full" 
-                      activeRobotInstance={activeRobotInstance}
-                      isBrowserVisible={((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId}
-                      onMessageSent={setHasMessageBeenSent}
-                      onNewInstanceCreated={handleNewInstanceCreated}
-                    />
-                  </div>
-                </div>
+            {/* Messages View - Chat/Instance Logs */}
+            <div className={`${((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId ? 'w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col overflow-auto`}>
+              <div className="flex flex-col m-0 bg-card min-w-0">
+                <SimpleMessagesView 
+                  key={`${currentSite?.id}-${siteChangeKey}`}
+                  className="" 
+                  activeRobotInstance={activeRobotInstance}
+                  isBrowserVisible={((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId}
+                  onMessageSent={setHasMessageBeenSent}
+                  onNewInstanceCreated={handleNewInstanceCreated}
+                />
               </div>
             </div>
-          </>
+          </div>
+        </div>
       </div>
     </div>
   )

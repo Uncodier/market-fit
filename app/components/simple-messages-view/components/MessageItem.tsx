@@ -10,6 +10,7 @@ interface MessageItemProps {
   isDarkMode: boolean
   collapsedSystemMessages: Set<string>
   onToggleSystemMessageCollapse: (messageId: string) => void
+  isBrowserVisible?: boolean
 }
 
 
@@ -17,7 +18,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   log,
   isDarkMode,
   collapsedSystemMessages,
-  onToggleSystemMessageCollapse
+  onToggleSystemMessageCollapse,
+  isBrowserVisible = false
 }) => {
   const { userProfile } = useUserProfile(log.user_id || null)
   
@@ -54,10 +56,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           </div>
         </div>
         
-        <div className="w-full min-w-0 overflow-hidden flex justify-end pr-8">
+        <div className={`w-full min-w-0 overflow-hidden flex justify-end ${isBrowserVisible ? 'pr-2' : 'pr-8'}`}>
           <div className="min-w-0 overflow-hidden">
             <div 
-              className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap rounded-lg p-4 mr-12" 
+              className={`text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap rounded-lg ${isBrowserVisible ? 'mr-2 p-3' : 'mr-12 p-4'}`}
               style={{ 
                 backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
                 border: 'none', 
@@ -183,7 +185,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {/* Message content - collapsible for system messages */}
       {!(log.log_type === 'system' && collapsedSystemMessages.has(log.id)) && (
         <div className="w-full min-w-0 overflow-hidden">
-          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: '2rem' }}>
+          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
             {log.message}
           </div>
         </div>
@@ -192,7 +194,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {/* Collapsed preview for system messages */}
       {log.log_type === 'system' && collapsedSystemMessages.has(log.id) && (
         <div className="w-full min-w-0 overflow-hidden">
-          <div className="text-sm text-muted-foreground italic truncate" style={{ paddingLeft: '2rem' }}>
+          <div className="text-sm text-muted-foreground italic truncate" style={{ paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
             {log.message.substring(0, 100)}...
           </div>
         </div>

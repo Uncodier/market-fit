@@ -4,7 +4,8 @@ export function MessagesSkeleton() {
   return (
     <div className="flex flex-col h-full">
       {/* Messages list skeleton */}
-      <div className="flex-1 overflow-y-auto px-[30px] py-4 space-y-6 pb-[175px]">
+      <div className="flex-1 overflow-y-auto py-4 space-y-6 pb-[175px]">
+        <div className="max-w-[calc(100%-240px)] mx-auto min-w-0">
         {/* System message */}
         <div className="flex flex-col w-full items-start group">
           <div className="flex items-center mb-1 gap-2">
@@ -81,11 +82,12 @@ export function MessagesSkeleton() {
             </div>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Message input skeleton */}
       <div className="absolute bottom-4 left-0 right-0 flex-none">
-        <div className="px-[30px]">
+        <div className="max-w-[calc(100%-240px)] mx-auto px-[30px]">
           <div className="relative">
             <Skeleton className="h-[135px] w-full rounded-2xl" />
             <Skeleton className="absolute bottom-[15px] right-[15px] h-[39px] w-[39px] rounded-xl" />

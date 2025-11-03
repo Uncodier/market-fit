@@ -343,13 +343,11 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
             type="button"
             variant="secondary"
             size="sm"
-            className={`h-8 hover:bg-secondary/80 transition-colors duration-200 ${
-              isBrowserVisible ? 'w-8 p-0 justify-center' : 'px-3'
-            }`}
+            className="h-8 hover:bg-secondary/80 transition-colors duration-200 px-3"
             title="Add context"
           >
             @
-            {!isBrowserVisible && <span className="ml-1">context</span>}
+            <span className="ml-1">context</span>
           </Button>
           
           {/* Show individual chips for selected items */}

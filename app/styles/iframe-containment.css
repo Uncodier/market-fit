@@ -4,7 +4,7 @@
 .iframe-container {
   contain: layout style paint;
   isolation: isolate;
-  position: relative;
+  /* position is set inline to allow sticky positioning when needed */
   z-index: 0;
 }
 

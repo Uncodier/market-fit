@@ -19,6 +19,7 @@ interface StepIndicatorProps {
   // Assets props
   assets?: InstanceAsset[]
   onDeleteAsset?: (assetId: string) => void
+  isBrowserVisible?: boolean
 }
 
 export const StepIndicator: React.FC<StepIndicatorProps> = ({
@@ -35,18 +36,19 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
   onToggleStepStatus,
   canEditOrDeleteStep,
   assets = [],
-  onDeleteAsset
+  onDeleteAsset,
+  isBrowserVisible = false
 }) => {
   // Show widget if there are steps OR assets
   if (steps.length === 0 && assets.length === 0) return null
 
   return (
     <div className="absolute bottom-[175px] md:bottom-[180px] left-0 right-0 z-[5] transition-all duration-500 ease-in-out">
-      <div className="px-[30px]">
-        <div className={`backdrop-blur-sm border rounded-lg shadow-lg transition-all duration-500 ${
+      <div className={isBrowserVisible ? "max-w-[calc(100%-80px)] mx-auto" : "max-w-[calc(100%-240px)] mx-auto"}>
+        <div className={`rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 ${
           allCompleted ? 'bg-green-50/95 border-green-200' : 'bg-background/95 border-border'
         }`} style={{
-          padding: '0.5rem 0.75rem'
+          padding: isBrowserVisible ? '0.5rem' : '0.75rem'
         }}>
           {expanded ? (
             <div className="space-y-2">
