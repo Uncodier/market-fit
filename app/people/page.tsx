@@ -21,6 +21,7 @@ import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, Globe 
 import { LinkedInIcon } from "@/app/components/ui/social-icons"
 import { Badge } from "@/app/components/ui/badge"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { Switch } from "@/app/components/ui/switch"
 import { Slider } from "@/app/components/ui/slider"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
@@ -398,11 +399,13 @@ export default function PeopleSearchPage() {
   const [keywords, setKeywords] = useState<LookupOption[]>([])
   const [personLinkedinIds, setPersonLinkedinIds] = useState<string[]>([])
   const [isCurrentRole, setIsCurrentRole] = useState(true)
-  const [roleDateRange, setRoleDateRange] = useState<{ start?: Date; end?: Date }>({})
+  const [roleDateSince, setRoleDateSince] = useState<Date | undefined>(undefined)
+  const [roleDateUntil, setRoleDateUntil] = useState<Date | undefined>(undefined)
   // job postings
   const [jobPostingTitle, setJobPostingTitle] = useState<string>("")
   const [jobPostingDescription, setJobPostingDescription] = useState("")
-  const [jobFeaturedRange, setJobFeaturedRange] = useState<{ start?: Date; end?: Date }>({})
+  const [jobFeaturedDateFrom, setJobFeaturedDateFrom] = useState<Date | undefined>(undefined)
+  const [jobFeaturedDateTo, setJobFeaturedDateTo] = useState<Date | undefined>(undefined)
   const [includeRemote, setIncludeRemote] = useState(false)
   const [isJobActive, setIsJobActive] = useState(false)
   const [jobLocations, setJobLocations] = useState<LookupOption[]>([])
@@ -500,7 +503,8 @@ export default function PeopleSearchPage() {
       setJobTitle(q.role_title || '')
       setQuery(q.role_description || '')
       setIsCurrentRole(Boolean(q.role_is_current))
-      setRoleDateRange({ start: parseDate(q.role_position_start_date), end: parseDate(q.role_position_end_date) })
+      setRoleDateSince(parseDate(q.role_position_start_date))
+      setRoleDateUntil(parseDate(q.role_position_end_date))
       setPersonName(q.person_name || '')
       setPersonHeadline(q.person_headline || '')
       // Clear complex chip-based filters; user can refine as needed
@@ -524,7 +528,8 @@ export default function PeopleSearchPage() {
       setIsJobActive(Boolean(q.job_post_is_active))
       setJobPostingTitle(q.job_post_title || '')
       setJobPostingDescription(q.job_post_description || '')
-      setJobFeaturedRange({ start: parseDate(q.job_post_date_featured_start), end: parseDate(q.job_post_date_featured_end) })
+      setJobFeaturedDateFrom(parseDate(q.job_post_date_featured_start))
+      setJobFeaturedDateTo(parseDate(q.job_post_date_featured_end))
       setFundingDateRange({ start: parseDate(q.funding_event_date_featured_start), end: parseDate(q.funding_event_date_featured_end) })
       if (typeof q.funding_total_start === 'number' && typeof q.funding_total_end === 'number') {
         setFundingRange([q.funding_total_start, q.funding_total_end])
@@ -658,10 +663,10 @@ export default function PeopleSearchPage() {
   }
 
   const buildFinderPayload = (pageOneBased: number): FinderRequest => {
-    const roleStart = toYmd(roleDateRange.start)
-    const roleEnd = toYmd(roleDateRange.end)
-    const jobStart = toYmd(jobFeaturedRange.start)
-    const jobEnd = toYmd(jobFeaturedRange.end)
+    const roleStart = toYmd(roleDateSince)
+    const roleEnd = toYmd(roleDateUntil)
+    const jobStart = toYmd(jobFeaturedDateFrom)
+    const jobEnd = toYmd(jobFeaturedDateTo)
     const fundStart = toYmd(fundingDateRange.start)
     const fundEnd = toYmd(fundingDateRange.end)
 
@@ -1023,7 +1028,7 @@ export default function PeopleSearchPage() {
                     </div>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Job Title" defaultOpen={sectionOpenDefaults.jobTitle} onClear={() => { setJobTitle(""); setQuery(""); setIsCurrentRole(true); setRoleDateRange({}) }}>
+                <CollapsibleField title="Job Title" defaultOpen={sectionOpenDefaults.jobTitle} onClear={() => { setJobTitle(""); setQuery(""); setIsCurrentRole(true); setRoleDateSince(undefined); setRoleDateUntil(undefined) }}>
                   <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches</p>
                   <Input className="h-10" placeholder="Search" value={jobTitle} onChange={(e)=> setJobTitle(e.target.value)} />
                   {/* Job description (boolean search) */}
@@ -1031,12 +1036,57 @@ export default function PeopleSearchPage() {
                     <p className="text-xs text-muted-foreground mb-1">Description</p>
                     <Input placeholder="Keywords" className="h-10" value={query} onChange={(e)=> setQuery(e.target.value)} />
                   </div>
-                  <div className="mt-4 space-y-2">
-                    <label className="text-left text-xs text-muted-foreground">Role Date Range</label>
-                    <CalendarDateRangePicker 
-                      onRangeChange={(start, end) => setRoleDateRange({ start, end })}
-                      className="w-full [&_.btn]:h-10 [&_.btn]:items-start"
-                    />
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="text-left text-xs text-muted-foreground">Role date since</label>
+                        {!roleDateSince && (
+                          <Badge variant="outline" className="text-xs">Not set</Badge>
+                        )}
+                        {roleDateSince && (
+                          <button
+                            type="button"
+                            onClick={() => setRoleDateSince(undefined)}
+                            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Clear date"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      <DatePicker
+                        date={roleDateSince || new Date()}
+                        setDate={(date) => setRoleDateSince(date)}
+                        className="w-full"
+                        mode="default"
+                        placeholder="Select start date"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="text-left text-xs text-muted-foreground">Role date until</label>
+                        {!roleDateUntil && (
+                          <Badge variant="outline" className="text-xs">Not set</Badge>
+                        )}
+                        {roleDateUntil && (
+                          <button
+                            type="button"
+                            onClick={() => setRoleDateUntil(undefined)}
+                            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Clear date"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      <DatePicker
+                        date={roleDateUntil || new Date()}
+                        setDate={(date) => setRoleDateUntil(date)}
+                        className="w-full"
+                        mode="default"
+                        placeholder="Select end date"
+                      />
+                    </div>
                     <p className="text-left text-xs text-muted-foreground">Pick the period for the role.</p>
                   </div>
                   <div className="py-1.5 flex items-center justify-between gap-2">
@@ -1253,8 +1303,25 @@ export default function PeopleSearchPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-left text-xs text-muted-foreground">Founded Date Range</label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-left text-xs text-muted-foreground">Founded Date Range</label>
+                      {(!orgFoundedRange.start || !orgFoundedRange.end) && (
+                        <Badge variant="outline" className="text-xs">Not set</Badge>
+                      )}
+                      {(orgFoundedRange.start || orgFoundedRange.end) && (
+                        <button
+                          type="button"
+                          onClick={() => setOrgFoundedRange({})}
+                          className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="Clear date range"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                     <CalendarDateRangePicker 
+                      initialStartDate={orgFoundedRange.start}
+                      initialEndDate={orgFoundedRange.end}
                       onRangeChange={(start, end) => setOrgFoundedRange({ start, end })}
                       className="w-full [&_.btn]:h-10 [&_.btn]:items-start"
                     />
@@ -1316,8 +1383,25 @@ export default function PeopleSearchPage() {
                 
                 <CollapsibleField title="Founded Date" defaultOpen={sectionOpenDefaults.foundedDate}>
                   <div className="space-y-2">
-                    <label className="text-left text-xs text-muted-foreground">Founded Date Range</label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-left text-xs text-muted-foreground">Founded Date Range</label>
+                      {(!orgFoundedRange.start || !orgFoundedRange.end) && (
+                        <Badge variant="outline" className="text-xs">Not set</Badge>
+                      )}
+                      {(orgFoundedRange.start || orgFoundedRange.end) && (
+                        <button
+                          type="button"
+                          onClick={() => setOrgFoundedRange({})}
+                          className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="Clear date range"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                     <CalendarDateRangePicker 
+                      initialStartDate={orgFoundedRange.start}
+                      initialEndDate={orgFoundedRange.end}
                       onRangeChange={(start, end) => setOrgFoundedRange({ start, end })}
                       className="w-full [&_.btn]:h-10 [&_.btn]:items-start"
                     />
@@ -1348,9 +1432,57 @@ export default function PeopleSearchPage() {
                       <p className="text-xs text-muted-foreground mb-1">Description</p>
                       <Input placeholder="Description" className="h-10" value={jobPostingDescription} onChange={(e)=> setJobPostingDescription(e.target.value)} />
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Job featured date</p>
-                      <CalendarDateRangePicker onRangeChange={(start, end)=> setJobFeaturedRange({ start, end })} className="w-full" />
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-xs text-muted-foreground">Job featured date since</p>
+                          {!jobFeaturedDateFrom && (
+                            <Badge variant="outline" className="text-xs">Not set</Badge>
+                          )}
+                          {jobFeaturedDateFrom && (
+                            <button
+                              type="button"
+                              onClick={() => setJobFeaturedDateFrom(undefined)}
+                              className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label="Clear date"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                        <DatePicker
+                          date={jobFeaturedDateFrom || new Date()}
+                          setDate={(date) => setJobFeaturedDateFrom(date)}
+                          className="w-full"
+                          mode="default"
+                          placeholder="Select start date"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-xs text-muted-foreground">Job featured date until</p>
+                          {!jobFeaturedDateTo && (
+                            <Badge variant="outline" className="text-xs">Not set</Badge>
+                          )}
+                          {jobFeaturedDateTo && (
+                            <button
+                              type="button"
+                              onClick={() => setJobFeaturedDateTo(undefined)}
+                              className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label="Clear date"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                        <DatePicker
+                          date={jobFeaturedDateTo || new Date()}
+                          setDate={(date) => setJobFeaturedDateTo(date)}
+                          className="w-full"
+                          mode="default"
+                          placeholder="Select end date"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <div className="py-1.5 flex items-center justify-between gap-2">
@@ -1385,8 +1517,28 @@ export default function PeopleSearchPage() {
                 <CollapsibleField title="Funding" defaultOpen={sectionOpenDefaults.funding}>
                   <div className="space-y-4">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Funding Date</p>
-                      <CalendarDateRangePicker onRangeChange={(start, end)=> setFundingDateRange({ start, end })} className="w-full" />
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-xs text-muted-foreground">Funding Date</p>
+                        {(!fundingDateRange.start || !fundingDateRange.end) && (
+                          <Badge variant="outline" className="text-xs">Not set</Badge>
+                        )}
+                        {(fundingDateRange.start || fundingDateRange.end) && (
+                          <button
+                            type="button"
+                            onClick={() => setFundingDateRange({})}
+                            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Clear date range"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      <CalendarDateRangePicker 
+                        initialStartDate={fundingDateRange.start}
+                        initialEndDate={fundingDateRange.end}
+                        onRangeChange={(start, end)=> setFundingDateRange({ start, end })} 
+                        className="w-full" 
+                      />
                     </div>
                     <div>
                       <div className="flex items-center justify-between">
@@ -1474,8 +1626,25 @@ export default function PeopleSearchPage() {
                       </Select>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Simple Event Featured Date</p>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-xs text-muted-foreground">Simple Event Featured Date</p>
+                        {(!simpleEventDateRange.start || !simpleEventDateRange.end) && (
+                          <Badge variant="outline" className="text-xs">Not set</Badge>
+                        )}
+                        {(simpleEventDateRange.start || simpleEventDateRange.end) && (
+                          <button
+                            type="button"
+                            onClick={() => setSimpleEventDateRange({})}
+                            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Clear date range"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                       <CalendarDateRangePicker 
+                        initialStartDate={simpleEventDateRange.start}
+                        initialEndDate={simpleEventDateRange.end}
                         onRangeChange={(start, end)=> setSimpleEventDateRange({ start, end })}
                         className="w-full"
                       />
@@ -1498,7 +1667,7 @@ export default function PeopleSearchPage() {
               <Button 
                 variant="outline" 
                 className="w-1/2 h-10"
-                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setPersonHeadline(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedRange({}); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRangeTouched(false); setPersonLinkedinIds([]); setOrgDomains([]); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); }}
+                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setPersonHeadline(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRangeTouched(false); setPersonLinkedinIds([]); setOrgDomains([]); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRoleDateSince(undefined); setRoleDateUntil(undefined); }}
               >
                 Clear
               </Button>

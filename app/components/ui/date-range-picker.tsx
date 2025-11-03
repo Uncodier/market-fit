@@ -18,8 +18,8 @@ export interface DateRangePickerProps {
 export function CalendarDateRangePicker({
   className,
   onRangeChange,
-  initialStartDate = startOfMonth(new Date()),
-  initialEndDate = new Date(),
+  initialStartDate,
+  initialEndDate,
 }: DateRangePickerProps) {
   // Use refs to track if we're in the middle of an update to prevent loops
   const isUpdatingRef = useRef(false);
@@ -60,48 +60,71 @@ export function CalendarDateRangePicker({
     return { validStartDate, validEndDate };
   }, []);
   
-  // Validate initial dates once
-  const { validStartDate: initialValidStartDate, validEndDate: initialValidEndDate } = React.useMemo(() => 
-    validateDates(initialStartDate, initialEndDate), 
-    [initialStartDate, initialEndDate, validateDates]
-  );
+  // Initialize state - use placeholder dates if not provided (but won't trigger callback)
+  const defaultStartDate = React.useMemo(() => startOfMonth(new Date()), []);
+  const defaultEndDate = React.useMemo(() => new Date(), []);
   
-  const [startDate, setStartDate] = useState<Date>(initialValidStartDate);
-  const [endDate, setEndDate] = useState<Date>(initialValidEndDate);
+  const initialValidDates = React.useMemo(() => {
+    if (initialStartDate && initialEndDate) {
+      return validateDates(initialStartDate, initialEndDate);
+    }
+    return { validStartDate: defaultStartDate, validEndDate: defaultEndDate };
+  }, [initialStartDate, initialEndDate, validateDates, defaultStartDate, defaultEndDate]);
+  
+  const [startDate, setStartDate] = useState<Date | undefined>(initialStartDate ? initialValidDates.validStartDate : undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(initialEndDate ? initialValidDates.validEndDate : undefined);
+  const [hasInitialized, setHasInitialized] = useState(false);
   
   // Only sync with prop changes when they actually change and we're not updating
   useEffect(() => {
     if (isUpdatingRef.current) return;
     
     try {
-      const { validStartDate: newValidStartDate, validEndDate: newValidEndDate } = validateDates(initialStartDate, initialEndDate);
-      
-      let needsUpdate = false;
-      
-      if (!isSameDay(newValidStartDate, startDate)) {
-        setStartDate(newValidStartDate);
-        needsUpdate = true;
+      // Handle undefined dates - set state to undefined
+      if (initialStartDate === undefined && initialEndDate === undefined) {
+        if (startDate !== undefined || endDate !== undefined) {
+          setStartDate(undefined);
+          setEndDate(undefined);
+        }
+        setHasInitialized(true);
+        return;
       }
       
-      if (!isSameDay(newValidEndDate, endDate)) {
-        setEndDate(newValidEndDate);
-        needsUpdate = true;
-      }
-      
-      // Only call parent callback if we actually updated and there's a callback
-      if (needsUpdate && callbackRef.current) {
-        isUpdatingRef.current = true;
-        callbackRef.current(newValidStartDate, newValidEndDate);
+      // Only validate and update if dates are provided
+      if (initialStartDate && initialEndDate) {
+        const { validStartDate: newValidStartDate, validEndDate: newValidEndDate } = validateDates(initialStartDate, initialEndDate);
         
-        // Reset the updating flag after a short delay
-        setTimeout(() => {
-          isUpdatingRef.current = false;
-        }, 10);
+        let needsUpdate = false;
+        
+        if (!startDate || !isSameDay(newValidStartDate, startDate)) {
+          setStartDate(newValidStartDate);
+          needsUpdate = true;
+        }
+        
+        if (!endDate || !isSameDay(newValidEndDate, endDate)) {
+          setEndDate(newValidEndDate);
+          needsUpdate = true;
+        }
+        
+        // Only call parent callback if we actually updated, there's a callback, and we've initialized
+        if (needsUpdate && callbackRef.current && hasInitialized) {
+          isUpdatingRef.current = true;
+          callbackRef.current(newValidStartDate, newValidEndDate);
+          
+          // Reset the updating flag after a short delay
+          setTimeout(() => {
+            isUpdatingRef.current = false;
+          }, 10);
+        }
+        
+        if (!hasInitialized) {
+          setHasInitialized(true);
+        }
       }
     } catch (error) {
       console.error("[DateRangePicker] Error updating dates:", error);
     }
-  }, [initialStartDate, initialEndDate, validateDates]); // Remove startDate and endDate from dependencies
+  }, [initialStartDate, initialEndDate, validateDates, startDate, endDate, hasInitialized]);
   
   // Handle date range selection with strict validation
   const handleRangeSelect = useCallback((start: Date, end: Date) => {
@@ -114,6 +137,7 @@ export function CalendarDateRangePicker({
       
       setStartDate(validStartDate);
       setEndDate(validEndDate);
+      setHasInitialized(true);
       
       if (callbackRef.current) {
         callbackRef.current(validStartDate, validEndDate);
@@ -128,18 +152,37 @@ export function CalendarDateRangePicker({
     }
   }, [validateDates]);
 
-  // Format the range display - with additional validation for display
-  const safeStartDate = startDate instanceof Date && isValid(startDate) ? startDate : new Date();
-  const safeEndDate = endDate instanceof Date && isValid(endDate) ? endDate : new Date();
-  const rangeDisplay = `${format(safeStartDate, "MMM d")} - ${format(safeEndDate, "MMM d")} ${format(safeEndDate, "yyyy")}`;
+  // Format the range display - show placeholder if dates are not set
+  const rangeDisplay = React.useMemo(() => {
+    if (!startDate || !endDate) {
+      return "Select date range";
+    }
+    const safeStartDate = startDate instanceof Date && isValid(startDate) ? startDate : undefined;
+    const safeEndDate = endDate instanceof Date && isValid(endDate) ? endDate : undefined;
+    if (!safeStartDate || !safeEndDate) {
+      return "Select date range";
+    }
+    return `${format(safeStartDate, "MMM d")} - ${format(safeEndDate, "MMM d")} ${format(safeEndDate, "yyyy")}`;
+  }, [startDate, endDate]);
+
+  // Use placeholder dates for DatePicker when dates are undefined
+  // These are only for display - callbacks only fire through handleRangeSelect (user interaction)
+  const displayStartDate = startDate || defaultStartDate;
+  const displayEndDate = endDate || defaultEndDate;
 
   return (
     <div className={cn("flex items-center", className)}>
       <DatePicker
-        date={startDate}
-        setDate={setStartDate}
-        endDate={endDate}
-        setEndDate={setEndDate}
+        date={displayStartDate}
+        setDate={(date) => {
+          // Don't update state or call callback here - let handleRangeSelect handle it
+          // This is only called for single date mode, not range mode
+        }}
+        endDate={displayEndDate}
+        setEndDate={(date) => {
+          // Don't update state or call callback here - let handleRangeSelect handle it
+          // This is only called for single date mode, not range mode
+        }}
         className="w-full"
         mode="range"
         onRangeSelect={handleRangeSelect}

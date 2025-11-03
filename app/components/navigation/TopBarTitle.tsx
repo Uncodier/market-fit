@@ -4,23 +4,19 @@ import { usePathname } from "next/navigation"
 import { Button } from "../ui/button"
 import Link from "next/link"
 import { 
-  HelpCircle, 
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen
 } from "@/app/components/ui/icons"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../ui/tooltip"
+import { HelpButton } from "../ui/help-button"
 import { useEffect, useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 
 interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
   helpText?: string
+  helpWelcomeMessage?: string
+  helpTask?: string
   isCollapsed: boolean
   onCollapse: () => void
   breadcrumb?: React.ReactNode
@@ -29,6 +25,8 @@ interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
 export function TopBarTitle({ 
   title, 
   helpText,
+  helpWelcomeMessage,
+  helpTask,
   isCollapsed,
   onCollapse,
   className,
@@ -441,39 +439,13 @@ export function TopBarTitle({
         <h1 className="text-2xl font-semibold text-foreground">{customTitle || getDefaultTitle()}</h1>
       )}
       
-      {helpText && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button 
-                className="inline-flex items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer hover:scale-105 transition-all duration-200 active:scale-95"
-                onClick={() => {
-                  console.log('TopBar help button clicked')
-                  if (typeof window !== 'undefined') {
-                    console.log('TopBar Window MarketFit:', (window as any).MarketFit)
-                    if ((window as any).MarketFit?.openChatWithTask) {
-                      console.log('TopBar calling openChatWithTask')
-                      ;(window as any).MarketFit.openChatWithTask({
-                        welcomeMessage: "Hi! I see you're looking for help with this page. What can I assist you with?",
-                        task: helpText || "I need help with this section",
-                        clearExistingMessages: false,
-                        newConversation: false
-                      })
-                    } else {
-                      console.log('TopBar MarketFit.openChatWithTask not available')
-                    }
-                  }
-                }}
-              >
-                <HelpCircle className="h-5 w-5" />
-                <span className="sr-only">Help</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" align="center">
-              <p className="max-w-xs text-sm">{helpText}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      {(helpText || helpWelcomeMessage || helpTask) && (
+        <HelpButton
+          size="md"
+          tooltipText={helpText || "Open help chat"}
+          welcomeMessage={helpWelcomeMessage}
+          task={helpTask}
+        />
       )}
     </div>
   )

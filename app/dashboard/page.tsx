@@ -54,7 +54,6 @@ import { ImagesGeneratedWidget } from "@/app/components/dashboard/images-generat
 import { TokenUsageChart } from "@/app/components/dashboard/token-usage-chart"
 import { PerformanceMetricsChart } from "@/app/components/dashboard/performance-metrics-chart"
 import { LeadsTasksChart } from "@/app/components/dashboard/leads-tasks-chart"
-import { HelpButton } from "@/app/components/ui/help-button"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -580,15 +579,7 @@ export default function DashboardPage() {
         <div className="px-16 pt-3 pb-4">
           <div className="flex items-center justify-between space-x-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
-                <HelpButton
-                  size="md"
-                  tooltipText="Open help chat"
-                  welcomeMessage="Hi! How can I help you with the dashboard?"
-                  task="Help with Dashboard overview and metrics"
-                />
-              </div>
+              <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
               <p className="text-muted-foreground">
                 {activeTab === "onboarding" 
                   ? "Let's get your growth engine set up and ready to capture leads!"

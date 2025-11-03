@@ -12,6 +12,8 @@ import { TopBarActions } from "./TopBarActions"
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
   helpText?: string
+  helpWelcomeMessage?: string
+  helpTask?: string
   isCollapsed: boolean
   onCollapse: () => void
   segments?: Array<{
@@ -27,6 +29,8 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function TopBar({ 
   title, 
   helpText,
+  helpWelcomeMessage,
+  helpTask,
   isCollapsed,
   onCollapse,
   className,
@@ -161,6 +165,8 @@ export function TopBar({
         <TopBarTitle 
           title={title}
           helpText={helpText}
+          helpWelcomeMessage={helpWelcomeMessage}
+          helpTask={helpTask}
           isCollapsed={isCollapsed}
           onCollapse={onCollapse}
           breadcrumb={breadcrumb}

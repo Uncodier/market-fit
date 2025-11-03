@@ -14,7 +14,13 @@ import { LayoutProvider, useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
 import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
 
-const navigationTitles: Record<string, { title: string, helpText?: string }> = {
+const navigationTitles: Record<string, { title: string, helpText?: string, helpWelcomeMessage?: string, helpTask?: string }> = {
+  "/dashboard": {
+    title: "Dashboard",
+    helpText: "Open help chat",
+    helpWelcomeMessage: "Hi! How can I help you with the dashboard?",
+    helpTask: "Help with Dashboard overview and metrics"
+  },
   "/control-center": {
     title: "Control Center",
     helpText: "Manage and track all your tasks across different categories and types"
@@ -219,7 +225,7 @@ function LayoutClientInner({
   }
   
   const currentPage = pageCustomTitle || customTitle
-    ? { title: pageCustomTitle || customTitle, helpText: customHelpText }
+    ? { title: pageCustomTitle || customTitle, helpText: customHelpText, helpWelcomeMessage: undefined, helpTask: undefined }
     : (navigationTitles[pathname] || { title: "Dashboard" });
 
   // Determinar si estamos en la página de login
@@ -262,6 +268,8 @@ function LayoutClientInner({
               <TopBar 
                 title={currentPage.title || ""}
                 helpText={currentPage.helpText || undefined}
+                helpWelcomeMessage={currentPage.helpWelcomeMessage || undefined}
+                helpTask={currentPage.helpTask || undefined}
                 isCollapsed={isLayoutCollapsed}
                 onCollapse={handleCollapse}
                 segments={segments}
