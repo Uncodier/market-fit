@@ -384,6 +384,14 @@
   box-shadow: 0 0 0 2px rgba(62, 99, 221, 0.2) !important;
 }
 
+/* Mantener blur constante cuando el textarea está disabled */
+.chat-input-container textarea:disabled {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  opacity: 1 !important;
+  background-color: rgba(255, 255, 255, 0.75) !important;
+}
+
 /* Burbujas de chat para el usuario en tema claro - más visibles */
 .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-primary {
   background-color: #3e63dd !important;
@@ -429,6 +437,14 @@
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
   outline: none !important;
+}
+
+/* Mantener blur constante cuando el textarea está disabled en modo oscuro */
+.dark .chat-input-container textarea:disabled {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  opacity: 1 !important;
+  background-color: rgba(30, 30, 45, 0.75) !important;
 }
 
 .dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 * {

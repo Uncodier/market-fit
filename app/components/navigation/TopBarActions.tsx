@@ -59,6 +59,11 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   // 1. If URL has instance param, try to use that instance
   // 2. Otherwise, find the first paused/uninstantiated instance from all instances
   const activeRobotInstance = useMemo(() => {
+    // Don't calculate if data is still loading - wait for complete data
+    if (isLoadingRobots) {
+      return null
+    }
+    
     // If URL param exists, try to get that instance first
     if (selectedInstanceParam) {
       const urlInstance = getInstanceById(selectedInstanceParam)
@@ -91,7 +96,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     
     console.log('🔍 [RobotStartButton] No paused instances found. Total instances:', allInstances.length)
     return null
-  }, [selectedInstanceParam, allInstances, getInstanceById])
+  }, [selectedInstanceParam, allInstances, getInstanceById, isLoadingRobots])
   
   const selectedInstanceId = activeRobotInstance?.id || selectedInstanceParam || 'new'
   const activeTabRef = useRef(selectedInstanceId)

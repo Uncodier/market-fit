@@ -139,7 +139,8 @@ export const ChatInput = memo(function ChatInput({
                   paddingBottom: '50px',
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
-                  height: '135px'
+                  height: '135px',
+                  opacity: isLoading ? 1 : undefined
                 }}
               />
 

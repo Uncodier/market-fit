@@ -153,7 +153,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 height: '135px', // Initial height, will be auto-adjusted
                 width: '100%',
                 minWidth: '100%',
-                maxWidth: '100%'
+                maxWidth: '100%',
+                opacity: disabled ? 1 : undefined
               }}
             />
             
