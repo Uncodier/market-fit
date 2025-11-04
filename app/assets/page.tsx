@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
-import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash2, Download, Image, FileVideo, FileText, UploadCloud, Link as LinkIcon, Unlink } from "@/app/components/ui/icons"
+import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash2, Download, Image, FileVideo, FileText, UploadCloud, Link as LinkIcon, Unlink, TableRows, LayoutGrid } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import React, { useEffect, useState, Suspense } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -33,6 +33,8 @@ import {
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { safeReload } from "@/app/utils/safe-reload"
 import { useSearchParams } from "next/navigation"
+import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
+import { CardContent } from "@/app/components/ui/card"
 
 interface AssetWithThumbnail extends Asset {
   thumbnailUrl?: string
@@ -58,6 +60,30 @@ const AGENT_COMPATIBLE_FILE_TYPES = [
 const AGENT_COMPATIBLE_EXTENSIONS = [
   '.pdf', '.csv', '.md', '.txt', '.json', '.yaml', '.yml', '.jpg', '.jpeg', '.png', '.webp'
 ]
+
+// Helper function to normalize MIME type to category (image/video/document)
+const getFileTypeCategory = (fileType: string): "image" | "video" | "document" => {
+  if (fileType.startsWith('image/')) {
+    return "image"
+  }
+  if (fileType.startsWith('video/')) {
+    return "video"
+  }
+  return "document"
+}
+
+// Helper function to get color classes for file type
+const getTypeColor = (fileType: string) => {
+  const category = getFileTypeCategory(fileType)
+  switch (category) {
+    case "image":
+      return "bg-blue-50 text-blue-700 border-blue-200"
+    case "video":
+      return "bg-purple-50 text-purple-700 border-purple-200"
+    case "document":
+      return "bg-amber-50 text-amber-700 border-amber-200"
+  }
+}
 
 // Helper function to check if an asset is compatible with agents
 const isAssetCompatibleWithAgent = (asset: Asset): boolean => {
@@ -122,8 +148,9 @@ function AssetCard({
   const [textContent, setTextContent] = useState<string | null>(null)
   const [isLoadingText, setIsLoadingText] = useState(false)
 
-  const getDefaultThumbnail = (type: string): string | undefined => {
-    switch (type) {
+  const getDefaultThumbnail = (fileType: string): string | undefined => {
+    const category = getFileTypeCategory(fileType)
+    switch (category) {
       case "image":
         return "https://via.placeholder.com/300x200/f3f4f6/6b7280?text=Image"
       case "video":
@@ -133,8 +160,9 @@ function AssetCard({
     }
   }
 
-  const getIcon = (type: string) => {
-    switch (type) {
+  const getIcon = (fileType: string) => {
+    const category = getFileTypeCategory(fileType)
+    switch (category) {
       case "image":
         return (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[#f8f9fa]">
@@ -325,19 +353,8 @@ function AssetCard({
   // Para imágenes, usamos la URL del archivo directamente
   // Para videos, mostramos un thumbnail o un icono
   // Para documentos, intentamos mostrar un preview en iframe
-  const shouldShowImage = asset.file_type === "image" && !imageError
-  const shouldShowDocumentPreview = asset.file_type === "document" && !imageError
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "image":
-        return "bg-blue-50 text-blue-700 border-blue-200"
-      case "video":
-        return "bg-purple-50 text-purple-700 border-purple-200"
-      case "document":
-        return "bg-amber-50 text-amber-700 border-amber-200"
-    }
-  }
+  const shouldShowImage = asset.file_type.startsWith('image/') && !imageError
+  const shouldShowDocumentPreview = !asset.file_type.startsWith('image/') && !asset.file_type.startsWith('video/') && !imageError
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -402,14 +419,12 @@ function AssetCard({
       <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
         <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-muted/40 to-muted/60">
           {shouldShowImage ? (
-            <div className="w-full h-full flex items-center justify-center bg-background/80 p-2">
-              <img
-                src={asset.file_path}
-                alt={asset.name}
-                className="object-contain w-full h-full transition-all duration-300 hover:scale-[1.02] max-h-full"
-                onError={() => setImageError(true)}
-              />
-            </div>
+            <img
+              src={asset.file_path}
+              alt={asset.name}
+              className="object-cover w-full h-full transition-all duration-300 hover:scale-[1.02]"
+              onError={() => setImageError(true)}
+            />
           ) : shouldShowDocumentPreview ? (
             getDocumentPreview()
           ) : (
@@ -515,7 +530,7 @@ function AssetCard({
           </div>
           <div className="absolute top-2 right-2 flex flex-col gap-1">
             <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize`}>
-              {asset.file_type}
+              {getFileTypeCategory(asset.file_type)}
             </Badge>
             {isCompatibleWithAgent && (
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-medium">
@@ -579,6 +594,270 @@ function AssetCard({
   )
 }
 
+function AssetListItem({ 
+  asset, 
+  onDelete, 
+  onAttach, 
+  onDetach, 
+  isCompatibleWithAgent = false, 
+  agentId 
+}: { 
+  asset: AssetWithThumbnail
+  onDelete: () => void
+  onAttach?: (assetId: string) => void
+  onDetach?: (assetId: string) => void
+  isCompatibleWithAgent?: boolean
+  agentId?: string
+}) {
+  const [imageError, setImageError] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  const shouldShowImage = asset.file_type.startsWith('image/') && !imageError
+
+  const formatFileSize = (bytes: number | null): string => {
+    if (!bytes || bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const handleOpen = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    window.open(asset.file_path, '_blank')
+  }
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsDownloading(true)
+    
+    try {
+      const fileName = asset.name || asset.file_path.split('/').pop() || 'download'
+      const link = document.createElement('a')
+      link.href = asset.file_path
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success("Download started")
+    } catch (error) {
+      console.error("Error downloading asset:", error)
+      toast.error("Error downloading file")
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      const result = await deleteAsset(asset.id)
+      if (result.error) {
+        throw new Error(result.error)
+      }
+      onDelete()
+      toast.success("Asset deleted successfully")
+    } catch (error) {
+      console.error("Error deleting asset:", error)
+      toast.error("Error deleting asset")
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
+    }
+  }
+
+  return (
+    <>
+      <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+        <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
+          <CardContent className="flex-1 p-2 w-full overflow-x-auto">
+            <div className="flex items-center gap-3 min-w-[800px]">
+              {/* Thumbnail */}
+              <div className="w-16 h-16 min-w-[64px] flex-shrink-0 rounded-lg overflow-hidden bg-muted/50">
+                {shouldShowImage ? (
+                  <img
+                    src={asset.file_path}
+                    alt={asset.name}
+                    className="object-cover w-full h-full"
+                    onError={() => setImageError(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {getFileTypeCategory(asset.file_type) === "image" ? (
+                      <Image className="h-6 w-6 text-muted-foreground" />
+                    ) : getFileTypeCategory(asset.file_type) === "video" ? (
+                      <FileVideo className="h-6 w-6 text-muted-foreground" />
+                    ) : (
+                      <FileText className="h-6 w-6 text-muted-foreground" />
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Asset Info */}
+              <div className="flex-1 min-w-0 pr-3">
+                <h3 className="font-semibold text-sm truncate">{asset.name}</h3>
+                {asset.description && (
+                  <p className="text-xs text-muted-foreground/80 truncate mt-0.5">
+                    {asset.description}
+                  </p>
+                )}
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize`}>
+                    {getFileTypeCategory(asset.file_type)}
+                  </Badge>
+                  {asset.tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 text-[10px] px-2 py-0 h-4"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* File Size */}
+              <div className="w-[100px] min-w-[100px] flex-shrink-0">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Size</p>
+                <p className="text-xs font-medium truncate">{formatFileSize(asset.file_size)}</p>
+              </div>
+
+              {/* Created Date */}
+              <div className="w-[120px] min-w-[120px] flex-shrink-0">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Created</p>
+                <p className="text-xs font-medium truncate">{new Date(asset.created_at).toLocaleDateString()}</p>
+              </div>
+
+              {/* Actions */}
+              <div className="w-[160px] min-w-[160px] flex-shrink-0 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={handleOpen}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Open</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={handleDownload}
+                        disabled={isDownloading}
+                      >
+                        <Download className={`h-4 w-4 ${isDownloading ? 'animate-pulse' : ''}`} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Download</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {isCompatibleWithAgent && agentId && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={`h-8 w-8 ${
+                            asset.isAttachedToAgent 
+                              ? 'text-green-600 hover:text-red-600' 
+                              : 'hover:text-green-600'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (asset.isAttachedToAgent) {
+                              onDetach?.(asset.id)
+                            } else {
+                              onAttach?.(asset.id)
+                            }
+                          }}
+                        >
+                          {asset.isAttachedToAgent ? (
+                            <Unlink className="h-4 w-4" />
+                          ) : (
+                            <LinkIcon className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{asset.isAttachedToAgent ? 'Detach from Agent' : 'Attach to Agent'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowDeleteDialog(true)
+                        }}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Delete</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+          </CardContent>
+        </div>
+      </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Asset</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the asset 
+              "{asset.name}" from your media library and remove it from your projects.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-red-500 hover:bg-red-600 text-white"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Asset"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
 const AssetEmptyState = ({ type }: { type: "all" | "images" | "videos" | "documents" }) => {
   const emptyStateProps = {
     all: {
@@ -605,6 +884,21 @@ const AssetEmptyState = ({ type }: { type: "all" | "images" | "videos" | "docume
 
   return (
     <EmptyState {...emptyStateProps[type]} />
+  )
+}
+
+type AssetViewType = 'grid' | 'list'
+
+function AssetViewSelector({ currentView, onViewChange }: { currentView: AssetViewType, onViewChange: (view: AssetViewType) => void }) {
+  return (
+    <ToggleGroup type="single" value={currentView} onValueChange={(value: string) => value && onViewChange(value as AssetViewType)}>
+      <ToggleGroupItem value="grid" aria-label="Toggle grid view" className="px-2">
+        <LayoutGrid className="h-4 w-4" />
+      </ToggleGroupItem>
+      <ToggleGroupItem value="list" aria-label="Toggle list view" className="px-2">
+        <TableRows className="h-4 w-4" />
+      </ToggleGroupItem>
+    </ToggleGroup>
   )
 }
 
@@ -677,6 +971,7 @@ function AssetsContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [attachedAssetIds, setAttachedAssetIds] = useState<string[]>([])
+  const [viewType, setViewType] = useState<AssetViewType>('grid')
   
   // Get agent ID from URL parameters
   const searchParams = useSearchParams()
@@ -850,8 +1145,15 @@ function AssetsContent() {
                     </kbd>
                   </div>
                 </div>
-                <div className="ml-auto">
-                  {/* Any other buttons would go here */}
+                <div className="ml-auto flex items-center gap-4">
+                  {agentId && (
+                    <div className="text-sm text-muted-foreground">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        Agent Mode: {agentId}
+                      </Badge>
+                    </div>
+                  )}
+                  <AssetViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
               </div>
             </div>
@@ -947,7 +1249,7 @@ function AssetsContent() {
                     </Badge>
                   </div>
                 )}
-                {/* Any other buttons would go here */}
+                <AssetViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>
           </div>
@@ -959,7 +1261,7 @@ function AssetsContent() {
               <TabsContent value="all" className="space-y-4">
                 {filteredAssets.length === 0 ? (
                   <AssetEmptyState type="all" />
-                ) : (
+                ) : viewType === 'grid' ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredAssets.map((asset) => (
                       <AssetCard 
@@ -973,19 +1275,49 @@ function AssetsContent() {
                       />
                     ))}
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredAssets.map((asset) => (
+                      <AssetListItem
+                        key={asset.id}
+                        asset={asset}
+                        onDelete={() => handleDeleteAsset(asset.id)}
+                        onAttach={handleAttach}
+                        onDetach={handleDetach}
+                        isCompatibleWithAgent={isAssetCompatibleWithAgent(asset)}
+                        agentId={agentId || undefined}
+                      />
+                    ))}
+                  </div>
                 )}
               </TabsContent>
               <TabsContent value="images" className="space-y-4">
-                {filteredAssets.filter(a => a.file_type === "image").length === 0 ? (
+                {filteredAssets.filter(a => a.file_type.startsWith('image/')).length === 0 ? (
                   <AssetEmptyState type="images" />
-                ) : (
+                ) : viewType === 'grid' ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredAssets
-                      .filter(a => a.file_type === "image")
+                      .filter(a => a.file_type.startsWith('image/'))
                       .map((asset) => (
                         <AssetCard 
                           key={asset.id} 
                           asset={asset} 
+                          onDelete={() => handleDeleteAsset(asset.id)}
+                          onAttach={handleAttach}
+                          onDetach={handleDetach}
+                          isCompatibleWithAgent={isAssetCompatibleWithAgent(asset)}
+                          agentId={agentId || undefined}
+                        />
+                      ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredAssets
+                      .filter(a => a.file_type.startsWith('image/'))
+                      .map((asset) => (
+                        <AssetListItem
+                          key={asset.id}
+                          asset={asset}
                           onDelete={() => handleDeleteAsset(asset.id)}
                           onAttach={handleAttach}
                           onDetach={handleDetach}
@@ -997,12 +1329,12 @@ function AssetsContent() {
                 )}
               </TabsContent>
               <TabsContent value="videos" className="space-y-4">
-                {filteredAssets.filter(a => a.file_type === "video").length === 0 ? (
+                {filteredAssets.filter(a => a.file_type.startsWith('video/')).length === 0 ? (
                   <AssetEmptyState type="videos" />
-                ) : (
+                ) : viewType === 'grid' ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredAssets
-                      .filter(a => a.file_type === "video")
+                      .filter(a => a.file_type.startsWith('video/'))
                       .map((asset) => (
                         <AssetCard 
                           key={asset.id} 
@@ -1015,19 +1347,51 @@ function AssetsContent() {
                         />
                       ))}
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredAssets
+                      .filter(a => a.file_type.startsWith('video/'))
+                      .map((asset) => (
+                        <AssetListItem
+                          key={asset.id}
+                          asset={asset}
+                          onDelete={() => handleDeleteAsset(asset.id)}
+                          onAttach={handleAttach}
+                          onDetach={handleDetach}
+                          isCompatibleWithAgent={isAssetCompatibleWithAgent(asset)}
+                          agentId={agentId || undefined}
+                        />
+                      ))}
+                  </div>
                 )}
               </TabsContent>
               <TabsContent value="documents" className="space-y-4">
-                {filteredAssets.filter(a => a.file_type === "document").length === 0 ? (
+                {filteredAssets.filter(a => !a.file_type.startsWith('image/') && !a.file_type.startsWith('video/')).length === 0 ? (
                   <AssetEmptyState type="documents" />
-                ) : (
+                ) : viewType === 'grid' ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredAssets
-                      .filter(a => a.file_type === "document")
+                      .filter(a => !a.file_type.startsWith('image/') && !a.file_type.startsWith('video/'))
                       .map((asset) => (
                         <AssetCard 
                           key={asset.id} 
                           asset={asset} 
+                          onDelete={() => handleDeleteAsset(asset.id)}
+                          onAttach={handleAttach}
+                          onDetach={handleDetach}
+                          isCompatibleWithAgent={isAssetCompatibleWithAgent(asset)}
+                          agentId={agentId || undefined}
+                        />
+                      ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredAssets
+                      .filter(a => !a.file_type.startsWith('image/') && !a.file_type.startsWith('video/'))
+                      .map((asset) => (
+                        <AssetListItem
+                          key={asset.id}
+                          asset={asset}
                           onDelete={() => handleDeleteAsset(asset.id)}
                           onAttach={handleAttach}
                           onDetach={handleDetach}
