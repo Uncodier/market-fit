@@ -93,21 +93,14 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("performance")
   
   // Check onboarding completion from site settings
+  // Always verify against database to ensure accurate state
   useEffect(() => {
     const checkOnboardingCompletion = async () => {
       if (!currentSite?.id) return
       
       const cacheKey = `onboarding_completed_${currentSite.id}`
       
-      // Check cache first
-      const cachedStatus = localStorage.getItem(cacheKey)
-      if (cachedStatus === 'true') {
-        setOnboardingCompleted(true)
-        setActiveTab("performance")
-        return // Skip DB query
-      }
-      
-      // Query DB if not cached or cache is false
+      // Query DB to get actual onboarding state (don't rely on cache alone)
       try {
         const supabase = createClient()
         const { data: siteSettings } = await supabase
@@ -131,30 +124,83 @@ export default function DashboardPage() {
           const allCompleted = allTaskIds.every(taskId => onboardingTasks[taskId] === true)
           setOnboardingCompleted(allCompleted)
           
-          // Cache completion status
+          // Update cache based on actual state
           if (allCompleted) {
             localStorage.setItem(cacheKey, 'true')
-            setActiveTab("performance")
+          } else {
+            // Clear cache if onboarding is not completed
+            localStorage.removeItem(cacheKey)
           }
+        } else {
+          // No onboarding data found, assume not completed
+          setOnboardingCompleted(false)
+          localStorage.removeItem(cacheKey)
         }
       } catch (error) {
         console.error('Error checking onboarding completion:', error)
+        // On error, don't assume completion - clear cache to force re-check
+        localStorage.removeItem(cacheKey)
+        setOnboardingCompleted(false)
       }
     }
     
     checkOnboardingCompletion()
   }, [currentSite?.id])
 
-  // Update onboarding completion status when site changes
+  // Re-check onboarding completion when user returns to browser tab
+  // This ensures stale cache doesn't hide incomplete onboarding
   useEffect(() => {
-    if (currentSite?.id) {
-      const cacheKey = `onboarding_completed_${currentSite.id}`
-      const cachedStatus = localStorage.getItem(cacheKey)
-      if (cachedStatus === 'true') {
-        setOnboardingCompleted(true)
-      } else {
-        setOnboardingCompleted(false)
+    if (!currentSite?.id) return
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        // Re-verify onboarding completion from database when tab becomes visible
+        const cacheKey = `onboarding_completed_${currentSite.id}`
+        
+        try {
+          const supabase = createClient()
+          const { data: siteSettings } = await supabase
+            .from('settings')
+            .select('onboarding')
+            .eq('site_id', currentSite.id)
+            .single()
+          
+          if (siteSettings?.onboarding) {
+            const onboardingTasks = siteSettings.onboarding
+            const allTaskIds = [
+              "configure_channels", "install_tracking_script", "set_business_hours",
+              "setup_branding", "setup_billing", "validate_geographic_restrictions",
+              "fine_tune_segments", "create_campaign", "setup_content", "configure_agents",
+              "complete_requirement", "publish_and_feedback", "personalize_customer_journey",
+              "assign_attribution_link", "import_leads", "pay_first_campaign", "invite_team",
+              "create_coordination_task"
+            ]
+            
+            const allCompleted = allTaskIds.every(taskId => onboardingTasks[taskId] === true)
+            setOnboardingCompleted(allCompleted)
+            
+            // Update cache based on actual state
+            if (allCompleted) {
+              localStorage.setItem(cacheKey, 'true')
+            } else {
+              localStorage.removeItem(cacheKey)
+            }
+          } else {
+            setOnboardingCompleted(false)
+            localStorage.removeItem(cacheKey)
+          }
+        } catch (error) {
+          console.error('Error re-checking onboarding completion on visibility change:', error)
+          // Don't assume completion on error
+          localStorage.removeItem(cacheKey)
+          setOnboardingCompleted(false)
+        }
       }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [currentSite?.id])
   
@@ -457,14 +503,6 @@ export default function DashboardPage() {
       if (navigationBlocked) {
         console.log('🚫 Dashboard: Tab change blocked due to navigation prevention')
         return
-      }
-      
-      // If user is leaving onboarding tab, cache the completion status for retrocompatibility
-      if (activeTab === 'onboarding' && newTab !== 'onboarding' && currentSite?.id) {
-        const cacheKey = `onboarding_completed_${currentSite.id}`
-        localStorage.setItem(cacheKey, 'true')
-        setOnboardingCompleted(true)
-        console.log('💾 Cached onboarding completion for retrocompatibility')
       }
       
       console.log(`[Dashboard] Changing tab from ${activeTab} to ${newTab}, cancelling all requests`);
