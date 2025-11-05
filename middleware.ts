@@ -205,8 +205,19 @@ export async function middleware(req: NextRequest) {
     // Si es una ruta de autenticación
     if (path.startsWith('/auth')) {
       // Permitir acceso a rutas específicas de auth sin redirección
-      if (path === '/auth/confirm' || path === '/auth/callback' || path === '/auth/set-password' || path === '/auth/reset-password' || path === '/auth/team-invitation') {
+      // These pages need to allow authenticated users during password reset flow
+      const authFlowPages = [
+        '/auth/confirm',
+        '/auth/callback',
+        '/auth/set-password',
+        '/auth/reset-password',
+        '/auth/team-invitation'
+      ]
+      
+      if (authFlowPages.includes(path)) {
         console.log('Middleware: Allowing access to auth flow page:', path)
+        // Always allow these pages, even for authenticated users
+        // This is critical for password reset flow where user is authenticated but needs to set password
         return res
       }
       

@@ -17,54 +17,125 @@ function ResetPasswordContent() {
   useEffect(() => {
     const processResetToken = async () => {
       try {
-        // Extract tokens from URL fragment
+        const supabase = createClient()
+        
+        // First, check if a session already exists (from Supabase /verify redirect)
+        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        
+        if (existingSession?.user) {
+          console.log('[Reset Password] Session already exists, checking if recovery session')
+          
+          // If session exists, it might be from a recovery flow
+          // Check if we have returnTo to determine if this is a recovery redirect
+          const returnTo = searchParams.get('returnTo') || '/dashboard'
+          
+          // Redirect directly to set-password if session exists
+          // This handles the case where Supabase's /verify already established the session
+          console.log('[Reset Password] Redirecting to set-password with existing session')
+          const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
+          
+          // Clear any hash/query params from URL
+          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/dashboard' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
+          
+          // Use window.location.href to ensure cookies are sent
+          setTimeout(() => {
+            window.location.href = setPasswordUrl
+          }, 100)
+          return
+        }
+
+        // Extract tokens from URL fragment (PKCE flow)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
         const accessToken = hashParams.get('access_token')
         const refreshToken = hashParams.get('refresh_token')
-        const type = hashParams.get('type')
+        const hashType = hashParams.get('type')
         
-        console.log('[Reset Password] URL fragments:', {
-          hasAccessToken: !!accessToken,
-          hasRefreshToken: !!refreshToken,
-          type
+        // Extract tokens from query parameters (OTP flow)
+        const tokenHash = searchParams.get('token_hash')
+        const queryType = searchParams.get('type')
+        
+        console.log('[Reset Password] Token check:', {
+          hasHashTokens: !!(accessToken && refreshToken),
+          hashType,
+          hasQueryTokens: !!tokenHash,
+          queryType
         })
 
-        if (!accessToken || !refreshToken || type !== 'recovery') {
-          throw new Error('Invalid reset password link. Please request a new password reset.')
+        // Handle OTP-based recovery flow (query parameters)
+        if (tokenHash && queryType === 'recovery') {
+          console.log('[Reset Password] Processing OTP recovery token')
+          
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery'
+          })
+
+          if (verifyError) {
+            console.error('[Reset Password] OTP verification error:', verifyError)
+            throw new Error(`Failed to verify reset token: ${verifyError.message}`)
+          }
+
+          if (!data.session || !data.session.user) {
+            throw new Error('Failed to establish session after verification. Please try again.')
+          }
+
+          console.log('[Reset Password] OTP verified, session established for:', data.session.user.email)
+          
+          // Get returnTo parameter if it exists
+          const returnTo = searchParams.get('returnTo') || '/dashboard'
+          
+          // Clear query params from URL
+          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/dashboard' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
+          
+          // Redirect to set-password
+          const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
+          
+          // Small delay to ensure session cookies are set
+          setTimeout(() => {
+            window.location.href = setPasswordUrl
+          }, 200)
+          return
         }
 
-        const supabase = createClient()
+        // Handle PKCE-based recovery flow (hash fragments)
+        if (accessToken && refreshToken && hashType === 'recovery') {
+          console.log('[Reset Password] Processing PKCE recovery tokens')
+          
+          // Set the session using the tokens from the URL
+          const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          })
 
-        // Set the session using the tokens from the URL
-        const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        })
+          if (sessionError) {
+            console.error('[Reset Password] Session error:', sessionError)
+            throw new Error(`Failed to establish session: ${sessionError.message}`)
+          }
 
-        if (sessionError) {
-          console.error('[Reset Password] Session error:', sessionError)
-          throw new Error(`Failed to establish session: ${sessionError.message}`)
+          if (!session || !session.user) {
+            throw new Error('Failed to establish session. Please try again.')
+          }
+
+          console.log('[Reset Password] Session established successfully for:', session.user.email)
+
+          // Get returnTo parameter if it exists
+          const returnTo = searchParams.get('returnTo') || '/dashboard'
+          
+          // Clear the URL fragments and redirect to set-password
+          const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
+          
+          // Use replace to avoid having the token-containing URL in history
+          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/dashboard' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
+          
+          // Small delay to ensure session is properly set
+          setTimeout(() => {
+            window.location.href = setPasswordUrl
+          }, 200)
+          return
         }
 
-        if (!session || !session.user) {
-          throw new Error('Failed to establish session. Please try again.')
-        }
-
-        console.log('[Reset Password] Session established successfully for:', session.user.email)
-
-        // Get returnTo parameter if it exists
-        const returnTo = searchParams.get('returnTo') || '/dashboard'
-        
-        // Clear the URL fragments and redirect to set-password
-        const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
-        
-        // Use replace to avoid having the token-containing URL in history
-        window.history.replaceState({}, '', '/auth/reset-password')
-        
-        // Small delay to ensure session is properly set
-        setTimeout(() => {
-          router.push(setPasswordUrl)
-        }, 100)
+        // No valid tokens found
+        throw new Error('Invalid reset password link. Please request a new password reset.')
 
       } catch (error: any) {
         console.error('[Reset Password] Error:', error)

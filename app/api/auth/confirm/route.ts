@@ -44,6 +44,15 @@ export async function GET(request: Request) {
       )
     }
 
+    // Check if this is a password recovery flow
+    if (type === 'recovery') {
+      console.log('Password recovery OTP verified, redirecting to set-password')
+      // Extract returnTo from next parameter if present, or use default
+      const returnTo = next && next !== '/' ? next : '/dashboard'
+      const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
+      return NextResponse.redirect(new URL(setPasswordUrl, request.url))
+    }
+
     // Check if this is a team invitation by looking at user metadata
     const userMetadata = user.user_metadata || {}
     const isTeamInvitation = userMetadata.invitationType === 'team_invitation'

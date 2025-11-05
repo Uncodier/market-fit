@@ -125,6 +125,7 @@ function SetPasswordContent() {
       toast.success("Password set successfully!")
 
       // Redirect to the original destination or team invitation
+      // Use window.location.href to ensure cookies are properly sent
       if (redirectTo) {
         const decodedRedirect = decodeURIComponent(redirectTo)
         console.log('🔄 Redirecting to:', decodedRedirect)
@@ -133,7 +134,9 @@ function SetPasswordContent() {
           window.location.href = decodedRedirect
         }, 1000)
       } else {
-        router.push('/dashboard')
+        setTimeout(() => {
+          window.location.href = '/dashboard'
+        }, 1000)
       }
 
     } catch (error) {
