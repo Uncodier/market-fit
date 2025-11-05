@@ -37,6 +37,9 @@ function ResetPasswordContent() {
           // Clear any hash/query params from URL
           window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/dashboard' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
           
+          // Set processing to false before redirect
+          setIsProcessing(false)
+          
           // Use window.location.href to ensure cookies are sent
           setTimeout(() => {
             window.location.href = setPasswordUrl
@@ -87,6 +90,9 @@ function ResetPasswordContent() {
           // Clear query params from URL
           window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/dashboard' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
           
+          // Set processing to false before redirect
+          setIsProcessing(false)
+          
           // Redirect to set-password
           const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
           
@@ -126,6 +132,9 @@ function ResetPasswordContent() {
           
           // Use replace to avoid having the token-containing URL in history
           window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/dashboard' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
+          
+          // Set processing to false before redirect
+          setIsProcessing(false)
           
           // Small delay to ensure session is properly set
           setTimeout(() => {

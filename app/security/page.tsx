@@ -192,6 +192,9 @@ export default function SecurityPage() {
       setShowNewPassword(false);
       setShowConfirmPassword(false);
       
+      // Reset password changes flag to disable save button
+      setHasPasswordChanges(false);
+      
       // Automatically clear success message after some time
       setTimeout(() => {
         setPasswordUpdated(false);

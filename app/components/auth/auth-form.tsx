@@ -10,7 +10,7 @@ import { Button } from "@/app/components/ui/button"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google } from "@/app/components/ui/icons"
+import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google, Shield } from "@/app/components/ui/icons"
 import { Separator } from "@/app/components/ui/separator"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
@@ -58,6 +58,13 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   const [isWaitlistMode, setIsWaitlistMode] = useState(false)
   const [waitlistSuccess, setWaitlistSuccess] = useState(false)
   const [resetPasswordSuccess, setResetPasswordSuccess] = useState(false)
+  
+  // MFA state
+  const [mfaRequired, setMfaRequired] = useState(false)
+  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null)
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaVerifying, setMfaVerifying] = useState(false)
   
   // Get returnTo from URL or default to projects selection
   const [finalReturnTo, setFinalReturnTo] = useState<string>('/projects')
@@ -118,6 +125,12 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     setErrorMessage(null)
     setResetPasswordSuccess(false)
     
+    // Reset MFA state when changing modes
+    setMfaRequired(false)
+    setMfaCode('')
+    setMfaChallengeId(null)
+    setMfaFactorId(null)
+    
     // Notify parent component of the change
     if (onAuthTypeChange) {
       onAuthTypeChange(newMode === 'sign_up' ? 'signup' : newMode === 'reset_password' ? 'reset' : 'signin')
@@ -176,6 +189,113 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
 
     return () => clearTimeout(timer)
   }, [form.watch('referralCode'), authMode])
+
+  // Handle MFA challenge
+  const handleMfaChallenge = async () => {
+    try {
+      setLoading(true)
+      setErrorMessage(null)
+
+      // List user's MFA factors
+      const { data: factors, error: listError } = await supabase.auth.mfa.listFactors()
+      
+      if (listError) {
+        throw listError
+      }
+
+      // Find the first verified TOTP factor
+      const verifiedFactor = factors.totp?.find((factor: any) => factor.verified === true)
+
+      if (!verifiedFactor) {
+        // No verified MFA factors, fall back to email confirmation error
+        setErrorMessage('Account found but not fully activated. Please check your email for a confirmation link, or contact support if you need help.')
+        setLoading(false)
+        return
+      }
+
+      // Create challenge for the verified factor
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: verifiedFactor.id
+      })
+
+      if (challengeError) {
+        throw challengeError
+      }
+
+      // Store challenge and factor IDs
+      setMfaFactorId(verifiedFactor.id)
+      setMfaChallengeId(challengeData.id)
+      setMfaRequired(true)
+    } catch (error: any) {
+      console.error('MFA challenge error:', error)
+      setErrorMessage(error.message || 'Failed to initiate MFA verification. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Handle MFA verification
+  const handleMfaVerify = async () => {
+    if (!mfaChallengeId || !mfaCode) {
+      setErrorMessage('Please enter the verification code')
+      return
+    }
+
+    // Validate code is 6 digits
+    if (!/^\d{6}$/.test(mfaCode)) {
+      setErrorMessage('Please enter a valid 6-digit code')
+      return
+    }
+
+    try {
+      setMfaVerifying(true)
+      setErrorMessage(null)
+
+      const { data, error } = await supabase.auth.mfa.verify({
+        challengeId: mfaChallengeId,
+        code: mfaCode
+      })
+
+      if (error) {
+        throw error
+      }
+
+      // Verification successful, get session
+      if (data.session) {
+        console.log('MFA verification successful, redirecting to:', finalReturnTo)
+        window.location.href = finalReturnTo
+      } else {
+        // Refresh session if needed
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (sessionData.session) {
+          console.log('MFA verification successful, session refreshed, redirecting to:', finalReturnTo)
+          window.location.href = finalReturnTo
+        } else {
+          setErrorMessage('Verification successful but session not found. Please try signing in again.')
+          // Reset MFA state
+          setMfaRequired(false)
+          setMfaCode('')
+          setMfaChallengeId(null)
+          setMfaFactorId(null)
+        }
+      }
+    } catch (error: any) {
+      console.error('MFA verification error:', error)
+      setErrorMessage(error.message || 'Invalid verification code. Please try again.')
+      setMfaCode('')
+    } finally {
+      setMfaVerifying(false)
+    }
+  }
+
+  // Handle MFA cancel
+  const handleMfaCancel = () => {
+    setMfaRequired(false)
+    setMfaCode('')
+    setMfaChallengeId(null)
+    setMfaFactorId(null)
+    setErrorMessage(null)
+  }
 
   // Handle form submission
   const onSubmit = async (values: AuthFormValues) => {
@@ -287,8 +407,11 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           // Redirect immediately without timeout
           window.location.href = finalReturnTo
         } else if (data.user && !data.session) {
-          console.warn('User exists but no session created, this may indicate email not confirmed')
-          setErrorMessage('Account found but not fully activated. Please check your email for a confirmation link, or contact support if you need help.')
+          // User exists but no session - could be MFA required or email not confirmed
+          console.warn('User exists but no session created, checking for MFA requirement')
+          
+          // Check if user has MFA enabled
+          await handleMfaChallenge()
         } else {
           setErrorMessage('Sign in failed. Please check your credentials and try again.')
         }
@@ -620,8 +743,60 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               />
             )}
             
+            {/* MFA Verification UI */}
+            {mfaRequired && authMode === 'sign_in' && (
+              <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/30">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Enter verification code
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Enter the 6-digit code from your authenticator app
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <div className="relative">
+                    <InputWithIcon
+                      leftIcon={<Shield className="h-4 w-4 text-muted-foreground" />}
+                      className="h-12 text-base bg-background border-input" 
+                      placeholder="000000"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={mfaCode}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '')
+                        setMfaCode(value)
+                      }}
+                      disabled={mfaVerifying}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={handleMfaVerify}
+                      disabled={mfaVerifying || mfaCode.length !== 6}
+                      className="flex-1 font-medium"
+                    >
+                      {mfaVerifying ? "Verifying..." : "Verify"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleMfaCancel}
+                      disabled={mfaVerifying}
+                      className="font-medium"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Forgot password link for sign in mode */}
-            {authMode === 'sign_in' && (
+            {authMode === 'sign_in' && !mfaRequired && (
               <div className="text-center">
                 <button 
                   type="button"
@@ -633,25 +808,27 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               </div>
             )}
             
-            {/* Submit button */}
-            <Button 
-              type="submit" 
-              className="w-full mt-6 font-medium" 
-              disabled={loading || waitlistSuccess}
-            >
-              {loading 
-                ? "Please wait..." 
-                : authMode === 'sign_in' 
-                  ? "Sign In" 
-                  : isWaitlistMode
-                    ? "Join Waitlist"
-                    : referralCodeStatus === 'valid'
-                      ? "Create Account"
-                      : referralCodeStatus === 'unchecked'
-                        ? "Get Started"
-                        : "Continue"
-              }
-            </Button>
+            {/* Submit button - hide when MFA is required */}
+            {!mfaRequired && (
+              <Button 
+                type="submit" 
+                className="w-full mt-6 font-medium" 
+                disabled={loading || waitlistSuccess}
+              >
+                {loading 
+                  ? "Please wait..." 
+                  : authMode === 'sign_in' 
+                    ? "Sign In" 
+                    : isWaitlistMode
+                      ? "Join Waitlist"
+                      : referralCodeStatus === 'valid'
+                        ? "Create Account"
+                        : referralCodeStatus === 'unchecked'
+                          ? "Get Started"
+                          : "Continue"
+                }
+              </Button>
+            )}
           </form>
         </Form>
       )}

@@ -124,6 +124,9 @@ function SetPasswordContent() {
       console.log('✅ Password set successfully')
       toast.success("Password set successfully!")
 
+      // Set loading to false immediately to update UI
+      setIsLoading(false)
+
       // Redirect to the original destination or team invitation
       // Use window.location.href to ensure cookies are properly sent
       if (redirectTo) {

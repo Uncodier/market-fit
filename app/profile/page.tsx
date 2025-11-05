@@ -17,7 +17,6 @@ import {
   Trash2, 
   UploadCloud,
   Settings,
-  MessageSquare,
   Home
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
@@ -32,7 +31,7 @@ import { useProfile } from "@/app/hooks/use-profile"
 import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ProfileSkeleton } from "./components/ProfileSkeleton"
-import { HelpButton } from "@/app/components/ui/help-button"
+import { EmailSecurityCard } from "./components/EmailSecurityCard"
 
 type UserRole = "Product Manager" | "Designer" | "Developer" | "Marketing" | "Sales" | "CEO" | "Other"
 
@@ -43,6 +42,8 @@ export default function ProfilePage() {
     isUpdating, 
     updateProfile, 
     updateNotifications,
+    requestEmailChange,
+    emailChangeStatus,
     name,
     email,
     bio,
@@ -230,10 +231,6 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between px-16 w-full">
           <div className="flex-1" />
           <div className="flex items-center gap-2">
-            <HelpButton 
-              size="sm" 
-              tooltipText="Need help with your profile settings?"
-            />
             <Button 
               disabled={isUpdating}
               onClick={handleSave}
@@ -308,22 +305,6 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <div className="relative">
-                      <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        className="pl-12 h-12 text-base transition-colors duration-200" 
-                        placeholder="you@example.com" 
-                        value={email}
-                        disabled 
-                      />
-                    </div>
-                    <p className="text-xs mt-2 text-muted-foreground">
-                      Email cannot be changed.
-                    </p>
-                  </div>
-
-                  <div>
                     <label className="block text-sm font-medium mb-2">Role</label>
                     <div className="relative">
                       <Settings className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
@@ -363,6 +344,13 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+
+          <EmailSecurityCard
+            email={email}
+            emailChangeStatus={emailChangeStatus}
+            onRequestEmailChange={requestEmailChange}
+            isUpdating={isUpdating}
+          />
 
           <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">

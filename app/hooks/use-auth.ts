@@ -211,9 +211,23 @@ export function useAuth() {
           
         } else if (event === 'USER_UPDATED') {
           // El perfil del usuario fue actualizado, actualizar la sesión
-          
           const { data } = await supabase.auth.getSession()
-          setUser(data.session?.user ?? null)
+          const updatedUser = data.session?.user
+          
+          if (updatedUser?.email) {
+            // Sync email to profiles table when email is updated
+            try {
+              await supabase
+                .from('profiles')
+                .update({ email: updatedUser.email })
+                .eq('id', updatedUser.id)
+            } catch (error) {
+              console.error('[Auth] Error syncing email to profiles:', error)
+              // Don't fail the update if profile sync fails
+            }
+          }
+          
+          setUser(updatedUser ?? null)
         }
       }
     )

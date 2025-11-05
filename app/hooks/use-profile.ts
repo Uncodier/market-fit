@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './use-auth'
 import { profileService, ProfileData, ProfileUpdateData } from '@/app/services/profile.service'
+import { requestEmailChange, getEmailChangeStatus, EmailChangeStatus } from '@/lib/services/email-change.service'
 import { toast } from 'sonner'
 
 export function useProfile() {
@@ -10,6 +11,11 @@ export function useProfile() {
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [emailChangeStatus, setEmailChangeStatus] = useState<EmailChangeStatus>({
+    pendingEmail: null,
+    isPending: false,
+    currentEmail: null
+  })
 
   // Cargar perfil cuando el usuario esté disponible
   const loadProfile = useCallback(async () => {
@@ -105,15 +111,33 @@ export function useProfile() {
     }
   }, [user?.id, profile])
 
+  // Check email change status
+  const checkEmailChangeStatus = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      const status = await getEmailChangeStatus()
+      setEmailChangeStatus(status)
+    } catch (error) {
+      console.error('Error checking email change status:', error)
+    }
+  }, [user?.id])
+
   // Efecto para cargar el perfil automáticamente
   useEffect(() => {
     if (isAuthenticated && user?.id) {
       loadProfile()
+      checkEmailChangeStatus()
     } else {
       setProfile(null)
       setIsLoading(false)
+      setEmailChangeStatus({
+        pendingEmail: null,
+        isPending: false,
+        currentEmail: null
+      })
     }
-  }, [isAuthenticated, user?.id, loadProfile])
+  }, [isAuthenticated, user?.id, loadProfile, checkEmailChangeStatus])
 
   // Función para obtener un valor del perfil con fallback
   const getProfileValue = useCallback(<T>(key: keyof ProfileData, fallback: T): T => {
@@ -135,6 +159,37 @@ export function useProfile() {
     )
   }, [profile])
 
+  // Request email change
+  const requestEmailChangeHandler = useCallback(async (newEmail: string, password: string, silent = false): Promise<boolean> => {
+    if (!user?.id) {
+      if (!silent) toast.error('User not authenticated')
+      return false
+    }
+
+    try {
+      setIsUpdating(true)
+      await requestEmailChange(newEmail, password)
+      
+      // Check status after request
+      const status = await getEmailChangeStatus()
+      setEmailChangeStatus(status)
+      
+      if (!silent) {
+        toast.success('Verification email sent to new address. Please check your inbox.')
+      }
+      return true
+    } catch (error) {
+      console.error('Error requesting email change:', error)
+      if (!silent) {
+        const errorMessage = error instanceof Error ? error.message : 'Error requesting email change'
+        toast.error(errorMessage)
+      }
+      return false
+    } finally {
+      setIsUpdating(false)
+    }
+  }, [user?.id])
+
   return {
     profile,
     isLoading,
@@ -145,6 +200,10 @@ export function useProfile() {
     loadProfile,
     getProfileValue,
     isProfileComplete,
+    // Email change functions
+    requestEmailChange: requestEmailChangeHandler,
+    checkEmailChangeStatus,
+    emailChangeStatus,
     // Valores convenientes
     name: getProfileValue('name', ''),
     email: getProfileValue('email', ''),
