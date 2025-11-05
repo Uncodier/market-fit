@@ -150,19 +150,34 @@ class CopywritingService implements CopywritingActions {
 
       // Process each item from the form
       for (const item of items) {
-        // Skip empty items (title or content missing)
-        if (!item.title?.trim() || !item.content?.trim()) {
-          console.log('COPYWRITING SYNC: Skipping empty item:', { title: item.title, content: !!item.content })
-          continue
-        }
+        // Check if item has an ID (exists in DB)
+        const isExistingItem = item.id && existingMap.has(item.id)
+        const isEmpty = !item.title?.trim() || !item.content?.trim()
 
-        if (item.id && existingMap.has(item.id)) {
-          // Update existing item
-          updateItems.push({ id: item.id, item })
+        if (isExistingItem) {
+          // Item exists in DB - preserve it even if temporarily empty
+          // Add to keepIds to prevent deletion
           keepIds.add(item.id)
+          
+          if (isEmpty) {
+            // Item exists but is empty - preserve it, don't update
+            console.log('COPYWRITING SYNC: Preserving existing item (empty in form):', { id: item.id, title: item.title || 'empty' })
+          } else {
+            // Item exists and has content - update it
+            updateItems.push({ id: item.id, item })
+            console.log('COPYWRITING SYNC: Updating existing item:', { id: item.id, title: item.title })
+          }
         } else {
-          // Create new item
-          newItems.push(item)
+          // New item (no ID)
+          if (isEmpty) {
+            // Skip empty new items - don't create them
+            console.log('COPYWRITING SYNC: Skipping empty new item (will not be created):', { title: item.title || 'empty' })
+            continue
+          } else {
+            // Create new item with content
+            newItems.push(item)
+            console.log('COPYWRITING SYNC: Creating new item:', { title: item.title })
+          }
         }
       }
 
@@ -228,6 +243,7 @@ class CopywritingService implements CopywritingActions {
       
       if (itemsToDelete.length > 0) {
         console.log('COPYWRITING SYNC: Items to delete:', itemsToDelete.length)
+        console.log('COPYWRITING SYNC: Items being deleted:', itemsToDelete.map(item => ({ id: item.id, title: item.title || 'Untitled' })))
         
         const { error: deleteError } = await this.supabase
           .from('copywriting')
@@ -240,6 +256,8 @@ class CopywritingService implements CopywritingActions {
         }
 
         console.log('COPYWRITING SYNC: Successfully deleted removed items')
+      } else {
+        console.log('COPYWRITING SYNC: No items to delete - all existing items preserved')
       }
 
       console.log('COPYWRITING SYNC: Sync completed successfully')

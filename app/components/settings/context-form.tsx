@@ -85,14 +85,15 @@ export function ContextForm({
   const form = useForm<SiteFormValues>({
     resolver: zodResolver(siteFormSchema),
     defaultValues: {
-      // Ensure business model has default values
-      businessModel: {
+      // Use initial data businessModel if available, otherwise default to false values
+      businessModel: stableInitialData?.businessModel || {
         b2b: false,
         b2c: false,
         b2b2c: false
       },
       focusMode: 50,
-      copywriting: [],
+      // Copywriting is loaded separately by CopywritingSection, don't initialize as empty array
+      copywriting: stableInitialData?.copywriting || [],
       ...stableInitialData
     }
   });
@@ -109,20 +110,56 @@ export function ContextForm({
     console.log("ContextForm: businessModel from data:", stableInitialData?.businessModel);
     setLastSiteId(siteId);
     
+    // Preserve current copywriting data if it exists (it's loaded separately by CopywritingSection)
+    const currentCopywriting = form.getValues('copywriting') || [];
+    const hasExistingCopywriting = Array.isArray(currentCopywriting) && currentCopywriting.length > 0;
+    
+    // Preserve current team_members data if it exists (it's loaded separately by TeamSection)
+    const currentTeamMembers = form.getValues('team_members') || [];
+    const hasExistingTeamMembers = Array.isArray(currentTeamMembers) && currentTeamMembers.length > 0;
+    
+    // Preserve current businessModel data if it exists (to prevent accidental reset)
+    const currentBusinessModel = form.getValues('businessModel');
+    const hasBusinessModelValues = currentBusinessModel && (
+      currentBusinessModel.b2b === true || 
+      currentBusinessModel.b2c === true || 
+      currentBusinessModel.b2b2c === true
+    );
+    
+    // Preserve current focusMode if it exists (to prevent accidental reset to default)
+    const currentFocusMode = form.getValues('focusMode');
+    const hasCustomFocusMode = currentFocusMode !== undefined && currentFocusMode !== 50;
+    
     // Reset the form with new data
     const formData = {
-      // Ensure business model has default values
-      businessModel: {
-        b2b: false,
-        b2c: false,
-        b2b2c: false
-      },
-      focusMode: 50,
-      copywriting: [],
-      ...stableInitialData
+      // Preserve copywriting data if it exists, otherwise use initial data or empty array
+      // Copywriting is managed separately by CopywritingSection, so we don't want to clear it
+      copywriting: hasExistingCopywriting ? currentCopywriting : (stableInitialData?.copywriting || []),
+      // Spread initial data first
+      ...stableInitialData,
+      // Override focusMode after spread to ensure preserved values take precedence
+      focusMode: hasCustomFocusMode 
+        ? currentFocusMode 
+        : (stableInitialData?.focusMode || 50),
+      // Override businessModel after spread to ensure preserved values take precedence
+      businessModel: hasBusinessModelValues 
+        ? currentBusinessModel 
+        : (stableInitialData?.businessModel || {
+            b2b: false,
+            b2c: false,
+            b2b2c: false
+          }),
+      // Preserve team_members data if it exists, otherwise use initial data or empty array
+      // Team_members is managed separately by TeamSection, so we don't want to clear it
+      team_members: hasExistingTeamMembers ? currentTeamMembers : (stableInitialData?.team_members || [])
     };
     
     console.log("ContextForm: Final formData.businessModel:", formData.businessModel);
+    console.log("ContextForm: Final formData.focusMode:", formData.focusMode);
+    console.log("ContextForm: Preserving copywriting data:", hasExistingCopywriting ? `${currentCopywriting.length} items` : 'none');
+    console.log("ContextForm: Preserving team_members data:", hasExistingTeamMembers ? `${currentTeamMembers.length} members` : 'none');
+    console.log("ContextForm: Preserving businessModel:", hasBusinessModelValues ? JSON.stringify(currentBusinessModel) : (stableInitialData?.businessModel ? 'using initial data' : 'using defaults'));
+    console.log("ContextForm: Preserving focusMode:", hasCustomFocusMode ? currentFocusMode : (stableInitialData?.focusMode ? `using initial data (${stableInitialData.focusMode})` : 'using default (50)'));
     form.reset(formData);
   }, [stableInitialData, form, siteId, lastSiteId]);
 

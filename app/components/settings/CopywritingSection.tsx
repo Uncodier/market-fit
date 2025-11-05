@@ -80,7 +80,17 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
   const [copywritingList, setCopywritingList] = useState<CopywritingItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasLoaded, setHasLoaded] = useState(false)
+  const [lastLoadedSiteId, setLastLoadedSiteId] = useState<string | null>(null)
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
+
+  // Reset hasLoaded when site changes
+  useEffect(() => {
+    if (currentSite?.id && currentSite.id !== lastLoadedSiteId) {
+      console.log("COPYWRITING: Site changed, resetting loaded state. Previous:", lastLoadedSiteId, "New:", currentSite.id)
+      setHasLoaded(false)
+      setCopywritingList([])
+    }
+  }, [currentSite?.id, lastLoadedSiteId])
 
   // Load copywriting data when component becomes active
   useEffect(() => {
@@ -94,15 +104,18 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
         const result = await copywritingService.getCopywritingItems(currentSite.id)
         
         if (result.success && result.data) {
-          console.log("COPYWRITING: Loaded data:", result.data)
+          console.log("COPYWRITING: Loaded data:", result.data.length, "items")
           setCopywritingList(result.data)
           form.setValue("copywriting", result.data)
           setHasLoaded(true)
+          setLastLoadedSiteId(currentSite.id)
         } else {
           console.error("COPYWRITING: Failed to load data:", result.error)
+          setHasLoaded(true) // Mark as loaded even on error to prevent infinite retries
         }
       } catch (error) {
         console.error("COPYWRITING: Exception loading data:", error)
+        setHasLoaded(true) // Mark as loaded even on error to prevent infinite retries
       } finally {
         setIsLoading(false)
       }
