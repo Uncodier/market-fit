@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react"
 import { AuthForm } from "@/app/components/auth/auth-form"
 import Image from "next/image"
 import { useTheme } from "@/app/context/ThemeContext"
-import { FileText, Target, Send } from "@/app/components/ui/icons"
 import { useSafariDetection } from "@/app/hooks/use-safari-detection"
 
 export default function AuthPage() {
@@ -106,10 +105,21 @@ export default function AuthPage() {
     setAuthType(newAuthType)
   }
 
+  // Disable body scroll when component mounts
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const originalStyle = window.getComputedStyle(document.body).overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = originalStyle
+      }
+    }
+  }, [])
+
   return (
-    <div className="auth-page min-h-screen grid lg:grid-cols-2">
+    <div className="auth-page h-screen overflow-hidden grid lg:grid-cols-2">
       {/* Left side - Branding and Info */}
-      <div className="hidden lg:flex lg:flex-col lg:justify-center lg:px-12 xl:px-16 relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 lg:overflow-y-auto lg:min-h-screen">
+      <div className="hidden lg:flex lg:flex-col lg:justify-center lg:px-12 xl:px-16 relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 h-screen">
         {/* Animated background elements */}
         <div className="absolute inset-0">
           {/* Base gradient overlay */}
@@ -147,79 +157,17 @@ export default function AuthPage() {
           <div className="absolute top-16 right-1/6 w-24 h-24 bg-rose-300/20 rounded-full blur-sm animate-micro-float-1" style={{ animationDelay: '11s' }}></div>
           <div className="absolute bottom-2/3 left-1/3 w-24 h-24 bg-violet-400/25 rounded-full blur-sm animate-micro-float-2" style={{ animationDelay: '13s' }}></div>
         </div>
-        
-        <div className="relative z-10 max-w-md py-8 lg:py-12 xl:py-16 flex flex-col gap-8 lg:gap-10 xl:gap-12">
-          {/* Logo and Brand removed from left panel */}
-          
-          {/* Main Content Section */}
-          <div className="flex flex-col gap-6 lg:gap-8">
-            <h2 className="text-3xl lg:text-4xl font-bold leading-tight">
-              <span className="text-white/80">Your </span>
-              <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">AI </span>
-              <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">growth engine</span>
-            </h2>
-            
-            <p className="text-lg lg:text-xl text-white/80 leading-relaxed">
-              Experience seamless collaboration between AI agents and your team, with performance-based pricing that unleashes intelligent automation across every aspect of your sales process.
-            </p>
-          </div>
-          
-          {/* Features Section */}
-          <div className="space-y-4 lg:space-y-6">
-            <div className="flex items-start gap-3 lg:gap-4 group">
-              <div 
-                className="flex-shrink-0 rounded-xl bg-violet-500/20 backdrop-blur-sm border-2 border-violet-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-violet-500/30 transition-all duration-300 shadow-lg"
-                style={{ 
-                  width: '36px', 
-                  height: '36px',
-                  minWidth: '36px',
-                  minHeight: '36px'
-                }}
-              >
-                <FileText className="text-violet-300" size={16} />
-              </div>
-              <div>
-                <h3 className="text-white text-base lg:text-lg font-semibold mb-1">Know</h3>
-                <p className="text-white/80 text-sm leading-relaxed">Pre-trained AI agents with deep industry knowledge and proven sales strategies, ready to deploy immediately</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 lg:gap-4 group">
-              <div 
-                className="flex-shrink-0 rounded-xl bg-indigo-500/20 backdrop-blur-sm border-2 border-indigo-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500/30 transition-all duration-300 shadow-lg"
-                style={{ 
-                  width: '36px', 
-                  height: '36px',
-                  minWidth: '36px',
-                  minHeight: '36px'
-                }}
-              >
-                <Target className="text-indigo-300" size={16} />
-              </div>
-              <div>
-                <h3 className="text-white text-base lg:text-lg font-semibold mb-1">Think</h3>
-                <p className="text-white/80 text-sm leading-relaxed">Strategic analysis that transforms complex market data into actionable revenue opportunities within minutes</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 lg:gap-4 group">
-              <div 
-                className="flex-shrink-0 rounded-xl bg-emerald-500/20 backdrop-blur-sm border-2 border-emerald-400/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/30 transition-all duration-300 shadow-lg"
-                style={{ 
-                  width: '36px', 
-                  height: '36px',
-                  minWidth: '36px',
-                  minHeight: '36px'
-                }}
-              >
-                <Send className="text-emerald-300" size={16} />
-              </div>
-              <div>
-                <h3 className="text-white text-base lg:text-lg font-semibold mb-1">Do</h3>
-                <p className="text-white/80 text-sm leading-relaxed">Execute personalized multi-channel campaigns across email, social media, and direct messaging automatically</p>
-              </div>
-            </div>
-          </div>
 
-
+        {/* Logo - Centered */}
+        <div className="relative z-10 flex items-center justify-center h-full">
+          <Image 
+            src="/images/combination_mark_white.png"
+            alt="Makinari Logo"
+            width={300}
+            height={300}
+            className="w-[300px] h-auto object-contain"
+            priority
+          />
         </div>
 
         {/* Custom CSS for radial gradients and animations */}
