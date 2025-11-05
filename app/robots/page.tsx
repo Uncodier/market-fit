@@ -650,6 +650,10 @@ function RobotsPageContent() {
       await refreshRobots(currentSite?.id)
       // Select the new instance
       setLocalSelectedInstanceId(newInstance.id)
+      // Update URL to reflect the new instance selection
+      const currentParams = new URLSearchParams(searchParams.toString())
+      currentParams.set('instance', newInstance.id)
+      router.replace(`/robots?${currentParams.toString()}`)
       console.log('🔄 New instance created and selected:', newInstance.id)
     }
   }
@@ -674,12 +678,18 @@ function RobotsPageContent() {
   // Function to enable auto-conversion when a new instance is created
   const handleNewInstanceCreated = useCallback((instanceId: string) => {
     console.log('🔄 New instance created, setting pending conversion:', instanceId)
+    // Immediately update local state and URL to reflect the new instance
+    setLocalSelectedInstanceId(instanceId)
+    // Update URL to reflect the new instance selection
+    const currentParams = new URLSearchParams(searchParams.toString())
+    currentParams.set('instance', instanceId)
+    router.replace(`/robots?${currentParams.toString()}`)
     // Disable auto-refresh to prevent subscription from interfering
     setAutoRefreshEnabled(false)
-    // Set the pending instance ID but don't change selectedInstanceId yet
+    // Set the pending instance ID for tab conversion
     setPendingInstanceId(instanceId)
     setShouldAutoConvertTab(true)
-  }, [setAutoRefreshEnabled])
+  }, [setAutoRefreshEnabled, searchParams, router])
 
   
 
