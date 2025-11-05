@@ -123,11 +123,29 @@ export function useAuth() {
         }
         
         // Verificar redirección inicial si hay sesión activa y estamos en la página de autenticación
+        // PERO no redirigir durante flujos de reset de contraseña o team invitation
         if (session?.user && typeof window !== 'undefined' && window.location.pathname.startsWith('/auth')) {
-          const url = new URL(window.location.href)
-          const returnTo = url.searchParams.get('returnTo') || '/projects'
+          const currentPath = window.location.pathname
           
-          router.push(returnTo)
+          // Excepciones: no redirigir durante flujos de reset de contraseña o team invitation
+          const passwordResetPages = [
+            '/auth/reset-password',
+            '/auth/set-password',
+            '/auth/confirm',
+            '/auth/team-invitation'
+          ]
+          
+          const isPasswordResetFlow = passwordResetPages.some(page => currentPath === page)
+          
+          if (!isPasswordResetFlow) {
+            const url = new URL(window.location.href)
+            const returnTo = url.searchParams.get('returnTo') || '/projects'
+            
+            console.log('[useAuth] checkAuth: Found session, redirecting to:', returnTo, 'from path:', currentPath)
+            router.push(returnTo)
+          } else {
+            console.log('[useAuth] checkAuth: Found session but ignoring redirect - user is in password reset flow:', currentPath)
+          }
         }
       } catch (error) {
         console.error('[Auth] Error checking authentication:', error)
@@ -157,15 +175,29 @@ export function useAuth() {
           // Identificar usuario en MarketFit chat
           identifyUserInChat(session?.user || null, supabase)
           
+          // Excepciones: no redirigir durante flujos de reset de contraseña o team invitation
+          const passwordResetPages = [
+            '/auth/reset-password',
+            '/auth/set-password',
+            '/auth/confirm',
+            '/auth/team-invitation'
+          ]
+          
+          const isPasswordResetFlow = passwordResetPages.some(page => currentPath === page)
+          
           // Si el usuario acaba de iniciar sesión, redirigir a la página adecuada
-          if (currentPath.startsWith('/auth') && currentPath !== '/auth/confirm') {
+          // PERO no redirigir si está en un flujo de reset de contraseña
+          if (currentPath.startsWith('/auth') && !isPasswordResetFlow) {
             // Obtener el returnTo desde la URL
             const url = new URL(window.location.href)
             const returnTo = url.searchParams.get('returnTo') || '/projects'
             
+            console.log('[useAuth] SIGNED_IN event detected, redirecting to:', returnTo, 'from path:', currentPath)
             
             // Redirigir inmediatamente
             router.push(returnTo)
+          } else if (isPasswordResetFlow) {
+            console.log('[useAuth] SIGNED_IN event detected but ignoring redirect - user is in password reset flow:', currentPath)
           }
         } else if (event === 'SIGNED_OUT') {
           // Solo redirigir a auth si no estamos ya en páginas de auth o api
