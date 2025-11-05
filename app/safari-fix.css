@@ -836,7 +836,8 @@ html.safari .input-password-button svg,
 html.safari button[type="button"][aria-label="Toggle password visibility"] svg,
 html.safari [aria-label="Toggle password visibility"] svg,
 html.safari [class*="password-toggle"] svg,
-html.safari [class*="eye"] svg {
+html.safari [class*="eye"] svg,
+html.safari .safari-input-container .input-right-icon svg {
   width: 16px !important;
   height: 16px !important;
   min-width: 16px !important;

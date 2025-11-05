@@ -818,7 +818,7 @@ html.safari form svg {
 html.safari input[type="email"] + div .safari-icon-container,
 html.safari input[type="email"] ~ div .safari-icon-container,
 html.safari .safari-input-container input[type="email"] ~ .safari-icon-container:first-child,
-html.safari .safari-input-container .safari-icon-container[data-icon="mail"] {
+html.safari .safari-input-container .input-left-icon {
   position: absolute !important;
   left: 12px !important;
   top: 50% !important;
@@ -839,7 +839,7 @@ html.safari .safari-input-container .safari-icon-container[data-icon="mail"] {
 html.safari input[type="email"] + div .safari-icon-container svg,
 html.safari input[type="email"] ~ div .safari-icon-container svg,
 html.safari .safari-input-container input[type="email"] ~ .safari-icon-container:first-child svg,
-html.safari .safari-input-container .safari-icon-container[data-icon="mail"] svg {
+html.safari .safari-input-container .input-left-icon svg {
   width: 16px !important;
   height: 16px !important;
   min-width: 16px !important;
@@ -851,6 +851,72 @@ html.safari .safari-input-container .safari-icon-container[data-icon="mail"] svg
   margin: 0 !important;
   padding: 0 !important;
   flex-shrink: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Reusable classes for input icons */
+html.safari .safari-input-container .input-left-icon {
+  position: absolute !important;
+  left: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+html.safari .safari-input-container .input-left-icon svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+html.safari .safari-input-container .input-right-icon {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10 !important;
+}
+
+html.safari .safari-input-container .input-right-icon svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 !important;
+  padding: 0 !important;
   visibility: visible !important;
   opacity: 1 !important;
 }
