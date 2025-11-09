@@ -1,0 +1,5012 @@
+{
+  "metadata": {
+    "timestamp": 1755034866.60389,
+    "version": 2,
+    "git": {
+      "branch": "master",
+      "commit": "24b5b8edcadd1140ef3bdaec8cbc978621e9ed91"
+    }
+  },
+  "data": {
+    "framework": {
+      "id": "next",
+      "name": "Next.js",
+      "dir_path": "/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/"
+    },
+    "router_type": "app",
+    "stats": {
+      "fileCount": 685,
+      "routeCount": 46,
+      "apiRouteCount": 141,
+      "layoutCount": 1
+    },
+    "layouts": [
+      {
+        "name": "function",
+        "relative_file_path": "app/teleprompter/layout.tsx",
+        "relative_dir_path": "app/teleprompter",
+        "content": "import { Metadata } from 'next'\nimport { Toaster } from \"sonner\"\nimport { SiteProvider } from \"@/app/context/SiteContext\"\nimport \"@/app/globals.css\"\n\nexport const metadata: Metadata = {\n  title: 'Teleprompter',\n  description: 'Full screen teleprompter for video content',\n}\n\nexport default function TeleprompterLayout({\n  children,\n}: {\n  children: React.ReactNode\n}) {\n  return (\n    <div className=\"fixed inset-0 overflow-hidden bg-black text-white\">\n      <SiteProvider>\n        {children}\n      </SiteProvider>\n      <Toaster />\n    </div>\n  )\n} ",
+        "components": [
+          "SiteProvider",
+          "Toaster"
+        ]
+      }
+    ],
+    "routes": [
+      {
+        "routePath": "/agents/:id/:commandId",
+        "relativeFilePath": "app/agents/[id]/[commandId]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "CommandDetailSkeleton",
+          "CommandDetail"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/agents/:id",
+        "relativeFilePath": "app/agents/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Switch",
+          "Badge",
+          "Input",
+          "Tabs",
+          "AgentTool",
+          "UnlinkIcon",
+          "Check",
+          "AgentIntegration",
+          "Label",
+          "FolderOpen",
+          "StickyHeader",
+          "CardTitle",
+          "ActivityItem",
+          "AssetWithAttachment",
+          "Button",
+          "AgentPageSkeleton",
+          "CardContent",
+          "AgentActivity",
+          "CardDescription",
+          "LinkIcon",
+          "UploadFileDialog",
+          "TabsList",
+          "AgentTrigger",
+          "Textarea",
+          "SaveIcon",
+          "EmptyCard",
+          "SearchInput",
+          "TabsTrigger",
+          "FileText",
+          "CardHeader",
+          "ContextFile",
+          "Tag",
+          "ContextFilesSkeleton",
+          "Card",
+          "ActivitiesSkeleton",
+          "Skeleton",
+          "TabsContent"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useSite",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleAssetAttach",
+          "handleAssetDetach",
+          "handleToolToggle",
+          "handleIntegrationToggle",
+          "handleFileRemove",
+          "handleFileUploaded",
+          "handleTriggerToggle",
+          "handleActivityToggle",
+          "handleTabChange",
+          "handleSave"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/agents",
+        "relativeFilePath": "app/agents/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "List",
+          "ActivitiesView",
+          "Input",
+          "AnimatedConnectionLine",
+          "Tabs",
+          "Search",
+          "TableRows",
+          "StickyHeader",
+          "ZoomableCanvas",
+          "GridAgentRow",
+          "SimpleAgentCard",
+          "AgentActivity",
+          "CommandsView",
+          "AgentsPageContent",
+          "Agent",
+          "ToggleGroupItem",
+          "Suspense",
+          "ExtendedAgent",
+          "AgentSelectionContext",
+          "ToggleGroup",
+          "TabsTrigger",
+          "SimpleAgentCardSkeleton",
+          "GridAgentRowSkeleton",
+          "TabsList",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useLayout",
+          "useRouter",
+          "useSearchParams",
+          "useSite",
+          "useAuthContext",
+          "useCommandK",
+          "useActivityExecution",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleManageAgent",
+          "handleChatWithAgent",
+          "handleToggleActivities",
+          "handleExecuteActivity"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/assets",
+        "relativeFilePath": "app/assets/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "ExternalLink",
+          "AlertDialogTitle",
+          "TooltipContent",
+          "EmptyState",
+          "LoadingSkeleton",
+          "Input",
+          "Tabs",
+          "AssetCard",
+          "Search",
+          "Download",
+          "AlertDialogDescription",
+          "AlertDialogCancel",
+          "AssetWithThumbnail",
+          "Tooltip",
+          "StickyHeader",
+          "AssetsContent",
+          "Button",
+          "Trash2",
+          "UploadCloud",
+          "AssetsLoadingPage",
+          "Image",
+          "LinkIcon",
+          "Unlink",
+          "TooltipProvider",
+          "TabsList",
+          "AlertDialogHeader",
+          "Suspense",
+          "TabsContent",
+          "AssetEmptyState",
+          "AlertDialogAction",
+          "TabsTrigger",
+          "FileVideo",
+          "AlertDialogContent",
+          "AssetCardSkeleton",
+          "FileText",
+          "TooltipTrigger",
+          "AlertDialog",
+          "Card",
+          "Skeleton",
+          "AlertDialogFooter"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useSite",
+          "useSearchParams",
+          "useCommandK",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleDirectLoadError",
+          "handleDelete",
+          "handleOpen",
+          "handleDownload",
+          "handleAttach",
+          "handleDetach",
+          "handleSearch",
+          "handleDeleteAsset"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/auth/confirm",
+        "relativeFilePath": "app/auth/confirm/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "CardTitle",
+          "Button",
+          "Suspense",
+          "CardHeader",
+          "ConfirmContent",
+          "ConfirmationState",
+          "CardContent",
+          "XCircle",
+          "Card",
+          "CheckCircle2"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useSearchParams",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleConfirmation",
+          "handleManualRedirect",
+          "handleRetry"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/auth",
+        "relativeFilePath": "app/auth/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "AuthForm",
+          "FileText",
+          "Target",
+          "Send",
+          "Image"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useTheme",
+          "useSafariDetection",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleAuthTypeChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/auth/reset-password",
+        "relativeFilePath": "app/auth/reset-password/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "LoadingSkeleton",
+          "Suspense",
+          "CardContent",
+          "Card",
+          "ResetPasswordContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useSearchParams",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/auth/set-password",
+        "relativeFilePath": "app/auth/set-password/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Eye",
+          "LoadingSkeleton",
+          "CardTitle",
+          "Lock",
+          "Input",
+          "Button",
+          "Suspense",
+          "CardHeader",
+          "SetPasswordContent",
+          "EyeOff",
+          "CardContent",
+          "Label",
+          "Card",
+          "CheckCircle2"
+        ],
+        "hasParams": false,
+        "hasForm": true,
+        "hooks": [
+          "useRouter",
+          "useSearchParams",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSubmit"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/auth/team-invitation",
+        "relativeFilePath": "app/auth/team-invitation/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "CardTitle",
+          "Users",
+          "Button",
+          "Suspense",
+          "CardHeader",
+          "CardContent",
+          "TeamInvitationLoading",
+          "TeamInvitationContent",
+          "Card",
+          "AlertCircle",
+          "CheckCircle2"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useSearchParams",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleRetry",
+          "handleGoToDashboard"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/billing",
+        "relativeFilePath": "app/billing/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "TabsTrigger",
+          "StickyHeader",
+          "PaymentHistory",
+          "Button",
+          "Tabs",
+          "BillingForm",
+          "BillingPageSkeleton",
+          "TabsList",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": true,
+        "hooks": [
+          "useSite",
+          "useRouter",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleTabChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/billing/success",
+        "relativeFilePath": "app/billing/success/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "PlusCircle",
+          "LoadingSkeleton",
+          "CardTitle",
+          "Button",
+          "Suspense",
+          "CardHeader",
+          "Check",
+          "CardContent",
+          "SuccessContent",
+          "Star",
+          "Card",
+          "CreditCard"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useSearchParams",
+          "useSite",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/campaigns/:id",
+        "relativeFilePath": "app/campaigns/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "AlertDialogTitle",
+          "Tabs",
+          "AlertDialogDescription",
+          "AlertDialogCancel",
+          "StickyHeader",
+          "HTMLFormElement",
+          "Button",
+          "Array",
+          "CampaignStatusBar",
+          "TaskDetailSkeleton",
+          "CampaignSummary",
+          "AlertDialogHeader",
+          "TabsContent",
+          "Settings",
+          "Lead",
+          "AlertDialogAction",
+          "TaskDetailContext",
+          "EmptyCard",
+          "SaveIcon",
+          "CampaignDetails",
+          "TabsTrigger",
+          "AlertDialogContent",
+          "FinancialDetails",
+          "AlertDialog",
+          "TaskDetailContextType",
+          "TabsList",
+          "AlertDialogFooter"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useParams",
+          "useRouter",
+          "useSite",
+          "useCommandK",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleStatusClick",
+          "handleUpdateCampaign",
+          "handleStatusChange",
+          "handleAddSubtask",
+          "handleEditCampaign",
+          "handleDeleteCampaign",
+          "handleCreateRequirementInternal"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/campaigns",
+        "relativeFilePath": "app/campaigns/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "ControlCenterSkeleton",
+          "EmptyState",
+          "Filter",
+          "Tabs",
+          "StickyHeader",
+          "DropdownMenuTrigger",
+          "DropdownMenu",
+          "Button",
+          "Array",
+          "DropdownMenuCheckboxItem",
+          "Campaign",
+          "Card",
+          "SearchInput",
+          "TabsTrigger",
+          "DropdownMenuContent",
+          "KanbanColumn",
+          "Target",
+          "CalendarDateRangePicker",
+          "TabsList",
+          "Skeleton",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useSite",
+          "useCommandK",
+          "useEffect"
+        ],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/chat",
+        "relativeFilePath": "app/chat/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Breadcrumb",
+          "ChatHeader",
+          "HTMLDivElement",
+          "Agent",
+          "Suspense",
+          "ChatPageContent",
+          "ChatMessages",
+          "Icons",
+          "ChatInput",
+          "ChatList"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useSearchParams",
+          "useRouter",
+          "useOptimizedMessageState",
+          "useAuthContext",
+          "useSite",
+          "useState",
+          "useTheme",
+          "useCommandK",
+          "useApiRequestTracker",
+          "useLeadData",
+          "useChatMessages",
+          "useChatOperations",
+          "useEffect",
+          "useCallback",
+          "useOptimizedKeyboardHandler",
+          "useMemo"
+        ],
+        "eventHandlers": [
+          "handleSendMessageSubmit",
+          "handleSelectConversation",
+          "handlePopState"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/checkout",
+        "relativeFilePath": "app/checkout/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "PlusCircle",
+          "CreditPackage",
+          "CheckoutContent",
+          "CardTitle",
+          "Lock",
+          "Button",
+          "Suspense",
+          "CardHeader",
+          "Check",
+          "CardContent",
+          "ChevronLeft",
+          "Card",
+          "Skeleton",
+          "Shield"
+        ],
+        "hasParams": false,
+        "hasForm": true,
+        "hooks": [
+          "useRouter",
+          "useSearchParams",
+          "useSite",
+          "useAuth",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSubmit"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/companies/:id",
+        "relativeFilePath": "app/companies/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "ExternalLink",
+          "Input",
+          "Users",
+          "CalendarIcon",
+          "Tabs",
+          "SelectItem",
+          "SelectTrigger",
+          "Mail",
+          "CardTitle",
+          "Copy",
+          "Button",
+          "Home",
+          "MapPin",
+          "CardContent",
+          "CompanyLegalTab",
+          "SelectContent",
+          "DollarSign",
+          "Textarea",
+          "Company",
+          "Card",
+          "Phone",
+          "SelectValue",
+          "Select",
+          "Globe",
+          "TabsTrigger",
+          "User",
+          "CardHeader",
+          "Tag",
+          "TabsList",
+          "TabsContent"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useParams",
+          "useRouter",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSave",
+          "handleCancel",
+          "handleFieldUpdate",
+          "handleAddressUpdate",
+          "handleShare"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/content/:id",
+        "relativeFilePath": "app/content/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Code",
+          "Advertisement",
+          "Type",
+          "AlertDialogCancel",
+          "ChevronDown",
+          "SelectItem",
+          "TextIcon",
+          "DropdownMenuTrigger",
+          "DropdownMenu",
+          "Newsletter",
+          "Whitepaper",
+          "AlignJustify",
+          "Ebook",
+          "AlignCenter",
+          "Save",
+          "SelectValue",
+          "Globe",
+          "Collapsible",
+          "Italic",
+          "FileText",
+          "Podcast",
+          "Undo",
+          "Cpu",
+          "AlertDialogFooter",
+          "Maximize",
+          "Badge",
+          "AlignRight",
+          "CollapsibleTrigger",
+          "AlertDialogDescription",
+          "PlusCircle",
+          "DropdownMenuItem",
+          "BarChart",
+          "ScrollArea",
+          "Array",
+          "CollapsibleContent",
+          "StarRating",
+          "ListOrdered",
+          "Webinar",
+          "SelectContent",
+          "ContentSkeleton",
+          "AiGenerationSkeleton",
+          "Textarea",
+          "MenuBar",
+          "DropdownMenuContent",
+          "AlertDialogTrigger",
+          "AlertDialogContent",
+          "Tag",
+          "AlertDialog",
+          "TabsList",
+          "Card",
+          "Input",
+          "Label",
+          "Trash2",
+          "CardContent",
+          "LinkIcon",
+          "CaseStudy",
+          "AlertDialogAction",
+          "ActivityIcon",
+          "TabsTrigger",
+          "FileVideo",
+          "Target",
+          "TabsContent",
+          "List",
+          "AlignLeft",
+          "AlertDialogTitle",
+          "Users",
+          "MessageSquare",
+          "Tabs",
+          "SelectTrigger",
+          "ParagraphIcon",
+          "Button",
+          "Bold",
+          "Slider",
+          "ImageIcon",
+          "Quote",
+          "Infographic",
+          "AlertDialogHeader",
+          "EditorContent",
+          "Select",
+          "LandingPage",
+          "Redo"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useParams",
+          "useRouter",
+          "useState",
+          "useEditor",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleDeleteContent",
+          "handleSaveChanges",
+          "handleAiAction",
+          "hasUnsavedChange",
+          "titleChange",
+          "descriptionChange",
+          "segmentChange",
+          "campaignChange",
+          "tagsChange",
+          "ratingChange",
+          "statusChange",
+          "contentOrInstructionsChange",
+          "hasChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/content/deepResearch",
+        "relativeFilePath": "app/content/deepResearch/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "Input",
+          "Search",
+          "ChevronDown",
+          "Plus",
+          "SelectItem",
+          "SelectTrigger",
+          "StickyHeader",
+          "Button",
+          "DatePickerWithRange",
+          "PopoverContent",
+          "PopoverTrigger",
+          "SelectContent",
+          "Popover",
+          "Settings",
+          "SearchFilters",
+          "SelectValue",
+          "Select",
+          "Globe",
+          "Microscope",
+          "Calendar"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSearch",
+          "handleTimeRangeChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/content",
+        "relativeFilePath": "app/content/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "Switch",
+          "DialogHeader",
+          "PlayCircle",
+          "Input",
+          "SheetTitle",
+          "MessageSquare",
+          "Users",
+          "CalendarIcon",
+          "TableHead",
+          "Filter",
+          "Tabs",
+          "TrendsColumn",
+          "Search",
+          "ChevronDown",
+          "Label",
+          "SelectItem",
+          "SelectTrigger",
+          "ContentCard",
+          "ContentTable",
+          "StickyHeader",
+          "BarChart",
+          "Mail",
+          "Pagination",
+          "ViewType",
+          "Button",
+          "ViewSelector",
+          "Array",
+          "DialogTitle",
+          "CardContent",
+          "TableCell",
+          "CreateContentDialog",
+          "LayoutGrid",
+          "StarRating",
+          "SelectContent",
+          "Sheet",
+          "TabsList",
+          "DragDropContext",
+          "ContentItem",
+          "Draggable",
+          "Table",
+          "TabsContent",
+          "ContentSkeleton",
+          "Dialog",
+          "SheetContent",
+          "Textarea",
+          "ContentFilters",
+          "Droppable",
+          "Record",
+          "TableHeader",
+          "HTMLInputElement",
+          "DialogDescription",
+          "SelectValue",
+          "Select",
+          "Globe",
+          "TabsTrigger",
+          "TableRow",
+          "TrendsSection",
+          "ContentTableSkeleton",
+          "ContentFiltersDialog",
+          "FileVideo",
+          "TableBody",
+          "ContentDetail",
+          "FileText",
+          "SheetHeader",
+          "ChevronUp",
+          "RotateCcw",
+          "ContentKanban",
+          "Target",
+          "Pencil",
+          "DialogContent",
+          "Card",
+          "DialogFooter",
+          "Skeleton",
+          "CheckCircle2"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useEffect",
+          "useMemo",
+          "useSite",
+          "useRouter",
+          "useCommandK",
+          "useCallback"
+        ],
+        "eventHandlers": [
+          "handleRatingChange",
+          "handleSaveChanges",
+          "handleAddTag",
+          "handleRemoveTag",
+          "handleDragEnd",
+          "handleStatusPageChange",
+          "handleStatusItemsPerPageChange",
+          "handleStatusChange",
+          "handleTypeChange",
+          "handleSegmentChange",
+          "handleApplyFilters",
+          "handleResetFilters",
+          "handleSearchChange",
+          "handleFiltersChange",
+          "handleUpdateContentStatus",
+          "handleContentClick",
+          "handlePageChange",
+          "handleItemsPerPageChange",
+          "handleContentRatingChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/context",
+        "relativeFilePath": "app/context/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "AlertDialogTitle",
+          "Input",
+          "Tabs",
+          "AlertDialogDescription",
+          "AlertDialogCancel",
+          "StickyHeader",
+          "CardTitle",
+          "Button",
+          "CardContent",
+          "ContextFormSkeleton",
+          "AlertDialogHeader",
+          "ContextForm",
+          "Card",
+          "AlertDialogAction",
+          "TabsTrigger",
+          "AlertDialogContent",
+          "CardHeader",
+          "AlertDialog",
+          "TabsList",
+          "Skeleton",
+          "AlertDialogFooter"
+        ],
+        "hasParams": false,
+        "hasForm": true,
+        "hooks": [
+          "useSite",
+          "useTheme",
+          "useAuthContext",
+          "useState",
+          "useSimpleRefreshPrevention",
+          "useEffect",
+          "useMemo"
+        ],
+        "eventHandlers": [
+          "justGainedFocus",
+          "onSave",
+          "onCacheAndRebuild",
+          "onDeleteSite",
+          "handleManualSave"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/control-center/:id",
+        "relativeFilePath": "app/control-center/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Tabs",
+          "DetailsTab",
+          "TaskStatusBar",
+          "StickyHeader",
+          "DetailsSkeleton",
+          "TimelineTab",
+          "HTMLFormElement",
+          "Button",
+          "CardContent",
+          "Task",
+          "Suspense",
+          "Card",
+          "SaveIcon",
+          "TabsTrigger",
+          "UpdatesSkeleton",
+          "CardHeader",
+          "TabsList",
+          "Skeleton",
+          "TabsContent"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useSite",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleStatusChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/control-center",
+        "relativeFilePath": "app/control-center/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "TaskSidebar",
+          "ControlCenterSkeleton",
+          "ExtendedTask",
+          "ControlCenterHeader",
+          "EmptyState",
+          "TaskCounts",
+          "ViewSelector",
+          "Array",
+          "TasksTable",
+          "TaskFilterModal",
+          "TaskFilters",
+          "TaskCalendar",
+          "TaskKanban",
+          "Record",
+          "ClipboardList",
+          "Category"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useSite",
+          "useLayout",
+          "useState",
+          "useCommandK",
+          "useEffect",
+          "useCallback"
+        ],
+        "eventHandlers": [
+          "handleTaskCreated",
+          "handleUpdateTaskStatus",
+          "handleTaskClick",
+          "handleLoadMoreKanban",
+          "handlePageChange",
+          "handleItemsPerPageChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/costs",
+        "relativeFilePath": "app/costs/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Separator",
+          "CostReports",
+          "Date"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useEffect"
+        ],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/create-site",
+        "relativeFilePath": "app/create-site/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "SiteOnboarding"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useSite",
+          "useAuth",
+          "useRouter"
+        ],
+        "eventHandlers": [
+          "handleComplete",
+          "handleGoToDashboard",
+          "handleGoToSettings"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/dashboard",
+        "relativeFilePath": "app/dashboard/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "RevenueWidget",
+          "SegmentDonut",
+          "ROIWidget",
+          "Tabs",
+          "SelectItem",
+          "SelectTrigger",
+          "ActiveCampaignsWidget",
+          "TrafficReports",
+          "StickyHeader",
+          "CardTitle",
+          "CardContent",
+          "CardDescription",
+          "SelectContent",
+          "Overview",
+          "ActiveUsersWidget",
+          "ActiveSegmentsWidget",
+          "LTVWidget",
+          "CACWidget",
+          "RecentActivity",
+          "CPLWidget",
+          "Card",
+          "SelectValue",
+          "Select",
+          "TabsTrigger",
+          "SalesReports",
+          "Segment",
+          "LeadsCohortTables",
+          "CohortTables",
+          "CardHeader",
+          "OnboardingItinerary",
+          "CostReports",
+          "CalendarDateRangePicker",
+          "TabsList",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useAuth",
+          "useSite",
+          "useState",
+          "useRequestController",
+          "useEffect",
+          "useProfile",
+          "useCallback"
+        ],
+        "eventHandlers": [
+          "handleDateRangeChange",
+          "handleSegmentChange",
+          "handleTotalUpdate",
+          "handleTabChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/experiments/:id",
+        "relativeFilePath": "app/experiments/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "ExperimentStatusBar",
+          "ExperimentDetails",
+          "Experiment",
+          "ScrollArea",
+          "EditorContent",
+          "ExperimentSkeleton",
+          "MenuBar"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useParams",
+          "useRouter",
+          "useSite",
+          "useState",
+          "useEditor",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleExperimentRefresh",
+          "handleAIGenerated",
+          "handleSegmentChanges",
+          "hasFormChange",
+          "hasContentChange",
+          "handleExperimentSaved",
+          "handleToggleEdit",
+          "handleSaveChanges",
+          "handleStartExperiment",
+          "handleStopExperiment",
+          "handleStatusChange",
+          "handleDeleteExperiment",
+          "handleToggleEditDetails"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/experiments",
+        "relativeFilePath": "app/experiments/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "ExperimentRowSkeleton",
+          "Eye",
+          "ExternalLink",
+          "EmptyState",
+          "PlayCircle",
+          "LoadingSkeleton",
+          "Experiment",
+          "Input",
+          "SheetTitle",
+          "HelpCircle",
+          "ExperimentRow",
+          "Tabs",
+          "CalendarIcon",
+          "Users",
+          "Search",
+          "ExperimentEmptyState",
+          "StickyHeader",
+          "PenSquare",
+          "Button",
+          "Array",
+          "CardContent",
+          "CollapsibleContent",
+          "Link",
+          "Sheet",
+          "TabsList",
+          "SheetContent",
+          "SheetDescription",
+          "HTMLInputElement",
+          "Record",
+          "StopCircle",
+          "TabsTrigger",
+          "Collapsible",
+          "User",
+          "SheetHeader",
+          "FlaskConical",
+          "FileText",
+          "Tag",
+          "Card",
+          "Skeleton",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useToast",
+          "useSite",
+          "useRouter",
+          "useCommandK",
+          "useEffect",
+          "useCallback"
+        ],
+        "eventHandlers": [
+          "handleKeyDown",
+          "handleStartExperiment",
+          "handleStopExperiment",
+          "handleViewDetails"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/invoice-pdf/:id",
+        "relativeFilePath": "app/invoice-pdf/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "PrintableInvoice",
+          "TableRow",
+          "TableHead",
+          "TableBody",
+          "Skeleton",
+          "Array",
+          "TableCell",
+          "Sale",
+          "PrintInvoiceSkeleton",
+          "TableHeader",
+          "SaleOrder",
+          "Table"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useParams",
+          "useSite",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/leads/:id",
+        "relativeFilePath": "app/leads/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "TabsTrigger",
+          "StickyHeader",
+          "Card",
+          "LeadDetailSkeleton",
+          "LeadDetail",
+          "Segment",
+          "SalesView",
+          "Tabs",
+          "AttributionModal",
+          "CardContent",
+          "Lead",
+          "ConversationsView",
+          "JourneyView",
+          "StatusSegmentBar",
+          "TabsList",
+          "DigitalBehaviorView",
+          "TabsContent",
+          "Campaign"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useParams",
+          "useRouter",
+          "useSite",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleUpdateLead",
+          "handleDeleteLead",
+          "handleGoBack",
+          "handleStatusChange",
+          "handleAttributionConfirm",
+          "handleAttributionCancel"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/leads",
+        "relativeFilePath": "app/leads/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "Input",
+          "Filter",
+          "Tabs",
+          "Search",
+          "LeadFilterModal",
+          "LeadsTableSkeleton",
+          "StickyHeader",
+          "ViewType",
+          "Button",
+          "LeadsContext",
+          "ViewSelector",
+          "Array",
+          "TableCell",
+          "GroupedLeadsTable",
+          "LeadFilters",
+          "Campaign",
+          "Set",
+          "TabsList",
+          "Table",
+          "KanbanView",
+          "Lead",
+          "HTMLInputElement",
+          "Record",
+          "TableHeader",
+          "Card",
+          "TabsTrigger",
+          "TableRow",
+          "TableBody",
+          "AttributionModal",
+          "LeadsContextType",
+          "TableHead",
+          "Skeleton",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useContext",
+          "useRouter",
+          "useState",
+          "useSite",
+          "useMemo",
+          "useUserData",
+          "useCommandK",
+          "useCallback",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleLoadMoreKanban",
+          "handlePageChange",
+          "handleItemsPerPageChange",
+          "handleToggleCompanyExpansion",
+          "handleCreateLead",
+          "handleUpdateLead",
+          "handleSearchChange",
+          "handleUpdateLeadStatus",
+          "handleAttributionConfirm",
+          "handleAttributionCancel",
+          "handleLeadClick",
+          "handleApplyFilters",
+          "handleClearFilters",
+          "handleOpenFilterModal"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/notifications",
+        "relativeFilePath": "app/notifications/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "TabsTrigger",
+          "StickyHeader",
+          "NotificationSkeleton",
+          "EmptyState",
+          "Input",
+          "NotificationCard",
+          "Button",
+          "Tabs",
+          "HelpButton",
+          "Search",
+          "Bell",
+          "TabsList"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useNotifications",
+          "useCallback"
+        ],
+        "eventHandlers": [
+          "handleTabChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/outsource/checkout",
+        "relativeFilePath": "app/outsource/checkout/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "TaskDetails",
+          "Badge",
+          "Lock",
+          "ReactMarkdown",
+          "Skeleton",
+          "Button",
+          "Suspense",
+          "ChevronDown",
+          "ChevronLeft",
+          "CheckoutSkeleton",
+          "Check",
+          "Clock",
+          "CheckoutContent",
+          "Shield"
+        ],
+        "hasParams": false,
+        "hasForm": true,
+        "hooks": [
+          "useRouter",
+          "useSearchParams",
+          "useSite",
+          "useAuth",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSubmit"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/outsource/confirmation",
+        "relativeFilePath": "app/outsource/confirmation/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Mail",
+          "CardTitle",
+          "ChevronRight",
+          "CardFooter",
+          "Button",
+          "CardHeader",
+          "Check",
+          "CardContent",
+          "Clock",
+          "Card"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useEffect"
+        ],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/outsource",
+        "relativeFilePath": "app/outsource/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "CardTitle",
+          "ChevronRight",
+          "CardFooter",
+          "Button",
+          "Shield",
+          "CardHeader",
+          "ChevronDown",
+          "CardContent",
+          "Clock",
+          "Card",
+          "CheckCircle2"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useRouter"
+        ],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/",
+        "relativeFilePath": "app/page.tsx",
+        "layoutChain": [],
+        "components": [],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [],
+        "eventHandlers": [],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/profile",
+        "relativeFilePath": "app/profile/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Switch",
+          "Input",
+          "MessageSquare",
+          "ProfileSkeleton",
+          "HelpButton",
+          "SelectItem",
+          "SelectTrigger",
+          "StickyHeader",
+          "CardTitle",
+          "Button",
+          "Home",
+          "Trash2",
+          "CardContent",
+          "UploadCloud",
+          "Image",
+          "SelectContent",
+          "Settings",
+          "Textarea",
+          "SelectValue",
+          "Select",
+          "Globe",
+          "User",
+          "FileText",
+          "CardHeader",
+          "Card"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useProfile",
+          "useTheme",
+          "useState",
+          "useEffect",
+          "useDropzone"
+        ],
+        "eventHandlers": [
+          "handleInputChange",
+          "handleNotificationChange",
+          "handleSave",
+          "handleRemoveImage"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/requirements/:id",
+        "relativeFilePath": "app/requirements/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "List",
+          "Code",
+          "AlignLeft",
+          "AlertDialogTitle",
+          "AlignRight",
+          "Input",
+          "Users",
+          "CalendarIcon",
+          "Type",
+          "RequirementDetailContent",
+          "Tabs",
+          "AlertDialogDescription",
+          "AlertDialogCancel",
+          "ChevronDown",
+          "Label",
+          "Plus",
+          "SelectItem",
+          "Requirement",
+          "SelectTrigger",
+          "TextIcon",
+          "BarChart",
+          "ParagraphIcon",
+          "DropdownMenuItem",
+          "DropdownMenuTrigger",
+          "DropdownMenu",
+          "AlignJustify",
+          "Button",
+          "ScrollArea",
+          "Array",
+          "Bold",
+          "Trash2",
+          "ChevronLeft",
+          "Undo",
+          "ImageIcon",
+          "AlertDialogFooter",
+          "Quote",
+          "ListOrdered",
+          "LinkIcon",
+          "SelectContent",
+          "AlignCenter",
+          "AlertDialogHeader",
+          "Suspense",
+          "EditorContent",
+          "TabsContent",
+          "Textarea",
+          "MenuBar",
+          "Save",
+          "AlertDialogAction",
+          "SelectValue",
+          "Select",
+          "RequirementSkeleton",
+          "TabsTrigger",
+          "Globe",
+          "DropdownMenuContent",
+          "AlertDialogTrigger",
+          "AlertDialogContent",
+          "Italic",
+          "FileText",
+          "Tag",
+          "AlertDialog",
+          "Target",
+          "TabsList",
+          "AlertCircle",
+          "Skeleton",
+          "CheckCircle2",
+          "Redo"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useParams",
+          "useRouter",
+          "useAuth",
+          "useState",
+          "useEditor",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSegmentChanges",
+          "hasFormChange",
+          "handleRequirementSaved",
+          "handleUpdateStatus",
+          "handleUpdateCompletionStatus",
+          "handleUpdatePriority",
+          "handleMarkAsDone",
+          "handleReject",
+          "handleSaveChanges",
+          "handleDeleteRequirement",
+          "handleSegmentSelect",
+          "handleRemoveSegment",
+          "currentChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/requirements",
+        "relativeFilePath": "app/requirements/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "EmptyState",
+          "Filter",
+          "Tabs",
+          "RequirementFilters",
+          "Requirement",
+          "ClipboardList",
+          "EmptyResults",
+          "RequirementCard",
+          "StickyHeader",
+          "DropdownMenuItem",
+          "DropdownMenuTrigger",
+          "DropdownMenu",
+          "ViewType",
+          "Button",
+          "ViewSelector",
+          "Array",
+          "CardContent",
+          "LoadingState",
+          "TabsList",
+          "KanbanView",
+          "HTMLInputElement",
+          "XCircle",
+          "SearchInput",
+          "TabsTrigger",
+          "DropdownMenuContent",
+          "NoSiteSelected",
+          "Segment",
+          "CacheStore",
+          "FilterModal",
+          "Card",
+          "Skeleton",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useToast",
+          "useRouter",
+          "useRef",
+          "useSite",
+          "useCallback",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleUpdateStatus",
+          "handleUpdateCompletionStatus",
+          "handleUpdatePriority",
+          "handleSearch",
+          "handleApplyFilters",
+          "handleClearFilters",
+          "handleOpenFilterModal",
+          "handleRequirementClick"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/robots",
+        "relativeFilePath": "app/robots/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "TabsTrigger",
+          "StickyHeader",
+          "RobotsPageSkeleton",
+          "Globe",
+          "EmptyState",
+          "LoadingSkeleton",
+          "SimpleMessagesView",
+          "Tabs",
+          "Suspense",
+          "RobotsPageContent",
+          "Settings",
+          "NodeJS",
+          "BrowserSkeleton",
+          "TabsList",
+          "EmptyCard"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useLayout",
+          "useSite",
+          "useSearchParams",
+          "useRouter",
+          "useState",
+          "useRef",
+          "useCallback",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleConnectionLoss",
+          "handleRobotStopped",
+          "handleRobotStarted",
+          "isRelevantChange",
+          "handleTabChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/sales/:id",
+        "relativeFilePath": "app/sales/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "AlertDialogTitle",
+          "SaleInvoice",
+          "AlertDialogDescription",
+          "AlertDialogCancel",
+          "Plus",
+          "SaleInvoiceSkeleton",
+          "StickyHeader",
+          "Button",
+          "Array",
+          "CreateSaleOrderDialog",
+          "Trash2",
+          "TableCell",
+          "Sale",
+          "SaleOrder",
+          "EditSaleDialog",
+          "AlertDialogHeader",
+          "Table",
+          "StatusBar",
+          "TableHeader",
+          "AlertDialogAction",
+          "CreditCard",
+          "TableRow",
+          "AlertDialogTrigger",
+          "AlertDialogContent",
+          "RegisterPaymentDialog",
+          "TableBody",
+          "AlertDialog",
+          "Printer",
+          "Pencil",
+          "TableHead",
+          "Skeleton",
+          "AlertDialogFooter"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useParams",
+          "useRouter",
+          "useSite",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleCreateOrder",
+          "handleEdit",
+          "handleDelete",
+          "handlePrint",
+          "handleStatusChange",
+          "handleEditSuccess",
+          "handleOrderCreationSuccess",
+          "handleRegisterPayment",
+          "handlePaymentSuccess"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/sales",
+        "relativeFilePath": "app/sales/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Badge",
+          "DialogHeader",
+          "ShoppingCart",
+          "Input",
+          "SalesTableSkeleton",
+          "Skeleton",
+          "Tabs",
+          "Search",
+          "SelectItem",
+          "SelectTrigger",
+          "StickyHeader",
+          "Pagination",
+          "ViewType",
+          "Button",
+          "ViewSelector",
+          "Array",
+          "CreateSaleDialog",
+          "DialogTitle",
+          "TableCell",
+          "Sale",
+          "SelectContent",
+          "TabsList",
+          "Dialog",
+          "KanbanView",
+          "HTMLInputElement",
+          "TableHeader",
+          "Card",
+          "CreditCard",
+          "EmptyCard",
+          "SalesContextType",
+          "SelectValue",
+          "Select",
+          "DialogDescription",
+          "TabsTrigger",
+          "TableRow",
+          "CalendarDateRangePicker",
+          "PrintSaleDialog",
+          "RegisterPaymentDialog",
+          "TableBody",
+          "SalesContext",
+          "SalesTable",
+          "Printer",
+          "DialogContent",
+          "TableHead",
+          "DialogFooter",
+          "Table",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useSalesContext",
+          "useSite",
+          "useContext",
+          "useState",
+          "useRouter",
+          "useCommandK",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSearchChange",
+          "handleDateRangeChange",
+          "handleCreateSuccess",
+          "handleCreateSale",
+          "handlePageChange",
+          "handleItemsPerPageChange",
+          "handleSaleClick",
+          "handlePrintSale",
+          "handleRegisterPayment",
+          "handlePaymentSuccess",
+          "handleConfirmPrint",
+          "handleUpdateSaleStatus"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/security",
+        "relativeFilePath": "app/security/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Form",
+          "FormField",
+          "Eye",
+          "Switch",
+          "Input",
+          "AllowedDomainsList",
+          "Tabs",
+          "Check",
+          "StickyHeader",
+          "CardTitle",
+          "Button",
+          "ApiKeysList",
+          "Trash2",
+          "CardContent",
+          "FormLabel",
+          "FormMessage",
+          "FormControl",
+          "LogOut",
+          "FormDescription",
+          "TabsList",
+          "MfaFormValues",
+          "FormItem",
+          "Settings",
+          "Key",
+          "EmptyCard",
+          "TabsTrigger",
+          "Globe",
+          "ActionFooter",
+          "Shield",
+          "CardHeader",
+          "AddDomainDialog",
+          "Card",
+          "Skeleton",
+          "TabsContent",
+          "PasswordFormValues"
+        ],
+        "hasParams": false,
+        "hasForm": true,
+        "hooks": [
+          "useAuth",
+          "useState",
+          "useEffect",
+          "useAllowedDomains",
+          "useSite"
+        ],
+        "eventHandlers": [
+          "handleUpdatePassword",
+          "handleMfaSetup",
+          "handleMfaCancel",
+          "handleVerifyMfa",
+          "handleDisableMfa",
+          "handleMfaToggle"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/segments/:id",
+        "relativeFilePath": "app/segments/[id]/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "SegmentDetailPageContent",
+          "Users",
+          "Tabs",
+          "SelectItem",
+          "SelectTrigger",
+          "DetailsTab",
+          "ICPTab",
+          "StickyHeader",
+          "BarChart",
+          "SegmentDetailsSkeleton",
+          "HTMLFormElement",
+          "Button",
+          "AnalysisSkeleton",
+          "CardContent",
+          "AnalysisTab",
+          "DetailsTabProps",
+          "AIActionModal",
+          "SelectContent",
+          "PieChart",
+          "LoadingState",
+          "ErrorState",
+          "SegmentUrlModal",
+          "Suspense",
+          "Settings",
+          "ICPProfileSkeleton",
+          "NewAdPlatformType",
+          "Card",
+          "SaveIcon",
+          "SelectValue",
+          "Select",
+          "StickyHeaderSkeleton",
+          "TabsTrigger",
+          "Segment",
+          "UserIcon",
+          "CardHeader",
+          "TabsList",
+          "TabsContent"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useRouter",
+          "useSite",
+          "useState",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSaveUrl",
+          "handleAnalyzeSegmentWithAI",
+          "handleGetTopics",
+          "handleSegmentUpdate",
+          "handleAdPlatformChange"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/segments",
+        "relativeFilePath": "app/segments/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "Switch",
+          "Badge",
+          "DialogHeader",
+          "EmptyState",
+          "LoadingSkeleton",
+          "Input",
+          "Tabs",
+          "Search",
+          "StickyHeader",
+          "SegmentRowSkeleton",
+          "Copy",
+          "Button",
+          "DialogTitle",
+          "CardContent",
+          "CollapsibleContent",
+          "SegmentCard",
+          "Dialog",
+          "HTMLInputElement",
+          "Record",
+          "Card",
+          "DialogDescription",
+          "Globe",
+          "TabsTrigger",
+          "Collapsible",
+          "Segment",
+          "DialogContent",
+          "TabsList",
+          "DialogFooter",
+          "Skeleton",
+          "TabsContent"
+        ],
+        "hasParams": false,
+        "hasForm": false,
+        "hooks": [
+          "useState",
+          "useSite",
+          "useRouter",
+          "useCallback",
+          "useEffect"
+        ],
+        "eventHandlers": [
+          "handleSearchChange",
+          "handleKeyDown",
+          "handlePlatformChange",
+          "handleIframeLoad",
+          "handleConfigureUrl",
+          "handleSaveUrl"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/settings",
+        "relativeFilePath": "app/settings/page.tsx",
+        "layoutChain": [],
+        "components": [
+          "AlertDialogTitle",
+          "Input",
+          "Tabs",
+          "AlertDialogDescription",
+          "AlertDialogCancel",
+          "StickyHeader",
+          "CardTitle",
+          "Button",
+          "CardContent",
+          "AlertDialogHeader",
+          "SiteForm",
+          "Card",
+          "AlertDialogAction",
+          "TabsTrigger",
+          "SettingsFormSkeleton",
+          "AlertDialogContent",
+          "CardHeader",
+          "AlertDialog",
+          "TabsList",
+          "Skeleton",
+          "AlertDialogFooter"
+        ],
+        "hasParams": false,
+        "hasForm": true,
+        "hooks": [
+          "useSite",
+          "useTheme",
+          "useAuthContext",
+          "useState",
+          "useSimpleRefreshPrevention",
+          "useEffect",
+          "useMemo"
+        ],
+        "eventHandlers": [
+          "justGainedFocus",
+          "onSave",
+          "onCacheAndRebuild",
+          "onDeleteSite",
+          "handleManualSave"
+        ],
+        "featureFlags": []
+      },
+      {
+        "routePath": "/teleprompter/:id",
+        "relativeFilePath": "app/teleprompter/[id]/page.tsx",
+        "layoutChain": [
+          "function"
+        ],
+        "components": [
+          "Badge",
+          "Pause",
+          "Eye",
+          "PlayCircle",
+          "HTMLVideoElement",
+          "EyeOff",
+          "Circle",
+          "Button",
+          "HTMLDivElement",
+          "ChevronLeft",
+          "CardContent",
+          "NodeJS",
+          "Slider",
+          "TeleprompterSettings",
+          "Blob",
+          "Settings",
+          "StopCircle",
+          "RotateCcw",
+          "MediaRecorder",
+          "MediaStream",
+          "Card",
+          "Date",
+          "Play"
+        ],
+        "hasParams": true,
+        "hasForm": false,
+        "hooks": [
+          "useParams",
+          "useRouter",
+          "useSite",
+          "useState",
+          "useEffect",
+          "useCallback"
+        ],
+        "eventHandlers": [
+          "handleResize",
+          "handleMouseMove",
+          "handleKeyPress",
+          "handleLoadedMetadata",
+          "handlePlay",
+          "handleError",
+          "handleLoadStart",
+          "handleCanPlay",
+          "handleTimeUpdate",
+          "handleMouseDown",
+          "handleMouseUp",
+          "handleTouchStart",
+          "handleTouchMove",
+          "handleTouchEnd"
+        ],
+        "featureFlags": []
+      }
+    ],
+    "api_routes": [
+      {
+        "routePath": "/api/active-campaigns",
+        "relativeFilePath": "app/api/active-campaigns/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "cookies",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/active-experiments",
+        "relativeFilePath": "app/api/active-experiments/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "cookies",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/active-segments",
+        "relativeFilePath": "app/api/active-segments/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "cookies",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/active-users",
+        "relativeFilePath": "app/api/active-users/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays",
+          "startOfDay",
+          "endOfDay",
+          "endOfMonth",
+          "startOfMonth",
+          "startOfQuarter",
+          "endOfQuarter",
+          "startOfYear",
+          "endOfYear",
+          "startOfWeek",
+          "endOfWeek",
+          "isAfter",
+          "isFuture",
+          "v4",
+          "as",
+          "uuidv4",
+          "KpiData",
+          "createClient",
+          "cookies",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/agents/email/check",
+        "relativeFilePath": "app/api/agents/email/check/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "secureTokensService"
+        ]
+      },
+      {
+        "routePath": "/api/agents/whatsapp",
+        "relativeFilePath": "app/api/agents/whatsapp/route.ts",
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient"
+        ]
+      },
+      {
+        "routePath": "/api/assets/proxy",
+        "relativeFilePath": "app/api/assets/proxy/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/callback",
+        "relativeFilePath": "app/api/auth/callback/route.ts",
+        "methods": [
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/check-auth",
+        "relativeFilePath": "app/api/auth/check-auth/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/check-email-exists",
+        "relativeFilePath": "app/api/auth/check-email-exists/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient"
+        ]
+      },
+      {
+        "routePath": "/api/auth/confirm",
+        "relativeFilePath": "app/api/auth/confirm/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "type",
+          "EmailOtpType",
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/google-pre-auth",
+        "relativeFilePath": "app/api/auth/google-pre-auth/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "NextResponse",
+          "createRouteHandlerClient",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/auth/login",
+        "relativeFilePath": "app/api/auth/login/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/logout",
+        "relativeFilePath": "app/api/auth/logout/route.ts",
+        "methods": [
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/auth",
+        "relativeFilePath": "app/api/auth/route.ts",
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/cac",
+        "relativeFilePath": "app/api/cac/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/campaign-revenue",
+        "relativeFilePath": "app/api/campaign-revenue/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/clients-by-campaign",
+        "relativeFilePath": "app/api/clients-by-campaign/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/clients-by-segment",
+        "relativeFilePath": "app/api/clients-by-segment/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/cohorts",
+        "relativeFilePath": "app/api/cohorts/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "NextResponse",
+          "format",
+          "subDays",
+          "subMonths",
+          "startOfMonth",
+          "format",
+          "as",
+          "formatDate",
+          "createServiceApiClient"
+        ]
+      },
+      {
+        "routePath": "/api/costs",
+        "relativeFilePath": "app/api/costs/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays",
+          "subMonths",
+          "format",
+          "parseISO"
+        ]
+      },
+      {
+        "routePath": "/api/cpl",
+        "relativeFilePath": "app/api/cpl/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/cron-status",
+        "relativeFilePath": "app/api/cron-status/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceApiClient"
+        ]
+      },
+      {
+        "routePath": "/api/dashboard/export",
+        "relativeFilePath": "app/api/dashboard/export/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "Parser",
+          "format"
+        ]
+      },
+      {
+        "routePath": "/api/leads-cohorts",
+        "relativeFilePath": "app/api/leads-cohorts/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient",
+          "format",
+          "as",
+          "formatDate",
+          "subDays",
+          "subMonths",
+          "differenceInDays"
+        ]
+      },
+      {
+        "routePath": "/api/leads/:id/session-events",
+        "relativeFilePath": "app/api/leads/[id]/session-events/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/leads/export",
+        "relativeFilePath": "app/api/leads/export/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceApiClient",
+          "Parser"
+        ]
+      },
+      {
+        "routePath": "/api/ltv",
+        "relativeFilePath": "app/api/ltv/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "cookies",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/notifications",
+        "relativeFilePath": "app/api/notifications/route.ts",
+        "methods": [
+          "POST",
+          "DELETE",
+          "GET",
+          "PATCH"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "z",
+          "createClient"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-attribution",
+        "relativeFilePath": "app/api/onboarding/check-attribution/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServiceClient",
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-billing",
+        "relativeFilePath": "app/api/onboarding/check-billing/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServiceClient",
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-credits",
+        "relativeFilePath": "app/api/onboarding/check-credits/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServiceClient",
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-files",
+        "relativeFilePath": "app/api/onboarding/check-files/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-sessions",
+        "relativeFilePath": "app/api/onboarding/check-sessions/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/process-referral",
+        "relativeFilePath": "app/api/process-referral/route.ts",
+        "methods": [
+          "POST",
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createClient",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/recent-activity",
+        "relativeFilePath": "app/api/recent-activity/route.ts",
+        "methods": [
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServerClient",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/revenue-by-campaign",
+        "relativeFilePath": "app/api/revenue-by-campaign/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/revenue-by-segment",
+        "relativeFilePath": "app/api/revenue-by-segment/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/revenue",
+        "relativeFilePath": "app/api/revenue/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays",
+          "subMonths",
+          "format"
+        ]
+      },
+      {
+        "routePath": "/api/roi",
+        "relativeFilePath": "app/api/roi/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/sales/export",
+        "relativeFilePath": "app/api/sales/export/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient",
+          "format"
+        ]
+      },
+      {
+        "routePath": "/api/sales",
+        "relativeFilePath": "app/api/sales/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "format",
+          "endOfDay",
+          "isAfter",
+          "isFuture",
+          "subDays",
+          "NextResponse",
+          "createClient",
+          "createApiClient",
+          "createServiceApiClient"
+        ]
+      },
+      {
+        "routePath": "/api/secure-tokens",
+        "relativeFilePath": "app/api/secure-tokens/route.ts",
+        "methods": [
+          "POST",
+          "DELETE"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "CryptoJS"
+        ]
+      },
+      {
+        "routePath": "/api/segment-metrics",
+        "relativeFilePath": "app/api/segment-metrics/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createClient",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/segments/metrics",
+        "relativeFilePath": "app/api/segments/metrics/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/site-members/:siteId",
+        "relativeFilePath": "app/api/site-members/[siteId]/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient",
+          "createServerClient",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/stripe/checkout/credits",
+        "relativeFilePath": "app/api/stripe/checkout/credits/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "Stripe"
+        ]
+      },
+      {
+        "routePath": "/api/stripe/checkout/subscription",
+        "relativeFilePath": "app/api/stripe/checkout/subscription/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "Stripe"
+        ]
+      },
+      {
+        "routePath": "/api/stripe/webhook",
+        "relativeFilePath": "app/api/stripe/webhook/route.ts",
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient",
+          "Stripe"
+        ]
+      },
+      {
+        "routePath": "/api/team/invite-member",
+        "relativeFilePath": "app/api/team/invite-member/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServerClient",
+          "createClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/browsers",
+        "relativeFilePath": "app/api/traffic/browsers/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/client-conversion",
+        "relativeFilePath": "app/api/traffic/client-conversion/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/devices",
+        "relativeFilePath": "app/api/traffic/devices/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/lead-conversion",
+        "relativeFilePath": "app/api/traffic/lead-conversion/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/pages",
+        "relativeFilePath": "app/api/traffic/pages/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/referrals",
+        "relativeFilePath": "app/api/traffic/referrals/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/regions",
+        "relativeFilePath": "app/api/traffic/regions/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/session-events-combined",
+        "relativeFilePath": "app/api/traffic/session-events-combined/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/session-events-referrers",
+        "relativeFilePath": "app/api/traffic/session-events-referrers/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/session-events",
+        "relativeFilePath": "app/api/traffic/session-events/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/session-time",
+        "relativeFilePath": "app/api/traffic/session-time/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/visits",
+        "relativeFilePath": "app/api/traffic/visits/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/trends/google",
+        "relativeFilePath": "app/api/trends/google/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/trends/reddit",
+        "relativeFilePath": "app/api/trends/reddit/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/twilio-auth",
+        "relativeFilePath": "app/api/twilio-auth/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/visitor-cohorts",
+        "relativeFilePath": "app/api/visitor-cohorts/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createServiceApiClient",
+          "format",
+          "subDays",
+          "subMonths",
+          "formatDate"
+        ]
+      },
+      {
+        "routePath": "/api/waitlist-signup",
+        "relativeFilePath": "app/api/waitlist-signup/route.ts",
+        "methods": [
+          "POST",
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "createClient",
+          "NextResponse",
+          "z"
+        ]
+      },
+      {
+        "routePath": "/api/whatsapp-setup",
+        "relativeFilePath": "app/api/whatsapp-setup/route.ts",
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "createClient",
+          "NextResponse",
+          "z"
+        ]
+      },
+      {
+        "routePath": "/api/active-campaigns",
+        "relativeFilePath": "app/api/active-campaigns/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "cookies",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/active-experiments",
+        "relativeFilePath": "app/api/active-experiments/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "cookies",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/active-segments",
+        "relativeFilePath": "app/api/active-segments/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "cookies",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/active-users",
+        "relativeFilePath": "app/api/active-users/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays",
+          "startOfDay",
+          "endOfDay",
+          "endOfMonth",
+          "startOfMonth",
+          "startOfQuarter",
+          "endOfQuarter",
+          "startOfYear",
+          "endOfYear",
+          "startOfWeek",
+          "endOfWeek",
+          "isAfter",
+          "isFuture",
+          "v4",
+          "as",
+          "uuidv4",
+          "KpiData",
+          "createClient",
+          "cookies",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/agents/email/check",
+        "relativeFilePath": "app/api/agents/email/check/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "secureTokensService"
+        ]
+      },
+      {
+        "routePath": "/api/agents/whatsapp",
+        "relativeFilePath": "app/api/agents/whatsapp/route.ts",
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient"
+        ]
+      },
+      {
+        "routePath": "/api/assets/proxy",
+        "relativeFilePath": "app/api/assets/proxy/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/callback",
+        "relativeFilePath": "app/api/auth/callback/route.ts",
+        "methods": [
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/check-auth",
+        "relativeFilePath": "app/api/auth/check-auth/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/check-email-exists",
+        "relativeFilePath": "app/api/auth/check-email-exists/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient"
+        ]
+      },
+      {
+        "routePath": "/api/auth/clear-session.ts",
+        "relativeFilePath": "app/api/auth/clear-session.ts",
+        "methods": [
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/auth/confirm",
+        "relativeFilePath": "app/api/auth/confirm/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "type",
+          "EmailOtpType",
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/diagnose-metadata.ts",
+        "relativeFilePath": "app/api/auth/diagnose-metadata.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse",
+          "Cookie"
+        ]
+      },
+      {
+        "routePath": "/api/auth/fix-all-metadata.ts",
+        "relativeFilePath": "app/api/auth/fix-all-metadata.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/fix-metadata.ts",
+        "relativeFilePath": "app/api/auth/fix-metadata.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/google-pre-auth",
+        "relativeFilePath": "app/api/auth/google-pre-auth/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "NextResponse",
+          "createRouteHandlerClient",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/auth/login",
+        "relativeFilePath": "app/api/auth/login/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/auth/logout",
+        "relativeFilePath": "app/api/auth/logout/route.ts",
+        "methods": [
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/auth",
+        "relativeFilePath": "app/api/auth/route.ts",
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createRouteHandlerClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/cac",
+        "relativeFilePath": "app/api/cac/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/campaign-revenue",
+        "relativeFilePath": "app/api/campaign-revenue/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/clients-by-campaign",
+        "relativeFilePath": "app/api/clients-by-campaign/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/clients-by-segment",
+        "relativeFilePath": "app/api/clients-by-segment/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/cohorts",
+        "relativeFilePath": "app/api/cohorts/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "NextResponse",
+          "format",
+          "subDays",
+          "subMonths",
+          "startOfMonth",
+          "format",
+          "as",
+          "formatDate",
+          "createServiceApiClient"
+        ]
+      },
+      {
+        "routePath": "/api/costs",
+        "relativeFilePath": "app/api/costs/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays",
+          "subMonths",
+          "format",
+          "parseISO"
+        ]
+      },
+      {
+        "routePath": "/api/cpl",
+        "relativeFilePath": "app/api/cpl/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/cron-status",
+        "relativeFilePath": "app/api/cron-status/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceApiClient"
+        ]
+      },
+      {
+        "routePath": "/api/dashboard/export",
+        "relativeFilePath": "app/api/dashboard/export/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "Parser",
+          "format"
+        ]
+      },
+      {
+        "routePath": "/api/leads-cohorts",
+        "relativeFilePath": "app/api/leads-cohorts/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient",
+          "format",
+          "as",
+          "formatDate",
+          "subDays",
+          "subMonths",
+          "differenceInDays"
+        ]
+      },
+      {
+        "routePath": "/api/leads/:id/session-events",
+        "relativeFilePath": "app/api/leads/[id]/session-events/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/leads/export",
+        "relativeFilePath": "app/api/leads/export/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceApiClient",
+          "Parser"
+        ]
+      },
+      {
+        "routePath": "/api/ltv",
+        "relativeFilePath": "app/api/ltv/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "cookies",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/notifications",
+        "relativeFilePath": "app/api/notifications/route.ts",
+        "methods": [
+          "POST",
+          "DELETE",
+          "GET",
+          "PATCH"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "z",
+          "createClient"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-attribution",
+        "relativeFilePath": "app/api/onboarding/check-attribution/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServiceClient",
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-billing",
+        "relativeFilePath": "app/api/onboarding/check-billing/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServiceClient",
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-credits",
+        "relativeFilePath": "app/api/onboarding/check-credits/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServiceClient",
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-files",
+        "relativeFilePath": "app/api/onboarding/check-files/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/onboarding/check-sessions",
+        "relativeFilePath": "app/api/onboarding/check-sessions/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/process-referral",
+        "relativeFilePath": "app/api/process-referral/route.ts",
+        "methods": [
+          "POST",
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createClient",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/recent-activity",
+        "relativeFilePath": "app/api/recent-activity/route.ts",
+        "methods": [
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServerClient",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/revenue-by-campaign",
+        "relativeFilePath": "app/api/revenue-by-campaign/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/revenue-by-segment",
+        "relativeFilePath": "app/api/revenue-by-segment/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "createServiceApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/revenue",
+        "relativeFilePath": "app/api/revenue/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays",
+          "subMonths",
+          "format"
+        ]
+      },
+      {
+        "routePath": "/api/roi",
+        "relativeFilePath": "app/api/roi/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "subDays",
+          "subMonths",
+          "format",
+          "startOfMonth",
+          "endOfMonth",
+          "subQuarters",
+          "subYears",
+          "createApiClient",
+          "createServiceApiClient",
+          "crypto"
+        ]
+      },
+      {
+        "routePath": "/api/sales/export",
+        "relativeFilePath": "app/api/sales/export/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient",
+          "format"
+        ]
+      },
+      {
+        "routePath": "/api/sales",
+        "relativeFilePath": "app/api/sales/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "format",
+          "endOfDay",
+          "isAfter",
+          "isFuture",
+          "subDays",
+          "NextResponse",
+          "createClient",
+          "createApiClient",
+          "createServiceApiClient"
+        ]
+      },
+      {
+        "routePath": "/api/secure-tokens",
+        "relativeFilePath": "app/api/secure-tokens/route.ts",
+        "methods": [
+          "POST",
+          "DELETE"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "CryptoJS"
+        ]
+      },
+      {
+        "routePath": "/api/segment-metrics",
+        "relativeFilePath": "app/api/segment-metrics/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createClient",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/segments/metrics",
+        "relativeFilePath": "app/api/segments/metrics/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createApiClient",
+          "NextResponse",
+          "format",
+          "subDays"
+        ]
+      },
+      {
+        "routePath": "/api/site-members/:siteId",
+        "relativeFilePath": "app/api/site-members/[siteId]/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createClient",
+          "createServerClient",
+          "cookies"
+        ]
+      },
+      {
+        "routePath": "/api/stripe/checkout/credits",
+        "relativeFilePath": "app/api/stripe/checkout/credits/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "Stripe"
+        ]
+      },
+      {
+        "routePath": "/api/stripe/checkout/subscription",
+        "relativeFilePath": "app/api/stripe/checkout/subscription/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createClient",
+          "Stripe"
+        ]
+      },
+      {
+        "routePath": "/api/stripe/webhook",
+        "relativeFilePath": "app/api/stripe/webhook/route.ts",
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient",
+          "Stripe"
+        ]
+      },
+      {
+        "routePath": "/api/stripe/webhook/security.ts",
+        "relativeFilePath": "app/api/stripe/webhook/security.ts",
+        "methods": [
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "Stripe"
+        ]
+      },
+      {
+        "routePath": "/api/team/invite-member",
+        "relativeFilePath": "app/api/team/invite-member/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "createServerClient",
+          "createClient",
+          "cookies",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/browsers",
+        "relativeFilePath": "app/api/traffic/browsers/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/client-conversion",
+        "relativeFilePath": "app/api/traffic/client-conversion/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/devices",
+        "relativeFilePath": "app/api/traffic/devices/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/lead-conversion",
+        "relativeFilePath": "app/api/traffic/lead-conversion/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/pages",
+        "relativeFilePath": "app/api/traffic/pages/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/referrals",
+        "relativeFilePath": "app/api/traffic/referrals/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/regions",
+        "relativeFilePath": "app/api/traffic/regions/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/session-events-combined",
+        "relativeFilePath": "app/api/traffic/session-events-combined/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/session-events-referrers",
+        "relativeFilePath": "app/api/traffic/session-events-referrers/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/session-events",
+        "relativeFilePath": "app/api/traffic/session-events/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/session-time",
+        "relativeFilePath": "app/api/traffic/session-time/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/traffic/visits",
+        "relativeFilePath": "app/api/traffic/visits/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse",
+          "createServiceClient"
+        ]
+      },
+      {
+        "routePath": "/api/trends/google",
+        "relativeFilePath": "app/api/trends/google/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/trends/reddit",
+        "relativeFilePath": "app/api/trends/reddit/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/twilio-auth",
+        "relativeFilePath": "app/api/twilio-auth/route.ts",
+        "methods": [
+          "POST"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextRequest",
+          "NextResponse"
+        ]
+      },
+      {
+        "routePath": "/api/visitor-cohorts",
+        "relativeFilePath": "app/api/visitor-cohorts/route.ts",
+        "methods": [
+          "GET"
+        ],
+        "hasValidation": false,
+        "deps": [
+          "NextResponse",
+          "createServiceApiClient",
+          "format",
+          "subDays",
+          "subMonths",
+          "formatDate"
+        ]
+      },
+      {
+        "routePath": "/api/waitlist-signup",
+        "relativeFilePath": "app/api/waitlist-signup/route.ts",
+        "methods": [
+          "POST",
+          "DELETE",
+          "GET"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "createClient",
+          "NextResponse",
+          "z"
+        ]
+      },
+      {
+        "routePath": "/api/whatsapp-setup",
+        "relativeFilePath": "app/api/whatsapp-setup/route.ts",
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "hasValidation": true,
+        "deps": [
+          "createClient",
+          "NextResponse",
+          "z"
+        ]
+      }
+    ],
+    "all_paths": [
+      "app/actions/site.actions.ts",
+      "app/agents/[id]/[commandId]/command-detail-skeleton.tsx",
+      "app/agents/[id]/[commandId]/command-detail.tsx",
+      "app/agents/[id]/[commandId]/page.tsx",
+      "app/agents/[id]/page.tsx",
+      "app/agents/actions.ts",
+      "app/agents/page.tsx",
+      "app/agents/types.ts",
+      "app/api/active-campaigns/route.ts",
+      "app/api/active-experiments/route.ts",
+      "app/api/active-segments/route.ts",
+      "app/api/active-users/route.ts",
+      "app/api/agents/email/check/route.ts",
+      "app/api/agents/whatsapp/route.ts",
+      "app/api/assets/proxy/route.ts",
+      "app/api/auth/callback/route.ts",
+      "app/api/auth/check-auth/route.ts",
+      "app/api/auth/check-email-exists/route.ts",
+      "app/api/auth/clear-session.ts",
+      "app/api/auth/confirm/route.ts",
+      "app/api/auth/diagnose-metadata.ts",
+      "app/api/auth/fix-all-metadata.ts",
+      "app/api/auth/fix-metadata.ts",
+      "app/api/auth/google-pre-auth/route.ts",
+      "app/api/auth/login/route.ts",
+      "app/api/auth/logout/route.ts",
+      "app/api/auth/route.ts",
+      "app/api/cac/route.ts",
+      "app/api/campaign-revenue/route.ts",
+      "app/api/clients-by-campaign/route.ts",
+      "app/api/clients-by-segment/route.ts",
+      "app/api/cohorts/route.ts",
+      "app/api/costs/route.ts",
+      "app/api/cpl/route.ts",
+      "app/api/cron-status/route.ts",
+      "app/api/dashboard/export/route.ts",
+      "app/api/leads-cohorts/route.ts",
+      "app/api/leads/[id]/session-events/route.ts",
+      "app/api/leads/export/route.ts",
+      "app/api/ltv/route.ts",
+      "app/api/notifications/route.ts",
+      "app/api/onboarding/check-attribution/route.ts",
+      "app/api/onboarding/check-billing/route.ts",
+      "app/api/onboarding/check-credits/route.ts",
+      "app/api/onboarding/check-files/route.ts",
+      "app/api/onboarding/check-sessions/route.ts",
+      "app/api/process-referral/route.ts",
+      "app/api/recent-activity/route.ts",
+      "app/api/revenue-by-campaign/route.ts",
+      "app/api/revenue-by-segment/route.ts",
+      "app/api/revenue/route.ts",
+      "app/api/roi/route.ts",
+      "app/api/sales/export/route.ts",
+      "app/api/sales/route.ts",
+      "app/api/secure-tokens/route.ts",
+      "app/api/segment-metrics/route.ts",
+      "app/api/segments/metrics/route.ts",
+      "app/api/site-members/[siteId]/route.ts",
+      "app/api/stripe/checkout/credits/route.ts",
+      "app/api/stripe/checkout/subscription/route.ts",
+      "app/api/stripe/webhook/route.ts",
+      "app/api/stripe/webhook/security.ts",
+      "app/api/team/invite-member/route.ts",
+      "app/api/traffic/browsers/route.ts",
+      "app/api/traffic/client-conversion/route.ts",
+      "app/api/traffic/devices/route.ts",
+      "app/api/traffic/lead-conversion/route.ts",
+      "app/api/traffic/pages/route.ts",
+      "app/api/traffic/referrals/route.ts",
+      "app/api/traffic/regions/route.ts",
+      "app/api/traffic/session-events-combined/route.ts",
+      "app/api/traffic/session-events-referrers/route.ts",
+      "app/api/traffic/session-events/route.ts",
+      "app/api/traffic/session-time/route.ts",
+      "app/api/traffic/visits/route.ts",
+      "app/api/trends/google/route.ts",
+      "app/api/trends/reddit/route.ts",
+      "app/api/twilio-auth/route.ts",
+      "app/api/visitor-cohorts/route.ts",
+      "app/api/waitlist-signup/route.ts",
+      "app/api/whatsapp-setup/route.ts",
+      "app/assets/actions.ts",
+      "app/assets/page.tsx",
+      "app/auth/callback/route.ts",
+      "app/auth/confirm/page.tsx",
+      "app/auth/page.tsx",
+      "app/auth/reset-password/page.tsx",
+      "app/auth/set-password/page.tsx",
+      "app/auth/team-invitation/page.tsx",
+      "app/billing/page.tsx",
+      "app/billing/success/page.tsx",
+      "app/campaigns/[id]/page.tsx",
+      "app/campaigns/actions/campaigns/create.ts",
+      "app/campaigns/actions/campaigns/delete.ts",
+      "app/campaigns/actions/campaigns/index.ts",
+      "app/campaigns/actions/campaigns/read.ts",
+      "app/campaigns/actions/campaigns/update.ts",
+      "app/campaigns/actions/index.ts",
+      "app/campaigns/actions/sales/create.ts",
+      "app/campaigns/actions/sales/delete.ts",
+      "app/campaigns/actions/sales/index.ts",
+      "app/campaigns/actions/sales/read.ts",
+      "app/campaigns/actions/sales/update.ts",
+      "app/campaigns/actions/sales/utils.ts",
+      "app/campaigns/actions/subtasks/create.ts",
+      "app/campaigns/actions/subtasks/index.ts",
+      "app/campaigns/actions/subtasks/update.ts",
+      "app/campaigns/actions/transactions/create.ts",
+      "app/campaigns/actions/transactions/delete.ts",
+      "app/campaigns/actions/transactions/index.ts",
+      "app/campaigns/actions/transactions/read.ts",
+      "app/campaigns/actions/transactions/update.ts",
+      "app/campaigns/actions/transactions/updateCampaignCosts.ts",
+      "app/campaigns/actions/utils/transformers.ts",
+      "app/campaigns/page.tsx",
+      "app/campaigns/schema.ts",
+      "app/campaigns/segment-handler.ts",
+      "app/chat/error.tsx",
+      "app/chat/loading.tsx",
+      "app/chat/not-found.tsx",
+      "app/chat/page.tsx",
+      "app/checkout/layout.tsx",
+      "app/checkout/page.tsx",
+      "app/client-wrapper.tsx",
+      "app/companies/[id]/page.tsx",
+      "app/companies/actions.ts",
+      "app/companies/types.ts",
+      "app/components/DatePickerExample.tsx",
+      "app/components/Hero.tsx",
+      "app/components/LoggerInit.tsx",
+      "app/components/TestMap.tsx",
+      "app/components/WorldMapComponent.tsx",
+      "app/components/add-campaign-lead-dialog.tsx",
+      "app/components/add-subtask-dialog.tsx",
+      "app/components/agents/activities-view.tsx",
+      "app/components/agents/agent-activity-item.tsx",
+      "app/components/agents/agent-activity-list.tsx",
+      "app/components/agents/agent-card.styles.ts",
+      "app/components/agents/agent-card.tsx",
+      "app/components/agents/agent-integration.tsx",
+      "app/components/agents/agent-list.tsx",
+      "app/components/agents/agent-selection-context.tsx",
+      "app/components/agents/agent-tool.tsx",
+      "app/components/agents/agent-trigger.tsx",
+      "app/components/agents/animated-connection-line.tsx",
+      "app/components/agents/command-item.tsx",
+      "app/components/agents/command-list.tsx",
+      "app/components/agents/commands-panel.tsx",
+      "app/components/agents/commands-table.tsx",
+      "app/components/agents/commands-view.tsx",
+      "app/components/agents/context-file.tsx",
+      "app/components/agents/grid-agent-row.tsx",
+      "app/components/agents/json-highlighter.tsx",
+      "app/components/agents/simple-agent-card.tsx",
+      "app/components/agents/skeleton-components.tsx",
+      "app/components/agents/upload-file-dialog.tsx",
+      "app/components/agents/work-panel.tsx",
+      "app/components/agents/zoomable-canvas.tsx",
+      "app/components/api-keys/api-keys-list.tsx",
+      "app/components/api-keys/create-key-dialog.tsx",
+      "app/components/auth/auth-form.tsx",
+      "app/components/auth/auth-provider.tsx",
+      "app/components/auth/login-button.tsx",
+      "app/components/auth/logout-button.tsx",
+      "app/components/auth/protected-page.tsx",
+      "app/components/billing/billing-form.tsx",
+      "app/components/billing/billing-skeleton.tsx",
+      "app/components/billing/payment-history.tsx",
+      "app/components/campaign-detail/campaign-detail-tabs.tsx",
+      "app/components/campaign-detail/campaign-details.tsx",
+      "app/components/campaign-detail/campaign-sales.tsx",
+      "app/components/campaign-detail/campaign-summary.tsx",
+      "app/components/campaign-detail/financial-details.tsx",
+      "app/components/campaign-detail/index.ts",
+      "app/components/campaign-detail/task-detail-skeleton.tsx",
+      "app/components/campaign-details.tsx",
+      "app/components/campaign-requirements.tsx",
+      "app/components/campaigns/financial-stats.tsx",
+      "app/components/campaigns/kanban-card.tsx",
+      "app/components/campaigns/kanban-column.tsx",
+      "app/components/chat/ChannelFilter.tsx",
+      "app/components/chat/ChannelSelector.tsx",
+      "app/components/chat/ChatHeader.tsx",
+      "app/components/chat/ChatInput.tsx",
+      "app/components/chat/ChatMessages.tsx",
+      "app/components/chat/ConversationItem.tsx",
+      "app/components/chat/DebugTextarea.tsx",
+      "app/components/chat/DelayTimer.tsx",
+      "app/components/chat/DeleteConfirmationModal.tsx",
+      "app/components/chat/EditMessageModal.tsx",
+      "app/components/chat/EmptyConversation.tsx",
+      "app/components/chat/RenameConversationModal.tsx",
+      "app/components/chat/chat-list.tsx",
+      "app/components/chat/chat-toggle.tsx",
+      "app/components/common/SafariButtonFix.tsx",
+      "app/components/common/SafariCloseButton.tsx",
+      "app/components/common/SafariCloseButtonAbsolute.tsx",
+      "app/components/common/SafariIconFix.tsx",
+      "app/components/common/SafariInputFix.tsx",
+      "app/components/common/SafariSettingsLink.tsx",
+      "app/components/context/context-items.tsx",
+      "app/components/control-center/components/categories-sidebar.tsx",
+      "app/components/control-center/components/sidebar-toggle.tsx",
+      "app/components/control-center/components/task-content.tsx",
+      "app/components/control-center/components/task-header.tsx",
+      "app/components/control-center/control-center.tsx",
+      "app/components/control-center/task-category-button.tsx",
+      "app/components/control-center/task-dialog.tsx",
+      "app/components/control-center/task-kanban-view.tsx",
+      "app/components/create-campaign-dialog.tsx",
+      "app/components/create-experiment-dialog.tsx",
+      "app/components/create-lead-dialog.tsx",
+      "app/components/create-requirement-dialog-for-campaign.tsx",
+      "app/components/create-requirement-dialog.tsx",
+      "app/components/create-segment-dialog.tsx",
+      "app/components/create-task-dialog.tsx",
+      "app/components/dashboard/ActiveUsersWidget.tsx",
+      "app/components/dashboard/RevenueWidget.tsx",
+      "app/components/dashboard/active-campaigns-widget.tsx",
+      "app/components/dashboard/active-experiments-widget.tsx",
+      "app/components/dashboard/active-segments-widget.tsx",
+      "app/components/dashboard/active-users-widget.tsx",
+      "app/components/dashboard/base-kpi-widget.tsx",
+      "app/components/dashboard/cac-widget.tsx",
+      "app/components/dashboard/campaign-revenue-donut.tsx",
+      "app/components/dashboard/cohort-tables.tsx",
+      "app/components/dashboard/cost-breakdown-report.tsx",
+      "app/components/dashboard/cost-category-chart.tsx",
+      "app/components/dashboard/cost-distribution-chart.tsx",
+      "app/components/dashboard/cost-reports.tsx",
+      "app/components/dashboard/costs/efficiency-widget.tsx",
+      "app/components/dashboard/costs/index.ts",
+      "app/components/dashboard/costs/marketing-costs-widget.tsx",
+      "app/components/dashboard/costs/overhead-widget.tsx",
+      "app/components/dashboard/costs/total-costs-widget.tsx",
+      "app/components/dashboard/cpl-widget.tsx",
+      "app/components/dashboard/dashboard-settings.tsx",
+      "app/components/dashboard/financial-costs-report.tsx",
+      "app/components/dashboard/financial-sales-breakdown.tsx",
+      "app/components/dashboard/financial-sales-report.tsx",
+      "app/components/dashboard/leads-cohort-tables.tsx",
+      "app/components/dashboard/ltv-widget.tsx",
+      "app/components/dashboard/monthly-cost-chart.tsx",
+      "app/components/dashboard/monthly-cost-evolution-chart.tsx",
+      "app/components/dashboard/monthly-sales-chart.tsx",
+      "app/components/dashboard/monthly-sales-evolution-chart.tsx",
+      "app/components/dashboard/onboarding-itinerary.tsx",
+      "app/components/dashboard/overview-client.tsx",
+      "app/components/dashboard/overview.tsx",
+      "app/components/dashboard/recent-activity.tsx",
+      "app/components/dashboard/revenue-projections-chart.tsx",
+      "app/components/dashboard/revenue-widget.tsx",
+      "app/components/dashboard/roi-widget.tsx",
+      "app/components/dashboard/sales-breakdown-report.tsx",
+      "app/components/dashboard/sales-category-chart.tsx",
+      "app/components/dashboard/sales-distribution-chart.tsx",
+      "app/components/dashboard/sales-reports.tsx",
+      "app/components/dashboard/sales.tsx",
+      "app/components/dashboard/sales/aov-widget.tsx",
+      "app/components/dashboard/sales/index.ts",
+      "app/components/dashboard/sales/online-sales-widget.tsx",
+      "app/components/dashboard/sales/retail-sales-widget.tsx",
+      "app/components/dashboard/sales/total-sales-widget.tsx",
+      "app/components/dashboard/segment-donut.tsx",
+      "app/components/dashboard/segment-metrics.tsx",
+      "app/components/dashboard/traffic-reports.tsx",
+      "app/components/dashboard/traffic/client-conversion-widget.tsx",
+      "app/components/dashboard/traffic/lead-conversion-widget.tsx",
+      "app/components/dashboard/traffic/session-events-chart.tsx",
+      "app/components/dashboard/traffic/session-events-container.tsx",
+      "app/components/dashboard/traffic/session-events-referrers.tsx",
+      "app/components/dashboard/traffic/session-time-widget.tsx",
+      "app/components/dashboard/traffic/traffic-pie-chart.tsx",
+      "app/components/dashboard/traffic/unique-visitors-widget.tsx",
+      "app/components/dashboard/traffic/visits-widget.tsx",
+      "app/components/dashboard/visitors-cohort-tables.tsx",
+      "app/components/debug-utils.tsx",
+      "app/components/debug/StripeDebugger.tsx",
+      "app/components/domains/add-domain-dialog.tsx",
+      "app/components/kanban-view.tsx",
+      "app/components/leads/import-leads-dialog.tsx",
+      "app/components/navigation/Breadcrumb.tsx",
+      "app/components/navigation/ChatsBadge.tsx",
+      "app/components/navigation/ConfigurationSection.tsx",
+      "app/components/navigation/ContentBadge.tsx",
+      "app/components/navigation/ControlCenterBadge.tsx",
+      "app/components/navigation/LeadsBadge.tsx",
+      "app/components/navigation/MenuItem.tsx",
+      "app/components/navigation/NotificationBadge.tsx",
+      "app/components/navigation/RequirementsBadge.tsx",
+      "app/components/navigation/RobotsBadge.tsx",
+      "app/components/navigation/Sidebar.tsx",
+      "app/components/navigation/SiteSelector.tsx",
+      "app/components/navigation/TopBar.tsx",
+      "app/components/navigation/TopBarActions.tsx",
+      "app/components/navigation/TopBarTitle.tsx",
+      "app/components/onboarding/LocationsOnboardingStep.tsx",
+      "app/components/onboarding/constants/onboarding-constants.ts",
+      "app/components/onboarding/schemas/onboarding-schema.ts",
+      "app/components/onboarding/site-onboarding.tsx",
+      "app/components/onboarding/steps/basic-info-step.tsx",
+      "app/components/onboarding/steps/company-info-step.tsx",
+      "app/components/onboarding/steps/focus-mode-step.tsx",
+      "app/components/onboarding/steps/marketing-step.tsx",
+      "app/components/onboarding/steps/products-services-step.tsx",
+      "app/components/onboarding/steps/success-step.tsx",
+      "app/components/onboarding/utils/focus-mode-config.ts",
+      "app/components/settings/BillingSection.tsx",
+      "app/components/settings/BrandingSection.tsx",
+      "app/components/settings/BusinessHoursCard.tsx",
+      "app/components/settings/BusinessHoursSection.tsx",
+      "app/components/settings/ChannelsSection.tsx",
+      "app/components/settings/CompanyProfileCard.tsx",
+      "app/components/settings/CompanySection.tsx",
+      "app/components/settings/CustomerJourneySection.tsx",
+      "app/components/settings/GeneralSection.tsx",
+      "app/components/settings/GoalsSection.tsx",
+      "app/components/settings/LocationsCard.tsx",
+      "app/components/settings/MarketingSection.tsx",
+      "app/components/settings/RegionalRestrictionsSection.tsx",
+      "app/components/settings/SWOTSection.tsx",
+      "app/components/settings/SocialIconsDemo.tsx",
+      "app/components/settings/SocialSection.tsx",
+      "app/components/settings/TeamSection.tsx",
+      "app/components/settings/TrackingSection.tsx",
+      "app/components/settings/WhatsAppSection.tsx",
+      "app/components/settings/context-form.tsx",
+      "app/components/settings/data-adapter.ts",
+      "app/components/settings/form-schema.ts",
+      "app/components/settings/save-handlers.ts",
+      "app/components/settings/settings-header.tsx",
+      "app/components/settings/site-form.tsx",
+      "app/components/simple-messages-view.tsx",
+      "app/components/site/create-site-form.tsx",
+      "app/components/skeletons/browser-skeleton.tsx",
+      "app/components/skeletons/messages-skeleton.tsx",
+      "app/components/skeletons/robots-page-skeleton.tsx",
+      "app/components/trends/TrendCard.tsx",
+      "app/components/trends/TrendDetailModal.tsx",
+      "app/components/trends/TrendsColumn.tsx",
+      "app/components/trends/TrendsSection.tsx",
+      "app/components/trends/index.ts",
+      "app/components/ui/accordion.tsx",
+      "app/components/ui/ai-action-modal.tsx",
+      "app/components/ui/alert-dialog.tsx",
+      "app/components/ui/alert.tsx",
+      "app/components/ui/aspect-ratio.tsx",
+      "app/components/ui/avatar.tsx",
+      "app/components/ui/badge.tsx",
+      "app/components/ui/build-with-ai-button.tsx",
+      "app/components/ui/button.tsx",
+      "app/components/ui/calendar.tsx",
+      "app/components/ui/card-footer.tsx",
+      "app/components/ui/card.tsx",
+      "app/components/ui/cards/examples.tsx",
+      "app/components/ui/cards/index.ts",
+      "app/components/ui/checkbox.tsx",
+      "app/components/ui/collapsible.tsx",
+      "app/components/ui/color-input.tsx",
+      "app/components/ui/combobox.tsx",
+      "app/components/ui/command.tsx",
+      "app/components/ui/context-selector-modal.tsx",
+      "app/components/ui/context-selector-new.tsx",
+      "app/components/ui/custom-select.tsx",
+      "app/components/ui/date-picker.tsx",
+      "app/components/ui/date-range-picker.tsx",
+      "app/components/ui/dialog.tsx",
+      "app/components/ui/dropdown-menu.tsx",
+      "app/components/ui/empty-card.tsx",
+      "app/components/ui/empty-state.tsx",
+      "app/components/ui/filter-modal.tsx",
+      "app/components/ui/form.tsx",
+      "app/components/ui/help-button.tsx",
+      "app/components/ui/icons.tsx",
+      "app/components/ui/image-upload.tsx",
+      "app/components/ui/input-with-icon.tsx",
+      "app/components/ui/input.tsx",
+      "app/components/ui/json-display.tsx",
+      "app/components/ui/label.tsx",
+      "app/components/ui/layout-skeleton.tsx",
+      "app/components/ui/lead-filter-modal.tsx",
+      "app/components/ui/loading-skeleton.tsx",
+      "app/components/ui/menu-avatar.tsx",
+      "app/components/ui/native-select.tsx",
+      "app/components/ui/optimized-textarea.tsx",
+      "app/components/ui/page-transition.tsx",
+      "app/components/ui/pagination.tsx",
+      "app/components/ui/percentage-indicator.tsx",
+      "app/components/ui/popover.tsx",
+      "app/components/ui/progress.tsx",
+      "app/components/ui/radio-group.tsx",
+      "app/components/ui/rating.tsx",
+      "app/components/ui/safari-icon-button.tsx",
+      "app/components/ui/safe-map-wrapper.tsx",
+      "app/components/ui/safe-map.tsx",
+      "app/components/ui/scroll-area.tsx",
+      "app/components/ui/search-input.tsx",
+      "app/components/ui/search-select.tsx",
+      "app/components/ui/section-skeleton.tsx",
+      "app/components/ui/select.tsx",
+      "app/components/ui/separator.tsx",
+      "app/components/ui/sheet.tsx",
+      "app/components/ui/simple-search-select.tsx",
+      "app/components/ui/skeleton-card.tsx",
+      "app/components/ui/skeleton.tsx",
+      "app/components/ui/slider.tsx",
+      "app/components/ui/social-icons.tsx",
+      "app/components/ui/sonner.tsx",
+      "app/components/ui/spinner.tsx",
+      "app/components/ui/sticky-header.tsx",
+      "app/components/ui/switch.tsx",
+      "app/components/ui/table.tsx",
+      "app/components/ui/tabs.tsx",
+      "app/components/ui/target-icon.tsx",
+      "app/components/ui/textarea.tsx",
+      "app/components/ui/toggle-group.tsx",
+      "app/components/ui/tooltip.tsx",
+      "app/components/ui/use-toast.ts",
+      "app/components/upload-asset-dialog.tsx",
+      "app/components/view-selector.tsx",
+      "app/config/routes.ts",
+      "app/content/[id]/page.tsx",
+      "app/content/actions.ts",
+      "app/content/components.tsx",
+      "app/content/components/content-editor.tsx",
+      "app/content/deepResearch/page.tsx",
+      "app/content/page.tsx",
+      "app/content/utils.ts",
+      "app/context/AnalyzeContext.tsx",
+      "app/context/LayoutContext.tsx",
+      "app/context/OptimizedChatContext.tsx",
+      "app/context/SiteContext.tsx",
+      "app/context/ThemeContext.tsx",
+      "app/context/WidgetContext.tsx",
+      "app/context/page.tsx",
+      "app/control-center/[id]/components/DetailsTab.tsx",
+      "app/control-center/[id]/components/TimelineTab.tsx",
+      "app/control-center/[id]/page.tsx",
+      "app/control-center/components/CategoriesHeader.tsx",
+      "app/control-center/components/ControlCenterHeader.tsx",
+      "app/control-center/components/ControlCenterSkeleton.tsx",
+      "app/control-center/components/CurrentTimeIndicator.tsx",
+      "app/control-center/components/SidebarToggle.tsx",
+      "app/control-center/components/StatusSelector.tsx",
+      "app/control-center/components/TaskCalendar.tsx",
+      "app/control-center/components/TaskFilterModal.tsx",
+      "app/control-center/components/TaskKanban.tsx",
+      "app/control-center/components/TaskList.tsx",
+      "app/control-center/components/TaskSidebar.tsx",
+      "app/control-center/components/TaskStatusBar.tsx",
+      "app/control-center/components/TaskStatusFilter.tsx",
+      "app/control-center/components/TasksTable.tsx",
+      "app/control-center/page.tsx",
+      "app/costs/page.tsx",
+      "app/create-site/page.tsx",
+      "app/dashboard/page.tsx",
+      "app/data/mock-agents.ts",
+      "app/error.tsx",
+      "app/experiments/[id]/components/ExperimentDetails.tsx",
+      "app/experiments/[id]/components/MenuBar.tsx",
+      "app/experiments/[id]/components/index.ts",
+      "app/experiments/[id]/page.tsx",
+      "app/experiments/[id]/types.ts",
+      "app/experiments/[id]/utils/editor-utils.ts",
+      "app/experiments/[id]/utils/experiment-handlers.ts",
+      "app/experiments/[id]/utils/experiment-operations.ts",
+      "app/experiments/actions.ts",
+      "app/experiments/page.tsx",
+      "app/experiments/schema.ts",
+      "app/experiments/types.ts",
+      "app/global-error.tsx",
+      "app/hooks/use-activity-execution.ts",
+      "app/hooks/use-allowed-domains.ts",
+      "app/hooks/use-auth.ts",
+      "app/hooks/use-billing.ts",
+      "app/hooks/use-command-k.ts",
+      "app/hooks/use-context-entities-search.ts",
+      "app/hooks/use-context-entities.ts",
+      "app/hooks/use-prevent-refresh.ts",
+      "app/hooks/use-profile.ts",
+      "app/hooks/use-safari-detection.ts",
+      "app/hooks/use-supabase-client.ts",
+      "app/hooks/use-supabase.ts",
+      "app/hooks/use-theme.ts",
+      "app/hooks/use-user-data.ts",
+      "app/hooks/useAdaptiveDebounce.ts",
+      "app/hooks/useApiRequestTracker.ts",
+      "app/hooks/useChannelSelector.ts",
+      "app/hooks/useChatMessages.ts",
+      "app/hooks/useChatOperations.ts",
+      "app/hooks/useCurrentTime.ts",
+      "app/hooks/useDashboardDateRange.ts",
+      "app/hooks/useLayoutDimensions.ts",
+      "app/hooks/useLeadData.ts",
+      "app/hooks/useOptimizedKeyboardHandler.ts",
+      "app/hooks/useOptimizedMessageState.ts",
+      "app/hooks/usePerformanceMonitor.ts",
+      "app/hooks/useRequestController.ts",
+      "app/hooks/useSimpleMessageState.ts",
+      "app/hooks/useTeamMemberValidation.ts",
+      "app/hooks/useVirtualizedMessages.ts",
+      "app/hooks/useWidgetProtection.ts",
+      "app/invoice-pdf/[id]/page.tsx",
+      "app/layout-client.tsx",
+      "app/layout.tsx",
+      "app/leads/[id]/page.tsx",
+      "app/leads/actions.ts",
+      "app/leads/components/AddTaskDialog.tsx",
+      "app/leads/components/AddressTab.tsx",
+      "app/leads/components/AttributionModal.tsx",
+      "app/leads/components/CompanyCard.tsx",
+      "app/leads/components/CompanyLegalTab.tsx",
+      "app/leads/components/CompanySelector.tsx",
+      "app/leads/components/CompanyTab.tsx",
+      "app/leads/components/ConversationsView.tsx",
+      "app/leads/components/DetailsTab.tsx",
+      "app/leads/components/DigitalBehaviorView.tsx",
+      "app/leads/components/EditTaskDialog.tsx",
+      "app/leads/components/JourneySummary.tsx",
+      "app/leads/components/JourneyTimeline.tsx",
+      "app/leads/components/JourneyView.tsx",
+      "app/leads/components/LeadDetail.tsx",
+      "app/leads/components/LeadDetailSkeleton.tsx",
+      "app/leads/components/LeadsTable.tsx",
+      "app/leads/components/LeadsTableSkeleton.tsx",
+      "app/leads/components/NotesTab.tsx",
+      "app/leads/components/SalesView.tsx",
+      "app/leads/components/SocialNetworkTab.tsx",
+      "app/leads/components/StatusSegmentBar.tsx",
+      "app/leads/components/custom-icons.tsx",
+      "app/leads/components/grouped-leads-table.tsx",
+      "app/leads/context/LeadsContext.tsx",
+      "app/leads/context/TasksContext.tsx",
+      "app/leads/page.tsx",
+      "app/leads/server-actions.ts",
+      "app/leads/tasks/actions.ts",
+      "app/leads/types.ts",
+      "app/lib/api-keys-config.ts",
+      "app/lib/aria-hidden-polyfill.js",
+      "app/lib/auth-config.ts",
+      "app/lib/auth-utils.ts",
+      "app/lib/formatters.ts",
+      "app/lib/react-smooth-polyfill.js",
+      "app/lib/utils.ts",
+      "app/middleware.ts",
+      "app/navigation/TopBar.tsx",
+      "app/not-found.tsx",
+      "app/notifications/actions.ts",
+      "app/notifications/components/NotificationCard.tsx",
+      "app/notifications/components/NotificationSkeleton.tsx",
+      "app/notifications/context/NotificationsContext.tsx",
+      "app/notifications/layout.tsx",
+      "app/notifications/page.tsx",
+      "app/notifications/types.ts",
+      "app/outsource/checkout/page.tsx",
+      "app/outsource/confirmation/page.tsx",
+      "app/outsource/page.tsx",
+      "app/page.tsx",
+      "app/profile/components/ProfileSkeleton.tsx",
+      "app/profile/page.tsx",
+      "app/providers/Providers.tsx",
+      "app/requirements/[id]/page.tsx",
+      "app/requirements/actions.ts",
+      "app/requirements/kanban-view.tsx",
+      "app/requirements/page.tsx",
+      "app/requirements/schema.ts",
+      "app/requirements/types.ts",
+      "app/requirements/utils.ts",
+      "app/robots/page.tsx",
+      "app/root.tsx",
+      "app/sales/[id]/page.tsx",
+      "app/sales/actions.ts",
+      "app/sales/components/CreateSaleDialog.tsx",
+      "app/sales/components/CreateSaleOrderDialog.tsx",
+      "app/sales/components/EditSaleDialog.tsx",
+      "app/sales/components/KanbanView.tsx",
+      "app/sales/components/RegisterPaymentDialog.tsx",
+      "app/sales/components/SaleOrderDetail.tsx",
+      "app/sales/components/StatusBar.tsx",
+      "app/sales/page.tsx",
+      "app/security/page.tsx",
+      "app/segments/[id]/components/ContentIdeasKanban.tsx",
+      "app/segments/[id]/components/ErrorState.tsx",
+      "app/segments/[id]/components/LoadingState.tsx",
+      "app/segments/[id]/components/SegmentAnalysisTab.tsx",
+      "app/segments/[id]/components/SegmentDetailsTab.tsx",
+      "app/segments/[id]/components/SegmentICPTab.tsx",
+      "app/segments/[id]/components/SegmentMetricsWidget.tsx",
+      "app/segments/[id]/components/SegmentStatusWidget.tsx",
+      "app/segments/[id]/components/SegmentSummaryTab.tsx",
+      "app/segments/[id]/components/SegmentThemesTab.tsx",
+      "app/segments/[id]/components/SegmentUrlModal.tsx",
+      "app/segments/[id]/components/analysisComponents/AnalysisViews.tsx",
+      "app/segments/[id]/components/analysisComponents/BehaviorComponent.tsx",
+      "app/segments/[id]/components/analysisComponents/DemographicsComponent.tsx",
+      "app/segments/[id]/components/analysisComponents/InterestsComponent.tsx",
+      "app/segments/[id]/components/analysisComponents/KeywordAnalysisComponent.tsx",
+      "app/segments/[id]/components/analysisComponents/MarketPenetrationComponent.tsx",
+      "app/segments/[id]/components/analysisComponents/PerformanceMetricsComponent.tsx",
+      "app/segments/[id]/components/analysisComponents/RegionalDistributionComponent.tsx",
+      "app/segments/[id]/components/analysisComponents/data.ts",
+      "app/segments/[id]/components/analysisComponents/index.ts",
+      "app/segments/[id]/components/analysisComponents/types.ts",
+      "app/segments/[id]/components/analysisComponents/utils.ts",
+      "app/segments/[id]/components/common/Cards.tsx",
+      "app/segments/[id]/components/common/Indicators.tsx",
+      "app/segments/[id]/components/common/PieChart.tsx",
+      "app/segments/[id]/components/common/SpiderChart.tsx",
+      "app/segments/[id]/components/common/WorldMap.tsx",
+      "app/segments/[id]/components/dummyData.ts",
+      "app/segments/[id]/components/icpTabs/BehavioralTraitsTab.tsx",
+      "app/segments/[id]/components/icpTabs/CustomAttributesTab.tsx",
+      "app/segments/[id]/components/icpTabs/DemographicsTab.tsx",
+      "app/segments/[id]/components/icpTabs/ProfessionalContextTab.tsx",
+      "app/segments/[id]/components/icpTabs/PsychographicsTab.tsx",
+      "app/segments/[id]/components/types.ts",
+      "app/segments/[id]/page.tsx",
+      "app/segments/actions.ts",
+      "app/segments/page.tsx",
+      "app/services/ai-service.ts",
+      "app/services/api-client-service.ts",
+      "app/services/billing-service.ts",
+      "app/services/chat-service.ts",
+      "app/services/context-entities.service.ts",
+      "app/services/context-service.ts",
+      "app/services/magic-link-invitation-service.ts",
+      "app/services/profile.service.ts",
+      "app/services/secure-tokens-service.ts",
+      "app/services/site-members-service.ts",
+      "app/services/support-service.ts",
+      "app/services/team-invitation-service.ts",
+      "app/services/trends-service.ts",
+      "app/services/user-service.ts",
+      "app/settings/page.tsx",
+      "app/tasks/actions.ts",
+      "app/tasks/types.ts",
+      "app/teleprompter/[id]/page.tsx",
+      "app/teleprompter/layout.tsx",
+      "app/tests/agents/test-interfaces/commands-interface.tsx",
+      "app/tests/agents/test-interfaces/index.ts",
+      "app/types/agents.ts",
+      "app/types/chat.ts",
+      "app/types/domains.ts",
+      "app/types/global.d.ts",
+      "app/types/index.ts",
+      "app/types/react-simple-maps.d.ts",
+      "app/types/segments.ts",
+      "app/types/topojson-client.d.ts",
+      "app/types/trends.ts",
+      "app/utils/email-formatter.ts",
+      "app/utils/safariIconFix.ts",
+      "app/utils/safe-reload.ts",
+      "app/utils/text-cleaning.ts",
+      "config/index.ts",
+      "debug-email-detection.js",
+      "jest.config.js",
+      "jest.setup.js",
+      "lib/api-keys.ts",
+      "lib/config.ts",
+      "lib/create-safe-action.ts",
+      "lib/database.types.ts",
+      "lib/example-usage.ts",
+      "lib/init.ts",
+      "lib/logger.ts",
+      "lib/schemas/categories.ts",
+      "lib/schemas/site.ts",
+      "lib/services/auth-service.ts",
+      "lib/services/site-service.ts",
+      "lib/supabase/client.ts",
+      "lib/supabase/server-client.ts",
+      "lib/supabase/server.ts",
+      "lib/supabaseClient.js",
+      "lib/types/database.types.ts",
+      "lib/utils.ts",
+      "lib/validations/task.ts",
+      "middleware.ts",
+      "next.config.js",
+      "postcss.config.js",
+      "refactor-temp.js",
+      "tailwind.config.js",
+      "tailwind.config.ts",
+      "types/hooks.d.ts",
+      "types/supabase.ts",
+      "utils/supabase/client.ts",
+      "utils/supabase/server.ts"
+    ]
+  }
+}
