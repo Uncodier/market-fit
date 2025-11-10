@@ -273,6 +273,21 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         existingNumber: site.settings.channels.whatsapp?.existingNumber,
         setupRequested: site.settings.channels.whatsapp?.setupRequested || false,
         status: site.settings.channels.whatsapp?.status || "not_configured"
+      },
+      website: {
+        enabled: site.settings.channels.website?.enabled ?? (site.settings.channels.website?.track_visitors || site.settings.channels.website?.track_actions || site.settings.channels.website?.record_screen || site.settings.channels.website?.enable_chat) ?? false,
+        track_visitors: site.settings.channels.website?.track_visitors ?? site.tracking?.track_visitors ?? false,
+        track_actions: site.settings.channels.website?.track_actions ?? site.tracking?.track_actions ?? false,
+        record_screen: site.settings.channels.website?.record_screen ?? site.tracking?.record_screen ?? false,
+        enable_chat: site.settings.channels.website?.enable_chat ?? site.tracking?.enable_chat ?? false,
+        chat_accent_color: site.settings.channels.website?.chat_accent_color ?? site.tracking?.chat_accent_color ?? "#e0ff17",
+        allow_anonymous_messages: site.settings.channels.website?.allow_anonymous_messages ?? site.tracking?.allow_anonymous_messages ?? false,
+        chat_position: site.settings.channels.website?.chat_position ?? site.tracking?.chat_position ?? "bottom-right",
+        welcome_message: site.settings.channels.website?.welcome_message ?? site.tracking?.welcome_message ?? "Welcome to our website! How can we assist you today?",
+        chat_title: site.settings.channels.website?.chat_title ?? site.tracking?.chat_title ?? "Chat with us",
+        analytics_provider: site.settings.channels.website?.analytics_provider ?? site.tracking?.analytics_provider ?? "",
+        analytics_id: site.settings.channels.website?.analytics_id ?? site.tracking?.analytics_id ?? "",
+        tracking_code: site.settings.channels.website?.tracking_code ?? site.tracking?.tracking_code ?? ""
       }
     } : {
       email: {
@@ -296,6 +311,21 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         existingNumber: undefined,
         setupRequested: false,
         status: "not_configured" as const
+      },
+      website: {
+        enabled: false,
+        track_visitors: site.tracking?.track_visitors ?? false,
+        track_actions: site.tracking?.track_actions ?? false,
+        record_screen: site.tracking?.record_screen ?? false,
+        enable_chat: site.tracking?.enable_chat ?? false,
+        chat_accent_color: site.tracking?.chat_accent_color ?? "#e0ff17",
+        allow_anonymous_messages: site.tracking?.allow_anonymous_messages ?? false,
+        chat_position: site.tracking?.chat_position ?? "bottom-right",
+        welcome_message: site.tracking?.welcome_message ?? "Welcome to our website! How can we assist you today?",
+        chat_title: site.tracking?.chat_title ?? "Chat with us",
+        analytics_provider: site.tracking?.analytics_provider ?? "",
+        analytics_id: site.tracking?.analytics_id ?? "",
+        tracking_code: site.tracking?.tracking_code ?? ""
       }
     },
     // Add marketing info
@@ -305,20 +335,20 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     },
     marketing_channels: formatMarketingChannels(site.settings?.marketing_channels || []),
     social_media: formatSocialMedia(site.settings?.social_media || []),
-    // Add tracking info with explicit tracking.chat_accent_color
+    // Add tracking info - read from channels.website first, then fallback to site.tracking
     tracking: {
-      track_visitors: site.tracking?.track_visitors || false,
-      track_actions: site.tracking?.track_actions || false,
-      record_screen: site.tracking?.record_screen || false,
-      enable_chat: site.tracking?.enable_chat || false,
-      chat_accent_color: site.tracking?.chat_accent_color || "#e0ff17",
-      allow_anonymous_messages: site.tracking?.allow_anonymous_messages || false,
-      chat_position: site.tracking?.chat_position || "bottom-right",
-      welcome_message: site.tracking?.welcome_message || "Welcome to our website! How can we assist you today?",
-      chat_title: site.tracking?.chat_title || "Chat with us",
-      analytics_provider: site.tracking?.analytics_provider || "",
-      analytics_id: site.tracking?.analytics_id || "",
-      tracking_code: site.tracking?.tracking_code || ""
+      track_visitors: site.settings?.channels?.website?.track_visitors ?? site.tracking?.track_visitors ?? false,
+      track_actions: site.settings?.channels?.website?.track_actions ?? site.tracking?.track_actions ?? false,
+      record_screen: site.settings?.channels?.website?.record_screen ?? site.tracking?.record_screen ?? false,
+      enable_chat: site.settings?.channels?.website?.enable_chat ?? site.tracking?.enable_chat ?? false,
+      chat_accent_color: site.settings?.channels?.website?.chat_accent_color ?? site.tracking?.chat_accent_color ?? "#e0ff17",
+      allow_anonymous_messages: site.settings?.channels?.website?.allow_anonymous_messages ?? site.tracking?.allow_anonymous_messages ?? false,
+      chat_position: site.settings?.channels?.website?.chat_position ?? site.tracking?.chat_position ?? "bottom-right",
+      welcome_message: site.settings?.channels?.website?.welcome_message ?? site.tracking?.welcome_message ?? "Welcome to our website! How can we assist you today?",
+      chat_title: site.settings?.channels?.website?.chat_title ?? site.tracking?.chat_title ?? "Chat with us",
+      analytics_provider: site.settings?.channels?.website?.analytics_provider ?? site.tracking?.analytics_provider ?? "",
+      analytics_id: site.settings?.channels?.website?.analytics_id ?? site.tracking?.analytics_id ?? "",
+      tracking_code: site.settings?.channels?.website?.tracking_code ?? site.tracking?.tracking_code ?? ""
     },
     // Add team info
     team_members: processedTeamMembers,

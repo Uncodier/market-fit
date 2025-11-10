@@ -131,6 +131,21 @@ export function SiteForm({
           enabled: false,
           setupRequested: false,
           status: "not_configured"
+        },
+        website: {
+          enabled: false,
+          track_visitors: false,
+          track_actions: false,
+          record_screen: false,
+          enable_chat: false,
+          chat_accent_color: "#e0ff17",
+          allow_anonymous_messages: false,
+          chat_position: "bottom-right",
+          welcome_message: "Welcome to our website! How can we assist you today?",
+          chat_title: "Chat with us",
+          analytics_provider: "",
+          analytics_id: "",
+          tracking_code: ""
         }
       },
       marketing_channels: initialData?.marketing_channels || [],
@@ -321,7 +336,7 @@ export function SiteForm({
         }
       });
     }
-  }, [siteId, lastSiteId, stableInitialData, form]) // Use stable initial data
+  }, [siteId, lastSiteId, form]) // CRITICAL: Don't include stableInitialData - only reset on site ID change, not after saves
 
   // Note: Removed the complex update logic since the component now re-mounts when data changes
 

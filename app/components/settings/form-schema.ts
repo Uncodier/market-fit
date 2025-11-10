@@ -230,6 +230,35 @@ export const siteFormSchema = z.object({
     }, {
       message: "Phone Number and Account SID are required for using your own Twilio account",
       path: ["setupType"]
+    }),
+    website: z.object({
+      enabled: z.boolean().optional().default(false),
+      track_visitors: z.boolean().optional().default(false),
+      track_actions: z.boolean().optional().default(false),
+      record_screen: z.boolean().optional().default(false),
+      enable_chat: z.boolean().optional().default(false),
+      chat_accent_color: z.string().optional().default("#e0ff17"),
+      allow_anonymous_messages: z.boolean().optional().default(false),
+      chat_position: z.enum(["bottom-right", "bottom-left", "top-right", "top-left"]).optional().default("bottom-right"),
+      welcome_message: z.string().optional().default("Welcome to our website! How can we assist you today?"),
+      chat_title: z.string().optional().default("Chat with us"),
+      analytics_provider: z.string().optional(),
+      analytics_id: z.string().optional(),
+      tracking_code: z.string().optional()
+    }).optional().default({
+      enabled: false,
+      track_visitors: false,
+      track_actions: false,
+      record_screen: false,
+      enable_chat: false,
+      chat_accent_color: "#e0ff17",
+      allow_anonymous_messages: false,
+      chat_position: "bottom-right",
+      welcome_message: "Welcome to our website! How can we assist you today?",
+      chat_title: "Chat with us",
+      analytics_provider: "",
+      analytics_id: "",
+      tracking_code: ""
     })
   }).optional().default({
     email: {
@@ -247,6 +276,21 @@ export const siteFormSchema = z.object({
       enabled: false,
       setupRequested: false,
       status: "not_configured" as const
+    },
+    website: {
+      enabled: false,
+      track_visitors: false,
+      track_actions: false,
+      record_screen: false,
+      enable_chat: false,
+      chat_accent_color: "#e0ff17",
+      allow_anonymous_messages: false,
+      chat_position: "bottom-right",
+      welcome_message: "Welcome to our website! How can we assist you today?",
+      chat_title: "Chat with us",
+      analytics_provider: "",
+      analytics_id: "",
+      tracking_code: ""
     }
   }),
   // Marketing related fields

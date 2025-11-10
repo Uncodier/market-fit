@@ -242,6 +242,21 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           existingNumber: channels?.whatsapp?.existingNumber ?? currentSite.settings?.channels?.whatsapp?.existingNumber ?? undefined,
           setupRequested: channels?.whatsapp?.setupRequested ?? currentSite.settings?.channels?.whatsapp?.setupRequested ?? false,
           status: (channels?.whatsapp?.status ?? currentSite.settings?.channels?.whatsapp?.status ?? "not_configured") as "not_configured" | "pending" | "active"
+        },
+        website: {
+          enabled: (tracking?.track_visitors || tracking?.track_actions || tracking?.record_screen || tracking?.enable_chat) ?? channels?.website?.enabled ?? currentSite.settings?.channels?.website?.enabled ?? false,
+          track_visitors: tracking?.track_visitors ?? channels?.website?.track_visitors ?? currentSite.settings?.channels?.website?.track_visitors ?? false,
+          track_actions: tracking?.track_actions ?? channels?.website?.track_actions ?? currentSite.settings?.channels?.website?.track_actions ?? false,
+          record_screen: tracking?.record_screen ?? channels?.website?.record_screen ?? currentSite.settings?.channels?.website?.record_screen ?? false,
+          enable_chat: tracking?.enable_chat ?? channels?.website?.enable_chat ?? currentSite.settings?.channels?.website?.enable_chat ?? false,
+          chat_accent_color: tracking?.chat_accent_color ?? channels?.website?.chat_accent_color ?? currentSite.settings?.channels?.website?.chat_accent_color ?? "#e0ff17",
+          allow_anonymous_messages: tracking?.allow_anonymous_messages ?? channels?.website?.allow_anonymous_messages ?? currentSite.settings?.channels?.website?.allow_anonymous_messages ?? false,
+          chat_position: tracking?.chat_position ?? channels?.website?.chat_position ?? currentSite.settings?.channels?.website?.chat_position ?? "bottom-right",
+          welcome_message: tracking?.welcome_message ?? channels?.website?.welcome_message ?? currentSite.settings?.channels?.website?.welcome_message ?? "Welcome to our website! How can we assist you today?",
+          chat_title: tracking?.chat_title ?? channels?.website?.chat_title ?? currentSite.settings?.channels?.website?.chat_title ?? "Chat with us",
+          analytics_provider: tracking?.analytics_provider ?? channels?.website?.analytics_provider ?? currentSite.settings?.channels?.website?.analytics_provider ?? "",
+          analytics_id: tracking?.analytics_id ?? channels?.website?.analytics_id ?? currentSite.settings?.channels?.website?.analytics_id ?? "",
+          tracking_code: tracking?.tracking_code ?? channels?.website?.tracking_code ?? currentSite.settings?.channels?.website?.tracking_code ?? ""
         }
       },
       // Incluir competitors y focus_mode en settings en lugar de site
@@ -495,7 +510,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           channels: {
             ...currentSite.settings?.channels,
             ...settings.channels,
-            // Deep merge for email and whatsapp to preserve all fields
+            // Deep merge for email, whatsapp, and website to preserve all fields
             email: {
               ...currentSite.settings?.channels?.email,
               ...settings.channels?.email
@@ -503,6 +518,10 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
             whatsapp: {
               ...currentSite.settings?.channels?.whatsapp,
               ...settings.channels?.whatsapp
+            },
+            website: {
+              ...currentSite.settings?.channels?.website,
+              ...settings.channels?.website
             }
           }
         }

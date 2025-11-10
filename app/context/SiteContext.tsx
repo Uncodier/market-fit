@@ -1060,11 +1060,20 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Don't set isLoading to avoid UI interruptions during save
       // setIsLoading(true);
       
-      // Extract tracking data for clean update
+      // Extract tracking data for clean update - preserve ALL fields
       const trackingData = site.tracking || {
         track_visitors: false,
         track_actions: false,
-        record_screen: false
+        record_screen: false,
+        enable_chat: false,
+        chat_accent_color: "#e0ff17",
+        allow_anonymous_messages: false,
+        chat_position: "bottom-right",
+        welcome_message: "Welcome to our website! How can we assist you today?",
+        chat_title: "Chat with us",
+        analytics_provider: "",
+        analytics_id: "",
+        tracking_code: ""
       };
       
       // Update the site record
@@ -1350,30 +1359,89 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Handle channels field
       if (settings.channels !== undefined) {
         console.log("UPDATE SETTINGS: Processing channels field:", settings.channels);
-        formattedSettings.channels = typeof settings.channels === 'object' ? settings.channels : {
-          email: {
-            enabled: false,
-            email: "",
-            password: "",
-            incomingServer: "",
-            incomingPort: "",
-            outgoingServer: "",
-            outgoingPort: "",
-            status: "not_configured"
-          },
-          whatsapp: {
-            enabled: false,
-            setupType: "new_number",
-            country: "",
-            region: "",
-            existingNumber: "",
-            setupRequested: false,
-            apiToken: "",
-            account_sid: "",
-            messaging_service_sid: "",
-            status: "not_configured"
-          }
-        };
+        if (typeof settings.channels === 'object' && settings.channels !== null) {
+          // Preserve existing channels and merge with new ones
+          formattedSettings.channels = {
+            email: settings.channels.email || {
+              enabled: false,
+              email: "",
+              password: "",
+              incomingServer: "",
+              incomingPort: "",
+              outgoingServer: "",
+              outgoingPort: "",
+              status: "not_configured"
+            },
+            whatsapp: settings.channels.whatsapp || {
+              enabled: false,
+              setupType: "new_number",
+              country: "",
+              region: "",
+              existingNumber: "",
+              setupRequested: false,
+              apiToken: "",
+              account_sid: "",
+              messaging_service_sid: "",
+              status: "not_configured"
+            },
+            website: settings.channels.website ?? {
+              enabled: false,
+              track_visitors: false,
+              track_actions: false,
+              record_screen: false,
+              enable_chat: false,
+              chat_accent_color: "#e0ff17",
+              allow_anonymous_messages: false,
+              chat_position: "bottom-right",
+              welcome_message: "Welcome to our website! How can we assist you today?",
+              chat_title: "Chat with us",
+              analytics_provider: "",
+              analytics_id: "",
+              tracking_code: ""
+            }
+          };
+        } else {
+          formattedSettings.channels = {
+            email: {
+              enabled: false,
+              email: "",
+              password: "",
+              incomingServer: "",
+              incomingPort: "",
+              outgoingServer: "",
+              outgoingPort: "",
+              status: "not_configured"
+            },
+            whatsapp: {
+              enabled: false,
+              setupType: "new_number",
+              country: "",
+              region: "",
+              existingNumber: "",
+              setupRequested: false,
+              apiToken: "",
+              account_sid: "",
+              messaging_service_sid: "",
+              status: "not_configured"
+            },
+            website: {
+              enabled: false,
+              track_visitors: false,
+              track_actions: false,
+              record_screen: false,
+              enable_chat: false,
+              chat_accent_color: "#e0ff17",
+              allow_anonymous_messages: false,
+              chat_position: "bottom-right",
+              welcome_message: "Welcome to our website! How can we assist you today?",
+              chat_title: "Chat with us",
+              analytics_provider: "",
+              analytics_id: "",
+              tracking_code: ""
+            }
+          };
+        }
+        console.log("UPDATE SETTINGS: Processed channels field:", formattedSettings.channels);
       }
       
       // Handle goals field
@@ -1468,17 +1536,41 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // First get existing settings to preserve other fields
       try {
         console.log("UPDATE SETTINGS: Getting existing settings to preserve data...");
-        const { data: existingSettings } = await supabaseRef.current
+        const { data: existingSettings, error: fetchError } = await supabaseRef.current
           .from('settings')
           .select('*')
           .eq('site_id', siteId)
           .single();
         
         // Merge with existing settings to preserve all fields
-        const mergedSettings = {
-          ...existingSettings,
-          ...settingsForDB  // Override with new values
-        };
+        // Deep merge channels to preserve all channel types (email, whatsapp, website)
+        let mergedSettings;
+        if (existingSettings) {
+          // CRITICAL: Convert channels from array to object if needed
+          // The DB default is [] but we need {} for the merge to work
+          const existingChannels = (Array.isArray(existingSettings.channels) || !existingSettings.channels)
+            ? {} 
+            : existingSettings.channels;
+          
+          mergedSettings = {
+            ...existingSettings,
+            ...settingsForDB,  // Override with new values
+            // Deep merge channels to ensure website is preserved
+            channels: settingsForDB.channels ? {
+              ...existingChannels,
+              ...settingsForDB.channels,
+              // Ensure all channel types are preserved - use new value if provided, otherwise keep existing
+              email: settingsForDB.channels.email ?? existingChannels?.email,
+              whatsapp: settingsForDB.channels.whatsapp ?? existingChannels?.whatsapp,
+              website: settingsForDB.channels.website ?? existingChannels?.website
+            } : (existingChannels || settingsForDB.channels)
+          };
+        } else {
+          // No existing settings, use the new settings directly
+          mergedSettings = settingsForDB;
+        }
+        
+        console.log("UPDATE SETTINGS: Merged channels:", JSON.stringify(mergedSettings.channels, null, 2));
         
         console.log("UPDATE SETTINGS: Raw upsert data:", JSON.stringify(mergedSettings));
         console.log("UPDATE SETTINGS: Goals before upsert:", mergedSettings.goals);

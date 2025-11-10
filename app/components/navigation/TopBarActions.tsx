@@ -395,8 +395,10 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           
           toast.success('Resuming robot...')
           
-          // REMOVED: setTimeout(async () => { await refreshRobots() }, 1000)
-          // Real-time subscription will handle the update automatically
+          // Immediate refresh for instant visual feedback
+          setTimeout(async () => { 
+            await refreshRobots() 
+          }, 1000)
         } catch (e) {
           // quiet log
           toast.error('Failed to resume robot')

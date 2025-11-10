@@ -127,7 +127,7 @@ const EMAIL_PROVIDERS = [
 
 export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrackingCode }: ChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const { currentSite, updateSettings } = useSite()
+  const { currentSite, updateSettings, updateSite } = useSite()
   const [internalCodeCopied, setInternalCodeCopied] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -609,6 +609,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       setIsTestingConnection(false);
     }
   };
+
 
   if (!active) return null
 
