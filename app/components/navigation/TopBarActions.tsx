@@ -48,7 +48,7 @@ import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 function RobotStartButton({ currentSite }: { currentSite: any }) {
   const [isStartingRobot, setIsStartingRobot] = useState(false)
   const [isStoppingRobot, setIsStoppingRobot] = useState(false)
-  const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots } = useRobots()
+  const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount } = useRobots()
   const searchParams = useSearchParams()
   
   // Get all instances and find the appropriate one to display
@@ -96,7 +96,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     
     console.log('🔍 [RobotStartButton] No paused instances found. Total instances:', allInstances.length)
     return null
-  }, [selectedInstanceParam, allInstances, getInstanceById, isLoadingRobots])
+  }, [selectedInstanceParam, allInstances, getInstanceById, isLoadingRobots, refreshCount])
   
   const selectedInstanceId = activeRobotInstance?.id || selectedInstanceParam || 'new'
   const activeTabRef = useRef(selectedInstanceId)
@@ -395,10 +395,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           
           toast.success('Resuming robot...')
           
-          // Immediate refresh for instant visual feedback
-          setTimeout(async () => { 
-            await refreshRobots() 
-          }, 1000)
+          // Real-time subscription will handle the update automatically
         } catch (e) {
           // quiet log
           toast.error('Failed to resume robot')
