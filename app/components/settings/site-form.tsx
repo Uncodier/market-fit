@@ -237,7 +237,9 @@ export function SiteForm({
         leads_initial_cold_outreach: { status: "default" },
         leads_follow_up: { status: "default" },
         email_sync: { status: "default" },
-        assign_leads_to_team: { status: "inactive" }
+        assign_leads_to_team: { status: "inactive" },
+        notify_team_on_inbound_conversations: { status: "default" },
+        supervise_conversations: { status: "inactive" }
       }
     }
   })

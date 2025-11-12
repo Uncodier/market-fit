@@ -49,6 +49,16 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
     key: "assign_leads_to_team",
     title: "Assign Leads to Team",
     description: "Assign key leads to the most suitable team member based on AI recommendations"
+  },
+  {
+    key: "notify_team_on_inbound_conversations",
+    title: "Notify Team on Inbound Conversations",
+    description: "Notify the team when any first comment comes in from a new conversation."
+  },
+  {
+    key: "supervise_conversations",
+    title: "Supervise Conversations",
+    description: "Automatic suggestions and improvements to agent answers for better conversation quality."
   }
 ]
 
@@ -79,6 +89,7 @@ export function ActivitiesSection({ active }: ActivitiesSectionProps) {
           
           // Check dependency for assign_leads_to_team
           const isAssignLeads = key === 'assign_leads_to_team'
+          const isSuperviseConversations = key === 'supervise_conversations'
           const coldOutreachStatus = form.watch('activities.leads_initial_cold_outreach.status')
           const isDependencyInactive = isAssignLeads && coldOutreachStatus === 'inactive'
           
@@ -123,7 +134,7 @@ export function ActivitiesSection({ active }: ActivitiesSectionProps) {
                                 <SelectValue placeholder="Select status" />
                               </SelectTrigger>
                               <SelectContent>
-                                {isAssignLeads ? (
+                                {(isAssignLeads || isSuperviseConversations) ? (
                                   <>
                                     <SelectItem value="inactive">Inactive</SelectItem>
                                     <SelectItem value="active">Active</SelectItem>

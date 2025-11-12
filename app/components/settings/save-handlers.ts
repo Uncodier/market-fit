@@ -317,6 +317,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       activities: (() => {
         const a = (settingsData.activities || {}) as any;
         const coerce = (v: any) => (v === 'inactive' ? 'inactive' : 'default');
+        const coerceAssign = (v: any) => (v === 'active' ? 'active' : 'inactive');
         return {
           daily_resume_and_stand_up: { status: coerce(a?.daily_resume_and_stand_up?.status ?? a?.daily_resume_and_stand_up) },
           local_lead_generation: { status: coerce(a?.local_lead_generation?.status ?? a?.local_lead_generation) },
@@ -324,6 +325,9 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           leads_initial_cold_outreach: { status: coerce(a?.leads_initial_cold_outreach?.status ?? a?.leads_initial_cold_outreach) },
           leads_follow_up: { status: coerce(a?.leads_follow_up?.status ?? a?.leads_follow_up) },
           email_sync: { status: coerce(a?.email_sync?.status ?? a?.email_sync) },
+          assign_leads_to_team: { status: coerceAssign(a?.assign_leads_to_team?.status ?? a?.assign_leads_to_team) },
+          notify_team_on_inbound_conversations: { status: coerce(a?.notify_team_on_inbound_conversations?.status ?? a?.notify_team_on_inbound_conversations) },
+          supervise_conversations: { status: coerceAssign(a?.supervise_conversations?.status ?? a?.supervise_conversations) },
         } as const
       })()
     };

@@ -192,6 +192,9 @@ export interface SiteSettings {
     leads_initial_cold_outreach?: 'default' | 'inactive'
     leads_follow_up?: 'default' | 'inactive'
     email_sync?: 'default' | 'inactive'
+    assign_leads_to_team?: 'inactive' | 'active'
+    notify_team_on_inbound_conversations?: 'default' | 'inactive'
+    supervise_conversations?: 'inactive' | 'active'
   } | null
   // allowed_domains is handled in a separate table, not in settings
   // allowed_domains?: Array<{

@@ -370,6 +370,8 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         leads_follow_up: { status: coerce(incoming?.leads_follow_up?.status ?? incoming?.leads_follow_up) },
         email_sync: { status: coerce(incoming?.email_sync?.status ?? incoming?.email_sync) },
         assign_leads_to_team: { status: coerceAssign(incoming?.assign_leads_to_team?.status ?? incoming?.assign_leads_to_team) },
+        notify_team_on_inbound_conversations: { status: coerce(incoming?.notify_team_on_inbound_conversations?.status ?? incoming?.notify_team_on_inbound_conversations) },
+        supervise_conversations: { status: coerceAssign(incoming?.supervise_conversations?.status ?? incoming?.supervise_conversations) },
       } as const;
     })(),
     // Agregar datos de company (este campo es requerido por el esquema)
