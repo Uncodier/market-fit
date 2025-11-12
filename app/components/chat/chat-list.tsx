@@ -80,7 +80,7 @@ export function ChatList({
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasEmptyResult, setHasEmptyResult] = useState(false)
-  const [combinedFilter, setCombinedFilter] = useState<'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai' | 'inbound'>('all')
+  const [combinedFilter, setCombinedFilter] = useState<'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai' | 'inbound' | 'outbound' | 'tasks'>('all')
   const { isDarkMode } = useTheme()
   const { user } = useAuthContext()
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
@@ -188,10 +188,11 @@ export function ChatList({
     
     try {
       // Request conversations from server with pagination and channel filter
-      // Separate combined filter into channel and assignee filters
+      // Separate combined filter into channel, assignee, initiatedBy, and tasks filters
       const channelFilter = ['web', 'email', 'whatsapp'].includes(combinedFilter) ? combinedFilter as 'web' | 'email' | 'whatsapp' : 'all'
       const assigneeFilter = ['assigned', 'ai'].includes(combinedFilter) ? combinedFilter as 'assigned' | 'ai' : 'all'
-      const tasksOnly = combinedFilter === 'inbound'
+      const initiatedByFilter = combinedFilter === 'inbound' ? 'visitor' : combinedFilter === 'outbound' ? 'agent' : 'all'
+      const tasksOnly = combinedFilter === 'tasks'
       
       const { getConversations } = await import('@/app/services/getConversations.client')
       const result = await getConversations(
@@ -202,7 +203,7 @@ export function ChatList({
         assigneeFilter,
         user?.id,
         searchQuery,
-        undefined,
+        initiatedByFilter,
         tasksOnly
       ) // 20 conversations per page
       console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations for page ${page}`);
@@ -830,7 +831,7 @@ export function ChatList({
               {pendingConversations.length > 0 && (
                 <div className="mb-2">
                   <div className={cn(
-                    "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-0 z-10",
+                    "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-[56px] z-10",
                     "bg-background/80 text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80"
                   )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
                     Pending ({pendingConversations.length})
@@ -854,7 +855,7 @@ export function ChatList({
                 <div>
                   {pendingConversations.length > 0 && (
                     <div className={cn(
-                      "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-0 z-10",
+                      "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-[56px] z-10",
                       "bg-background/80 text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80"
                     )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
                       Active Conversations

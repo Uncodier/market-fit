@@ -1693,6 +1693,24 @@ export const ArrowLeft = ({ className = "", size = 20, ...props }: IconProps) =>
   </IconWrapper>
 )
 
+// ArrowUp
+export const ArrowUp = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m5 15 7-7 7 7" />
+    </svg>
+  </IconWrapper>
+)
+
+// ArrowDown
+export const ArrowDown = ({ className = "", size = 20, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m19 9-7 7-7-7" />
+    </svg>
+  </IconWrapper>
+)
+
 // MessageCircle
 export const MessageCircle = ({ className = "", size = 20, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>

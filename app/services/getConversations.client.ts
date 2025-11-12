@@ -12,7 +12,7 @@ export async function getConversations(
   assigneeFilter?: 'all' | 'assigned' | 'ai',
   currentUserId?: string,
   searchQuery?: string,
-  initiatedByFilter?: 'all' | 'visitor',
+  initiatedByFilter?: 'all' | 'visitor' | 'agent',
   tasksOnly?: boolean
 ): Promise<ConversationListItem[]> {
   try {
@@ -58,6 +58,70 @@ export async function getConversations(
       query = query.ilike('title', `%${searchTerm}%`)
     }
 
+    // Apply initiatedBy filter at database level if specified
+    if (initiatedByFilter && initiatedByFilter !== 'all') {
+      // First, get all conversations for this site to get their IDs
+      const { data: allSiteConversations } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("is_archived", false)
+      
+      if (!allSiteConversations || allSiteConversations.length === 0) {
+        return []
+      }
+      
+      const conversationIds = allSiteConversations.map((c: any) => c.id)
+      
+      // Get the first message for each conversation
+      // We'll use a query that gets messages ordered by conversation_id and created_at
+      // Then we'll process them to find the first message per conversation
+      const { data: messages, error: messagesError } = await supabase
+        .from('messages')
+        .select('conversation_id, role, created_at')
+        .in('conversation_id', conversationIds)
+        .order('conversation_id', { ascending: true })
+        .order('created_at', { ascending: true })
+      
+      if (messagesError) {
+        console.error("Error fetching messages for initiatedBy filter:", messagesError)
+        // Fall back to client-side filtering if query fails
+      } else if (messages && messages.length > 0) {
+        // Get first message per conversation
+        const firstMessageByConversation = new Map<string, string>()
+        for (const msg of messages) {
+          if (!firstMessageByConversation.has(msg.conversation_id)) {
+            firstMessageByConversation.set(msg.conversation_id, msg.role)
+          }
+        }
+        
+        // Filter conversation IDs based on first message role
+        const matchingConversationIds: string[] = []
+        
+        for (const [conversationId, firstRole] of firstMessageByConversation.entries()) {
+          if (initiatedByFilter === 'visitor') {
+            // Inbound: first message from visitor/user
+            if (firstRole === 'visitor' || firstRole === 'user') {
+              matchingConversationIds.push(conversationId)
+            }
+          } else if (initiatedByFilter === 'agent') {
+            // Outbound: first message from agent/assistant/system/team_member
+            if (firstRole === 'agent' || firstRole === 'assistant' || firstRole === 'system' || firstRole === 'team_member') {
+              matchingConversationIds.push(conversationId)
+            }
+          }
+        }
+        
+        // If no matching conversations, return empty early
+        if (matchingConversationIds.length === 0) {
+          return []
+        }
+        
+        // Filter conversations by matching IDs
+        query = query.in('id', matchingConversationIds)
+      }
+    }
+
     const { data: conversations, error: conversationsError } = await query
       .order("last_message_at", { ascending: false })
       .range(from, to)
@@ -76,15 +140,6 @@ export async function getConversations(
         if (assigneeFilter === 'assigned') return assigneeId === currentUserId
         if (assigneeFilter === 'ai') return !assigneeId
         return true
-      })
-    }
-
-    // Initiated-by filter (visitor/lead)
-    if (initiatedByFilter && initiatedByFilter !== 'all') {
-      filteredConversations = filteredConversations.filter((conv: any) => {
-        if (!conv.messages || conv.messages.length === 0) return false
-        const firstMsg = [...conv.messages].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0]
-        return firstMsg && (firstMsg.role === 'visitor' || firstMsg.role === 'user')
       })
     }
 
