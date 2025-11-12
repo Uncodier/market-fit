@@ -213,10 +213,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     }
   }, [])
 
-  // Auto scroll when logs change or when waiting for response
-  useEffect(() => {
-    scrollToBottom()
-  }, [scrollToBottom])
 
   // Handle message sent - capture the user message and scroll to bottom
   const handleMessageSent = useCallback((sent: boolean) => {
@@ -355,25 +351,26 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   }, [resetMessageSentState])
 
   // Scroll to bottom when logs change or activeRobotInstance changes
-  // This ensures proper scroll calculation after content is rendered
+  // Scroll when there are conversations/logs OR when instance is running
   useEffect(() => {
-    if (activeRobotInstance && logs.length > 0) {
-      // Wait for images and other async content to load
-      // Use multiple RAF and timeout to ensure layout is complete
-      const scrollTimeout = setTimeout(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            // Additional delay for images to load
-            setTimeout(() => {
-              scrollToBottom()
-            }, 100)
-          })
-        })
-      }, 100)
+    const hasConversations = logs.length > 0
+    const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
+    
+    if (hasConversations || isInstanceRunning) {
+      // Use multiple timeouts to ensure scroll happens after content is rendered
+      const timeout1 = setTimeout(() => scrollToBottom(), 50)
+      const timeout2 = setTimeout(() => scrollToBottom(), 200)
+      const timeout3 = setTimeout(() => scrollToBottom(), 500)
+      const timeout4 = setTimeout(() => scrollToBottom(), 1000)
       
-      return () => clearTimeout(scrollTimeout)
+      return () => {
+        clearTimeout(timeout1)
+        clearTimeout(timeout2)
+        clearTimeout(timeout3)
+        clearTimeout(timeout4)
+      }
     }
-  }, [logs, activeRobotInstance?.id, scrollToBottom])
+  }, [logs.length, activeRobotInstance?.id, activeRobotInstance?.status, scrollToBottom])
 
   const {
     steps,
@@ -483,7 +480,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   )
   
-  const isEmptyExplorer = !shouldShowNewMakina && sortedTimeline.length === 0
+  // Check if instance is running
+  const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
+  
+  // Explorer is empty only if there's no timeline AND no running instance
+  const isEmptyExplorer = !shouldShowNewMakina && sortedTimeline.length === 0 && !isInstanceRunning
   const isEmpty = isEmptyNewMakina || isEmptyExplorer
 
   return (

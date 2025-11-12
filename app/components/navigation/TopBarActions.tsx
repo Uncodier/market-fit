@@ -35,19 +35,22 @@ import {
   UploadCloud,
   PlayCircle,
   StopCircle,
-  Search
+  Search,
+  Shield
 } from "@/app/components/ui/icons"
 
 import { subMonths, format } from "date-fns"
 import { safeReload } from "../../utils/safe-reload"
 import { useSearchParams } from "next/navigation"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { AuthenticateSessionsModal } from "./AuthenticateSessionsModal"
 
 
 // Robot Start Button Component
 function RobotStartButton({ currentSite }: { currentSite: any }) {
   const [isStartingRobot, setIsStartingRobot] = useState(false)
   const [isStoppingRobot, setIsStoppingRobot] = useState(false)
+  const [isAuthenticateModalOpen, setIsAuthenticateModalOpen] = useState(false)
   const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount } = useRobots()
   const searchParams = useSearchParams()
   
@@ -187,7 +190,6 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
               .select('id, status, name')
               .eq('site_id', currentSite.id)
               .eq('name', activityName)
-              .neq('status', 'stopped')
               .neq('status', 'error')
               .limit(1)
             
@@ -374,9 +376,11 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
 
   // If there's an active robot instance (from URL param or found paused instance), decide which controls to show
   if (activeRobotInstance) {
-    const isPaused = ['paused', 'uninstantiated'].includes(activeRobotInstance.status)
-    if (isPaused) {
-      // Show resume button for paused instance
+    // Only show stop/authenticate buttons when robot is running or active
+    const isRunning = ['running', 'active'].includes(activeRobotInstance.status)
+    
+    if (!isRunning) {
+      // Show resume button for non-running states (paused, stopped, etc.)
       const handleResume = async () => {
         // Immediately show loading in robots page (left explorer)
         try {
@@ -418,6 +422,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
         </Button>
       )
     }
+    
     const handleSaveAuthSession = async () => {
       if (!activeRobotInstance) {
         toast.error("No active robot instance to save auth session")
@@ -476,35 +481,51 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     }
 
     return (
-      <div className="flex items-center gap-2">
-        <Button 
-          variant="secondary" 
-          size="default"
-          className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
-          onClick={handleSaveAuthSession}
-        >
-          <Key className="h-4 w-4" />
-          Save Auth Session
-        </Button>
-        <Button 
-          size="default"
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-all duration-200"
-          onClick={handleStopRobot}
-          disabled={isStoppingRobot}
-        >
-          {isStoppingRobot ? (
-            <>
-              <LoadingSkeleton variant="button" size="sm" className="text-white" />
-              Stopping...
-            </>
-          ) : (
-            <>
-              <StopCircle className="mr-2 h-4 w-4" />
-              Stop Robot
-            </>
-          )}
-        </Button>
-      </div>
+      <>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="secondary" 
+            size="default"
+            className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+            onClick={() => setIsAuthenticateModalOpen(true)}
+          >
+            <Shield className="h-4 w-4" />
+            Authenticate
+          </Button>
+          <Button 
+            variant="secondary" 
+            size="default"
+            className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+            onClick={handleSaveAuthSession}
+          >
+            <Key className="h-4 w-4" />
+            Save Auth Session
+          </Button>
+          <Button 
+            size="default"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-all duration-200"
+            onClick={handleStopRobot}
+            disabled={isStoppingRobot}
+          >
+            {isStoppingRobot ? (
+              <>
+                <LoadingSkeleton variant="button" size="sm" className="text-white" />
+                Stopping...
+              </>
+            ) : (
+              <>
+                <StopCircle className="mr-2 h-4 w-4" />
+                Stop Robot
+              </>
+            )}
+          </Button>
+        </div>
+        <AuthenticateSessionsModal
+          isOpen={isAuthenticateModalOpen}
+          onClose={() => setIsAuthenticateModalOpen(false)}
+          instanceId={activeRobotInstance.id}
+        />
+      </>
     )
   }
 

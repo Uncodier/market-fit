@@ -188,13 +188,12 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       console.log('🔄 [RobotsContext] Fetching robots for site:', targetSiteId)
       console.log('🔄 [RobotsContext] CRITICAL: About to query with siteId:', targetSiteId, 'Type:', typeof targetSiteId)
       
-      // Get all robots for the current site (exclude stopped instances)
+      // Get all robots for the current site (includes active, paused, and stopped instances)
       const { data: robots, error: robotsError } = await supabase
         .from('remote_instances')
-        .select('id, status, instance_type, name, provider_instance_id, cdp_url, site_id, created_at')
+        .select('id, status, instance_type, name, provider_instance_id, cdp_url, site_id, created_at, updated_at')
         .eq('site_id', targetSiteId)  // 🆕 Use targetSiteId variable
-        .neq('status', 'stopped')
-        .order('created_at', { ascending: true }) // Oldest first
+        .order('updated_at', { ascending: false }) // Most recently updated first
       
       console.log('🔄 [RobotsContext] Query result:', {
         requestedSiteId: targetSiteId,  // 🆕 Use targetSiteId variable

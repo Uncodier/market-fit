@@ -4,8 +4,9 @@ import { useState, useEffect, Suspense, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, Trash2, Plus } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, Trash2, Plus, MoreHorizontal } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useRobots } from "@/app/context/RobotsContext"
@@ -123,7 +124,26 @@ function RobotsPageContent() {
   })
   
   // Use local state if available, otherwise fall back to URL param, then default to "new" or first instance
-  const selectedInstanceId = localSelectedInstanceId || selectedInstanceParam || (allInstances.length > 0 ? allInstances[0].id : 'new')
+  // Validate that the selected instance actually exists to avoid using deleted instances
+  let selectedInstanceId = localSelectedInstanceId || selectedInstanceParam || (allInstances.length > 0 ? allInstances[0].id : 'new')
+  
+  // If selectedInstanceId is from URL param, verify it still exists
+  if (selectedInstanceId && selectedInstanceId !== 'new' && !localSelectedInstanceId) {
+    const instanceExists = allInstances.some(inst => inst.id === selectedInstanceId)
+    if (!instanceExists) {
+      // Selected instance no longer exists (was deleted), use first available (sorted by updated_at)
+      if (allInstances.length > 0) {
+        const sortedInstances = [...allInstances].sort((a, b) => {
+          const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
+          const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
+          return bTime - aTime
+        })
+        selectedInstanceId = sortedInstances[0].id
+      } else {
+        selectedInstanceId = 'new'
+      }
+    }
+  }
   
   // Get instance without site filtering
   const activeRobotInstance = selectedInstanceId !== 'new' ? getInstanceById(selectedInstanceId) : null
@@ -147,6 +167,12 @@ function RobotsPageContent() {
   const activeTabRef = useRef(selectedInstanceId)
   const prevSiteIdRef = useRef<string | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  
+  // Refs and state for responsive tabs
+  const tabsContainerRef = useRef<HTMLDivElement>(null)
+  const tabsListRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(0)
+  const [maxVisibleTabs, setMaxVisibleTabs] = useState(Infinity)
   const [hasMessageBeenSent, setHasMessageBeenSent] = useState(false)
   const [isAutoCreatingInstance, setIsAutoCreatingInstance] = useState(false)
   const [lastAutoCreationAttempt, setLastAutoCreationAttempt] = useState<number>(0)
@@ -383,7 +409,6 @@ function RobotsPageContent() {
         .from('remote_instances')
         .select('id', { count: 'exact', head: true })
         .eq('site_id', siteId)
-        .neq('status', 'stopped')
         .limit(1)
       
       if (error) {
@@ -675,6 +700,92 @@ function RobotsPageContent() {
     }
   }
 
+  // Function to handle tab change from overflow menu (hidden tabs)
+  // Updates updated_at so the tab moves to the top, and moves last visible to top of hidden
+  const handleTabChangeFromOverflow = async (newInstance: string) => {
+    if (newInstance === 'new') {
+      handleTabChange(newInstance)
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      const now = new Date()
+      
+      // Get current sorted instances to find the last visible one
+      const sortedInstances = [...allInstances].sort((a, b) => {
+        const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
+        const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
+        return bTime - aTime
+      })
+      
+      const showNewMakinaTab = allInstances.length === 0 || isLoadingRobots || forceLoading
+      const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
+      const totalTabs = sortedInstances.length
+      const needsOverflow = totalTabs > effectiveMaxTabs
+      
+      // Ensure selected instance is always visible
+      const selectedInstanceIndex = sortedInstances.findIndex(inst => inst.id === selectedInstanceId)
+      let visibleTabsCount = needsOverflow ? effectiveMaxTabs - 1 : totalTabs
+      
+      // If selected instance is beyond visible range, adjust to show it
+      if (selectedInstanceIndex >= 0 && selectedInstanceIndex >= visibleTabsCount) {
+        visibleTabsCount = Math.min(selectedInstanceIndex + 1, effectiveMaxTabs - 1)
+      }
+      
+      const visibleInstances = sortedInstances.slice(0, visibleTabsCount)
+      const hiddenInstances = sortedInstances.slice(visibleTabsCount)
+      
+      // 1. Update selected instance's updated_at to now (moves to first position)
+      await supabase
+        .from('remote_instances')
+        .update({ updated_at: now.toISOString() })
+        .eq('id', newInstance)
+      
+      // 2. If there's a last visible tab, move it to the top of hidden list
+      // by setting its updated_at to just before now (but after all other hidden tabs)
+      if (visibleInstances.length > 0 && hiddenInstances.length > 0) {
+        const lastVisibleInstance = visibleInstances[visibleInstances.length - 1]
+        
+        // Get the most recent updated_at from hidden instances (excluding the one we just selected)
+        const otherHiddenInstances = hiddenInstances.filter(inst => inst.id !== newInstance)
+        if (otherHiddenInstances.length > 0) {
+          const mostRecentHiddenTime = Math.max(
+            ...otherHiddenInstances.map(inst => 
+              new Date((inst as any).updated_at || (inst as any).created_at || 0).getTime()
+            )
+          )
+          
+          // Set last visible to be just after the most recent hidden (but before now)
+          // This puts it at the top of hidden list
+          const newTimeForLastVisible = new Date(mostRecentHiddenTime + 1).toISOString()
+          
+          await supabase
+            .from('remote_instances')
+            .update({ updated_at: newTimeForLastVisible })
+            .eq('id', lastVisibleInstance.id)
+        } else {
+          // If no other hidden instances, just set it to a time slightly before now
+          const timeBeforeNow = new Date(now.getTime() - 1000).toISOString()
+          await supabase
+            .from('remote_instances')
+            .update({ updated_at: timeBeforeNow })
+            .eq('id', lastVisibleInstance.id)
+        }
+      }
+      
+      // Refresh robots to reflect the updated order
+      if (currentSite?.id) {
+        await refreshRobots(currentSite.id)
+      }
+    } catch (error) {
+      console.error('Error updating instance updated_at:', error)
+    }
+
+    // Then handle the tab change normally
+    handleTabChange(newInstance)
+  }
+
   // Function to enable auto-conversion when a new instance is created
   const handleNewInstanceCreated = useCallback((instanceId: string) => {
     console.log('🔄 New instance created, setting pending conversion:', instanceId)
@@ -691,6 +802,83 @@ function RobotsPageContent() {
     setShouldAutoConvertTab(true)
   }, [setAutoRefreshEnabled, searchParams, router])
 
+  // Calculate how many tabs can fit based on available width
+  const calculateMaxVisibleTabs = useCallback(() => {
+    if (!tabsContainerRef.current) {
+      setMaxVisibleTabs(Infinity)
+      return
+    }
+
+    const containerRect = tabsContainerRef.current.getBoundingClientRect()
+    const containerWidth = containerRect.width
+    
+    // Calculate available width: container width minus margins (px-16 = 64px each side = 128px total)
+    const horizontalMargins = 128 // 64px * 2
+    const gapBetweenElements = 16 // gap-4 = 16px
+    const plusButtonWidth = 40 // Approximate width of Plus button (h-9 with padding)
+    const deleteButtonWidth = activeRobotInstance ? 40 : 0 // Delete button if visible
+    const moreButtonWidth = 60 // Approximate width of "..." button
+    
+    // Try to measure actual tab widths if tabsListRef is available
+    let estimatedTabWidth = 140 // Default estimated width
+    if (tabsListRef.current) {
+      const tabs = tabsListRef.current.querySelectorAll('[role="tab"]')
+      if (tabs.length > 0) {
+        // Calculate average width of existing tabs
+        let totalWidth = 0
+        tabs.forEach((tab) => {
+          totalWidth += (tab as HTMLElement).offsetWidth || 0
+        })
+        if (totalWidth > 0) {
+          estimatedTabWidth = totalWidth / tabs.length
+        }
+      }
+    }
+    
+    const availableWidth = containerWidth - horizontalMargins - gapBetweenElements - plusButtonWidth - deleteButtonWidth - gapBetweenElements
+    
+    // Calculate how many tabs can fit (reserving space for "..." button if needed)
+    // We add moreButtonWidth to availableWidth because we want to know how many tabs fit including the "..." button space
+    const maxTabs = Math.floor((availableWidth + moreButtonWidth) / estimatedTabWidth)
+    
+    // Always show at least 1 tab if there are instances
+    setMaxVisibleTabs(Math.max(1, maxTabs))
+    setContainerWidth(containerWidth)
+  }, [activeRobotInstance])
+
+  // Use ResizeObserver to track container width changes
+  useEffect(() => {
+    if (!tabsContainerRef.current) return
+
+    const resizeObserver = new ResizeObserver(() => {
+      calculateMaxVisibleTabs()
+    })
+
+    resizeObserver.observe(tabsContainerRef.current)
+
+    // Also recalculate on window resize
+    const handleResize = () => {
+      calculateMaxVisibleTabs()
+    }
+    window.addEventListener('resize', handleResize)
+
+    // Initial calculation
+    calculateMaxVisibleTabs()
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [calculateMaxVisibleTabs, allInstances.length, isLayoutCollapsed, activeRobotInstance])
+
+  // Recalculate when instances change (with a small delay to allow DOM to update)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      calculateMaxVisibleTabs()
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [allInstances.length, calculateMaxVisibleTabs, selectedInstanceId])
+
   
 
   return (
@@ -698,10 +886,10 @@ function RobotsPageContent() {
       <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`}>
         <div className="px-16 pt-0">
           <div className="flex items-center gap-4">
-            <div className="flex items-center w-full">
+            <div className="flex items-center w-full" ref={tabsContainerRef}>
               <div className="flex items-center gap-2 flex-1">
                 <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange}>
-                  <TabsList>
+                  <TabsList ref={tabsListRef}>
                     {/* Show New Makina tab if no instances or while loading */}
                     {(allInstances.length === 0 || isLoadingRobots || forceLoading) && (
                       <TabsTrigger value="new">
@@ -712,35 +900,98 @@ function RobotsPageContent() {
                       </TabsTrigger>
                     )}
                     
-                    {/* Show all instances - always show when instances are available */}
+                    {/* Show instances with responsive overflow */}
                     {(() => {
                       console.log('🔍 [Robots] Rendering tabs for instances:', {
                         siteId: currentSite?.id,
                         siteChangeKey,
                         forceLoading,
-                        instances: allInstances.map(i => ({ id: i.id, name: i.name, site_id: i.site_id }))
+                        instances: allInstances.map(i => ({ id: i.id, name: i.name, site_id: i.site_id })),
+                        maxVisibleTabs
                       })
-                      return allInstances
-                        .sort((a, b) => {
-                          // Sort by created_at in ascending order (oldest first)
-                          const aTime = new Date((a as any).created_at || 0).getTime()
-                          const bTime = new Date((b as any).created_at || 0).getTime()
-                          return aTime - bTime
-                        })
-                        .map((inst) => (
-                        <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id}>
-                          <span className="flex items-center gap-2">
-                            {['running','active'].includes((inst as any).status) ? (
-                              <Play className="h-3 w-3 text-green-600" />
-                            ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
-                              <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                            ) : (
-                              <Pause className="h-3 w-3 text-muted-foreground" />
-                            ))}
-                            {`${inst.name || 'mk'}-${inst.id.slice(-4)}`}
-                          </span>
-                        </TabsTrigger>
-                      ))
+                      
+                      // Sort instances by updated_at descending (most recently updated first)
+                      const sortedInstances = [...allInstances].sort((a, b) => {
+                        const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
+                        const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
+                        return bTime - aTime
+                      })
+                      
+                      // Calculate how many tabs to show
+                      const showNewMakinaTab = allInstances.length === 0 || isLoadingRobots || forceLoading
+                      // Account for "New Makina" tab in maxVisibleTabs if it's shown
+                      const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
+                      const totalTabs = sortedInstances.length
+                      const needsOverflow = totalTabs > effectiveMaxTabs
+                      
+                      // Ensure selected instance is always visible
+                      const selectedInstanceIndex = sortedInstances.findIndex(inst => inst.id === selectedInstanceId)
+                      let visibleTabsCount = needsOverflow ? effectiveMaxTabs - 1 : totalTabs
+                      
+                      // If selected instance is beyond visible range, adjust to show it
+                      if (selectedInstanceIndex >= 0 && selectedInstanceIndex >= visibleTabsCount) {
+                        visibleTabsCount = Math.min(selectedInstanceIndex + 1, effectiveMaxTabs - 1)
+                      }
+                      
+                      const visibleInstances = sortedInstances.slice(0, visibleTabsCount)
+                      const hiddenInstances = sortedInstances.slice(visibleTabsCount)
+                      
+                      return (
+                        <>
+                          {visibleInstances.map((inst) => (
+                            <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id}>
+                              <span className="flex items-center gap-2">
+                                {['running','active'].includes((inst as any).status) ? (
+                                  <Play className="h-3 w-3 text-green-600" />
+                                ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
+                                  <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                ) : (
+                                  <Pause className="h-3 w-3 text-muted-foreground" />
+                                ))}
+                                {`${inst.name || 'mk'}-${inst.id.slice(-4)}`}
+                              </span>
+                            </TabsTrigger>
+                          ))}
+                          
+                          {/* Show "..." button when there are hidden tabs */}
+                          {needsOverflow && hiddenInstances.length > 0 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50"
+                                  onClick={(e) => e.preventDefault()}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <MoreHorizontal className="h-3 w-3" />
+                                    <span>{hiddenInstances.length}</span>
+                                  </span>
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                                {hiddenInstances.map((inst) => (
+                                  <DropdownMenuItem
+                                    key={`overflow-${inst.id}`}
+                                    onClick={() => handleTabChangeFromOverflow(inst.id)}
+                                    className="cursor-pointer"
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      {['running','active'].includes((inst as any).status) ? (
+                                        <Play className="h-3 w-3 text-green-600" />
+                                      ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
+                                        <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                      ) : (
+                                        <Pause className="h-3 w-3 text-muted-foreground" />
+                                      ))}
+                                      {`${inst.name || 'mk'}-${inst.id.slice(-4)}`}
+                                    </span>
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </>
+                      )
                     })()}
                   </TabsList>
                 </Tabs>
@@ -782,7 +1033,11 @@ function RobotsPageContent() {
           onDeleteSuccess={async () => {
             console.log('🗑️ [Delete] Starting delete success callback')
             
-            // Clear local selection immediately
+            // Save the deleted instance ID before clearing state
+            const deletedInstanceId = activeRobotInstance?.id
+            console.log('🗑️ [Delete] Deleted instance ID:', deletedInstanceId)
+            
+            // Clear local selection immediately (but don't update URL yet to avoid intermediate state)
             setLocalSelectedInstanceId(null)
             
             try {
@@ -791,54 +1046,126 @@ function RobotsPageContent() {
               await refreshRobots(currentSite?.id)
               console.log('🗑️ [Delete] Robots refreshed successfully')
               
-              // Wait a bit more to ensure state is fully updated
-              await new Promise(resolve => setTimeout(resolve, 200))
+              // Wait for state to be fully updated - use a retry mechanism
+              let currentInstances = getAllInstances()
+              let retries = 0
+              const maxRetries = 15
               
-              // Now get the updated instances after delete
-              const currentInstances = getAllInstances()
-              const deletedInstanceId = activeRobotInstance?.id
+              // Wait until the deleted instance is confirmed to be removed from the list
+              while (retries < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 100))
+                currentInstances = getAllInstances()
+                
+                // Check if the deleted instance is no longer in the list
+                const deletedStillExists = deletedInstanceId && currentInstances.some(inst => inst.id === deletedInstanceId)
+                
+                // Only proceed if deleted instance is confirmed removed OR we have instances
+                if (!deletedStillExists) {
+                  console.log('🗑️ [Delete] Deleted instance confirmed removed after', retries, 'retries')
+                  break
+                }
+                retries++
+              }
+              
+              // Final check: ensure deleted instance is not in the list
+              if (deletedInstanceId && currentInstances.some(inst => inst.id === deletedInstanceId)) {
+                console.warn('🗑️ [Delete] WARNING: Deleted instance still in list after retries, filtering it out')
+                currentInstances = currentInstances.filter(inst => inst.id !== deletedInstanceId)
+              }
               
               console.log('🗑️ [Delete] Current instances after refresh:', {
                 count: currentInstances.length,
                 instances: currentInstances.map(i => ({ id: i.id, name: i.name })),
-                deletedInstanceId
+                deletedInstanceId,
+                retries
               })
               
-              // Find the best instance to navigate to
+              // Find the best instance to navigate to - select the first VISIBLE one
               let targetInstanceId = 'new'
               
               if (currentInstances.length > 0) {
-                // Sort instances by created_at (newest first)
+                // Sort instances by updated_at descending (most recently updated first)
+                // This matches the order used in the tabs
                 const sortedInstances = [...currentInstances].sort((a, b) => {
-                  const dateA = new Date((a as any).created_at || 0).getTime()
-                  const dateB = new Date((b as any).created_at || 0).getTime()
-                  return dateB - dateA // Newest first
+                  const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
+                  const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
+                  return bTime - aTime
                 })
                 
-                console.log('🗑️ [Delete] Sorted instances:', sortedInstances.map(i => ({ id: i.id, name: i.name, created_at: i.created_at })))
+                console.log('🗑️ [Delete] Sorted instances by updated_at:', sortedInstances.map(i => ({ 
+                  id: i.id, 
+                  name: i.name, 
+                  updated_at: (i as any).updated_at,
+                  created_at: (i as any).created_at 
+                })))
                 
-                // If we deleted the newest instance, go to the next newest
-                // Otherwise, go to the newest available
-                if (deletedInstanceId && sortedInstances[0]?.id === deletedInstanceId) {
-                  targetInstanceId = sortedInstances[1]?.id || 'new'
-                  console.log('🗑️ [Delete] Deleted newest instance, going to second newest:', targetInstanceId)
+                // Calculate which instances are visible (same logic as in tab rendering)
+                const showNewMakinaTab = currentInstances.length === 0 || isLoadingRobots || forceLoading
+                const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
+                const totalTabs = sortedInstances.length
+                const needsOverflow = totalTabs > effectiveMaxTabs
+                let visibleTabsCount = needsOverflow ? effectiveMaxTabs - 1 : totalTabs
+                
+                // Get visible instances (first N that fit in visible tabs)
+                const visibleInstances = sortedInstances.slice(0, visibleTabsCount)
+                
+                console.log('🗑️ [Delete] Visibility calculation:', {
+                  totalTabs,
+                  maxVisibleTabs,
+                  effectiveMaxTabs,
+                  needsOverflow,
+                  visibleTabsCount,
+                  visibleInstances: visibleInstances.map(i => ({ id: i.id, name: i.name })),
+                  hiddenCount: sortedInstances.length - visibleTabsCount
+                })
+                
+                // Select the first VISIBLE instance (not just first in sorted list)
+                if (visibleInstances.length > 0) {
+                  targetInstanceId = visibleInstances[0]?.id || 'new'
+                  console.log('🗑️ [Delete] Selecting first VISIBLE instance:', targetInstanceId)
                 } else {
+                  // Fallback: if no visible instances (shouldn't happen), select first in list
                   targetInstanceId = sortedInstances[0]?.id || 'new'
-                  console.log('🗑️ [Delete] Going to newest instance:', targetInstanceId)
+                  console.log('🗑️ [Delete] No visible instances, selecting first in sorted list:', targetInstanceId)
                 }
+                
+                // Set local selection and update URL atomically to avoid intermediate state
+                setLocalSelectedInstanceId(targetInstanceId)
+                
+                // Navigate to the selected instance (update URL directly, skipping intermediate state)
+                console.log('🗑️ [Delete] Navigating to first visible instance:', targetInstanceId)
+                const newParams = new URLSearchParams(searchParams.toString())
+                newParams.set('instance', targetInstanceId)
+                router.replace(`/robots?${newParams.toString()}`, { scroll: false })
               } else {
                 console.log('🗑️ [Delete] No instances available, going to new')
+                // Prevent auto-create from triggering immediately after delete
+                // Update lastAutoCreationAttempt to prevent auto-create for a short period
+                setLastAutoCreationAttempt(Date.now())
+                // Also set a flag to prevent auto-create during delete process
+                setIsAutoCreatingInstance(true)
+                // Reset the flag after a delay to allow auto-create to work normally later
+                setTimeout(() => {
+                  setIsAutoCreatingInstance(false)
+                }, 3000) // 3 seconds delay before auto-create can trigger again
+                
+                // Set local selection and update URL atomically
+                setLocalSelectedInstanceId(null)
+                const newParams = new URLSearchParams(searchParams.toString())
+                newParams.set('instance', 'new')
+                router.replace(`/robots?${newParams.toString()}`, { scroll: false })
               }
-              
-              // Navigate to the selected instance after refresh
-              console.log('🗑️ [Delete] Navigating to:', targetInstanceId)
-              const params = new URLSearchParams(searchParams.toString())
-              params.set('instance', targetInstanceId)
-              router.replace(`/robots?${params.toString()}`)
               
             } catch (error) {
               console.error('🗑️ [Delete] Error in delete success callback:', error)
               // Fallback: just navigate to 'new' if something goes wrong
+              // Also prevent auto-create in error case
+              setLastAutoCreationAttempt(Date.now())
+              setIsAutoCreatingInstance(true)
+              setTimeout(() => {
+                setIsAutoCreatingInstance(false)
+              }, 3000)
+              
               const params = new URLSearchParams(searchParams.toString())
               params.set('instance', 'new')
               router.replace(`/robots?${params.toString()}`)
