@@ -510,7 +510,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                       setEditForm({...editForm, status: value})
                     }
                   >
-                    <SelectTrigger className="h-12 text-sm">
+                    <SelectTrigger className="h-11 text-sm">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>

@@ -141,16 +141,16 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 }
               }}
               placeholder={placeholder}
-              className="resize-none min-h-[135px] w-full py-5 pl-[30px] pr-[30px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
+              className="resize-none min-h-[121.5px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
               disabled={disabled}
               style={{
                 lineHeight: '1.5',
                 overflowY: 'hidden',
                 wordWrap: 'break-word',
-                paddingBottom: '50px',
+                paddingBottom: '45px',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                height: '135px', // Initial height, will be auto-adjusted
+                height: '121.5px', // Initial height, will be auto-adjusted
                 width: '100%',
                 minWidth: '100%',
                 maxWidth: '100%',
@@ -187,10 +187,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     }
                   >
                     <div className="flex items-center w-full">
-                      <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
-                        {selectedActivity === 'ask' && <MessageSquare className="h-[18px] w-[18px] shrink-0 text-blue-600" />}
-                        {selectedActivity === 'robot' && <Bot className="h-[18px] w-[18px] shrink-0 text-purple-600" />}
-                        {selectedActivity === 'generate-image' && <ImageIcon className="h-[18px] w-[18px] shrink-0 text-green-600" />}
+                      <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                        {selectedActivity === 'ask' && <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />}
+                        {selectedActivity === 'robot' && <Bot className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />}
+                        {selectedActivity === 'generate-image' && <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />}
                       </div>
                       <div className="flex flex-col min-w-0 ml-2">
                         <span className="truncate">
@@ -218,8 +218,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           }}
                           title="Ask"
                         >
-                          <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
-                            <MessageSquare className="h-[18px] w-[18px] shrink-0 text-blue-600" />
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
                             <span className="truncate">Ask</span>
@@ -233,8 +233,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           }}
                           title="Robot"
                         >
-                          <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
-                            <Bot className="h-[18px] w-[18px] shrink-0 text-purple-600" />
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <Bot className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
                             <span className="truncate">Robot</span>
@@ -248,8 +248,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           }}
                           title="Generate Image"
                         >
-                          <div className="flex items-center justify-center safari-icon-fix w-[18px] h-[18px]">
-                            <ImageIcon className="h-[18px] w-[18px] shrink-0 text-green-600" />
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
                             <span className="truncate">Generate Image</span>
@@ -290,14 +290,14 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 variant="ghost"
                 disabled={disabled || isUploading || !activeRobotInstance?.id}
                 onClick={handleAttachmentClick}
-                className={`rounded-[9999px] h-[39px] w-[39px] transition-all duration-200 ${
+                className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 ${
                   !disabled && !isUploading && activeRobotInstance?.id
                     ? 'text-muted-foreground hover:text-foreground hover:bg-accent hover:scale-105 active:scale-95'
                     : 'text-muted-foreground opacity-50 hover:bg-transparent'
                 }`}
                 title={!activeRobotInstance?.id ? 'Start a conversation first to upload files' : 'Attach file'}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-4.5 w-4.5" />
                 <span className="sr-only">Attach file</span>
               </Button>
               
@@ -307,13 +307,13 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 size="icon"
                 variant="ghost"
                 disabled={disabled || !message.trim()}
-                className={`rounded-[9999px] h-[39px] w-[39px] transition-all duration-200 ${
+                className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 ${
                   !disabled && message.trim()
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground hover:scale-105 active:scale-95 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100'
                     : 'text-muted-foreground opacity-50 hover:bg-transparent'
                 }`}
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-4.5 w-4.5" />
                 <span className="sr-only">Send</span>
               </Button>
             </div>

@@ -1024,7 +1024,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                   value={selectedProvider}
                   onValueChange={handleProviderChange}
                 >
-                  <SelectTrigger className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground">
+                  <SelectTrigger className="flex h-11 w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
                   <SelectContent>

@@ -19,8 +19,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
           <input
             className={cn(
-              "flex h-12 w-full rounded-md border border-input bg-background text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-              iconPosition === "left" ? "pl-10 pr-3" : "pl-3 pr-10",
+              "flex h-11 w-full rounded-md border border-input bg-background text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+              iconPosition === "left" ? "pl-9 pr-2.5" : "pl-2.5 pr-9",
               className
             )}
             ref={ref}
@@ -38,7 +38,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         className={cn(
-          "flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-11 w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         ref={ref}

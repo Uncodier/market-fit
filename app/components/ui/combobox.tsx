@@ -118,21 +118,21 @@ export function Combobox({
               {clearable && value && (
                 <button
                   type="button"
-                  className="h-4 w-4 mr-1 rounded-full text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
+                  className="h-3.5 w-3.5 mr-1 rounded-full text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
                   onClick={handleClear}
                   aria-label="Clear selection"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
-              <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden={true} />
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden={true} />
             </div>
           </div>
         </PopoverTrigger>
         <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px]" align="start">
           <div className="p-2">
             <div className="flex items-center px-3 pb-2 mb-2">
-              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+              <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />
               <Input
                 placeholder={searchPlaceholder}
                 value={searchQuery}

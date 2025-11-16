@@ -10,7 +10,7 @@ interface SafariButtonFixProps extends ButtonProps {
 
 export function SafariButtonFix({ 
   children, 
-  iconSize = 16, 
+  iconSize = 14.4, 
   className = '',
   ...props 
 }: SafariButtonFixProps) {

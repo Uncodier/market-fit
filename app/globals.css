@@ -1041,7 +1041,7 @@ html.safari [class*="select-trigger"] svg {
 }
 
 /* Primary button with gradient - applies to default variant */
-.inline-flex.items-center.justify-center[class*="min-w-[180px]"] {
+.inline-flex.items-center.justify-center[class*="min-w-[162px]"] {
   background: hsl(var(--primary));
 }
 

@@ -17,7 +17,7 @@ export function SafariSettingsLink({
   href = '/settings',
   onClick,
   className = '',
-  iconSize = 18,
+  iconSize = 16.2,
   label = 'Settings',
   isCollapsed = false,
 }: SafariSettingsLinkProps) {
@@ -41,16 +41,16 @@ export function SafariSettingsLink({
       link.style.borderRadius = '4px';
       if (isCollapsed) {
         link.style.justifyContent = 'center';
-        link.style.width = '35px';
-        link.style.height = '35px';
+        link.style.width = '32px';
+        link.style.height = '32px';
         link.style.padding = '0';
         link.style.gap = '0';
       } else {
         link.style.justifyContent = 'flex-start';
         link.style.width = '100%';
-        link.style.height = '35px';
-        link.style.padding = '8px 12px';
-        link.style.gap = '10.8px';
+        link.style.height = '32px';
+        link.style.padding = '7.2px 10.8px';
+        link.style.gap = '9.7px';
       }
       
       // Encuentra todos los elementos internos
@@ -63,8 +63,8 @@ export function SafariSettingsLink({
         iconContainer.style.display = 'flex';
         iconContainer.style.alignItems = 'center';
         iconContainer.style.justifyContent = 'center';
-        iconContainer.style.width = isCollapsed ? '35px' : '23px';
-        iconContainer.style.height = '23px';
+        iconContainer.style.width = isCollapsed ? '32px' : '21px';
+        iconContainer.style.height = isCollapsed ? '32px' : '21px';
         iconContainer.style.flexShrink = '0';
         iconContainer.style.margin = '0';
       }
@@ -107,8 +107,11 @@ export function SafariSettingsLink({
       onClick={onClick}
       className={`safari-settings-link ${isCollapsed ? 'collapsed' : ''} flex items-center rounded-md text-sm transition-colors relative ${className}`}
     >
-      <div className="flex items-center justify-center w-[23px] h-[23px] shrink-0">
-        <Settings className="h-[18px] w-[18px]" />
+      <div className={cn(
+        "flex items-center justify-center shrink-0",
+        isCollapsed ? "w-[32px] h-[32px]" : "w-[21px] h-[21px]"
+      )}>
+        <Settings className="h-[16.2px] w-[16.2px]" />
       </div>
       {!isCollapsed && <span className="truncate">{label}</span>}
     </Link>

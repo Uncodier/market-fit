@@ -9,7 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "min-w-[180px] text-white hover:opacity-90 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 active:scale-95 transition-all duration-200",
+        default: "min-w-[162px] bg-primary text-primary-foreground hover:opacity-90 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 active:scale-95 transition-all duration-200",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:scale-105 active:scale-95 transition-all duration-200",
         outline:
@@ -20,10 +20,10 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline hover:scale-105 active:scale-95 transition-all duration-200",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        default: "h-9 px-3.5 py-2",
+        sm: "h-8 rounded-md px-2.5",
+        lg: "h-10 rounded-md px-7",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: {

@@ -312,7 +312,7 @@ export default function ProfilePage() {
                         value={formData.role}
                         onValueChange={(value) => handleInputChange('role', value)}
                       >
-                        <SelectTrigger className="w-full pl-12 h-12 text-base transition-colors duration-200">
+                        <SelectTrigger className="w-full pl-11 h-11 text-base transition-colors duration-200">
                           <SelectValue placeholder="Select your role" />
                         </SelectTrigger>
                         <SelectContent>

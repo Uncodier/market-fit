@@ -13,7 +13,7 @@ interface SafariInputFixProps extends InputProps {
 export function SafariInputFix({
   icon,
   iconPosition = 'right',
-  iconSize = 16,
+  iconSize = 14.4,
   wrapperClassName = '',
   className = '',
   ...props

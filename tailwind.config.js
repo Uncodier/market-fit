@@ -16,6 +16,21 @@ module.exports = {
       },
     },
     extend: {
+      fontSize: {
+        xs: ['0.675rem', { lineHeight: '0.9rem' }], // 0.75rem * 0.9
+        sm: ['0.7875rem', { lineHeight: '1.125rem' }], // 0.875rem * 0.9
+        base: ['0.9rem', { lineHeight: '1.35rem' }], // 1rem * 0.9
+        lg: ['1.0125rem', { lineHeight: '1.575rem' }], // 1.125rem * 0.9
+        xl: ['1.125rem', { lineHeight: '1.8rem' }], // 1.25rem * 0.9
+        '2xl': ['1.35rem', { lineHeight: '2.025rem' }], // 1.5rem * 0.9
+        '3xl': ['1.6875rem', { lineHeight: '2.475rem' }], // 1.875rem * 0.9
+        '4xl': ['2.025rem', { lineHeight: '2.925rem' }], // 2.25rem * 0.9
+        '5xl': ['2.7rem', { lineHeight: '1' }], // 3rem * 0.9
+        '6xl': ['3.375rem', { lineHeight: '1' }], // 3.75rem * 0.9
+        '7xl': ['4.05rem', { lineHeight: '1' }], // 4.5rem * 0.9
+        '8xl': ['4.725rem', { lineHeight: '1' }], // 5.25rem * 0.9
+        '9xl': ['5.625rem', { lineHeight: '1' }], // 6.25rem * 0.9
+      },
       colors: {
         'primary-button': '#90ff17',
         'primary-button-hover': '#ffdc24',

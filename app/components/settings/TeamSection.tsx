@@ -464,7 +464,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium">
                         {member.name || member.email || "New Member"}
                       </span>
@@ -516,9 +516,9 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                     
                     {/* Expand/Collapse Icon */}
                     {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
                   </div>
                 </div>
@@ -536,7 +536,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             <FormLabel className="text-sm font-medium">Name</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                 <Input
                                   className="pl-12 h-12 text-base"
                                   placeholder="Full name"
@@ -562,7 +562,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                             <FormLabel className="text-sm font-medium">Email</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                 <Input
                                   className="pl-12 h-12 text-base"
                                   placeholder="Email address"
@@ -630,7 +630,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                                 disabled={!validation.canChangeRole(member)}
                               >
                                 <FormControl>
-                                  <SelectTrigger className={`h-12 ${!validation.canChangeRole(member) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                  <SelectTrigger className={`h-11 ${!validation.canChangeRole(member) ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                     <SelectValue placeholder="Select role" />
                                   </SelectTrigger>
                                 </FormControl>

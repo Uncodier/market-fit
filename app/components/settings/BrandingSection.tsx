@@ -326,7 +326,7 @@ export function BrandingSection({ active }: BrandingSectionProps) {
                     value={field.value || ""}
                     onValueChange={field.onChange}
                   >
-                    <SelectTrigger className="h-12">
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select brand archetype" />
                     </SelectTrigger>
                     <SelectContent>
@@ -578,7 +578,7 @@ export function BrandingSection({ active }: BrandingSectionProps) {
                     value={field.value || "medium"}
                     onValueChange={field.onChange}
                   >
-                    <SelectTrigger className="h-12">
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select font size scale" />
                     </SelectTrigger>
                     <SelectContent>
@@ -621,7 +621,7 @@ export function BrandingSection({ active }: BrandingSectionProps) {
                     value={field.value || "friendly"}
                     onValueChange={field.onChange}
                   >
-                    <SelectTrigger className="h-12">
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select communication style" />
                     </SelectTrigger>
                     <SelectContent>

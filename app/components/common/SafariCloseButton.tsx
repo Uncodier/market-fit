@@ -12,7 +12,7 @@ interface SafariCloseButtonProps {
 export function SafariCloseButton({
   onClick,
   className = '',
-  iconSize = 16
+  iconSize = 14.4
 }: SafariCloseButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   
@@ -59,7 +59,7 @@ export function SafariCloseButton({
       aria-label="Close"
       type="button"
     >
-      <X className="h-4 w-4" />
+      <X className="h-3.5 w-3.5" />
       <span className="sr-only">Close</span>
     </button>
   );

@@ -393,7 +393,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
                 type="text"
                 placeholder="Search leads, content, requirements, tasks, campaigns..."
                 className="w-full h-12"
-                icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                icon={<Search className="h-3.5 w-3.5 text-muted-foreground" />}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

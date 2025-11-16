@@ -349,7 +349,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                                     updateCopywritingItem(index, 'copy_type', value)
                                   }}
                                 >
-                                  <SelectTrigger className="h-12">
+                                  <SelectTrigger className="h-11">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -380,7 +380,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                                     updateCopywritingItem(index, 'status', value)
                                   }}
                                 >
-                                  <SelectTrigger className="h-12">
+                                  <SelectTrigger className="h-11">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>

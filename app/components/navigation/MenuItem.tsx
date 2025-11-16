@@ -69,9 +69,9 @@ export function MenuItem({
           isActive
             ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground shadow-lg shadow-primary/25"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20",
-          isCollapsed ? "justify-center h-[35px] w-[35px]" : "justify-start h-[35px] px-[10.8px]",
+          isCollapsed ? "justify-center h-[32px] w-[32px]" : "justify-start h-[32px] px-[9.7px]",
         )}
-        iconSize={18}
+        iconSize={16.2}
         isCollapsed={Boolean(isCollapsed)}
       />
     );
@@ -81,8 +81,7 @@ export function MenuItem({
     <>
       <div className={cn(
         "flex items-center justify-center safari-icon-fix",
-        isCollapsed ? "w-[35px]" : "w-[23px]",
-        "h-[23px]",
+        isCollapsed ? "w-[32px] h-[32px] mx-auto" : "w-[21px] h-[21px]",
         isSettingsLink ? "safari-settings-icon" : "",
         href === "/settings" || href.includes("settings") ? "settings-icon-container" : "",
         href === "/notifications" ? "notifications-icon-container" : ""
@@ -95,7 +94,7 @@ export function MenuItem({
             </MenuAvatarFallback>
           </MenuAvatar>
         ) : Icon && (
-          <Icon className="h-[18px] w-[18px] shrink-0" />
+          <Icon className="h-[16.2px] w-[16.2px] shrink-0" />
         )}
       </div>
       
@@ -104,7 +103,7 @@ export function MenuItem({
           "flex flex-col min-w-0",
           isCollapsed ? "hidden" : "flex"
         )}
-        style={{ fontSize: '12.6px' }}
+        style={{ fontSize: '11.3px' }}
       >
         <span className="truncate">{title}</span>
         {subtitle && (
@@ -112,7 +111,7 @@ export function MenuItem({
             "truncate",
             isActive ? "text-white/70" : "text-gray-400"
           )}
-          style={{ fontSize: '10.8px' }}
+          style={{ fontSize: '9.7px' }}
           >
             {subtitle}
           </span>
@@ -135,16 +134,16 @@ export function MenuItem({
         isActive
           ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground shadow-lg shadow-primary/25"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20",
-        isCollapsed ? "justify-center h-[35px] w-[35px]" : "justify-start h-[35px]",
+        isCollapsed ? "justify-center h-[32px] w-[32px]" : "justify-start h-[32px]",
         isSettingsLink ? "safari-settings-link" : ""
       )}
       style={{ 
-        paddingLeft: isCollapsed ? '0px' : '10.8px', 
-        paddingRight: isCollapsed ? '0px' : '10.8px', 
-        paddingTop: isCollapsed ? '0px' : '7.2px', 
-        paddingBottom: isCollapsed ? '0px' : '7.2px',
-        gap: isCollapsed ? '0px' : '10.8px',
-        fontSize: '12.6px'
+        paddingLeft: isCollapsed ? '0px' : '9.7px', 
+        paddingRight: isCollapsed ? '0px' : '9.7px', 
+        paddingTop: isCollapsed ? '0px' : '6.5px', 
+        paddingBottom: isCollapsed ? '0px' : '6.5px',
+        gap: isCollapsed ? '0px' : '9.7px',
+        fontSize: '11.3px'
       }}
       onClick={onClick}
     >
@@ -153,7 +152,7 @@ export function MenuItem({
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div>{content}</div>
+                <div className="w-full h-full flex items-center justify-center p-0 m-0">{content}</div>
               </TooltipTrigger>
               <TooltipContent 
                 side="right" 

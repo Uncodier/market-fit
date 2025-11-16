@@ -112,12 +112,12 @@ export function SimpleSearchSelect({
               onClick={handleClear}
               className="text-muted-foreground hover:text-foreground flex items-center justify-center"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
           <ChevronDown
             className={cn(
-              "h-4 w-4 text-muted-foreground transition-transform",
+              "h-3.5 w-3.5 text-muted-foreground transition-transform",
               isOpen && "transform rotate-180"
             )}
           />

@@ -24,21 +24,21 @@ export function TaskCategoryButton({
       )}
       onClick={onClick}
       style={{
-        paddingTop: '7.2px',
-        paddingBottom: '7.2px',
-        paddingLeft: '10.8px',
-        paddingRight: '10.8px',
-        height: '35px',
-        fontSize: '12.6px'
+        paddingTop: '6.5px',
+        paddingBottom: '6.5px',
+        paddingLeft: '9.7px',
+        paddingRight: '9.7px',
+        height: '31.5px',
+        fontSize: '11.3px'
       }}
     >
       <div
         className="rounded-full"
         style={{ 
           backgroundColor: category.color || "#666",
-          marginRight: '7.2px',
-          height: '10.8px',
-          width: '10.8px'
+          marginRight: '6.5px',
+          height: '9.7px',
+          width: '9.7px'
         }}
       />
       <span className="truncate">{category.name}</span>

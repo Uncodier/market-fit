@@ -130,16 +130,16 @@ export const ChatInput = memo(function ChatInput({
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
                 placeholder="Message..."
-                className="resize-none min-h-[135px] w-full py-5 pl-9 pr-[60px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
+                className="resize-none min-h-[121.5px] w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
                 disabled={isLoading}
                 style={{
                   lineHeight: '1.5',
                   overflowY: 'hidden',
                   wordWrap: 'break-word',
-                  paddingBottom: '50px',
+                  paddingBottom: '45px',
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
-                  height: '135px',
+                  height: '121.5px',
                   opacity: isLoading ? 1 : undefined
                 }}
               />
@@ -152,7 +152,7 @@ export const ChatInput = memo(function ChatInput({
                   variant="ghost"
                   disabled={!canSend}
                   className={cn(
-                    "rounded-[9999px] h-[39px] w-[39px] transition-all duration-200",
+                    "rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200",
                     canSend
                       ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100"
                       : "text-muted-foreground opacity-50 hover:bg-transparent"
@@ -161,7 +161,7 @@ export const ChatInput = memo(function ChatInput({
                   {isLoading ? (
                     <LoadingSkeleton size="sm" />
                   ) : (
-                    <Icons.ChevronRight className="h-5 w-5" />
+                    <Icons.ChevronRight className="h-4.5 w-4.5" />
                   )}
                   <span className="sr-only">Send</span>
                 </Button>
@@ -183,20 +183,20 @@ export const ChatInput = memo(function ChatInput({
                   type="button" 
                   size="icon"
                   variant="ghost"
-                  className="rounded-xl h-[39px] w-[39px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
+                  className="rounded-xl h-[35.1px] w-[35.1px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
                   title="Attach file"
                 >
-                  <Icons.Link className="h-5 w-5" />
+                  <Icons.Link className="h-4.5 w-4.5" />
                   <span className="sr-only">Attach file</span>
                 </Button>
                 <Button 
                   type="button" 
                   size="icon"
                   variant="ghost"
-                  className="rounded-xl h-[39px] w-[39px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
+                  className="rounded-xl h-[35.1px] w-[35.1px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
                   title="Web search"
                 >
-                  <Icons.Search className="h-5 w-5" />
+                  <Icons.Search className="h-4.5 w-4.5" />
                   <span className="sr-only">Web search</span>
                 </Button>
               </div>

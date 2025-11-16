@@ -623,10 +623,10 @@ html.safari a[href*="settings"] {
   border-radius: 4px !important;
 }
 
-/* Collapsed state must be a perfect 35x35 square with no padding and no gap */
+/* Collapsed state must be a perfect 32x32 square with no padding and no gap */
 html.safari .safari-settings-link.collapsed {
-  width: 35px !important;
-  height: 35px !important;
+  width: 32px !important;
+  height: 32px !important;
   padding: 0 !important;
   gap: 0 !important;
   justify-content: center !important;
@@ -637,8 +637,8 @@ html.safari a[href*="settings"] > div:first-child {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 25px !important;
-  height: 25px !important;
+  width: 21px !important;
+  height: 21px !important;
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
   margin: 0 !important;
@@ -646,29 +646,29 @@ html.safari a[href*="settings"] > div:first-child {
 
 /* Collapsed icon container matches other collapsed items */
 html.safari .safari-settings-link.collapsed > div:first-child {
-  width: 35px !important;
-  height: 23px !important;
+  width: 32px !important;
+  height: 32px !important;
 }
 
 html.safari .safari-settings-link svg,
 html.safari a[href*="settings"] svg {
   display: block !important;
   visibility: visible !important;
-  width: 25px !important;
-  height: 25px !important;
-  min-width: 25px !important;
-  min-height: 25px !important;
+  width: 16.2px !important;
+  height: 16.2px !important;
+  min-width: 16.2px !important;
+  min-height: 16.2px !important;
   position: static !important;
   flex-shrink: 0 !important;
   margin: 0 !important;
 }
 
-/* Collapsed icon size equals others (18px) */
+/* Collapsed icon size equals others (16.2px) */
 html.safari .safari-settings-link.collapsed svg {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px !important;
-  min-height: 18px !important;
+  width: 16.2px !important;
+  height: 16.2px !important;
+  min-width: 16.2px !important;
+  min-height: 16.2px !important;
 }
 
 html.safari .safari-settings-link span,

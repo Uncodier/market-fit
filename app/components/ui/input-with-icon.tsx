@@ -19,7 +19,7 @@ const InputWithIcon = forwardRef<HTMLInputElement, InputWithIconProps>(
     rightIcon, 
     rightIconButton,
     onRightIconClick,
-    iconSize = 16,
+    iconSize = 14.4,
     ...props 
   }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null)

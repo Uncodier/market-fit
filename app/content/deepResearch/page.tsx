@@ -308,7 +308,7 @@ export default function DeepResearchPage() {
 
                 {/* Time Range Filter */}
                 <Select value={filters.timeRange} onValueChange={handleTimeRangeChange}>
-                  <SelectTrigger className="w-44 rounded-full px-6 py-3 h-12">
+                  <SelectTrigger className="w-44 rounded-full px-5 py-2.5 h-11">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-5 w-5" />
                       <SelectValue />

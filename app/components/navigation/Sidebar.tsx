@@ -490,7 +490,7 @@ export function Sidebar({
           {/* Main Navigation Items */}
           <div className={cn(
             "flex flex-col space-y-1",
-            isCollapsed ? "px-[14px]" : "px-3"
+            isCollapsed ? "px-[14px] items-center" : "px-3"
           )}>
             {mainNavigationItems.map((item) => (
               <MenuItem
@@ -508,7 +508,7 @@ export function Sidebar({
           <div style={{ marginTop: '21.6px' }}>
             <div className={cn(
               "flex flex-col space-y-1",
-              isCollapsed ? "px-[14px]" : "px-3"
+              isCollapsed ? "px-[14px] items-center" : "px-3"
             )}>
             {humanInTheLoopItems.map((item) => (
                 <MenuItem
@@ -543,7 +543,7 @@ export function Sidebar({
           <div style={{ marginTop: '21.6px' }}>
             <div className={cn(
               "flex flex-col space-y-1",
-              isCollapsed ? "px-[14px]" : "px-3"
+              isCollapsed ? "px-[14px] items-center" : "px-3"
             )}>
               {robotsItems.map((item) => (
                 <MenuItem
@@ -568,7 +568,7 @@ export function Sidebar({
 
       {/* Bottom Section - Fixed */}
       <div className="flex-none border-t border-border">
-        <div className={cn("flex flex-col space-y-1 py-4", isCollapsed ? "px-[14px]" : "px-3")}>
+        <div className={cn("flex flex-col space-y-1 py-4", isCollapsed ? "px-[14px] items-center" : "px-3")}>
           {/* Context main item */}
           <div 
             className="relative"
@@ -658,7 +658,7 @@ export function Sidebar({
         </div>
         {/* Profile Section - Collapsible */}
         <div className="border-t border-border">
-          <div className={cn("flex flex-col space-y-1 py-4", isCollapsed ? "px-[14px]" : "px-3")}>
+          <div className={cn("flex flex-col space-y-1 py-4", isCollapsed ? "px-[14px] items-center" : "px-3")}>
             {/* Profile main item */}
             <div 
               className="relative"

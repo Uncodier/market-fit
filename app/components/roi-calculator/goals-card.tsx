@@ -103,7 +103,7 @@ export function GoalsCard({
                   timeframe: value 
                 })}
               >
-                <SelectTrigger className="h-12">
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="Select timeframe" />
                 </SelectTrigger>
                 <SelectContent>
@@ -138,12 +138,12 @@ export function GoalsCard({
                 >
                   {isSaving ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white mr-2"></div>
                       Saving...
                     </>
                   ) : (
                     <>
-                      <Save className="h-4 w-4 mr-2" />
+                      <Save className="h-3.5 w-3.5 mr-2" />
                       Save Goals
                     </>
                   )}

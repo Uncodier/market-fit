@@ -14,7 +14,7 @@ interface SafariCloseButtonAbsoluteProps {
 export function SafariCloseButtonAbsolute({
   onClick,
   className = '',
-  iconSize = 16,
+  iconSize = 14.4,
   top = '16px',
   right = '16px'
 }: SafariCloseButtonAbsoluteProps) {
@@ -82,7 +82,7 @@ export function SafariCloseButtonAbsolute({
         zIndex: 999
       }}
     >
-      <X className="h-4 w-4" />
+      <X className="h-3.5 w-3.5" />
       <span className="sr-only">Close</span>
     </button>
   );
