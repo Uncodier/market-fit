@@ -18,8 +18,27 @@ export async function getConversations(
   try {
     const supabase = createClient();
 
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
+    // When initiatedBy filter is active, we need to fetch more conversations
+    // to compensate for filtering, then paginate in memory
+    const needsPostFiltering = initiatedByFilter && initiatedByFilter !== 'all'
+    const fetchMultiplier = needsPostFiltering ? 5 : 1 // Fetch 5x more when filtering
+    
+    let from: number
+    let to: number
+    
+    if (needsPostFiltering) {
+      // Fetch enough conversations to cover the requested page after filtering
+      // For page N, we need at least N * pageSize filtered results
+      // So we fetch (N * pageSize * multiplier) conversations
+      const targetFilteredCount = page * pageSize
+      const fetchCount = targetFilteredCount * fetchMultiplier
+      from = 0
+      to = fetchCount - 1
+    } else {
+      // Normal pagination
+      from = (page - 1) * pageSize
+      to = from + pageSize - 1
+    }
 
     let query = supabase
       .from("conversations")
@@ -58,69 +77,9 @@ export async function getConversations(
       query = query.ilike('title', `%${searchTerm}%`)
     }
 
-    // Apply initiatedBy filter at database level if specified
-    if (initiatedByFilter && initiatedByFilter !== 'all') {
-      // First, get all conversations for this site to get their IDs
-      const { data: allSiteConversations } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("site_id", siteId)
-        .eq("is_archived", false)
-      
-      if (!allSiteConversations || allSiteConversations.length === 0) {
-        return []
-      }
-      
-      const conversationIds = allSiteConversations.map((c: any) => c.id)
-      
-      // Get the first message for each conversation
-      // We'll use a query that gets messages ordered by conversation_id and created_at
-      // Then we'll process them to find the first message per conversation
-      const { data: messages, error: messagesError } = await supabase
-        .from('messages')
-        .select('conversation_id, role, created_at')
-        .in('conversation_id', conversationIds)
-        .order('conversation_id', { ascending: true })
-        .order('created_at', { ascending: true })
-      
-      if (messagesError) {
-        console.error("Error fetching messages for initiatedBy filter:", messagesError)
-        // Fall back to client-side filtering if query fails
-      } else if (messages && messages.length > 0) {
-        // Get first message per conversation
-        const firstMessageByConversation = new Map<string, string>()
-        for (const msg of messages) {
-          if (!firstMessageByConversation.has(msg.conversation_id)) {
-            firstMessageByConversation.set(msg.conversation_id, msg.role)
-          }
-        }
-        
-        // Filter conversation IDs based on first message role
-        const matchingConversationIds: string[] = []
-        
-        for (const [conversationId, firstRole] of firstMessageByConversation.entries()) {
-          if (initiatedByFilter === 'visitor') {
-            // Inbound: first message from visitor/user
-            if (firstRole === 'visitor' || firstRole === 'user') {
-              matchingConversationIds.push(conversationId)
-            }
-          } else if (initiatedByFilter === 'agent') {
-            // Outbound: first message from agent/assistant/system/team_member
-            if (firstRole === 'agent' || firstRole === 'assistant' || firstRole === 'system' || firstRole === 'team_member') {
-              matchingConversationIds.push(conversationId)
-            }
-          }
-        }
-        
-        // If no matching conversations, return empty early
-        if (matchingConversationIds.length === 0) {
-          return []
-        }
-        
-        // Filter conversations by matching IDs
-        query = query.in('id', matchingConversationIds)
-      }
-    }
+    // Note: initiatedBy filter will be applied after getting results
+    // to use the messages that come with each conversation (avoids RLS issues)
+    // We fetch more conversations to compensate for filtering
 
     const { data: conversations, error: conversationsError } = await query
       .order("last_message_at", { ascending: false })
@@ -131,6 +90,66 @@ export async function getConversations(
     }
 
     let filteredConversations = conversations
+
+    // Apply initiatedBy filter using messages that come with conversations
+    if (initiatedByFilter && initiatedByFilter !== 'all') {
+      console.log(`🔍 Filtering conversations by initiatedBy (${initiatedByFilter}) using messages from query`)
+      
+      const userRoles = ['visitor', 'user']
+      const systemRoles = ['agent', 'assistant', 'system', 'team_member']
+      
+      filteredConversations = filteredConversations.filter((conv: any) => {
+        // Get messages for this conversation
+        const messages = conv.messages || []
+        
+        if (!messages || messages.length === 0) {
+          // No messages = can't determine who initiated, exclude from filter
+          return false
+        }
+        
+        // Find the first message (oldest by created_at)
+        const sortedMessages = [...messages].sort((a: any, b: any) => {
+          const dateA = new Date(a.created_at).getTime()
+          const dateB = new Date(b.created_at).getTime()
+          return dateA - dateB
+        })
+        
+        const firstMessage = sortedMessages[0]
+        const firstRole = firstMessage.role
+        
+        if (initiatedByFilter === 'visitor') {
+          // INBOUND: First message must be from user/visitor
+          return userRoles.includes(firstRole)
+        } else if (initiatedByFilter === 'agent') {
+          // OUTBOUND: First message must be from system/agent
+          return systemRoles.includes(firstRole)
+        }
+        
+        return false
+      })
+      
+      const totalFiltered = filteredConversations.length
+      console.log(`✅ Filtered to ${totalFiltered} conversations matching ${initiatedByFilter} filter`)
+      
+      // Apply pagination in memory after filtering
+      const paginatedFrom = (page - 1) * pageSize
+      const paginatedTo = paginatedFrom + pageSize
+      filteredConversations = filteredConversations.slice(paginatedFrom, paginatedTo)
+      
+      // If we have more filtered results than needed for this page, we know there are more
+      // The component checks if result.length === pageSize to determine hasMore
+      // So we ensure we return exactly pageSize when there are more results
+      const hasMoreResults = totalFiltered > paginatedTo
+      if (hasMoreResults && filteredConversations.length < pageSize) {
+        // This shouldn't happen if we fetched enough, but handle it gracefully
+        console.warn(`⚠️ Expected ${pageSize} results but got ${filteredConversations.length} after filtering`)
+      }
+      
+      console.log(`📄 Paginated: showing ${filteredConversations.length} conversations (page ${page}, ${pageSize} per page, hasMore: ${hasMoreResults})`)
+    } else {
+      // No initiatedBy filter, apply normal pagination
+      // (already applied in the query range)
+    }
 
     // Assignee filter
     if (assigneeFilter && assigneeFilter !== 'all' && currentUserId) {
