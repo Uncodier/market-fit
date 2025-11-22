@@ -36,14 +36,16 @@ export async function updateCampaign(
     delete valuesToUpdate.segments;
 
     // Prepare campaign data
+    // Use !== undefined for fields that should allow empty strings
+    // Use && for fields that should only update if they have a truthy value
     const campaignData = {
-      ...(valuesToUpdate.title && { title: valuesToUpdate.title }),
+      ...(valuesToUpdate.title !== undefined && { title: valuesToUpdate.title }),
       ...(valuesToUpdate.description !== undefined && { description: valuesToUpdate.description }),
       ...(valuesToUpdate.priority && { priority: valuesToUpdate.priority }),
       ...(valuesToUpdate.status && { status: valuesToUpdate.status }),
-      ...(valuesToUpdate.dueDate && { due_date: valuesToUpdate.dueDate }),
-      ...(valuesToUpdate.assignees && { assignees: valuesToUpdate.assignees }),
-      ...(valuesToUpdate.issues && { issues: valuesToUpdate.issues }),
+      ...(valuesToUpdate.dueDate !== undefined && { due_date: valuesToUpdate.dueDate }),
+      ...(valuesToUpdate.assignees !== undefined && { assignees: valuesToUpdate.assignees }),
+      ...(valuesToUpdate.issues !== undefined && { issues: valuesToUpdate.issues }),
       ...(valuesToUpdate.revenue && { revenue: valuesToUpdate.revenue }),
       ...(valuesToUpdate.budget && { budget: valuesToUpdate.budget }),
       ...(valuesToUpdate.type && { type: valuesToUpdate.type }),

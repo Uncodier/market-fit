@@ -12,6 +12,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { getCampaignById } from "@/app/campaigns/actions/campaigns/read"
 import { createSubtask } from "@/app/campaigns/actions/subtasks/create"
 import { deleteCampaign } from "@/app/campaigns/actions/campaigns/delete"
+import { updateCampaign } from "@/app/campaigns/actions/campaigns/update"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -188,6 +189,7 @@ export default function TaskDetailPage() {
   });
   const [transactions, setTransactions] = useState(costBreakdown);
   const [activeTab, setActiveTab] = useState("summary");
+  const [saving, setSaving] = useState(false);
   const formRef = useRef<HTMLFormElement>(null) as MutableRefObject<HTMLFormElement>;
   
   // Function to convert segment IDs to full segment objects
@@ -536,57 +538,110 @@ export default function TaskDetailPage() {
     }
   };
   
-  const handleUpdateCampaign = (data: any) => {
-    console.log("handleUpdateCampaign received data:", JSON.stringify(data));
-    
-    setCampaign((prev: any) => {
-      if (!prev) return null;
-      
-      // Create a new campaign object with the updated data
-      const updatedCampaign = {
-        ...prev,
-        ...data,
-        // Ensure segments is an array
-        segments: Array.isArray(data.segments) ? data.segments : (prev.segments || []),
-        // Ensure requirements is an array 
-        requirements: Array.isArray(data.requirements) ? data.requirements : (prev.requirements || [])
-      };
-      
-      console.log("Updated campaign state:", JSON.stringify(updatedCampaign));
-      return updatedCampaign;
-    });
-    
-    // If requirements were updated, reload them
-    if (data.requirements && campaign?.id) {
-      loadCampaignRequirements(campaign.id);
+  const handleUpdateCampaign = async (data: any) => {
+    if (!campaign?.id || !params.id) {
+      toast.error("Campaign ID is missing");
+      return;
     }
-    
-    // Use the segmentObjects if available, otherwise generate from IDs
-    if (data.segmentObjects && Array.isArray(data.segmentObjects) && data.segmentObjects.length > 0) {
-      console.log("Using segment objects directly:", data.segmentObjects);
+
+    try {
+      setSaving(true);
+      console.log("handleUpdateCampaign received data:", JSON.stringify(data));
       
-      // Convert to the expected format if needed
-      const formattedSegments = data.segmentObjects.map((segment: any) => ({
-        id: segment.id,
-        name: segment.name,
-        description: segment.description || null
-      }));
+      // Map form data to server action format
+      const updateData: {
+        title?: string;
+        description?: string;
+        priority?: 'high' | 'medium' | 'low';
+        status?: 'active' | 'pending' | 'completed';
+        dueDate?: string;
+        type?: string;
+        segments?: string[];
+        requirements?: string[];
+        budget?: any;
+        revenue?: any;
+      } = {};
+
+      // Map fields that exist in the data
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.priority !== undefined) updateData.priority = data.priority;
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.type !== undefined) updateData.type = data.type;
+      if (data.dueDate !== undefined) updateData.dueDate = data.dueDate;
+      if (data.budget !== undefined) updateData.budget = data.budget;
+      if (data.revenue !== undefined) updateData.revenue = data.revenue;
       
-      setCampaignSegments(formattedSegments);
-    } else if (data.segments && Array.isArray(data.segments)) {
-      console.log("Generating segment objects from IDs:", data.segments);
+      // Handle segments - use segment IDs from data.segments or extract from segmentObjects
+      if (data.segments !== undefined) {
+        updateData.segments = Array.isArray(data.segments) ? data.segments : [];
+      } else if (data.segmentObjects && Array.isArray(data.segmentObjects)) {
+        updateData.segments = data.segmentObjects.map((seg: any) => seg.id).filter(Boolean);
+      }
       
-      // Convert segment IDs to full segment objects
-      const segmentObjects = getSegmentObjectsFromIds(data.segments);
+      // Handle requirements
+      if (data.requirements !== undefined) {
+        updateData.requirements = Array.isArray(data.requirements) ? data.requirements : [];
+      }
+
+      console.log("Calling updateCampaign with:", JSON.stringify(updateData));
       
-      console.log("Generated segment objects for display:", segmentObjects);
-      setCampaignSegments(segmentObjects);
-    } else {
-      // If no segments, clear the display
-      setCampaignSegments([]);
+      // Call server action
+      const result = await updateCampaign(params.id as string, updateData);
+      
+      if (result.error) {
+        console.error("Error updating campaign:", result.error);
+        toast.error(`Failed to update campaign: ${result.error}`);
+        return;
+      }
+
+      if (!result.data) {
+        toast.error("Failed to update campaign: No data returned");
+        return;
+      }
+
+      // Update local state with server response
+      setCampaign((prev: any) => {
+        if (!prev) return null;
+        
+        const updatedCampaign = {
+          ...prev,
+          ...result.data,
+          // Ensure segments is an array
+          segments: Array.isArray(result.data.segments) ? result.data.segments : (prev.segments || []),
+          // Ensure requirements is an array 
+          requirements: Array.isArray(result.data.requirements) ? result.data.requirements : (prev.requirements || [])
+        };
+        
+        console.log("Updated campaign state from server:", JSON.stringify(updatedCampaign));
+        return updatedCampaign;
+      });
+      
+      // Update segment objects for display
+      if (result.data.segments && Array.isArray(result.data.segments)) {
+        const segmentObjects = getSegmentObjectsFromIds(result.data.segments);
+        setCampaignSegments(segmentObjects);
+      } else if (data.segmentObjects && Array.isArray(data.segmentObjects)) {
+        const formattedSegments = data.segmentObjects.map((segment: any) => ({
+          id: segment.id,
+          name: segment.name,
+          description: segment.description || null
+        }));
+        setCampaignSegments(formattedSegments);
+      }
+      
+      // If requirements were updated, reload them
+      if (updateData.requirements && campaign?.id) {
+        await loadCampaignRequirements(campaign.id);
+      }
+      
+      toast.success("Campaign updated successfully");
+    } catch (error) {
+      console.error("Error updating campaign:", error);
+      toast.error(`Failed to update campaign: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSaving(false);
     }
-    
-    toast.success("Campaign updated successfully");
   };
   
   const handleStatusChange = async (newStatus: "active" | "pending" | "completed") => {
@@ -775,9 +830,10 @@ export default function TaskDetailPage() {
                     <Button 
                       onClick={() => formRef.current?.requestSubmit()}
                       className="gap-2"
+                      disabled={saving}
                     >
                       <SaveIcon className="h-4 w-4" />
-                      Save Changes
+                      {saving ? "Saving..." : "Save Changes"}
                     </Button>
                   )}
                 </div>

@@ -46,6 +46,12 @@ export function MarketingSection({ active }: MarketingSectionProps) {
       if (name === 'services' && value.services && Array.isArray(value.services)) {
         setServicesList(value.services);
       }
+      if (name === 'resource_urls' && value.resource_urls && Array.isArray(value.resource_urls)) {
+        setResourceList(value.resource_urls);
+      }
+      if (name === 'competitors' && value.competitors && Array.isArray(value.competitors)) {
+        setCompetitorList(value.competitors);
+      }
     });
     
     return () => subscription.unsubscribe();

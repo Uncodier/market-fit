@@ -74,11 +74,11 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
         ...formData
       }
       
-      onUpdateCampaign(updatedCampaign)
-      toast.success("Campaign updated successfully")
+      // onUpdateCampaign now handles server call and shows toast messages
+      await onUpdateCampaign(updatedCampaign)
     } catch (error) {
       console.error('Error updating campaign:', error)
-      toast.error("Failed to update campaign")
+      // Error toast is handled by onUpdateCampaign
     }
   }
 
