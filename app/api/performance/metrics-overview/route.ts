@@ -101,15 +101,31 @@ export async function GET(request: NextRequest) {
     const { data: tasksData, error: tasksError } = await tasksQuery;
 
     // Get meetings data for current period
+    // Include tasks with specific types (call, meeting, website_visit, demo, onboarding) OR stage='consideration'
     let meetingsQuery = supabase
-      .from("meetings")
-      .select("id, created_at")
+      .from("tasks")
+      .select("id, scheduled_date")
       .eq("site_id", siteId)
-      .gte("created_at", startDate)
-      .lte("created_at", endDate);
+      .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
+      .gte("scheduled_date", startDate)
+      .lte("scheduled_date", endDate);
 
     if (segmentId && segmentId !== "all") {
-      meetingsQuery = meetingsQuery.eq("segment_id", segmentId);
+      // Join with leads to filter by segment
+      meetingsQuery = supabase
+        .from("tasks")
+        .select(`
+          id,
+          scheduled_date,
+          leads!inner(
+            segment_id
+          )
+        `)
+        .eq("site_id", siteId)
+        .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
+        .eq("leads.segment_id", segmentId)
+        .gte("scheduled_date", startDate)
+        .lte("scheduled_date", endDate);
     }
 
     const { data: meetingsData, error: meetingsError } = await meetingsQuery;
@@ -206,9 +222,9 @@ export async function GET(request: NextRequest) {
         return taskDateStr >= dayStartStr && taskDateStr <= dayEndStr;
       }) || [];
 
-      // Filter meetings for this day
+      // Filter meetings for this day (using scheduled_date)
       const dayMeetings = meetingsData?.filter(meeting => {
-        const meetingDateStr = formatDateInTZ(new Date(meeting.created_at));
+        const meetingDateStr = formatDateInTZ(new Date(meeting.scheduled_date));
         return meetingDateStr >= dayStartStr && meetingDateStr <= dayEndStr;
       }) || [];
 
@@ -279,12 +295,34 @@ export async function GET(request: NextRequest) {
       .gte("created_at", previousStart.toISOString())
       .lte("created_at", previousEnd.toISOString());
 
-    const { data: prevMeetingsData } = await supabase
-      .from("meetings")
+    // Get previous period meetings data
+    // Include tasks with specific types (call, meeting, website_visit, demo, onboarding) OR stage='consideration'
+    let prevMeetingsQuery = supabase
+      .from("tasks")
       .select("id")
       .eq("site_id", siteId)
-      .gte("created_at", previousStart.toISOString())
-      .lte("created_at", previousEnd.toISOString());
+      .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
+      .gte("scheduled_date", previousStart.toISOString())
+      .lte("scheduled_date", previousEnd.toISOString());
+
+    if (segmentId && segmentId !== "all") {
+      // Join with leads to filter by segment
+      prevMeetingsQuery = supabase
+        .from("tasks")
+        .select(`
+          id,
+          leads!inner(
+            segment_id
+          )
+        `)
+        .eq("site_id", siteId)
+        .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
+        .eq("leads.segment_id", segmentId)
+        .gte("scheduled_date", previousStart.toISOString())
+        .lte("scheduled_date", previousEnd.toISOString());
+    }
+
+    const { data: prevMeetingsData } = await prevMeetingsQuery;
 
     const { data: prevSalesData } = await supabase
       .from("sales")

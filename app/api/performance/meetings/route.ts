@@ -23,11 +23,12 @@ export async function GET(request: NextRequest) {
     const previousStart = new Date(previousEnd.getTime() - periodLength);
 
     // Get meetings in current period
+    // Include tasks with specific types (call, meeting, website_visit, demo, onboarding) OR stage='consideration'
     let currentQuery = supabase
       .from("tasks")
       .select("id")
       .eq("site_id", siteId)
-      .eq("type", "meeting")
+      .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
       .gte("scheduled_date", startDate)
       .lte("scheduled_date", endDate);
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
           )
         `)
         .eq("site_id", siteId)
-        .eq("type", "meeting")
+        .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
         .eq("leads.segment_id", segmentId)
         .gte("scheduled_date", startDate)
         .lte("scheduled_date", endDate);
@@ -60,11 +61,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get meetings in previous period
+    // Include tasks with specific types (call, meeting, website_visit, demo, onboarding) OR stage='consideration'
     let previousQuery = supabase
       .from("tasks")
       .select("id")
       .eq("site_id", siteId)
-      .eq("type", "meeting")
+      .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
       .gte("scheduled_date", previousStart.toISOString())
       .lte("scheduled_date", previousEnd.toISOString());
 
@@ -79,7 +81,7 @@ export async function GET(request: NextRequest) {
           )
         `)
         .eq("site_id", siteId)
-        .eq("type", "meeting")
+        .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
         .eq("leads.segment_id", segmentId)
         .gte("scheduled_date", previousStart.toISOString())
         .lte("scheduled_date", previousEnd.toISOString());
