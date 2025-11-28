@@ -13,6 +13,7 @@ export interface Lead {
   id: string
   name: string
   email: string
+  personal_email: string | null
   phone: string | null
   company_id: string | null
   company: {

@@ -1,0 +1,11 @@
+name: Copywriting Content Creation
+page: copywriting
+page_path: app/copywriting/page.tsx
+task: creating new copywriting content with AI assistance
+steps:
+- Navigate to copywriting page
+- Click the 'Create Copywriting' button
+- Fill in the content title and description fields
+- Select content type and target audience from dropdowns
+- Submit the form and verify new content appears in the grid view
+expected_result: New copywriting content is created and appears in the content list

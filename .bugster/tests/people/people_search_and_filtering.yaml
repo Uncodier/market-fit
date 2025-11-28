@@ -1,0 +1,16 @@
+name: People Search and Filtering
+page: people
+page_path: app/people/page.tsx
+task: searching and filtering people database with multiple criteria
+steps:
+- Navigate to people search page
+- Enter search terms in the main search field
+- Apply location filters using the geographic selector
+- Set industry and company size filters
+- Verify search results match the applied criteria
+- Check for lead status indicators on each search result row
+- Select multiple people profiles by clicking on table rows
+- Verify selected rows are highlighted with a check mark
+- Verify the 'Add and Enrich' button becomes active when people are selected
+expected_result: Search results update dynamically with accurate filtering, including
+  real-time lead status indicators and multi-select functionality

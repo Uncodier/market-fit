@@ -1,0 +1,11 @@
+name: Outsource Checkout Process
+page: outsource-checkout
+page_path: app/outsource/checkout/page.tsx
+task: completing the outsource service checkout
+steps:
+- Navigate to outsource checkout page
+- Review selected services and pricing
+- Fill in required checkout information
+- Submit payment and service details
+- Verify successful checkout and redirection to confirmation page
+expected_result: Checkout completes successfully and user receives confirmation

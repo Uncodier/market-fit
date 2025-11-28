@@ -1,0 +1,11 @@
+name: Integrations Event Configuration
+page: integrations
+page_path: app/integrations/page.tsx
+task: configuring webhook events for integrations
+steps:
+- Navigate to integrations page
+- Expand an existing integration endpoint
+- Toggle various webhook events on and off
+- Configure event-specific settings
+- Save changes and verify event configuration persists
+expected_result: Webhook events are properly configured and can be toggled

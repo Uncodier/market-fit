@@ -9,9 +9,9 @@ import {
   Globe, 
   Tag, 
   FileText, 
-  ExternalLink
+  ExternalLink,
+  Target
 } from "@/app/components/ui/icons"
-import { Target } from "@/app/components/ui/target-icon"
 import { CalendarDays } from "./custom-icons"
 import { Lead, Segment } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
@@ -84,6 +84,38 @@ export function DetailsTab({
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
+          <MessageSquare className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground mb-[5px] truncate">Personal Email</p>
+          {isEditing ? (
+            <Input
+              type="email"
+              value={editForm.personal_email || ""}
+              onChange={(e) => setEditForm({...editForm, personal_email: e.target.value || null})}
+              className="h-12 text-sm"
+              placeholder="personal@example.com"
+            />
+          ) : (
+            <div className="flex items-center justify-between min-w-0">
+              <p className="text-sm font-medium truncate flex-1 mr-2" title={lead.personal_email || "Not specified"}>{lead.personal_email || "Not specified"}</p>
+              {lead.personal_email && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => window.open(`mailto:${lead.personal_email}`, '_blank')}
+                  className="h-8 flex-shrink-0"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           )}
         </div>

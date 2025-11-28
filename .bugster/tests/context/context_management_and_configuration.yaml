@@ -1,0 +1,11 @@
+name: Context Management and Configuration
+page: context
+page_path: app/context/page.tsx
+task: managing and configuring site context information
+steps:
+- Navigate to context page
+- Review existing context form fields and current values
+- Update context information including business details
+- Click save to persist changes
+- Verify success notification and that changes are reflected
+expected_result: Context information is successfully updated and saved

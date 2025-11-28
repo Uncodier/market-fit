@@ -381,9 +381,10 @@ export default function LeadsPage() {
       }
       
       // Asegurarse de que todos los leads tienen todos los campos de la interfaz Lead
-      const normalizedLeads = result.leads?.map(lead => ({
+      const normalizedLeads = result.leads?.map((lead: any) => ({
         ...lead,
-        origin: lead.origin || null
+        origin: lead.origin || null,
+        personal_email: lead.personal_email || null
       })) || []
       
       setDbLeads(normalizedLeads)
@@ -535,6 +536,7 @@ export default function LeadsPage() {
           id,
           name,
           email,
+          personal_email,
           phone,
           company,
           company_id,
@@ -567,7 +569,8 @@ export default function LeadsPage() {
       // Normalize new leads
       const normalizedMoreLeads = moreLeads.map((lead: any) => ({
         ...lead,
-        origin: lead.origin || null
+        origin: lead.origin || null,
+        personal_email: lead.personal_email || null
       }))
 
       // Add new leads to the existing leads array
@@ -957,6 +960,7 @@ export default function LeadsPage() {
       const result = await createLead({
         name: data.name,
         email: data.email,
+        personal_email: data.personal_email,
         phone: data.phone,
         company: data.company,
         position: data.position,
@@ -1028,6 +1032,117 @@ export default function LeadsPage() {
     setCurrentPage(1)
   }
 
+  // Helper function to normalize company field to match UpdateLeadSchema requirements
+  // Returns the normalized company or undefined if it should be omitted from the update
+  const normalizeCompanyField = (lead: Lead): string | { name?: string; website?: string; industry?: string; size?: string; annual_revenue?: string; founded?: string; description?: string; address?: { street?: string; city?: string; state?: string; zipcode?: string; country?: string } } | null | undefined => {
+    // If we have company_id, we can optionally omit the company field
+    // But if company data exists, we should still normalize it
+    
+    // Handle null or undefined company
+    if (!lead.company) {
+      // If we have a companies relation with a name, use that as a string
+      if (lead.companies?.name) {
+        return lead.companies.name
+      }
+      // If we have company_id, we can omit the field (return undefined)
+      if (lead.company_id) {
+        return undefined
+      }
+      return null
+    }
+
+    // Handle string company (even though type says object, it can be string in practice)
+    const companyValue = lead.company as any
+    if (typeof companyValue === 'string') {
+      const companyString = companyValue.trim()
+      return companyString || (lead.company_id ? undefined : null)
+    }
+
+    // If company is an object, extract only the valid schema fields
+    if (typeof companyValue === 'object' && companyValue !== null) {
+      // Check if it's an empty object
+      if (Object.keys(companyValue).length === 0) {
+        return lead.company_id ? undefined : null
+      }
+      const normalized: any = {}
+      
+      // Extract ONLY valid fields according to UpdateLeadSchema
+      // Schema allows: name, website, industry, size, annual_revenue, founded, description, address
+      // We only include fields that have valid string values (not null, not empty)
+      const validFields = ['name', 'website', 'industry', 'size', 'annual_revenue', 'founded', 'description']
+      
+      for (const field of validFields) {
+        const value = companyValue[field]
+        // Only include if it's a non-empty string
+        if (typeof value === 'string' && value.trim() !== '') {
+          normalized[field] = value.trim()
+        }
+        // Explicitly skip null, undefined, empty strings, and any other types
+      }
+      
+      console.log('🔍 normalizeCompanyField - Normalization result:', {
+        originalKeys: Object.keys(companyValue),
+        normalizedKeys: Object.keys(normalized),
+        normalizedObject: normalized,
+        hasInvalidFields: Object.keys(companyValue).some(key => !validFields.includes(key) && key !== 'address')
+      })
+      
+      // Handle address object
+      if (companyValue.address && typeof companyValue.address === 'object' && companyValue.address !== null) {
+        const normalizedAddress: any = {}
+        if (companyValue.address.street !== undefined && companyValue.address.street !== null && companyValue.address.street !== '') {
+          normalizedAddress.street = companyValue.address.street
+        }
+        if (companyValue.address.city !== undefined && companyValue.address.city !== null && companyValue.address.city !== '') {
+          normalizedAddress.city = companyValue.address.city
+        }
+        if (companyValue.address.state !== undefined && companyValue.address.state !== null && companyValue.address.state !== '') {
+          normalizedAddress.state = companyValue.address.state
+        }
+        if (companyValue.address.zipcode !== undefined && companyValue.address.zipcode !== null && companyValue.address.zipcode !== '') {
+          normalizedAddress.zipcode = companyValue.address.zipcode
+        }
+        if (companyValue.address.country !== undefined && companyValue.address.country !== null && companyValue.address.country !== '') {
+          normalizedAddress.country = companyValue.address.country
+        }
+        
+        if (Object.keys(normalizedAddress).length > 0) {
+          normalized.address = normalizedAddress
+        }
+      }
+
+      // If we have a name, return the normalized object (only with valid schema fields)
+      if (normalized.name) {
+        // Return only the normalized object with valid fields
+        return normalized
+      }
+      
+      // If no name in company object but we have companies relation, use that name
+      if (lead.companies?.name) {
+        normalized.name = lead.companies.name
+        return normalized
+      }
+
+      // If object is empty or invalid, return null or undefined based on company_id
+      if (Object.keys(normalized).length === 0) {
+        return lead.company_id ? undefined : null
+      }
+      
+      // If we have some fields but no name, and we have company_id, we can omit
+      // Otherwise, if we have fields but no name, we still need a name, so return null
+      if (lead.company_id) {
+        return undefined
+      }
+      
+      // If we have fields but no name and no company_id, we can't create a valid object
+      // Return null to indicate invalid state
+      return null
+    }
+
+    // Fallback: if we have company_id, omit the field, otherwise return null
+    return lead.company_id ? undefined : null
+  }
+
   // Función para actualizar el estado de un lead (para la vista Kanban)
   const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
     const lead = dbLeads.find(l => l.id === leadId)
@@ -1050,12 +1165,24 @@ export default function LeadsPage() {
 
   const updateLeadDirectly = async (leadId: string, newStatus: string, lead: Lead, attribution?: AttributionData) => {
     try {
+      const normalizedCompany = normalizeCompanyField(lead)
+      
+      console.log('🔍 updateLeadDirectly - Debug info:', {
+        leadId,
+        newStatus,
+        originalCompany: lead.company,
+        normalizedCompany,
+        companyType: typeof normalizedCompany,
+        isUndefined: normalizedCompany === undefined,
+        hasCompanyId: !!lead.company_id,
+        companiesRelation: lead.companies
+      })
+      
       const updateData: any = {
         id: leadId,
         name: lead.name,
         email: lead.email,
         phone: lead.phone,
-        company: lead.company,
         position: lead.position,
         segment_id: lead.segment_id,
         status: newStatus as any,
@@ -1064,11 +1191,26 @@ export default function LeadsPage() {
         ...(lead.attribution && !attribution && { attribution: lead.attribution })
       }
 
+      // Only include company field if it's not undefined (undefined means we should omit it)
+      if (normalizedCompany !== undefined) {
+        updateData.company = normalizedCompany
+      }
+
       if (attribution) {
         updateData.attribution = attribution
       }
 
+      console.log('🔍 updateLeadDirectly - Sending updateData:', {
+        ...updateData,
+        company: updateData.company,
+        companyStringified: JSON.stringify(updateData.company),
+        hasCompanyField: 'company' in updateData,
+        companyKeys: updateData.company && typeof updateData.company === 'object' ? Object.keys(updateData.company) : 'N/A'
+      })
+
       const result = await updateLead(updateData)
+      
+      console.log('🔍 updateLeadDirectly - Result:', result)
       
       if (result.error) {
         toast.error(result.error)

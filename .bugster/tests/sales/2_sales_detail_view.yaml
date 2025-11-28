@@ -1,13 +1,13 @@
-# @META:{"id": "31f1acae-a118-49ed-9347-53096fc37b2d", "last_modified": "2025-08-12T22:53:41.790857+00:00"}
-# This comment contains machine-readable metadata that should not be modified
-- name: Sales Detail View
-  page: sales/:id
-  page_path: app/sales/[id]/page.tsx
-  task: Viewing and managing sale details
-  steps:
-  - Navigate to specific sale detail page
-  - Verify sale information loads correctly
-  - Click 'Register Payment' button
-  - Complete payment form and submit
-  - Verify payment status updates in sale details
-  expected_result: Sale details should be displayed with order management options
+name: Sales Detail View
+page: sales/:id
+page_path: app/sales/[id]/page.tsx
+task: Viewing and managing sale details
+steps:
+- Navigate to specific sale detail page
+- Verify sale information loads correctly, including potential personal email field
+- Click 'Register Payment' button
+- Complete payment form and submit
+- Verify payment status updates in sale details
+- Check if personal email field is displayed (if available)
+expected_result: Sale details should be displayed with order management options and
+  optional personal email information

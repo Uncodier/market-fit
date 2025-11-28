@@ -1,0 +1,12 @@
+name: Projects Site Selection
+page: projects
+page_path: app/projects/page.tsx
+task: viewing and selecting different project sites
+steps:
+- Navigate to projects page
+- Verify all available project sites are displayed with their details
+- Click on a different project site card
+- Verify navigation to the selected site occurs
+- Confirm the site context has changed throughout the application
+expected_result: User can view all available sites and successfully switch between
+  them

@@ -11,10 +11,10 @@ import {
   Globe,
   FileText,
   Phone,
-  Tag
+  Tag,
+  Target
 } from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { Target } from "@/app/components/ui/target-icon"
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ interface CreateLeadDialogProps {
   onCreateLead: (data: { 
     name: string
     email: string
+    personal_email?: string
     phone?: string
     company?: string
     position?: string
@@ -65,6 +66,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [personalEmail, setPersonalEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [company, setCompany] = useState("")
   const [position, setPosition] = useState("")
@@ -96,6 +98,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
       const result = await onCreateLead({ 
         name, 
         email,
+        personal_email: personalEmail || undefined,
         phone: phone || undefined,
         company: company || undefined,
         position: position || undefined,
@@ -115,6 +118,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
       // Limpiar el formulario y cerrar el modal
       setName("")
       setEmail("")
+      setPersonalEmail("")
       setPhone("")
       setCompany("")
       setPosition("")
@@ -218,6 +222,25 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-12 pl-9"
                   required
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="personalEmail" className="text-sm font-medium">
+                Personal Email
+              </label>
+              <div className="relative">
+                <MessageSquare className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="personalEmail"
+                  type="email"
+                  placeholder="personal@example.com"
+                  value={personalEmail}
+                  onChange={(e) => setPersonalEmail(e.target.value)}
+                  className="h-12 pl-9"
                 />
               </div>
             </div>
@@ -395,6 +418,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
               if (!isLoading) {
                 setName("")
                 setEmail("")
+                setPersonalEmail("")
                 setPhone("")
                 setCompany("")
                 setPosition("")

@@ -1,0 +1,11 @@
+name: Outsource Service Selection
+page: outsource
+page_path: app/outsource/page.tsx
+task: selecting and initiating outsource services
+steps:
+- Navigate to outsource page
+- Review available outsource service options
+- Select desired services using the service cards
+- Click proceed to checkout button
+- Verify redirection to checkout page with selected services
+expected_result: User can select services and proceed to checkout process

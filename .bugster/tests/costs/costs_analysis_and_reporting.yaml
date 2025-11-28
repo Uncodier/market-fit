@@ -1,0 +1,11 @@
+name: Costs Analysis and Reporting
+page: costs
+page_path: app/costs/page.tsx
+task: viewing and analyzing cost reports and breakdowns
+steps:
+- Navigate to costs page
+- Verify cost reports section loads with data
+- Review different cost categories and their breakdowns
+- Check that cost trends and charts display properly
+- Verify total costs calculations are accurate
+expected_result: Cost reports load with accurate data visualization and breakdowns

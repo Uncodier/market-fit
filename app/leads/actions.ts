@@ -9,6 +9,7 @@ const LeadSchema = z.object({
     id: z.string(),
     name: z.string(),
     email: z.string(),
+    personal_email: z.string().nullable(),
     phone: z.string().nullable(),
     company: z.object({
       name: z.string().optional(),
@@ -78,6 +79,7 @@ const SingleLeadSchema = z.object({
     id: z.string(),
     name: z.string(),
     email: z.string(),
+    personal_email: z.string().nullable(),
     phone: z.string().nullable(),
     company: z.object({
       name: z.string().optional(),
@@ -161,6 +163,7 @@ export async function searchLeads(site_id: string, query: string, limit = 500): 
     const orClause = [
       `name.ilike.${quoteLogicValue(pattern)}`,
       `email.ilike.${quoteLogicValue(pattern)}`,
+      `personal_email.ilike.${quoteLogicValue(pattern)}`,
       `position.ilike.${quoteLogicValue(pattern)}`,
       `phone.ilike.${quoteLogicValue(pattern)}`,
       `origin.ilike.${quoteLogicValue(pattern)}`,
@@ -174,6 +177,7 @@ export async function searchLeads(site_id: string, query: string, limit = 500): 
         id,
         name,
         email,
+        personal_email,
         phone,
         company,
         company_id,
@@ -247,6 +251,7 @@ export async function searchLeadsWithCount(
         id,
         name,
         email,
+        personal_email,
         phone,
         company,
         company_id,
@@ -295,6 +300,7 @@ export async function searchLeadsWithCount(
 const CreateLeadSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
+  personal_email: z.string().email("Invalid personal email address").optional().nullable(),
   phone: z.string().optional(),
   company: z.union([
     z.string(),
@@ -351,6 +357,7 @@ const UpdateLeadSchema = z.object({
   id: z.string().min(1, "ID is required"),
   name: z.string().optional(),
   email: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
+  personal_email: z.union([z.string().email(), z.literal(""), z.null()]).optional().nullable(),
   phone: z.string().optional().nullable(),
   company: z.union([
     z.string(),
@@ -369,7 +376,7 @@ const UpdateLeadSchema = z.object({
         zipcode: z.string().optional(),
         country: z.string().optional(),
       }).optional(),
-    })
+    }).passthrough(), // Allow additional fields but ignore them during validation
   ]).optional().nullable(),
   company_id: z.string().optional().nullable(),
   position: z.string().optional().nullable(),
@@ -421,6 +428,7 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
         id,
         name,
         email,
+        personal_email,
         phone,
         company,
         company_id,
@@ -471,6 +479,7 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         id,
         name,
         email,
+        personal_email,
         phone,
         company,
         company_id,
@@ -516,6 +525,7 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
         id,
         name,
         email,
+        personal_email,
         phone,
         company,
         company_id,
@@ -655,13 +665,28 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
       return { error: "User not authenticated" }
     }
     
+    console.log('🔍 updateLead (server) - Received data:', {
+      id: data.id,
+      status: data.status,
+      company: data.company,
+      companyType: typeof data.company,
+      companyValue: JSON.stringify(data.company),
+      hasCompanyId: !!data.company_id
+    })
+    
     // Only validate attribution strictly when changing status to "converted"
     if (data.status === "converted" && data.attribution) {
       // Full validation when converting lead with attribution
+      console.log('🔍 updateLead (server) - Validating with full schema (converted)')
       UpdateLeadSchema.parse(data)
     } else {
       // Skip attribution validation for other updates
       const { attribution, ...dataWithoutAttribution } = data
+      console.log('🔍 updateLead (server) - Validating without attribution:', {
+        ...dataWithoutAttribution,
+        company: dataWithoutAttribution.company,
+        companyType: typeof dataWithoutAttribution.company
+      })
       UpdateLeadSchema.omit({ attribution: true }).parse(dataWithoutAttribution)
     }
     
@@ -930,6 +955,7 @@ export async function importLeads(leads: Partial<Lead>[], siteId: string) {
         return {
           name,
           email,
+          personal_email: lead.personal_email || null,
           phone: lead.phone || null,
           company: typeof lead.company === 'string' ? { name: lead.company } : lead.company || null,
           position: lead.position || null,

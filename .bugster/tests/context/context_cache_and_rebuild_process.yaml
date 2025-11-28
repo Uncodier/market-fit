@@ -1,0 +1,11 @@
+name: Context Cache and Rebuild Process
+page: context
+page_path: app/context/page.tsx
+task: rebuilding context cache for improved performance
+steps:
+- Navigate to context page
+- Click the 'Cache and Rebuild' button
+- Wait for the rebuild process to complete
+- Verify success message indicating cache has been updated
+- Confirm that context data reflects any recent changes
+expected_result: Cache rebuild completes successfully with updated context data

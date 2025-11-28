@@ -1,0 +1,12 @@
+name: People Profile Enrichment
+page: people
+page_path: app/people/page.tsx
+task: enriching people profiles with additional data
+steps:
+- Navigate to people search page
+- Search for specific people using name or company
+- Click on a person's profile to view details
+- Click the enrich button to gather additional data
+- Verify enriched data appears including social profiles and contact information
+expected_result: Profile data is successfully enriched and displays comprehensive
+  information

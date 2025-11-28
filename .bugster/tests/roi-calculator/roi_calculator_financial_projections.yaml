@@ -1,0 +1,12 @@
+name: ROI Calculator Financial Projections
+page: roi-calculator
+page_path: app/roi-calculator/page.tsx
+task: calculating and displaying financial projections based on user inputs
+steps:
+- Navigate to ROI calculator page
+- Fill in current KPIs including monthly revenue and lead conversion rate
+- Enter current costs including marketing spend and operational costs
+- Set improvement goals using the percentage sliders
+- Verify financial projections chart updates with calculated ROI values
+expected_result: Financial projections update dynamically with accurate calculations
+  and visual charts

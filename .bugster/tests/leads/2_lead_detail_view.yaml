@@ -1,13 +1,14 @@
-# @META:{"id": "9e97abff-5614-487d-931c-df79df2fe1ca", "last_modified": "2025-08-12T22:53:41.798338+00:00"}
-# This comment contains machine-readable metadata that should not be modified
-- name: Lead Detail View
-  page: leads/:id
-  page_path: app/leads/[id]/page.tsx
-  task: Viewing detailed lead information
-  steps:
-  - Navigate to specific lead detail page
-  - Verify lead details load correctly
-  - Switch between information tabs
-  - Verify sales information is displayed
-  - Verify conversations history is visible
-  expected_result: Lead details should be displayed with all relevant information
+name: Lead Detail View
+page: leads/:id
+page_path: app/leads/[id]/page.tsx
+task: Viewing detailed lead information
+steps:
+- Navigate to specific lead detail page
+- Verify lead details load correctly, checking for new personal email section
+- Switch between information tabs
+- Verify sales information is displayed
+- Verify personal email is visible and can be edited in details view
+- Check ability to open mailto link for personal email when present
+- Verify personal email validation during lead editing
+expected_result: Lead details should be displayed with all relevant information, including
+  new personal email field

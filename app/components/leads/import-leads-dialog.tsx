@@ -69,6 +69,7 @@ const IMPORT_STEPS: ImportStep[] = [
 const LEAD_FIELDS = [
   { key: 'name', label: 'Name', required: false, type: 'string' },
   { key: 'email', label: 'Email', required: false, type: 'email' },
+  { key: 'personal_email', label: 'Personal Email', required: false, type: 'email' },
   { key: 'phone', label: 'Phone', required: false, type: 'string' },
   { key: 'company', label: 'Company (Name)', required: false, type: 'string' },
   { key: 'company_name', label: 'Company - Name', required: false, type: 'string' },

@@ -1,0 +1,11 @@
+name: Create Site Onboarding Process
+page: create-site
+page_path: app/create-site/page.tsx
+task: completing the site creation onboarding flow
+steps:
+- Navigate to create site page
+- Complete the site onboarding form with required information
+- Progress through all onboarding steps
+- Submit the final step to create the site
+- Verify success message and redirection to dashboard or settings
+expected_result: New site is successfully created and user is redirected to dashboard

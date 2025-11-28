@@ -23,10 +23,10 @@ import {
   Mail,
   Users,
   ChevronDown,
-  Home
+  Home,
+  Target
 } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
-import { Target } from "@/app/components/ui/target-icon"
 import { 
   MapPin, 
   CalendarDays, 
@@ -140,6 +140,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
   const [editForm, setEditForm] = useState<Omit<Lead, "id" | "created_at">>({
     name: lead.name,
     email: lead.email,
+    personal_email: lead.personal_email,
     phone: lead.phone,
     company_id: lead.company_id,
     company: lead.company || { 

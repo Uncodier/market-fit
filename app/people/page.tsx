@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { apiClient } from "@/app/services/api-client-service"
 import { cn } from "@/lib/utils"
@@ -17,7 +17,7 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
-import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, Globe } from "@/app/components/ui/icons"
+import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, Globe, Check } from "@/app/components/ui/icons"
 import { LinkedInIcon } from "@/app/components/ui/social-icons"
 import { Badge } from "@/app/components/ui/badge"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
@@ -465,6 +465,10 @@ export default function PeopleSearchPage() {
   }>>([])
   const [selectedIcpId, setSelectedIcpId] = useState<string | 'none'>('none')
   const [collapsibleVersion, setCollapsibleVersion] = useState(0)
+  const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([])
+  const [isEnriching, setIsEnriching] = useState(false)
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [addedPersonIds, setAddedPersonIds] = useState<Set<string>>(new Set())
   const [sectionOpenDefaults, setSectionOpenDefaults] = useState({
     name: false,
     jobTitle: false,
@@ -992,8 +996,251 @@ export default function PeopleSearchPage() {
     })
   }, [searchResults])
 
+  // Function to check if leads exist for people in search results
+  const checkLeadsForPeople = useCallback(async (groups: typeof groupedResults, siteId: string): Promise<Set<string>> => {
+    if (!siteId || groups.length === 0) {
+      return new Set()
+    }
+
+    try {
+      const supabase = createClient()
+      
+      // Query all leads for the site (only name and company fields for efficiency)
+      const { data: leads, error } = await supabase
+        .from('leads')
+        .select('name, company, companies(name)')
+        .eq('site_id', siteId)
+
+      if (error) {
+        console.error('Error fetching leads for matching:', error)
+        return new Set()
+      }
+
+      if (!leads || leads.length === 0) {
+        return new Set()
+      }
+
+      // Create a Set of matched person IDs
+      const matchedPersonIds = new Set<string>()
+
+      // Helper function to normalize strings for comparison
+      const normalize = (str: string | null | undefined): string => {
+        if (!str) return ''
+        // Remove extra spaces, convert to lowercase, and trim
+        return str
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+          .trim()
+      }
+
+      // Helper function to get company name from lead
+      const getLeadCompanyName = (lead: any): string | null => {
+        // Check companies relation first
+        if (lead.companies?.name) {
+          return lead.companies.name
+        }
+        // Check company JSONB field
+        if (lead.company) {
+          if (typeof lead.company === 'string') {
+            return lead.company
+          }
+          if (typeof lead.company === 'object' && lead.company.name) {
+            return lead.company.name
+          }
+        }
+        return null
+      }
+
+      // For each person in results, check if a matching lead exists
+      for (const group of groups) {
+        const personName = normalize(group.personName)
+        const companyName = group.companyName && group.companyName !== '—' 
+          ? normalize(group.companyName) 
+          : null
+
+        let foundMatch = false
+
+        // Check each lead for a match
+        for (const lead of leads) {
+          const leadName = normalize(lead.name)
+          
+          // Match by name (required)
+          if (leadName === personName) {
+            const leadCompanyName = normalize(getLeadCompanyName(lead))
+            
+            // If person has company declared, validate company match
+            if (companyName) {
+              // If lead also has company, they must match
+              if (leadCompanyName) {
+                if (leadCompanyName === companyName) {
+                  matchedPersonIds.add(group.personId)
+                  foundMatch = true
+                  console.log('✅ Match found (name + company):', {
+                    personName: group.personName,
+                    personCompany: group.companyName,
+                    leadName: lead.name,
+                    leadCompany: getLeadCompanyName(lead)
+                  })
+                  break
+                } else {
+                  // Companies don't match - log for debugging
+                  console.log('❌ Name matches but companies differ:', {
+                    personName: group.personName,
+                    personCompany: group.companyName,
+                    leadName: lead.name,
+                    leadCompany: getLeadCompanyName(lead),
+                    normalizedPersonCompany: companyName,
+                    normalizedLeadCompany: leadCompanyName
+                  })
+                }
+              } else {
+                // Person has company but lead doesn't - still match by name only
+                // (company might not have been set when lead was created)
+                matchedPersonIds.add(group.personId)
+                foundMatch = true
+                console.log('✅ Match found (name only, person has company but lead doesn\'t):', {
+                  personName: group.personName,
+                  personCompany: group.companyName,
+                  leadName: lead.name
+                })
+                break
+              }
+            } else {
+              // No company declared in person, name match is sufficient
+              matchedPersonIds.add(group.personId)
+              foundMatch = true
+              console.log('✅ Match found (name only):', {
+                personName: group.personName,
+                leadName: lead.name
+              })
+              break
+            }
+          }
+        }
+
+        if (!foundMatch && personName) {
+          // Log potential matches for debugging
+          const potentialMatches = leads.filter((lead: any) => {
+            const leadName = normalize(lead.name)
+            return leadName.includes(personName) || personName.includes(leadName)
+          })
+          if (potentialMatches.length > 0) {
+            console.log('⚠️ No exact match but found similar names:', {
+              personName: group.personName,
+              personCompany: group.companyName,
+              similarLeads: potentialMatches.map((l: any) => ({ name: l.name, company: getLeadCompanyName(l) }))
+            })
+          }
+        }
+      }
+
+      // Debug logging
+      console.log('🔍 Lead matching check:', {
+        totalPeople: groups.length,
+        totalLeads: leads.length,
+        matchedCount: matchedPersonIds.size,
+        siteId: siteId
+      })
+
+      return matchedPersonIds
+    } catch (error) {
+      console.error('Error in checkLeadsForPeople:', error)
+      return new Set()
+    }
+  }, [])
+
+  // Background check to see if people already have leads in the site
+  useEffect(() => {
+    const runCheck = async () => {
+      if (!currentSite?.id || groupedResults.length === 0) {
+        setAddedPersonIds(new Set())
+        return
+      }
+
+      console.log('🔍 Starting lead check for people:', {
+        siteId: currentSite.id,
+        peopleCount: groupedResults.length
+      })
+
+      try {
+        const matchedIds = await checkLeadsForPeople(groupedResults, currentSite.id)
+        console.log('🔍 Lead check completed, matched IDs:', Array.from(matchedIds))
+        setAddedPersonIds(matchedIds)
+      } catch (error) {
+        console.error('Error checking leads for people:', error)
+        setAddedPersonIds(new Set())
+      }
+    }
+
+    runCheck()
+  }, [groupedResults, currentSite?.id, checkLeadsForPeople])
+
   const toggleGroup = (key: string) => {
     setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const togglePersonSelection = (personId: string) => {
+    setSelectedPersonIds(prev => {
+      if (prev.includes(personId)) {
+        return prev.filter(id => id !== personId)
+      } else {
+        return [...prev, personId]
+      }
+    })
+  }
+
+  const handleEnrich = async () => {
+    if (!currentSite?.id) {
+      toast.error('Site ID is required')
+      return
+    }
+
+    if (selectedPersonIds.length === 0) {
+      toast.error('No people selected')
+      return
+    }
+
+    setIsEnriching(true)
+    setIsConfirmModalOpen(false)
+
+    try {
+      let successCount = 0
+      let errorCount = 0
+
+      for (const personId of selectedPersonIds) {
+        try {
+          const response = await apiClient.post('/api/workflow/enrichLead', {
+            site_id: currentSite.id,
+            person_id: personId
+          })
+
+          if (response.success) {
+            successCount++
+          } else {
+            errorCount++
+            console.error(`Failed to enrich person ${personId}:`, response.error)
+          }
+        } catch (error) {
+          errorCount++
+          console.error(`Error enriching person ${personId}:`, error)
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Successfully enriched ${successCount} ${successCount === 1 ? 'person' : 'people'}`)
+        setSelectedPersonIds([])
+      }
+
+      if (errorCount > 0) {
+        toast.error(`Failed to enrich ${errorCount} ${errorCount === 1 ? 'person' : 'people'}`)
+      }
+    } catch (error) {
+      console.error('Error in enrich process:', error)
+      toast.error('An error occurred while enriching leads')
+    } finally {
+      setIsEnriching(false)
+    }
   }
 
   const sidebar = (
@@ -1749,6 +1996,14 @@ export default function PeopleSearchPage() {
                 </Button>
               </div>
               <div className="flex items-center gap-2">
+                <Button 
+                  variant="secondary" 
+                  className="h-9" 
+                  disabled={selectedPersonIds.length === 0 || isEnriching}
+                  onClick={() => setIsConfirmModalOpen(true)}
+                >
+                  {isEnriching ? 'Enriching...' : `Add and Enrich${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
+                </Button>
                 <Button variant="secondary" className="h-9" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
                   {`Add ${(totalResults || 0).toLocaleString()} results to leads`}
                 </Button>
@@ -1831,19 +2086,50 @@ export default function PeopleSearchPage() {
                               <Fragment key={group.key}>
                                 <TableRow 
                                   key={`${group.key}-row`}
-                                  className={cn("group hover:bg-muted/50 transition-colors", isExpandable ? 'cursor-pointer' : '')}
-                                  onClick={() => { if (isExpandable) toggleGroup(group.key) }}
+                                  className={cn(
+                                    "group hover:bg-muted/50 transition-colors cursor-pointer",
+                                    selectedPersonIds.includes(group.personId) ? 'bg-primary/10 hover:bg-primary/15' : ''
+                                  )}
+                                  onClick={(e) => {
+                                    // Don't toggle selection if clicking on expand button, dropdown, or links
+                                    const target = e.target as HTMLElement
+                                    if (target.closest('button') || target.closest('[role="menu"]') || target.closest('a')) {
+                                      return
+                                    }
+                                    // Toggle selection on row click
+                                    togglePersonSelection(group.personId)
+                                  }}
                                 >
                                   <TableCell className="w-[56px]">
                                     <div className="relative h-8 w-8">
-                                      <Avatar className="h-8 w-8 border border-primary/10">
+                                      <Avatar className={cn(
+                                        "h-8 w-8 border",
+                                        addedPersonIds.has(group.personId) 
+                                          ? "border-green-500/50 ring-2 ring-green-500/20" 
+                                          : "border-primary/10"
+                                      )}>
                                       {group.avatarUrl ? (
                                         <AvatarImage src={group.avatarUrl} alt={group.personName} />
                                       ) : null}
-                                      <AvatarFallback className="bg-muted text-[10px] leading-none font-medium text-foreground text-center">
+                                      <AvatarFallback className={cn(
+                                        "text-[10px] leading-none font-medium text-center",
+                                        addedPersonIds.has(group.personId)
+                                          ? "bg-green-50 text-green-700"
+                                          : "bg-muted text-foreground"
+                                      )}>
                                         {group.personName.split(' ').map((s: string) => s[0]).slice(0,2).join('').toUpperCase()}
                                       </AvatarFallback>
                                       </Avatar>
+                                      {selectedPersonIds.includes(group.personId) && (
+                                        <div className="absolute inset-0 h-8 w-8 rounded-full bg-primary/90 hover:bg-primary flex items-center justify-center border-2 border-background transition-colors">
+                                          <Check className="h-4 w-4 text-primary-foreground" />
+                                        </div>
+                                      )}
+                                      {addedPersonIds.has(group.personId) && !selectedPersonIds.includes(group.personId) && (
+                                        <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
+                                          <Check className="h-2.5 w-2.5 text-white" />
+                                        </div>
+                                      )}
                                     </div>
                                   </TableCell>
                                   <TableCell>
@@ -2194,6 +2480,25 @@ export default function PeopleSearchPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsIcpModalOpen(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Enrich confirmation modal */}
+      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Add and Enrich Selected People</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to add and enrich {selectedPersonIds.length} {selectedPersonIds.length === 1 ? 'person' : 'people'}? This will call the enrich API for each selected person.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsConfirmModalOpen(false)} disabled={isEnriching}>
+              Cancel
+            </Button>
+            <Button onClick={handleEnrich} disabled={isEnriching}>
+              {isEnriching ? 'Enriching...' : 'Add and Enrich'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

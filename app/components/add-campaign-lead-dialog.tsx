@@ -49,6 +49,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [personalEmail, setPersonalEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [company, setCompany] = useState("")
   const [position, setPosition] = useState("")
@@ -83,6 +84,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
       const leadData = {
         name, 
         email,
+        personal_email: personalEmail || undefined,
         phone: phone || undefined,
         company: company ? { name: company } : null,
         position: position || undefined,
@@ -123,6 +125,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
       // Clear form and close modal
       setName("")
       setEmail("")
+      setPersonalEmail("")
       setPhone("")
       setCompany("")
       setPosition("")
@@ -229,6 +232,25 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-12 pl-9"
                   required
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="personalEmail" className="text-sm font-medium">
+                Personal Email
+              </label>
+              <div className="relative">
+                <MessageSquare className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="personalEmail"
+                  type="email"
+                  placeholder="personal@example.com"
+                  value={personalEmail}
+                  onChange={(e) => setPersonalEmail(e.target.value)}
+                  className="h-12 pl-9"
                 />
               </div>
             </div>
@@ -378,6 +400,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
               if (!isLoading) {
                 setName("")
                 setEmail("")
+                setPersonalEmail("")
                 setPhone("")
                 setCompany("")
                 setPosition("")

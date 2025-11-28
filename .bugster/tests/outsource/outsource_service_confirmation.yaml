@@ -1,0 +1,11 @@
+name: Outsource Service Confirmation
+page: outsource-confirmation
+page_path: app/outsource/confirmation/page.tsx
+task: viewing outsource service confirmation details
+steps:
+- Navigate to outsource confirmation page
+- Verify service confirmation details are displayed
+- Check that timeline and next steps are clearly shown
+- Verify contact information and support details
+- Confirm any follow-up actions are clearly indicated
+expected_result: Confirmation page displays service details and next steps

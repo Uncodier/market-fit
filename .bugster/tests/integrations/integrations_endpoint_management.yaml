@@ -1,0 +1,11 @@
+name: Integrations Endpoint Management
+page: integrations
+page_path: app/integrations/page.tsx
+task: creating and managing integration endpoints
+steps:
+- Navigate to integrations page
+- Click 'Create Endpoint' to add a new integration
+- Configure endpoint settings including URL and authentication
+- Test the endpoint using the test functionality
+- Verify endpoint appears in the list and shows correct status
+expected_result: Integration endpoints are successfully created and configured

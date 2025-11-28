@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select"
-import { DatePicker } from "./ui/date-picker"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { PlusCircle, Users } from "./ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { createTask } from "@/app/tasks/actions"

@@ -1,0 +1,17 @@
+name: People to Leads Conversion
+page: people
+page_path: app/people/page.tsx
+task: converting people profiles into leads
+steps:
+- Navigate to people search page
+- Search and select multiple people profiles by clicking on their table row to toggle
+  selection
+- Verify selected people have a checkmark overlay indicating selection
+- Click the 'Add and Enrich' button to open confirmation dialog
+- In confirmation dialog, click 'Add and Enrich' to proceed
+- Wait for enrichment process to complete
+- Verify success toast message appears confirming number of people enriched
+- Check that selected people rows show a green indicator signaling they have been
+  added to leads
+expected_result: Selected people are successfully converted to leads with enrichment,
+  verified by success toast and visual indicators of lead conversion

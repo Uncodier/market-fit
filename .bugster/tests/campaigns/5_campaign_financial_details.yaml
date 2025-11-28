@@ -1,14 +1,14 @@
-# @META:{"id": "0905bbda-d5f9-48fc-b331-1884b168f1bd", "last_modified": "2025-08-12T22:53:41.812779+00:00"}
-# This comment contains machine-readable metadata that should not be modified
-- name: Campaign Financial Details
-  page: campaigns/:id
-  page_path: app/campaigns/[id]/page.tsx
-  task: Viewing campaign financial metrics
-  steps:
-  - Navigate to a specific campaign detail page
-  - Click on the Financial Details tab
-  - Verify budget information displays correctly
-  - Verify expense breakdowns are visible
-  - Verify ROI calculations are displayed
-  - Compare displayed values with expected amounts
-  expected_result: Financial metrics display accurately
+name: Campaign Financial Details
+page: campaigns/:id
+page_path: app/campaigns/[id]/page.tsx
+task: Viewing campaign financial metrics
+steps:
+- Navigate to a specific campaign detail page
+- Verify campaign summary section loads completely
+- Click on the Financial Details tab using data-testid or specific selector
+- Validate budget information displays with precise numerical values
+- Check expense breakdowns render with itemized line items
+- Verify ROI calculations are visible and mathematically correct
+- Cross-reference displayed financial metrics with expected campaign performance data
+expected_result: Financial metrics display accurately with comprehensive budget and
+  performance data

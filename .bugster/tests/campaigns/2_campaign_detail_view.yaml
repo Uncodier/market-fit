@@ -1,14 +1,14 @@
-# @META:{"id": "42e727ec-72c7-4cce-96ed-cefdf2c64ef0", "last_modified": "2025-08-12T22:53:41.812097+00:00"}
-# This comment contains machine-readable metadata that should not be modified
-- name: Campaign Detail View
-  page: campaigns/:id
-  page_path: app/campaigns/[id]/page.tsx
-  task: Viewing and managing campaign details
-  steps:
-  - Navigate to specific campaign detail page
-  - Verify campaign summary information loads
-  - Switch to financial details tab
-  - Verify financial metrics are displayed
-  - Change campaign status and verify update
-  expected_result: Campaign details should load with financial metrics and status
-    options
+name: Campaign Detail View
+page: campaigns/:id
+page_path: app/campaigns/[id]/page.tsx
+task: Viewing and managing campaign details
+steps:
+- Navigate to specific campaign detail page
+- Verify campaign summary information loads completely
+- Check if campaign contact details include optional personal email field
+- Switch to financial details tab
+- Verify financial metrics are displayed accurately
+- Validate status change functionality works as expected
+- Confirm any new data validation rules are applied during status updates
+expected_result: Campaign details load completely with updated financial metrics,
+  status options, and potential new personal email field for associated contacts

@@ -1,0 +1,12 @@
+name: Invoice PDF Generation and Viewing
+page: invoice-pdf
+page_path: app/invoice-pdf/[id]/page.tsx
+task: generating and viewing invoice PDFs
+steps:
+- Navigate to a specific invoice PDF page with valid ID
+- Verify invoice header information displays correctly
+- Check that line items and calculations are accurate
+- Verify invoice totals and tax calculations
+- Confirm PDF formatting is suitable for printing
+expected_result: Invoice PDF loads correctly with all financial details formatted
+  properly

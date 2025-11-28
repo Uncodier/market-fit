@@ -1,0 +1,12 @@
+name: ROI Calculator Scenario Simulation
+page: roi-calculator
+page_path: app/roi-calculator/page.tsx
+task: running different business scenarios through the calculator
+steps:
+- Navigate to ROI calculator page
+- Enter baseline business metrics in all required fields
+- Use simulation controls to test conservative scenario
+- Switch to aggressive growth scenario using the controls
+- Compare results between scenarios and verify calculations are accurate
+expected_result: Calculator processes multiple scenarios and provides comparative
+  analysis

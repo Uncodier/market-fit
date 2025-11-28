@@ -1,0 +1,11 @@
+name: Copywriting View Mode Switching
+page: copywriting
+page_path: app/copywriting/page.tsx
+task: switching between different view modes for copywriting content
+steps:
+- Navigate to copywriting page
+- Verify content loads in default grid view
+- Toggle to list view using the view selector
+- Verify content displays correctly in list format
+- Switch back to grid view and confirm layout changes appropriately
+expected_result: Content displays correctly in both grid and list view modes
