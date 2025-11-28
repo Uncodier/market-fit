@@ -102,14 +102,7 @@ export async function GET(request: NextRequest) {
 
     // Get meetings data for current period
     // Include tasks with specific types (call, meeting, website_visit, demo, onboarding) OR stage='consideration'
-    let meetingsQuery = supabase
-      .from("tasks")
-      .select("id, scheduled_date")
-      .eq("site_id", siteId)
-      .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
-      .gte("scheduled_date", startDate)
-      .lte("scheduled_date", endDate);
-
+    let meetingsQuery;
     if (segmentId && segmentId !== "all") {
       // Join with leads to filter by segment
       meetingsQuery = supabase
@@ -124,6 +117,14 @@ export async function GET(request: NextRequest) {
         .eq("site_id", siteId)
         .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
         .eq("leads.segment_id", segmentId)
+        .gte("scheduled_date", startDate)
+        .lte("scheduled_date", endDate);
+    } else {
+      meetingsQuery = supabase
+        .from("tasks")
+        .select("id, scheduled_date")
+        .eq("site_id", siteId)
+        .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
         .gte("scheduled_date", startDate)
         .lte("scheduled_date", endDate);
     }
@@ -297,14 +298,7 @@ export async function GET(request: NextRequest) {
 
     // Get previous period meetings data
     // Include tasks with specific types (call, meeting, website_visit, demo, onboarding) OR stage='consideration'
-    let prevMeetingsQuery = supabase
-      .from("tasks")
-      .select("id")
-      .eq("site_id", siteId)
-      .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
-      .gte("scheduled_date", previousStart.toISOString())
-      .lte("scheduled_date", previousEnd.toISOString());
-
+    let prevMeetingsQuery;
     if (segmentId && segmentId !== "all") {
       // Join with leads to filter by segment
       prevMeetingsQuery = supabase
@@ -318,6 +312,14 @@ export async function GET(request: NextRequest) {
         .eq("site_id", siteId)
         .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
         .eq("leads.segment_id", segmentId)
+        .gte("scheduled_date", previousStart.toISOString())
+        .lte("scheduled_date", previousEnd.toISOString());
+    } else {
+      prevMeetingsQuery = supabase
+        .from("tasks")
+        .select("id")
+        .eq("site_id", siteId)
+        .or("type.in.(call,meeting,website_visit,demo,onboarding),stage.eq.consideration")
         .gte("scheduled_date", previousStart.toISOString())
         .lte("scheduled_date", previousEnd.toISOString());
     }
