@@ -171,12 +171,9 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">10s</SelectItem>
-                <SelectItem value="15" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">15s</SelectItem>
-                <SelectItem value="30" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">30s</SelectItem>
-                <SelectItem value="45" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">45s</SelectItem>
-                <SelectItem value="60" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">60s</SelectItem>
-                <SelectItem value="90" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">90s</SelectItem>
+                <SelectItem value="4" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">4s</SelectItem>
+                <SelectItem value="6" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">6s</SelectItem>
+                <SelectItem value="8" hideIndicator className="data-[state=checked]:bg-red-50 data-[state=checked]:text-red-700">8s</SelectItem>
               </SelectContent>
             </Select>
           </div>

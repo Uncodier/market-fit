@@ -1,0 +1,17 @@
+name: Video Generation Functionality Test
+page: Robots Page
+page_path: app/robots/page.tsx
+task: Verify video generation workflow and UI interactions
+steps:
+- Navigate to robots page
+- Select 'Generate Video' activity from dropdown
+- Enter a valid video generation prompt
+- Click generate button
+- Verify video thumbnail appears in tool call item
+- Click on video thumbnail to open fullscreen viewer
+- Verify fullscreen video viewer displays correct video details
+- Test video playback controls in fullscreen viewer
+- Test video download functionality
+- Test video URL copy functionality
+- Close fullscreen viewer
+expected_result: User can successfully generate and interact with video outputs

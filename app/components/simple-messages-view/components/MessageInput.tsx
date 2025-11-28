@@ -183,6 +183,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                       selectedActivity === 'ask' ? 'Ask' : 
                       selectedActivity === 'robot' ? 'Robot' : 
                       selectedActivity === 'generate-image' ? 'Generate Image' :
+                      selectedActivity === 'generate-video' ? 'Generate Video' :
                       'Select activity'
                     }
                   >
@@ -191,12 +192,14 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                         {selectedActivity === 'ask' && <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />}
                         {selectedActivity === 'robot' && <Bot className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />}
                         {selectedActivity === 'generate-image' && <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />}
+                        {selectedActivity === 'generate-video' && <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />}
                       </div>
                       <div className="flex flex-col min-w-0 ml-2">
                         <span className="truncate">
                           {selectedActivity === 'ask' ? 'Ask' : 
                            selectedActivity === 'robot' ? 'Robot' : 
                            selectedActivity === 'generate-image' ? 'Generate Image' :
+                           selectedActivity === 'generate-video' ? 'Generate Video' :
                            'Select activity'}
                         </span>
                       </div>
@@ -253,6 +256,21 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
                             <span className="truncate">Generate Image</span>
+                          </div>
+                        </div>
+                        <div 
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
+                          onClick={() => {
+                            onActivityChange('generate-video')
+                            setIsDropdownOpen(false)
+                          }}
+                          title="Generate Video"
+                        >
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Generate Video</span>
                           </div>
                         </div>
                       </div>

@@ -116,7 +116,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const [videoParameters, setVideoParameters] = useState<VideoParameters>({
     aspectRatio: '16:9',
     resolution: '1080p',
-    duration: 30
+    duration: 6
   })
   const [audioParameters, setAudioParameters] = useState<AudioParameters>({
     format: 'MP3',

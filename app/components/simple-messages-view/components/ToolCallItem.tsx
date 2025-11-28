@@ -4,7 +4,9 @@ import { InstanceLog } from '../types'
 import { getToolName, getToolResult, formatBase64Image } from '../utils'
 import { renderObjectWithImages } from '../render-helpers'
 import { GeneratedImageDisplay, GeneratedImageDisplayCollapsed } from './GeneratedImageDisplay'
+import { GeneratedVideoDisplay, GeneratedVideoDisplayCollapsed } from './GeneratedVideoDisplay'
 import { ImageFullscreenViewer } from './ImageFullscreenViewer'
+import { VideoFullscreenViewer } from './VideoFullscreenViewer'
 import { useToast } from '@/app/components/ui/use-toast'
 
 interface ToolCallItemProps {
@@ -112,6 +114,53 @@ Details: ${contentToCopy.details}`
     })
   }
 
+  // Function to download video
+  const handleDownloadVideo = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    if (!toolResult?.output?.videos || toolResult.output.videos.length === 0) {
+      return
+    }
+
+    const videos = toolResult.output.videos
+    const downloadVideo = async (videoObj: any, index: number) => {
+      try {
+        const videoUrl = typeof videoObj === 'string' ? videoObj : videoObj?.url || ''
+        const response = await fetch(videoUrl)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `video-${index + 1}.${blob.type.split('/')[1] || 'mp4'}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      } catch (err) {
+        console.error('Failed to download video:', err)
+        toast({
+          title: "Download failed",
+          description: `Could not download video ${index + 1}`,
+          variant: "destructive"
+        })
+      }
+    }
+
+    // Download all videos
+    for (let i = 0; i < videos.length; i++) {
+      await downloadVideo(videos[i], i)
+      // Small delay between downloads
+      if (i < videos.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+    }
+
+    toast({
+      title: "Download started",
+      description: `Downloading ${videos.length} video(s)...`,
+    })
+  }
+
   // Helper to check if tool result has an error
   const hasError = toolResult && (toolResult.error || toolResult.success === false)
   const errorMessage = toolResult?.error || toolResult?.output
@@ -120,9 +169,11 @@ Details: ${contentToCopy.details}`
   const status = log.details?.status
 
   const isImageGeneration = toolName === 'generate_image' && toolResult?.output?.images
+  const isVideoGeneration = toolName === 'generate_video' && toolResult?.output?.videos
+  const isMediaGeneration = isImageGeneration || isVideoGeneration
   
   return (
-    <div className={`${isImageGeneration ? 'inline-block' : 'w-full'} min-w-0 overflow-hidden`} style={isImageGeneration ? { marginLeft: isBrowserVisible ? '0.75rem' : '2rem' } : undefined}>
+    <div className={`${isMediaGeneration ? 'inline-block' : 'w-full'} min-w-0 overflow-hidden`} style={isMediaGeneration ? { marginLeft: isBrowserVisible ? '0.75rem' : '2rem' } : undefined}>
       <div 
         className="rounded-lg p-3 text-xs cursor-pointer hover:opacity-80 transition-all duration-200 ease-in-out"
         style={{ 
@@ -138,7 +189,7 @@ Details: ${contentToCopy.details}`
         onClick={() => {
           // Only toggle if there are collapsible elements
           const hasCollapsibleElements = log.screenshot_base64 || 
-            (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image') || 
+            (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video') || 
             (log.details && Object.keys(log.details).length > 0)
           
           if (hasCollapsibleElements) {
@@ -146,7 +197,7 @@ Details: ${contentToCopy.details}`
           }
         }}
         title={
-          (log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image') || (log.details && Object.keys(log.details).length > 0))
+          (log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video') || (log.details && Object.keys(log.details).length > 0))
             ? (collapsedToolDetails.has(log.id) ? "Click to show details" : "Click to hide details")
             : "Tool call completed"
         }
@@ -165,19 +216,24 @@ Details: ${contentToCopy.details}`
             </span>
           )}
           
-          {log.message && toolName !== 'generate_image' && (
+          {log.message && toolName !== 'generate_image' && toolName !== 'generate_video' && (
             <span className="text-muted-foreground/70 ml-2">
               - {log.message}
             </span>
           )}
           {hasError && (
             <span className="text-red-600 ml-2">
-              - {toolName === 'generate_image' ? 'Generation failed' : 'Tool failed'}
+              - {toolName === 'generate_image' || toolName === 'generate_video' ? 'Generation failed' : 'Tool failed'}
             </span>
           )}
           {toolName === 'generate_image' && toolResult?.output?.images && (
             <span className="text-muted-foreground/70 ml-2">
               - Generated {toolResult.output.images.length} image(s)
+            </span>
+          )}
+          {toolName === 'generate_video' && toolResult?.output?.videos && (
+            <span className="text-muted-foreground/70 ml-2">
+              - Generated {toolResult.output.videos.length} video(s)
             </span>
           )}
           <div className="ml-auto flex items-center gap-2">
@@ -187,6 +243,16 @@ Details: ${contentToCopy.details}`
                 onClick={handleDownloadImage}
                 className="p-1 rounded hover:bg-muted-foreground/10 transition-colors"
                 title="Download images"
+              >
+                <Download className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+              </button>
+            )}
+            {/* Download video button - only show for generate_video tool */}
+            {toolName === 'generate_video' && toolResult?.output?.videos && (
+              <button
+                onClick={handleDownloadVideo}
+                className="p-1 rounded hover:bg-muted-foreground/10 transition-colors"
+                title="Download videos"
               >
                 <Download className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
               </button>
@@ -205,7 +271,7 @@ Details: ${contentToCopy.details}`
             </button>
             
             {/* Visibility toggle - only show if there are collapsible elements */}
-            {(log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image') || (log.details && Object.keys(log.details).length > 0)) && (
+            {(log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video') || (log.details && Object.keys(log.details).length > 0)) && (
               collapsedToolDetails.has(log.id) ? (
                 <Eye className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
               ) : (
@@ -222,6 +288,22 @@ Details: ${contentToCopy.details}`
               toolResult={toolResult} 
               isDarkMode={isDarkMode}
               onImageClick={() => setIsFullscreenOpen(true)}
+              isBrowserVisible={isBrowserVisible}
+            />
+          </div>
+        )}
+
+        {/* Generated videos - always show for generate_video tool (collapsed view) */}
+        {toolName === 'generate_video' && toolResult?.output?.videos && (
+          <div className="mt-3 inline-block">
+            <GeneratedVideoDisplayCollapsed 
+              toolResult={toolResult} 
+              isDarkMode={isDarkMode}
+              onVideoClick={(e) => {
+                e?.preventDefault()
+                e?.stopPropagation()
+                setIsFullscreenOpen(true)
+              }}
               isBrowserVisible={isBrowserVisible}
             />
           </div>
@@ -304,9 +386,89 @@ Details: ${contentToCopy.details}`
                 </div>
               </div>
             )}
+
+            {/* Full details for generate_video when expanded */}
+            {toolName === 'generate_video' && (toolResult?.output?.videos || hasError) && (
+              <div className="mt-2 text-muted-foreground">
+                <div className="space-y-3">
+                  {/* Original prompt */}
+                  {log.message && (
+                    <div>
+                      <strong>Prompt:</strong>
+                      <div className="mt-1 p-2 bg-muted/30 rounded text-sm">
+                        {log.message}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Generation details */}
+                  {toolResult.output.metadata && (
+                    <div>
+                      <strong>Generation Details:</strong>
+                      <div className="mt-1 text-xs bg-muted/30 rounded p-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          {toolResult.output.metadata.aspectRatio && (
+                            <div>
+                              <span className="font-medium">Aspect Ratio:</span> {toolResult.output.metadata.aspectRatio}
+                            </div>
+                          )}
+                          {toolResult.output.metadata.resolution && (
+                            <div>
+                              <span className="font-medium">Resolution:</span> {toolResult.output.metadata.resolution}
+                            </div>
+                          )}
+                          {toolResult.output.metadata.duration && (
+                            <div>
+                              <span className="font-medium">Duration:</span> {toolResult.output.metadata.duration}s
+                            </div>
+                          )}
+                          {toolResult.output.metadata.generated_at && (
+                            <div>
+                              <span className="font-medium">Generated:</span> {new Date(toolResult.output.metadata.generated_at).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Success message */}
+                  {toolResult.output.message && (
+                    <div>
+                      <strong>Status:</strong>
+                      <div className="mt-1 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 rounded p-2">
+                        {toolResult.output.message}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Error display for failed video generation */}
+                  {hasError && !toolResult?.output?.videos && (
+                    <div>
+                      <strong className="text-red-600">Error:</strong>
+                      <div className="mt-1 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded p-3 border border-red-200 dark:border-red-800">
+                        {errorMessage}
+                      </div>
+                      
+                      {/* Technical details (collapsible) */}
+                      {toolResult && (
+                        <details className="text-xs mt-2">
+                          <summary className="cursor-pointer text-muted-foreground/70 hover:text-muted-foreground">
+                            View technical details
+                          </summary>
+                          <div className="mt-2 p-2 bg-muted/30 rounded font-mono text-xs overflow-x-auto">
+                            <pre>{JSON.stringify(toolResult, null, 2)}</pre>
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             
             {/* Error display for other tool types */}
-            {hasError && toolName !== 'generate_image' && (
+            {hasError && toolName !== 'generate_image' && toolName !== 'generate_video' && (
               <div className="mt-2 text-muted-foreground">
                 <div className="space-y-3">
                   {/* Error message */}
@@ -345,7 +507,7 @@ Details: ${contentToCopy.details}`
                 </div>
               </div>
             )}
-            {toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && (
+            {toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video' && (
               <div className="mt-2 text-muted-foreground">
                 <strong>Result:</strong> 
                 <div className="mt-1">
@@ -384,6 +546,17 @@ Details: ${contentToCopy.details}`
           isOpen={isFullscreenOpen}
           onClose={() => setIsFullscreenOpen(false)}
           images={toolResult.output.images}
+          metadata={toolResult.output.metadata}
+          prompt={log.message}
+        />
+      )}
+
+      {/* Fullscreen video viewer */}
+      {toolName === 'generate_video' && toolResult?.output?.videos && (
+        <VideoFullscreenViewer
+          isOpen={isFullscreenOpen}
+          onClose={() => setIsFullscreenOpen(false)}
+          videos={toolResult.output.videos}
           metadata={toolResult.output.metadata}
           prompt={log.message}
         />
