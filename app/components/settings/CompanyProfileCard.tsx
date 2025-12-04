@@ -5,8 +5,15 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import { Button } from "../ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { useState } from "react"
+import { type SiteFormValues } from "./form-schema"
+
+interface CompanyProfileCardProps {
+  onSave?: (data: SiteFormValues) => void
+}
 
 const COMPANY_SIZES = [
   { value: "1-10", label: "1-10 employees" },
@@ -32,8 +39,22 @@ const INDUSTRIES = [
   { value: "other", label: "Other" }
 ]
 
-export function CompanyProfileCard() {
+export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
   const form = useFormContext<SiteFormValues>()
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving company profile:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -124,6 +145,14 @@ export function CompanyProfileCard() {
           />
         </div>
       </CardContent>
+      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+        <Button 
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? "Saving..." : "Save"}
+        </Button>
+      </CardFooter>
     </Card>
   )
 } 

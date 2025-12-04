@@ -23,7 +23,7 @@ import {
 import { ContextForm } from "../components/settings/context-form"
 import { type SiteFormValues } from "../components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
-import { handleSave, handleCacheAndRebuild, handleDeleteSite } from "../components/settings/save-handlers"
+import { handleCacheAndRebuild, handleDeleteSite, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial } from "../components/settings/save-handlers"
 import { Input } from "../components/ui/input"
 import { useAuthContext } from "../components/auth/auth-provider"
 
@@ -190,17 +190,43 @@ export default function ContextPage() {
     }
   }, [currentSite?.id])
 
-  // Wrapper function for handleSave with context
-  const onSave = async (data: SiteFormValues) => {
-    if (!currentSite) return;
-    
-    await handleSave(data, {
-      currentSite,
-      updateSite,
-      updateSettings,
-      refreshSites,
-      setIsSaving
-    })
+  // Wrapper functions for save handlers
+  const saveOptions = {
+    currentSite: currentSite!,
+    updateSite,
+    updateSettings,
+    refreshSites,
+    setIsSaving
+  }
+
+  const onSaveGeneral = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveGeneral(data, saveOptions)
+  }
+
+  const onSaveCompany = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveCompany(data, saveOptions)
+  }
+
+  const onSaveBranding = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveBranding(data, saveOptions)
+  }
+
+  const onSaveMarketing = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveMarketing(data, saveOptions)
+  }
+
+  const onSaveCustomerJourney = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveCustomerJourney(data, saveOptions)
+  }
+
+  const onSaveSocial = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveSocial(data, saveOptions)
   }
 
   // Wrapper functions for other handlers
@@ -215,34 +241,6 @@ export default function ContextPage() {
     await handleDeleteSite(currentSite, deleteSite, setIsSaving, setShowDeleteDialog)
     setConfirmationName("") // Reset confirmation after deletion
   }
-
-  // Función para guardar manualmente (sin depender del submit)
-  const handleManualSave = async () => {
-    console.log("MANUAL SAVE: Obteniendo formulario");
-    const formElement = document.getElementById('context-form') as HTMLFormElement;
-    if (!formElement) {
-      console.error("MANUAL SAVE ERROR: No se encontró el formulario");
-      return;
-    }
-    
-    console.log("MANUAL SAVE: Disparando validación");
-    // Obtener una referencia al formulario React Hook Form dentro del ContextForm
-    // Esto es un hack, idealmente debería hacerse de otra manera
-    const form = (window as any).__debug_form;
-    if (!form) {
-      console.error("MANUAL SAVE ERROR: No se pudo obtener el formulario");
-      console.log("MANUAL SAVE FALLBACK: Usando evento submit directo");
-      formElement.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-      return;
-    }
-    
-    console.log("MANUAL SAVE: Obteniendo valores del formulario");
-    const formValues = form.getValues();
-    console.log("MANUAL SAVE: Valores del formulario:", formValues);
-    
-    // Procesar con el handleSave normal
-    await onSave(formValues);
-  };
 
   // Simple approach - just track when data changes
   const adaptedSiteData = useMemo(() => {
@@ -266,9 +264,6 @@ export default function ContextPage() {
                 <TabsTrigger value="social">Social Networks</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button disabled>
-              Save context
-            </Button>
           </div>
         </StickyHeader>
         <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
@@ -292,23 +287,14 @@ export default function ContextPage() {
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="flex">
-                              <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
-                <TabsTrigger value="branding" className="whitespace-nowrap">Branding</TabsTrigger>
-                <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
-                <TabsTrigger value="copywriting" className="whitespace-nowrap">Copywriting</TabsTrigger>
-                <TabsTrigger value="customer-journey" className="whitespace-nowrap">Customer Journey</TabsTrigger>
-                <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger>
+              <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
+              <TabsTrigger value="branding" className="whitespace-nowrap">Branding</TabsTrigger>
+              <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
+              <TabsTrigger value="copywriting" className="whitespace-nowrap">Copywriting</TabsTrigger>
+              <TabsTrigger value="customer-journey" className="whitespace-nowrap">Customer Journey</TabsTrigger>
+              <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger>
             </TabsList>
           </Tabs>
-          <div className="flex items-center gap-2">
-            <Button 
-              type="button"
-              onClick={handleManualSave}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving..." : "Save context"}
-            </Button>
-          </div>
         </div>
       </StickyHeader>
       <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
@@ -316,7 +302,12 @@ export default function ContextPage() {
           key={formKey}
           id="context-form"
           initialData={adaptedSiteData || undefined}
-          onSubmit={onSave}
+          onSaveGeneral={onSaveGeneral}
+          onSaveCompany={onSaveCompany}
+          onSaveBranding={onSaveBranding}
+          onSaveMarketing={onSaveMarketing}
+          onSaveCustomerJourney={onSaveCustomerJourney}
+          onSaveSocial={onSaveSocial}
           onDeleteSite={() => setShowDeleteDialog(true)}
           onCacheAndRebuild={onCacheAndRebuild}
           isSaving={isSaving}

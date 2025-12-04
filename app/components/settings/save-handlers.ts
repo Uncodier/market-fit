@@ -671,4 +671,659 @@ export const handleDeleteSite = async (
     setIsSaving(false)
     setShowDeleteDialog(false)
   }
+}
+
+// Helper function to check if refresh should be prevented
+const shouldPreventRefresh = () => {
+  if (typeof window === 'undefined') return false
+  const preventRefresh = sessionStorage.getItem('preventAutoRefresh')
+  const justBecameVisible = sessionStorage.getItem('JUST_BECAME_VISIBLE')
+  const justGainedFocus = sessionStorage.getItem('JUST_GAINED_FOCUS')
+  
+  return preventRefresh === 'true' || justBecameVisible === 'true' || justGainedFocus === 'true'
+}
+
+// Helper function to update site state locally without refresh
+const updateSiteLocally = (currentSite: Site, siteUpdate: any, settingsUpdate: any, updateSite: (site: any) => Promise<void>) => {
+  const updatedSite = {
+    ...currentSite,
+    ...siteUpdate,
+    settings: {
+      ...currentSite.settings,
+      ...settingsUpdate,
+      channels: {
+        ...currentSite.settings?.channels,
+        ...settingsUpdate.channels,
+        email: {
+          ...currentSite.settings?.channels?.email,
+          ...settingsUpdate.channels?.email
+        },
+        whatsapp: {
+          ...currentSite.settings?.channels?.whatsapp,
+          ...settingsUpdate.channels?.whatsapp
+        },
+        website: {
+          ...currentSite.settings?.channels?.website,
+          ...settingsUpdate.channels?.website
+        }
+      }
+    }
+  }
+  updateSite(updatedSite as any)
+}
+
+// Partial save handler for General section (Site Information)
+export const handleSaveGeneral = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    // Validate required fields
+    if (!data.name?.trim()) {
+      toast.error("Site name is required")
+      setIsSaving(false)
+      return
+    }
+
+    if (!data.url?.trim()) {
+      toast.error("Site URL is required")
+      setIsSaving(false)
+      return
+    }
+
+    if (data.url && !data.url.match(/^https?:\/\/.+/)) {
+      toast.error("Site URL must be a valid URL starting with http:// or https://")
+      setIsSaving(false)
+      return
+    }
+
+    const { name, url, description, logo_url, resource_urls, competitors, focusMode, tracking } = data
+
+    // Save focusMode to localStorage
+    if (typeof focusMode === 'number') {
+      try {
+        localStorage.setItem(`site_${currentSite.id}_focus_mode`, String(focusMode))
+      } catch (e) {
+        console.error("Error saving focus_mode to localStorage:", e)
+      }
+    }
+
+    // Filter out empty URLs
+    const filteredResourceUrls = resource_urls?.filter((url: any) => url.key && url.url && url.key.trim() !== '' && url.url.trim() !== '') || []
+    const filteredCompetitors = competitors?.filter((comp: any) => comp.url && comp.url.trim() !== '') || []
+
+    // Update site basic info
+    const siteUpdate = {
+      name,
+      url,
+      description: description || null,
+      logo_url: logo_url || null,
+      resource_urls: filteredResourceUrls,
+      tracking: {
+        track_visitors: Boolean(tracking?.track_visitors),
+        track_actions: Boolean(tracking?.track_actions),
+        record_screen: Boolean(tracking?.record_screen),
+        enable_chat: Boolean(tracking?.enable_chat),
+        chat_accent_color: tracking?.chat_accent_color || "#e0ff17",
+        allow_anonymous_messages: Boolean(tracking?.allow_anonymous_messages),
+        chat_position: tracking?.chat_position || "bottom-right",
+        welcome_message: tracking?.welcome_message || "Welcome to our website! How can we assist you today?",
+        chat_title: tracking?.chat_title || "Chat with us",
+        analytics_provider: tracking?.analytics_provider || "",
+        analytics_id: tracking?.analytics_id || "",
+        tracking_code: tracking?.tracking_code || ""
+      }
+    }
+
+    // Update settings with competitors and focus_mode
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      competitors: filteredCompetitors?.length > 0 ? filteredCompetitors : [],
+      focus_mode: focusMode || 50
+    }
+
+    // Preserve existing settings ID if it exists
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    await updateSite({
+      ...currentSite,
+      ...siteUpdate
+    } as any)
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, siteUpdate, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Site information saved successfully")
+  } catch (error) {
+    console.error("Error saving general settings:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving site information")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+// Partial save handler for Company section
+export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    const { about, company_size, industry, products, services, locations, business_hours, goals: rawGoals, swot: rawSwot } = data
+
+    // Ensure SWOT and goals have the correct structure
+    const swot = {
+      strengths: rawSwot?.strengths || "",
+      weaknesses: rawSwot?.weaknesses || "",
+      opportunities: rawSwot?.opportunities || "",
+      threats: rawSwot?.threats || ""
+    }
+
+    const goals = {
+      quarterly: rawGoals?.quarterly || "",
+      yearly: rawGoals?.yearly || "",
+      fiveYear: rawGoals?.fiveYear || "",
+      tenYear: rawGoals?.tenYear || ""
+    }
+
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      about: about || "",
+      company_size: company_size || "",
+      industry: industry || "",
+      products: Array.isArray(products) ? products : [],
+      services: Array.isArray(services) ? services : [],
+      swot,
+      locations: locations || [],
+      business_hours: business_hours || [],
+      goals
+    }
+
+    // Preserve existing settings ID if it exists
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Company information saved successfully")
+  } catch (error) {
+    console.error("Error saving company settings:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving company information")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+// Partial save handler for Branding section
+export const handleSaveBranding = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    const branding = data.branding || {
+      brand_essence: "",
+      brand_personality: "",
+      brand_benefits: "",
+      brand_attributes: "",
+      brand_values: "",
+      brand_promise: "",
+      primary_color: "#000000",
+      secondary_color: "#666666",
+      accent_color: "#e0ff17",
+      success_color: "#22c55e",
+      warning_color: "#f59e0b",
+      error_color: "#ef4444",
+      background_color: "#ffffff",
+      surface_color: "#f8fafc",
+      primary_font: "",
+      secondary_font: "",
+      font_size_scale: "medium",
+      communication_style: "friendly",
+      personality_traits: [],
+      forbidden_words: [],
+      preferred_phrases: [],
+      logo_variations: [],
+      do_list: [],
+      dont_list: [],
+      emotions_to_evoke: [],
+      brand_archetype: undefined
+    }
+
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      branding
+    }
+
+    // Preserve existing settings ID if it exists
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Branding saved successfully")
+  } catch (error) {
+    console.error("Error saving branding:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving branding")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+// Partial save handler for Marketing section
+export const handleSaveMarketing = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    const { 
+      marketing_budget, 
+      marketing_channels, 
+      competitors, 
+      products, 
+      services, 
+      resource_urls, 
+      focusMode,
+      businessModel
+    } = data
+
+    // Filter out empty URLs
+    const filteredResourceUrls = resource_urls?.filter((url: any) => url.key && url.url && url.key.trim() !== '' && url.url.trim() !== '') || []
+    const filteredCompetitors = competitors?.filter((comp: any) => comp.url && comp.url.trim() !== '') || []
+
+    // Save focusMode to localStorage
+    if (typeof focusMode === 'number') {
+      try {
+        localStorage.setItem(`site_${currentSite.id}_focus_mode`, String(focusMode))
+      } catch (e) {
+        console.error("Error saving focus_mode to localStorage:", e)
+      }
+    }
+
+    // Update site with resource_urls
+    const siteUpdate: any = {
+      resource_urls: filteredResourceUrls
+    }
+
+    // Update settings with marketing-related fields
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      marketing_budget: {
+        total: marketing_budget?.total || 0,
+        available: marketing_budget?.available || 0
+      },
+      marketing_channels: marketing_channels || [],
+      competitors: filteredCompetitors?.length > 0 ? filteredCompetitors : [],
+      products: Array.isArray(products) ? products : [],
+      services: Array.isArray(services) ? services : [],
+      focus_mode: focusMode || 50,
+      business_model: {
+        b2b: businessModel?.b2b || false,
+        b2c: businessModel?.b2c || false,
+        b2b2c: businessModel?.b2b2c || false
+      }
+    }
+
+    // Preserve existing settings ID if it exists
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    // Update site if resource_urls changed
+    if (filteredResourceUrls.length > 0 || (currentSite.resource_urls && currentSite.resource_urls.length > 0)) {
+      await updateSite({
+        ...currentSite,
+        ...siteUpdate
+      } as any)
+    }
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, siteUpdate, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Marketing information saved successfully")
+  } catch (error) {
+    console.error("Error saving marketing settings:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving marketing information")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+// Partial save handler for Customer Journey section
+export const handleSaveCustomerJourney = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    const customer_journey = data.customer_journey || {
+      awareness: { metrics: [], actions: [], tactics: [] },
+      consideration: { metrics: [], actions: [], tactics: [] },
+      decision: { metrics: [], actions: [], tactics: [] },
+      purchase: { metrics: [], actions: [], tactics: [] },
+      retention: { metrics: [], actions: [], tactics: [] },
+      referral: { metrics: [], actions: [], tactics: [] }
+    }
+
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      customer_journey
+    }
+
+    // Preserve existing settings ID if it exists
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Customer journey saved successfully")
+  } catch (error) {
+    console.error("Error saving customer journey:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving customer journey")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+// Partial save handler for Social section
+export const handleSaveSocial = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    // Filter out social media entries with empty URLs or required fields based on platform
+    const filteredSocialMedia = data.social_media?.filter((sm: any) => {
+      if (!sm.platform || sm.platform.trim() === '') {
+        return false
+      }
+
+      switch (sm.platform) {
+        case 'whatsapp':
+          if (!sm.phone || sm.phone.trim() === '') {
+            return false
+          }
+          return true
+        
+        case 'telegram':
+          if ((!sm.handle || sm.handle.trim() === '') && (!sm.url || sm.url.trim() === '')) {
+            return false
+          }
+          if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
+            return false
+          }
+          return true
+          
+        case 'discord':
+          if ((!sm.inviteCode || sm.inviteCode.trim() === '') && (!sm.url || sm.url.trim() === '')) {
+            return false
+          }
+          if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
+            return false
+          }
+          return true
+          
+        default:
+          if (sm.url && sm.url.trim() !== '') {
+            const hasValidUrl = sm.url.match(/^https?:\/\/.+/)
+            if (!hasValidUrl) {
+              return false
+            }
+          }
+          return true
+      }
+    }) || []
+
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      social_media: filteredSocialMedia
+    }
+
+    // Preserve existing settings ID if it exists
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Social media saved successfully")
+  } catch (error) {
+    console.error("Error saving social media:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving social media")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+// Partial save handler for Channels section
+export const handleSaveChannels = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    const { channels, tracking } = data
+
+    // Handle secure token storage if new values are provided
+    if (currentSite.id && channels?.email?.password && 
+        channels.email.password.trim() !== '' && 
+        channels.email.password !== 'STORED_SECURELY') {
+      try {
+        const emailIdentifier = channels.email.email || 'default'
+        await secureTokensService.storeToken(
+          currentSite.id,
+          'email',
+          channels.email.password,
+          emailIdentifier
+        )
+        channels.email.password = ""
+      } catch (tokenError) {
+        console.error("Error storing email credentials:", tokenError)
+      }
+    }
+
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      channels: {
+        email: {
+          enabled: channels?.email?.enabled ?? currentSite.settings?.channels?.email?.enabled ?? false,
+          email: channels?.email?.email ?? currentSite.settings?.channels?.email?.email ?? "",
+          password: channels?.email?.password === 'STORED_SECURELY' || channels?.email?.password === 'PASSWORD_PRESENT' 
+            ? "PASSWORD_PRESENT" 
+            : (channels?.email?.password ?? currentSite.settings?.channels?.email?.password ?? ""),
+          aliases: channels?.email?.aliases ?? currentSite.settings?.channels?.email?.aliases ?? "",
+          incomingServer: channels?.email?.incomingServer ?? currentSite.settings?.channels?.email?.incomingServer ?? "",
+          incomingPort: channels?.email?.incomingPort ?? currentSite.settings?.channels?.email?.incomingPort ?? "",
+          outgoingServer: channels?.email?.outgoingServer ?? currentSite.settings?.channels?.email?.outgoingServer ?? "",
+          outgoingPort: channels?.email?.outgoingPort ?? currentSite.settings?.channels?.email?.outgoingPort ?? "",
+          status: (channels?.email?.status ?? currentSite.settings?.channels?.email?.status ?? "not_configured") as "not_configured" | "password_required" | "pending_sync" | "synced"
+        },
+        whatsapp: {
+          enabled: channels?.whatsapp?.enabled ?? currentSite.settings?.channels?.whatsapp?.enabled ?? false,
+          setupType: channels?.whatsapp?.setupType ?? currentSite.settings?.channels?.whatsapp?.setupType ?? undefined,
+          country: channels?.whatsapp?.country ?? currentSite.settings?.channels?.whatsapp?.country ?? undefined,
+          region: channels?.whatsapp?.region ?? currentSite.settings?.channels?.whatsapp?.region ?? undefined,
+          account_sid: channels?.whatsapp?.account_sid ?? currentSite.settings?.channels?.whatsapp?.account_sid ?? undefined,
+          existingNumber: channels?.whatsapp?.existingNumber ?? currentSite.settings?.channels?.whatsapp?.existingNumber ?? undefined,
+          setupRequested: channels?.whatsapp?.setupRequested ?? currentSite.settings?.channels?.whatsapp?.setupRequested ?? false,
+          status: (channels?.whatsapp?.status ?? currentSite.settings?.channels?.whatsapp?.status ?? "not_configured") as "not_configured" | "pending" | "active"
+        },
+        website: {
+          enabled: (tracking?.track_visitors || tracking?.track_actions || tracking?.record_screen || tracking?.enable_chat) ?? channels?.website?.enabled ?? currentSite.settings?.channels?.website?.enabled ?? false,
+          track_visitors: tracking?.track_visitors ?? channels?.website?.track_visitors ?? currentSite.settings?.channels?.website?.track_visitors ?? false,
+          track_actions: tracking?.track_actions ?? channels?.website?.track_actions ?? currentSite.settings?.channels?.website?.track_actions ?? false,
+          record_screen: tracking?.record_screen ?? channels?.website?.record_screen ?? currentSite.settings?.channels?.website?.record_screen ?? false,
+          enable_chat: tracking?.enable_chat ?? channels?.website?.enable_chat ?? currentSite.settings?.channels?.website?.enable_chat ?? false,
+          chat_accent_color: tracking?.chat_accent_color ?? channels?.website?.chat_accent_color ?? currentSite.settings?.channels?.website?.chat_accent_color ?? "#e0ff17",
+          allow_anonymous_messages: tracking?.allow_anonymous_messages ?? channels?.website?.allow_anonymous_messages ?? currentSite.settings?.channels?.website?.allow_anonymous_messages ?? false,
+          chat_position: tracking?.chat_position ?? channels?.website?.chat_position ?? currentSite.settings?.channels?.website?.chat_position ?? "bottom-right",
+          welcome_message: tracking?.welcome_message ?? channels?.website?.welcome_message ?? currentSite.settings?.channels?.website?.welcome_message ?? "Welcome to our website! How can we assist you today?",
+          chat_title: tracking?.chat_title ?? channels?.website?.chat_title ?? currentSite.settings?.channels?.website?.chat_title ?? "Chat with us",
+          analytics_provider: tracking?.analytics_provider ?? channels?.website?.analytics_provider ?? currentSite.settings?.channels?.website?.analytics_provider ?? "",
+          analytics_id: tracking?.analytics_id ?? channels?.website?.analytics_id ?? currentSite.settings?.channels?.website?.analytics_id ?? "",
+          tracking_code: tracking?.tracking_code ?? channels?.website?.tracking_code ?? currentSite.settings?.channels?.website?.tracking_code ?? ""
+        }
+      }
+    }
+
+    // Preserve existing settings ID if it exists
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Channels saved successfully")
+  } catch (error) {
+    console.error("Error saving channels:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving channels")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+// Partial save handler for Activities section
+export const handleSaveActivities = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    const activities = (data as any).activities
+    const a = activities || {}
+    const coerce = (v: any) => (v === 'inactive' ? 'inactive' : 'default')
+    const coerceAssign = (v: any) => (v === 'active' ? 'active' : 'inactive')
+
+    const activitiesData = {
+      daily_resume_and_stand_up: { status: coerce(a?.daily_resume_and_stand_up?.status ?? a?.daily_resume_and_stand_up) },
+      local_lead_generation: { status: coerce(a?.local_lead_generation?.status ?? a?.local_lead_generation) },
+      icp_lead_generation: { status: coerce(a?.icp_lead_generation?.status ?? a?.icp_lead_generation) },
+      leads_initial_cold_outreach: { status: coerce(a?.leads_initial_cold_outreach?.status ?? a?.leads_initial_cold_outreach) },
+      leads_follow_up: { status: coerce(a?.leads_follow_up?.status ?? a?.leads_follow_up) },
+      email_sync: { status: coerce(a?.email_sync?.status ?? a?.email_sync) },
+      assign_leads_to_team: { status: coerceAssign(a?.assign_leads_to_team?.status ?? a?.assign_leads_to_team) },
+      notify_team_on_inbound_conversations: { status: coerce(a?.notify_team_on_inbound_conversations?.status ?? a?.notify_team_on_inbound_conversations) },
+      supervise_conversations: { status: coerceAssign(a?.supervise_conversations?.status ?? a?.supervise_conversations) },
+    } as const
+
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      activities: activitiesData
+    }
+
+    // Preserve existing settings ID if it exists
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Activities saved successfully")
+  } catch (error) {
+    console.error("Error saving activities:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving activities")
+    }
+  } finally {
+    setIsSaving(false)
+  }
 } 

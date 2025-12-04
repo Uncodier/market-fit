@@ -58,7 +58,12 @@ import { SocialIcon } from "../ui/social-icons"
 interface ContextFormProps {
   id?: string
   initialData?: Partial<SiteFormValues>
-  onSubmit: (data: SiteFormValues) => void
+  onSaveGeneral?: (data: SiteFormValues) => void
+  onSaveCompany?: (data: SiteFormValues) => void
+  onSaveBranding?: (data: SiteFormValues) => void
+  onSaveMarketing?: (data: SiteFormValues) => void
+  onSaveCustomerJourney?: (data: SiteFormValues) => void
+  onSaveSocial?: (data: SiteFormValues) => void
   onDeleteSite?: () => void
   onCacheAndRebuild?: () => void
   isSaving?: boolean
@@ -69,7 +74,12 @@ interface ContextFormProps {
 export function ContextForm({ 
   id, 
   initialData, 
-  onSubmit, 
+  onSaveGeneral,
+  onSaveCompany,
+  onSaveBranding,
+  onSaveMarketing,
+  onSaveCustomerJourney,
+  onSaveSocial,
   onDeleteSite, 
   onCacheAndRebuild, 
   isSaving, 
@@ -163,49 +173,6 @@ export function ContextForm({
     form.reset(formData);
   }, [stableInitialData, form, siteId, lastSiteId]);
 
-  // Expose form via window for manual save handling
-  useEffect(() => {
-    (window as any).__debug_form = form;
-    return () => {
-      delete (window as any).__debug_form;
-    };
-  }, [form]);
-
-  // Validation with improved error handling
-  const validateAndSubmit = useCallback(async (data: SiteFormValues) => {
-    try {
-      console.log("ContextForm: Starting validation and submit process...");
-      console.log("ContextForm: Form data:", data);
-      
-      // Validate the data
-      const validatedData = siteFormSchema.parse(data);
-      console.log("ContextForm: Data validated successfully");
-      
-      // Submit to parent component
-      await onSubmit(validatedData);
-      console.log("ContextForm: Submit completed successfully");
-      
-    } catch (error) {
-      console.error("ContextForm: Validation or submit failed:", error);
-      if (error instanceof Error) {
-        console.error("ContextForm: Error message:", error.message);
-        toast.error(`Validation failed: ${error.message}`);
-      } else {
-        toast.error("Validation failed. Please check your inputs.");
-      }
-      throw error;
-    }
-  }, [onSubmit]);
-
-  const handleSubmit = useCallback(async (data: SiteFormValues) => {
-    try {
-      // Use the validated submit function
-      await validateAndSubmit(data);
-    } catch (error) {
-      // Error is already logged and toasted in validateAndSubmit
-      console.error("ContextForm: handleSubmit failed:", error);
-    }
-  }, [validateAndSubmit]);
 
   // Copy tracking code functionality (not needed for context form but keeping for compatibility)
   const [codeCopied, setCodeCopied] = useState(false)
@@ -277,22 +244,22 @@ export function ContextForm({
 
   return (
     <FormProvider {...form}>
-      <form id={id} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-12">
+      <form id={id} className="space-y-12">
         <div className="space-y-12">
           {renderCard("general", 
-            <GeneralSection active={true} />
+            <GeneralSection active={true} onSave={onSaveGeneral} />
           )}
 
           {renderCard("company",
-            <CompanySection active={true} />
+            <CompanySection active={true} onSave={onSaveCompany} />
           )}
 
           {renderCard("branding",
-            <BrandingSection active={true} />
+            <BrandingSection active={true} onSave={onSaveBranding} />
           )}
 
           {renderCard("marketing",
-            <MarketingSection active={true} />
+            <MarketingSection active={true} onSave={onSaveMarketing} />
           )}
 
           {renderCard("copywriting",
@@ -300,18 +267,22 @@ export function ContextForm({
               active={true} 
               onSave={async () => {
                 const formData = form.getValues()
-                await onSubmit(formData)
+                // Copywriting is saved separately through copywritingService,
+                // but we call onSaveGeneral to trigger a refresh
+                if (onSaveGeneral) {
+                  await onSaveGeneral(formData)
+                }
               }}
               isSaving={isSaving}
             />
           )}
 
           {renderCard("customer-journey",
-            <CustomerJourneySection active={true} />
+            <CustomerJourneySection active={true} onSave={onSaveCustomerJourney} />
           )}
 
           {renderCard("social",
-            <SocialSection active={true} />
+            <SocialSection active={true} onSave={onSaveSocial} />
           )}
 
           {renderCard("general",

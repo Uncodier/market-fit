@@ -59,10 +59,16 @@ import { SocialIcon } from "../ui/social-icons"
 interface SiteFormProps {
   id?: string
   initialData?: Partial<SiteFormValues>
-  onSubmit: (data: SiteFormValues) => void
+  onSaveGeneral?: (data: SiteFormValues) => void
+  onSaveCompany?: (data: SiteFormValues) => void
+  onSaveBranding?: (data: SiteFormValues) => void
+  onSaveMarketing?: (data: SiteFormValues) => void
+  onSaveCustomerJourney?: (data: SiteFormValues) => void
+  onSaveSocial?: (data: SiteFormValues) => void
+  onSaveChannels?: (data: SiteFormValues) => void
+  onSaveActivities?: (data: SiteFormValues) => void
   onDeleteSite?: () => void
   onCacheAndRebuild?: () => void
-  isSaving?: boolean
   activeSegment: string
   siteId?: string
 }
@@ -70,10 +76,16 @@ interface SiteFormProps {
 export function SiteForm({ 
   id, 
   initialData, 
-  onSubmit, 
+  onSaveGeneral,
+  onSaveCompany,
+  onSaveBranding,
+  onSaveMarketing,
+  onSaveCustomerJourney,
+  onSaveSocial,
+  onSaveChannels,
+  onSaveActivities,
   onDeleteSite, 
   onCacheAndRebuild, 
-  isSaving, 
   activeSegment,
   siteId 
 }: SiteFormProps) {
@@ -341,107 +353,7 @@ export function SiteForm({
   }, [siteId, lastSiteId, form]) // CRITICAL: Don't include stableInitialData - only reset on site ID change, not after saves
 
   // Note: Removed the complex update logic since the component now re-mounts when data changes
-
-  const handleSubmit = async (data: SiteFormValues) => {
-    console.log("Form data in site-form component:", data);
-    
-    try {
-      // Basic client-side validation
-      if (!data.name?.trim()) {
-        throw new Error("Site name is required");
-      }
-      
-      if (!data.url?.trim()) {
-        throw new Error("Site URL is required");
-      }
-      
-      // Check URL format for required fields
-      if (data.url && !data.url.match(/^https?:\/\/.+/)) {
-        throw new Error("Site URL must be a valid URL starting with http:// or https://");
-      }
-      
-      // Ensure goals fields are always strings
-      if (data.goals) {
-        data.goals = {
-          quarterly: data.goals.quarterly || "",
-          yearly: data.goals.yearly || "",
-          fiveYear: data.goals.fiveYear || "",
-          tenYear: data.goals.tenYear || ""
-        };
-      }
-      
-      // Filter social media to only include entries with valid URLs
-      if (data.social_media) {
-        data.social_media = data.social_media.filter(sm => {
-          if (!sm.platform) return false;
-          
-          // Platform-specific validations
-          switch (sm.platform) {
-            case 'whatsapp':
-              // WhatsApp requires phone number
-              if (!sm.phone || sm.phone.trim() === '') {
-                return false;
-              }
-              return true;
-            
-            case 'telegram':
-              // Telegram requires either a handle or a URL
-              if ((!sm.handle || sm.handle.trim() === '') && (!sm.url || sm.url.trim() === '')) {
-                return false;
-              }
-              
-              // Validate URL format if provided
-              if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
-                return false;
-              }
-              return true;
-              
-            case 'discord':
-              // Discord requires either an invite code or a URL
-              if ((!sm.inviteCode || sm.inviteCode.trim() === '') && (!sm.url || sm.url.trim() === '')) {
-                return false;
-              }
-              
-              // Validate URL format if provided
-              if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
-                return false;
-              }
-              return true;
-              
-            default:
-              // For standard platforms, URL is not required - we can just have a handle
-              // But if URL is provided, validate its format
-              if (sm.url && sm.url.trim() !== '') {
-                const hasValidUrl = sm.url.match(/^https?:\/\/.+/);
-                if (!hasValidUrl) {
-                  return false;
-                }
-              }
-              return true;
-          }
-        });
-      }
-      
-      // Ensure focusMode is within bounds
-      if (typeof data.focusMode === 'number') {
-        // Clamp value between 0 and 100
-        data.focusMode = Math.max(0, Math.min(100, data.focusMode));
-        
-        // Final save of the focus mode value before submission (no debounce needed here)
-        if (siteId) {
-          saveFocusMode(data.focusMode);
-        }
-      }
-      
-      // Pass the entire form data to the parent component
-      onSubmit(data);
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error("Validation error:", error.message);
-        toast.error(error.message);
-      }
-    }
-  }
+  // Form-level submit is no longer needed - each card handles its own save
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: (acceptedFiles) => {
@@ -546,34 +458,34 @@ export function SiteForm({
 
   return (
     <FormProvider {...form}>
-      <form id={id} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-12">
+      <form id={id} className="space-y-12">
         <div className="space-y-12">
           {renderCard("general", 
-            <GeneralSection active={true} />
+            <GeneralSection active={true} onSave={onSaveGeneral} />
           )}
 
           {renderCard("company",
-            <CompanySection active={true} />
+            <CompanySection active={true} onSave={onSaveCompany} />
           )}
 
           {renderCard("branding",
-            <BrandingSection active={true} />
+            <BrandingSection active={true} onSave={onSaveBranding} />
           )}
 
           {renderCard("marketing",
-            <MarketingSection active={true} />
+            <MarketingSection active={true} onSave={onSaveMarketing} />
           )}
 
           {renderCard("customer-journey",
-            <CustomerJourneySection active={true} />
+            <CustomerJourneySection active={true} onSave={onSaveCustomerJourney} />
           )}
 
           {renderCard("social",
-            <SocialSection active={true} />
+            <SocialSection active={true} onSave={onSaveSocial} />
           )}
 
           {renderCard("activities",
-            <ActivitiesSection active={true} />
+            <ActivitiesSection active={true} onSave={onSaveActivities} />
           )}
 
           {renderCard("channels",
@@ -583,6 +495,7 @@ export function SiteForm({
               codeCopied={codeCopied} 
               siteName={initialData?.name || ''}
               siteId={siteId}
+              onSave={onSaveChannels}
             />
           )}
 
@@ -605,7 +518,6 @@ export function SiteForm({
                     variant="outline"
                     className="w-full h-12"
                     onClick={onCacheAndRebuild}
-                    disabled={isSaving}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Clear Cache and Rebuild

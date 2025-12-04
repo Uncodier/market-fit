@@ -6,7 +6,7 @@ import { type SiteFormValues, type MarketingChannel, getFocusModeConfig } from "
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, Tag, Link, Globe, AppWindow, ChevronDown, ChevronRight } from "../ui/icons"
 import { Slider } from "../ui/slider"
@@ -14,13 +14,28 @@ import { Switch } from "../ui/switch"
 
 interface MarketingSectionProps {
   active: boolean
+  onSave?: (data: SiteFormValues) => void
 }
 
-export function MarketingSection({ active }: MarketingSectionProps) {
+export function MarketingSection({ active, onSave }: MarketingSectionProps) {
   const form = useFormContext<SiteFormValues>()
+  const [isSaving, setIsSaving] = useState(false)
   const [channelsList, setChannelsList] = useState<MarketingChannel[]>(
     form.getValues("marketing_channels") || []
   )
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving marketing:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
   const [productsList, setProductsList] = useState<any[]>(
     form.getValues("products") ?? []
   )
@@ -181,14 +196,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
   const addCompetitor = () => {
     const newCompetitors = [...competitorList, { name: "", url: "" }]
     setCompetitorList(newCompetitors)
-    form.setValue("competitors", newCompetitors as any)
+    form.setValue("competitors", newCompetitors as any, { shouldDirty: true, shouldValidate: true })
   }
 
   // Remove competitor entry
   const removeCompetitor = (index: number) => {
     const newCompetitors = competitorList.filter((_, i) => i !== index)
     setCompetitorList(newCompetitors)
-    form.setValue("competitors", newCompetitors as any)
+    form.setValue("competitors", newCompetitors as any, { shouldDirty: true, shouldValidate: true })
   }
 
   if (!active) return null
@@ -265,6 +280,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             />
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -340,6 +363,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -394,6 +425,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             />
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -564,6 +603,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             Add Product
           </Button>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -734,6 +781,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             Add Service
           </Button>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -763,6 +818,7 @@ export function MarketingSection({ active }: MarketingSectionProps) {
                             const newCompetitors = [...competitorList]
                             newCompetitors[index].name = e.target.value
                             setCompetitorList(newCompetitors)
+                            form.setValue("competitors", newCompetitors as any)
                           }}
                         />
                       </div>
@@ -788,6 +844,7 @@ export function MarketingSection({ active }: MarketingSectionProps) {
                             const newCompetitors = [...competitorList]
                             newCompetitors[index].url = e.target.value
                             setCompetitorList(newCompetitors)
+                            form.setValue("competitors", newCompetitors as any)
                           }}
                         />
                       </div>
@@ -816,6 +873,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             Add Competitor
           </Button>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -877,6 +942,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             Add Marketing Channel
           </Button>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -956,6 +1029,14 @@ export function MarketingSection({ active }: MarketingSectionProps) {
             Add Resource
           </Button>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
     </>
   )

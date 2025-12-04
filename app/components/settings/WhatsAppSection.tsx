@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
@@ -542,6 +542,7 @@ interface WhatsAppSectionProps {
   active: boolean
   form: UseFormReturn<SiteFormValues>
   siteId?: string
+  onSave?: (data: SiteFormValues) => void
 }
 
 // Local state interface
@@ -559,12 +560,26 @@ interface WhatsAppLocalState {
   hasSecureToken: boolean // Track if secure token exists
 }
 
-export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) {
+export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectionProps) {
   const [isRequesting, setIsRequesting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [phoneValidation, setPhoneValidation] = useState<{ isValid: boolean; error?: string }>({ isValid: true })
   const [showAccountSid, setShowAccountSid] = useState(false)
   const [showMessagingServiceSid, setShowMessagingServiceSid] = useState(false)
   const { currentSite, updateSettings } = useSite()
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving WhatsApp settings:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
   
   // Local state to avoid form auto-save issues
   const [localState, setLocalState] = useState<WhatsAppLocalState>({
@@ -1432,9 +1447,31 @@ export function WhatsAppSection({ active, form, siteId }: WhatsAppSectionProps) 
                   Reset Configuration
                 </Button>
               )}
+              {onSave && (
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+              )}
             </div>
           </div>
         </ActionFooter>
+      )}
+      {!localState.enabled && onSave && (
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button
+            type="button"
+            variant="default"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       )}
     </Card>
   )

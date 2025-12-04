@@ -4,11 +4,11 @@ import { useFormContext } from "react-hook-form"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { 
   SocialIcon,
   FacebookIcon,
@@ -138,11 +138,26 @@ const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
 
 interface SocialSectionProps {
   active: boolean
+  onSave?: (data: SiteFormValues) => void
 }
 
-export function SocialSection({ active }: SocialSectionProps) {
+export function SocialSection({ active, onSave }: SocialSectionProps) {
   const form = useFormContext<SiteFormValues>()
+  const [isSaving, setIsSaving] = useState(false)
   const socialMedia = form.watch("social_media") || []
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving social media:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // Memoized functions for better performance
   const addSocialMedia = useCallback(() => {
@@ -494,6 +509,14 @@ export function SocialSection({ active }: SocialSectionProps) {
           <p>Connect your social media accounts to enhance your site's presence. Different platforms require different information.</p>
         </div>
       </CardContent>
+      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+        <Button 
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? "Saving..." : "Save"}
+        </Button>
+      </CardFooter>
     </Card>
   )
 } 

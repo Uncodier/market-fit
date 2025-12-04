@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { SiteForm } from "../components/settings/site-form"
 import { type SiteFormValues } from "../components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
-import { handleSave, handleCacheAndRebuild } from "../components/settings/save-handlers"
+import { handleCacheAndRebuild, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities } from "../components/settings/save-handlers"
 import { useAuthContext } from "../components/auth/auth-provider"
 
 function SettingsFormSkeleton() {
@@ -214,52 +214,59 @@ export default function SettingsPage() {
     }
   }, [currentSite?.id])
 
-  // Wrapper function for handleSave with context
-  const onSave = async (data: SiteFormValues) => {
-    if (!currentSite) return;
-    
-    await handleSave(data, {
-      currentSite,
-      updateSite,
-      updateSettings,
-      refreshSites,
-      setIsSaving
-    })
+  // Wrapper functions for save handlers
+  const saveOptions = {
+    currentSite: currentSite!,
+    updateSite,
+    updateSettings,
+    refreshSites,
+    setIsSaving
+  }
+
+  const onSaveGeneral = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveGeneral(data, saveOptions)
+  }
+
+  const onSaveCompany = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveCompany(data, saveOptions)
+  }
+
+  const onSaveBranding = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveBranding(data, saveOptions)
+  }
+
+  const onSaveMarketing = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveMarketing(data, saveOptions)
+  }
+
+  const onSaveCustomerJourney = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveCustomerJourney(data, saveOptions)
+  }
+
+  const onSaveSocial = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveSocial(data, saveOptions)
+  }
+
+  const onSaveChannels = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveChannels(data, saveOptions)
+  }
+
+  const onSaveActivities = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveActivities(data, saveOptions)
   }
 
   // Wrapper functions for other handlers
   const onCacheAndRebuild = async () => {
     await handleCacheAndRebuild(setIsSaving, currentSite || undefined, user)
   }
-
-
-  // Función para guardar manualmente (sin depender del submit)
-  const handleManualSave = async () => {
-    console.log("MANUAL SAVE: Obteniendo formulario");
-    const formElement = document.getElementById('settings-form') as HTMLFormElement;
-    if (!formElement) {
-      console.error("MANUAL SAVE ERROR: No se encontró el formulario");
-      return;
-    }
-    
-    console.log("MANUAL SAVE: Disparando validación");
-    // Obtener una referencia al formulario React Hook Form dentro del SiteForm
-    // Esto es un hack, idealmente debería hacerse de otra manera
-    const form = (window as any).__debug_form;
-    if (!form) {
-      console.error("MANUAL SAVE ERROR: No se pudo obtener el formulario");
-      console.log("MANUAL SAVE FALLBACK: Usando evento submit directo");
-      formElement.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-      return;
-    }
-    
-    console.log("MANUAL SAVE: Obteniendo valores del formulario");
-    const formValues = form.getValues();
-    console.log("MANUAL SAVE: Valores del formulario:", formValues);
-    
-    // Procesar con el handleSave normal
-    await onSave(formValues);
-  };
 
   // Simple approach - just track when data changes
   const adaptedSiteData = useMemo(() => {
@@ -281,9 +288,6 @@ export default function SettingsPage() {
                 <TabsTrigger value="activities">Activities</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button disabled>
-              Save settings
-            </Button>
           </div>
         </StickyHeader>
         <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
@@ -313,15 +317,6 @@ export default function SettingsPage() {
               <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
             </TabsList>
           </Tabs>
-          <div className="flex items-center gap-2">
-            <Button 
-              type="button"
-              onClick={handleManualSave}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving..." : "Save settings"}
-            </Button>
-          </div>
         </div>
       </StickyHeader>
       <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
@@ -329,9 +324,15 @@ export default function SettingsPage() {
           key={formKey}
           id="settings-form"
           initialData={adaptedSiteData || undefined}
-          onSubmit={onSave}
+          onSaveGeneral={onSaveGeneral}
+          onSaveCompany={onSaveCompany}
+          onSaveBranding={onSaveBranding}
+          onSaveMarketing={onSaveMarketing}
+          onSaveCustomerJourney={onSaveCustomerJourney}
+          onSaveSocial={onSaveSocial}
+          onSaveChannels={onSaveChannels}
+          onSaveActivities={onSaveActivities}
           onCacheAndRebuild={onCacheAndRebuild}
-          isSaving={isSaving}
           activeSegment={activeSegment}
           siteId={currentSite.id}
         />

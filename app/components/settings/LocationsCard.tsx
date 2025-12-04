@@ -5,14 +5,32 @@ import { useState, useEffect } from "react"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormControl, FormMessage, FormLabel } from "../ui/form"
 import { Input } from "../ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
 import { PlusCircle, Trash2, ChevronDown, ChevronRight, Home, Shield } from "../ui/icons"
 import { RegionalRestrictionsSection } from "./RegionalRestrictionsSection"
 
-export function LocationsCard() {
+interface LocationsCardProps {
+  onSave?: (data: SiteFormValues) => void
+}
+
+export function LocationsCard({ onSave }: LocationsCardProps) {
   const form = useFormContext<SiteFormValues>()
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving locations:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
   
   // Helper function to ensure proper location structure
   const normalizeLocation = (location: any) => ({
@@ -477,6 +495,14 @@ export function LocationsCard() {
           </div>
         </div>
       </CardContent>
+      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+        <Button 
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? "Saving..." : "Save"}
+        </Button>
+      </CardFooter>
     </Card>
   )
 } 

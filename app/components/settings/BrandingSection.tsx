@@ -5,7 +5,7 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { ColorInput } from "../ui/color-input"
 import { 
@@ -29,8 +29,11 @@ import {
   XCircle
 } from "../ui/icons"
 
+import { type SiteFormValues } from "./form-schema"
+
 interface BrandingSectionProps {
   active: boolean
+  onSave?: (data: SiteFormValues) => void
 }
 
 const BRAND_ARCHETYPES = [
@@ -48,14 +51,29 @@ const BRAND_ARCHETYPES = [
   { value: "creator", label: "Creator", description: "Creative, imaginative, artistic" }
 ]
 
-export function BrandingSection({ active }: BrandingSectionProps) {
+export function BrandingSection({ active, onSave }: BrandingSectionProps) {
   const form = useFormContext<SiteFormValues>()
+  const [isSaving, setIsSaving] = useState(false)
   const [newPersonalityTrait, setNewPersonalityTrait] = useState("")
   const [newForbiddenWord, setNewForbiddenWord] = useState("")
   const [newPreferredPhrase, setNewPreferredPhrase] = useState("")
   const [newEmotion, setNewEmotion] = useState("")
   const [newDoItem, setNewDoItem] = useState("")
   const [newDontItem, setNewDontItem] = useState("")
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving branding:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   if (!active) return null
 
   // Helper functions for managing branding arrays
@@ -346,6 +364,14 @@ export function BrandingSection({ active }: BrandingSectionProps) {
             )}
           />
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       {/* Color Palette */}
@@ -506,6 +532,14 @@ export function BrandingSection({ active }: BrandingSectionProps) {
             />
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       {/* Typography */}
@@ -593,6 +627,14 @@ export function BrandingSection({ active }: BrandingSectionProps) {
             )}
           />
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       {/* Voice and Tone */}
@@ -753,6 +795,14 @@ export function BrandingSection({ active }: BrandingSectionProps) {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       {/* Brand Guidelines */}
@@ -1006,6 +1056,14 @@ export function BrandingSection({ active }: BrandingSectionProps) {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
 

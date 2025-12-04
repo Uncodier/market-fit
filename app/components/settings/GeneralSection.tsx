@@ -5,20 +5,36 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, UploadCloud, AppWindow, Globe, Tag } from "../ui/icons"
 import { useDropzone } from "react-dropzone"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { type SiteFormValues } from "./form-schema"
 
 interface GeneralSectionProps {
   active: boolean
+  onSave?: (data: SiteFormValues) => void
 }
 
-export function GeneralSection({ active }: GeneralSectionProps) {
+export function GeneralSection({ active, onSave }: GeneralSectionProps) {
   const form = useFormContext<SiteFormValues>()
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving general settings:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // Handle logo upload
   const { getRootProps, getInputProps } = useDropzone({
@@ -160,6 +176,14 @@ export function GeneralSection({ active }: GeneralSectionProps) {
           )}
         />
       </CardContent>
+      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+        <Button 
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? "Saving..." : "Save"}
+        </Button>
+      </CardFooter>
     </Card>
   )
 } 

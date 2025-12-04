@@ -6,7 +6,7 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Switch } from "../ui/switch"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Code, Copy, Check, Key, KeyRound, ShieldCheck, ExternalLink, ChevronDown, ChevronUp, Mail, Globe } from "../ui/icons"
@@ -31,6 +31,7 @@ export interface ChannelsSectionProps {
   siteId?: string
   codeCopied?: boolean
   copyTrackingCode?: () => Promise<void>
+  onSave?: (data: SiteFormValues) => void
 }
 
 // Definición de proveedores de correo conocidos
@@ -125,16 +126,30 @@ const EMAIL_PROVIDERS = [
   }
 ];
 
-export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrackingCode }: ChannelsSectionProps) {
+export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrackingCode, onSave }: ChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const { currentSite, updateSettings, updateSite } = useSite()
   const [internalCodeCopied, setInternalCodeCopied] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showTrackingCode, setShowTrackingCode] = useState(false)
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("Gmail")
   const [isTestingConnection, setIsTestingConnection] = useState(false)
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving channels:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // Get the email channel status from form (using getValues instead of watch)
   const emailStatus = form.getValues("channels.email.status") || "not_configured";
@@ -920,6 +935,16 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             )}
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button
+            type="button"
+            variant="default"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -1289,6 +1314,16 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                 {isConnecting ? "Saving..." : "Save Credentials Securely"}
               </Button>
             )}
+            {onSave && (
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            )}
           </ActionFooter>
         )}
       </Card>
@@ -1296,7 +1331,8 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       <WhatsAppSection 
         active={active} 
         form={form} 
-        siteId={siteId} 
+        siteId={siteId}
+        onSave={onSave}
       />
     </>
   )

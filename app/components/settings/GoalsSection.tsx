@@ -1,18 +1,35 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import { Button } from "../ui/button"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { Textarea } from "../ui/textarea"
 import { type SiteFormValues } from "./form-schema"
+import { useState } from "react"
 
 interface GoalsSectionProps {
   active: boolean
+  onSave?: (data: SiteFormValues) => void
 }
 
-export function GoalsSection({ active }: GoalsSectionProps) {
+export function GoalsSection({ active, onSave }: GoalsSectionProps) {
   const form = useFormContext<SiteFormValues>()
+  const [isSaving, setIsSaving] = useState(false)
   console.log("GoalsSection: Current goals values:", form.getValues("goals"));
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving goals:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   if (!active) return null
 
@@ -101,6 +118,14 @@ export function GoalsSection({ active }: GoalsSectionProps) {
           )}
         />
       </CardContent>
+      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+        <Button 
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? "Saving..." : "Save"}
+        </Button>
+      </CardFooter>
     </Card>
   )
 } 
