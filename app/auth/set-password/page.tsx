@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Loader, Eye, EyeOff, CheckCircle2, Lock } from "@/app/components/ui/icons"
+import { Loader, Eye, EyeOff, CheckCircle2, Lock, AlertCircle } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { Alert, AlertDescription } from "@/app/components/ui/alert"
 
 function SetPasswordContent() {
   const router = useRouter()
@@ -21,6 +22,7 @@ function SetPasswordContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [isCheckingSession, setIsCheckingSession] = useState(true)
+  const [apiError, setApiError] = useState<{ code?: string; message: string } | null>(null)
 
   const redirectTo = searchParams.get('redirect_to')
 
@@ -77,6 +79,9 @@ function SetPasswordContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Clear any previous API errors
+    setApiError(null)
+    
     if (!password || !confirmPassword) {
       toast.error("Please fill in all fields")
       return
@@ -95,6 +100,9 @@ function SetPasswordContent() {
 
     setIsLoading(true)
 
+    // Track if we're redirecting on success to avoid clearing loading state
+    let isRedirecting = false
+
     try {
       const supabase = createClient()
 
@@ -109,44 +117,171 @@ function SetPasswordContent() {
       if (error) {
         console.error('❌ Password update error:', error)
         
-        // Handle specific session errors
-        if (error.message.includes('session') || error.message.includes('JWT')) {
+        // Check for session errors FIRST, before parsing
+        // This ensures session expiration UX is handled correctly
+        const errorMessage = error.message || ''
+        const errorCode = (error as any)?.code || ''
+        const isSessionError = 
+          errorMessage.toLowerCase().includes('session') || 
+          errorMessage.toLowerCase().includes('jwt') ||
+          errorMessage.toLowerCase().includes('token') ||
+          errorCode.toLowerCase().includes('session') ||
+          errorCode.toLowerCase().includes('jwt') ||
+          errorCode.toLowerCase().includes('token')
+        
+        if (isSessionError) {
           toast.error("Your session has expired. Please request a new password reset link.")
           setTimeout(() => {
             router.push('/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.'))
           }, 2000)
-        } else {
-          toast.error(error.message || "Failed to set password")
+          setIsLoading(false)
+          return
         }
+        
+        // Try to parse error message as JSON (in case it's a stringified JSON)
+        let parsedError: { code?: string; message: string } | null = null
+        try {
+          // Check if error.message is a JSON string
+          if (error.message && error.message.startsWith('{')) {
+            parsedError = JSON.parse(error.message)
+          } else if (error.message && error.message.includes('code') && error.message.includes('message')) {
+            // Try to extract JSON from the message
+            const jsonMatch = error.message.match(/\{.*\}/)
+            if (jsonMatch) {
+              parsedError = JSON.parse(jsonMatch[0])
+            }
+          }
+        } catch (parseError) {
+          // If parsing fails, continue with regular error handling
+        }
+
+        // Check if error object itself has code and message properties
+        if (!parsedError && error && typeof error === 'object') {
+          // Check direct properties
+          if ('code' in error && 'message' in error) {
+            parsedError = {
+              code: (error as any).code,
+              message: (error as any).message
+            }
+          }
+          // Check if error.details contains the error information
+          else if ('details' in error && (error as any).details) {
+            const details = (error as any).details
+            if (typeof details === 'object' && 'code' in details && 'message' in details) {
+              parsedError = {
+                code: details.code,
+                message: details.message
+              }
+            } else if (typeof details === 'string' && details.startsWith('{')) {
+              try {
+                parsedError = JSON.parse(details)
+              } catch (e) {
+                // Ignore parse errors
+              }
+            }
+          }
+        }
+
+        // If we have a parsed error with message, display it in the error card
+        if (parsedError && parsedError.message) {
+          setApiError({
+            code: parsedError.code,
+            message: parsedError.message
+          })
+          setIsLoading(false)
+          return
+        }
+        
+        // For other errors, show in error card if possible, otherwise use toast
+        setApiError({
+          message: error.message || "Failed to set password"
+        })
+        setIsLoading(false)
         return
       }
 
       console.log('✅ Password set successfully')
       toast.success("Password set successfully!")
 
-      // Set loading to false immediately to update UI
-      setIsLoading(false)
+      // Clear any previous errors
+      setApiError(null)
 
-      // Redirect to the original destination or team invitation
+      // Redirect to the original destination or dashboard
       // Use window.location.href to ensure cookies are properly sent
-      if (redirectTo) {
-        const decodedRedirect = decodeURIComponent(redirectTo)
-        console.log('🔄 Redirecting to:', decodedRedirect)
+      const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/dashboard'
+      console.log('🔄 Redirecting to:', targetUrl)
+      
+      // Mark that we're redirecting - don't clear loading state
+      // The redirect will unmount the component anyway
+      isRedirecting = true
+      setTimeout(() => {
+        window.location.href = targetUrl
+      }, 1000)
+
+    } catch (error: any) {
+      console.error('❌ Password setup error:', error)
+      
+      // Check for session errors FIRST, before parsing
+      const errorMessage = error?.message || ''
+      const errorCode = error?.code || ''
+      const isSessionError = 
+        errorMessage.toLowerCase().includes('session') || 
+        errorMessage.toLowerCase().includes('jwt') ||
+        errorMessage.toLowerCase().includes('token') ||
+        errorCode.toLowerCase().includes('session') ||
+        errorCode.toLowerCase().includes('jwt') ||
+        errorCode.toLowerCase().includes('token')
+      
+      if (isSessionError) {
+        toast.error("Your session has expired. Please request a new password reset link.")
+        setTimeout(() => {
+          router.push('/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.'))
+        }, 2000)
+        setIsLoading(false)
+        return
+      }
+      
+      // Try to parse error as API error response
+      let parsedError: { code?: string; message: string } | null = null
+      try {
+        if (error?.message && typeof error.message === 'string') {
+          if (error.message.startsWith('{')) {
+            parsedError = JSON.parse(error.message)
+          } else if (error.message.includes('code') && error.message.includes('message')) {
+            const jsonMatch = error.message.match(/\{.*\}/)
+            if (jsonMatch) {
+              parsedError = JSON.parse(jsonMatch[0])
+            }
+          }
+        }
         
-        setTimeout(() => {
-          window.location.href = decodedRedirect
-        }, 1000)
-      } else {
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 1000)
+        // Check if error itself has code and message
+        if (!parsedError && error && typeof error === 'object' && 'code' in error && 'message' in error) {
+          parsedError = {
+            code: (error as any).code,
+            message: (error as any).message
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use default error
       }
 
-    } catch (error) {
-      console.error('❌ Password setup error:', error)
-      toast.error("An unexpected error occurred")
+      if (parsedError && parsedError.message) {
+        setApiError({
+          code: parsedError.code,
+          message: parsedError.message
+        })
+      } else {
+        setApiError({
+          message: error?.message || "An unexpected error occurred"
+        })
+      }
     } finally {
-      setIsLoading(false)
+      // Only clear loading state if we're not redirecting
+      // On success, we want to keep the loading state visible during the redirect
+      if (!isRedirecting) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -210,6 +345,14 @@ function SetPasswordContent() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {apiError && (
+                <Alert variant="destructive">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <AlertDescription className="m-0">{apiError.message}</AlertDescription>
+                  </div>
+                </Alert>
+              )}
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="password" className="text-sm font-medium">
@@ -220,7 +363,13 @@ function SetPasswordContent() {
                       id="password"
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value)
+                        // Clear API error when user starts typing
+                        if (apiError) {
+                          setApiError(null)
+                        }
+                      }}
                       placeholder="Enter your password"
                       className={`pr-10 ${passwordError ? 'border-red-300' : ''}`}
                       disabled={isLoading}
@@ -251,7 +400,13 @@ function SetPasswordContent() {
                       id="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value)
+                        // Clear API error when user starts typing
+                        if (apiError) {
+                          setApiError(null)
+                        }
+                      }}
                       placeholder="Confirm your password"
                       className={`pr-10 ${confirmError ? 'border-red-300' : ''}`}
                       disabled={isLoading}

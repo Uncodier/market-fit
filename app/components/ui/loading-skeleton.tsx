@@ -1,5 +1,5 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { cn } from "@/app/lib/utils"
+import { cn } from "@/lib/utils"
 
 interface LoadingSkeletonProps {
   className?: string

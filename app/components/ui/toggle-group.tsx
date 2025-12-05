@@ -2,7 +2,7 @@ import * as React from "react"
 import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group"
 import { cva, type VariantProps } from "class-variance-authority"
 
-import { cn } from "@/app/lib/utils"
+import { cn } from "@/lib/utils"
 
 const toggleGroupVariants = cva(
   "inline-flex items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
