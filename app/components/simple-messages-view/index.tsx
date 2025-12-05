@@ -13,6 +13,8 @@ import { useUserProfile } from './hooks/useUserProfile'
 import { MessagesSkeleton } from "@/app/components/skeletons/messages-skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { User } from "@/app/components/ui/icons"
+import ReactMarkdown from 'react-markdown'
+import { markdownComponents } from './utils/markdownComponents'
 
 // Import types
 import { SimpleMessagesViewProps, InstanceLog, SelectedContextIds, ImageParameters, VideoParameters, AudioParameters, MessageAttachment } from './types'
@@ -541,7 +543,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                 <div className="w-full min-w-0 overflow-hidden flex justify-end pr-8">
                   <div className="min-w-0 overflow-hidden">
                     <div 
-                      className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap rounded-lg p-4 mr-12" 
+                      className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words rounded-lg p-4 mr-12" 
                       style={{ 
                         backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
                         border: 'none', 
@@ -553,7 +555,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                         wordBreak: 'break-word'
                       }}
                     >
-                      {lastUserMessage}
+                      <ReactMarkdown components={markdownComponents}>
+                        {lastUserMessage}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 </div>

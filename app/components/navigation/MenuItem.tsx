@@ -67,7 +67,7 @@ export function MenuItem({
           className,
           "rounded-md text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
           isActive
-            ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground shadow-lg shadow-primary/25"
+            ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20",
           isCollapsed ? "justify-center h-[32px] w-[32px]" : "justify-start h-[32px] px-[9.7px]",
         )}
@@ -132,7 +132,7 @@ export function MenuItem({
         className,
         "flex items-center rounded-md text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
         isActive
-          ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground shadow-lg shadow-primary/25"
+          ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20",
         isCollapsed ? "justify-center h-[32px] w-[32px]" : "justify-start h-[32px]",
         isSettingsLink ? "safari-settings-link" : ""
@@ -157,7 +157,7 @@ export function MenuItem({
               <TooltipContent 
                 side="right" 
                 align="start" 
-                className="flex flex-col gap-1 bg-popover text-popover-foreground border-border shadow-lg"
+                className="flex flex-col gap-1 bg-popover text-popover-foreground border-border shadow-lg z-[9999]"
                 sideOffset={5}
               >
                 <p className="font-medium">{title}</p>

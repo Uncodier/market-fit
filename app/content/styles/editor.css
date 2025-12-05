@@ -141,7 +141,7 @@
 
 /* Custom style for slider thumbs/knobs */
 .style-slider-thumb .slider-thumb {
-  background-color: hsl(var(--primary));
+  background-color: hsl(215 20% 55%);
   border: 2px solid hsl(var(--background));
   width: 16px;
   height: 16px;
@@ -151,6 +151,10 @@
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
+.dark .style-slider-thumb .slider-thumb {
+  background-color: hsl(215 20% 70%);
+}
+
 .style-slider-thumb .slider-thumb:hover {
   transform: scale(1.1);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
@@ -158,10 +162,18 @@
 
 .style-slider-thumb .slider-track {
   height: 4px;
-  background-color: hsl(var(--muted-foreground) / 0.2);
+  background-color: hsl(215 20% 85%);
+}
+
+.dark .style-slider-thumb .slider-track {
+  background-color: hsl(215 20% 25%);
 }
 
 .style-slider-thumb .slider-range {
-  background-color: hsl(var(--primary));
+  background-color: hsl(215 20% 65%);
   height: 4px;
+}
+
+.dark .style-slider-thumb .slider-range {
+  background-color: hsl(215 20% 50%);
 } 

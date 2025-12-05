@@ -702,8 +702,8 @@ export function SiteOnboarding({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center p-4">
-      <div className="container max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center p-4 relative z-[9999]">
+      <div className="container max-w-6xl mx-auto relative z-[9999]">
         {/* Header with optional back button */}
         <div className="flex items-center justify-between mb-8">
           {hasExistingSites && (

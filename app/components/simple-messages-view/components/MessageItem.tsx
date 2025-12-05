@@ -4,6 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
 import { useUserProfile } from '../hooks/useUserProfile'
+import ReactMarkdown from 'react-markdown'
+import { markdownComponents } from '../utils/markdownComponents'
 
 interface MessageItemProps {
   log: InstanceLog
@@ -59,7 +61,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         <div className={`w-full min-w-0 overflow-hidden flex justify-end ${isBrowserVisible ? 'pr-2' : 'pr-8'}`}>
           <div className="min-w-0 overflow-hidden">
             <div 
-              className={`text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap rounded-lg ${isBrowserVisible ? 'mr-2 p-3' : 'mr-12 p-4'}`}
+              className={`text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words rounded-lg ${isBrowserVisible ? 'mr-2 p-3' : 'mr-12 p-4'}`}
               style={{ 
                 backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
                 border: 'none', 
@@ -71,7 +73,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 wordBreak: 'break-word'
               }}
             >
-              {log.message}
+              <ReactMarkdown components={markdownComponents}>
+                {log.message}
+              </ReactMarkdown>
             </div>
             
             {/* Display attachments if they exist */}
@@ -185,8 +189,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {/* Message content - collapsible for system messages */}
       {!(log.log_type === 'system' && collapsedSystemMessages.has(log.id)) && (
         <div className="w-full min-w-0 overflow-hidden">
-          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words whitespace-pre-wrap" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
-            {log.message}
+          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
+            <ReactMarkdown components={markdownComponents}>
+              {log.message}
+            </ReactMarkdown>
           </div>
         </div>
       )}

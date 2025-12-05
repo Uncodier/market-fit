@@ -13,7 +13,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
  
-    --primary: 222 47% 11%;
+    --primary: 0 0% 25.5%;
     --primary-foreground: 210 40% 98%;
  
     --secondary: 210 40% 96.1%;
@@ -953,7 +953,7 @@ html.safari [class*="select-trigger"] svg {
 
 /* Custom style for slider thumbs/knobs */
 .style-slider-thumb .slider-thumb {
-  background-color: hsl(var(--primary));
+  background-color: hsl(215 20% 55%);
   border: 3px solid hsl(var(--background));
   width: 24px;
   height: 24px;
@@ -963,6 +963,10 @@ html.safari [class*="select-trigger"] svg {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
+.dark .style-slider-thumb .slider-thumb {
+  background-color: hsl(215 20% 70%);
+}
+
 .style-slider-thumb .slider-thumb:hover {
   transform: scale(1.1);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
@@ -970,15 +974,23 @@ html.safari [class*="select-trigger"] svg {
 
 .style-slider-thumb .slider-track {
   height: 8px;
-  background-color: hsl(var(--muted-foreground) / 0.2);
+  background-color: hsl(215 20% 85%);
   border-radius: 9999px !important;
   overflow: hidden;
 }
 
+.dark .style-slider-thumb .slider-track {
+  background-color: hsl(215 20% 25%);
+}
+
 .style-slider-thumb .slider-range {
-  background-color: hsl(var(--primary));
+  background-color: hsl(215 20% 65%);
   height: 8px;
   border-radius: 9999px 0 0 9999px !important;
+}
+
+.dark .style-slider-thumb .slider-range {
+  background-color: hsl(215 20% 50%);
 }
 
 /* Direct styling for sliders with color classes */

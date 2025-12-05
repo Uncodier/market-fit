@@ -37,8 +37,10 @@ function CreateSitePageContent() {
     console.log("Create-site page loaded - allowing access regardless of existing sites")
   }, [sitesLoading, sites.length, router, searchParams])
 
-  // Only show loading if still loading sites
-  if (sitesLoading) {
+  // Only show loading if still loading sites AND we haven't successfully created a site yet
+  // AND we're not currently saving a site (to prevent the "jump" to loading screen when creating)
+  // This prevents the loading screen from appearing over the success message or during site creation
+  if (sitesLoading && !isSuccess && !isSaving) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
         <div className="text-center">
@@ -162,14 +164,16 @@ function CreateSitePageContent() {
   }
 
   return (
-    <SiteOnboarding 
-      onComplete={handleComplete}
-      isLoading={isSaving}
-      isSuccess={isSuccess}
-      createdSiteId={createdSiteId}
-      onGoToDashboard={handleGoToDashboard}
-      onGoToSettings={handleGoToSettings}
-    />
+    <div className="relative z-[9999]">
+      <SiteOnboarding 
+        onComplete={handleComplete}
+        isLoading={isSaving}
+        isSuccess={isSuccess}
+        createdSiteId={createdSiteId}
+        onGoToDashboard={handleGoToDashboard}
+        onGoToSettings={handleGoToSettings}
+      />
+    </div>
   )
 }
 
