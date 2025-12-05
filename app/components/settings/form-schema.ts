@@ -259,6 +259,32 @@ export const siteFormSchema = z.object({
       analytics_provider: "",
       analytics_id: "",
       tracking_code: ""
+    }),
+    agent_email: z.object({
+      domain: z.enum(["makinari.email", "custom"]).optional(),
+      customDomain: z.string().optional(),
+      username: z.string().optional(),
+      displayName: z.string().optional(),
+      setupRequested: z.boolean().default(false),
+      status: z.enum(["not_configured", "pending", "active", "waiting_for_verification"]).optional().default("not_configured")
+    }).optional().default({
+      domain: undefined,
+      customDomain: "",
+      username: "",
+      displayName: "",
+      setupRequested: false,
+      status: "not_configured"
+    }),
+    agent_whatsapp: z.object({
+      country: z.string().optional(),
+      region: z.string().optional(),
+      setupRequested: z.boolean().default(false),
+      status: z.enum(["not_configured", "pending", "active"]).optional().default("not_configured")
+    }).optional().default({
+      country: "",
+      region: "",
+      setupRequested: false,
+      status: "not_configured"
     })
   }).optional().default({
     email: {
@@ -291,6 +317,20 @@ export const siteFormSchema = z.object({
       analytics_provider: "",
       analytics_id: "",
       tracking_code: ""
+    },
+    agent_email: {
+      domain: undefined,
+      customDomain: "",
+      username: "",
+      displayName: "",
+      setupRequested: false,
+      status: "not_configured" as const
+    },
+    agent_whatsapp: {
+      country: "",
+      region: "",
+      setupRequested: false,
+      status: "not_configured" as const
     }
   }),
   // Marketing related fields

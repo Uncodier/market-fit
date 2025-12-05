@@ -283,7 +283,7 @@ export default function SettingsPage() {
             <Tabs value="general" className="w-auto">
               <TabsList>
                 <TabsTrigger value="general">General Settings</TabsTrigger>
-                <TabsTrigger value="channels">Channels</TabsTrigger>
+                <TabsTrigger value="channels">Agent Channels</TabsTrigger>
                 <TabsTrigger value="team">Team</TabsTrigger>
                 <TabsTrigger value="activities">Activities</TabsTrigger>
               </TabsList>
@@ -312,7 +312,7 @@ export default function SettingsPage() {
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="flex">
               <TabsTrigger value="general" className="whitespace-nowrap">General Settings</TabsTrigger>
-              <TabsTrigger value="channels" className="whitespace-nowrap">Channels</TabsTrigger>
+              <TabsTrigger value="channels" className="whitespace-nowrap">Agent Channels</TabsTrigger>
               <TabsTrigger value="team" className="whitespace-nowrap">Team</TabsTrigger>
               <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
             </TabsList>

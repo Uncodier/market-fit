@@ -702,25 +702,23 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           <PlusCircle className="mr-2 h-4 w-4" />
           Add Team Member
         </Button>
-        <div className="text-sm text-muted-foreground mt-4">
-          <p>Team members will receive an email invitation to join your site.</p>
-          <p className="mt-1">Site owners and admins can manage access and permissions.</p>
-        </div>
       </CardContent>
       
-      {((hasUnsavedChanges && teamList.some(member => !member.id)) || pendingMembers.length > 0) && (
-        <ActionFooter>
+      <ActionFooter>
+        <div className="flex items-center justify-between w-full gap-4 flex-wrap">
+          <div className="text-sm text-muted-foreground">
+            <p>Team members will receive an email invitation to join your site.</p>
+            <p className="mt-1">Site owners and admins can manage access and permissions.</p>
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {hasUnsavedChanges && (
-              <Button
-                type="button"
-                onClick={handleSaveTeamMembers}
-                disabled={isSaving || isLoading}
-              >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                {isSaving ? "Adding..." : "Add Team Members"}
-              </Button>
-            )}
+            <Button
+              type="button"
+              onClick={handleSaveTeamMembers}
+              disabled={isSaving || isLoading || !hasUnsavedChanges || !teamList.some(member => !member.id)}
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
             {pendingMembers.map((member, originalIndex) => {
               const memberIndex = teamList.findIndex(m => m.id === member.id);
               return (
@@ -742,8 +740,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
               );
             })}
           </div>
-        </ActionFooter>
-      )}
+        </div>
+      </ActionFooter>
     </Card>
   )
 } 

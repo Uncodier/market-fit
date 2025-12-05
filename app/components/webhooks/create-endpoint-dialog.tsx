@@ -81,7 +81,7 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="secondary" className="w-full">
+        <Button type="button" variant="outline" size="sm">
           <Plus className="h-4 w-4 mr-2" /> {triggerLabel}
         </Button>
       </DialogTrigger>

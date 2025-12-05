@@ -1227,6 +1227,36 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
           setupRequested: channels?.whatsapp?.setupRequested ?? currentSite.settings?.channels?.whatsapp?.setupRequested ?? false,
           status: (channels?.whatsapp?.status ?? currentSite.settings?.channels?.whatsapp?.status ?? "not_configured") as "not_configured" | "pending" | "active"
         },
+        agent_email: {
+          domain: channels?.agent_email?.domain ?? currentSite.settings?.channels?.agent_email?.domain ?? undefined,
+          customDomain: channels?.agent_email?.customDomain ?? currentSite.settings?.channels?.agent_email?.customDomain ?? undefined,
+          username: channels?.agent_email?.username ?? currentSite.settings?.channels?.agent_email?.username ?? currentSite.settings?.channels?.agent_email?.data?.username ?? undefined,
+          displayName: channels?.agent_email?.displayName ?? currentSite.settings?.channels?.agent_email?.displayName ?? currentSite.settings?.channels?.agent_email?.data?.displayName ?? undefined,
+          setupRequested: channels?.agent_email?.setupRequested ?? currentSite.settings?.channels?.agent_email?.setupRequested ?? false,
+          status: (channels?.agent_email?.status ?? currentSite.settings?.channels?.agent_email?.status ?? "not_configured") as "not_configured" | "pending" | "active" | "waiting_for_verification",
+          // Preserve metadata fields directly in agent_email (matching API structure)
+          domain_id: currentSite.settings?.channels?.agent_email?.domain_id ?? currentSite.settings?.channels?.agent_email?.data?.domain_id,
+          dns_records: currentSite.settings?.channels?.agent_email?.dns_records ?? currentSite.settings?.channels?.agent_email?.data?.dns_records,
+          domain_status: currentSite.settings?.channels?.agent_email?.domain_status ?? currentSite.settings?.channels?.agent_email?.data?.domain_status,
+          error_message: currentSite.settings?.channels?.agent_email?.error_message ?? currentSite.settings?.channels?.agent_email?.data?.error_message,
+          created_at: currentSite.settings?.channels?.agent_email?.created_at,
+          // Also keep data for backward compatibility
+          data: {
+            domain: channels?.agent_email?.domain === "custom" ? channels?.agent_email?.customDomain : channels?.agent_email?.domain ?? currentSite.settings?.channels?.agent_email?.data?.domain,
+            username: channels?.agent_email?.username ?? currentSite.settings?.channels?.agent_email?.username ?? currentSite.settings?.channels?.agent_email?.data?.username,
+            displayName: channels?.agent_email?.displayName ?? currentSite.settings?.channels?.agent_email?.displayName ?? currentSite.settings?.channels?.agent_email?.data?.displayName,
+            domain_id: currentSite.settings?.channels?.agent_email?.domain_id ?? currentSite.settings?.channels?.agent_email?.data?.domain_id,
+            dns_records: currentSite.settings?.channels?.agent_email?.dns_records ?? currentSite.settings?.channels?.agent_email?.data?.dns_records,
+            domain_status: currentSite.settings?.channels?.agent_email?.domain_status ?? currentSite.settings?.channels?.agent_email?.data?.domain_status,
+            error_message: currentSite.settings?.channels?.agent_email?.error_message ?? currentSite.settings?.channels?.agent_email?.data?.error_message
+          }
+        },
+        agent_whatsapp: {
+          country: channels?.agent_whatsapp?.country ?? currentSite.settings?.channels?.agent_whatsapp?.country ?? undefined,
+          region: channels?.agent_whatsapp?.region ?? currentSite.settings?.channels?.agent_whatsapp?.region ?? undefined,
+          setupRequested: channels?.agent_whatsapp?.setupRequested ?? currentSite.settings?.channels?.agent_whatsapp?.setupRequested ?? false,
+          status: (channels?.agent_whatsapp?.status ?? currentSite.settings?.channels?.agent_whatsapp?.status ?? "not_configured") as "not_configured" | "pending" | "active"
+        },
         website: {
           enabled: (tracking?.track_visitors || tracking?.track_actions || tracking?.record_screen || tracking?.enable_chat) ?? channels?.website?.enabled ?? currentSite.settings?.channels?.website?.enabled ?? false,
           track_visitors: tracking?.track_visitors ?? channels?.website?.track_visitors ?? currentSite.settings?.channels?.website?.track_visitors ?? false,

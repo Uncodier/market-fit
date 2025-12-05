@@ -405,7 +405,15 @@ export function SiteForm({
     };
     
     var firstScript = document.getElementsByTagName('script')[0];
-    firstScript.parentNode.insertBefore(script, firstScript);
+    if (firstScript && firstScript.parentNode) {
+      firstScript.parentNode.insertBefore(script, firstScript);
+    } else {
+      // Fallback: append to head or body if no script tags exist
+      var target = document.head || document.body;
+      if (target) {
+        target.appendChild(script);
+      }
+    }
   })();
 </script>`
 

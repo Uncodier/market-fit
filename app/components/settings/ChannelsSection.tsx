@@ -23,6 +23,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "../ui/select"
+import { AgentEmailSection } from "./AgentEmailSection"
+import { AgentWhatsAppSection } from "./AgentWhatsAppSection"
 import { WhatsAppSection } from "./WhatsAppSection"
 
 export interface ChannelsSectionProps {
@@ -32,6 +34,8 @@ export interface ChannelsSectionProps {
   codeCopied?: boolean
   copyTrackingCode?: () => Promise<void>
   onSave?: (data: SiteFormValues) => void
+  excludeWebsite?: boolean
+  useAgentChannels?: boolean // If true, show agent channels; if false, show original channels
 }
 
 // Definición de proveedores de correo conocidos
@@ -126,7 +130,7 @@ const EMAIL_PROVIDERS = [
   }
 ];
 
-export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrackingCode, onSave }: ChannelsSectionProps) {
+export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrackingCode, onSave, excludeWebsite = false, useAgentChannels = true }: ChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const { currentSite, updateSettings, updateSite } = useSite()
   const [internalCodeCopied, setInternalCodeCopied] = useState(false)
@@ -275,7 +279,15 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
     };
     
     var firstScript = document.getElementsByTagName('script')[0];
-    firstScript.parentNode.insertBefore(script, firstScript);
+    if (firstScript && firstScript.parentNode) {
+      firstScript.parentNode.insertBefore(script, firstScript);
+    } else {
+      // Fallback: append to head or body if no script tags exist
+      var target = document.head || document.body;
+      if (target) {
+        target.appendChild(script);
+      }
+    }
   })();
 </script>`
 
@@ -630,6 +642,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
 
   return (
     <>
+      {!excludeWebsite && (
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
@@ -946,7 +959,25 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
           </Button>
         </CardFooter>
       </Card>
+      )}
 
+      {useAgentChannels ? (
+        <>
+          <AgentEmailSection 
+            active={active} 
+            siteId={siteId}
+            onSave={onSave}
+          />
+
+          <AgentWhatsAppSection 
+            active={active} 
+            siteId={siteId}
+            onSave={onSave}
+          />
+        </>
+      ) : (
+        <>
+          {/* Original email card for integrations */}
       <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
@@ -1330,10 +1361,12 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
 
       <WhatsAppSection 
         active={active} 
-        form={form} 
+        form={form}
         siteId={siteId}
         onSave={onSave}
       />
+        </>
+      )}
     </>
   )
 } 

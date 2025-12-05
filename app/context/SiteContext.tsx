@@ -120,6 +120,60 @@ export interface SiteSettings {
       messaging_service_sid?: string
       status?: "not_configured" | "pending" | "active"
     }
+    agent_email?: {
+      domain?: "makinari.email" | "custom"
+      customDomain?: string
+      username?: string
+      displayName?: string
+      setupRequested?: boolean
+      status?: "not_configured" | "pending" | "active" | "waiting_for_verification"
+      domain_id?: string
+      dns_records?: Array<{
+        name: string
+        type: string
+        value: string
+        priority?: number
+      }>
+      domain_status?: string
+      error_message?: string
+      created_at?: string
+      data?: {
+        domain?: "makinari.email" | "custom"
+        customDomain?: string
+        username?: string
+        displayName?: string
+        domain_id?: string
+        dns_records?: Array<{
+          name: string
+          type: string
+          value: string
+          priority?: number
+        }>
+        domain_status?: string
+        error_message?: string
+      }
+    }
+    agent_whatsapp?: {
+      country?: string
+      region?: string
+      setupRequested?: boolean
+      status?: "not_configured" | "pending" | "active"
+    }
+    website?: {
+      enabled?: boolean
+      track_visitors?: boolean
+      track_actions?: boolean
+      record_screen?: boolean
+      enable_chat?: boolean
+      chat_accent_color?: string
+      allow_anonymous_messages?: boolean
+      chat_position?: "bottom-right" | "bottom-left" | "top-right" | "top-left"
+      welcome_message?: string
+      chat_title?: string
+      analytics_provider?: string
+      analytics_id?: string
+      tracking_code?: string
+    }
   } | null
   branding?: {
     brand_essence?: string
@@ -1558,14 +1612,25 @@ export function SiteProvider({ children }: SiteProviderProps) {
           mergedSettings = {
             ...existingSettings,
             ...settingsForDB,  // Override with new values
-            // Deep merge channels to ensure website is preserved
+            // Deep merge channels to ensure all channel types are preserved
             channels: settingsForDB.channels ? {
               ...existingChannels,
               ...settingsForDB.channels,
               // Ensure all channel types are preserved - use new value if provided, otherwise keep existing
               email: settingsForDB.channels.email ?? existingChannels?.email,
               whatsapp: settingsForDB.channels.whatsapp ?? existingChannels?.whatsapp,
-              website: settingsForDB.channels.website ?? existingChannels?.website
+              website: settingsForDB.channels.website ?? existingChannels?.website,
+              // Deep merge agent_email to preserve data fields like dns_records
+              agent_email: settingsForDB.channels.agent_email ? {
+                ...existingChannels?.agent_email,
+                ...settingsForDB.channels.agent_email,
+                data: settingsForDB.channels.agent_email.data ? {
+                  ...existingChannels?.agent_email?.data,
+                  ...settingsForDB.channels.agent_email.data
+                } : existingChannels?.agent_email?.data
+              } : existingChannels?.agent_email,
+              // Deep merge agent_whatsapp
+              agent_whatsapp: settingsForDB.channels.agent_whatsapp ?? existingChannels?.agent_whatsapp
             } : (existingChannels || settingsForDB.channels)
           };
         } else {

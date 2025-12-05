@@ -443,7 +443,7 @@ export default function IntegrationsPage() {
                   )}
                 </CardContent>
                 <ActionFooter>
-                  <CreateEndpointDialog onSuccess={loadData} triggerLabel="Webhook" />
+                  <CreateEndpointDialog onSuccess={loadData} triggerLabel="New Webhook" />
                 </ActionFooter>
               </Card>
 
@@ -464,7 +464,7 @@ export default function IntegrationsPage() {
                   </div>
                 </CardContent>
                 <ActionFooter>
-                  <Button type="button" variant="outline" onClick={handleCopy}>
+                  <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
                     <Copy className="h-4 w-4 mr-2" /> Copy URL
                   </Button>
                 </ActionFooter>
