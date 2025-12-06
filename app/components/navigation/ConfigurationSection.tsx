@@ -53,6 +53,7 @@ interface ConfigItem {
   title: string;
   href: string;
   icon: LucideIcon;
+  emoji?: string;
   isSettingsChild?: boolean;
 }
 
@@ -61,35 +62,41 @@ const configItems: ConfigItem[] = [
     title: "Settings",
     href: "/settings",
     icon: Settings,
+    emoji: "⚙️",
   },
   {
     title: "Agents",
     href: "/agents",
     icon: Cpu,
+    emoji: "✨",
     isSettingsChild: true,
   },
   {
     title: "Integrations",
     href: "/integrations",
     icon: Plug,
+    emoji: "🔌",
     isSettingsChild: true,
   },
   {
     title: "Billing",
     href: "/billing",
     icon: CreditCard,
+    emoji: "💳",
     isSettingsChild: true,
   },
   {
     title: "Security",
     href: "/security",
     icon: Shield,
+    emoji: "🔒",
     isSettingsChild: true,
   },
   {
     title: "Theme",
     href: "#theme",
     icon: Sun,
+    emoji: "🌓",
     isSettingsChild: true,
   },
 ]
@@ -260,6 +267,7 @@ export function ConfigurationSection({
             <MenuItem
               href={item.href}
               icon={item.icon}
+              emoji={item.emoji}
               title={item.title}
               isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
               isCollapsed={isCollapsed}
@@ -329,6 +337,7 @@ export function ConfigurationSection({
                 <MenuItem
                   href="#"
                   icon={isDarkMode ? Moon : Sun}
+                  emoji="🌓"
                   title={isDarkMode ? "Dark Mode" : "Light Mode"}
                   isActive={false}
                   isCollapsed={isCollapsed}
@@ -362,6 +371,7 @@ export function ConfigurationSection({
               <MenuItem
                 href={item.href}
                 icon={item.icon}
+                emoji={item.emoji}
                 title={item.title}
                 isActive={isActive}
                 isCollapsed={isCollapsed}

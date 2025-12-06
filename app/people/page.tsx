@@ -174,20 +174,25 @@ function CollapsibleField({ title, children, defaultOpen = true, countBadge, onC
   )
 }
 
-function ChipsInput({ values, onChange, placeholder = "Search" }: { values: string[]; onChange: (next: string[]) => void; placeholder?: string }) {
+function ChipsInput({ values, onChange, placeholder = "Search", onTextChange }: { values: string[]; onChange: (next: string[]) => void; placeholder?: string; onTextChange?: (text: string) => void }) {
   const [text, setText] = useState("")
   const add = () => {
     const v = text.trim()
     if (!v) return
     onChange(Array.from(new Set([...values, v])))
     setText("")
+    if (onTextChange) onTextChange("")
   }
   return (
     <div className="space-y-2">
       <Input
         placeholder={placeholder}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          const newValue = e.target.value
+          setText(newValue)
+          if (onTextChange) onTextChange(newValue)
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault()
@@ -398,6 +403,7 @@ export default function PeopleSearchPage() {
   const [companies, setCompanies] = useState<LookupOption[]>([])
   const [keywords, setKeywords] = useState<LookupOption[]>([])
   const [personLinkedinIds, setPersonLinkedinIds] = useState<string[]>([])
+  const [personLinkedinIdsInputText, setPersonLinkedinIdsInputText] = useState<string>("")
   const [isCurrentRole, setIsCurrentRole] = useState(true)
   const [roleDateSince, setRoleDateSince] = useState<Date | undefined>(undefined)
   const [roleDateUntil, setRoleDateUntil] = useState<Date | undefined>(undefined)
@@ -419,12 +425,14 @@ export default function PeopleSearchPage() {
   const [technologies, setTechnologies] = useState<LookupOption[]>([])
   // organization-specific additional filters
   const [orgDomains, setOrgDomains] = useState<string[]>([])
+  const [orgDomainsInputText, setOrgDomainsInputText] = useState<string>("")
   const [orgBulkDomain, setOrgBulkDomain] = useState<string>("")
   const [orgDescription, setOrgDescription] = useState<string>("")
   const [orgLocations, setOrgLocations] = useState<LookupOption[]>([])
   const [orgIndustries, setOrgIndustries] = useState<LookupOption[]>([])
   const [orgIndustriesExclude, setOrgIndustriesExclude] = useState<LookupOption[]>([])
   const [orgLinkedinIds, setOrgLinkedinIds] = useState<string[]>([])
+  const [orgLinkedinIdsInputText, setOrgLinkedinIdsInputText] = useState<string>("")
   const [orgFoundedRange, setOrgFoundedRange] = useState<{ start?: Date; end?: Date }>({})
   // simple events
   const [simpleEventSource, setSimpleEventSource] = useState<FinderSimpleEventSource | null>(null)
@@ -492,6 +500,20 @@ export default function PeopleSearchPage() {
     setSidebarLeft(isLayoutCollapsed ? "64px" : "256px")
   }, [isLayoutCollapsed])
 
+  // Debug: Monitor domain state changes
+  useEffect(() => {
+    console.log('[People] Domain state changed:', {
+      orgDomains,
+      orgDomainsInputText,
+      orgBulkDomain,
+      personLinkedinIds,
+      personLinkedinIdsInputText,
+      orgLinkedinIds,
+      orgLinkedinIdsInputText,
+      timestamp: new Date().toISOString()
+    })
+  }, [orgDomains, orgDomainsInputText, orgBulkDomain, personLinkedinIds, personLinkedinIdsInputText, orgLinkedinIds, orgLinkedinIdsInputText])
+
   // Helper function to load ICP data
   const handleLoadIcp = async (icpId: string) => {
     try {
@@ -520,7 +542,11 @@ export default function PeopleSearchPage() {
       setCompanies([])
       setKeywords([])
       setOrgDomains([])
+      setOrgDomainsInputText("")
       setOrgLinkedinIds([])
+      setOrgLinkedinIdsInputText("")
+      setPersonLinkedinIds([])
+      setPersonLinkedinIdsInputText("")
       // Organization locations from IDs
       setOrgLocations(toLookupFromIds(q.organization_locations))
       setOrgIndustries([])
@@ -679,6 +705,21 @@ export default function PeopleSearchPage() {
     .filter(c => (!c.id || c.id === null) && /\./.test(c.text) && !/\s/.test(c.text))
     .map(c => c.text)
 
+  // Debug: Log domain-related values
+  console.log('[People] Domain debug:', {
+    companies,
+    companyDomains,
+    orgDomains,
+    orgDomainsInputText,
+    orgBulkDomain,
+    domainRankFrom,
+    domainRankTo,
+    personLinkedinIds,
+    personLinkedinIdsInputText,
+    orgLinkedinIds,
+    orgLinkedinIdsInputText
+  })
+
     const payload: FinderRequest = {
       page: Math.max(0, pageOneBased - 1),
       role_title: wrapInQuotesIfNeeded(jobTitle) || undefined,
@@ -710,7 +751,13 @@ export default function PeopleSearchPage() {
         return ids.length ? ids : undefined
       })(),
 
-      person_linkedin_public_identifiers: personLinkedinIds.length ? personLinkedinIds : undefined,
+      person_linkedin_public_identifiers: (() => {
+        const all = Array.from(new Set([
+          ...(personLinkedinIds || []),
+          ...(personLinkedinIdsInputText.trim() ? [personLinkedinIdsInputText.trim()] : [])
+        ]))
+        return all.length ? all : undefined
+      })(),
 
       person_skills: (() => {
         const ids = skills
@@ -732,7 +779,11 @@ export default function PeopleSearchPage() {
         return ids.length ? ids : undefined
       })(),
       organization_domains: (() => {
-        const all = Array.from(new Set([...(companyDomains || []), ...(orgDomains || [])]))
+        const all = Array.from(new Set([
+          ...(companyDomains || []), 
+          ...(orgDomains || []),
+          ...(orgDomainsInputText.trim() ? [orgDomainsInputText.trim()] : [])
+        ]))
         return all.length ? all : undefined
       })(),
       organizations_bulk_domain: wrapInQuotesIfNeeded(orgBulkDomain) || undefined,
@@ -771,7 +822,13 @@ export default function PeopleSearchPage() {
       organization_founded_date_start: toYmd(orgFoundedRange.start),
       organization_founded_date_end: toYmd(orgFoundedRange.end),
 
-      organization_linkedin_public_identifiers: orgLinkedinIds.length ? orgLinkedinIds : undefined,
+      organization_linkedin_public_identifiers: (() => {
+        const all = Array.from(new Set([
+          ...(orgLinkedinIds || []),
+          ...(orgLinkedinIdsInputText.trim() ? [orgLinkedinIdsInputText.trim()] : [])
+        ]))
+        return all.length ? all : undefined
+      })(),
 
       simple_event_source: simpleEventSource ?? undefined,
       simple_event_reason: simpleEventReason ?? undefined,
@@ -804,6 +861,15 @@ export default function PeopleSearchPage() {
       })(),
     }
 
+    // Debug: Log the complete payload before returning
+    console.log('[People] Complete payload:', JSON.stringify(payload, null, 2))
+    console.log('[People] Domain fields in payload:', {
+      organization_domains: payload.organization_domains,
+      organizations_bulk_domain: payload.organizations_bulk_domain,
+      organization_domain_rank_start: payload.organization_domain_rank_start,
+      organization_domain_rank_end: payload.organization_domain_rank_end
+    })
+
     return payload
   }
 
@@ -811,6 +877,9 @@ export default function PeopleSearchPage() {
     setLoading(true)
     setError(null)
     try {
+      // Debug: Log payload being sent
+      console.log('[People] Sending request with payload:', JSON.stringify(payload, null, 2))
+      
       const [res, totals] = await Promise.all([
         apiClient.post<{ search_results: any[]; total_search_results: number }>(
           '/api/finder/person_role_search',
@@ -1253,9 +1322,9 @@ export default function PeopleSearchPage() {
           <div className="h-full overflow-hidden">
           <div className="h-full overflow-auto p-4 space-y-4 pb-[110px]">
             <div className="space-y-3">
-              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>Person Criteria</h3>
+              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>👤 Person Criteria</h3>
               <div className="space-y-3">
-                <CollapsibleField title="Name" defaultOpen={sectionOpenDefaults.name} onClear={() => { setPersonName(""); setPersonHeadline(""); setPersonLinkedinIds([]) }}>
+                <CollapsibleField title="Name" defaultOpen={sectionOpenDefaults.name} onClear={() => { setPersonName(""); setPersonHeadline(""); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText("") }}>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground">Use “quotation marks" for exact matches.</p>
@@ -1270,6 +1339,7 @@ export default function PeopleSearchPage() {
                       <ChipsInput 
                         values={personLinkedinIds}
                         onChange={setPersonLinkedinIds}
+                        onTextChange={setPersonLinkedinIdsInputText}
                         placeholder="linkedin.com/in/slug"
                       />
                     </div>
@@ -1379,10 +1449,11 @@ export default function PeopleSearchPage() {
                     fetcher={(q) => lookupFetcher('skills', q)}
                   />
                 </CollapsibleField>
-                <CollapsibleField title="LinkedIn Identifiers" defaultOpen={sectionOpenDefaults.personLinkedin} countBadge={personLinkedinIds.length} onClear={() => setPersonLinkedinIds([])}>
+                <CollapsibleField title="LinkedIn Identifiers" defaultOpen={sectionOpenDefaults.personLinkedin} countBadge={personLinkedinIds.length} onClear={() => { setPersonLinkedinIds([]); setPersonLinkedinIdsInputText("") }}>
                   <ChipsInput 
                     values={personLinkedinIds}
                     onChange={setPersonLinkedinIds}
+                    onTextChange={setPersonLinkedinIdsInputText}
                     placeholder="linkedin.com/in/slug"
                   />
                 </CollapsibleField>
@@ -1390,7 +1461,7 @@ export default function PeopleSearchPage() {
             </div>
 
             <div className="space-y-3">
-              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>Company Criteria</h3>
+              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>🏢 Company Criteria</h3>
               <div className="space-y-3">
                 <CollapsibleField title="Company" countBadge={companies.length} onClear={() => { setCompanies([]); setOrgLinkedinIds([]); setOrgDescription("") }} defaultOpen={sectionOpenDefaults.company}>
                   <div className="space-y-3">
@@ -1409,6 +1480,7 @@ export default function PeopleSearchPage() {
                       <ChipsInput 
                         values={orgLinkedinIds}
                         onChange={setOrgLinkedinIds}
+                        onTextChange={setOrgLinkedinIdsInputText}
                         placeholder="linkedin.com/company/slug"
                       />
                     </div>
@@ -1421,13 +1493,23 @@ export default function PeopleSearchPage() {
                       <ChipsInput 
                         values={orgDomains}
                         onChange={setOrgDomains}
+                        onTextChange={setOrgDomainsInputText}
                         placeholder="example.com"
                       />
                       <p className="text-xs text-muted-foreground mt-1">You can also type domains in Company chips above.</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Bulk Domain</p>
-                      <Input className="h-10" placeholder="example.com" value={orgBulkDomain} onChange={(e)=> setOrgBulkDomain(e.target.value)} />
+                      <Input 
+                        className="h-10" 
+                        placeholder="example.com" 
+                        value={orgBulkDomain} 
+                        onChange={(e) => {
+                          const newValue = e.target.value
+                          console.log('[People] Bulk Domain input changed:', newValue)
+                          setOrgBulkDomain(newValue)
+                        }} 
+                      />
                     </div>
                   </div>
                 </CollapsibleField>
@@ -1666,7 +1748,7 @@ export default function PeopleSearchPage() {
             </div>
 
             <div className="space-y-3">
-              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>Buying Intent</h3>
+              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>🎯 Buying Intent</h3>
               <div className="space-y-3">
                 <CollapsibleField title="Job Postings" defaultOpen={sectionOpenDefaults.jobPostings}>
                   <div className="space-y-4">
@@ -1914,7 +1996,7 @@ export default function PeopleSearchPage() {
               <Button 
                 variant="outline" 
                 className="w-1/2 h-10"
-                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setPersonHeadline(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRangeTouched(false); setPersonLinkedinIds([]); setOrgDomains([]); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRoleDateSince(undefined); setRoleDateUntil(undefined); }}
+                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setPersonHeadline(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRangeTouched(false); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText(""); setOrgDomains([]); setOrgDomainsInputText(""); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgLinkedinIdsInputText(""); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRoleDateSince(undefined); setRoleDateUntil(undefined); }}
               >
                 Clear
               </Button>

@@ -17,6 +17,7 @@ interface MenuItemProps {
   href: string
   icon?: LucideIcon
   customIcon?: React.ReactNode
+  emoji?: string
   title: string
   subtitle?: string
   avatarUrl?: string
@@ -31,6 +32,7 @@ export function MenuItem({
   href, 
   icon: Icon, 
   customIcon,
+  emoji,
   title, 
   subtitle,
   avatarUrl,
@@ -93,6 +95,8 @@ export function MenuItem({
               {title.split(' ').map(word => word[0]).join('').toUpperCase()}
             </MenuAvatarFallback>
           </MenuAvatar>
+        ) : emoji ? (
+          <span className="text-base leading-none">{emoji}</span>
         ) : Icon && (
           <Icon className="h-[16.2px] w-[16.2px] shrink-0" />
         )}

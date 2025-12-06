@@ -77,6 +77,7 @@ const mainNavigationItems = [
     title: "Dashboard",
     href: "/dashboard",
     icon: Home,
+    emoji: "🏠",
   },
 ]
 
@@ -86,31 +87,37 @@ const humanInTheLoopItems = [
     title: "Control Center",
     href: "/control-center",
     icon: Rocket,
+    emoji: "🚀",
   },
   {
     title: "Content",
     href: "/content",
     icon: FileText,
+    emoji: "📄",
   },
   {
     title: "Requirements",
     href: "/requirements",
     icon: CheckSquare,
+    emoji: "✅",
   },
   {
     title: "Find People",
     href: "/people",
     icon: Search,
+    emoji: "🔍",
   },
   {
     title: "Leads",
     href: "/leads",
     icon: Users,
+    emoji: "👥",
   },
   {
     title: "Chats",
     href: "/chat",
     icon: MessageSquare,
+    emoji: "💬",
   },
 ]
 
@@ -120,6 +127,7 @@ const robotsItems = [
     title: "Makinas",
     href: "/robots",
     icon: Bot,
+    emoji: "🤖",
   },
 ]
 
@@ -128,6 +136,7 @@ const contextMainItem = {
   title: "Context",
   href: "/context",
   icon: LayoutGrid,
+  emoji: "🏢",
 }
 
 // Context children items
@@ -136,21 +145,25 @@ const contextChildrenItems = [
     title: "Campaigns",
     href: "/campaigns",
     icon: Target,
+    emoji: "🎯",
   },
   {
     title: "Segments",
     href: "/segments",
     icon: Tag,
+    emoji: "🏷️",
   },
   {
     title: "Assets",
     href: "/assets",
     icon: FolderOpen,
+    emoji: "📁",
   },
   {
     title: "Sales",
     href: "/sales",
     icon: DollarSign,
+    emoji: "💰",
   },
 ]
 
@@ -159,6 +172,7 @@ const profileMainItem = {
   title: "Account",
   href: "/notifications",
   icon: User,
+  emoji: "👤",
 }
 
 // Profile children items
@@ -167,16 +181,19 @@ const profileChildrenItems = [
     title: "Account",
     href: "/profile",
     icon: User,
+    emoji: "👤",
   },
   {
     title: "Help",
     href: "#help",
     icon: HelpCircle,
+    emoji: "❓",
   },
   {
     title: "Log out",
     href: "#logout",
     icon: LogOut,
+    emoji: "🚪",
   },
 ]
 
@@ -187,7 +204,7 @@ const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: bo
       case "Human in the Loop":
         return "💪"
       case "Context":
-        return "🤖"
+        return "🏢"
       default:
         return ""
     }
@@ -497,6 +514,7 @@ export function Sidebar({
                 key={item.href}
                 href={item.href}
                 icon={item.icon}
+                emoji={item.emoji}
                 title={item.title}
                 isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                 isCollapsed={isCollapsed}
@@ -515,6 +533,7 @@ export function Sidebar({
                   key={item.href}
                   href={item.href}
                   icon={item.icon}
+                  emoji={item.emoji}
                   title={item.title}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={isCollapsed}
@@ -550,6 +569,7 @@ export function Sidebar({
                   key={item.href}
                   href={item.href}
                   icon={item.icon}
+                  emoji={item.emoji}
                   title={item.title}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={isCollapsed}
@@ -576,6 +596,7 @@ export function Sidebar({
             <MenuItem
               href={contextMainItem.href}
               icon={contextMainItem.icon}
+              emoji={contextMainItem.emoji}
               title={contextMainItem.title}
               isActive={pathname.startsWith(contextMainItem.href)}
               isCollapsed={isCollapsed}
@@ -634,6 +655,7 @@ export function Sidebar({
                 <MenuItem
                   href={item.href}
                   icon={item.icon}
+                  emoji={item.emoji}
                   title={item.title}
                   isActive={pathname.startsWith(item.href)}
                   isCollapsed={isCollapsed}
@@ -666,6 +688,7 @@ export function Sidebar({
               <MenuItem
                 href={profileMainItem.href}
                 icon={profileMainItem.icon}
+                emoji={profileMainItem.emoji}
                 title={user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Account'}
                 subtitle={user?.email || ''}
                 avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
@@ -770,6 +793,7 @@ export function Sidebar({
                     <MenuItem
                       href={isLogout || isHelp ? "#" : item.href}
                       icon={item.icon}
+                      emoji={item.emoji}
                       title={isLogout ? (isLoggingOut ? "Signing out..." : "Log out") : item.title}
                       isActive={!isLogout && !isHelp && pathname.startsWith(item.href)}
                       isCollapsed={isCollapsed}
