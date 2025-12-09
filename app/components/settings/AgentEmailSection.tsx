@@ -383,7 +383,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
 
     setIsGettingDnsFiles(true)
     try {
-      const response = await apiClient.get(`/api/agentmail/domains/${encodeURIComponent(domainId)}/zone-file`)
+      const response = await apiClient.get(`/api/integrations/agentmail/domains/${encodeURIComponent(domainId)}/zone-file`)
 
       if (response.success && response.data) {
         // Download the zone file
@@ -438,7 +438,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
 
     setIsVerifying(true)
     try {
-      const response = await apiClient.post(`/api/agentmail/domains/${encodeURIComponent(domainId)}/verify`, {})
+      const response = await apiClient.post(`/api/integrations/agentmail/domains/${encodeURIComponent(domainId)}/verify`, {})
 
       if (response.success) {
         // Store verification timestamp in localStorage
