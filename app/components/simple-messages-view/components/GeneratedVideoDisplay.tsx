@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 
 interface GeneratedVideoDisplayProps {
   toolResult: any
   isDarkMode: boolean
-  onVideoClick?: () => void
+  onVideoClick?: (e: React.MouseEvent) => void
   isBrowserVisible?: boolean
 }
 
@@ -290,7 +290,7 @@ export const GeneratedVideoDisplayCollapsed: React.FC<GeneratedVideoDisplayProps
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              onVideoClick?.(e as any)
+              onVideoClick?.(e)
             }}
           >
             <video 

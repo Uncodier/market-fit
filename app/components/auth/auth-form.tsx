@@ -169,12 +169,12 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         setIsWaitlistMode(false)
       } else {
         setReferralCodeStatus('invalid')
-        setIsWaitlistMode(true)
+        setIsWaitlistMode(false)
       }
     } catch (error) {
       console.error('Error validating referral code:', error)
       setReferralCodeStatus('invalid')
-      setIsWaitlistMode(true)
+      setIsWaitlistMode(false)
     }
   }
 
@@ -304,32 +304,6 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     
     try {
       if (authMode === 'sign_up') {
-        // If it's signup and no valid referral code, add to waitlist using the new endpoint
-        if (isWaitlistMode || referralCodeStatus !== 'valid') {
-          const response = await fetch('/api/waitlist-signup', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: values.name || '',
-              email: values.email,
-              referralCode: values.referralCode || '',
-              source: 'auth_form'
-            })
-          })
-          
-          const result = await response.json()
-          
-          if (!response.ok) {
-            throw new Error(result.error || 'Failed to join waitlist')
-          }
-          
-          setWaitlistSuccess(true)
-          setErrorMessage("You've been added to our waitlist! We'll notify you when access becomes available. A task has been created to process your request.")
-          return
-        }
-
         // Check if email already exists with different auth method
         const emailCheckResponse = await fetch('/api/auth/check-email-exists', {
           method: 'POST',
@@ -430,12 +404,6 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     setErrorMessage(null)
     
     try {
-      // For signup mode, check referral code requirement
-      if (authMode === 'sign_up' && referralCodeStatus !== 'valid') {
-        setErrorMessage('A valid referral code is required to sign up with Google.')
-        return
-      }
-
       // Clear any existing auth state to prevent PKCE conflicts
       console.log('🧹 Clearing auth state before Google OAuth to prevent PKCE conflicts')
       await supabase.auth.signOut({ scope: 'local' })
@@ -525,21 +493,17 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   }
 
   const getSignupTitle = () => {
-    if (isWaitlistMode) return "Join the Waitlist"
     if (referralCodeStatus === 'valid') return "Create Your Account"
     return "Get Started"
   }
 
   const getSignupDescription = () => {
-    if (isWaitlistMode) return "You'll be notified when access becomes available"
     if (referralCodeStatus === 'valid') return "Set up your account with instant access"
     return "Enter your details to get started"
   }
 
   const isGoogleButtonEnabled = () => {
-    if (authMode === 'sign_in') return true
-    // For signup, enable only if referral code is valid
-    return referralCodeStatus === 'valid'
+    return true
   }
 
   if (!mounted) return null
@@ -547,7 +511,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   return (
     <div className="space-y-6">
       {errorMessage && (
-        <Alert variant={errorMessage.includes('Check your email') || waitlistSuccess || resetPasswordSuccess ? 'default' : 'destructive'}>
+        <Alert variant={errorMessage.includes('Check your email') || resetPasswordSuccess ? 'default' : 'destructive'}>
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <AlertDescription className="m-0">{errorMessage}</AlertDescription>
@@ -561,7 +525,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <AlertDescription className="m-0">
-              Invalid referral code. You'll be added to our waitlist instead.
+              Invalid referral code. You can still create your account without it.
             </AlertDescription>
           </div>
         </Alert>
@@ -683,7 +647,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 />
                 {referralCodeStatus === 'unchecked' && (
                   <p className="text-xs text-muted-foreground">
-                    💡 Have a referral code? Enter it above for instant access. Otherwise, you'll join our waitlist.
+                    💡 Have a referral code? Enter it above for instant access.
                   </p>
                 )}
               </>
@@ -710,38 +674,36 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               )}
             />
             
-            {/* Password field - hide for waitlist mode */}
-            {!(authMode === 'sign_up' && isWaitlistMode) && (
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Password</FormLabel>
-                    <FormControl>
-                      <InputWithIcon
-                        leftIcon={<Lock className="h-4 w-4 text-muted-foreground" />}
-                        rightIconButton={
-                          <button 
-                            type="button"
-                            className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-                            tabIndex={-1}
-                          >
-                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        }
-                        onRightIconClick={togglePasswordVisibility}
-                        className="h-12 text-sm bg-background border-input" 
-                        type={showPassword ? "text" : "password"}
-                        placeholder={authMode === 'sign_up' ? "Create a password" : "Enter your password"}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage className="text-xs mt-1" />
-                  </FormItem>
-                )}
-              />
-            )}
+            {/* Password field */}
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">Password</FormLabel>
+                  <FormControl>
+                    <InputWithIcon
+                      leftIcon={<Lock className="h-4 w-4 text-muted-foreground" />}
+                      rightIconButton={
+                        <button 
+                          type="button"
+                          className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      }
+                      onRightIconClick={togglePasswordVisibility}
+                      className="h-12 text-sm bg-background border-input" 
+                      type={showPassword ? "text" : "password"}
+                      placeholder={authMode === 'sign_up' ? "Create a password" : "Enter your password"}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs mt-1" />
+                </FormItem>
+              )}
+            />
             
             {/* MFA Verification UI */}
             {mfaRequired && authMode === 'sign_in' && (
@@ -813,19 +775,17 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               <Button 
                 type="submit" 
                 className="w-full mt-6 font-medium" 
-                disabled={loading || waitlistSuccess}
+                disabled={loading}
               >
                 {loading 
                   ? "Please wait..." 
                   : authMode === 'sign_in' 
                     ? "Sign In" 
-                    : isWaitlistMode
-                      ? "Join Waitlist"
-                      : referralCodeStatus === 'valid'
-                        ? "Create Account"
-                        : referralCodeStatus === 'unchecked'
-                          ? "Get Started"
-                          : "Continue"
+                    : referralCodeStatus === 'valid'
+                      ? "Create Account"
+                      : referralCodeStatus === 'unchecked'
+                        ? "Get Started"
+                        : "Create Account"
                 }
               </Button>
             )}

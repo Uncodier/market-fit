@@ -201,22 +201,87 @@ function SetPasswordContent() {
       }
 
       console.log('✅ Password set successfully')
+      
+      // Refresh session to ensure it's valid before redirecting
+      console.log('🔄 Refreshing session after password update...')
+      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.getSession()
+      
+      if (refreshError) {
+        console.warn('[Set Password] Session refresh warning:', refreshError.message)
+        // Continue with redirect even if refresh has warning
+      }
+      
+      if (!refreshedSession || !refreshedSession.user) {
+        console.error('[Set Password] No session after password update, attempting to get user...')
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError || !user) {
+          console.error('[Set Password] Failed to get user after password update')
+          setApiError({
+            message: 'Password updated but session could not be verified. Please sign in again.'
+          })
+          setIsLoading(false)
+          
+          // Redirect to auth page after delay
+          setTimeout(() => {
+            router.push('/auth?error=' + encodeURIComponent('Please sign in with your new password.'))
+          }, 3000)
+          return
+        }
+      }
+      
+      console.log('[Set Password] Session verified, user:', refreshedSession?.user?.email || 'verified')
       toast.success("Password set successfully!")
 
       // Clear any previous errors
       setApiError(null)
 
       // Redirect to the original destination or dashboard
-      // Use window.location.href to ensure cookies are properly sent
       const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/dashboard'
       console.log('🔄 Redirecting to:', targetUrl)
       
       // Mark that we're redirecting - don't clear loading state
       // The redirect will unmount the component anyway
       isRedirecting = true
-      setTimeout(() => {
-        window.location.href = targetUrl
-      }, 1000)
+      
+      // Small delay to ensure session cookies are set and auth state is updated
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Use router.push first for better Next.js integration
+      // Fallback to window.location.href if router.push doesn't work
+      try {
+        console.log('[Set Password] Attempting router.push to:', targetUrl)
+        
+        // router.push returns a promise in Next.js 13+
+        // If it succeeds, the component will unmount and redirect happens
+        // If it fails or doesn't redirect, the fallback timer will catch it
+        await router.push(targetUrl)
+        
+        // Set up a fallback timer to check if redirect actually happened
+        // This will only fire if we're still on the set-password page after 2 seconds
+        // If redirect succeeds, component unmounts and timer is automatically cleaned up
+        setTimeout(() => {
+          if (typeof window !== 'undefined' && window.location.pathname === '/auth/set-password') {
+            console.warn('[Set Password] Router.push may have failed, using window.location.href as fallback')
+            try {
+              window.location.href = targetUrl
+            } catch (fallbackError) {
+              console.error('[Set Password] Fallback redirect also failed:', fallbackError)
+              // Last resort: try replacing the location
+              window.location.replace(targetUrl)
+            }
+          }
+        }, 2000)
+      } catch (redirectError) {
+        console.error('[Set Password] Redirect error:', redirectError)
+        // Force redirect using window.location.href
+        try {
+          window.location.href = targetUrl
+        } catch (hrefError) {
+          console.error('[Set Password] window.location.href failed, trying replace:', hrefError)
+          window.location.replace(targetUrl)
+        }
+      }
 
     } catch (error: any) {
       console.error('❌ Password setup error:', error)
