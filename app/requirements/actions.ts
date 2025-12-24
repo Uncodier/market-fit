@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { type RequirementFormValues, requirementFormSchema } from "./schema"
+import { requirementFormSchema, type RequirementFormValues } from "./schema"
 
-export type { RequirementFormValues }
+export type { RequirementFormValues } from "./schema"
 
 // Constantes para estados (duplicadas para server actions)
 const REQUIREMENT_STATUS = {

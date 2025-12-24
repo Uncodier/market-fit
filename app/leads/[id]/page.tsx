@@ -196,9 +196,8 @@ export default function LeadDetailPage() {
       if (updateData.status === undefined) {
         updateData.status = lead.status || "new"
       }
-      if (updateData.company === undefined) {
-        updateData.company = lead.company || { name: "" }
-      }
+      // Don't include company field if it hasn't changed - let the server use existing value
+      // Only include it if it's explicitly provided in data
       
       // Only include attribution if it's explicitly provided and complete
       if (data.attribution) {

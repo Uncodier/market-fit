@@ -75,9 +75,9 @@ export const ChannelFilter = memo(function ChannelFilter({
   return (
     <div 
       className={cn(
-        "px-4 py-3 border-b border-border/30 flex justify-center",
-        "sticky top-0 z-[10]",
-        "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+    "px-4 py-3 border-b border-border/30 flex justify-center",
+    "sticky top-0 z-[20]",
+    "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         className
       )}
       style={{ WebkitBackdropFilter: 'blur(10px)' }}

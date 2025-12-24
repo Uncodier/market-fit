@@ -7,6 +7,7 @@ import { SiteOnboarding } from "../components/onboarding/site-onboarding"
 import { useAuth } from "../hooks/use-auth"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "../services/api-client-service"
+import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
 
 function CreateSitePageContent() {
   const [isSaving, setIsSaving] = useState(false)
@@ -17,6 +18,9 @@ function CreateSitePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const hasRedirectedRef = useRef(false)
+
+  // Simple refresh prevention specifically for create-site page
+  useSimpleRefreshPrevention()
 
   // Allow manual access to create-site even with existing sites
   useEffect(() => {

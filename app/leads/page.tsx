@@ -1067,11 +1067,11 @@ export default function LeadsPage() {
       const normalized: any = {}
       
       // Extract ONLY valid fields according to UpdateLeadSchema
-      // Schema allows: name, website, industry, size, annual_revenue, founded, description, address
+      // Schema allows: name, website, industry, size, annual_revenue, founded, description, domain, location, external_organization_id, address
       // We only include fields that have valid string values (not null, not empty)
-      const validFields = ['name', 'website', 'industry', 'size', 'annual_revenue', 'founded', 'description']
+      const validStringFields = ['name', 'website', 'industry', 'size', 'annual_revenue', 'founded', 'description', 'domain']
       
-      for (const field of validFields) {
+      for (const field of validStringFields) {
         const value = companyValue[field]
         // Only include if it's a non-empty string
         if (typeof value === 'string' && value.trim() !== '') {
@@ -1080,11 +1080,21 @@ export default function LeadsPage() {
         // Explicitly skip null, undefined, empty strings, and any other types
       }
       
+      // Handle location field (can be any structure)
+      if (companyValue.location !== undefined && companyValue.location !== null) {
+        normalized.location = companyValue.location
+      }
+      
+      // Handle external_organization_id (can be string or number)
+      if (companyValue.external_organization_id !== undefined && companyValue.external_organization_id !== null) {
+        normalized.external_organization_id = companyValue.external_organization_id
+      }
+      
       console.log('🔍 normalizeCompanyField - Normalization result:', {
         originalKeys: Object.keys(companyValue),
         normalizedKeys: Object.keys(normalized),
         normalizedObject: normalized,
-        hasInvalidFields: Object.keys(companyValue).some(key => !validFields.includes(key) && key !== 'address')
+        hasInvalidFields: Object.keys(companyValue).some(key => !validStringFields.includes(key) && key !== 'address' && key !== 'location' && key !== 'external_organization_id')
       })
       
       // Handle address object

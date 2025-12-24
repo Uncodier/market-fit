@@ -312,6 +312,9 @@ const CreateLeadSchema = z.object({
       annual_revenue: z.string().optional(),
       founded: z.string().optional(),
       description: z.string().optional(),
+      domain: z.string().optional(),
+      location: z.any().optional(), // Allow any location structure
+      external_organization_id: z.union([z.string(), z.number()]).optional(),
       address: z.object({
         street: z.string().optional(),
         city: z.string().optional(),
@@ -319,7 +322,7 @@ const CreateLeadSchema = z.object({
         zipcode: z.string().optional(),
         country: z.string().optional(),
       }).optional(),
-    })
+    }).passthrough(), // Allow additional fields but ignore them during validation
   ]).optional().nullable(),
   company_id: z.string().optional(),
   position: z.string().optional(),
@@ -369,6 +372,9 @@ const UpdateLeadSchema = z.object({
       annual_revenue: z.string().optional(),
       founded: z.string().optional(),
       description: z.string().optional(),
+      domain: z.string().optional(),
+      location: z.any().optional(), // Allow any location structure
+      external_organization_id: z.union([z.string(), z.number()]).optional(),
       address: z.object({
         street: z.string().optional(),
         city: z.string().optional(),

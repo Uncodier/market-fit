@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { type ExperimentFormValues, experimentFormSchema } from "./schema"
+import { experimentFormSchema } from "./schema"
+import type { ExperimentFormValues } from "./schema"
 
-export type { ExperimentFormValues }
+export type { ExperimentFormValues } from "./schema"
 
 export async function createExperiment(data: ExperimentFormValues) {
   const cookieStore = cookies()

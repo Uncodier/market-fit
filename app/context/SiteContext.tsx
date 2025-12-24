@@ -1800,16 +1800,17 @@ export function SiteProvider({ children }: SiteProviderProps) {
     return preventRefresh === 'true' || justBecameVisible === 'true' || justGainedFocus === 'true'
   }
 
-  // Función auxiliar para verificar si estamos en settings
-  const isOnSettingsPage = () => {
+  // Función auxiliar para verificar si estamos en una página protegida
+  const isOnProtectedPage = () => {
     if (typeof window === 'undefined') return false
-    return window.location.pathname === '/settings'
+    const pathname = window.location.pathname
+    return pathname === '/settings' || pathname === '/create-site'
   }
 
   // Wrapper para loadSites que respeta la prevención de refresh
   const loadSitesWithPrevention = async () => {
-    if (shouldPreventRefresh() || isOnSettingsPage()) {
-      console.log('🚫 SiteContext: loadSites prevented - user is on settings page or refresh prevention is active')
+    if (shouldPreventRefresh() || isOnProtectedPage()) {
+      console.log('🚫 SiteContext: loadSites prevented - user is on protected page or refresh prevention is active')
       return
     }
     return loadSites()
@@ -1817,8 +1818,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
 
   // Wrapper para refreshSites que respeta la prevención de refresh
   const refreshSitesWithPrevention = async () => {
-    if (shouldPreventRefresh() || isOnSettingsPage()) {
-      console.log('🚫 SiteContext: refreshSites prevented - user is on settings page or refresh prevention is active')
+    if (shouldPreventRefresh() || isOnProtectedPage()) {
+      console.log('🚫 SiteContext: refreshSites prevented - user is on protected page or refresh prevention is active')
       return
     }
     return loadSites()

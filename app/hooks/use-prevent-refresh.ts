@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 const CREATE_EDIT_ROUTES = [
   '/settings',
   '/site/create',
+  '/create-site',
   // Detail/edit pages (using regex patterns)
   /^\/campaigns\/[^\/]+$/,
   /^\/experiments\/[^\/]+$/,

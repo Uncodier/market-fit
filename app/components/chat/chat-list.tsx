@@ -600,6 +600,30 @@ export function ChatList({
     }
   }, [siteId, onLoadConversations])
 
+  // Listen for custom conversation deleted event
+  useEffect(() => {
+    const handleConversationDeleted = (event: CustomEvent) => {
+      const { conversationId: deletedId } = event.detail
+      console.log('🔍 Custom conversation:deleted event received:', deletedId)
+      
+      // Remove the conversation from the list immediately
+      setConversations(prevConversations => 
+        prevConversations.filter(conv => conv.id !== deletedId)
+      )
+      
+      // If the deleted conversation was selected, redirect to chat list
+      if (selectedConversationId === deletedId) {
+        router.push('/chat')
+      }
+    }
+
+    window.addEventListener('conversation:deleted', handleConversationDeleted as EventListener)
+    
+    return () => {
+      window.removeEventListener('conversation:deleted', handleConversationDeleted as EventListener)
+    }
+  }, [selectedConversationId, router])
+
   // Reset conversations and reload when channel filter changes
   useEffect(() => {
     if (siteId) {

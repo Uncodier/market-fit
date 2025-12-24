@@ -17,6 +17,7 @@ import { EmptyState } from "@/app/components/ui/empty-state"
 import { MessageSquare } from "@/app/components/ui/icons"
 import { DelayTimer } from "./DelayTimer"
 import { EditMessageModal } from "./EditMessageModal"
+import { MessageActions } from "./MessageActions"
 import { formatEmailForChat, isMimeMultipartMessage } from "@/app/utils/email-formatter"
 import { extractCleanText } from "@/app/utils/text-cleaning"
 import { EmailViewer } from "@/app/components/email/EmailViewer"
@@ -474,6 +475,8 @@ export function ChatMessages({
   const { isDarkMode } = useTheme()
   // Current user context for reliable team member name/avatar
   const { user } = useAuthContext()
+  // Router for navigation
+  const router = useRouter()
 
   const currentUserId = user?.id
   const currentUserName = user?.user_metadata?.name 
@@ -544,6 +547,12 @@ export function ChatMessages({
   // State for edit message modal
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null)
+  
+  // State for delete/accept operations
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
+  const [acceptingMessageId, setAcceptingMessageId] = useState<string | null>(null)
+  // State to track which messages have accepted actions (without changing message status)
+  const [acceptedActionsMessageIds, setAcceptedActionsMessageIds] = useState<Set<string>>(new Set())
   
   // State for user data cache
   const [userDataCache, setUserDataCache] = useState<Record<string, { name: string, avatar_url: string | null }>>({})
@@ -697,6 +706,234 @@ export function ChatMessages({
     }
   }
 
+  // Function to handle deleting a message
+  const handleDeleteMessage = async (message: ChatMessage) => {
+    if (!message.id) {
+      toast.error("Cannot delete message: missing ID")
+      return
+    }
+
+    setDeletingMessageId(message.id)
+
+    try {
+      const supabase = createClient()
+
+      // Check if this is the only message in the conversation
+      const { data: allMessages, error: fetchError } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("conversation_id", conversationId || "")
+
+      if (fetchError) {
+        console.error("Error fetching messages:", fetchError)
+        toast.error("Failed to check conversation messages")
+        setDeletingMessageId(null)
+        return
+      }
+
+      const isOnlyMessage = allMessages && allMessages.length === 1
+
+      // Delete the message
+      const { error: deleteError } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", message.id)
+
+      if (deleteError) {
+        console.error("Error deleting message:", deleteError)
+        toast.error("Failed to delete message")
+        setDeletingMessageId(null)
+        return
+      }
+
+      // If it's the only message, delete the conversation as well
+      if (isOnlyMessage && conversationId && !conversationId.startsWith("new-")) {
+        // First delete any remaining messages (should be none, but just in case)
+        await supabase
+          .from("messages")
+          .delete()
+          .eq("conversation_id", conversationId)
+
+        // Then delete the conversation
+        const { error: conversationError } = await supabase
+          .from("conversations")
+          .delete()
+          .eq("id", conversationId)
+
+        if (conversationError) {
+          console.error("Error deleting conversation:", conversationError)
+          // Don't show error, message was deleted successfully
+        } else {
+          // Emit custom event to notify ChatList to refresh
+          window.dispatchEvent(new CustomEvent('conversation:deleted', {
+            detail: { conversationId }
+          }))
+        }
+
+        // Redirect to chat list
+        router.push("/chat")
+        toast.success("Message and conversation deleted")
+      } else {
+        // Update local state
+        const updatedMessages = chatMessages.filter(msg => msg.id !== message.id)
+        if (onMessagesUpdate) {
+          onMessagesUpdate(updatedMessages)
+        }
+        toast.success("Message deleted")
+      }
+
+    } catch (error) {
+      console.error("Unexpected error deleting message:", error)
+      toast.error("An unexpected error occurred")
+    } finally {
+      setDeletingMessageId(null)
+    }
+  }
+
+  // Function to handle accepting a message
+  const handleAcceptMessage = async (message: ChatMessage) => {
+    if (!message.id) {
+      toast.error("Cannot accept message: missing ID")
+      return
+    }
+
+    setAcceptingMessageId(message.id)
+
+    try {
+      const supabase = createClient()
+
+      // Get current custom_data to preserve other metadata
+      const { data: currentMessage, error: fetchError } = await supabase
+        .from("messages")
+        .select("custom_data")
+        .eq("id", message.id)
+        .single()
+
+      if (fetchError) {
+        console.error("Error fetching message:", fetchError)
+        toast.error("Failed to fetch message data")
+        setAcceptingMessageId(null)
+        return
+      }
+
+      // Update custom_data with accepted status
+      const currentCustomData = (currentMessage?.custom_data as Record<string, any>) || {}
+      const updatedCustomData = {
+        ...currentCustomData,
+        status: "accepted"
+      }
+
+      const { error: updateError } = await supabase
+        .from("messages")
+        .update({
+          custom_data: updatedCustomData,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", message.id)
+
+      if (updateError) {
+        console.error("Error updating message status:", updateError)
+        toast.error("Failed to accept message")
+        setAcceptingMessageId(null)
+        return
+      }
+
+      // Update local state
+      // 1. Add to accepted actions set (for immediate UI feedback)
+      setAcceptedActionsMessageIds(prev => new Set(prev).add(message.id!))
+      
+      // 2. Update message in local list with the updated custom_data from DB
+      const updatedMessages = chatMessages.map(msg =>
+        msg.id === message.id
+          ? {
+              ...msg,
+              metadata: updatedCustomData
+            }
+          : msg
+      )
+
+      if (onMessagesUpdate) {
+        onMessagesUpdate(updatedMessages)
+      }
+      
+      toast.success("Message accepted")
+
+    } catch (error) {
+      console.error("Unexpected error accepting message:", error)
+      toast.error("An unexpected error occurred")
+    } finally {
+      setAcceptingMessageId(null)
+    }
+  }
+
+  // Function to undo accepting a message (return to pending actions)
+  const handleUndoAcceptMessage = async (message: ChatMessage) => {
+    if (!message.id) return
+
+    try {
+      const supabase = createClient()
+
+      // Update message status to pending in database
+      const { data: currentMessage, error: fetchError } = await supabase
+        .from("messages")
+        .select("custom_data")
+        .eq("id", message.id)
+        .single()
+
+      if (fetchError) {
+        console.error("Error fetching message:", fetchError)
+        toast.error("Failed to update message status")
+        return
+      }
+
+      const currentCustomData = (currentMessage?.custom_data as Record<string, any>) || {}
+      const updatedCustomData = {
+        ...currentCustomData,
+        status: "pending"
+      }
+
+      const { error: updateError } = await supabase
+        .from("messages")
+        .update({
+          custom_data: updatedCustomData,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", message.id)
+
+      if (updateError) {
+        console.error("Error updating message status:", updateError)
+        toast.error("Failed to return message to pending")
+        return
+      }
+
+      // Update local state to remove from accepted actions set
+      setAcceptedActionsMessageIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(message.id!)
+        return newSet
+      })
+
+      // Update message in local list with the updated custom_data from DB
+      const updatedMessages = chatMessages.map(msg =>
+        msg.id === message.id
+          ? {
+              ...msg,
+              metadata: updatedCustomData
+            }
+          : msg
+      )
+
+      if (onMessagesUpdate) {
+        onMessagesUpdate(updatedMessages)
+      }
+
+      toast.success("Message returned to pending")
+    } catch (error) {
+      console.error("Unexpected error undoing accept:", error)
+      toast.error("An unexpected error occurred")
+    }
+  }
+
   // Function to get estimated send time
   const getEstimatedSendTime = (message: ChatMessage) => {
     if (!message.metadata?.delay_timer) return null
@@ -844,7 +1081,8 @@ export function ChatMessages({
                     >
                       {/* Team Member Messages - Left aligned when there is a lead */}
                       {msg.role === "team_member" && hasLead ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0">
+                          <div className="flex flex-col min-w-0 group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
                               <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : currentUserAvatar) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
@@ -875,7 +1113,6 @@ export function ChatMessages({
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
-                                  <>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -889,24 +1126,21 @@ export function ChatMessages({
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
+                                  )}
+                                  {msg.metadata?.status === "accepted" && (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <button
-                                            onClick={() => handleEditMessage(msg)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
-                                            type="button"
-                                          >
-                                            <Icons.Pencil className="h-3 w-3 mr-1" />
-                                            Edit
-                                          </button>
+                                          <span className="inline-flex items-center text-xs text-green-500">
+                                            <Icons.Check className="h-3 w-3 mr-1" />
+                                            {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Accepted"}
+                                          </span>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>Edit message before sending</p>
+                                          <p>Message accepted and scheduled</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                  </>
                                 )}
                                 {msg.metadata?.command_status === "failed" && (
                                   <>
@@ -950,9 +1184,23 @@ export function ChatMessages({
                               </p>
                             </div>
                           </div>
+                          </div>
+                          <div className="flex justify-center w-full">
+                            <MessageActions
+                              message={msg}
+                              onEdit={handleEditMessage}
+                              onDelete={handleDeleteMessage}
+                              onAccept={handleAcceptMessage}
+                              onUndoAccept={handleUndoAcceptMessage}
+                              isDeleting={deletingMessageId === msg.id}
+                              isAccepting={acceptingMessageId === msg.id}
+                              isActionsAccepted={acceptedActionsMessageIds.has(msg.id || "")}
+                            />
+                          </div>
                         </div>
                       ) : msg.role === "team_member" && !hasLead && !msg.isCurrentUserMessage ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end">
+                          <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
                               <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : currentUserAvatar) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
@@ -967,13 +1215,15 @@ export function ChatMessages({
                             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 min-w-0 overflow-hidden ${
-                            msg.metadata?.status === "pending" ? "opacity-60" : ""
+                              msg.metadata?.status === "pending" ? "opacity-60" : msg.metadata?.status === "accepted" ? "border-2 border-green-500/30 bg-green-50/50 dark:bg-green-900/10" : ""
                           }`}
                             style={{ 
                               backgroundColor: msg.metadata?.status === "pending" 
                                 ? (isDarkMode ? '#2a2a3a' : '#f8f8f8')
+                                  : msg.metadata?.status === "accepted"
+                                  ? (isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)')
                                 : (isDarkMode ? '#2d2d3d' : '#f0f0f5'),
-                              border: 'none', 
+                                border: msg.metadata?.status === "accepted" ? '2px solid rgba(34, 197, 94, 0.3)' : 'none', 
                               boxShadow: 'none', 
                               outline: 'none',
                               filter: 'none' 
@@ -983,7 +1233,6 @@ export function ChatMessages({
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
-                                  <>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -997,24 +1246,21 @@ export function ChatMessages({
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
+                                  )}
+                                  {msg.metadata?.status === "accepted" && (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <button
-                                            onClick={() => handleEditMessage(msg)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
-                                            type="button"
-                                          >
-                                            <Icons.Pencil className="h-3 w-3 mr-1" />
-                                            Edit
-                                          </button>
+                                        <span className="inline-flex items-center text-xs text-green-500">
+                                          <Icons.Check className="h-3 w-3 mr-1" />
+                                          Accepted
+                                        </span>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>Edit message before sending</p>
+                                        <p>Message has been accepted</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                  </>
                                 )}
                                 {msg.metadata?.command_status === "failed" && (
                                   <>
@@ -1057,10 +1303,24 @@ export function ChatMessages({
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </p>
                             </div>
+                            </div>
+                          </div>
+                          <div className="flex justify-center w-full">
+                            <MessageActions
+                              message={msg}
+                              onEdit={handleEditMessage}
+                              onDelete={handleDeleteMessage}
+                              onAccept={handleAcceptMessage}
+                              onUndoAccept={handleUndoAcceptMessage}
+                              isDeleting={deletingMessageId === msg.id}
+                              isAccepting={acceptingMessageId === msg.id}
+                              isActionsAccepted={acceptedActionsMessageIds.has(msg.id || "")}
+                            />
                           </div>
                         </div>
                       ) : /* Lead/Visitor Messages - Amber avatar, right aligned */ msg.role === "user" ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end">
+                          <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
                               <AvatarImage 
@@ -1099,7 +1359,6 @@ export function ChatMessages({
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
-                                  <>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -1113,24 +1372,21 @@ export function ChatMessages({
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
+                                )}
+                                {msg.metadata?.status === "accepted" && (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <button
-                                            onClick={() => handleEditMessage(msg)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
-                                            type="button"
-                                          >
-                                            <Icons.Pencil className="h-3 w-3 mr-1" />
-                                            Edit
-                                          </button>
+                                        <span className="inline-flex items-center text-xs text-green-500">
+                                          <Icons.Check className="h-3 w-3 mr-1" />
+                                          {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Accepted"}
+                                        </span>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>Edit message before sending</p>
+                                        <p>Message accepted and scheduled</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                  </>
                                 )}
                                 {msg.metadata?.command_status === "failed" && (
                                   <>
@@ -1173,6 +1429,19 @@ export function ChatMessages({
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </p>
                             </div>
+                          </div>
+                          </div>
+                          <div className="flex justify-center w-full">
+                            <MessageActions
+                              message={msg}
+                              onEdit={handleEditMessage}
+                              onDelete={handleDeleteMessage}
+                              onAccept={handleAcceptMessage}
+                              onUndoAccept={handleUndoAcceptMessage}
+                              isDeleting={deletingMessageId === msg.id}
+                              isAccepting={acceptingMessageId === msg.id}
+                              isActionsAccepted={acceptedActionsMessageIds.has(msg.id || "")}
+                            />
                           </div>
                         </div>
                       ) : (msg.role === "agent" || msg.role === "assistant") ? (
@@ -1241,7 +1510,8 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "team_member" && !hasLead && msg.isCurrentUserMessage) ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end">
+                          <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/20">
                               <AvatarImage src={currentUserAvatar || undefined} alt={currentUserName || "You"} />
@@ -1268,7 +1538,6 @@ export function ChatMessages({
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
-                                  <>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -1282,24 +1551,21 @@ export function ChatMessages({
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
+                                )}
+                                {msg.metadata?.status === "accepted" && (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <button
-                                            onClick={() => handleEditMessage(msg)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
-                                            type="button"
-                                          >
-                                            <Icons.Pencil className="h-3 w-3 mr-1" />
-                                            Edit
-                                          </button>
+                                        <span className="inline-flex items-center text-xs text-green-500">
+                                          <Icons.Check className="h-3 w-3 mr-1" />
+                                          {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Accepted"}
+                                        </span>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>Edit message before sending</p>
+                                        <p>Message accepted and scheduled</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                  </>
                                 )}
                                 {msg.metadata?.command_status === "failed" && (
                                   <>
@@ -1343,9 +1609,23 @@ export function ChatMessages({
                               </p>
                             </div>
                           </div>
+                          </div>
+                          <div className="flex justify-center w-full">
+                            <MessageActions
+                              message={msg}
+                              onEdit={handleEditMessage}
+                              onDelete={handleDeleteMessage}
+                              onAccept={handleAcceptMessage}
+                              onUndoAccept={handleUndoAcceptMessage}
+                              isDeleting={deletingMessageId === msg.id}
+                              isAccepting={acceptingMessageId === msg.id}
+                              isActionsAccepted={acceptedActionsMessageIds.has(msg.id || "")}
+                            />
+                          </div>
                         </div>
                       ) : /* Visitor Messages - Amber avatar, right aligned */ (msg.role === "visitor") ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end group">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end">
+                          <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
                               <AvatarImage src={leadData?.avatarUrl || undefined} alt={leadData?.name || "Visitor"} />
@@ -1372,7 +1652,6 @@ export function ChatMessages({
                             <div className="flex items-center justify-between mt-1.5">
                               <div className="flex items-center gap-2">
                                 {msg.metadata?.status === "pending" && (
-                                  <>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -1386,24 +1665,21 @@ export function ChatMessages({
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
+                                )}
+                                {msg.metadata?.status === "accepted" && (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <button
-                                            onClick={() => handleEditMessage(msg)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
-                                            type="button"
-                                          >
-                                            <Icons.Pencil className="h-3 w-3 mr-1" />
-                                            Edit
-                                          </button>
+                                        <span className="inline-flex items-center text-xs text-green-500">
+                                          <Icons.Check className="h-3 w-3 mr-1" />
+                                          {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Accepted"}
+                                        </span>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>Edit message before sending</p>
+                                        <p>Message accepted and scheduled</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                  </>
                                 )}
                                 {msg.metadata?.command_status === "failed" && (
                                   <>
@@ -1447,10 +1723,24 @@ export function ChatMessages({
                               </p>
                             </div>
                           </div>
+                          </div>
+                          <div className="flex justify-center w-full">
+                            <MessageActions
+                              message={msg}
+                              onEdit={handleEditMessage}
+                              onDelete={handleDeleteMessage}
+                              onAccept={handleAcceptMessage}
+                              onUndoAccept={handleUndoAcceptMessage}
+                              isDeleting={deletingMessageId === msg.id}
+                              isAccepting={acceptingMessageId === msg.id}
+                              isActionsAccepted={acceptedActionsMessageIds.has(msg.id || "")}
+                            />
+                          </div>
                         </div>
                       ) : (
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0">
                         <div 
-                          className={`max-w-[calc(100%-240px)] min-w-0 rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground group overflow-hidden ${
+                            className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground group overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                           style={{ 
@@ -1467,7 +1757,6 @@ export function ChatMessages({
                           <div className="flex items-center justify-between mt-1.5">
                             <div className="flex items-center gap-2">
                               {msg.metadata?.status === "pending" && (
-                                <>
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -1481,24 +1770,21 @@ export function ChatMessages({
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
+                              )}
+                              {msg.metadata?.status === "accepted" && (
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <button
-                                          onClick={() => handleEditMessage(msg)}
-                                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5"
-                                          type="button"
-                                        >
-                                          <Icons.Pencil className="h-3 w-3 mr-1" />
-                                          Edit
-                                        </button>
+                                      <span className="inline-flex items-center text-xs text-green-500">
+                                        <Icons.Check className="h-3 w-3 mr-1" />
+                                        {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Accepted"}
+                                      </span>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p>Edit message before sending</p>
+                                      <p>Message accepted and scheduled</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
-                                </>
                               )}
                               {msg.metadata?.command_status === "failed" && (
                                 <>
@@ -1540,6 +1826,19 @@ export function ChatMessages({
                             <p className="text-xs opacity-70">
                               {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </p>
+                          </div>
+                          </div>
+                          <div className="flex justify-center w-full">
+                            <MessageActions
+                              message={msg}
+                              onEdit={handleEditMessage}
+                              onDelete={handleDeleteMessage}
+                              onAccept={handleAcceptMessage}
+                              onUndoAccept={handleUndoAcceptMessage}
+                              isDeleting={deletingMessageId === msg.id}
+                              isAccepting={acceptingMessageId === msg.id}
+                              isActionsAccepted={acceptedActionsMessageIds.has(msg.id || "")}
+                            />
                           </div>
                         </div>
                       )}
