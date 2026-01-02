@@ -41,12 +41,9 @@ export function MessageActions({
   if (isAccepted) {
     return (
       <div 
-        className="rounded-lg px-3 py-2 mt-2 inline-flex items-center gap-2"
+        className="rounded-full px-2 py-1.5 mt-2 inline-flex items-center gap-1.5"
         style={{ 
-          backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-          border: '1px solid',
-          borderColor: 'rgba(34, 197, 94, 0.3)',
-          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+          backgroundColor: isDarkMode ? 'rgba(156, 163, 175, 0.15)' : 'rgba(156, 163, 175, 0.1)',
         }}
       >
         <TooltipProvider>
@@ -54,11 +51,14 @@ export function MessageActions({
             <TooltipTrigger asChild>
               <button
                 onClick={() => onEdit(message)}
-                className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded px-2 py-1 transition-colors"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-all hover:bg-white dark:hover:bg-white/10"
                 type="button"
+                style={{
+                  color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
+                }}
               >
-                <Icons.Pencil className="h-3 w-3 mr-1" />
-                Edit
+                <Icons.Pencil className="h-3.5 w-3.5" />
+                <span className="text-xs">Edit</span>
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -67,18 +67,19 @@ export function MessageActions({
           </Tooltip>
         </TooltipProvider>
 
-        <div className="h-4 w-px bg-border opacity-30" />
-
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => onUndoAccept && onUndoAccept(message)}
-                className="inline-flex items-center text-xs text-amber-500 hover:text-amber-600 hover:bg-amber-50/50 dark:hover:bg-amber-900/20 rounded px-2 py-1 transition-colors"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-all hover:bg-white dark:hover:bg-white/10"
                 type="button"
+                style={{
+                  color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
+                }}
               >
-                <Icons.RotateCcw className="h-3 w-3 mr-1" />
-                Pending
+                <Icons.RotateCcw className="h-3.5 w-3.5" />
+                <span className="text-xs">Pending</span>
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -87,19 +88,20 @@ export function MessageActions({
           </Tooltip>
         </TooltipProvider>
 
-        <div className="h-4 w-px bg-border opacity-30" />
-
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => onDelete(message)}
                 disabled={isDeleting}
-                className="inline-flex items-center text-xs text-red-500 hover:text-red-600 hover:bg-red-50/50 dark:hover:bg-red-900/20 rounded px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-all hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
+                style={{
+                  color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
+                }}
               >
-                <Icons.Trash2 className="h-3 w-3 mr-1" />
-                {isDeleting ? "Rejecting..." : "Reject"}
+                <Icons.Trash2 className="h-3.5 w-3.5" />
+                <span className="text-xs">{isDeleting ? "Rejecting..." : "Reject"}</span>
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -113,12 +115,9 @@ export function MessageActions({
 
   return (
     <div 
-      className="rounded-lg px-3 py-2 mt-2 inline-flex items-center gap-2"
+      className="rounded-full px-2 py-1.5 mt-2 inline-flex items-center gap-1.5"
       style={{ 
-        backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
-        border: '1px solid',
-        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+        backgroundColor: isDarkMode ? 'rgba(156, 163, 175, 0.15)' : 'rgba(156, 163, 175, 0.1)',
       }}
     >
       <TooltipProvider>
@@ -126,11 +125,14 @@ export function MessageActions({
           <TooltipTrigger asChild>
             <button
               onClick={() => onEdit(message)}
-              className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-2 py-1 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-all hover:bg-white dark:hover:bg-white/10"
               type="button"
+              style={{
+                color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
+              }}
             >
-              <Icons.Pencil className="h-3 w-3 mr-1" />
-              Edit
+              <Icons.Pencil className="h-3.5 w-3.5" />
+              <span className="text-xs">Edit</span>
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -139,19 +141,20 @@ export function MessageActions({
         </Tooltip>
       </TooltipProvider>
 
-      <div className="h-4 w-px bg-border opacity-30" />
-
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => onAccept(message)}
               disabled={isAccepting}
-              className="inline-flex items-center text-xs text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-all hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
+              style={{
+                color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
+              }}
             >
-              <Icons.Check className="h-3 w-3 mr-1" />
-              {isAccepting ? "Accepting..." : "Accept"}
+              <Icons.Check className="h-3.5 w-3.5" />
+              <span className="text-xs">{isAccepting ? "Accepting..." : "Accept"}</span>
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -160,19 +163,20 @@ export function MessageActions({
         </Tooltip>
       </TooltipProvider>
 
-      <div className="h-4 w-px bg-border opacity-30" />
-
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => onDelete(message)}
               disabled={isDeleting}
-              className="inline-flex items-center text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-all hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
+              style={{
+                color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
+              }}
             >
-              <Icons.Trash2 className="h-3 w-3 mr-1" />
-              {isDeleting ? "Rejecting..." : "Reject"}
+              <Icons.Trash2 className="h-3.5 w-3.5" />
+              <span className="text-xs">{isDeleting ? "Rejecting..." : "Reject"}</span>
             </button>
           </TooltipTrigger>
           <TooltipContent>

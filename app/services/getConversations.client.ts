@@ -40,52 +40,88 @@ export async function getConversations(
       to = from + pageSize - 1
     }
 
-    let query = supabase
-      .from("conversations")
-      .select(`
-        id,
-        title,
-        agent_id,
-        lead_id,
-        last_message_at,
+    // Build base query parts
+    const baseSelect = `
+      id,
+      title,
+      agent_id,
+      lead_id,
+      last_message_at,
+      created_at,
+      custom_data,
+      status,
+      messages (
+        content,
         created_at,
-        custom_data,
-        status,
-        messages (
-          content,
-          created_at,
-          role,
-          user_id
-        ),
-        leads (
-          assignee_id
-        )
-      `)
+        role,
+        user_id
+      ),
+      leads (
+        assignee_id
+      )
+    `
+
+    // Query 1: Get pending conversations first
+    let pendingQuery = supabase
+      .from("conversations")
+      .select(baseSelect)
       .eq("site_id", siteId)
       .eq("is_archived", false)
+      .eq("status", "pending")
 
+    // Query 2: Get non-pending conversations
+    let nonPendingQuery = supabase
+      .from("conversations")
+      .select(baseSelect)
+      .eq("site_id", siteId)
+      .eq("is_archived", false)
+      .neq("status", "pending")
+
+    // Apply channel filter to both queries if specified
     if (channelFilter && channelFilter !== 'all') {
       if (channelFilter === 'web') {
-        query = query.or(`custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`)
+        const channelFilterStr = `custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
+        pendingQuery = pendingQuery.or(channelFilterStr)
+        nonPendingQuery = nonPendingQuery.or(channelFilterStr)
       } else {
-        query = query.eq(`custom_data->>channel`, channelFilter)
+        pendingQuery = pendingQuery.eq(`custom_data->>channel`, channelFilter)
+        nonPendingQuery = nonPendingQuery.eq(`custom_data->>channel`, channelFilter)
       }
     }
 
+    // Apply search filter to both queries if specified
     if (searchQuery && searchQuery.trim()) {
       const searchTerm = searchQuery.trim().toLowerCase()
-      query = query.ilike('title', `%${searchTerm}%`)
+      pendingQuery = pendingQuery.ilike('title', `%${searchTerm}%`)
+      nonPendingQuery = nonPendingQuery.ilike('title', `%${searchTerm}%`)
     }
 
-    // Note: initiatedBy filter will be applied after getting results
-    // to use the messages that come with each conversation (avoids RLS issues)
-    // We fetch more conversations to compensate for filtering
-
-    const { data: conversations, error: conversationsError } = await query
+    // Fetch pending conversations (fetch enough to cover pagination after filtering)
+    // We fetch more pending conversations to ensure we have enough after filtering
+    const pendingFetchCount = needsPostFiltering ? pageSize * fetchMultiplier * 2 : pageSize * 3
+    const { data: pendingConversations, error: pendingError } = await pendingQuery
       .order("last_message_at", { ascending: false })
-      .range(from, to)
+      .limit(pendingFetchCount)
 
-    if (conversationsError || !conversations || conversations.length === 0) {
+    // Fetch non-pending conversations (fetch enough to cover pagination)
+    const nonPendingFetchCount = needsPostFiltering ? pageSize * fetchMultiplier : pageSize * 2
+    const { data: nonPendingConversations, error: nonPendingError } = await nonPendingQuery
+      .order("last_message_at", { ascending: false })
+      .limit(nonPendingFetchCount)
+
+    if (pendingError || nonPendingError) {
+      console.error("Error fetching conversations:", pendingError || nonPendingError)
+      return []
+    }
+
+    // Combine: pending conversations first, then non-pending
+    const conversations = [...(pendingConversations || []), ...(nonPendingConversations || [])]
+    
+    console.log(`✅ Pending conversations: ${(pendingConversations || []).length}`)
+    console.log(`✅ Non-pending conversations: ${(nonPendingConversations || []).length}`)
+    console.log(`✅ Total conversations before filtering: ${conversations.length}`)
+
+    if (!conversations || conversations.length === 0) {
       return []
     }
 
@@ -147,8 +183,11 @@ export async function getConversations(
       
       console.log(`📄 Paginated: showing ${filteredConversations.length} conversations (page ${page}, ${pageSize} per page, hasMore: ${hasMoreResults})`)
     } else {
-      // No initiatedBy filter, apply normal pagination
-      // (already applied in the query range)
+      // No initiatedBy filter, apply normal pagination in memory
+      const paginatedFrom = (page - 1) * pageSize
+      const paginatedTo = paginatedFrom + pageSize
+      filteredConversations = filteredConversations.slice(paginatedFrom, paginatedTo)
+      console.log(`📄 Paginated: showing ${filteredConversations.length} conversations (page ${page}, ${pageSize} per page)`)
     }
 
     // Assignee filter

@@ -271,57 +271,85 @@ export async function getConversations(
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
     
-    // Build the base query
-    let query = supabase
-      .from("conversations")
-      .select(`
-        id,
-        title,
-        agent_id,
-        lead_id,
-        last_message_at,
+    // Build base query parts
+    const baseSelect = `
+      id,
+      title,
+      agent_id,
+      lead_id,
+      last_message_at,
+      created_at,
+      custom_data,
+      status,
+      messages (
+        content,
         created_at,
-        custom_data,
-        status,
-        messages (
-          content,
-          created_at,
-          role,
-          user_id
-        ),
-        leads (
-          assignee_id
-        )
-      `)
+        role,
+        user_id
+      ),
+      leads (
+        assignee_id
+      )
+    `
+
+    // Query 1: Get pending conversations first
+    let pendingQuery = supabase
+      .from("conversations")
+      .select(baseSelect)
       .eq("site_id", siteId)
       .eq("is_archived", false)
+      .eq("status", "pending")
 
-    // Apply channel filter if specified
+    // Query 2: Get non-pending conversations
+    let nonPendingQuery = supabase
+      .from("conversations")
+      .select(baseSelect)
+      .eq("site_id", siteId)
+      .eq("is_archived", false)
+      .neq("status", "pending")
+
+    // Apply channel filter to both queries if specified
     if (channelFilter && channelFilter !== 'all') {
       if (channelFilter === 'web') {
-        // For web, include both 'web' and 'website_chat' as they are the same, plus null values (default to web)
-        query = query.or(`custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`)
+        const channelFilterStr = `custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
+        pendingQuery = pendingQuery.or(channelFilterStr)
+        nonPendingQuery = nonPendingQuery.or(channelFilterStr)
       } else {
-        query = query.eq(`custom_data->>channel`, channelFilter)
+        pendingQuery = pendingQuery.eq(`custom_data->>channel`, channelFilter)
+        nonPendingQuery = nonPendingQuery.eq(`custom_data->>channel`, channelFilter)
       }
     }
 
-    // Apply search filter if specified
+    // Apply search filter to both queries if specified
     if (searchQuery && searchQuery.trim()) {
       const searchTerm = searchQuery.trim().toLowerCase()
-      // Search only in conversation title for now (most reliable)
-      query = query.ilike('title', `%${searchTerm}%`)
+      pendingQuery = pendingQuery.ilike('title', `%${searchTerm}%`)
+      nonPendingQuery = nonPendingQuery.ilike('title', `%${searchTerm}%`)
     }
 
-    // Apply ordering and pagination
-    const { data: conversations, error: conversationsError } = await query
+    // Fetch pending conversations (fetch more to ensure we get enough)
+    const pendingFetchCount = pageSize * 2
+    const { data: pendingConversations, error: pendingError } = await pendingQuery
       .order("last_message_at", { ascending: false })
-      .range(from, to)
+      .limit(pendingFetchCount)
 
-    if (conversationsError) {
-      console.error("Error fetching conversations:", conversationsError)
+    // Fetch non-pending conversations
+    const { data: nonPendingConversations, error: nonPendingError } = await nonPendingQuery
+      .order("last_message_at", { ascending: false })
+      .limit(pageSize)
+
+    if (pendingError || nonPendingError) {
+      console.error("Error fetching conversations:", pendingError || nonPendingError)
       return []
     }
+
+    // Combine: pending conversations first, then non-pending
+    const conversations = [...(pendingConversations || []), ...(nonPendingConversations || [])]
+    
+    console.log(`✅ Pending conversations: ${(pendingConversations || []).length}`)
+    console.log(`✅ Non-pending conversations: ${(nonPendingConversations || []).length}`)
+    console.log(`✅ Total conversations before filtering: ${conversations.length}`)
+
 
     if (!conversations || conversations.length === 0) {
       console.log(`🔍 DEBUG: No conversations found for site ${siteId}, page ${page}`);
@@ -347,8 +375,14 @@ export async function getConversations(
       });
     }
     
-    console.log(`🔍 DEBUG: Retrieved ${conversations.length} conversations from database for page ${page}`);
+    // Apply pagination after filtering
+    const paginatedFrom = (page - 1) * pageSize
+    const paginatedTo = paginatedFrom + pageSize
+    filteredConversations = filteredConversations.slice(paginatedFrom, paginatedTo)
+    
+    console.log(`🔍 DEBUG: Retrieved ${conversations.length} conversations from database`);
     console.log(`🔍 DEBUG: After assignee filter: ${filteredConversations.length} conversations`);
+    console.log(`🔍 DEBUG: After pagination (page ${page}): ${filteredConversations.length} conversations`);
     console.log('🔍 DEBUG: First conversation titles:', filteredConversations.slice(0, 3).map((c: any) => c.title));
     
     // Obtenemos los IDs de los agentes
@@ -938,36 +972,51 @@ export async function getConversationMessages(conversationId: string): Promise<C
       return [];
     }
     
-    const { data: conversation, error: conversationError } = await supabase
-      .from("conversations")
-      .select(`
-        *,
-        messages (
-          *
-        )
-      `)
-      .eq("id", conversationId)
-      .single();
-      
-    if (conversationError) {
-      console.error("Error fetching conversation:", conversationError);
+    // Query 1: Get ALL pending messages first (no limit to ensure we get all pending)
+    const { data: pendingMessages, error: pendingError } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .eq("custom_data->>status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(1000); // High limit to get all pending messages
+    
+    if (pendingError) {
+      console.error("❌ Error fetching pending messages:", pendingError);
+    } else {
+      console.log(`✅ Pending query: Found ${(pendingMessages || []).length} pending messages`);
+    }
+    
+    // Query 2: Get non-pending messages (limit to 40 for initial load)
+    const { data: nonPendingMessages, error: nonPendingError } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .or("custom_data->>status.neq.pending,custom_data->>status.is.null")
+      .order("created_at", { ascending: true })
+      .limit(40); // Limit non-pending to 40 for initial load
+    
+    if (nonPendingError) {
+      console.error("❌ Error fetching non-pending messages:", nonPendingError);
+    } else {
+      console.log(`✅ Non-pending query: Found ${(nonPendingMessages || []).length} non-pending messages`);
+    }
+    
+    if (pendingError || nonPendingError) {
+      console.error("❌ Error fetching messages:", pendingError || nonPendingError);
       return [];
     }
     
-    if (!conversation || !conversation.messages || !Array.isArray(conversation.messages)) {
-      return [];
-    }
+    // Combine: pending messages first, then non-pending messages
+    const sortedMessages = [...(pendingMessages || []), ...(nonPendingMessages || [])];
     
-    // Ordenar mensajes por fecha de creación antes de convertirlos
-    const sortedMessages = [...conversation.messages].sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
-      return dateA - dateB; // Orden ascendente (más antiguos primero)
-    });
-    
-    console.log("🔄 Mensajes ordenados por fecha:", sortedMessages.map(m => ({
+    console.log(`🔄 [getConversationMessages] Conversation ${conversationId}:`)
+    console.log(`📊 Pending messages: ${(pendingMessages || []).length}`)
+    console.log(`📊 Non-pending messages: ${(nonPendingMessages || []).length}`)
+    console.log("🔄 Mensajes ordenados:", sortedMessages.map(m => ({
       id: m.id.substring(0, 6),
       role: m.role,
+      status: m.custom_data?.status,
       created_at: m.created_at
     })));
     

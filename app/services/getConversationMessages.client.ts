@@ -7,38 +7,74 @@ export async function getConversationMessages(conversationId: string): Promise<C
 
     if (!conversationId || conversationId.startsWith("new-")) return []
 
-    const { data: conversation, error } = await supabase
-      .from("conversations")
+    // Query 1: Get ALL pending messages first (no limit to ensure we get all pending)
+    const { data: pendingData, error: pendingError } = await supabase
+      .from("messages")
       .select(`
-        *,
-        messages (
-          id,
-          role,
-          content,
-          created_at,
-          updated_at,
-          user_id,
-          agent_id,
-          visitor_id,
-          lead_id,
-          command_id,
-          custom_data
-        )
+        id,
+        role,
+        content,
+        created_at,
+        updated_at,
+        user_id,
+        agent_id,
+        visitor_id,
+        lead_id,
+        command_id,
+        custom_data
       `)
-      .eq("id", conversationId)
-      .single()
+      .eq("conversation_id", conversationId)
+      .eq("custom_data->>status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(1000) // High limit to get all pending messages
 
-    if (error || !conversation || !Array.isArray(conversation.messages)) return []
+    if (pendingError) {
+      console.error("❌ Error fetching pending messages:", pendingError)
+    } else {
+      console.log(`✅ Pending query: Found ${pendingData?.length || 0} pending messages`)
+    }
 
-    // Sort messages in ascending order (oldest first, newest last) to ensure newest messages appear at the bottom
-    const sorted = [...conversation.messages].sort((a: any, b: any) => {
-      const timeA = new Date(a.created_at).getTime()
-      const timeB = new Date(b.created_at).getTime()
-      return timeA - timeB
-    })
+    // Query 2: Get non-pending messages (limit to 40 for initial load)
+    const { data: nonPendingData, error: nonPendingError } = await supabase
+      .from("messages")
+      .select(`
+        id,
+        role,
+        content,
+        created_at,
+        updated_at,
+        user_id,
+        agent_id,
+        visitor_id,
+        lead_id,
+        command_id,
+        custom_data
+      `)
+      .eq("conversation_id", conversationId)
+      .or("custom_data->>status.neq.pending,custom_data->>status.is.null")
+      .order("created_at", { ascending: true })
+      .limit(40) // Limit non-pending to 40 for initial load
+
+    if (nonPendingError) {
+      console.error("❌ Error fetching non-pending messages:", nonPendingError)
+    } else {
+      console.log(`✅ Non-pending query: Found ${nonPendingData?.length || 0} non-pending messages`)
+    }
+
+    if (pendingError || nonPendingError) {
+      console.error("❌ Error fetching messages:", pendingError || nonPendingError)
+      return []
+    }
+
+    // Combine: pending messages first, then non-pending messages
+    const pendingMessages = pendingData || []
+    const nonPendingMessages = nonPendingData || []
+    const sorted = [...pendingMessages, ...nonPendingMessages]
 
     // Debug logging to help identify ordering issues
     console.log(`🔍 [getConversationMessages] Conversation ${conversationId}:`)
+    console.log(`📊 Pending messages: ${pendingMessages.length}`)
+    console.log(`📊 Non-pending messages: ${nonPendingMessages.length}`)
     console.log(`📊 Total messages: ${sorted.length}`)
     if (sorted.length > 0) {
       console.log(`⏰ First message: ${sorted[0].created_at} (${sorted[0].role})`)
