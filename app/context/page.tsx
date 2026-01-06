@@ -23,7 +23,7 @@ import {
 import { ContextForm } from "../components/settings/context-form"
 import { type SiteFormValues } from "../components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
-import { handleCacheAndRebuild, handleDeleteSite, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial } from "../components/settings/save-handlers"
+import { handleCacheAndRebuild, handleDeleteSite, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveCopywriting } from "../components/settings/save-handlers"
 import { Input } from "../components/ui/input"
 import { useAuthContext } from "../components/auth/auth-provider"
 
@@ -229,6 +229,11 @@ export default function ContextPage() {
     await handleSaveSocial(data, saveOptions)
   }
 
+  const onSaveCopywriting = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveCopywriting(data, saveOptions)
+  }
+
   // Wrapper functions for other handlers
   const onCacheAndRebuild = async () => {
     await handleCacheAndRebuild(setIsSaving, currentSite || undefined, user)
@@ -308,6 +313,7 @@ export default function ContextPage() {
           onSaveMarketing={onSaveMarketing}
           onSaveCustomerJourney={onSaveCustomerJourney}
           onSaveSocial={onSaveSocial}
+          onSaveCopywriting={onSaveCopywriting}
           onDeleteSite={() => setShowDeleteDialog(true)}
           onCacheAndRebuild={onCacheAndRebuild}
           isSaving={isSaving}

@@ -127,8 +127,14 @@ class CopywritingService implements CopywritingActions {
 
   async syncCopywritingItems(siteId: string, userId: string, items: CopywritingItem[]) {
     try {
-      console.log('COPYWRITING SYNC: Starting sync for site:', siteId)
+      console.log('COPYWRITING SYNC: Starting sync for site:', siteId, 'user:', userId)
       console.log('COPYWRITING SYNC: Items to sync:', items.length)
+      console.log('COPYWRITING SYNC: Items data:', JSON.stringify(items, null, 2))
+
+      if (!siteId || !userId) {
+        console.error('COPYWRITING SYNC: Missing required parameters', { siteId, userId })
+        return { success: false, error: 'Missing siteId or userId' }
+      }
 
       // Get existing items from database
       const { data: existingItems, error: fetchError } = await this.supabase
@@ -143,40 +149,113 @@ class CopywritingService implements CopywritingActions {
 
       console.log('COPYWRITING SYNC: Existing items in DB:', existingItems?.length || 0)
 
-      const existingMap = new Map(existingItems?.map(item => [item.id, item]) || [])
+      // Create maps for efficient lookup
+      const existingMapById = new Map(existingItems?.map(item => [item.id, item]) || [])
+      // Map by (site_id, user_id, title) to handle items without IDs or title changes
+      const existingMapByTitle = new Map(
+        existingItems?.map(item => [`${item.site_id}_${item.user_id}_${item.title?.trim() || ''}`, item]) || []
+      )
+      
       const newItems: CopywritingItem[] = []
       const updateItems: Array<{ id: string; item: CopywritingItem }> = []
       const keepIds = new Set<string>()
 
       // Process each item from the form
       for (const item of items) {
-        // Check if item has an ID (exists in DB)
-        const isExistingItem = item.id && existingMap.has(item.id)
-        const isEmpty = !item.title?.trim() || !item.content?.trim()
+        // More lenient check - only skip if both title and content are completely empty
+        const hasTitle = item.title && item.title.trim().length > 0
+        const hasContent = item.content && item.content.trim().length > 0
+        const isEmpty = !hasTitle && !hasContent
 
-        if (isExistingItem) {
-          // Item exists in DB - preserve it even if temporarily empty
-          // Add to keepIds to prevent deletion
-          keepIds.add(item.id)
+        // Check if item has an ID and exists in DB
+        const isExistingById = item.id && existingMapById.has(item.id)
+        
+        // Check if item exists by title (for items without ID or when title might have changed)
+        const titleKey = `${siteId}_${userId}_${item.title?.trim() || ''}`
+        const existingByTitle = existingMapByTitle.get(titleKey)
+
+        console.log('COPYWRITING SYNC: Processing item:', {
+          id: item.id,
+          title: item.title,
+          hasTitle,
+          hasContent,
+          isEmpty,
+          isExistingById,
+          existingByTitleId: existingByTitle?.id,
+          copy_type: item.copy_type
+        })
+
+        if (isExistingById) {
+          // Item exists in DB by ID - preserve it even if temporarily empty
+          keepIds.add(item.id!)
+          
+          // Check if title changed and would cause a duplicate
+          const existingItem = existingMapById.get(item.id!)
+          if (existingItem && existingItem.title !== item.title?.trim()) {
+            // Title changed - check if new title already exists
+            const newTitleKey = `${siteId}_${userId}_${item.title?.trim() || ''}`
+            const existingWithNewTitle = existingMapByTitle.get(newTitleKey)
+            
+            if (existingWithNewTitle && existingWithNewTitle.id !== item.id) {
+              // New title already exists for a different item - this would cause a duplicate
+              console.error('COPYWRITING SYNC: Cannot update - new title already exists:', {
+                currentId: item.id,
+                existingId: existingWithNewTitle.id,
+                newTitle: item.title
+              })
+              return { 
+                success: false, 
+                error: `A copywriting item with the title "${item.title}" already exists. Please use a different title.` 
+              }
+            }
+          }
           
           if (isEmpty) {
             // Item exists but is empty - preserve it, don't update
             console.log('COPYWRITING SYNC: Preserving existing item (empty in form):', { id: item.id, title: item.title || 'empty' })
           } else {
             // Item exists and has content - update it
-            updateItems.push({ id: item.id, item })
+            updateItems.push({ id: item.id!, item })
             console.log('COPYWRITING SYNC: Updating existing item:', { id: item.id, title: item.title })
           }
+        } else if (existingByTitle && hasTitle) {
+          // Item doesn't have ID but exists by title - update the existing one
+          console.log('COPYWRITING SYNC: Item exists by title, updating instead of creating:', {
+            existingId: existingByTitle.id,
+            title: item.title
+          })
+          keepIds.add(existingByTitle.id)
+          
+          if (isEmpty) {
+            console.log('COPYWRITING SYNC: Preserving existing item (empty in form):', { id: existingByTitle.id, title: item.title || 'empty' })
+          } else {
+            updateItems.push({ id: existingByTitle.id, item })
+            console.log('COPYWRITING SYNC: Updating existing item by title:', { id: existingByTitle.id, title: item.title })
+          }
         } else {
-          // New item (no ID)
+          // New item (no ID and doesn't exist by title)
           if (isEmpty) {
             // Skip empty new items - don't create them
-            console.log('COPYWRITING SYNC: Skipping empty new item (will not be created):', { title: item.title || 'empty' })
+            console.log('COPYWRITING SYNC: Skipping empty new item (will not be created):', { title: item.title || 'empty', content: item.content || 'empty' })
             continue
           } else {
             // Create new item with content
-            newItems.push(item)
-            console.log('COPYWRITING SYNC: Creating new item:', { title: item.title })
+            // Ensure we have at least a title or content
+            if (!hasTitle && !hasContent) {
+              console.log('COPYWRITING SYNC: Skipping item with no title or content')
+              continue
+            }
+            
+            // Double-check that this title doesn't already exist (race condition protection)
+            if (hasTitle && existingMapByTitle.has(titleKey)) {
+              console.log('COPYWRITING SYNC: Title already exists, updating instead of creating:', { title: item.title })
+              const existingItem = existingMapByTitle.get(titleKey)!
+              keepIds.add(existingItem.id)
+              updateItems.push({ id: existingItem.id, item })
+            } else {
+              newItems.push(item)
+              console.log('COPYWRITING SYNC: Creating new item:', { title: item.title, content: item.content?.substring(0, 50) + '...' })
+            }
           }
         }
       }
@@ -189,8 +268,8 @@ class CopywritingService implements CopywritingActions {
         const insertData = newItems.map(item => ({
           site_id: siteId,
           user_id: userId,
-          title: item.title,
-          content: item.content,
+          title: item.title || 'Untitled',
+          content: item.content || '',
           copy_type: item.copy_type,
           target_audience: item.target_audience || null,
           use_case: item.use_case || null,
@@ -199,44 +278,61 @@ class CopywritingService implements CopywritingActions {
           status: item.status || 'draft'
         }))
 
-        const { error: insertError } = await this.supabase
+        console.log('COPYWRITING SYNC: Insert data prepared:', JSON.stringify(insertData, null, 2))
+
+        const { data: insertedData, error: insertError } = await this.supabase
           .from('copywriting')
           .insert(insertData)
+          .select()
 
         if (insertError) {
           console.error('COPYWRITING SYNC: Error creating new items:', insertError)
+          console.error('COPYWRITING SYNC: Insert error details:', JSON.stringify(insertError, null, 2))
           return { success: false, error: insertError.message }
         }
 
-        console.log('COPYWRITING SYNC: Successfully created new items')
+        console.log('COPYWRITING SYNC: Successfully created new items:', insertedData?.length || 0)
+        if (insertedData && insertedData.length > 0) {
+          console.log('COPYWRITING SYNC: Inserted items IDs:', insertedData.map(item => item.id))
+        }
+      } else {
+        console.log('COPYWRITING SYNC: No new items to create')
       }
 
       // Update existing items
-      for (const { id, item } of updateItems) {
-        const updateData = {
-          title: item.title,
-          content: item.content,
-          copy_type: item.copy_type,
-          target_audience: item.target_audience || null,
-          use_case: item.use_case || null,
-          notes: item.notes || null,
-          tags: item.tags || [],
-          status: item.status || 'draft',
-          updated_at: new Date().toISOString()
-        }
+      if (updateItems.length > 0) {
+        for (const { id, item } of updateItems) {
+          const updateData = {
+            title: item.title || 'Untitled',
+            content: item.content || '',
+            copy_type: item.copy_type,
+            target_audience: item.target_audience || null,
+            use_case: item.use_case || null,
+            notes: item.notes || null,
+            tags: item.tags || [],
+            status: item.status || 'draft',
+            updated_at: new Date().toISOString()
+          }
 
-        const { error: updateError } = await this.supabase
-          .from('copywriting')
-          .update(updateData)
-          .eq('id', id)
+          console.log('COPYWRITING SYNC: Updating item:', { id, updateData })
 
-        if (updateError) {
-          console.error('COPYWRITING SYNC: Error updating item:', id, updateError)
-          return { success: false, error: updateError.message }
+          const { data: updatedData, error: updateError } = await this.supabase
+            .from('copywriting')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+
+          if (updateError) {
+            console.error('COPYWRITING SYNC: Error updating item:', id, updateError)
+            return { success: false, error: updateError.message }
+          }
+
+          console.log('COPYWRITING SYNC: Successfully updated item:', id)
         }
+        console.log('COPYWRITING SYNC: Successfully updated existing items')
+      } else {
+        console.log('COPYWRITING SYNC: No items to update')
       }
-
-      console.log('COPYWRITING SYNC: Successfully updated existing items')
 
       // Delete items that are no longer in the form
       const itemsToDelete = existingItems?.filter(item => !keepIds.has(item.id)) || []
@@ -260,11 +356,21 @@ class CopywritingService implements CopywritingActions {
         console.log('COPYWRITING SYNC: No items to delete - all existing items preserved')
       }
 
+      const totalOperations = newItems.length + updateItems.length
+      if (totalOperations === 0 && items.length > 0) {
+        console.warn('COPYWRITING SYNC: WARNING - No operations performed but items were provided')
+        console.warn('COPYWRITING SYNC: This might indicate all items were filtered out as empty')
+      }
+
       console.log('COPYWRITING SYNC: Sync completed successfully')
       return { success: true }
 
     } catch (error) {
       console.error('COPYWRITING SYNC: Exception during sync:', error)
+      if (error instanceof Error) {
+        console.error('COPYWRITING SYNC: Error stack:', error.stack)
+        return { success: false, error: error.message }
+      }
       return { success: false, error: 'Failed to sync copywriting items' }
     }
   }

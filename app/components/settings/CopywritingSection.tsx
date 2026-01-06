@@ -208,10 +208,15 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
         return
       }
 
+      // Get the current copywriting data from the form
+      const copywritingData = form.getValues("copywriting") || []
+      console.log("COPYWRITING SECTION: Saving copywriting data:", copywritingData)
+
       // Call the parent save function if provided
       if (onSave) {
+        // Get all form data and pass it to the save handler
+        // The handler will show success/error messages
         await onSave()
-        toast.success("Copywriting saved successfully!")
       } else {
         // Fallback: trigger the main form save
         const formElement = document.getElementById('context-form') as HTMLFormElement

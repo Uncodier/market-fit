@@ -64,6 +64,7 @@ interface ContextFormProps {
   onSaveMarketing?: (data: SiteFormValues) => void
   onSaveCustomerJourney?: (data: SiteFormValues) => void
   onSaveSocial?: (data: SiteFormValues) => void
+  onSaveCopywriting?: (data: SiteFormValues) => void
   onDeleteSite?: () => void
   onCacheAndRebuild?: () => void
   isSaving?: boolean
@@ -80,6 +81,7 @@ export function ContextForm({
   onSaveMarketing,
   onSaveCustomerJourney,
   onSaveSocial,
+  onSaveCopywriting,
   onDeleteSite, 
   onCacheAndRebuild, 
   isSaving, 
@@ -267,10 +269,9 @@ export function ContextForm({
               active={true} 
               onSave={async () => {
                 const formData = form.getValues()
-                // Copywriting is saved separately through copywritingService,
-                // but we call onSaveGeneral to trigger a refresh
-                if (onSaveGeneral) {
-                  await onSaveGeneral(formData)
+                // Copywriting is saved separately to the copywriting table
+                if (onSaveCopywriting) {
+                  await onSaveCopywriting(formData)
                 }
               }}
               isSaving={isSaving}

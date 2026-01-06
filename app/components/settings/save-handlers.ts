@@ -458,17 +458,33 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
 
     // Handle copywriting data separately
     console.log("SAVE 12.1: Processing copywriting data...");
+    console.log("SAVE 12.1.1: Copywriting data:", JSON.stringify(copywriting, null, 2));
+    console.log("SAVE 12.1.2: Copywriting is array?", Array.isArray(copywriting));
+    console.log("SAVE 12.1.3: Copywriting length:", copywriting?.length || 0);
+    
     if (copywriting && Array.isArray(copywriting)) {
       try {
         const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError) {
+          console.error("SAVE ERROR: Error getting user:", userError);
+          toast.error("Failed to authenticate user for copywriting sync");
+          return;
+        }
         
         if (user) {
+          console.log("SAVE 12.1.4: User found:", user.id);
+          console.log("SAVE 12.1.5: Site ID:", currentSite.id);
+          console.log("SAVE 12.1.6: Copywriting items to sync:", copywriting.length);
+          
           const result = await copywritingService.syncCopywritingItems(
             currentSite.id, 
             user.id, 
             copywriting
           )
+          
+          console.log("SAVE 12.1.7: Sync result:", result);
           
           if (result.success) {
             console.log("SAVE 12.2: Copywriting data synced successfully");
@@ -478,11 +494,19 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           }
         } else {
           console.error("SAVE ERROR: No user found for copywriting sync");
+          toast.error("Please log in to save copywriting data");
         }
       } catch (copywritingError) {
         console.error("SAVE ERROR en copywriting sync:", copywritingError);
-        toast.error("Failed to save copywriting data");
+        if (copywritingError instanceof Error) {
+          console.error("SAVE ERROR stack:", copywritingError.stack);
+          toast.error(`Failed to save copywriting data: ${copywritingError.message}`);
+        } else {
+          toast.error("Failed to save copywriting data");
+        }
       }
+    } else {
+      console.log("SAVE 12.1: No copywriting data to process or not an array");
     }
 
     // NOTE: team_members sync is now handled in TeamSection specifically
@@ -1352,6 +1376,75 @@ export const handleSaveActivities = async (data: SiteFormValues, options: SaveOp
       toast.error(`Error: ${error.message}`)
     } else {
       toast.error("Error saving activities")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+// Partial save handler for Copywriting section - saves only to copywriting table
+export const handleSaveCopywriting = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    const { copywriting } = data
+
+    console.log("COPYWRITING SAVE: Starting copywriting-only save")
+    console.log("COPYWRITING SAVE: Copywriting data:", JSON.stringify(copywriting, null, 2))
+    console.log("COPYWRITING SAVE: Copywriting is array?", Array.isArray(copywriting))
+    console.log("COPYWRITING SAVE: Copywriting length:", copywriting?.length || 0)
+
+    if (!copywriting || !Array.isArray(copywriting)) {
+      console.log("COPYWRITING SAVE: No copywriting data to save")
+      toast.success("Copywriting saved successfully")
+      return
+    }
+
+    const supabase = createClient()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error("COPYWRITING SAVE: Error getting user:", userError)
+      toast.error("Failed to authenticate user for copywriting save")
+      return
+    }
+
+    if (!user) {
+      console.error("COPYWRITING SAVE: No user found")
+      toast.error("Please log in to save copywriting data")
+      return
+    }
+
+    console.log("COPYWRITING SAVE: User found:", user.id)
+    console.log("COPYWRITING SAVE: Site ID:", currentSite.id)
+    console.log("COPYWRITING SAVE: Copywriting items to sync:", copywriting.length)
+
+    const result = await copywritingService.syncCopywritingItems(
+      currentSite.id,
+      user.id,
+      copywriting
+    )
+
+    console.log("COPYWRITING SAVE: Sync result:", result)
+
+    if (result.success) {
+      console.log("COPYWRITING SAVE: Copywriting data synced successfully")
+      toast.success("Copywriting saved successfully")
+    } else {
+      console.error("COPYWRITING SAVE: Failed to sync copywriting data:", result.error)
+      toast.error(`Failed to save copywriting data: ${result.error}`)
+    }
+  } catch (error) {
+    console.error("COPYWRITING SAVE: Exception during save:", error)
+    if (error instanceof Error) {
+      console.error("COPYWRITING SAVE: Error stack:", error.stack)
+      toast.error(`Failed to save copywriting data: ${error.message}`)
+    } else {
+      toast.error("Failed to save copywriting data")
     }
   } finally {
     setIsSaving(false)

@@ -1843,7 +1843,21 @@ export default function PeopleSearchPage() {
                     </div>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Funding" defaultOpen={sectionOpenDefaults.funding}>
+                <CollapsibleField 
+                  title="Funding" 
+                  defaultOpen={sectionOpenDefaults.funding}
+                  countBadge={
+                    (fundingDateRange.start || fundingDateRange.end ? 1 : 0) +
+                    (fundingRangeTouched ? 1 : 0) +
+                    (fundingType ? 1 : 0)
+                  }
+                  onClear={() => {
+                    setFundingDateRange({})
+                    setFundingType("")
+                    setFundingRange([50000, 50000])
+                    setFundingRangeTouched(false)
+                  }}
+                >
                   <div className="space-y-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -1870,23 +1884,95 @@ export default function PeopleSearchPage() {
                       />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground font-medium">Funding Amount</p>
-                        <p className="text-sm">{fundingRange[0].toLocaleString()} - {fundingRange[1].toLocaleString()}</p>
-                      </div>
-                      <div className="pt-2">
-                        <Slider 
-                          value={fundingRange}
-                          onValueChange={(v:any)=> { setFundingRange([v[0], v[1]]); setFundingRangeTouched(true) }}
-                          min={0}
-                          max={1000000}
-                          step={5000}
-                          className="style-slider-thumb"
-                        />
-                      </div>
+                      {(() => {
+                        // Logarithmic scale conversion functions
+                        // Range: 50,000 to 100,000,000 (50K to 100M)
+                        const MIN_FUNDING = 50000
+                        const MAX_FUNDING = 100000000
+                        const SLIDER_MAX = 100
+                        
+                        // Convert real value to slider position (0-100)
+                        const realToSlider = (value: number): number => {
+                          if (value <= MIN_FUNDING) return 0
+                          if (value >= MAX_FUNDING) return SLIDER_MAX
+                          const logMin = Math.log10(MIN_FUNDING)
+                          const logMax = Math.log10(MAX_FUNDING)
+                          const logValue = Math.log10(value)
+                          return ((logValue - logMin) / (logMax - logMin)) * SLIDER_MAX
+                        }
+                        
+                        // Convert slider position (0-100) to real value
+                        const sliderToReal = (sliderValue: number): number => {
+                          if (sliderValue <= 0) return MIN_FUNDING
+                          if (sliderValue >= SLIDER_MAX) return MAX_FUNDING
+                          const logMin = Math.log10(MIN_FUNDING)
+                          const logMax = Math.log10(MAX_FUNDING)
+                          const logValue = logMin + (sliderValue / SLIDER_MAX) * (logMax - logMin)
+                          return Math.round(Math.pow(10, logValue))
+                        }
+                        
+                        // Current slider positions
+                        const sliderValues: [number, number] = [
+                          realToSlider(fundingRange[0]),
+                          realToSlider(fundingRange[1])
+                        ]
+                        
+                        return (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm text-muted-foreground font-medium">Funding Amount</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm">{fundingRange[0].toLocaleString()} - {fundingRange[1].toLocaleString()}</p>
+                                {fundingRangeTouched && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFundingRange([50000, 50000])
+                                      setFundingRangeTouched(false)
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground transition-colors"
+                                    aria-label="Clear funding amount"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="pt-2">
+                              <Slider 
+                                value={sliderValues}
+                                onValueChange={(v: number[]) => { 
+                                  const realValues: [number, number] = [
+                                    sliderToReal(v[0]),
+                                    sliderToReal(v[1])
+                                  ]
+                                  setFundingRange(realValues)
+                                  setFundingRangeTouched(true) 
+                                }}
+                                min={0}
+                                max={SLIDER_MAX}
+                                step={0.5}
+                                className="style-slider-thumb"
+                              />
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Funding Type</p>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-xs text-muted-foreground">Funding Type</p>
+                        {fundingType && (
+                          <button
+                            type="button"
+                            onClick={() => setFundingType("")}
+                            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Clear funding type"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                       <Select value={fundingType} onValueChange={setFundingType}>
                         <SelectTrigger className="h-10"><SelectValue placeholder="Select type" /></SelectTrigger>
                         <SelectContent>
