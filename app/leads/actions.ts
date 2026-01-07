@@ -31,7 +31,7 @@ const LeadSchema = z.object({
     position: z.string().nullable(),
     segment_id: z.string().nullable(),
     campaign_id: z.string().nullable(),
-    status: z.enum(["new", "contacted", "qualified", "converted", "lost"]),
+    status: z.enum(["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"]),
     notes: z.string().nullable(),
     origin: z.string().nullable(),
     created_at: z.string(),
@@ -101,7 +101,7 @@ const SingleLeadSchema = z.object({
     position: z.string().nullable(),
     segment_id: z.string().nullable(),
     campaign_id: z.string().nullable(),
-    status: z.enum(["new", "contacted", "qualified", "converted", "lost"]),
+    status: z.enum(["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"]),
     notes: z.string().nullable(),
     origin: z.string().nullable(),
     created_at: z.string(),
@@ -327,7 +327,7 @@ const CreateLeadSchema = z.object({
   company_id: z.string().optional(),
   position: z.string().optional(),
   segment_id: z.string().optional(),
-  status: z.enum(["new", "contacted", "qualified", "converted", "lost"]).default("new"),
+  status: z.enum(["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"]).default("new"),
   notes: z.string().optional(),
   origin: z.string().optional(),
   site_id: z.string().min(1, "Site ID is required"),
@@ -388,7 +388,7 @@ const UpdateLeadSchema = z.object({
   position: z.string().optional().nullable(),
   campaign_id: z.string().optional().nullable(),
   segment_id: z.string().optional().nullable(),
-  status: z.enum(["new", "contacted", "qualified", "converted", "lost"]),
+  status: z.enum(["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"]),
   notes: z.string().optional().nullable(),
   origin: z.string().optional().nullable(),
   site_id: z.string().min(1, "Site ID is required"),
@@ -949,7 +949,7 @@ export async function importLeads(leads: Partial<Lead>[], siteId: string) {
         }
         
         // Validate status
-        const validStatuses = ['new', 'contacted', 'qualified', 'converted', 'lost']
+        const validStatuses = ['new', 'contacted', 'qualified', 'cold', 'converted', 'lost', 'not_qualified']
         if (lead.status && !validStatuses.includes(lead.status as string)) {
           errors.push(`Row ${rowNumber}: Invalid status "${lead.status}"`)
           return null
@@ -966,7 +966,7 @@ export async function importLeads(leads: Partial<Lead>[], siteId: string) {
           company: typeof lead.company === 'string' ? { name: lead.company } : lead.company || null,
           position: lead.position || null,
           segment_id: lead.segment_id || null,
-          status: (lead.status as "new" | "contacted" | "qualified" | "converted" | "lost") || 'new',
+          status: (lead.status as "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified") || 'new',
           origin: lead.origin || null,
           notes: lead.notes || null,
           birthday: lead.birthday || null,

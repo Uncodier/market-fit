@@ -84,7 +84,7 @@ interface LeadDetailProps {
   onClose: () => void
   onDeleteLead?: (id: string) => Promise<void>
   hideStatus?: boolean
-  onStatusChange?: (status: "new" | "contacted" | "qualified" | "converted" | "lost") => void
+  onStatusChange?: (status: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified") => void
 }
 
 export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, onDeleteLead, hideStatus = false, onStatusChange }: LeadDetailProps) {
@@ -483,7 +483,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     }
   }
 
-  const handleStatusChange = (value: "new" | "contacted" | "qualified" | "converted" | "lost") => {
+  const handleStatusChange = (value: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified") => {
     if (onStatusChange) {
       // Use custom status change handler if provided
       onStatusChange(value)
@@ -507,7 +507,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                   <p className="text-xs text-muted-foreground">Status</p>
                   <Select 
                     value={editForm.status}
-                    onValueChange={(value: "new" | "contacted" | "qualified" | "converted" | "lost") => 
+                    onValueChange={(value: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified") => 
                       setEditForm({...editForm, status: value})
                     }
                   >
@@ -518,8 +518,10 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                       <SelectItem value="new">New</SelectItem>
                       <SelectItem value="contacted">Contacted</SelectItem>
                       <SelectItem value="qualified">Qualified</SelectItem>
+                      <SelectItem value="cold">Cold</SelectItem>
                       <SelectItem value="converted">Converted</SelectItem>
                       <SelectItem value="lost">Lost</SelectItem>
+                      <SelectItem value="not_qualified">Not Qualified</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -539,15 +541,17 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
                   >
                     <SelectTrigger className="h-8 text-sm border-none p-0 shadow-none hover:bg-transparent focus:ring-0 max-w-full">
                       <Badge className={`text-xs ${STATUS_STYLES[lead.status]} truncate`}>
-                        {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                        {lead.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                       </Badge>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="new">New</SelectItem>
                       <SelectItem value="contacted">Contacted</SelectItem>
                       <SelectItem value="qualified">Qualified</SelectItem>
+                      <SelectItem value="cold">Cold</SelectItem>
                       <SelectItem value="converted">Converted</SelectItem>
                       <SelectItem value="lost">Lost</SelectItem>
+                      <SelectItem value="not_qualified">Not Qualified</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

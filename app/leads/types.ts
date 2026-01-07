@@ -40,7 +40,7 @@ export interface Lead {
   position: string | null
   segment_id: string | null
   campaign_id: string | null
-  status: "new" | "contacted" | "qualified" | "converted" | "lost"
+  status: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified"
   created_at: string
   origin: string | null
   birthday: string | null
@@ -179,16 +179,20 @@ export const STATUS_STYLES = {
   new: "bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200",
   contacted: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-200",
   qualified: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200 border border-indigo-200",
+  cold: "bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200",
   converted: "bg-green-100 text-green-800 hover:bg-green-200 border border-green-200",
-  lost: "bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200"
+  lost: "bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200",
+  not_qualified: "bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-200"
 }
 
 export const LEAD_STATUSES = [
   { id: 'new', name: 'New' },
   { id: 'contacted', name: 'Contacted' },
   { id: 'qualified', name: 'Qualified' },
+  { id: 'cold', name: 'Cold' },
   { id: 'converted', name: 'Converted' },
-  { id: 'lost', name: 'Lost' }
+  { id: 'lost', name: 'Lost' },
+  { id: 'not_qualified', name: 'Not Qualified' }
 ]
 
 // Nuevo tipo para Lead con Company expandida

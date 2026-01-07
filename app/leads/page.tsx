@@ -336,8 +336,10 @@ export default function LeadsPage() {
     new: { page: 1, hasMore: true, isLoading: false },
     contacted: { page: 1, hasMore: true, isLoading: false },
     qualified: { page: 1, hasMore: true, isLoading: false },
+    cold: { page: 1, hasMore: true, isLoading: false },
     converted: { page: 1, hasMore: true, isLoading: false },
-    lost: { page: 1, hasMore: true, isLoading: false }
+    lost: { page: 1, hasMore: true, isLoading: false },
+    not_qualified: { page: 1, hasMore: true, isLoading: false }
   })
 
   // Total counts for each status from the database
@@ -345,8 +347,10 @@ export default function LeadsPage() {
     new: 0,
     contacted: 0,
     qualified: 0,
+    cold: 0,
     converted: 0,
-    lost: 0
+    lost: 0,
+    not_qualified: 0
   })
   
   // Get unique assignee IDs from leads
@@ -477,7 +481,7 @@ export default function LeadsPage() {
 
     try {
       const supabase = createClient()
-      const statuses = ['new', 'contacted', 'qualified', 'converted', 'lost']
+      const statuses = ['new', 'contacted', 'qualified', 'cold', 'converted', 'lost', 'not_qualified']
       const counts: Record<string, number> = {}
 
       // Fetch count for each status
@@ -503,8 +507,10 @@ export default function LeadsPage() {
         new: { page: 1, hasMore: counts.new > 50, isLoading: false },
         contacted: { page: 1, hasMore: counts.contacted > 50, isLoading: false },
         qualified: { page: 1, hasMore: counts.qualified > 50, isLoading: false },
+        cold: { page: 1, hasMore: counts.cold > 50, isLoading: false },
         converted: { page: 1, hasMore: counts.converted > 50, isLoading: false },
-        lost: { page: 1, hasMore: counts.lost > 50, isLoading: false }
+        lost: { page: 1, hasMore: counts.lost > 50, isLoading: false },
+        not_qualified: { page: 1, hasMore: counts.not_qualified > 50, isLoading: false }
       })
     } catch (error) {
       console.error("Error loading total counts:", error)
@@ -1329,8 +1335,10 @@ export default function LeadsPage() {
                   <TabsTrigger value="new" className="text-sm font-medium">New</TabsTrigger>
                   <TabsTrigger value="contacted" className="text-sm font-medium">Contacted</TabsTrigger>
                   <TabsTrigger value="qualified" className="text-sm font-medium">Qualified</TabsTrigger>
+                  <TabsTrigger value="cold" className="text-sm font-medium">Cold</TabsTrigger>
                   <TabsTrigger value="converted" className="text-sm font-medium">Converted</TabsTrigger>
                   <TabsTrigger value="lost" className="text-sm font-medium">Lost</TabsTrigger>
+                  <TabsTrigger value="not_qualified" className="text-sm font-medium">Not Qualified</TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input 
@@ -1370,7 +1378,7 @@ export default function LeadsPage() {
               <LeadsTableSkeleton />
             ) : (
               <>
-                {["all", "new", "contacted", "qualified", "converted", "lost"].map(tabValue => (
+                {["all", "new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"].map(tabValue => (
                   <TabsContent key={tabValue} value={tabValue} className="space-y-4">
                   {viewType === "table" ? (
                       <GroupedLeadsTable

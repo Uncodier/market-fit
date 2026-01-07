@@ -50,7 +50,7 @@ export function LeadFilterModal({
   filters,
   onApplyFilters,
   segments,
-  statusOptions = ["new", "contacted", "qualified", "converted", "lost"],
+  statusOptions = ["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"],
   originOptions = ["website", "referral", "social", "email", "phone", "other"],
   journeyStageOptions = [
     { id: "not_contacted", label: "Unaware" },
@@ -184,10 +184,14 @@ export function LeadFilterModal({
         return <MessageSquare className="h-4 w-4 text-yellow-500" />
       case "qualified":
         return <CheckCircle2 className="h-4 w-4 text-purple-500" />
+      case "cold":
+        return <Tag className="h-4 w-4 text-slate-500" />
       case "converted":
         return <CheckCircle2 className="h-4 w-4 text-green-500" />
       case "lost":
         return <Ban className="h-4 w-4 text-red-500" />
+      case "not_qualified":
+        return <Ban className="h-4 w-4 text-orange-500" />
       default:
         return <Tag className="h-4 w-4" />
     }
@@ -220,10 +224,14 @@ export function LeadFilterModal({
         return "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-yellow-200"
       case "qualified":
         return "bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200"
+      case "cold":
+        return "bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200"
       case "converted":
         return "bg-green-100 text-green-700 hover:bg-green-100 border-green-200"
       case "lost":
         return "bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
+      case "not_qualified":
+        return "bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200"
       default:
         return "bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200"
     }
@@ -329,7 +337,7 @@ export function LeadFilterModal({
                         className="flex items-center gap-1.5 cursor-pointer"
                       >
                         {getStatusIcon(status)}
-                        <span className="capitalize">{status}</span>
+                        <span className="capitalize">{status.replace('_', ' ')}</span>
                       </Label>
                     </div>
                   ))}

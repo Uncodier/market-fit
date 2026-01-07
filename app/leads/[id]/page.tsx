@@ -35,7 +35,7 @@ export default function LeadDetailPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [showAttributionModal, setShowAttributionModal] = useState(false)
-  const [pendingStatus, setPendingStatus] = useState<"new" | "contacted" | "qualified" | "converted" | "lost" | null>(null)
+  const [pendingStatus, setPendingStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified" | null>(null)
   
   // Extract id safely from params
   const leadId = Array.isArray(params.id) ? params.id[0] : params.id
@@ -243,7 +243,7 @@ export default function LeadDetailPage() {
   }
   
   // Handler for status change
-  const handleStatusChange = (status: "new" | "contacted" | "qualified" | "converted" | "lost") => {
+  const handleStatusChange = (status: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified") => {
     if (status === "converted" || status === "lost") {
       // Show attribution modal for conversion or loss
       setPendingStatus(status)

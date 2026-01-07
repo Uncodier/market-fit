@@ -54,7 +54,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
   const [company, setCompany] = useState("")
   const [position, setPosition] = useState("")
   const [segmentId, setSegmentId] = useState("")
-  const [status, setStatus] = useState<"new" | "contacted" | "qualified" | "converted" | "lost">("new")
+  const [status, setStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified">("new")
   const [notes, setNotes] = useState("")
   const [origin, setOrigin] = useState("Campaign")
   const [error, setError] = useState<string | null>(null)
@@ -152,8 +152,10 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
     { value: "new", label: "New" },
     { value: "contacted", label: "Contacted" },
     { value: "qualified", label: "Qualified" },
+    { value: "cold", label: "Cold" },
     { value: "converted", label: "Converted" },
-    { value: "lost", label: "Lost" }
+    { value: "lost", label: "Lost" },
+    { value: "not_qualified", label: "Not Qualified" }
   ]
 
   return (
@@ -359,7 +361,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
               <div className="relative">
                 <Select 
                   value={status} 
-                  onValueChange={(value) => setStatus(value as "new" | "contacted" | "qualified" | "converted" | "lost")}
+                  onValueChange={(value) => setStatus(value as "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified")}
                 >
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select status" />

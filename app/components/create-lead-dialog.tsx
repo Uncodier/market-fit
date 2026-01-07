@@ -53,7 +53,7 @@ interface CreateLeadDialogProps {
     position?: string
     segment_id?: string
     campaign_id?: string
-    status?: "new" | "contacted" | "qualified" | "converted" | "lost"
+    status?: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified"
     notes?: string
     origin?: string
     site_id: string
@@ -72,7 +72,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
   const [position, setPosition] = useState("")
   const [segmentId, setSegmentId] = useState("")
   const [campaignId, setCampaignId] = useState("")
-  const [status, setStatus] = useState<"new" | "contacted" | "qualified" | "converted" | "lost">("new")
+  const [status, setStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified">("new")
   const [notes, setNotes] = useState("")
   const [origin, setOrigin] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -142,8 +142,10 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
     { value: "new", label: "New" },
     { value: "contacted", label: "Contacted" },
     { value: "qualified", label: "Qualified" },
+    { value: "cold", label: "Cold" },
     { value: "converted", label: "Converted" },
-    { value: "lost", label: "Lost" }
+    { value: "lost", label: "Lost" },
+    { value: "not_qualified", label: "Not Qualified" }
   ]
 
   return (

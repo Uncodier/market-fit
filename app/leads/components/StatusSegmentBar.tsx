@@ -3,8 +3,8 @@ import { Badge } from "@/app/components/ui/badge";
 import { LEAD_STATUSES, STATUS_STYLES } from "@/app/leads/types";
 
 interface StatusSegmentBarProps {
-  currentStatus: "new" | "contacted" | "qualified" | "converted" | "lost";
-  onStatusChange: (status: "new" | "contacted" | "qualified" | "converted" | "lost") => void;
+  currentStatus: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified";
+  onStatusChange: (status: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified") => void;
 }
 
 export function StatusSegmentBar({ currentStatus, onStatusChange }: StatusSegmentBarProps) {
@@ -20,7 +20,7 @@ export function StatusSegmentBar({ currentStatus, onStatusChange }: StatusSegmen
                 ? STATUS_STYLES[status.id] 
                 : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border border border-transparent'
             }`}
-            onClick={() => onStatusChange(status.id as "new" | "contacted" | "qualified" | "converted" | "lost")}
+            onClick={() => onStatusChange(status.id as "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified")}
           >
             {status.name}
           </Badge>

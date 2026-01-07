@@ -30,8 +30,10 @@ const LEAD_STATUSES = [
   { id: 'new', name: 'New' },
   { id: 'contacted', name: 'Contacted' },
   { id: 'qualified', name: 'Qualified' },
+  { id: 'cold', name: 'Cold' },
   { id: 'converted', name: 'Converted' },
-  { id: 'lost', name: 'Lost' }
+  { id: 'lost', name: 'Lost' },
+  { id: 'not_qualified', name: 'Not Qualified' }
 ]
 
 // Colores para los diferentes estados
@@ -39,8 +41,10 @@ const STATUS_COLORS: Record<string, string> = {
   new: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   contacted: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
   qualified: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  cold: 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300',
   converted: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  lost: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+  lost: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  not_qualified: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
 }
 
 // Colores para las etapas del journey
