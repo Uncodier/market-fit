@@ -21,3 +21,4 @@ CHECK (status = ANY (ARRAY[
 -- Add comment to document the status values
 COMMENT ON COLUMN public.leads.status IS 'Lead status: new, contacted, qualified, cold, converted, lost, not_qualified';
 
+

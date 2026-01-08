@@ -1740,7 +1740,7 @@ export function ChatMessages({
                       ) : (
                         <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0">
                         <div 
-                            className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground group overflow-hidden ${
+                            className={`rounded-lg px-4 pt-4 pb-2 transition-all duration-300 ease-in-out text-foreground group overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
                           }`}
                           style={{ 
@@ -1754,8 +1754,8 @@ export function ChatMessages({
                           }}
                         >
                           {renderMessageContent(msg, markdownComponents)}
-                          <div className="flex items-center justify-between mt-1.5">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center mt-2">
+                            <div className="flex items-center gap-2 flex-1">
                               {msg.metadata?.status === "pending" && (
                                   <TooltipProvider>
                                     <Tooltip>
@@ -1823,9 +1823,23 @@ export function ChatMessages({
                                 </>
                               )}
                             </div>
-                            <p className="text-xs opacity-70">
-                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </p>
+                            
+                            {/* Message feedback widget - center */}
+                            <div className="flex items-center justify-center flex-1">
+                              {msg.command_id && (
+                                <MessageFeedback 
+                                  messageId={String(msg.id || index)} 
+                                  commandId={msg.command_id} 
+                                  agentId={agentId} 
+                                />
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center justify-end flex-1">
+                              <p className="text-xs opacity-70">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
                           </div>
                           </div>
                           <div className="flex justify-center w-full">
