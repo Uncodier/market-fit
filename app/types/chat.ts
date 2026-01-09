@@ -24,6 +24,7 @@ export interface ConversationListItem {
   leadName?: string
   channel?: 'web' | 'email' | 'whatsapp'
   status?: 'pending' | 'active' | 'closed' | 'archived'
+  hasAcceptedMessage?: boolean
 }
 
 export interface ChatMessage {

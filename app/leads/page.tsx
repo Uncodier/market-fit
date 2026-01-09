@@ -715,13 +715,6 @@ export default function LeadsPage() {
           return
         }
         
-        // Debug info before query
-        console.log('🔍 Journey stages query params:', {
-          uncachedLeadIds,
-          siteId: currentSite.id,
-          leadCount: uncachedLeadIds.length
-        })
-
         // Try a simpler query first to test connection
         let allTasks = null
         let error = null
@@ -754,12 +747,6 @@ export default function LeadsPage() {
           error = queryError
           console.error('Query execution failed:', queryError)
         }
-
-        console.log('🔍 Journey stages query result:', { 
-          dataCount: allTasks?.length,
-          hasError: !!error,
-          errorType: typeof error
-        })
         
         if (error) {
           console.warn('⚠️ Journey stages fetch failed, using fallback. Error details:', {
@@ -1096,13 +1083,6 @@ export default function LeadsPage() {
         normalized.external_organization_id = companyValue.external_organization_id
       }
       
-      console.log('🔍 normalizeCompanyField - Normalization result:', {
-        originalKeys: Object.keys(companyValue),
-        normalizedKeys: Object.keys(normalized),
-        normalizedObject: normalized,
-        hasInvalidFields: Object.keys(companyValue).some(key => !validStringFields.includes(key) && key !== 'address' && key !== 'location' && key !== 'external_organization_id')
-      })
-      
       // Handle address object
       if (companyValue.address && typeof companyValue.address === 'object' && companyValue.address !== null) {
         const normalizedAddress: any = {}
@@ -1183,17 +1163,6 @@ export default function LeadsPage() {
     try {
       const normalizedCompany = normalizeCompanyField(lead)
       
-      console.log('🔍 updateLeadDirectly - Debug info:', {
-        leadId,
-        newStatus,
-        originalCompany: lead.company,
-        normalizedCompany,
-        companyType: typeof normalizedCompany,
-        isUndefined: normalizedCompany === undefined,
-        hasCompanyId: !!lead.company_id,
-        companiesRelation: lead.companies
-      })
-      
       const updateData: any = {
         id: leadId,
         name: lead.name,
@@ -1216,17 +1185,7 @@ export default function LeadsPage() {
         updateData.attribution = attribution
       }
 
-      console.log('🔍 updateLeadDirectly - Sending updateData:', {
-        ...updateData,
-        company: updateData.company,
-        companyStringified: JSON.stringify(updateData.company),
-        hasCompanyField: 'company' in updateData,
-        companyKeys: updateData.company && typeof updateData.company === 'object' ? Object.keys(updateData.company) : 'N/A'
-      })
-
       const result = await updateLead(updateData)
-      
-      console.log('🔍 updateLeadDirectly - Result:', result)
       
       if (result.error) {
         toast.error(result.error)

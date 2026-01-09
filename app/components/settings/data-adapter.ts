@@ -266,7 +266,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
           status: emailStatus
         },
         whatsapp: {
-          enabled: Boolean(channels.whatsapp?.enabled) || Boolean(channels.whatsapp?.apiToken),
+          enabled: channels.whatsapp?.enabled ?? false,
           setupType: channels.whatsapp?.setupType,
           country: channels.whatsapp?.country,
           region: channels.whatsapp?.region,

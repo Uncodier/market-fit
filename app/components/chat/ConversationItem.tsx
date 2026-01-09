@@ -121,7 +121,10 @@ export function ConversationItem({
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2 max-w-[90%]">
             {conversation.status === 'pending' && (
-              <div className="flex-shrink-0 w-2 h-2 bg-yellow-500 rounded-full" />
+              <div className={cn(
+                "flex-shrink-0 w-2 h-2 rounded-full",
+                conversation.hasAcceptedMessage ? "bg-green-500" : "bg-yellow-500"
+              )} />
             )}
             <span className={cn(
               "font-medium text-sm truncate",

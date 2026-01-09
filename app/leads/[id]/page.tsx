@@ -170,7 +170,7 @@ export default function LeadDetailPage() {
     }
     
     try {
-      // Build updateData with explicit handling for null/empty values
+      // Build updateData - only include changed fields + id + site_id
       const updateData: any = {
         id,
         site_id: currentSite.id,
@@ -178,31 +178,13 @@ export default function LeadDetailPage() {
       
       // Handle each field explicitly to allow null/empty values
       Object.entries(data).forEach(([key, value]) => {
-        if (key !== 'id' && key !== 'attribution') {
-          // Allow explicit null/empty values
+        if (key !== 'id') {
+          // Include all fields from data (which now only contains changed fields)
           if (value !== undefined) {
             updateData[key] = value
           }
         }
       })
-      
-      // Ensure required fields have fallback values only if not explicitly provided
-      if (updateData.name === undefined) {
-        updateData.name = lead.name || ""
-      }
-      if (updateData.email === undefined) {
-        updateData.email = lead.email || ""
-      }
-      if (updateData.status === undefined) {
-        updateData.status = lead.status || "new"
-      }
-      // Don't include company field if it hasn't changed - let the server use existing value
-      // Only include it if it's explicitly provided in data
-      
-      // Only include attribution if it's explicitly provided and complete
-      if (data.attribution) {
-        updateData.attribution = data.attribution
-      }
       
       const result = await updateLead(updateData)
       

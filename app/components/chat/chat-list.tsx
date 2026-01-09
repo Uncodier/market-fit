@@ -624,6 +624,29 @@ export function ChatList({
     }
   }, [selectedConversationId, router])
 
+  // Listen for message accepted event to update conversation icon
+  useEffect(() => {
+    const handleMessageAccepted = (event: CustomEvent) => {
+      const { conversationId: acceptedConvId } = event.detail
+      console.log('🔍 Custom conversation:message-accepted event received:', acceptedConvId)
+      
+      // Update the conversation to mark it has an accepted message
+      setConversations(prevConversations => 
+        prevConversations.map(conv => 
+          conv.id === acceptedConvId 
+            ? { ...conv, hasAcceptedMessage: true }
+            : conv
+        )
+      )
+    }
+
+    window.addEventListener('conversation:message-accepted', handleMessageAccepted as EventListener)
+    
+    return () => {
+      window.removeEventListener('conversation:message-accepted', handleMessageAccepted as EventListener)
+    }
+  }, [])
+
   // Reset conversations and reload when channel filter changes
   useEffect(() => {
     if (siteId) {

@@ -182,6 +182,57 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     assignee_id: lead.assignee_id || null
   })
 
+  // Sync editForm with lead prop when lead changes, but only when NOT editing
+  // to avoid overwriting user changes during save
+  useEffect(() => {
+    if (!isEditing) {
+      setEditForm({
+        name: lead.name,
+        email: lead.email,
+        personal_email: lead.personal_email,
+        phone: lead.phone,
+        company_id: lead.company_id,
+        company: lead.company || { 
+          name: "", 
+          website: "", 
+          industry: "", 
+          size: "",
+          annual_revenue: "",
+          founded: "",
+          description: "",
+          address: {
+            street: "",
+            city: "",
+            state: "",
+            zipcode: "",
+            country: ""
+          }
+        },
+        position: lead.position,
+        segment_id: lead.segment_id,
+        campaign_id: lead.campaign_id,
+        status: lead.status,
+        origin: lead.origin,
+        birthday: lead.birthday || null,
+        language: lead.language || null,
+        social_networks: lead.social_networks || { 
+          linkedin: "", 
+          twitter: "", 
+          facebook: "", 
+          instagram: "",
+          tiktok: "",
+          youtube: "",
+          whatsapp: "",
+          pinterest: ""
+        },
+        address: lead.address || { street: "", city: "", state: "", zipcode: "", country: "" },
+        notes: lead.notes || null,
+        attribution: lead.attribution || null,
+        assignee_id: lead.assignee_id || null
+      })
+    }
+  }, [lead, isEditing])
+
   // Load team members when component mounts
   useEffect(() => {
     if (currentSite?.id) {
@@ -450,11 +501,86 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     }
   }
   
+  // Helper function to clean an object by removing null/undefined/empty values
+  const cleanObject = (obj: any): any => {
+    if (!obj || typeof obj !== 'object') return obj
+    
+    const cleaned: any = {}
+    Object.entries(obj).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && String(value).trim() !== '') {
+        cleaned[key] = value
+      }
+    })
+    
+    return Object.keys(cleaned).length === 0 ? null : cleaned
+  }
+
+  // Helper function to deeply compare two values
+  const isValueChanged = (oldVal: any, newVal: any): boolean => {
+    // Handle null/undefined comparisons
+    if (oldVal === newVal) return false
+    if ((oldVal === null || oldVal === undefined) && (newVal === null || newVal === undefined)) return false
+    
+    // Handle objects
+    if (typeof oldVal === 'object' && typeof newVal === 'object') {
+      if (oldVal === null || newVal === null) return oldVal !== newVal
+      
+      // For objects, do a deep comparison
+      const oldStr = JSON.stringify(oldVal)
+      const newStr = JSON.stringify(newVal)
+      return oldStr !== newStr
+    }
+    
+    // For primitives
+    return oldVal !== newVal
+  }
+  
   // Función para guardar los cambios
   const handleSaveChanges = async () => {
     setIsSaving(true)
     try {
-      await onUpdateLead(lead.id, editForm)
+      // Only send fields that actually changed
+      const changedFields: any = {}
+      
+      // Check each field for changes
+      Object.keys(editForm).forEach((key) => {
+        const oldValue = lead[key as keyof Lead]
+        const newValue = editForm[key as keyof typeof editForm]
+        
+        if (isValueChanged(oldValue, newValue)) {
+          // For object fields, clean them before including
+          if (key === 'company' && newValue && typeof newValue === 'object') {
+            const companyObj = newValue as any
+            const cleanedCompany: any = {}
+            
+            Object.entries(companyObj).forEach(([compKey, compValue]) => {
+              if (compKey === 'address' && typeof compValue === 'object' && compValue !== null) {
+                const cleanedAddr = cleanObject(compValue)
+                if (cleanedAddr) cleanedCompany.address = cleanedAddr
+              } else if (compValue !== null && compValue !== undefined && String(compValue).trim() !== '') {
+                cleanedCompany[compKey] = compValue
+              }
+            })
+            
+            changedFields[key] = Object.keys(cleanedCompany).length === 0 ? null : cleanedCompany
+          } else if (key === 'social_networks' && newValue && typeof newValue === 'object') {
+            changedFields[key] = cleanObject(newValue)
+          } else if (key === 'address' && newValue && typeof newValue === 'object') {
+            changedFields[key] = cleanObject(newValue)
+          } else {
+            changedFields[key] = newValue
+          }
+        }
+      })
+      
+      // If no fields changed, just exit edit mode
+      if (Object.keys(changedFields).length === 0) {
+        setIsEditing(false)
+        toast.success("No changes to save")
+        return
+      }
+      
+      await onUpdateLead(lead.id, changedFields)
       setIsEditing(false)
       toast.success("Lead updated successfully")
     } catch (error) {

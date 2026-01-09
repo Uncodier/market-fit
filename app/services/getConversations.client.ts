@@ -54,7 +54,8 @@ export async function getConversations(
         content,
         created_at,
         role,
-        user_id
+        user_id,
+        custom_data
       ),
       leads (
         assignee_id
@@ -299,6 +300,11 @@ export async function getConversations(
       let channel = customData.channel || 'web'
       if (channel === 'website_chat') channel = 'web'
 
+      // Check if any message has accepted status
+      const hasAcceptedMessage = conv.messages && conv.messages.some((msg: any) => 
+        msg.custom_data && msg.custom_data.status === 'accepted'
+      )
+
       return {
         id: conv.id || "",
         title,
@@ -309,7 +315,8 @@ export async function getConversations(
         timestamp: new Date(messageDate),
         messageCount: conv.messages?.length || 0,
         channel: (channel as 'web' | 'email' | 'whatsapp') || 'web',
-        status: conv.status || 'active'
+        status: conv.status || 'active',
+        hasAcceptedMessage: hasAcceptedMessage || false
       }
     })
   } catch (error) {

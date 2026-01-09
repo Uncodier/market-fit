@@ -856,6 +856,13 @@ export function ChatMessages({
         onMessagesUpdate(updatedMessages)
       }
       
+      // 3. Emit event to update conversation list icon
+      if (conversationId) {
+        window.dispatchEvent(new CustomEvent('conversation:message-accepted', {
+          detail: { conversationId }
+        }))
+      }
+      
       toast.success("Message accepted")
 
     } catch (error) {

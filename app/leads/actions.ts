@@ -358,7 +358,7 @@ export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
 // Schema para validar los datos de entrada al actualizar un lead
 const UpdateLeadSchema = z.object({
   id: z.string().min(1, "ID is required"),
-  name: z.string().optional(),
+  name: z.string().min(1).optional(),
   email: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
   personal_email: z.union([z.string().email(), z.literal(""), z.null()]).optional().nullable(),
   phone: z.string().optional().nullable(),
@@ -388,7 +388,7 @@ const UpdateLeadSchema = z.object({
   position: z.string().optional().nullable(),
   campaign_id: z.string().optional().nullable(),
   segment_id: z.string().optional().nullable(),
-  status: z.enum(["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"]),
+  status: z.enum(["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"]).optional(),
   notes: z.string().optional().nullable(),
   origin: z.string().optional().nullable(),
   site_id: z.string().min(1, "Site ID is required"),
@@ -517,7 +517,7 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
     return { leads: data || [] }
   } catch (error) {
     console.error("Error loading leads:", error)
-    return { error: "Error al cargar los leads", leads: [] }
+    return { error: "Error loading leads", leads: [] }
   }
 }
 
@@ -671,50 +671,44 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
       return { error: "User not authenticated" }
     }
     
-    console.log('🔍 updateLead (server) - Received data:', {
-      id: data.id,
-      status: data.status,
-      company: data.company,
-      companyType: typeof data.company,
-      companyValue: JSON.stringify(data.company),
-      hasCompanyId: !!data.company_id
-    })
-    
     // Only validate attribution strictly when changing status to "converted"
     if (data.status === "converted" && data.attribution) {
       // Full validation when converting lead with attribution
-      console.log('🔍 updateLead (server) - Validating with full schema (converted)')
       UpdateLeadSchema.parse(data)
     } else {
       // Skip attribution validation for other updates
       const { attribution, ...dataWithoutAttribution } = data
-      console.log('🔍 updateLead (server) - Validating without attribution:', {
-        ...dataWithoutAttribution,
-        company: dataWithoutAttribution.company,
-        companyType: typeof dataWithoutAttribution.company
-      })
       UpdateLeadSchema.omit({ attribution: true }).parse(dataWithoutAttribution)
     }
     
-    // Handle company creation/lookup if needed
-    const { company_id, error: companyError } = await handleCompanyForLead(data)
-    if (companyError) {
-      return { error: companyError }
+    // Handle company creation/lookup if needed (only if company field is present)
+    let company_id = undefined
+    let companyError = null
+    
+    if ('company' in data) {
+      const result = await handleCompanyForLead(data)
+      company_id = result.company_id
+      companyError = result.error
+      
+      if (companyError) {
+        return { error: companyError }
+      }
     }
     
-    // Extract ID for the condition
-    const { id, ...updateData } = data
+    // Extract ID and site_id for the WHERE condition (security: ensure we only update leads from the correct site)
+    const { id, site_id, ...updateData } = data
     
     // Add company_id to update data if it was determined
     if (company_id !== undefined) {
       updateData.company_id = company_id
     }
     
-    // Update the lead
+    // Update the lead - filter by both id AND site_id for security (defense in depth)
     const { error } = await supabase
       .from("leads")
       .update(updateData)
       .eq("id", id)
+      .eq("site_id", site_id)
     
     if (error) {
       console.error("Error updating lead:", error)
@@ -729,7 +723,7 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
     }
     
     console.error("Error in updateLead:", error)
-    return { error: "Error al actualizar el lead" }
+    return { error: "Error updating lead" }
   }
 }
 
