@@ -98,13 +98,13 @@ export function ChatHeader({
       />
       
       <div className={cn(
-        "max-w-[calc(100%-240px)] mx-auto w-full flex items-center justify-between transition-all duration-300 ease-in-out"
+        "max-w-[calc(100%-240px)] mx-auto w-full flex items-center justify-between transition-all duration-300 ease-in-out gap-4"
       )}>
         {/* Agent/Assignee info - only shown when a conversation is selected */}
         {hasSelectedConversation && (
-          <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out">
+          <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out min-w-0 flex-1">
             <Avatar className={cn(
-              "h-12 w-12 border-2 transition-transform duration-300 ease-in-out",
+              "h-12 w-12 border-2 transition-transform duration-300 ease-in-out flex-shrink-0",
               hasAssignee ? "border-blue-500/20" : "border-primary/10"
             )}>
               <AvatarImage src={leftSideAvatar} alt={leftSideDisplayName} />
@@ -114,16 +114,16 @@ export function ChatHeader({
                 {leftSideAvatarFallback}
               </AvatarFallback>
             </Avatar>
-            <div className="transition-transform duration-300 ease-in-out">
-              <div className="flex items-center gap-2">
+            <div className="transition-transform duration-300 ease-in-out min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0">
                 {!hasAssignee && (
-                  <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-primary/10 text-primary border-primary/20">
+                  <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-primary/10 text-primary border-primary/20 flex-shrink-0">
                     Agent
                   </Badge>
                 )}
-                <h2 className="font-medium text-lg">{leftSideDisplayName}</h2>
+                <h2 className="font-medium text-lg truncate">{leftSideDisplayName}</h2>
                 {hasAssignee && (
-                  <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                  <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-blue-500/10 text-blue-600 border-blue-500/20 flex-shrink-0">
                     Assigned
                   </Badge>
                 )}
@@ -134,16 +134,16 @@ export function ChatHeader({
         
         {/* Visitor/Lead info - only shown when not loading, not agent-only conversation, and a conversation is selected */}
         {!isLoadingLead && !isAgentOnlyConversation && hasSelectedConversation && (
-          <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out">
-            <div className="transition-transform duration-300 ease-in-out text-right">
-              <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out min-w-0 flex-1 justify-end">
+            <div className="transition-transform duration-300 ease-in-out text-right min-w-0 flex-1">
+              <div className="flex items-center gap-2 justify-end min-w-0">
                 {isLead ? (
                   <NavigationLink 
                     href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`} 
-                    className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer min-w-0 flex-1 justify-end"
                   >
-                    <h2 className="font-medium text-lg">{truncateLeadName(leadData.name)}</h2>
-                    <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-amber-500/10 text-amber-600 border-amber-500/20">
+                    <h2 className="font-medium text-lg truncate">{truncateLeadName(leadData.name)}</h2>
+                    <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-amber-500/10 text-amber-600 border-amber-500/20 flex-shrink-0 truncate max-w-[200px]">
                       {leadData.company?.name 
                         ? (leadData.company.name.length > 20 
                            ? leadData.company.name.substring(0, 20) + "..." 
@@ -152,9 +152,9 @@ export function ChatHeader({
                     </Badge>
                   </NavigationLink>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-medium text-lg">Visitor</h2>
-                    <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h2 className="font-medium text-lg truncate">Visitor</h2>
+                    <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 flex-shrink-0">
                       Visitor
                     </Badge>
                   </div>
@@ -164,7 +164,7 @@ export function ChatHeader({
             {isLead ? (
               <NavigationLink 
                 href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`} 
-                className="hover:opacity-80 transition-opacity"
+                className="hover:opacity-80 transition-opacity flex-shrink-0"
               >
                 <Avatar className="h-12 w-12 border-2 border-amber-500/20 transition-transform duration-300 ease-in-out">
                   <AvatarImage src={leadData.avatarUrl} alt={leadData.name} />
@@ -174,7 +174,7 @@ export function ChatHeader({
                 </Avatar>
               </NavigationLink>
             ) : (
-              <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out">
+              <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out flex-shrink-0">
                 <AvatarImage src={undefined} alt="Visitor" />
                 <AvatarFallback className="bg-primary/10">
                   V

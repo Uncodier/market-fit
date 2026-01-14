@@ -202,7 +202,7 @@ export function QuickNav({ sections, className }: QuickNavProps) {
       <button
         onClick={() => handleSectionClick(section.id)}
         className={cn(
-          "w-full text-left py-2 transition-colors relative rounded-md",
+          "w-full text-left py-2 transition-colors relative rounded-md flex items-center",
           isChild ? "pl-6 pr-3 text-xs" : "px-3 text-sm",
           activeSection === section.id
             ? "text-primary font-medium"
@@ -211,10 +211,10 @@ export function QuickNav({ sections, className }: QuickNavProps) {
               : "text-muted-foreground hover:text-foreground hover:bg-muted"
         )}
       >
-        <div className="flex items-center gap-2">
-          {isChild && <span className="text-[6px] text-muted-foreground/60">●</span>}
-          {section.icon && <span className="text-base">{section.icon}</span>}
-          <span className="truncate">{section.title}</span>
+        <div className="flex items-center gap-2 w-full">
+          {isChild && <span className="text-[6px] text-muted-foreground/60 flex-shrink-0">●</span>}
+          {section.icon && <span className="text-base flex-shrink-0">{section.icon}</span>}
+          <span className="truncate text-left">{section.title}</span>
         </div>
         {activeSection === section.id && (
           <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary rounded-r" />
@@ -234,7 +234,7 @@ export function QuickNav({ sections, className }: QuickNavProps) {
     <div className={cn("hidden xl:block w-[240px] flex-shrink-0", className)}>
       <div className="sticky top-[167px] w-[240px] max-h-[calc(100vh-200px)] overflow-y-auto">
         <div className="space-y-1">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 text-left">
             On this page
           </h4>
           <nav className="space-y-1">
