@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import { Button } from "../ui/button"
-import Link from "next/link"
+import { NavigationLink } from "./NavigationLink"
 import { 
   ChevronRight,
   PanelLeftClose,
@@ -11,6 +11,7 @@ import {
 import { HelpButton } from "../ui/help-button"
 import { useEffect, useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
+import { useNavigationHistory } from "@/app/hooks/use-navigation-history"
 
 interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -39,6 +40,9 @@ export function TopBarTitle({
   const [customAgentId, setCustomAgentId] = useState<string | null>(null)
   const [customAgentName, setCustomAgentName] = useState<string | null>(null)
   const [parentInfo, setParentInfo] = useState<{title: string, path: string} | null>(null)
+  
+  // Use navigation history hook
+  const { items: historyItems, navigateTo, hasHistory } = useNavigationHistory()
   
   // States for segment detail page
   const [segmentData, setSegmentData] = useState<{
@@ -160,241 +164,12 @@ export function TopBarTitle({
     };
   }, []);
 
-  // Generar breadcrumb basado en la ruta actual
-  const generateBreadcrumbItems = useCallback(() => {
-    const pathSegments = pathname.split('/').filter(Boolean);
-    
-    if (pathSegments.length <= 1) {
-      return null; // No hay necesidad de breadcrumb para rutas de primer nivel
-    }
-    
-    const breadcrumbItems = [];
-    let currentPath = '';
-    
-    // Mapeo de rutas a títulos
-    const routeTitles: Record<string, string> = {
-      'dashboard': 'Dashboard',
-      'agents': 'Agents',
-      'segments': 'Segments',
-      'experiments': 'Experiments',
-      'requirements': 'Requirements',
-      'leads': 'Leads',
-      'assets': 'Assets',
-      'content': 'Content',
-      'settings': 'Settings',
-      'profile': 'Profile',
-      'help': 'Help',
-      'chat': 'Chat',
-      'campaigns': 'Campaigns',
-      'control-center': 'Control Center',
-      'billing': 'Billing'
-    };
-    
-    // Manejar casos especiales como chat con parámetros de consulta
-    if (pathSegments[0] === 'chat') {
-      // Usar los datos personalizados del agente si están disponibles
-      if (customAgentId && customAgentName) {
-        breadcrumbItems.push({
-          href: '/agents',
-          label: 'Agents',
-          isCurrent: false
-        });
-        
-        breadcrumbItems.push({
-          href: `/agents/${customAgentId}`,
-          label: decodeURIComponent(customAgentName),
-          isCurrent: false
-        });
-        
-        breadcrumbItems.push({
-          href: pathname + window.location.search,
-          label: 'Chat',
-          isCurrent: true
-        });
-        
-        return breadcrumbItems;
-      }
-      
-      // Fallback al comportamiento anterior
-      const urlSearchParams = new URLSearchParams(searchParams);
-      const agentId = urlSearchParams.get('agentId');
-      const agentName = urlSearchParams.get('agentName');
-      
-      breadcrumbItems.push({
-        href: '/agents',
-        label: 'Agents',
-        isCurrent: false
-      });
-      
-      if (agentId && agentName) {
-        breadcrumbItems.push({
-          href: `/agents/${agentId}`,
-          label: decodeURIComponent(agentName),
-          isCurrent: false
-        });
-      }
-      
-      breadcrumbItems.push({
-        href: pathname + searchParams,
-        label: 'Chat',
-        isCurrent: true
-      });
-      
-      return breadcrumbItems;
-    }
-    
-    // Manejar caso especial para la página de detalle del agente
-    if (pathSegments[0] === 'agents' && pathSegments.length === 2) {
-      breadcrumbItems.push({
-        href: '/agents',
-        label: 'Agents',
-        isCurrent: false
-      });
-      
-      // Usar el título personalizado si está disponible
-      breadcrumbItems.push({
-        href: `/${pathSegments[0]}/${pathSegments[1]}`,
-        label: customTitle || 'Agent Details',
-        isCurrent: true
-      });
-      
-      return breadcrumbItems;
-    }
-    
-    // Manejar caso especial para comandos de agentes
-    if (pathSegments[0] === 'agents' && pathSegments.length === 3) {
-      breadcrumbItems.push({
-        href: '/agents',
-        label: 'Agents',
-        isCurrent: false
-      });
-      
-      // Usar la información del parent si está disponible
-      if (parentInfo) {
-        breadcrumbItems.push({
-          href: parentInfo.path,
-          label: parentInfo.title,
-          isCurrent: false
-        });
-      } else {
-        // Fallback a un título genérico para el agente
-        breadcrumbItems.push({
-          href: `/agents/${pathSegments[1]}`,
-          label: 'Agent',
-          isCurrent: false
-        });
-      }
-      
-      // Usar el título personalizado para el comando
-      breadcrumbItems.push({
-        href: `/${pathSegments[0]}/${pathSegments[1]}/${pathSegments[2]}`,
-        label: customTitle || 'Command Details',
-        isCurrent: true
-      });
-      
-      return breadcrumbItems;
-    }
-    
-    // Manejar caso especial para la página de detalle del segmento
-    if (pathSegments[0] === 'segments' && pathSegments.length === 2) {
-      breadcrumbItems.push({
-        href: '/segments',
-        label: 'Segments',
-        isCurrent: false
-      });
-      
-      // Usar el título personalizado si está disponible
-      breadcrumbItems.push({
-        href: `/${pathSegments[0]}/${pathSegments[1]}`,
-        label: customTitle || 'Segment Details',
-        isCurrent: true
-      });
-      
-      return breadcrumbItems;
-    }
-    
-    // Manejar caso especial para la página de detalle del lead
-    if (pathSegments[0] === 'leads' && pathSegments.length === 2) {
-      breadcrumbItems.push({
-        href: '/leads',
-        label: 'Leads',
-        isCurrent: false
-      });
-      
-      // Usar el título personalizado si está disponible
-      breadcrumbItems.push({
-        href: `/${pathSegments[0]}/${pathSegments[1]}`,
-        label: customTitle || 'Lead Details',
-        isCurrent: true
-      });
-      
-      return breadcrumbItems;
-    }
-    
-    // Manejar caso especial para la página de detalle del contenido
-    if (pathSegments[0] === 'content' && pathSegments.length === 2) {
-      breadcrumbItems.push({
-        href: '/content',
-        label: 'Content',
-        isCurrent: false
-      });
-      
-              // Usar el título personalizado si está disponible
-        breadcrumbItems.push({
-          href: `/${pathSegments[0]}/${pathSegments[1]}`,
-          label: customTitle || 'Content Details',
-          isCurrent: true
-        });
-      
-      return breadcrumbItems;
-    }
-    
-    // Construir los items del breadcrumb para rutas normales
-    for (let i = 0; i < pathSegments.length; i++) {
-      const segment = pathSegments[i];
-      currentPath += `/${segment}`;
-      
-      // Si es un ID (generalmente el último segmento en rutas como /agents/123)
-      const isIdSegment = i > 0 && !isNaN(Number(segment));
-      
-      // Último segmento (página actual)
-      if (i === pathSegments.length - 1) {
-        // Si es un ID, usamos el título proporcionado o un valor por defecto
-        if (isIdSegment) {
-          breadcrumbItems.push({
-            href: currentPath,
-            label: title || 'Details',
-            isCurrent: true
-          });
-        } else {
-          breadcrumbItems.push({
-            href: currentPath,
-            label: title || routeTitles[segment] || segment.charAt(0).toUpperCase() + segment.slice(1),
-            isCurrent: true
-          });
-        }
-      } else {
-        breadcrumbItems.push({
-          href: currentPath,
-          label: routeTitles[segment] || segment.charAt(0).toUpperCase() + segment.slice(1),
-          isCurrent: false
-        });
-      }
-    }
-    
-    return breadcrumbItems;
-  }, [pathname, searchParams, title, customTitle, customAgentId, customAgentName, parentInfo]);
-  
-  const [breadcrumbItems, setBreadcrumbItems] = useState<Array<{
-    href: string;
-    label: string;
-    isCurrent: boolean;
-  }> | null>(null);
-  
-  // Actualizar breadcrumb cuando cambie la ruta
-  useEffect(() => {
-    setBreadcrumbItems(generateBreadcrumbItems());
-  }, [pathname, title, searchParams, customTitle, parentInfo, generateBreadcrumbItems]);
+  // Convert history items to breadcrumb format
+  const breadcrumbItems = hasHistory ? historyItems.map((item, index) => ({
+    href: item.path,
+    label: item.label,
+    isCurrent: index === historyItems.length - 1
+  })) : null;
  
   return (
     <div className="flex items-center gap-4">
@@ -416,23 +191,52 @@ export function TopBarTitle({
       {breadcrumbItems ? (
         <nav className="flex items-center" aria-label="Breadcrumb">
           <ol className="flex items-center">
-            {breadcrumbItems.map((item, index) => (
-              <li key={`${item.href}-${index}`} className="flex items-center">
-                {index > 0 && (
-                  <ChevronRight className="mx-1.5 h-4 w-4 text-muted-foreground/70" aria-hidden={true} />
-                )}
-                {item.isCurrent ? (
-                  <span className="text-2xl font-semibold text-foreground">{item.label}</span>
-                ) : (
-                  <Link 
-                    href={item.href}
-                    className="text-2xl font-semibold text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                )}
-              </li>
-            ))}
+              {breadcrumbItems.map((item, index) => {
+                // Calculate dynamic font size
+                const total = breadcrumbItems.length
+                const isLast = index === total - 1
+                
+                let fontSize = 'text-2xl'
+                if (!isLast) {
+                  const fromEnd = total - index - 1
+                  const sizes = ['text-xl', 'text-lg', 'text-base', 'text-sm']
+                  fontSize = sizes[fromEnd - 1] || 'text-sm'
+                }
+                
+                return (
+                  <li key={`${item.href}-${index}`} className="flex items-center">
+                    {index > 0 && (
+                      <ChevronRight 
+                        className={cn(
+                          "mx-1.5 text-muted-foreground/70 transition-all duration-200",
+                          isLast ? "h-5 w-5" : "h-4 w-4"
+                        )} 
+                        aria-hidden={true} 
+                      />
+                    )}
+                    {item.isCurrent ? (
+                      <span className={cn("font-semibold text-foreground transition-all duration-200", fontSize)}>
+                        {item.label}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          const historyItem = historyItems[index]
+                          if (historyItem) {
+                            navigateTo(historyItem)
+                          }
+                        }}
+                        className={cn(
+                          "font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer",
+                          fontSize
+                        )}
+                      >
+                        {item.label}
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
           </ol>
         </nav>
       ) : (

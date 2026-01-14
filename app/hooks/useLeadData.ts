@@ -8,6 +8,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
   const [leadData, setLeadData] = useState<any>(null)
   const [isLoadingLead, setIsLoadingLead] = useState(false)
   const [isAgentOnlyConversation, setIsAgentOnlyConversation] = useState(false)
+  const [isLeadInvalidated, setIsLeadInvalidated] = useState(false)
   const lastConversationIdRef = useRef<string>('')
   const lastSiteIdRef = useRef<string>('')
   
@@ -20,6 +21,8 @@ export function useLeadData(conversationId: string, siteId?: string) {
     if (!conversationId || conversationId.startsWith("new-") || !siteId) {
       setIsAgentOnlyConversation(false)
       setLeadData(null)
+      setIsLoadingLead(false)
+      setIsLeadInvalidated(false)
       return
     }
     
@@ -28,49 +31,76 @@ export function useLeadData(conversationId: string, siteId?: string) {
     try {
       const supabase = createClient()
       
-      // Get the lead_id and visitor_id from the conversation
-      const { data: conversation, error: conversationError } = await supabase
+      // Get the lead data directly through the conversation using a JOIN
+      // This bypasses RLS issues since the user has access to the conversation
+      const { data: conversationWithLead, error: conversationError } = await supabase
         .from("conversations")
-        .select("lead_id, visitor_id")
+        .select(`
+          lead_id,
+          visitor_id,
+          leads (
+            id,
+            name,
+            email,
+            phone,
+            assignee_id,
+            site_id,
+            company_id,
+            companies (
+              id,
+              name
+            )
+          )
+        `)
         .eq("id", conversationId)
-        .single()
+        .maybeSingle()
         
       if (conversationError) {
         console.error("Error fetching conversation data:", conversationError)
+        setLeadData(null)
+        setIsLoadingLead(false)
+        setIsLeadInvalidated(false)
+        return
+      }
+      
+      if (!conversationWithLead) {
+        setLeadData(null)
+        setIsLoadingLead(false)
+        setIsLeadInvalidated(false)
         return
       }
       
       // Check if this is an agent-only conversation
-      if (!conversation.lead_id && conversation.visitor_id === null) {
+      if (!conversationWithLead.lead_id && conversationWithLead.visitor_id === null) {
         setIsAgentOnlyConversation(true)
         setLeadData(null)
+        setIsLoadingLead(false)
         return
       } else {
         setIsAgentOnlyConversation(false)
       }
       
-      if (!conversation || !conversation.lead_id) {
+      // Extract lead data from the JOIN result
+      const lead = conversationWithLead.leads
+      
+      if (!lead && conversationWithLead.lead_id) {
+        // Lead is referenced but doesn't exist - it was deleted/invalidated
+        console.warn("[useLeadData] Lead was invalidated/deleted:", conversationWithLead.lead_id)
+        setIsLeadInvalidated(true)
         setLeadData(null)
+        setIsLoadingLead(false)
         return
       }
       
-      // Then get the lead data with company information
-      const { data: lead, error: leadError } = await supabase
-        .from("leads")
-        .select(`
-          *,
-          companies (
-            id,
-            name
-          )
-        `)
-        .eq("id", conversation.lead_id)
-        .single()
-        
-      if (leadError) {
-        console.error("Error fetching lead data:", leadError)
+      if (!lead) {
+        setLeadData(null)
+        setIsLoadingLead(false)
+        setIsLeadInvalidated(false)
         return
       }
+      
+      // Reset invalidated state if lead is found
+      setIsLeadInvalidated(false)
 
       // Get assignee information if assignee_id exists
       let assigneeData = null
@@ -83,6 +113,22 @@ export function useLeadData(conversationId: string, siteId?: string) {
       }
       
       // Set the lead data with company and assignee information
+      // Handle both array and object company data
+      let companyData = null
+      if (lead.companies) {
+        if (Array.isArray(lead.companies) && lead.companies.length > 0) {
+          companyData = {
+            id: lead.companies[0].id,
+            name: lead.companies[0].name
+          }
+        } else if (typeof lead.companies === 'object' && lead.companies.id) {
+          companyData = {
+            id: lead.companies.id,
+            name: lead.companies.name
+          }
+        }
+      }
+      
       setLeadData({
         id: lead.id,
         name: lead.name || "Unknown",
@@ -97,14 +143,12 @@ export function useLeadData(conversationId: string, siteId?: string) {
           name: assigneeData.name,
           avatar_url: assigneeData.avatar_url
         } : null,
-        company: lead.companies ? {
-          id: lead.companies.id,
-          name: lead.companies.name
-        } : null
+        company: companyData
       })
       
     } catch (error) {
       console.error("Error loading lead data:", error)
+      setLeadData(null)
     } finally {
       setIsLoadingLead(false)
     }
@@ -114,6 +158,11 @@ export function useLeadData(conversationId: string, siteId?: string) {
   useEffect(() => {
     // Only reload if conversation or site actually changed
     if (lastConversationIdRef.current !== conversationId || lastSiteIdRef.current !== siteId) {
+      // Immediately clear lead data when conversation changes to avoid showing stale data
+      setLeadData(null)
+      setIsLoadingLead(true)
+      setIsLeadInvalidated(false)
+      
       lastConversationIdRef.current = conversationId
       lastSiteIdRef.current = siteId || ''
       loadLeadData()
@@ -137,6 +186,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
     isLoadingLead,
     isAgentOnlyConversation,
     setIsAgentOnlyConversation,
-    isLead
+    isLead,
+    isLeadInvalidated
   }
 } 

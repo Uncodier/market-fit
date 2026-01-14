@@ -402,7 +402,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           // Real-time subscription will handle the update automatically
         } catch (e) {
           // quiet log
-          toast.error('Failed to resume robot')
+          toast.error('Failed to resume remote instance')
           try {
             window.dispatchEvent(new CustomEvent('robot:resume-failed', {
               detail: { instanceId: activeRobotInstance.id }
@@ -418,7 +418,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           onClick={handleResume}
         >
           <PlayCircle className="h-4 w-4" />
-          Resume Robot
+          Resume Remote Instance
         </Button>
       )
     }
@@ -1538,14 +1538,15 @@ The success of this experiment will be measured by:
               segments={segments.length > 0 ? segments : propSegments || []}
               onImportLeads={handleImportLeads}
               trigger={
-                <Button variant="outline">
+                <Button variant="secondary" className="h-9">
                   <UploadCloud className="mr-2 h-4 w-4" />
                   Import
                 </Button>
               }
             />
             <Button 
-              variant="outline"
+              variant="secondary"
+              className="h-9"
               onClick={async () => {
                 try {
                   const response = await fetch(`/api/leads/export?siteId=${currentSite.id}`, {

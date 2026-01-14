@@ -26,7 +26,8 @@ import {
   Lightbulb,
   MessageSquare,
   CheckCircle,
-  XCircle
+  XCircle,
+  Trash2
 } from "../ui/icons"
 
 import { type SiteFormValues } from "./form-schema"
@@ -60,6 +61,12 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
   const [newEmotion, setNewEmotion] = useState("")
   const [newDoItem, setNewDoItem] = useState("")
   const [newDontItem, setNewDontItem] = useState("")
+  const [showPersonalityTraitInput, setShowPersonalityTraitInput] = useState(false)
+  const [showEmotionInput, setShowEmotionInput] = useState(false)
+  const [showDoInput, setShowDoInput] = useState(false)
+  const [showDontInput, setShowDontInput] = useState(false)
+  const [showPreferredPhraseInput, setShowPreferredPhraseInput] = useState(false)
+  const [showForbiddenWordInput, setShowForbiddenWordInput] = useState(false)
 
   const handleSave = async () => {
     if (!onSave) return
@@ -79,7 +86,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
   // Helper functions for managing branding arrays
   const addToBrandingArray = (fieldName: string, value: string) => {
     const currentArray = form.getValues(fieldName as any) as string[] || []
-    const newArray = [...currentArray, value]
+    const newArray = [value, ...currentArray]
     form.setValue(fieldName as any, newArray, { shouldDirty: true, shouldValidate: true })
   }
 
@@ -91,251 +98,269 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
 
   return (
     <div className="space-y-8">
-      {/* Brand Pyramid */}
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      {/* Brand Essence */}
+      <Card id="brand-essence" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Brand Pyramid
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Traditional brand pyramid structure - Define your brand from core to promise
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
-          {/* Visual Brand Pyramid */}
-          <div className="relative rounded-xl bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/30 dark:via-purple-950/30 dark:to-pink-950/30 p-8 border border-purple-100 dark:border-purple-800">
-            {/* Decorative background elements */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/3 via-purple-500/3 to-pink-500/3 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-pink-500/10 rounded-xl"></div>
-            
-            <div className="relative space-y-6">
-              {/* Level 1: Brand Essence (Top) */}
-              <div className="flex items-center justify-center">
-                <div className="w-full">
-                  <div className="bg-white/90 dark:bg-gray-900/80 rounded-xl p-6 border border-blue-200/50 dark:border-blue-800/50">
-                    <FormField
-                      control={form.control}
-                      name="branding.brand_essence"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-3">
-                            <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
-                            Brand Essence
-                            <div className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">Core</div>
-                          </FormLabel>
-                          <FormDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            The core essence of your brand - Who are you?
-                          </FormDescription>
-                          <div className="flex justify-center">
-                            <div className="w-full max-w-md">
-                              <FormControl>
-                                <Textarea 
-                                  className="resize-none min-h-[60px] text-base bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700 focus:border-purple-400 dark:focus:border-purple-500 focus:ring-purple-400/20 dark:focus:ring-purple-500/20"
-                                  placeholder="We are..."
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                            </div>
-                          </div>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Level 2: Brand Personality */}
-              <div className="flex items-center justify-center">
-                <div className="w-full">
-                  <div className="bg-white/85 dark:bg-gray-900/75 rounded-xl p-6 border border-purple-200/50 dark:border-purple-800/50">
-                    <FormField
-                      control={form.control}
-                      name="branding.brand_personality"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-3">
-                            <div className="w-4 h-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
-                            Brand Personality
-                            <div className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full">Identity</div>
-                          </FormLabel>
-                          <FormDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            If your brand were a person, what would they be like?
-                          </FormDescription>
-                          <div className="flex justify-center">
-                            <div className="w-full max-w-lg">
-                              <FormControl>
-                                <Textarea 
-                                  className="resize-none min-h-[60px] text-base bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700 focus:border-purple-400 dark:focus:border-purple-500 focus:ring-purple-400/20 dark:focus:ring-purple-500/20"
-                                  placeholder="We are confident, innovative, approachable..."
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                            </div>
-                          </div>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Level 3: Brand Benefits */}
-              <div className="flex items-center justify-center">
-                <div className="w-full">
-                  <div className="bg-white/80 dark:bg-gray-900/70 rounded-xl p-6 border border-pink-200/50 dark:border-pink-800/50">
-                    <FormField
-                      control={form.control}
-                      name="branding.brand_benefits"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-3">
-                            <div className="w-4 h-4 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full"></div>
-                            Brand Benefits
-                            <div className="text-xs bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300 px-2 py-1 rounded-full">Value</div>
-                          </FormLabel>
-                          <FormDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            What emotional and functional benefits do you provide?
-                          </FormDescription>
-                          <div className="flex justify-center">
-                            <div className="w-full max-w-xl">
-                              <FormControl>
-                                <Textarea 
-                                  className="resize-none min-h-[60px] text-base bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700 focus:border-purple-400 dark:focus:border-purple-500 focus:ring-purple-400/20 dark:focus:ring-purple-500/20"
-                                  placeholder="Peace of mind, increased efficiency, better results..."
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                            </div>
-                          </div>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Level 4: Brand Attributes */}
-              <div className="flex items-center justify-center">
-                <div className="w-full">
-                  <div className="bg-white/75 dark:bg-gray-900/65 rounded-xl p-6 border border-rose-200/50 dark:border-rose-800/50">
-                    <FormField
-                      control={form.control}
-                      name="branding.brand_attributes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-3">
-                            <div className="w-4 h-4 bg-gradient-to-r from-rose-500 to-orange-500 rounded-full"></div>
-                            Brand Attributes
-                            <div className="text-xs bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-2 py-1 rounded-full">Features</div>
-                          </FormLabel>
-                          <FormDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            What are the key features and characteristics of your offering?
-                          </FormDescription>
-                          <div className="flex justify-center">
-                            <div className="w-full max-w-2xl">
-                              <FormControl>
-                                <Textarea 
-                                  className="resize-none min-h-[60px] text-base bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700 focus:border-purple-400 dark:focus:border-purple-500 focus:ring-purple-400/20 dark:focus:ring-purple-500/20"
-                                  placeholder="24/7 support, advanced analytics, user-friendly interface..."
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                            </div>
-                          </div>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Level 5: Brand Values */}
-              <div className="flex items-center justify-center">
-                <div className="w-full">
-                  <div className="bg-white/70 dark:bg-gray-900/60 rounded-xl p-6 border border-orange-200/50 dark:border-orange-800/50">
-                    <FormField
-                      control={form.control}
-                      name="branding.brand_values"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-3">
-                            <div className="w-4 h-4 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"></div>
-                            Brand Values
-                            <div className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-1 rounded-full">Principles</div>
-                          </FormLabel>
-                          <FormDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            What core values drive your brand?
-                          </FormDescription>
-                          <div className="flex justify-center">
-                            <div className="w-full max-w-2xl">
-                              <FormControl>
-                                <Textarea 
-                                  className="resize-none min-h-[60px] text-base bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700 focus:border-purple-400 dark:focus:border-purple-500 focus:ring-purple-400/20 dark:focus:ring-purple-500/20"
-                                  placeholder="Innovation, transparency, customer-centricity..."
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                            </div>
-                          </div>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Level 6: Brand Promise (Bottom) */}
-              <div className="flex items-center justify-center">
-                <div className="w-full">
-                  <div className="bg-white/65 dark:bg-gray-900/55 rounded-xl p-6 border border-yellow-200/50 dark:border-yellow-800/50">
-                    <FormField
-                      control={form.control}
-                      name="branding.brand_promise"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-3">
-                            <div className="w-4 h-4 bg-gradient-to-r from-yellow-500 to-green-500 rounded-full"></div>
-                            Brand Promise
-                            <div className="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded-full">Commitment</div>
-                          </FormLabel>
-                          <FormDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            What do you promise to deliver to your customers?
-                          </FormDescription>
-                          <FormControl>
-                            <Textarea 
-                              className="resize-none min-h-[60px] text-base bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700 focus:border-purple-400 dark:focus:border-purple-500 focus:ring-purple-400/20 dark:focus:ring-purple-500/20"
-                              placeholder="We promise to..."
-                              {...field}
-                              value={field.value || ""}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-xs mt-2" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+              <Target className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                Brand Essence
+                <Badge variant="secondary" className="text-xs">Core</Badge>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                The core essence of your brand - Who are you?
+              </p>
             </div>
           </div>
+        </CardHeader>
+        <CardContent className="px-8 pb-8">
+          <FormField
+            control={form.control}
+            name="branding.brand_essence"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Textarea 
+                    className="resize-none min-h-[100px] text-base"
+                    placeholder="We are..."
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
+      </Card>
 
-          {/* Brand Archetype Selection */}
+      {/* Brand Personality */}
+      <Card id="brand-personality" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-8 py-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+              <Heart className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                Brand Personality
+                <Badge variant="secondary" className="text-xs">Identity</Badge>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                If your brand were a person, what would they be like?
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-8 pb-8">
+          <FormField
+            control={form.control}
+            name="branding.brand_personality"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Textarea 
+                    className="resize-none min-h-[100px] text-base"
+                    placeholder="We are confident, innovative, approachable..."
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Brand Benefits */}
+      <Card id="brand-benefits" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-8 py-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+              <Lightbulb className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                Brand Benefits
+                <Badge variant="secondary" className="text-xs">Value</Badge>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                What emotional and functional benefits do you provide?
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-8 pb-8">
+          <FormField
+            control={form.control}
+            name="branding.brand_benefits"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Textarea 
+                    className="resize-none min-h-[100px] text-base"
+                    placeholder="Peace of mind, increased efficiency, better results..."
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Brand Attributes */}
+      <Card id="brand-attributes" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-8 py-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+              <CheckCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                Brand Attributes
+                <Badge variant="secondary" className="text-xs">Features</Badge>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                What are the key features and characteristics of your offering?
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-8 pb-8">
+          <FormField
+            control={form.control}
+            name="branding.brand_attributes"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Textarea 
+                    className="resize-none min-h-[100px] text-base"
+                    placeholder="24/7 support, advanced analytics, user-friendly interface..."
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Brand Values */}
+      <Card id="brand-values" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-8 py-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+              <Heart className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                Brand Values
+                <Badge variant="secondary" className="text-xs">Principles</Badge>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                What core values drive your brand?
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-8 pb-8">
+          <FormField
+            control={form.control}
+            name="branding.brand_values"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Textarea 
+                    className="resize-none min-h-[100px] text-base"
+                    placeholder="Innovation, transparency, customer-centricity..."
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Brand Promise & Archetype */}
+      <Card id="brand-promise" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-8 py-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                Brand Promise
+                <Badge variant="secondary" className="text-xs">Commitment</Badge>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                What do you promise to deliver to your customers?
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-8 pb-8 space-y-6">
+          <FormField
+            control={form.control}
+            name="branding.brand_promise"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Textarea 
+                    className="resize-none min-h-[100px] text-base"
+                    placeholder="We promise to..."
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="branding.brand_archetype"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium text-foreground">Brand Archetype</FormLabel>
+                <FormLabel className="text-sm font-medium">Brand Archetype</FormLabel>
                 <FormDescription>
                   Choose the personality archetype that best represents your brand
                 </FormDescription>
@@ -359,23 +384,20 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
                     </SelectContent>
                   </Select>
                 </FormControl>
-                <FormMessage className="text-xs mt-2" />
+                <FormMessage />
               </FormItem>
             )}
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            onClick={handleSave}
-            disabled={isSaving}
-          >
+          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
 
       {/* Color Palette */}
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="color-palette" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Palette className="h-5 w-5" />
@@ -534,6 +556,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -543,7 +566,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Typography */}
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="typography" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Type className="h-5 w-5" />
@@ -629,6 +652,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -638,7 +662,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Voice and Tone */}
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="voice-tone" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -682,10 +706,57 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
 
           {/* Personality Traits */}
           <div className="space-y-3">
-            <FormLabel className="text-sm font-medium text-foreground">Personality Traits</FormLabel>
-            <FormDescription>
-              Key personality traits that define your brand
-            </FormDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <FormLabel className="text-sm font-medium text-foreground">Personality Traits</FormLabel>
+                <FormDescription>
+                  Key personality traits that define your brand
+                </FormDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPersonalityTraitInput(true)}
+                className="flex-shrink-0"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add
+              </Button>
+            </div>
+            {showPersonalityTraitInput && (
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Add personality trait..."
+                  value={newPersonalityTrait}
+                  onChange={(e) => setNewPersonalityTrait(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (newPersonalityTrait.trim()) {
+                        addToBrandingArray("branding.personality_traits", newPersonalityTrait.trim())
+                        setNewPersonalityTrait("")
+                        setShowPersonalityTraitInput(false)
+                      }
+                    }
+                  }}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setNewPersonalityTrait("")
+                    setShowPersonalityTraitInput(false)
+                  }}
+                  className="flex-shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <div className="space-y-2">
               {(form.watch("branding.personality_traits") || []).map((trait: string, index: number) => (
                 <div key={index} className="flex items-center gap-3">
@@ -699,50 +770,66 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
                     onClick={() => removeFromBrandingArray("branding.personality_traits", index)}
                     className="flex-shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                   >
-                    <XCircle className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Add personality trait..."
-                value={newPersonalityTrait}
-                onChange={(e) => setNewPersonalityTrait(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    if (newPersonalityTrait.trim()) {
-                      addToBrandingArray("branding.personality_traits", newPersonalityTrait.trim())
-                      setNewPersonalityTrait("")
-                    }
-                  }
-                }}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (newPersonalityTrait.trim()) {
-                    addToBrandingArray("branding.personality_traits", newPersonalityTrait.trim())
-                    setNewPersonalityTrait("")
-                  }
-                }}
-                className="flex-shrink-0"
-              >
-                <PlusCircle className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
           {/* Emotions to Evoke */}
           <div className="space-y-3">
-            <FormLabel className="text-sm font-medium text-foreground">Emotions to Evoke</FormLabel>
-            <FormDescription>
-              What emotions should your brand evoke in customers?
-            </FormDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <FormLabel className="text-sm font-medium text-foreground">Emotions to Evoke</FormLabel>
+                <FormDescription>
+                  What emotions should your brand evoke in customers?
+                </FormDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEmotionInput(true)}
+                className="flex-shrink-0"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add
+              </Button>
+            </div>
+            {showEmotionInput && (
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Add emotion..."
+                  value={newEmotion}
+                  onChange={(e) => setNewEmotion(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (newEmotion.trim()) {
+                        addToBrandingArray("branding.emotions_to_evoke", newEmotion.trim())
+                        setNewEmotion("")
+                        setShowEmotionInput(false)
+                      }
+                    }
+                  }}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setNewEmotion("")
+                    setShowEmotionInput(false)
+                  }}
+                  className="flex-shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <div className="space-y-2">
               {(form.watch("branding.emotions_to_evoke") || []).map((emotion: string, index: number) => (
                 <div key={index} className="flex items-center gap-3">
@@ -757,46 +844,16 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
                     onClick={() => removeFromBrandingArray("branding.emotions_to_evoke", index)}
                     className="flex-shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                   >
-                    <XCircle className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Add emotion..."
-                value={newEmotion}
-                onChange={(e) => setNewEmotion(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    if (newEmotion.trim()) {
-                      addToBrandingArray("branding.emotions_to_evoke", newEmotion.trim())
-                      setNewEmotion("")
-                    }
-                  }
-                }}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (newEmotion.trim()) {
-                    addToBrandingArray("branding.emotions_to_evoke", newEmotion.trim())
-                    setNewEmotion("")
-                  }
-                }}
-                className="flex-shrink-0"
-              >
-                <PlusCircle className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -806,7 +863,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Brand Guidelines */}
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="brand-guidelines" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Lightbulb className="h-5 w-5" />
@@ -819,13 +876,60 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
         <CardContent className="space-y-6 px-8 pb-8">
           {/* Do's */}
           <div className="space-y-3">
-            <FormLabel className="text-sm font-medium text-foreground flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              Brand Do's
-            </FormLabel>
-            <FormDescription>
-              Things your brand should always do
-            </FormDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <FormLabel className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Brand Do's
+                </FormLabel>
+                <FormDescription>
+                  Things your brand should always do
+                </FormDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDoInput(true)}
+                className="flex-shrink-0"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add
+              </Button>
+            </div>
+            {showDoInput && (
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Add a do..."
+                  value={newDoItem}
+                  onChange={(e) => setNewDoItem(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (newDoItem.trim()) {
+                        addToBrandingArray("branding.do_list", newDoItem.trim())
+                        setNewDoItem("")
+                        setShowDoInput(false)
+                      }
+                    }
+                  }}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setNewDoItem("")
+                    setShowDoInput(false)
+                  }}
+                  className="flex-shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <div className="space-y-2">
               {(form.watch("branding.do_list") || []).map((item: string, index: number) => (
                 <div key={index} className="flex items-center gap-3">
@@ -840,53 +944,69 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
                     onClick={() => removeFromBrandingArray("branding.do_list", index)}
                     className="flex-shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                   >
-                    <XCircle className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Add a do..."
-                value={newDoItem}
-                onChange={(e) => setNewDoItem(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    if (newDoItem.trim()) {
-                      addToBrandingArray("branding.do_list", newDoItem.trim())
-                      setNewDoItem("")
-                    }
-                  }
-                }}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (newDoItem.trim()) {
-                    addToBrandingArray("branding.do_list", newDoItem.trim())
-                    setNewDoItem("")
-                  }
-                }}
-                className="flex-shrink-0"
-              >
-                <PlusCircle className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
           {/* Don'ts */}
           <div className="space-y-3">
-            <FormLabel className="text-sm font-medium text-foreground flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-red-500" />
-              Brand Don'ts
-            </FormLabel>
-            <FormDescription>
-              Things your brand should never do
-            </FormDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <FormLabel className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <XCircle className="h-4 w-4 text-red-500" />
+                  Brand Don'ts
+                </FormLabel>
+                <FormDescription>
+                  Things your brand should never do
+                </FormDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDontInput(true)}
+                className="flex-shrink-0"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add
+              </Button>
+            </div>
+            {showDontInput && (
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Add a don't..."
+                  value={newDontItem}
+                  onChange={(e) => setNewDontItem(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (newDontItem.trim()) {
+                        addToBrandingArray("branding.dont_list", newDontItem.trim())
+                        setNewDontItem("")
+                        setShowDontInput(false)
+                      }
+                    }
+                  }}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setNewDontItem("")
+                    setShowDontInput(false)
+                  }}
+                  className="flex-shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <div className="space-y-2">
               {(form.watch("branding.dont_list") || []).map((item: string, index: number) => (
                 <div key={index} className="flex items-center gap-3">
@@ -901,41 +1021,10 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
                     onClick={() => removeFromBrandingArray("branding.dont_list", index)}
                     className="flex-shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                   >
-                    <XCircle className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Add a don't..."
-                value={newDontItem}
-                onChange={(e) => setNewDontItem(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    if (newDontItem.trim()) {
-                      addToBrandingArray("branding.dont_list", newDontItem.trim())
-                      setNewDontItem("")
-                    }
-                  }
-                }}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (newDontItem.trim()) {
-                    addToBrandingArray("branding.dont_list", newDontItem.trim())
-                    setNewDontItem("")
-                  }
-                }}
-                className="flex-shrink-0"
-              >
-                <PlusCircle className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
@@ -943,10 +1032,57 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
           <div className="space-y-6 mt-8 pt-6 border-t border-border">
             {/* Preferred Phrases */}
             <div className="space-y-3">
-              <FormLabel className="text-sm font-medium text-foreground">Preferred Phrases</FormLabel>
-              <FormDescription>
-                Phrases that align with your brand voice
-              </FormDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <FormLabel className="text-sm font-medium text-foreground">Preferred Phrases</FormLabel>
+                  <FormDescription>
+                    Phrases that align with your brand voice
+                  </FormDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPreferredPhraseInput(true)}
+                  className="flex-shrink-0"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+              {showPreferredPhraseInput && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Add preferred phrase..."
+                    value={newPreferredPhrase}
+                    onChange={(e) => setNewPreferredPhrase(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (newPreferredPhrase.trim()) {
+                          addToBrandingArray("branding.preferred_phrases", newPreferredPhrase.trim())
+                          setNewPreferredPhrase("")
+                          setShowPreferredPhraseInput(false)
+                        }
+                      }
+                    }}
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setNewPreferredPhrase("")
+                      setShowPreferredPhraseInput(false)
+                    }}
+                    className="flex-shrink-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <div className="space-y-2">
                 {(form.watch("branding.preferred_phrases") || []).map((phrase: string, index: number) => (
                   <div key={index} className="flex items-center gap-3">
@@ -960,50 +1096,66 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
                       onClick={() => removeFromBrandingArray("branding.preferred_phrases", index)}
                       className="flex-shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                     >
-                      <XCircle className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Add preferred phrase..."
-                  value={newPreferredPhrase}
-                  onChange={(e) => setNewPreferredPhrase(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      if (newPreferredPhrase.trim()) {
-                        addToBrandingArray("branding.preferred_phrases", newPreferredPhrase.trim())
-                        setNewPreferredPhrase("")
-                      }
-                    }
-                  }}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (newPreferredPhrase.trim()) {
-                      addToBrandingArray("branding.preferred_phrases", newPreferredPhrase.trim())
-                      setNewPreferredPhrase("")
-                    }
-                  }}
-                  className="flex-shrink-0"
-                >
-                  <PlusCircle className="h-4 w-4" />
-                </Button>
               </div>
             </div>
 
             {/* Forbidden Words */}
             <div className="space-y-3">
-              <FormLabel className="text-sm font-medium text-foreground">Forbidden Words</FormLabel>
-              <FormDescription>
-                Words that should never be used in your brand communication
-              </FormDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <FormLabel className="text-sm font-medium text-foreground">Forbidden Words</FormLabel>
+                  <FormDescription>
+                    Words that should never be used in your brand communication
+                  </FormDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowForbiddenWordInput(true)}
+                  className="flex-shrink-0"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+              {showForbiddenWordInput && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Add forbidden word..."
+                    value={newForbiddenWord}
+                    onChange={(e) => setNewForbiddenWord(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (newForbiddenWord.trim()) {
+                          addToBrandingArray("branding.forbidden_words", newForbiddenWord.trim())
+                          setNewForbiddenWord("")
+                          setShowForbiddenWordInput(false)
+                        }
+                      }
+                    }}
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setNewForbiddenWord("")
+                      setShowForbiddenWordInput(false)
+                    }}
+                    className="flex-shrink-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <div className="space-y-2">
                 {(form.watch("branding.forbidden_words") || []).map((word: string, index: number) => (
                   <div key={index} className="flex items-center gap-3">
@@ -1017,47 +1169,17 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
                       onClick={() => removeFromBrandingArray("branding.forbidden_words", index)}
                       className="flex-shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                     >
-                      <XCircle className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Add forbidden word..."
-                  value={newForbiddenWord}
-                  onChange={(e) => setNewForbiddenWord(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      if (newForbiddenWord.trim()) {
-                        addToBrandingArray("branding.forbidden_words", newForbiddenWord.trim())
-                        setNewForbiddenWord("")
-                      }
-                    }
-                  }}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (newForbiddenWord.trim()) {
-                      addToBrandingArray("branding.forbidden_words", newForbiddenWord.trim())
-                      setNewForbiddenWord("")
-                    }
-                  }}
-                  className="flex-shrink-0"
-                >
-                  <PlusCircle className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           </div>
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >

@@ -14,6 +14,7 @@ import { Task } from "@/app/types"
 import { createClient } from "@/utils/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
+import { navigateToLead } from "@/app/hooks/use-navigation-history"
 
 interface ExtendedTask extends Task {
   leadName?: string
@@ -287,7 +288,13 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
                                           className="h-[39px] w-[39px] border border-primary/10 relative z-[1] flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
                                           onClick={(e) => {
                                             e.stopPropagation()
-                                            router.push(`/leads/${task.lead_id}`)
+                                            if (task.lead_id && task.leadName) {
+                                              navigateToLead({
+                                                leadId: task.lead_id,
+                                                leadName: task.leadName,
+                                                router
+                                              })
+                                            }
                                           }}
                                         >
                                           <AvatarFallback className="bg-primary/10">
@@ -306,7 +313,13 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
                                               className="text-xs text-muted-foreground truncate flex-grow min-w-0 cursor-pointer hover:text-primary transition-colors"
                                               onClick={(e) => {
                                                 e.stopPropagation()
-                                                router.push(`/leads/${task.lead_id}`)
+                                                if (task.lead_id && task.leadName) {
+                                                  navigateToLead({
+                                                    leadId: task.lead_id,
+                                                    leadName: task.leadName,
+                                                    router
+                                                  })
+                                                }
                                               }}
                                             >
                                               {task.leadName}
@@ -328,33 +341,40 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
                                     {task.description || ""}
                                   </p>
 
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {task.stage && (
-                                      <Badge 
-                                        variant="outline" 
-                                        className={STAGE_STYLES[task.stage]}
-                                      >
-                                        {getStageDisplayName(task.stage)}
-                                      </Badge>
-                                    )}
-                                  </div>
+                                  {/* Separator */}
+                                  <div className="h-px bg-border/50 my-2" />
 
-                                  {/* Bottom right corner info: time and comments */}
-                                  <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                                    {/* Time always displayed */}
-                                    <div className="flex items-center text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md border border-border/40">
-                                      <span className="min-w-[60px] text-right">
-                                        {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
-                                      </span>
+                                  {/* Card footer: stage badge on left, time and comments on right */}
+                                  <div className="flex items-center justify-between gap-2 mt-2">
+                                    {/* Stage badge on left */}
+                                    <div className="flex items-center gap-2">
+                                      {task.stage && (
+                                        <Badge 
+                                          variant="outline" 
+                                          className={STAGE_STYLES[task.stage]}
+                                        >
+                                          {getStageDisplayName(task.stage)}
+                                        </Badge>
+                                      )}
                                     </div>
-                                    
-                                    {/* Comments if present */}
-                                    {task.comments_count ? (
-                                      <div className="flex items-center gap-1 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md border border-border/40">
-                                        <MessageSquare className="h-3.5 w-3.5" />
-                                        <span>{task.comments_count}</span>
+
+                                    {/* Time and comments on right */}
+                                    <div className="flex items-center gap-2">
+                                      {/* Time always displayed */}
+                                      <div className="flex items-center text-xs text-muted-foreground">
+                                        <span>
+                                          {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
+                                        </span>
                                       </div>
-                                    ) : null}
+                                      
+                                      {/* Comments if present */}
+                                      {task.comments_count ? (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          <MessageSquare className="h-3.5 w-3.5" />
+                                          <span>{task.comments_count}</span>
+                                        </div>
+                                      ) : null}
+                                    </div>
                                   </div>
                                 </CardContent>
                               </Card>

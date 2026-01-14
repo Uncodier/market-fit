@@ -24,6 +24,7 @@ import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { KanbanView, LeadFilters } from "@/app/components/kanban-view"
 import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
 import { useRouter } from "next/navigation"
+import { navigateToLead } from "@/app/hooks/use-navigation-history"
 import { Lead, AttributionData } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { JOURNEY_STAGES } from "@/app/leads/types"
@@ -43,6 +44,14 @@ import { GroupedLeadsTable } from "@/app/leads/components/grouped-leads-table"
 
 // Cache de etapas para cada lead
 const leadJourneyStagesCache: Record<string, string> = {};
+
+/**
+ * Normalize origin value: replace "lead_generation_workflow" with "Makinari"
+ */
+function normalizeOrigin(origin: string | null | undefined): string | null {
+  if (!origin) return null
+  return origin === "lead_generation_workflow" ? "Makinari" : origin
+}
 
 // Función para limpiar completamente el cache
 const clearJourneyStageCache = () => {
@@ -387,7 +396,7 @@ export default function LeadsPage() {
       // Asegurarse de que todos los leads tienen todos los campos de la interfaz Lead
       const normalizedLeads = result.leads?.map((lead: any) => ({
         ...lead,
-        origin: lead.origin || null,
+        origin: normalizeOrigin(lead.origin),
         personal_email: lead.personal_email || null
       })) || []
       
@@ -575,7 +584,7 @@ export default function LeadsPage() {
       // Normalize new leads
       const normalizedMoreLeads = moreLeads.map((lead: any) => ({
         ...lead,
-        origin: lead.origin || null,
+        origin: normalizeOrigin(lead.origin),
         personal_email: lead.personal_email || null
       }))
 
@@ -1234,7 +1243,11 @@ export default function LeadsPage() {
 
   // Función para manejar el clic en una fila o tarjeta
   const handleLeadClick = (lead: Lead) => {
-    router.push(`/leads/${lead.id}`);
+    navigateToLead({
+      leadId: lead.id,
+      leadName: lead.name,
+      router
+    })
   };
 
   // Función para aplicar filtros
@@ -1289,26 +1302,26 @@ export default function LeadsPage() {
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
-                <TabsList>
-                  <TabsTrigger value="all" className="text-sm font-medium">All Companies</TabsTrigger>
-                  <TabsTrigger value="new" className="text-sm font-medium">New</TabsTrigger>
-                  <TabsTrigger value="contacted" className="text-sm font-medium">Contacted</TabsTrigger>
-                  <TabsTrigger value="qualified" className="text-sm font-medium">Qualified</TabsTrigger>
-                  <TabsTrigger value="cold" className="text-sm font-medium">Cold</TabsTrigger>
-                  <TabsTrigger value="converted" className="text-sm font-medium">Converted</TabsTrigger>
-                  <TabsTrigger value="lost" className="text-sm font-medium">Lost</TabsTrigger>
-                  <TabsTrigger value="not_qualified" className="text-sm font-medium">Not Qualified</TabsTrigger>
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                  <TabsTrigger value="all" className="text-xs rounded-full">All Companies</TabsTrigger>
+                  <TabsTrigger value="new" className="text-xs rounded-full">New</TabsTrigger>
+                  <TabsTrigger value="contacted" className="text-xs rounded-full">Contacted</TabsTrigger>
+                  <TabsTrigger value="qualified" className="text-xs rounded-full">Qualified</TabsTrigger>
+                  <TabsTrigger value="cold" className="text-xs rounded-full">Cold</TabsTrigger>
+                  <TabsTrigger value="converted" className="text-xs rounded-full">Converted</TabsTrigger>
+                  <TabsTrigger value="lost" className="text-xs rounded-full">Lost</TabsTrigger>
+                  <TabsTrigger value="not_qualified" className="text-xs rounded-full">Not Qualified</TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input 
                     data-command-k-input
                     placeholder="search" 
-                    className="w-full" 
+                    className="w-full pr-16" 
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     value={searchQuery}
                     onChange={handleSearchChange}
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>

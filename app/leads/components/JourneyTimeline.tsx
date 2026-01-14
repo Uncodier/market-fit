@@ -529,7 +529,7 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteTask}
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete Task"}

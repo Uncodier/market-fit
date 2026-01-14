@@ -562,20 +562,22 @@ export function DatePicker({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
-            variant="outline"
+            variant={mode === 'range' ? "secondary" : "outline"}
             className={cn(
-              "h-10 text-left font-normal w-full",
-              "px-3 py-1 flex items-center justify-between",
-              "rounded-md border border-input bg-background",
+              mode === 'range' ? "h-9" : "h-10",
+              "text-left font-normal",
+              mode === 'range' ? "w-auto gap-2" : "w-full",
+              mode === 'range' ? "px-3" : "px-3 py-1 flex items-center justify-between",
+              mode !== 'range' && "rounded-md border border-input bg-background",
               "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
-              "hover:bg-muted hover:border-input hover:no-underline transition-colors duration-200",
+              mode !== 'range' && "hover:bg-muted hover:border-input hover:no-underline transition-colors duration-200",
               !date && "text-muted-foreground",
               className
             )}
             disabled={disabled}
           >
             <div className="flex items-center flex-1 min-w-0 max-w-full overflow-hidden">
-              <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+              <CalendarIcon className={cn("h-4 w-4 flex-shrink-0", mode === 'range' ? "mr-2" : "mr-2")} />
               <span className="truncate text-sm max-w-full overflow-hidden text-ellipsis">
                 {displayText}
               </span>

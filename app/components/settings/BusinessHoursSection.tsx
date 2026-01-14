@@ -1,7 +1,7 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
@@ -10,6 +10,19 @@ import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Switch } from "../ui/switch"
 import { ChevronDown, ChevronRight } from "../ui/icons"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import { ActionFooter } from "../ui/card-footer"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog"
 
 const TIMEZONES = [
   // Americas
@@ -108,10 +121,15 @@ const TIME_OPTIONS = (() => {
   return times
 })()
 
-export function BusinessHoursSection() {
+interface BusinessHoursSectionProps {
+  onSave?: (data: SiteFormValues) => void
+}
+
+export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const businessHours = form.watch("business_hours") || []
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
+  const [isSaving, setIsSaving] = useState(false)
 
   const toggleExpanded = useCallback((index: number) => {
     const newExpanded = new Set(expandedItems)
@@ -122,6 +140,20 @@ export function BusinessHoursSection() {
     }
     setExpandedItems(newExpanded)
   }, [expandedItems])
+
+  // Emit business hours update event whenever list changes
+  useEffect(() => {
+    if (businessHours.length > 0) {
+      const hoursData = businessHours.map((hours: any, index: number) => ({
+        id: `business-hours-${index}`,
+        title: hours.name || `Schedule ${index + 1}`,
+      }));
+      
+      window.dispatchEvent(new CustomEvent('businessHoursUpdated', { 
+        detail: hoursData 
+      }));
+    }
+  }, [businessHours]);
 
   const addBusinessHours = useCallback(() => {
     const currentBusinessHours = form.getValues("business_hours") || []
@@ -139,13 +171,11 @@ export function BusinessHoursSection() {
         sunday: { enabled: false, start: "09:00", end: "14:00" }
       }
     }
-    const newList = [...currentBusinessHours, newHours]
+    const newList = [newHours, ...currentBusinessHours]
     form.setValue("business_hours", newList)
     
-    // Expand the newly added item
-    const newExpanded = new Set(expandedItems)
-    newExpanded.add(newList.length - 1)
-    setExpandedItems(newExpanded)
+    // Expand the newly added item (now at index 0)
+    setExpandedItems(new Set([0, ...Array.from(expandedItems).map(i => i + 1)]))
   }, [form, expandedItems])
 
   const removeBusinessHours = useCallback((index: number) => {
@@ -170,29 +200,54 @@ export function BusinessHoursSection() {
     form.setValue("business_hours", newList)
   }, [form])
 
+  const handleSaveBusinessHours = async (index: number) => {
+    if (!onSave) return
+    setIsSaving(true)
+    try {
+      const formData = form.getValues()
+      await onSave(formData)
+    } catch (error) {
+      console.error("Error saving business hours:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div id="business-hours" className="space-y-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Business Hours</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Define your business hours for different regions and locations
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addBusinessHours}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Schedule
+        </Button>
+      </div>
+
+      {/* Business Hours Cards */}
       {businessHours.map((hours: any, index: number) => {
         const isExpanded = expandedItems.has(index)
         
         return (
-          <div key={index} className="border border-border rounded-lg overflow-hidden">
-            <div className="p-4 bg-muted/30">
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => toggleExpanded(index)}
-                  className="p-1 hover:bg-muted/50 rounded transition-colors h-10 w-10 flex items-center justify-center"
-                >
-                  {isExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </button>
-                
+          <Card key={index} id={`business-hours-${index}`} className="border border-border">
+            {/* Collapsible Header */}
+            <CardHeader 
+              className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => toggleExpanded(index)}
+            >
+              <div className="flex items-center justify-between">
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div onClick={(e) => e.stopPropagation()}>
                     <Input
                       placeholder="e.g., Main Office, Europe Branch"
                       value={hours.name || ""}
@@ -201,7 +256,7 @@ export function BusinessHoursSection() {
                     />
                   </div>
 
-                  <div>
+                  <div onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={hours.timezone || "America/Mexico_City"}
                       onValueChange={(value) => updateBusinessHourField(index, "timezone", value)}
@@ -220,20 +275,20 @@ export function BusinessHoursSection() {
                   </div>
                 </div>
 
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  type="button"
-                  onClick={() => removeBusinessHours(index)}
-                  className="h-10 w-10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2 ml-4">
+                  {isExpanded ? (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
               </div>
-            </div>
+            </CardHeader>
 
+            {/* Collapsible Content */}
             {isExpanded && (
-              <div className="p-6 space-y-4 border-t border-border">
+              <>
+              <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <label className="text-sm font-medium">Respect Holidays</label>
@@ -308,21 +363,55 @@ export function BusinessHoursSection() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </CardContent>
+
+              {/* Card Footer with individual buttons */}
+              <ActionFooter>
+                <div className="flex items-center gap-2">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove Schedule
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Schedule</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to remove this business hours schedule? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => removeBusinessHours(index)}
+                          className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
+                        >
+                          Remove Schedule
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleSaveBusinessHours(index)}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save Schedule"}
+                  </Button>
+                </div>
+              </ActionFooter>
+              </>
             )}
-          </div>
+          </Card>
         )
       })}
-
-      <Button
-        variant="outline"
-        className="w-full"
-        type="button"
-        onClick={addBusinessHours}
-      >
-        <PlusCircle className="mr-2 h-4 w-4" />
-        Add Business Hours Schedule
-      </Button>
     </div>
   )
 } 

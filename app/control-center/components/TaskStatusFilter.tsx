@@ -45,7 +45,7 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
           onValueChange={(value) => onFilterChange(value as StatusFilterType)}
           className="flex items-center justify-center"
         >
-          <TabsList className="h-8 p-0.5 bg-muted/30">
+          <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
             {(Object.keys(filterConfig) as StatusFilterType[]).map((filter) => {
               const config = filterConfig[filter]
 
@@ -53,7 +53,7 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
                 <TabsTrigger
                   key={filter}
                   value={filter}
-                  className="h-7 px-3 flex items-center justify-center rounded-sm transition-all duration-200 text-xs font-medium"
+                  className="h-7 px-3 flex items-center justify-center rounded-full transition-all duration-200 text-xs font-medium"
                   title={config.label}
                 >
                   {config.label}

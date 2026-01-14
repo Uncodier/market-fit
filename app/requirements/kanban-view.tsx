@@ -336,45 +336,55 @@ export function KanbanView({
                                     <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
                                       {requirement.description}
                                     </p>
-                                    
-                                    <div className="flex justify-between items-center mt-3">
-                                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                                        {requirement.campaignNames && requirement.campaignNames.length > 0 ? (
+
+                                    {/* Separator */}
+                                    <div className="h-px bg-border/50 my-2" />
+
+                                    {/* Card footer: segment badges on left, campaign and budget on right */}
+                                    <div className="flex justify-between items-center gap-2 mt-2">
+                                      {/* Segment badges on left */}
+                                      <div className="flex flex-wrap items-center gap-1">
+                                        {requirement.segmentNames && requirement.segmentNames.length > 0 ? (
                                           <>
-                                            <Target className="h-3 w-3" />
-                                            <span className="truncate max-w-[120px]">{requirement.campaignNames[0]}</span>
+                                            {requirement.segmentNames.slice(0, 1).map(segment => (
+                                              <Badge key={segment} variant="outline" className="text-xs py-0 h-5 truncate max-w-full">
+                                                {segment}
+                                              </Badge>
+                                            ))}
+                                            {requirement.segmentNames.length > 1 && (
+                                              <Badge variant="outline" className="text-xs py-0 h-5">
+                                                +{requirement.segmentNames.length - 1}
+                                              </Badge>
+                                            )}
                                           </>
-                                        ) : (
-                                          <>
-                                            <Target className="h-3 w-3" />
-                                            <span className="text-gray-500 dark:text-gray-500">No campaign</span>
-                                          </>
-                                        )}
+                                        ) : null}
                                       </div>
                                       
-                                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                                        {requirement.budget ? (
-                                          <span className="font-medium">${requirement.budget.toLocaleString()}</span>
-                                        ) : (
-                                          <span className="text-gray-500 dark:text-gray-500">No budget</span>
-                                        )}
+                                      {/* Campaign and budget on right */}
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                                          {requirement.campaignNames && requirement.campaignNames.length > 0 ? (
+                                            <>
+                                              <Target className="h-3 w-3" />
+                                              <span className="truncate max-w-[120px]">{requirement.campaignNames[0]}</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Target className="h-3 w-3" />
+                                              <span className="text-gray-500 dark:text-gray-500">No campaign</span>
+                                            </>
+                                          )}
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                                          {requirement.budget ? (
+                                            <span className="font-medium">${requirement.budget.toLocaleString()}</span>
+                                          ) : (
+                                            <span className="text-gray-500 dark:text-gray-500">No budget</span>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
-                                    
-                                    {requirement.segmentNames && requirement.segmentNames.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-2">
-                                        {requirement.segmentNames.slice(0, 1).map(segment => (
-                                          <Badge key={segment} variant="outline" className="text-xs py-0 h-5 truncate max-w-full">
-                                            {segment}
-                                          </Badge>
-                                        ))}
-                                        {requirement.segmentNames.length > 1 && (
-                                          <Badge variant="outline" className="text-xs py-0 h-5">
-                                            +{requirement.segmentNames.length - 1}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    )}
                                   </div>
                                 )}
                               </Draggable>

@@ -23,7 +23,6 @@ import {
   Mail,
   Users,
   ChevronDown,
-  Home,
   Target
 } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
@@ -850,21 +849,21 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
             
             <Tabs defaultValue="details" className="w-full min-w-0">
               <div className="flex justify-center mb-4 overflow-x-auto">
-                <TabsList className="min-w-max">
-                  <TabsTrigger value="details">
-                    <User className="w-4 h-4" />
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full min-w-max">
+                  <TabsTrigger value="details" className="h-7 px-3 flex items-center justify-center rounded-full text-xs font-medium">
+                    Info
                   </TabsTrigger>
-                  <TabsTrigger value="company">
-                    <Globe className="w-4 h-4" />
+                  <TabsTrigger value="company" className="h-7 px-3 flex items-center justify-center rounded-full text-xs font-medium">
+                    Company
                   </TabsTrigger>
-                  <TabsTrigger value="social_networks">
-                    <MessageSquare className="w-4 h-4" />
+                  <TabsTrigger value="social_networks" className="h-7 px-3 flex items-center justify-center rounded-full text-xs font-medium">
+                    Profiles
                   </TabsTrigger>
-                  <TabsTrigger value="address">
-                    <Home className="w-4 h-4" />
+                  <TabsTrigger value="address" className="h-7 px-3 flex items-center justify-center rounded-full text-xs font-medium">
+                    Address
                   </TabsTrigger>
-                  <TabsTrigger value="notes">
-                    <FileText className="w-4 h-4" />
+                  <TabsTrigger value="notes" className="h-7 px-3 flex items-center justify-center rounded-full text-xs font-medium">
+                    Notes
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -1094,7 +1093,7 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteLead}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete Lead"}

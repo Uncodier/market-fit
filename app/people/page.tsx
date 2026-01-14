@@ -17,7 +17,7 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
-import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, Globe, Check } from "@/app/components/ui/icons"
+import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, MoreVertical, Globe, Check, CheckCircle2, RotateCw, Clock } from "@/app/components/ui/icons"
 import { LinkedInIcon } from "@/app/components/ui/social-icons"
 import { Badge } from "@/app/components/ui/badge"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
@@ -126,18 +126,24 @@ interface CollapsibleFieldProps {
   defaultOpen?: boolean
   countBadge?: number
   onClear?: () => void
+  onOpenChange?: (open: boolean) => void
 }
 
-function CollapsibleField({ title, children, defaultOpen = true, countBadge, onClear }: CollapsibleFieldProps) {
+function CollapsibleField({ title, children, defaultOpen = true, countBadge, onClear, onOpenChange }: CollapsibleFieldProps) {
   const [open, setOpen] = useState(defaultOpen)
   useEffect(() => {
     setOpen(defaultOpen)
   }, [defaultOpen])
+  const handleToggle = () => {
+    const newOpen = !open
+    setOpen(newOpen)
+    onOpenChange?.(newOpen)
+  }
   return (
     <div className="rounded-lg border border-border/30 bg-muted/40">
       <div
         className="flex items-center justify-between px-4 py-3 cursor-pointer"
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
       >
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium text-foreground">{title}</h3>
@@ -477,6 +483,11 @@ export default function PeopleSearchPage() {
   const [isEnriching, setIsEnriching] = useState(false)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
   const [addedPersonIds, setAddedPersonIds] = useState<Set<string>>(new Set())
+  const [isEditIcpModalOpen, setIsEditIcpModalOpen] = useState(false)
+  const [editingIcp, setEditingIcp] = useState<{ id: string; name: string | null; role_query_id: string } | null>(null)
+  const [editingIcpName, setEditingIcpName] = useState<string>("")
+  const [editingIcpSegmentId, setEditingIcpSegmentId] = useState<string | 'none'>('none')
+  const [editingIcpSegmentsLoading, setEditingIcpSegmentsLoading] = useState(false)
   const [sectionOpenDefaults, setSectionOpenDefaults] = useState({
     name: false,
     jobTitle: false,
@@ -643,6 +654,73 @@ export default function PeopleSearchPage() {
     }
   }
 
+  // Helper function to edit ICP name and segment
+  const handleEditIcp = async () => {
+    if (!editingIcp || !editingIcpName.trim()) {
+      toast.error('Please enter a name')
+      return
+    }
+    try {
+      const supabase = createClient()
+      
+      // Update ICP name
+      const { error: updateError } = await supabase
+        .from('icp_mining')
+        .update({ name: editingIcpName.trim() })
+        .eq('id', editingIcp.id)
+      
+      if (updateError) throw updateError
+      
+      // Update segment association if changed
+      if (editingIcpSegmentId !== 'none') {
+        // Get current segment associations
+        const { data: currentSegments, error: segError } = await supabase
+          .from('role_query_segments')
+          .select('segment_id')
+          .eq('role_query_id', editingIcp.role_query_id)
+        
+        if (segError) throw segError
+        
+        const currentSegmentIds = (currentSegments || []).map((s: any) => s.segment_id)
+        
+        // If the selected segment is not in the current associations, add it
+        if (!currentSegmentIds.includes(editingIcpSegmentId)) {
+          // Remove all existing associations
+          const { error: deleteError } = await supabase
+            .from('role_query_segments')
+            .delete()
+            .eq('role_query_id', editingIcp.role_query_id)
+          
+          if (deleteError) throw deleteError
+          
+          // Add new association
+          const { error: insertError } = await supabase
+            .from('role_query_segments')
+            .insert({
+              role_query_id: editingIcp.role_query_id,
+              segment_id: editingIcpSegmentId
+            })
+          
+          if (insertError) throw insertError
+        }
+      }
+      
+      // Update local state
+      setAvailableIcps(prev => prev.map(icp => 
+        icp.id === editingIcp.id ? { ...icp, name: editingIcpName.trim() } : icp
+      ))
+      
+      setIsEditIcpModalOpen(false)
+      setEditingIcp(null)
+      setEditingIcpName("")
+      setEditingIcpSegmentId('none')
+      toast.success('Saved list updated')
+    } catch (e) {
+      console.error('[People] Edit saved list error:', e)
+      toast.error('Failed to update saved list')
+    }
+  }
+
   useEffect(() => {
     document.title = "Find People | Market Fit"
     const event = new CustomEvent("breadcrumb:update", {
@@ -651,6 +729,47 @@ export default function PeopleSearchPage() {
     window.dispatchEvent(event)
     return () => { document.title = "Market Fit" }
   }, [])
+
+  // Load ICPs when site is available
+  useEffect(() => {
+    const loadIcps = async () => {
+      if (!currentSite?.id || availableIcps.length > 0 || icpListLoading) return
+      try {
+        setIcpListLoading(true)
+        const supabase = createClient()
+        // 1) Get segment ids for current site
+        const { data: segs, error: segErr } = await supabase
+          .from('segments')
+          .select('id')
+          .eq('site_id', currentSite.id)
+        if (segErr) throw segErr
+        const segmentIds = (segs || []).map((s: any) => s.id)
+        if (segmentIds.length === 0) { setAvailableIcps([]); return }
+        // 2) Get role_query_ids related to those segments
+        const { data: rqs, error: rqErr } = await supabase
+          .from('role_query_segments')
+          .select('role_query_id')
+          .in('segment_id', segmentIds)
+        if (rqErr) throw rqErr
+        const roleQueryIds = Array.from(new Set((rqs || []).map((r: any) => r.role_query_id)))
+        if (roleQueryIds.length === 0) { setAvailableIcps([]); return }
+        // 3) List ICPs for those role_query_ids
+        const { data: icps, error: icpErr } = await supabase
+          .from('icp_mining')
+          .select('id, name, status, role_query_id, total_targets, processed_targets, found_matches, progress_percent, started_at, last_progress_at, finished_at')
+          .in('role_query_id', roleQueryIds)
+          .order('created_at', { ascending: false })
+        if (icpErr) throw icpErr
+        setAvailableIcps(icps || [])
+      } catch (e) {
+        console.error('[People] Load ICP list error:', e)
+        setAvailableIcps([])
+      } finally {
+        setIcpListLoading(false)
+      }
+    }
+    loadIcps()
+  }, [currentSite?.id])
 
   // Update TopBar breadcrumb with results count
   useEffect(() => {
@@ -1321,6 +1440,181 @@ export default function PeopleSearchPage() {
         {/* Content */}
           <div className="h-full overflow-hidden">
           <div className="h-full overflow-auto p-4 space-y-4 pb-[110px]">
+            <div className="space-y-3">
+              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>📋 Saved Lists</h3>
+              {(() => {
+                if (icpListLoading) {
+                  return (
+                    <div className="space-y-3">
+                      {Array.from({ length: 3 }).map((_, idx) => (
+                        <CollapsibleField key={idx} title="Loading..." defaultOpen={false}>
+                          <div className="space-y-1.5">
+                            <Card className="border border-border">
+                              <CardContent className="p-2.5">
+                                <div className="flex items-center justify-between gap-3">
+                                  <Skeleton className="h-4 w-32" />
+                                  <Skeleton className="h-7 w-7 rounded-md flex-shrink-0" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CollapsibleField>
+                      ))}
+                    </div>
+                  )
+                }
+
+                if (availableIcps.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-muted-foreground">No saved lists found</p>
+                    </div>
+                  )
+                }
+
+                // Group ICPs by status
+                const groupedByStatus = availableIcps.reduce((acc, icp) => {
+                  let status = icp.status || 'unknown'
+                  // Merge mining and running into "in_progress"
+                  if (status === 'mining' || status === 'running') {
+                    status = 'in_progress'
+                  }
+                  if (!acc[status]) {
+                    acc[status] = []
+                  }
+                  acc[status].push(icp)
+                  return acc
+                }, {} as Record<string, typeof availableIcps>)
+
+                // Status order and labels
+                const statusOrder = ['in_progress', 'pending', 'completed', 'failed', 'unknown']
+                const statusLabels: Record<string, string> = {
+                  'in_progress': 'In Progress',
+                  'pending': 'Pending',
+                  'completed': 'Completed',
+                  'failed': 'Failed',
+                  'unknown': 'Other'
+                }
+
+                const renderIcpCard = (icp: typeof availableIcps[0]) => (
+                  <Card 
+                    key={icp.id} 
+                    className="border border-border hover:border-foreground/20 transition-colors cursor-pointer"
+                    onClick={() => handleLoadIcp(icp.id)}
+                  >
+                    <CardContent className="p-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="font-medium truncate text-sm flex-1 min-w-0">
+                          {(icp.name && icp.name.trim()) ? icp.name : `List ${icp.id.slice(0,8)}…`}
+                        </h3>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                              }}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleLoadIcp(icp.id)
+                              }}
+                            >
+                              Load
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                setEditingIcp({ id: icp.id, name: icp.name, role_query_id: icp.role_query_id })
+                                setEditingIcpName(icp.name || "")
+                                
+                                // Load segments if not already loaded
+                                if (availableSegments.length === 0 && currentSite?.id) {
+                                  try {
+                                    const res = await getSegments(currentSite.id)
+                                    if (res?.segments) {
+                                      setAvailableSegments(res.segments.map((s: any) => ({ id: s.id, name: s.name })))
+                                    }
+                                  } catch (err) {
+                                    console.error('[People] Load segments error:', err)
+                                  }
+                                }
+                                
+                                // Load current segment for this ICP
+                                try {
+                                  setEditingIcpSegmentsLoading(true)
+                                  const supabase = createClient()
+                                  const { data: segs, error: segErr } = await supabase
+                                    .from('role_query_segments')
+                                    .select('segment_id')
+                                    .eq('role_query_id', icp.role_query_id)
+                                    .limit(1)
+                                  
+                                  if (segErr) throw segErr
+                                  
+                                  if (segs && segs.length > 0) {
+                                    setEditingIcpSegmentId(segs[0].segment_id)
+                                  } else {
+                                    setEditingIcpSegmentId('none')
+                                  }
+                                } catch (err) {
+                                  console.error('[People] Load segment error:', err)
+                                  setEditingIcpSegmentId('none')
+                                } finally {
+                                  setEditingIcpSegmentsLoading(false)
+                                }
+                                
+                                setIsEditIcpModalOpen(true)
+                              }}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteIcp(icp.id)
+                              }}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+
+                return (
+                  <div className="space-y-3">
+                    {statusOrder.map((status) => {
+                      const icps = groupedByStatus[status] || []
+                      if (icps.length === 0) return null
+
+                      return (
+                        <CollapsibleField 
+                          key={status}
+                          title={statusLabels[status]}
+                          defaultOpen={false}
+                          countBadge={icps.length}
+                        >
+                          <div className="space-y-1.5">
+                            {icps.map(renderIcpCard)}
+                          </div>
+                        </CollapsibleField>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </div>
             <div className="space-y-3">
               <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>👤 Person Criteria</h3>
               <div className="space-y-3">
@@ -2118,50 +2412,6 @@ export default function PeopleSearchPage() {
           <div className="ml-[120px] mr-16 transition-all duration-300 ease-in-out">
             <div className="flex items-center justify-between">
               <div>
-                <Button
-                  variant="secondary"
-                  className="h-9"
-                  onClick={async () => {
-                    setIsIcpModalOpen(true)
-                    if (!currentSite?.id) return
-                    if (availableIcps.length > 0) return
-                    try {
-                      setIcpListLoading(true)
-                      const supabase = createClient()
-                      // 1) Get segment ids for current site
-                      const { data: segs, error: segErr } = await supabase
-                        .from('segments')
-                        .select('id')
-                        .eq('site_id', currentSite.id)
-                      if (segErr) throw segErr
-                      const segmentIds = (segs || []).map((s: any) => s.id)
-                      if (segmentIds.length === 0) { setAvailableIcps([]); return }
-                      // 2) Get role_query_ids related to those segments
-                      const { data: rqs, error: rqErr } = await supabase
-                        .from('role_query_segments')
-                        .select('role_query_id')
-                        .in('segment_id', segmentIds)
-                      if (rqErr) throw rqErr
-                      const roleQueryIds = Array.from(new Set((rqs || []).map((r: any) => r.role_query_id)))
-                      if (roleQueryIds.length === 0) { setAvailableIcps([]); return }
-                      // 3) List ICPs for those role_query_ids
-                      const { data: icps, error: icpErr } = await supabase
-                        .from('icp_mining')
-                        .select('id, name, status, role_query_id, total_targets, processed_targets, found_matches, progress_percent, started_at, last_progress_at, finished_at')
-                        .in('role_query_id', roleQueryIds)
-                        .order('created_at', { ascending: false })
-                      if (icpErr) throw icpErr
-                      setAvailableIcps(icps || [])
-                    } catch (e) {
-                      console.error('[People] Load ICP list error:', e)
-                      setAvailableIcps([])
-                    } finally {
-                      setIcpListLoading(false)
-                    }
-                  }}
-                >
-                  Load saved lists
-                </Button>
               </div>
               <div className="flex items-center gap-2">
                 <Button 
@@ -2666,6 +2916,67 @@ export default function PeopleSearchPage() {
             </Button>
             <Button onClick={handleEnrich} disabled={isEnriching}>
               {isEnriching ? 'Enriching...' : 'Add and Enrich'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Edit ICP name modal */}
+      <Dialog open={isEditIcpModalOpen} onOpenChange={setIsEditIcpModalOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Edit Saved List</DialogTitle>
+            <DialogDescription>
+              Update the name and segment for this saved list.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Name</p>
+              <Input
+                placeholder="e.g. SaaS US - Heads of Growth"
+                value={editingIcpName}
+                onChange={(e) => setEditingIcpName(e.target.value)}
+                className="h-10"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleEditIcp()
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Segment</p>
+              {editingIcpSegmentsLoading ? (
+                <div className="h-10 flex items-center">
+                  <p className="text-xs text-muted-foreground">Loading segments…</p>
+                </div>
+              ) : (
+                <Select value={editingIcpSegmentId} onValueChange={(v) => setEditingIcpSegmentId(v)}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select segment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No segment</SelectItem>
+                    {availableSegments.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsEditIcpModalOpen(false)
+              setEditingIcp(null)
+              setEditingIcpName("")
+              setEditingIcpSegmentId('none')
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditIcp} disabled={!editingIcpName.trim() || editingIcpSegmentsLoading}>
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

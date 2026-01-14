@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react"
-import { Card, CardContent } from "@/app/components/ui/card"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { SkeletonCard } from "@/app/components/ui/skeleton-card"
 import { Button } from "@/app/components/ui/button"
@@ -11,6 +10,7 @@ import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useRouter } from "next/navigation"
+import { navigateToRequirement } from "@/app/hooks/use-navigation-history"
 
 // Status and priority colors
 const STATUS_COLORS: Record<string, string> = {
@@ -219,99 +219,101 @@ export function CampaignRequirements({
     });
   }
 
-  const navigateToRequirement = (requirementId: string) => {
-    router.push(`/requirements/${requirementId}`);
+  const navigateToRequirementDetail = (requirementId: string, requirementTitle: string) => {
+    navigateToRequirement({
+      requirementId,
+      requirementTitle,
+      router
+    })
   };
 
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium">Associated Requirements</h3>
-          {renderAddButton ? (
-            renderAddButton()
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={onOpenCreateRequirement}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Requirement
-            </Button>
-          )}
-        </div>
-        
-        {isLoading ? (
-          <SkeletonCard 
-            className="border-none shadow-none" 
-            showHeader={false}
-            contentClassName="space-y-3"
-          />
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium">Associated Requirements</h3>
+        {renderAddButton ? (
+          renderAddButton()
         ) : (
-          <ScrollArea className="rounded-md border">
-            {requirements.length === 0 ? (
-              <EmptyCard
-                icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
-                title="No requirements yet"
-                description="No requirements linked to this campaign yet."
-                className="border-none shadow-none py-10"
-                contentClassName="flex flex-col items-center justify-center"
-              />
-            ) : (
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead className="w-[300px]">Title</TableHead>
-                    <TableHead className="w-[120px]">Type</TableHead>
-                    <TableHead className="w-[120px]">Priority</TableHead>
-                    <TableHead className="w-[120px]">Status</TableHead>
-                    <TableHead className="w-[120px]">Budget</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {requirements.map((req) => (
-                    <TableRow 
-                      key={req.id} 
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigateToRequirement(req.id)}
-                    >
-                      <TableCell>
-                        <div className="font-medium">{req.title}</div>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {req.description}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={TYPE_COLORS[req.type]}>
-                          {req.type.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={PRIORITY_COLORS[req.priority]}>
-                          {req.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={STATUS_COLORS[req.status]}>
-                          {req.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {req.budget ? (
-                          <div className="font-medium">${req.budget.toLocaleString()}</div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </ScrollArea>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={onOpenCreateRequirement}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Requirement
+          </Button>
         )}
-      </CardContent>
-    </Card>
+      </div>
+      
+      {isLoading ? (
+        <SkeletonCard 
+          className="border-none shadow-none" 
+          showHeader={false}
+          contentClassName="space-y-3"
+        />
+      ) : (
+        <ScrollArea className="rounded-md border">
+          {requirements.length === 0 ? (
+            <EmptyCard
+              icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
+              title="No requirements yet"
+              description="No requirements linked to this campaign yet."
+              className="border-none shadow-none py-10"
+              contentClassName="flex flex-col items-center justify-center"
+            />
+          ) : (
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="w-[300px]">Title</TableHead>
+                  <TableHead className="w-[120px]">Type</TableHead>
+                  <TableHead className="w-[120px]">Priority</TableHead>
+                  <TableHead className="w-[120px]">Status</TableHead>
+                  <TableHead className="w-[120px]">Budget</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {requirements.map((req) => (
+                  <TableRow 
+                    key={req.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigateToRequirementDetail(req.id, req.title)}
+                  >
+                    <TableCell>
+                      <div className="font-medium">{req.title}</div>
+                      <p className="text-sm text-muted-foreground line-clamp-1">
+                        {req.description}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={TYPE_COLORS[req.type]}>
+                        {req.type.replace('_', ' ')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={PRIORITY_COLORS[req.priority]}>
+                        {req.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={STATUS_COLORS[req.status]}>
+                        {req.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {req.budget ? (
+                        <div className="font-medium">${req.budget.toLocaleString()}</div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </ScrollArea>
+      )}
+    </div>
   );
 } 

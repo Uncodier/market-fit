@@ -529,16 +529,16 @@ function AssetCard({
             </div>
           </div>
           <div className="absolute top-2 right-2 flex flex-col gap-1">
-            <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize`}>
+            <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize px-1.5 py-0.5`}>
               {getFileTypeCategory(asset.file_type)}
             </Badge>
             {isCompatibleWithAgent && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-medium">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-medium px-1.5 py-0.5">
                 Agent Compatible
               </Badge>
             )}
             {asset.isAttachedToAgent && (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] font-medium">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] font-medium px-1.5 py-0.5">
                 Attached
               </Badge>
             )}
@@ -559,7 +559,7 @@ function AssetCard({
                 <Badge
                   key={tag}
                   variant="secondary"
-                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 text-[10px] px-2 py-0 h-4"
+                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 text-[10px] px-2 py-0.5 h-auto whitespace-nowrap"
                 >
                   {tag}
                 </Badge>
@@ -582,7 +582,7 @@ function AssetCard({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete Asset"}
@@ -705,14 +705,14 @@ function AssetListItem({
                   </p>
                 )}
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                  <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize`}>
+                  <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize px-1.5 py-0.5`}>
                     {getFileTypeCategory(asset.file_type)}
                   </Badge>
                   {asset.tags.map((tag) => (
                     <Badge
                       key={tag}
                       variant="secondary"
-                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 text-[10px] px-2 py-0 h-4"
+                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 text-[10px] px-2 py-0.5 h-auto whitespace-nowrap"
                     >
                       {tag}
                     </Badge>
@@ -846,7 +846,7 @@ function AssetListItem({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete Asset"}
@@ -919,20 +919,20 @@ function AssetsLoadingPage() {
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
-                <TabsList>
-                  <TabsTrigger value="all">All Assets</TabsTrigger>
-                  <TabsTrigger value="images">Images</TabsTrigger>
-                  <TabsTrigger value="videos">Videos</TabsTrigger>
-                  <TabsTrigger value="documents">Documents</TabsTrigger>
-                </TabsList>
+                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                    <TabsTrigger value="all" className="text-xs rounded-full">All Assets</TabsTrigger>
+                    <TabsTrigger value="images" className="text-xs rounded-full">Images</TabsTrigger>
+                    <TabsTrigger value="videos" className="text-xs rounded-full">Videos</TabsTrigger>
+                    <TabsTrigger value="documents" className="text-xs rounded-full">Documents</TabsTrigger>
+                  </TabsList>
                 <div className="relative w-64">
                   <Input 
                     placeholder="Search assets..." 
-                    className="w-full"
+                    className="w-full pr-16"
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     disabled
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>
@@ -1119,28 +1119,28 @@ function AssetsContent() {
   // Si el sitio está cargando, mostramos el skeleton
   if (isSiteLoading || (isLoading && !error)) {
     return (
-      <div className="flex-1 p-0">
+      <div className="flex-1 p-0 bg-muted/30 min-h-[calc(100vh-64px)]">
         <Tabs defaultValue="all">
           <StickyHeader>
             <div className="px-16 pt-0">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
-                  <TabsList>
-                    <TabsTrigger value="all">All Assets</TabsTrigger>
-                    <TabsTrigger value="images">Images</TabsTrigger>
-                    <TabsTrigger value="videos">Videos</TabsTrigger>
-                    <TabsTrigger value="documents">Documents</TabsTrigger>
+                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                    <TabsTrigger value="all" className="text-xs rounded-full">All Assets</TabsTrigger>
+                    <TabsTrigger value="images" className="text-xs rounded-full">Images</TabsTrigger>
+                    <TabsTrigger value="videos" className="text-xs rounded-full">Videos</TabsTrigger>
+                    <TabsTrigger value="documents" className="text-xs rounded-full">Documents</TabsTrigger>
                   </TabsList>
                   <div className="relative w-64">
                     <Input 
                       data-command-k-input
                       placeholder="Search assets..." 
-                      className="w-full" 
+                      className="w-full pr-16" 
                       value={searchTerm}
                       onChange={(e) => handleSearch(e.target.value)}
                       icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
                     />
-                    <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                    <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
                       <span className="text-xs">⌘</span>K
                     </kbd>
                   </div>
@@ -1215,28 +1215,28 @@ function AssetsContent() {
   }
 
   return (
-    <div className="flex-1 p-0">
+    <div className="flex-1 p-0 bg-muted/30 min-h-[calc(100vh-64px)]">
       <Tabs defaultValue="all">
         <StickyHeader>
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
-                <TabsList>
-                  <TabsTrigger value="all">{agentId ? 'Compatible Assets' : 'All Assets'}</TabsTrigger>
-                  <TabsTrigger value="images">Images</TabsTrigger>
-                  <TabsTrigger value="videos">Videos</TabsTrigger>
-                  <TabsTrigger value="documents">Documents</TabsTrigger>
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                  <TabsTrigger value="all" className="text-xs rounded-full">{agentId ? 'Compatible Assets' : 'All Assets'}</TabsTrigger>
+                  <TabsTrigger value="images" className="text-xs rounded-full">Images</TabsTrigger>
+                  <TabsTrigger value="videos" className="text-xs rounded-full">Videos</TabsTrigger>
+                  <TabsTrigger value="documents" className="text-xs rounded-full">Documents</TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input 
                     data-command-k-input
                     placeholder="Search assets..." 
-                    className="w-full" 
+                    className="w-full pr-16" 
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
                     icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>

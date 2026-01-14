@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { NavigationLink } from '@/app/components/navigation/NavigationLink'
 
 export default function NotFound() {
   return (
@@ -9,12 +9,12 @@ export default function NotFound() {
           Sorry, the page you are looking for doesn't exist or has been moved.
         </p>
         <div className="mt-4 flex justify-center">
-          <Link 
+          <NavigationLink 
             href="/dashboard"
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 w-full text-center"
           >
             Go to Dashboard
-          </Link>
+          </NavigationLink>
         </div>
       </div>
     </div>

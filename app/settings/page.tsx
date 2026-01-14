@@ -14,8 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { SiteForm } from "../components/settings/site-form"
 import { type SiteFormValues } from "../components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
-import { handleCacheAndRebuild, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities } from "../components/settings/save-handlers"
+import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities } from "../components/settings/save-handlers"
 import { useAuthContext } from "../components/auth/auth-provider"
+import { QuickNav, type QuickNavSection } from "../components/ui/quick-nav"
 
 function SettingsFormSkeleton() {
   return (
@@ -157,6 +158,52 @@ function SettingsFormSkeleton() {
   )
 }
 
+// Section configurations for quick navigation
+const generalSections: QuickNavSection[] = [
+  { id: "site-information", title: "Site Information" },
+  { id: "web-resources", title: "Web Resources" },
+]
+
+const channelsSections: QuickNavSection[] = [
+  { id: "website-channel", title: "Website Channel" },
+  { id: "agent-email-channel", title: "Agent Email Channel" },
+  { id: "agent-whatsapp-channel", title: "Agent WhatsApp Channel" },
+]
+
+const getInitialTeamSections = (): QuickNavSection[] => [
+  { 
+    id: "team-members", 
+    title: "Team Members",
+    children: []
+  },
+]
+
+const getInitialCopywritingSections = (): QuickNavSection[] => [
+  { 
+    id: "copywriting-collection", 
+    title: "Copywriting Collection",
+    children: []
+  },
+]
+
+const activitiesSections: QuickNavSection[] = [
+  { 
+    id: "activities", 
+    title: "Activities",
+    children: [
+      { id: "activity-daily_resume_and_stand_up", title: "Daily Resume and Stand Up" },
+      { id: "activity-local_lead_generation", title: "Local Lead Generation" },
+      { id: "activity-icp_lead_generation", title: "ICP Lead Generation" },
+      { id: "activity-leads_initial_cold_outreach", title: "Leads Initial Cold Outreach" },
+      { id: "activity-leads_follow_up", title: "Leads Follow Up" },
+      { id: "activity-email_sync", title: "Email Sync" },
+      { id: "activity-assign_leads_to_team", title: "Assign Leads to Team" },
+      { id: "activity-notify_team_on_inbound_conversations", title: "Notify Team on Inbound Conversations" },
+      { id: "activity-supervise_conversations", title: "Supervise Conversations" },
+    ]
+  },
+]
+
 export default function SettingsPage() {
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
   const { theme } = useTheme()
@@ -165,9 +212,50 @@ export default function SettingsPage() {
   const [activeSegment, setActiveSegment] = useState("general")
   const searchParams = useSearchParams()
   const [formKey, setFormKey] = useState(0)
+  const [teamSections, setTeamSections] = useState<QuickNavSection[]>(getInitialTeamSections())
+  const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections())
 
   // Simple refresh prevention specifically for settings page
   useSimpleRefreshPrevention()
+  
+  // Listen for team members updates
+  useEffect(() => {
+    const handleTeamMembersUpdate = (event: CustomEvent) => {
+      const members = event.detail as { id: string; title: string }[];
+      setTeamSections([
+        {
+          id: "team-members",
+          title: "Team Members",
+          children: members
+        }
+      ]);
+    };
+
+    window.addEventListener('teamMembersUpdated', handleTeamMembersUpdate as EventListener);
+    return () => {
+      window.removeEventListener('teamMembersUpdated', handleTeamMembersUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for copywriting updates
+  useEffect(() => {
+    const handleCopywritingUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCopywritingSections([
+        {
+          id: "copywriting-collection",
+          title: "Copywriting Collection",
+          children: items
+        }
+      ]);
+    };
+
+    window.addEventListener('copywritingUpdated', handleCopywritingUpdate as EventListener);
+    return () => {
+      window.removeEventListener('copywritingUpdated', handleCopywritingUpdate as EventListener);
+    };
+  }, []);
+
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
@@ -263,16 +351,27 @@ export default function SettingsPage() {
     await handleSaveActivities(data, saveOptions)
   }
 
-  // Wrapper functions for other handlers
-  const onCacheAndRebuild = async () => {
-    await handleCacheAndRebuild(setIsSaving, currentSite || undefined, user)
-  }
-
   // Simple approach - just track when data changes
   const adaptedSiteData = useMemo(() => {
     if (!currentSite) return null;
     return adaptSiteToForm(currentSite);
   }, [currentSite]);
+
+  // Get current sections based on active segment
+  const getCurrentSections = (): QuickNavSection[] => {
+    switch (activeSegment) {
+      case "general":
+        return generalSections
+      case "channels":
+        return channelsSections
+      case "team":
+        return teamSections
+      case "activities":
+        return activitiesSections
+      default:
+        return []
+    }
+  }
 
   // Only show skeleton when initially loading, not when saving
   if (isLoading) {
@@ -290,8 +389,12 @@ export default function SettingsPage() {
             </Tabs>
           </div>
         </StickyHeader>
-        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-          <SettingsFormSkeleton />
+        <div className="py-8 pb-16">
+          <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+            <div className="flex-1 max-w-[880px] px-16">
+              <SettingsFormSkeleton />
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -319,23 +422,27 @@ export default function SettingsPage() {
           </Tabs>
         </div>
       </StickyHeader>
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <SiteForm
-          key={formKey}
-          id="settings-form"
-          initialData={adaptedSiteData || undefined}
-          onSaveGeneral={onSaveGeneral}
-          onSaveCompany={onSaveCompany}
-          onSaveBranding={onSaveBranding}
-          onSaveMarketing={onSaveMarketing}
-          onSaveCustomerJourney={onSaveCustomerJourney}
-          onSaveSocial={onSaveSocial}
-          onSaveChannels={onSaveChannels}
-          onSaveActivities={onSaveActivities}
-          onCacheAndRebuild={onCacheAndRebuild}
-          activeSegment={activeSegment}
-          siteId={currentSite.id}
-        />
+      <div className="py-8 pb-16">
+        <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+          <div className="flex-1 max-w-[880px] px-16">
+          <SiteForm
+            key={formKey}
+            id="settings-form"
+            initialData={adaptedSiteData || undefined}
+            onSaveGeneral={onSaveGeneral}
+            onSaveCompany={onSaveCompany}
+            onSaveBranding={onSaveBranding}
+            onSaveMarketing={onSaveMarketing}
+            onSaveCustomerJourney={onSaveCustomerJourney}
+            onSaveSocial={onSaveSocial}
+            onSaveChannels={onSaveChannels}
+            onSaveActivities={onSaveActivities}
+            activeSegment={activeSegment}
+            siteId={currentSite.id}
+          />
+          </div>
+          <QuickNav sections={getCurrentSections()} />
+        </div>
       </div>
     </div>
   )

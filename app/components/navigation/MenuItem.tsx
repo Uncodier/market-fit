@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { type LucideIcon } from "@/app/components/ui/icons"
-import Link from "next/link"
+import { NavigationLink } from "./NavigationLink"
 import { MenuAvatar, MenuAvatarImage, MenuAvatarFallback } from "../ui/menu-avatar"
 import {
   Tooltip,
@@ -10,8 +10,70 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip"
-import { useEffect, useRef, useState } from "react"
-import { SafariSettingsLink } from "../common/SafariSettingsLink"
+import { useRef } from "react"
+import { useTheme } from "@/app/context/ThemeContext"
+
+// Wrapper component for emoji icons with grayscale filter that adapts to theme
+interface EmojiIconProps {
+  emoji: string
+  className?: string
+  intensity?: number // 0-1, where 1 is full grayscale, 0 is no filter
+  isActive?: boolean
+  isCollapsed?: boolean
+}
+
+export function EmojiIcon({ emoji, className, intensity = 1, isActive = false, isCollapsed = false }: EmojiIconProps) {
+  const { isDarkMode } = useTheme()
+  
+  const emojiSize = isCollapsed ? 'text-sm' : 'text-sm'
+  
+  // In collapsed mode, show only the emoji without container
+  if (isCollapsed) {
+    return (
+      <span 
+        className={cn("leading-none", emojiSize, className)}
+      >
+        {emoji}
+      </span>
+    )
+  }
+  
+  // In expanded mode, show emoji with container
+  return (
+    <span 
+      className={cn(
+        "inline-flex items-center justify-center",
+        "rounded-md",
+        "border",
+        "w-[24px] h-[24px]",
+        "flex-shrink-0",
+        isActive
+          ? isDarkMode
+            ? "border-white/20 bg-white/10"
+            : "border-white/30 bg-white/20"
+          : isDarkMode 
+            ? "border-gray-700/50 bg-gray-800/30" 
+            : "border-gray-300/50 bg-gray-100/50",
+        className
+      )}
+      style={{
+        transition: 'all 0.2s ease-in-out',
+        lineHeight: 1
+      }}
+    >
+      <span 
+        className={cn("leading-none", emojiSize)}
+        style={{
+          display: 'inline-block',
+          lineHeight: 1,
+          verticalAlign: 'middle'
+        }}
+      >
+        {emoji}
+      </span>
+    </span>
+  )
+}
 
 interface MenuItemProps {
   href: string
@@ -43,49 +105,12 @@ export function MenuItem({
   onClick
 }: MenuItemProps) {
   const linkRef = useRef<HTMLAnchorElement>(null);
-  const [isSafari, setIsSafari] = useState(false);
-  const isSettingsLink = href.includes('settings');
-
-  // Detectamos si estamos en Safari
-  useEffect(() => {
-    const isBrowser = typeof window !== 'undefined';
-    if (isBrowser) {
-      const isSafariCheck = 
-        navigator.userAgent.match(/AppleWebKit\/[\d.]+/g) &&
-        navigator.userAgent.match(/Version\/[\d.]+.*Safari/) &&
-        !navigator.userAgent.match(/Chrome\/[\d.]+/g);
-      
-      setIsSafari(Boolean(isSafariCheck));
-    }
-  }, []);
-
-  // Si es un enlace a settings y estamos en Safari, usamos el componente especializado
-  if (isSafari && isSettingsLink) {
-    return (
-      <SafariSettingsLink
-        href={href}
-        label={title}
-        className={cn(
-          className,
-          "rounded-md text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
-          isActive
-            ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
-            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20",
-          isCollapsed ? "justify-center h-[32px] w-[32px]" : "justify-start h-[32px] px-[9.7px]",
-        )}
-        iconSize={16.2}
-        isCollapsed={Boolean(isCollapsed)}
-      />
-    );
-  }
 
   const content = (
     <>
       <div className={cn(
-        "flex items-center justify-center safari-icon-fix",
-        isCollapsed ? "w-[32px] h-[32px] mx-auto" : "w-[21px] h-[21px]",
-        isSettingsLink ? "safari-settings-icon" : "",
-        href === "/settings" || href.includes("settings") ? "settings-icon-container" : "",
+        "flex items-center justify-center safari-icon-fix flex-shrink-0",
+        isCollapsed ? "w-[32px] h-[32px] mx-auto" : "w-[24px] h-[24px]",
         href === "/notifications" ? "notifications-icon-container" : ""
       )}>
         {customIcon ? customIcon : avatarUrl ? (
@@ -96,7 +121,7 @@ export function MenuItem({
             </MenuAvatarFallback>
           </MenuAvatar>
         ) : emoji ? (
-          <span className="text-base leading-none">{emoji}</span>
+          <EmojiIcon emoji={emoji} isActive={isActive} isCollapsed={isCollapsed} />
         ) : Icon && (
           <Icon className="h-[16.2px] w-[16.2px] shrink-0" />
         )}
@@ -105,14 +130,20 @@ export function MenuItem({
       <div
         className={cn(
           "flex flex-col min-w-0",
-          isCollapsed ? "hidden" : "flex"
+          isCollapsed ? "hidden" : "flex",
+          "justify-center"
         )}
-        style={{ fontSize: '11.3px' }}
+        style={{ fontSize: '11.3px', lineHeight: 1 }}
       >
-        <span className="truncate">{title}</span>
+        <span 
+          className={href.includes('settings') ? "" : "truncate"}
+          style={{ lineHeight: 'normal' }}
+        >
+          {title}
+        </span>
         {subtitle && (
           <span className={cn(
-            "truncate",
+            href.includes('settings') ? "" : "truncate",
             isActive ? "text-white/70" : "text-gray-400"
           )}
           style={{ fontSize: '9.7px' }}
@@ -129,17 +160,20 @@ export function MenuItem({
   )
 
   const linkContent = (
-    <Link
+    <NavigationLink
       ref={linkRef}
       href={href}
       className={cn(
         className,
-        "flex items-center rounded-md text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
+        "flex items-center text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
+        isCollapsed 
+          ? isActive 
+            ? "rounded-full justify-center h-[32px] w-[32px]" 
+            : "rounded-md justify-center h-[32px] w-[32px]"
+          : "rounded-md justify-start h-[32px]",
         isActive
           ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20",
-        isCollapsed ? "justify-center h-[32px] w-[32px]" : "justify-start h-[32px]",
-        isSettingsLink ? "safari-settings-link" : ""
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20"
       )}
       style={{ 
         paddingLeft: isCollapsed ? '0px' : '9.7px', 
@@ -176,7 +210,7 @@ export function MenuItem({
       ) : (
         content
       )}
-    </Link>
+    </NavigationLink>
   )
 
   return linkContent

@@ -10,7 +10,6 @@ import { useCommandK } from "@/app/hooks/use-command-k"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { getCampaignById } from "@/app/campaigns/actions/campaigns/read"
-import { createSubtask } from "@/app/campaigns/actions/subtasks/create"
 import { deleteCampaign } from "@/app/campaigns/actions/campaigns/delete"
 import { updateCampaign } from "@/app/campaigns/actions/campaigns/update"
 import {
@@ -38,7 +37,6 @@ import {
   TaskDetailSkeleton,
   TaskDetailContextType
 } from "@/app/components/campaign-detail"
-import { SubtaskFormValues } from "@/app/components/add-subtask-dialog"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Settings, SaveIcon } from "@/app/components/ui/icons"
 import { CampaignDetails } from "@/app/components/campaign-detail/campaign-details"
@@ -117,7 +115,6 @@ function CampaignStatusBar({ currentStatus, onStatusChange }: CampaignStatusBarP
   
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
       <div className="flex space-x-2">
         {CAMPAIGN_STATUSES.map((status) => (
           <Badge 
@@ -674,36 +671,6 @@ export default function TaskDetailPage() {
     }
   };
   
-  const handleAddSubtask = async (values: SubtaskFormValues): Promise<{ data?: any; error?: string }> => {
-    try {
-      const result = await createSubtask({
-        campaignId: values.campaignId,
-        title: values.title,
-        status: values.status
-      });
-      
-      if (result.data) {
-        // Update local campaign state to include the new subtask
-        setCampaign((prev: any) => {
-          if (!prev) return null;
-          
-          return {
-            ...prev,
-            subtasks: [...prev.subtasks, result.data]
-          };
-        });
-      }
-      
-      return { 
-        data: result.data, 
-        error: result.error as string | undefined 
-      };
-    } catch (error) {
-      console.error("Error adding subtask:", error);
-      return { data: null, error: error instanceof Error ? error.message : "An unknown error occurred" };
-    }
-  };
-  
   const handleEditCampaign = () => {
     // Redirect to edit page
     router.push(`/campaigns/edit/${params.id}`);
@@ -848,7 +815,6 @@ export default function TaskDetailPage() {
                 loadingLeads={loadingLeads}
                 campaignLeads={campaignLeads}
                 onCreateRequirement={handleCreateRequirementInternal}
-                onAddSubtask={handleAddSubtask}
                 taskDetailContext={{ loadingSegments, campaignSegments }}
                 segments={siteSegments}
                 longDescription={longDescription}

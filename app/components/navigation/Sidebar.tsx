@@ -34,8 +34,9 @@ import { ContentBadge } from "./ContentBadge"
 import { RequirementsBadge, CampaignsBadge } from "./RequirementsBadge"
 import { ChatsBadge } from "./ChatsBadge"
 import { NotificationBadge } from "./NotificationBadge"
-import Link from "next/link"
 import { useAuth } from "@/app/hooks/use-auth"
+import { markUINavigation } from "@/app/hooks/use-navigation-history"
+import { NavigationLink } from "./NavigationLink"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 
@@ -114,7 +115,7 @@ const humanInTheLoopItems = [
     emoji: "👥",
   },
   {
-    title: "Chats",
+    title: "Conversations",
     href: "/chat",
     icon: MessageSquare,
     emoji: "💬",
@@ -335,6 +336,7 @@ export function Sidebar({
       
       // If already in context area and trying to go to context, navigate immediately
       if (href === '/context' && isContextActive) {
+        markUINavigation();
         router.push(href);
         return;
       }
@@ -342,15 +344,18 @@ export function Sidebar({
       // If not in context area, navigate with delay to show animation
       if (!inContextArea) {
         setTimeout(() => {
+          markUINavigation();
           router.push(href);
         }, 400);
       } else {
         // If already in context area, navigate immediately
+        markUINavigation();
         router.push(href);
       }
     } else if (section === 'settings') {
       // If already in settings area and trying to go to settings, navigate immediately
       if (href === '/settings' && pathname.startsWith('/settings')) {
+        markUINavigation();
         router.push(href);
         return;
       }
@@ -363,15 +368,18 @@ export function Sidebar({
         
         // Navigate after delay
         setTimeout(() => {
+          markUINavigation();
           router.push(href);
         }, 400);
       } else {
         // If already in settings area, navigate immediately
+        markUINavigation();
         router.push(href);
       }
     } else if (section === 'profile') {
       // If already in profile area and trying to go to profile, navigate immediately
       if (href === '/profile' && isProfileActive) {
+        markUINavigation();
         router.push(href);
         return;
       }
@@ -384,10 +392,12 @@ export function Sidebar({
         
         // Navigate after delay
         setTimeout(() => {
+          markUINavigation();
           router.push(href);
         }, 400);
       } else {
         // If already in profile area, navigate immediately
+        markUINavigation();
         router.push(href);
       }
     }
@@ -465,11 +475,12 @@ export function Sidebar({
         "flex flex-col h-screen",
         isCollapsed ? "w-16" : "w-64",
         "bg-background/80 text-foreground transition-all duration-200 border-r border-border z-40 backdrop-blur-[5px]",
+        "sidebar-light-bg",
         className
       )}
     >
       {/* Logo Section - Fixed */}
-      <Link href="/dashboard" className={cn(
+      <NavigationLink href="/dashboard" className={cn(
         "flex items-center h-16 border-b border-border flex-none",
         isCollapsed ? "justify-center px-3" : "justify-center px-6"
       )}>
@@ -491,7 +502,7 @@ export function Sidebar({
             "hidden dark:block"
           )}
         />
-      </Link>
+      </NavigationLink>
 
       {/* Site Selector */}
       <div className={cn(
@@ -550,7 +561,7 @@ export function Sidebar({
                   {item.title === "Leads" && (
                     <LeadsBadge isActive={pathname.startsWith("/leads")} />
                   )}
-                  {item.title === "Chats" && (
+                  {item.title === "Conversations" && (
                     <ChatsBadge isActive={pathname.startsWith("/chat")} />
                   )}
                 </MenuItem>

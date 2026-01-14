@@ -3,8 +3,9 @@
 import React, { RefObject, useState, useEffect, useMemo } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Badge } from "@/app/components/ui/badge"
-import Link from "next/link"
+import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { useRouter } from "next/navigation"
+import { markUINavigation } from "@/app/hooks/use-navigation-history"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ChatMessage } from "@/app/types/chat"
 import { EmptyConversation } from "./EmptyConversation"
@@ -343,6 +344,7 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
     
     // Use Next.js router for client-side navigation instead of window.location.href
     console.log(`Inspecting command: ${commandId} for agent: ${agentId}`);
+    markUINavigation();
     router.push(`/agents/${agentId}/${commandId}`);
   };
 
@@ -771,6 +773,7 @@ export function ChatMessages({
         }
 
         // Redirect to chat list
+        markUINavigation();
         router.push("/chat")
         toast.success("Message and conversation deleted")
       } else {

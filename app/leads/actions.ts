@@ -73,6 +73,14 @@ const LeadSchema = z.object({
 
 export type LeadResponse = z.infer<typeof LeadSchema>
 
+/**
+ * Normalize origin value: replace "lead_generation_workflow" with "Makinari"
+ */
+function normalizeOrigin(origin: string | null | undefined): string | null {
+  if (!origin) return null
+  return origin === "lead_generation_workflow" ? "Makinari" : origin
+}
+
 // Schema for single lead response
 const SingleLeadSchema = z.object({
   lead: z.object({
@@ -210,7 +218,12 @@ export async function searchLeads(site_id: string, query: string, limit = 500): 
       return { error: error.message, leads: [] }
     }
 
-    return { leads: data || [] }
+    const normalizedLeads = (data || []).map((lead: any) => ({
+      ...lead,
+      origin: normalizeOrigin(lead.origin)
+    }))
+
+    return { leads: normalizedLeads }
   } catch (error) {
     console.error("Error in searchLeads:", error)
     return { error: "Error searching leads", leads: [] }
@@ -286,7 +299,7 @@ export async function searchLeadsWithCount(
 
     const leads = (data || []).map((lead: any) => ({
       ...lead,
-      origin: lead.origin || null
+      origin: normalizeOrigin(lead.origin)
     }))
 
     return { leads, totalCount: count || 0 }
@@ -468,7 +481,12 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
       throw error
     }
 
-    return { lead: data }
+    const normalizedLead = data ? {
+      ...data,
+      origin: normalizeOrigin(data.origin)
+    } : null
+
+    return { lead: normalizedLead }
   } catch (error) {
     console.error("Error loading lead:", error)
     return { error: "Error loading lead", lead: null }
@@ -514,7 +532,12 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
     if (error) throw error
 
     // Si no hay datos, retornamos un array vacío en lugar de null
-    return { leads: data || [] }
+    const normalizedLeads = (data || []).map((lead: any) => ({
+      ...lead,
+      origin: normalizeOrigin(lead.origin)
+    }))
+
+    return { leads: normalizedLeads }
   } catch (error) {
     console.error("Error loading leads:", error)
     return { error: "Error loading leads", leads: [] }
@@ -561,7 +584,12 @@ export async function getLeadsByCampaignId(campaign_id: string, site_id: string)
     if (error) throw error
 
     // Return empty array instead of null if no data
-    return { leads: data || [] }
+    const normalizedLeads = (data || []).map((lead: any) => ({
+      ...lead,
+      origin: normalizeOrigin(lead.origin)
+    }))
+
+    return { leads: normalizedLeads }
   } catch (error) {
     console.error("Error loading campaign leads:", error)
     return { error: "Error loading campaign leads", leads: [] }
@@ -643,7 +671,12 @@ export async function createLead(data: CreateLeadInput): Promise<{ error?: strin
       return { error: `Error creating lead: ${error.message}` }
     }
     
-    return { lead }
+    const normalizedLead = lead ? {
+      ...lead,
+      origin: normalizeOrigin(lead.origin)
+    } : undefined
+
+    return { lead: normalizedLead }
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors = error.errors.map(e => `${e.path}: ${e.message}`).join(", ")

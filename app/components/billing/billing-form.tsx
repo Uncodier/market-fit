@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "../ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
 import { Switch } from "../ui/switch"
@@ -48,9 +48,10 @@ interface BillingFormProps {
 export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmitEnd }: BillingFormProps) {
   const { currentSite, updateBilling, refreshSites } = useSite()
   const { user } = useAuth()
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [creditsToBuy, setCreditsToBuy] = useState<number | null>(null)
-  const [isPurchasingCredits, setIsPurchasingCredits] = useState(false)
+  const [isSavingPlan, setIsSavingPlan] = useState(false)
+  const [isSavingTaxId, setIsSavingTaxId] = useState(false)
+  const [isSavingBillingAddress, setIsSavingBillingAddress] = useState(false)
   
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
@@ -73,15 +74,36 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     }
   })
 
-  const handleSubmit = async (values: BillingFormValues) => {
+  // Get contextual button text based on current and selected plan
+  const getPlanButtonText = () => {
+    if (isSavingPlan) return "Saving..."
+    
+    const currentPlan = currentSite?.billing?.plan || "commission"
+    const selectedPlan = form.watch("plan")
+    
+    if (currentPlan === selectedPlan) return "Save"
+    
+    const planOrder = { commission: 0, startup: 1, enterprise: 2 }
+    
+    if (planOrder[selectedPlan] > planOrder[currentPlan]) {
+      return "Upgrade"
+    } else if (planOrder[selectedPlan] < planOrder[currentPlan]) {
+      return "Downgrade"
+    }
+    
+    return "Switch Plan"
+  }
+
+  const handleSavePlan = async () => {
     if (!currentSite || !user) {
       toast.error("No site selected or user not authenticated")
       return
     }
 
     try {
-      if (onSubmitStart) onSubmitStart()
-      setIsSubmitting(true)
+      setIsSavingPlan(true)
+      
+      const values = form.getValues()
       
       // If changing to a paid plan, redirect to Stripe Checkout
       if (values.plan === 'startup' || values.plan === 'enterprise') {
@@ -102,72 +124,103 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       
       // For commission plan (free), just update the billing info
       const billingData: BillingData = {
-        ...values,
-        plan: 'commission'
+        plan: values.plan,
+        auto_renew: values.auto_renew
       }
       
       const result = await updateBilling(currentSite.id, billingData)
       
       if (result.success) {
         toast.success("Plan updated successfully")
-        if (onSuccess) {
-          onSuccess()
-        }
+        await refreshSites()
       } else {
-        toast.error(result.error || "Failed to update billing information")
+        toast.error(result.error || "Failed to update plan")
       }
     } catch (error) {
-      console.error("Error submitting billing form:", error)
-      toast.error("An unexpected error occurred while updating billing information")
+      console.error("Error saving plan:", error)
+      toast.error("An unexpected error occurred while updating plan")
     } finally {
-      setIsSubmitting(false)
-      if (onSubmitEnd) onSubmitEnd()
+      setIsSavingPlan(false)
     }
   }
 
-  const handlePurchaseCredits = async (amount: number) => {
+  const handleSaveTaxId = async () => {
     if (!currentSite) {
       toast.error("No site selected")
       return
     }
 
     try {
-      setIsPurchasingCredits(true)
+      setIsSavingTaxId(true)
       
-      // Call the Supabase function to purchase credits
-      const supabase = createClient()
-      const { data, error } = await supabase.rpc('purchase_credits', {
-        site_id: currentSite.id,
-        amount: amount,
-        payment_method: 'credit_card'
-      })
-      
-      if (error) {
-        throw error
+      const values = form.getValues()
+      const billingData: BillingData = {
+        tax_id: values.tax_id
       }
       
-      toast.success(`Successfully purchased ${amount} credits!`)
+      const result = await updateBilling(currentSite.id, billingData)
       
-      // Refresh sites to get updated credit balance
-      await refreshSites()
-      setCreditsToBuy(null)
+      if (result.success) {
+        toast.success("Tax ID updated successfully")
+        await refreshSites()
+      } else {
+        toast.error(result.error || "Failed to update tax ID")
+      }
     } catch (error) {
-      console.error("Error purchasing credits:", error)
-      toast.error("Failed to purchase credits. Please try again.")
+      console.error("Error saving tax ID:", error)
+      toast.error("An unexpected error occurred while updating tax ID")
     } finally {
-      setIsPurchasingCredits(false)
+      setIsSavingTaxId(false)
     }
+  }
+
+  const handleSaveBillingAddress = async () => {
+    if (!currentSite) {
+      toast.error("No site selected")
+      return
+    }
+
+    try {
+      setIsSavingBillingAddress(true)
+      
+      const values = form.getValues()
+      const billingData: BillingData = {
+        billing_address: values.billing_address,
+        billing_city: values.billing_city,
+        billing_postal_code: values.billing_postal_code,
+        billing_country: values.billing_country
+      }
+      
+      const result = await updateBilling(currentSite.id, billingData)
+      
+      if (result.success) {
+        toast.success("Billing address updated successfully")
+        await refreshSites()
+      } else {
+        toast.error(result.error || "Failed to update billing address")
+      }
+    } catch (error) {
+      console.error("Error saving billing address:", error)
+      toast.error("An unexpected error occurred while updating billing address")
+    } finally {
+      setIsSavingBillingAddress(false)
+    }
+  }
+
+  const handleSaveCredits = async () => {
+    // Credits section doesn't have editable fields, but we keep the save button for consistency
+    // The actual purchase happens through the Purchase button
+    toast.info("No changes to save in credits section")
   }
 
   return (
     <Form {...form}>
-      <form id={id} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-        <div className="space-y-8">
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Credits</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
+      <div className="space-y-8">
+        <Card id="credits" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="px-8 py-6">
+            <CardTitle className="text-xl font-semibold">Credits</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-8 px-8 pb-8">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="text-3xl font-bold">
@@ -230,17 +283,25 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   onClick={() => window.location.href = `/checkout?credits=${creditsToBuy}`}
                 >
                   <PlusCircle className="h-4 w-4 mr-2" />
-                  Purchase {creditsToBuy} Credits
+                  Purchase
                 </Button>
               )}
             </CardContent>
-          </Card>
-          
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Subscription Plan</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
+          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            <Button 
+              variant="outline"
+              onClick={handleSaveCredits}
+            >
+              Save
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        <Card id="subscription-plan" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="px-8 py-6">
+            <CardTitle className="text-xl font-semibold">Subscription Plan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-8 px-8 pb-8">
               <FormField
                 control={form.control}
                 name="plan"
@@ -321,15 +382,24 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 )}
               />
             </CardContent>
-          </Card>
+          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            <Button 
+              variant="outline"
+              onClick={handleSavePlan}
+              disabled={isSavingPlan}
+            >
+              {getPlanButtonText()}
+            </Button>
+          </CardFooter>
+        </Card>
           
-          {/* Payment Method Info Card - Only for paid plans */}
-          {form.watch("plan") !== "commission" && (
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Payment Method</CardTitle>
-            </CardHeader>
-              <CardContent className="space-y-4 px-8 pb-8">
+        {/* Payment Method Info Card - Only for paid plans */}
+        {form.watch("plan") !== "commission" && (
+        <Card id="payment-method" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="px-8 py-6">
+            <CardTitle className="text-xl font-semibold">Payment Method</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 px-8 pb-8">
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-900/30">
                   <h4 className="font-medium mb-2 text-blue-700 dark:text-blue-400">Secure Payment via Stripe</h4>
                   <p className="text-sm text-blue-600 dark:text-blue-300 mb-3">
@@ -349,17 +419,17 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                     <p className="text-sm text-muted-foreground">
                       Card ending in {currentSite.billing.masked_card_number.slice(-4)}
                     </p>
-                      </div>
+                  </div>
                 )}
-            </CardContent>
-          </Card>
-          )}
+          </CardContent>
+        </Card>
+        )}
 
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Tax ID</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
+        <Card id="tax-id" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="px-8 py-6">
+            <CardTitle className="text-xl font-semibold">Tax ID</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-8 px-8 pb-8">
               <FormField
                 control={form.control}
                 name="tax_id"
@@ -381,13 +451,22 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 )}
               />
             </CardContent>
-          </Card>
-          
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Billing Address</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
+          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            <Button 
+              variant="outline"
+              onClick={handleSaveTaxId}
+              disabled={isSavingTaxId}
+            >
+              {isSavingTaxId ? "Saving..." : "Save"}
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        <Card id="billing-address" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="px-8 py-6">
+            <CardTitle className="text-xl font-semibold">Billing Address</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-8 px-8 pb-8">
               <FormField
                 control={form.control}
                 name="billing_address"
@@ -474,10 +553,17 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 />
               </div>
             </CardContent>
-          </Card>
-
-        </div>
-      </form>
+          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            <Button 
+              variant="outline"
+              onClick={handleSaveBillingAddress}
+              disabled={isSavingBillingAddress}
+            >
+              {isSavingBillingAddress ? "Saving..." : "Save"}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
     </Form>
   )
 } 

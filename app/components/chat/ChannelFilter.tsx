@@ -87,7 +87,7 @@ export const ChannelFilter = memo(function ChannelFilter({
         onValueChange={(value) => onFilterChange(value as FilterType)}
         className="w-auto"
       >
-        <TabsList className="h-8 p-0.5 bg-muted/30 grid-cols-9">
+        <TabsList className="h-8 p-0.5 bg-muted/30 grid-cols-9 rounded-full">
           {(Object.keys(filterConfig) as FilterType[]).map((filter) => {
             const config = filterConfig[filter]
             const IconComponent = config.icon
@@ -96,7 +96,7 @@ export const ChannelFilter = memo(function ChannelFilter({
               <TabsTrigger
                 key={filter}
                 value={filter}
-                className="h-7 w-7 px-0 flex items-center justify-center rounded-sm transition-all duration-200"
+                className="h-7 w-7 px-0 flex items-center justify-center rounded-full transition-all duration-200"
                 title={config.label}
               >
                 <IconComponent className={filter === 'web' || filter === 'email' || filter === 'assigned' || filter === 'ai' || filter === 'inbound' || filter === 'outbound' || filter === 'all' || filter === 'tasks' ? "" : "h-3.5 w-3.5 text-current"} />

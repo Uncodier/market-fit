@@ -10,7 +10,6 @@ interface StatusSegmentBarProps {
 export function StatusSegmentBar({ currentStatus, onStatusChange }: StatusSegmentBarProps) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
       <div className="flex space-x-2">
         {LEAD_STATUSES.map((status) => (
           <Badge 

@@ -21,10 +21,11 @@ export function useChatMessages(
   const messageSubscriptionRef = useRef<any>(null)
   const lastConversationIdRef = useRef<string>('')
   
-  // Efecto para controlar la animación de carga basado en peticiones API activas
+  // Efecto para controlar la animación de carga basado en peticiones API activas para esta conversación específica
   useEffect(() => {
-    setIsAgentResponding(hasActiveChatRequest)
-  }, [hasActiveChatRequest])
+    const hasActiveRequest = hasActiveChatRequest(conversationId)
+    setIsAgentResponding(hasActiveRequest)
+  }, [hasActiveChatRequest, conversationId])
   
   // Function to clear messages and set transition state
   const clearMessagesForTransition = useCallback(() => {

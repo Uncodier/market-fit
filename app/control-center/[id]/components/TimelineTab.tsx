@@ -17,6 +17,7 @@ import { Switch } from "@/app/components/ui/switch"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
 import { getUserData } from "@/app/services/user-service"
+import { navigateToLead } from "@/app/hooks/use-navigation-history"
 import { cn } from "@/lib/utils"
 import { extractUrlsFromText, generateTitleFromUrl } from "@/app/utils/url-cleaning"
 import {
@@ -961,7 +962,15 @@ export default function TimelineTab({ task }: TimelineTabProps) {
                 {task?.leads && (
                   <Avatar 
                     className="h-10 w-10 shrink-0 ring-2 ring-background cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => task?.leads?.id && router.push(`/leads/${task.leads.id}`)}
+                    onClick={() => {
+                      if (task?.leads?.id && task?.leads?.name) {
+                        navigateToLead({
+                          leadId: task.leads.id,
+                          leadName: task.leads.name,
+                          router
+                        })
+                      }
+                    }}
                   >
                     <AvatarFallback className="text-sm bg-primary/10">
                       {getInitials(task.leads.name)}
@@ -995,7 +1004,15 @@ export default function TimelineTab({ task }: TimelineTabProps) {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
-                    onClick={() => task?.leads?.id && router.push(`/leads/${task.leads.id}`)}
+                    onClick={() => {
+                      if (task?.leads?.id && task?.leads?.name) {
+                        navigateToLead({
+                          leadId: task.leads.id,
+                          leadName: task.leads.name,
+                          router
+                        })
+                      }
+                    }}
                     className="text-sm font-medium leading-none hover:text-primary transition-colors cursor-pointer"
                   >
                     {task?.leads?.name || 'Lead'}
@@ -1031,7 +1048,7 @@ export default function TimelineTab({ task }: TimelineTabProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="!bg-destructive !text-destructive-foreground hover:!bg-destructive/90"
               onClick={() => {
                 if (commentToDelete) {
                   handleDeleteComment(commentToDelete)

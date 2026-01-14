@@ -58,7 +58,7 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
   if (!active) return null
 
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card id="site-information" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold">Site Information</CardTitle>
       </CardHeader>
@@ -178,6 +178,7 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
       </CardContent>
       <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
         <Button 
+          variant="outline"
           onClick={handleSave}
           disabled={isSaving}
         >

@@ -23,9 +23,10 @@ import {
 import { ContextForm } from "../components/settings/context-form"
 import { type SiteFormValues } from "../components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
-import { handleCacheAndRebuild, handleDeleteSite, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveCopywriting } from "../components/settings/save-handlers"
+import { handleDeleteSite, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveCopywriting } from "../components/settings/save-handlers"
 import { Input } from "../components/ui/input"
 import { useAuthContext } from "../components/auth/auth-provider"
+import { QuickNav, type QuickNavSection } from "../components/ui/quick-nav"
 
 function ContextFormSkeleton() {
   return (
@@ -139,6 +140,103 @@ function ContextFormSkeleton() {
   )
 }
 
+// Section configurations for quick navigation
+const getInitialCompanySections = (): QuickNavSection[] => [
+  { id: "company-profile", title: "Company Profile" },
+  { 
+    id: "goals-quarterly", 
+    title: "Business Goals",
+    children: [
+      { id: "goals-quarterly", title: "Quarter Goals" },
+      { id: "goals-yearly", title: "Year Goals" },
+      { id: "goals-five-year", title: "5 Year Goals" },
+      { id: "goals-ten-year", title: "10 Year Goals" },
+    ]
+  },
+  { 
+    id: "swot-strengths", 
+    title: "SWOT Analysis",
+    children: [
+      { id: "swot-strengths", title: "Strengths" },
+      { id: "swot-weaknesses", title: "Weaknesses" },
+      { id: "swot-opportunities", title: "Opportunities" },
+      { id: "swot-threats", title: "Threats" },
+    ]
+  },
+  { 
+    id: "office-locations", 
+    title: "Office Locations",
+    children: []
+  },
+  { 
+    id: "service-available-restrictions", 
+    title: "Service Available Restrictions",
+    children: []
+  },
+  { 
+    id: "service-exclusions-addresses", 
+    title: "Service Exclusions Addresses",
+    children: []
+  },
+  { 
+    id: "business-hours", 
+    title: "Business Hours",
+    children: []
+  },
+]
+
+const brandingSections: QuickNavSection[] = [
+  { 
+    id: "brand-essence", 
+    title: "Brand Pyramid",
+    children: [
+      { id: "brand-essence", title: "Brand Essence" },
+      { id: "brand-personality", title: "Brand Personality" },
+      { id: "brand-benefits", title: "Brand Benefits" },
+      { id: "brand-attributes", title: "Brand Attributes" },
+      { id: "brand-values", title: "Brand Values" },
+      { id: "brand-promise", title: "Brand Promise" },
+    ]
+  },
+  { id: "color-palette", title: "Color Palette" },
+  { id: "typography", title: "Typography" },
+  { id: "voice-tone", title: "Voice & Tone" },
+  { id: "brand-guidelines", title: "Brand Guidelines" },
+]
+
+const marketingSections: QuickNavSection[] = [
+  { id: "ai-focus-mode", title: "AI Focus Mode" },
+  { id: "business-model", title: "Business Model" },
+  { id: "marketing-budget", title: "Marketing Budget" },
+  { id: "products", title: "Products" },
+  { id: "services", title: "Services" },
+  { id: "competitors", title: "Competitors" },
+  { id: "marketing-channels", title: "Marketing Channels" },
+]
+
+const getInitialCopywritingSections = (): QuickNavSection[] => [
+  { 
+    id: "copywriting-collection", 
+    title: "Copywriting Collection",
+    children: []
+  },
+]
+
+const customerJourneySections: QuickNavSection[] = [
+  { 
+    id: "journey-awareness", 
+    title: "Customer Journey",
+    children: [
+      { id: "journey-awareness", title: "Awareness" },
+      { id: "journey-consideration", title: "Consideration" },
+      { id: "journey-decision", title: "Decision" },
+      { id: "journey-purchase", title: "Purchase" },
+      { id: "journey-retention", title: "Retention" },
+      { id: "journey-referral", title: "Referral" },
+    ]
+  },
+]
+
 export default function ContextPage() {
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
   const { theme } = useTheme()
@@ -148,9 +246,102 @@ export default function ContextPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [confirmationName, setConfirmationName] = useState("")
+  const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections())
+  const [companySectionsState, setCompanySectionsState] = useState<QuickNavSection[]>(getInitialCompanySections())
 
   // Simple refresh prevention specifically for context page
   useSimpleRefreshPrevention()
+
+  // Listen for copywriting updates
+  useEffect(() => {
+    const handleCopywritingUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCopywritingSections([
+        {
+          id: "copywriting-collection",
+          title: "Copywriting Collection",
+          children: items
+        }
+      ]);
+    };
+
+    window.addEventListener('copywritingUpdated', handleCopywritingUpdate as EventListener);
+    return () => {
+      window.removeEventListener('copywritingUpdated', handleCopywritingUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for business hours updates
+  useEffect(() => {
+    const handleBusinessHoursUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCompanySectionsState(prev => prev.map(section => {
+        if (section.id === "business-hours") {
+          return { ...section, children: items };
+        }
+        return section;
+      }));
+    };
+
+    window.addEventListener('businessHoursUpdated', handleBusinessHoursUpdate as EventListener);
+    return () => {
+      window.removeEventListener('businessHoursUpdated', handleBusinessHoursUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for office locations updates
+  useEffect(() => {
+    const handleOfficeLocationsUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCompanySectionsState(prev => prev.map(section => {
+        if (section.id === "office-locations") {
+          return { ...section, children: items };
+        }
+        return section;
+      }));
+    };
+
+    window.addEventListener('officeLocationsUpdated', handleOfficeLocationsUpdate as EventListener);
+    return () => {
+      window.removeEventListener('officeLocationsUpdated', handleOfficeLocationsUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for service available restrictions updates
+  useEffect(() => {
+    const handleServiceAvailableRestrictionsUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCompanySectionsState(prev => prev.map(section => {
+        if (section.id === "service-available-restrictions") {
+          return { ...section, children: items };
+        }
+        return section;
+      }));
+    };
+
+    window.addEventListener('serviceAvailableRestrictionsUpdated', handleServiceAvailableRestrictionsUpdate as EventListener);
+    return () => {
+      window.removeEventListener('serviceAvailableRestrictionsUpdated', handleServiceAvailableRestrictionsUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for service exclusions addresses updates
+  useEffect(() => {
+    const handleServiceExclusionsAddressesUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCompanySectionsState(prev => prev.map(section => {
+        if (section.id === "service-exclusions-addresses") {
+          return { ...section, children: items };
+        }
+        return section;
+      }));
+    };
+
+    window.addEventListener('serviceExclusionsAddressesUpdated', handleServiceExclusionsAddressesUpdate as EventListener);
+    return () => {
+      window.removeEventListener('serviceExclusionsAddressesUpdated', handleServiceExclusionsAddressesUpdate as EventListener);
+    };
+  }, [])
 
   // Debug log para verificar el estado de prevención
   useEffect(() => {
@@ -235,10 +426,6 @@ export default function ContextPage() {
   }
 
   // Wrapper functions for other handlers
-  const onCacheAndRebuild = async () => {
-    await handleCacheAndRebuild(setIsSaving, currentSite || undefined, user)
-  }
-
   const onDeleteSite = async () => {
     if (confirmationName !== currentSite?.name) {
       return // Don't proceed if names don't match
@@ -253,6 +440,24 @@ export default function ContextPage() {
     return adaptSiteToForm(currentSite);
   }, [currentSite]);
 
+  // Get current sections based on active segment
+  const getCurrentSections = (): QuickNavSection[] => {
+    switch (activeSegment) {
+      case "company":
+        return companySectionsState
+      case "branding":
+        return brandingSections
+      case "marketing":
+        return marketingSections
+      case "copywriting":
+        return copywritingSections
+      case "customer-journey":
+        return customerJourneySections
+      default:
+        return []
+    }
+  }
+
   // Only show skeleton when initially loading, not when saving
   if (isLoading) {
     return (
@@ -266,13 +471,17 @@ export default function ContextPage() {
                 <TabsTrigger value="marketing">Marketing</TabsTrigger>
                 <TabsTrigger value="copywriting">Copywriting</TabsTrigger>
                 <TabsTrigger value="customer-journey">Customer Journey</TabsTrigger>
-                <TabsTrigger value="social">Social Networks</TabsTrigger>
+                {/* <TabsTrigger value="social">Social Networks</TabsTrigger> */}
               </TabsList>
             </Tabs>
           </div>
         </StickyHeader>
-        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-          <ContextFormSkeleton />
+        <div className="py-8 pb-16">
+          <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+            <div className="flex-1 max-w-[880px] px-16">
+              <ContextFormSkeleton />
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -297,29 +506,33 @@ export default function ContextPage() {
               <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
               <TabsTrigger value="copywriting" className="whitespace-nowrap">Copywriting</TabsTrigger>
               <TabsTrigger value="customer-journey" className="whitespace-nowrap">Customer Journey</TabsTrigger>
-              <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger>
+              {/* <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger> */}
             </TabsList>
           </Tabs>
         </div>
       </StickyHeader>
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <ContextForm
-          key={formKey}
-          id="context-form"
-          initialData={adaptedSiteData || undefined}
-          onSaveGeneral={onSaveGeneral}
-          onSaveCompany={onSaveCompany}
-          onSaveBranding={onSaveBranding}
-          onSaveMarketing={onSaveMarketing}
-          onSaveCustomerJourney={onSaveCustomerJourney}
-          onSaveSocial={onSaveSocial}
-          onSaveCopywriting={onSaveCopywriting}
-          onDeleteSite={() => setShowDeleteDialog(true)}
-          onCacheAndRebuild={onCacheAndRebuild}
-          isSaving={isSaving}
-          activeSegment={activeSegment}
-          siteId={currentSite.id}
-        />
+      <div className="py-8 pb-16">
+        <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+          <div className="flex-1 max-w-[880px] px-16">
+          <ContextForm
+            key={formKey}
+            id="context-form"
+            initialData={adaptedSiteData || undefined}
+            onSaveGeneral={onSaveGeneral}
+            onSaveCompany={onSaveCompany}
+            onSaveBranding={onSaveBranding}
+            onSaveMarketing={onSaveMarketing}
+            onSaveCustomerJourney={onSaveCustomerJourney}
+            onSaveSocial={onSaveSocial}
+            onSaveCopywriting={onSaveCopywriting}
+            onDeleteSite={() => setShowDeleteDialog(true)}
+            isSaving={isSaving}
+            activeSegment={activeSegment}
+            siteId={currentSite.id}
+          />
+          </div>
+          <QuickNav sections={getCurrentSections()} />
+        </div>
       </div>
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
         setShowDeleteDialog(open)
@@ -362,7 +575,7 @@ export default function ContextPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={onDeleteSite}
-              className="bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSaving || confirmationName !== currentSite?.name}
             >
               {isSaving ? "Deleting..." : "Delete Site"}

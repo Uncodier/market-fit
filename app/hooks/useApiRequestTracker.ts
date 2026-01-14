@@ -7,18 +7,44 @@ const API_CHAT_MESSAGE_ENDPOINT = '/api/agents/chat/message'
 /**
  * Hook para rastrear peticiones API a endpoints específicos
  * Usado principalmente para determinar si hay peticiones pendientes a /agents/chat/message
+ * Ahora rastrea las peticiones por conversationId para evitar bloquear todos los chats
  */
 export function useApiRequestTracker() {
-  const [hasActiveChatRequest, setHasActiveChatRequest] = useState(false)
-  const pendingRequestsRef = useRef(0)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Map to track pending requests per conversationId
+  const pendingRequestsRef = useRef<Map<string, number>>(new Map())
+  const [, forceUpdate] = useState(0)
 
-  const updateRequestState = useCallback(() => {
-    const hasActive = pendingRequestsRef.current > 0
-    setHasActiveChatRequest(prev => {
-      // Only update if the state actually changed
-      return prev !== hasActive ? hasActive : prev
-    })
+  // Function to extract conversationId from request body
+  const extractConversationId = useCallback((init?: RequestInit): string | null => {
+    if (!init?.body) return null
+
+    try {
+      // If body is already a string (JSON), parse it
+      if (typeof init.body === 'string') {
+        const parsed = JSON.parse(init.body)
+        return parsed.conversationId || null
+      }
+      
+      // If body is a FormData, Blob, etc., we can't extract conversationId
+      // For now, return null and handle it as a global request
+      return null
+    } catch (error) {
+      // If parsing fails, return null
+      console.warn('[ApiTracker] Failed to extract conversationId from request body:', error)
+      return null
+    }
+  }, [])
+
+  // Function to check if a specific conversation has active requests
+  const hasActiveChatRequest = useCallback((conversationId: string | null | undefined): boolean => {
+    if (!conversationId) return false
+    const count = pendingRequestsRef.current.get(conversationId) || 0
+    return count > 0
+  }, [])
+
+  // Force a re-render when pending requests change
+  const triggerUpdate = useCallback(() => {
+    forceUpdate(prev => prev + 1)
   }, [])
 
   useEffect(() => {
@@ -33,10 +59,22 @@ export function useApiRequestTracker() {
       // Verificar si es una solicitud a /agents/chat/message
       const isChatMessageRequest = urlString.includes(API_CHAT_MESSAGE_ENDPOINT)
 
+      let conversationId: string | null = null
+
       if (isChatMessageRequest) {
-        pendingRequestsRef.current += 1
-        updateRequestState()
-        console.log(`[ApiTracker] ↗️ Iniciando petición a ${API_CHAT_MESSAGE_ENDPOINT}`)
+        // Extract conversationId from request body
+        conversationId = extractConversationId(init)
+        
+        if (conversationId) {
+          // Increment count for this specific conversation
+          const currentCount = pendingRequestsRef.current.get(conversationId) || 0
+          pendingRequestsRef.current.set(conversationId, currentCount + 1)
+          triggerUpdate()
+          console.log(`[ApiTracker] ↗️ Iniciando petición para conversationId: ${conversationId}`)
+        } else {
+          // If we can't extract conversationId, log a warning but don't track it
+          console.warn(`[ApiTracker] ⚠️ No se pudo extraer conversationId de la petición`)
+        }
       }
 
       try {
@@ -47,19 +85,18 @@ export function useApiRequestTracker() {
         throw error
       } finally {
         // Decrementar el contador cuando la solicitud finaliza
-        if (isChatMessageRequest) {
-          pendingRequestsRef.current = Math.max(0, pendingRequestsRef.current - 1)
-          console.log(`[ApiTracker] ↘️ Finalizando petición a ${API_CHAT_MESSAGE_ENDPOINT}`)
+        if (isChatMessageRequest && conversationId) {
+          const currentCount = pendingRequestsRef.current.get(conversationId) || 0
+          const newCount = Math.max(0, currentCount - 1)
           
-          // Clear any existing timeout
-          if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current)
+          if (newCount === 0) {
+            pendingRequestsRef.current.delete(conversationId)
+          } else {
+            pendingRequestsRef.current.set(conversationId, newCount)
           }
           
-          // Update state with a small delay to avoid rapid state changes
-          timeoutRef.current = setTimeout(() => {
-            updateRequestState()
-          }, 100)
+          triggerUpdate()
+          console.log(`[ApiTracker] ↘️ Finalizando petición para conversationId: ${conversationId}`)
         }
       }
     }
@@ -70,11 +107,9 @@ export function useApiRequestTracker() {
     // Limpiar al desmontar
     return () => {
       window.fetch = originalFetch
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-      }
+      pendingRequestsRef.current.clear()
     }
-  }, [updateRequestState])
+  }, [extractConversationId, triggerUpdate])
 
   return {
     hasActiveChatRequest

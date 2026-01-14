@@ -14,6 +14,7 @@ import {
   Users,
   TrendingUp,
   Plus,
+  PlusCircle,
   Trash2
 } from "../ui/icons"
 import { useFormContext } from "react-hook-form"
@@ -111,9 +112,8 @@ function StageInputs({ stageId, fieldType, title, placeholder }: StageInputsProp
           variant="outline"
           size="sm"
           onClick={addItem}
-          className="h-9 px-3 text-sm"
         >
-          <Plus className="h-4 w-4 mr-1" />
+          <PlusCircle className="mr-2 h-4 w-4" />
           Add
         </Button>
       </div>
@@ -174,63 +174,55 @@ export function CustomerJourneySection({ active, onSave }: CustomerJourneySectio
   if (!active) return null
 
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <div className="flex items-center gap-3">
-          <TrendingUp className="h-6 w-6 text-primary" />
-          <CardTitle className="text-xl font-semibold text-foreground">Customer Journey Configuration</CardTitle>
-        </div>
-        <p className="text-sm text-muted-foreground mt-2">
-          Configure key metrics, actions, and tactics for each stage of your customer's journey.
-        </p>
-      </CardHeader>
-      <CardContent className="px-8 pb-8">
-        <div className="grid grid-cols-1 gap-6">
-          {customerJourneyStages.map((stage) => (
-            <div key={stage.id} className={`border rounded-lg p-6 transition-all duration-200 hover:shadow-lg ${stage.color}`}>
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-white/60 dark:border-gray-600/60 flex items-center justify-center shrink-0 shadow-sm">
-                  {stage.icon}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">{stage.title}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{stage.description}</p>
-                </div>
+    <div className="space-y-8">
+      {customerJourneyStages.map((stage) => (
+        <Card key={stage.id} id={`journey-${stage.id}`} className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="px-8 py-6">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-lg border flex items-center justify-center shrink-0 shadow-sm ${stage.color}`}>
+                {stage.icon}
               </div>
-              <div className="space-y-6">
-                <StageInputs
-                  stageId={stage.id}
-                  fieldType="metrics"
-                  title="Key Metrics"
-                  placeholder="e.g., Website traffic, Impressions, Reach"
-                />
-                
-                <StageInputs
-                  stageId={stage.id}
-                  fieldType="actions"
-                  title="Actions"
-                  placeholder="e.g., Content marketing, Social media ads"
-                />
-                
-                <StageInputs
-                  stageId={stage.id}
-                  fieldType="tactics"
-                  title="Tactics"
-                  placeholder="e.g., Blog posts, Video content, Email campaigns"
-                />
+              <div className="flex-1">
+                <CardTitle className="text-xl font-semibold text-foreground">{stage.title}</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">{stage.description}</p>
               </div>
             </div>
-          ))}
-        </div>
-      </CardContent>
-      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-        <Button 
-          onClick={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? "Saving..." : "Save"}
-        </Button>
-      </CardFooter>
-    </Card>
+          </CardHeader>
+          <CardContent className="px-8 pb-8">
+            <div className="space-y-6">
+              <StageInputs
+                stageId={stage.id}
+                fieldType="metrics"
+                title="Key Metrics"
+                placeholder="e.g., Website traffic, Impressions, Reach"
+              />
+              
+              <StageInputs
+                stageId={stage.id}
+                fieldType="actions"
+                title="Actions"
+                placeholder="e.g., Content marketing, Social media ads"
+              />
+              
+              <StageInputs
+                stageId={stage.id}
+                fieldType="tactics"
+                title="Tactics"
+                placeholder="e.g., Blog posts, Video content, Email campaigns"
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            <Button 
+              variant="outline"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
   )
 } 

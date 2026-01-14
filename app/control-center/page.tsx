@@ -20,6 +20,7 @@ import { ClipboardList } from "@/app/components/ui/icons"
 import { toast } from "react-hot-toast"
 import { getUserData } from "@/app/services/user-service"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { navigateToTask } from "@/app/hooks/use-navigation-history"
 import React from "react"
 
 interface ExtendedTask extends Task {
@@ -493,7 +494,11 @@ export default function ControlCenterPage() {
 
   // Handle task click
   const handleTaskClick = (task: ExtendedTask) => {
-    router.push(`/control-center/${task.id}`)
+    navigateToTask({
+      taskId: task.id,
+      taskTitle: task.title,
+      router
+    })
   }
 
   // Handle load more for kanban columns

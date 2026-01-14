@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
-import { Copy, ChevronDown, ChevronRight, Trash2, Play } from "@/app/components/ui/icons"
+import { Copy, ChevronDown, ChevronRight, Trash2, Play, PlusCircle } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { toast } from "sonner"
@@ -14,9 +14,18 @@ import { Label } from "@/app/components/ui/label"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { CreateEndpointDialog } from "@/app/components/webhooks/create-endpoint-dialog"
 import { ActionFooter } from "@/app/components/ui/card-footer"
-import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
-import { CustomSelect, Option } from "@/app/components/ui/custom-select"
 import { apiClient } from "@/app/services/api-client-service"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/app/components/ui/alert-dialog"
 import { createClient as createSbClient } from "@/lib/supabase/client"
 import { TestEndpointDialog } from "@/app/components/webhooks/test-endpoint-dialog"
 import { ChannelsSection } from "@/app/components/integrations/channels-section"
@@ -31,6 +40,7 @@ import {
   type WebhookEventType
 } from "@/lib/webhooks"
 import { useAuth } from "@/app/hooks/use-auth"
+import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 
 function IntegrationsSkeleton() {
   return (
@@ -59,6 +69,21 @@ const SUPPORTED_EVENTS: WebhookEventType[] = [
   "lead.deleted",
 ]
 
+// Section configurations for quick navigation
+const getInitialWebhooksSections = (): QuickNavSection[] => [
+  { 
+    id: "outbound-webhooks", 
+    title: "Outbound Webhooks",
+    children: []
+  },
+  { id: "workflow-webhooks", title: "Workflow Webhooks" },
+]
+
+const channelsSections: QuickNavSection[] = [
+  { id: "email-channel", title: "Email Channel" },
+  { id: "whatsapp-channel", title: "WhatsApp Channel" },
+]
+
 export default function IntegrationsPage() {
   const { currentSite, isLoading } = useSite()
   const { user } = useAuth()
@@ -71,6 +96,7 @@ export default function IntegrationsPage() {
   const [newName, setNewName] = useState("")
   const [newTargetUrl, setNewTargetUrl] = useState("")
   const [newSecret, setNewSecret] = useState("")
+  const [webhooksSections, setWebhooksSections] = useState<QuickNavSection[]>(getInitialWebhooksSections())
 
   // Test dialog state
   const [isTestOpen, setIsTestOpen] = useState(false)
@@ -82,6 +108,37 @@ export default function IntegrationsPage() {
   const [isLoadingRecords, setIsLoadingRecords] = useState(false)
 
   const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://your-domain.com"}/api/workflows/webhook`
+
+  // Update webhooks sections when endpoints change
+  useEffect(() => {
+    if (activeSegment === "webhooks" && endpoints.length > 0) {
+      const endpointsData = endpoints.map((ep, index) => ({
+        id: `webhook-endpoint-${index}`,
+        title: ep.name || `Endpoint ${index + 1}`,
+      }));
+      
+      setWebhooksSections([
+        {
+          id: "outbound-webhooks",
+          title: "Outbound Webhooks",
+          children: endpointsData
+        },
+        { id: "workflow-webhooks", title: "Workflow Webhooks" },
+      ]);
+    }
+  }, [activeSegment, endpoints]);
+
+  // Get current sections based on active segment
+  const getCurrentSections = (): QuickNavSection[] => {
+    switch (activeSegment) {
+      case "webhooks":
+        return webhooksSections
+      case "channels":
+        return channelsSections
+      default:
+        return []
+    }
+  }
 
   const handleCopy = async () => {
     try {
@@ -96,6 +153,7 @@ export default function IntegrationsPage() {
     if (!currentSite) return
     try {
       const list = await listWebhookEndpoints(currentSite.id)
+      // Sort so newest first (assuming they have created_at or similar)
       setEndpoints(list)
       if (list.length > 0) {
         setSelectedEndpointId((prev) => prev ?? list[0].id)
@@ -153,7 +211,8 @@ export default function IntegrationsPage() {
       setNewName("")
       setNewTargetUrl("")
       setNewSecret("")
-      await loadData()
+      // Add the new endpoint at the beginning of the list
+      setEndpoints(prev => [ep, ...prev])
       setSelectedEndpointId(ep.id)
     } catch (e: any) {
       toast.error(e?.message || "Failed to create endpoint")
@@ -283,8 +342,12 @@ export default function IntegrationsPage() {
             </Tabs>
           </div>
         </StickyHeader>
-        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-          <IntegrationsSkeleton />
+        <div className="py-8 pb-16">
+          <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+            <div className="flex-1 max-w-[880px] px-16">
+              <IntegrationsSkeleton />
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -310,8 +373,10 @@ export default function IntegrationsPage() {
           </Tabs>
         </div>
       </StickyHeader>
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <div className="space-y-8">
+      <div className="py-8 pb-16">
+        <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+          <div className="flex-1 max-w-[880px] px-16">
+            <div className="space-y-8">
           {activeSegment === "webhooks" && (
             <>
               <TestEndpointDialog
@@ -338,116 +403,123 @@ export default function IntegrationsPage() {
                 }}
               />
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Outbound Webhooks</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="text-sm text-muted-foreground">
-                    Webhooks send real-time POST requests to your endpoint when selected events occur. Enable the events you want below. Currently supported: {SUPPORTED_EVENTS.join(", ")}.
+              <div id="outbound-webhooks" className="space-y-6">
+                {/* Header Section */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold">Outbound Webhooks</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Webhooks send real-time POST requests to your endpoint when selected events occur
+                    </p>
                   </div>
-                  {endpoints.length > 0 && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        {endpoints.map((ep) => {
-                          const isExpanded = selectedEndpointId === ep.id
-                          return (
-                            <Collapsible key={ep.id} open={isExpanded} onOpenChange={() => {}} className="w-full">
-                              <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
-                                <div
-                                  className="flex items-center hover:bg-muted/50 transition-colors w-full cursor-pointer"
-                                  onClick={() => setSelectedEndpointId((prev) => (prev === ep.id ? null : ep.id))}
-                                >
-                                  <CardContent className="flex-1 p-4 w-full">
-                                    <div className="flex items-center gap-4">
-                                      <div className="flex-shrink-0">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setSelectedEndpointId((prev) => (prev === ep.id ? null : ep.id))
-                                          }}
-                                        >
-                                          {isExpanded ? (
-                                            <ChevronDown className="h-4 w-4" />
-                                          ) : (
-                                            <ChevronRight className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <h3 className="font-semibold text-lg truncate">{ep.name}</h3>
-                                        <p className="text-sm text-muted-foreground/80 truncate">{ep.target_url}</p>
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </div>
+                  <CreateEndpointDialog onSuccess={loadData} triggerLabel="Add Webhook" />
+                </div>
 
-                                <CollapsibleContent>
-                                  <CardContent className="pt-0 pb-6 px-6 border-t bg-muted/30" onClick={(e) => e.stopPropagation()}>
-                                    <div className="space-y-2 pt-6">
-                                      <Label>Subscribed events</Label>
-                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                        {SUPPORTED_EVENTS.map((evt) => (
-                                          <label key={evt} className="flex items-center gap-2 text-sm">
-                                            <Checkbox
-                                              checked={!!subscriptions[evt]}
-                                              onCheckedChange={(checked: boolean) => handleToggleEvent(evt, !!checked)}
-                                              disabled={isSubmitting || selectedEndpointId !== ep.id}
-                                            />
-                                            <span className="capitalize">{evt.replace('.', ' ')}</span>
-                                          </label>
-                                        ))}
-                                      </div>
-                                    </div>
+                {/* Webhook Endpoint Cards */}
+                {endpoints.map((ep, index) => {
+                  const isExpanded = selectedEndpointId === ep.id
+                  return (
+                    <Card key={ep.id} id={`webhook-endpoint-${index}`} className="border border-border">
+                      {/* Collapsible Header */}
+                      <CardHeader 
+                        className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => setSelectedEndpointId((prev) => (prev === ep.id ? null : ep.id))}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg font-semibold truncate">{ep.name}</CardTitle>
+                            <p className="text-sm text-muted-foreground truncate mt-1">{ep.target_url}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? (
+                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
 
-                                    <div className="flex justify-between items-center pt-4 border-t mt-6">
-                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <span className="text-[10px]">#</span>
-                                        <span className="font-mono">{ep.id}</span>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <Button
-                                          type="button"
-                                          variant="default"
-                                          size="sm"
-                                          onClick={() => openTestDialog(ep.id)}
-                                          disabled={isSubmitting}
-                                        >
-                                          <Play className="h-3.5 w-3.5 mr-1.5" />
-                                          Test endpoint
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleDeleteEndpoint(ep.id)}
-                                          disabled={isSubmitting}
-                                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        >
-                                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                                          Delete endpoint
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </CollapsibleContent>
-                              </Card>
-                            </Collapsible>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-                <ActionFooter>
-                  <CreateEndpointDialog onSuccess={loadData} triggerLabel="New Webhook" />
-                </ActionFooter>
-              </Card>
+                      {/* Collapsible Content */}
+                      {isExpanded && (
+                        <>
+                          <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t">
+                            <div className="space-y-2">
+                              <Label>Subscribed Events</Label>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                {SUPPORTED_EVENTS.map((evt) => (
+                                  <label key={evt} className="flex items-center gap-2 text-sm">
+                                    <Checkbox
+                                      checked={!!subscriptions[evt]}
+                                      onCheckedChange={(checked: boolean) => handleToggleEvent(evt, !!checked)}
+                                      disabled={isSubmitting}
+                                    />
+                                    <span className="capitalize">{evt.replace('.', ' ')}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
 
-              <Card>
+                            <div className="space-y-2">
+                              <Label>Endpoint ID</Label>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="font-mono bg-muted px-2 py-1 rounded">{ep.id}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+
+                          {/* Card Footer with individual buttons */}
+                          <ActionFooter>
+                            <div className="flex items-center gap-2">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={isSubmitting}
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Endpoint
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this webhook endpoint "{ep.name}"? This action cannot be undone and all subscriptions will be removed.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteEndpoint(ep.id)}
+                                      className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
+                                    >
+                                      Delete Endpoint
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => openTestDialog(ep.id)}
+                                disabled={isSubmitting}
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                Test Endpoint
+                              </Button>
+                            </div>
+                          </ActionFooter>
+                        </>
+                      )}
+                    </Card>
+                  )
+                })}
+              </div>
+
+              <Card id="workflow-webhooks">
                 <CardHeader>
                   <CardTitle>Workflow Webhooks</CardTitle>
                 </CardHeader>
@@ -475,6 +547,9 @@ export default function IntegrationsPage() {
           {activeSegment === "channels" && (
             <ChannelsSection />
           )}
+            </div>
+          </div>
+          <QuickNav sections={getCurrentSections()} />
         </div>
       </div>
     </div>

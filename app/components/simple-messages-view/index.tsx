@@ -52,7 +52,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const { user } = useAuthContext()
   const { userProfile } = useUserProfile(user?.id)
   
-  // Log activeRobotInstance changes
+  // Log activeRobotInstance changes (loading state clearing is handled by useMessageSending hook)
   useEffect(() => {
     console.log('🔄 [SimpleMessagesView] activeRobotInstance changed:', {
       activeRobotInstance: activeRobotInstance ? { 
@@ -150,6 +150,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   
+  // Immediate scroll to bottom without animation (for initial load)
+  const scrollToBottomImmediate = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (container) {
+      // Set scroll position to bottom immediately without animation
+      container.scrollTop = container.scrollHeight
+    }
+  }, [])
+
   // Auto scroll to bottom when new logs arrive
   const scrollToBottom = useCallback(() => {
     // Try multiple methods to ensure scroll works correctly
@@ -332,6 +341,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     activeRobotInstance,
     waitingForMessageId,
     onScrollToBottom: scrollToBottom,
+    onScrollToBottomImmediate: scrollToBottomImmediate,
     onResponseReceived: clearThinkingState,
     currentSiteId: currentSite?.id
   })

@@ -8,6 +8,7 @@ import { Button } from "../ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { siteFormSchema, type SiteFormValues, getFocusModeConfig } from "./form-schema"
 import { GeneralSection } from "./GeneralSection"
+import { WebResourcesSection } from "./WebResourcesSection"
 import { CompanySection } from "./CompanySection"
 import { BrandingSection } from "./BrandingSection"
 import { MarketingSection } from "./MarketingSection"
@@ -17,7 +18,6 @@ import { ChannelsSection } from "./ChannelsSection"
 import { TeamSection } from "./TeamSection"
 import { BillingSection } from "./BillingSection"
 import { ActivitiesSection } from "./ActivitiesSection"
-import { RotateCcw } from "../ui/icons"
 import { useDropzone } from "react-dropzone"
 import { cn } from "../../lib/utils"
 import {
@@ -68,7 +68,6 @@ interface SiteFormProps {
   onSaveChannels?: (data: SiteFormValues) => void
   onSaveActivities?: (data: SiteFormValues) => void
   onDeleteSite?: () => void
-  onCacheAndRebuild?: () => void
   activeSegment: string
   siteId?: string
 }
@@ -84,8 +83,7 @@ export function SiteForm({
   onSaveSocial,
   onSaveChannels,
   onSaveActivities,
-  onDeleteSite, 
-  onCacheAndRebuild, 
+  onDeleteSite,
   activeSegment,
   siteId 
 }: SiteFormProps) {
@@ -472,6 +470,10 @@ export function SiteForm({
             <GeneralSection active={true} onSave={onSaveGeneral} />
           )}
 
+          {renderCard("general",
+            <WebResourcesSection active={true} onSave={onSaveGeneral} />
+          )}
+
           {renderCard("company",
             <CompanySection active={true} onSave={onSaveCompany} />
           )}
@@ -509,30 +511,6 @@ export function SiteForm({
 
           {renderCard("team",
             <TeamSection active={true} siteId={siteId} />
-          )}
-
-          {renderCard("general",
-            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Cache Management</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Clear the cache and rebuild all experiments. This will take a few minutes.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-12"
-                    onClick={onCacheAndRebuild}
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Clear Cache and Rebuild
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           )}
 
 

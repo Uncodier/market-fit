@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { NavigationLink } from '@/app/components/navigation/NavigationLink'
 import { Button } from '@/app/components/ui/button'
 import * as Icons from '@/app/components/ui/icons'
 
@@ -18,16 +18,16 @@ export default function ChatNotFound() {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button asChild>
-            <Link href="/agents">
+            <NavigationLink href="/agents">
               <Icons.ChevronLeft className="mr-2 h-4 w-4" />
               Back to Agents
-            </Link>
+            </NavigationLink>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/">
+            <NavigationLink href="/">
               <Icons.Home className="mr-2 h-4 w-4" />
               Go to Dashboard
-            </Link>
+            </NavigationLink>
           </Button>
         </div>
       </div>

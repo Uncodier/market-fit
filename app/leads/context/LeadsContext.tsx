@@ -72,9 +72,14 @@ export function LeadsProvider({ children }: LeadsProviderProps) {
       }
       
       // Normalize leads to ensure all fields are present
+      const normalizeOrigin = (origin: string | null | undefined): string | null => {
+        if (!origin) return null
+        return origin === "lead_generation_workflow" ? "Makinari" : origin
+      }
+      
       const normalizedLeads = result.leads?.map(lead => ({
         ...lead,
-        origin: lead.origin || null
+        origin: normalizeOrigin(lead.origin)
       })) || []
       
       setLeads(normalizedLeads)

@@ -643,7 +643,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
   return (
     <>
       {!excludeWebsite && (
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="website-channel" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Globe className="h-5 w-5" />
@@ -951,7 +951,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button
             type="button"
-            variant="default"
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -978,7 +978,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       ) : (
         <>
           {/* Original email card for integrations */}
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="email-channel" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Mail className="h-5 w-5" />
@@ -1348,7 +1348,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             {onSave && (
               <Button
                 type="button"
-                variant="default"
+                variant="outline"
                 onClick={handleSave}
                 disabled={isSaving}
               >

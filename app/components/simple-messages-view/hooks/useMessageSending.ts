@@ -44,14 +44,24 @@ export const useMessageSending = ({
   const [hasMessageBeenSent, setHasMessageBeenSent] = useState(false)
   const [waitingForMessageId, setWaitingForMessageId] = useState<string | null>(null)
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Track the instance_id for which we're currently showing loading
+  const loadingInstanceIdRef = useRef<string | null>(null)
   const { currentSite } = useSite()
   const { toast } = useToast()
 
   // Clear thinking state - utility function
   const clearThinkingState = () => {
+    const currentInstanceId = activeRobotInstance?.id
+    // Only clear if this state belongs to the current instance
+    if (loadingInstanceIdRef.current !== null && loadingInstanceIdRef.current !== currentInstanceId) {
+      console.log(`🛡️ [useMessageSending] Not clearing thinking state - belongs to different instance (${loadingInstanceIdRef.current} vs ${currentInstanceId})`)
+      return
+    }
+    
     console.log('🛡️ Clearing thinking state')
     setIsWaitingForResponse(false)
     setWaitingForMessageId(null)
+    loadingInstanceIdRef.current = null
     
     // Clear any existing timeout
     if (thinkingTimeoutRef.current) {
@@ -62,20 +72,37 @@ export const useMessageSending = ({
 
   // New Makina specific thinking state management
   const setNewMakinaThinking = () => {
-    console.log('🤔 Setting New Makina thinking state')
+    // New Makina doesn't have an instance_id yet, so we use null as the identifier
+    console.log('🤔 Setting New Makina thinking state (no instance_id yet)')
+    loadingInstanceIdRef.current = null // null means "new makina" context
     setIsNewMakinaThinking(true)
   }
 
   const clearNewMakinaThinking = () => {
+    // Only clear if we're in the "new makina" context (loadingInstanceIdRef.current === null)
+    // or if we don't have an active instance
+    if (loadingInstanceIdRef.current !== null && activeRobotInstance?.id) {
+      console.log(`🛡️ [useMessageSending] Not clearing New Makina thinking - we have an active instance (${activeRobotInstance.id})`)
+      return
+    }
+    
     console.log('🛡️ [useMessageSending] Clearing New Makina thinking state')
     console.log('🛡️ [useMessageSending] Current isNewMakinaThinking:', isNewMakinaThinking)
     setIsNewMakinaThinking(false)
+    loadingInstanceIdRef.current = null
     console.log('🛡️ [useMessageSending] New Makina thinking state cleared')
   }
 
   // Set thinking state with safety timeout
   const setThinkingStateWithTimeout = () => {
-    console.log('🤔 Setting thinking state with safety timeout')
+    const currentInstanceId = activeRobotInstance?.id
+    if (!currentInstanceId) {
+      console.warn('⚠️ [useMessageSending] Cannot set thinking state: no active instance')
+      return
+    }
+    
+    console.log(`🤔 Setting thinking state with safety timeout for instance: ${currentInstanceId}`)
+    loadingInstanceIdRef.current = currentInstanceId
     setIsWaitingForResponse(true)
     
     // Clear any existing timeout
@@ -85,8 +112,12 @@ export const useMessageSending = ({
     
     // Set safety timeout - clear thinking state after 30 seconds if no response
     thinkingTimeoutRef.current = setTimeout(() => {
-      console.log('⏰ Thinking timeout reached, clearing state as safety measure')
-      clearThinkingState()
+      // Only clear if this timeout is still for the current instance
+      if (loadingInstanceIdRef.current === currentInstanceId) {
+        console.log('⏰ Thinking timeout reached, clearing state as safety measure')
+        clearThinkingState()
+        loadingInstanceIdRef.current = null
+      }
     }, 30000) // 30 seconds - shorter timeout for better UX
   }
 
@@ -318,10 +349,49 @@ export const useMessageSending = ({
     setHasMessageBeenSent(false)
   }
 
+  // Reset loading states when activeRobotInstance changes to a different instance
+  useEffect(() => {
+    const currentInstanceId = activeRobotInstance?.id || null
+    
+    // If we switched to a different instance, clear loading states
+    if (loadingInstanceIdRef.current !== null && loadingInstanceIdRef.current !== currentInstanceId) {
+      console.log(`🔄 [useMessageSending] Instance changed from ${loadingInstanceIdRef.current} to ${currentInstanceId}, clearing loading states`)
+      // Clear states directly instead of calling functions to avoid dependency issues
+      setIsWaitingForResponse(false)
+      setWaitingForMessageId(null)
+      setIsNewMakinaThinking(false)
+      setIsSendingMessage(false) // Also clear sending state when switching instances
+      loadingInstanceIdRef.current = null
+      
+      // Clear any existing timeout
+      if (thinkingTimeoutRef.current) {
+        clearTimeout(thinkingTimeoutRef.current)
+        thinkingTimeoutRef.current = null
+      }
+    }
+    
+    // Update the ref to track the current instance
+    if (currentInstanceId) {
+      loadingInstanceIdRef.current = currentInstanceId
+    }
+  }, [activeRobotInstance?.id])
+
   // Reset hasMessageBeenSent when switching to no active instance
   useEffect(() => {
     if (!activeRobotInstance) {
       setHasMessageBeenSent(false)
+      // Also clear loading states when there's no active instance
+      setIsWaitingForResponse(false)
+      setWaitingForMessageId(null)
+      setIsNewMakinaThinking(false)
+      setIsSendingMessage(false) // Also clear sending state when there's no active instance
+      loadingInstanceIdRef.current = null
+      
+      // Clear any existing timeout
+      if (thinkingTimeoutRef.current) {
+        clearTimeout(thinkingTimeoutRef.current)
+        thinkingTimeoutRef.current = null
+      }
     }
   }, [activeRobotInstance])
 

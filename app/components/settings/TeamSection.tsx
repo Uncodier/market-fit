@@ -6,13 +6,12 @@ import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, User, Mail, FileText, CheckCircle2, Clock, Save, RotateCcw, Loader, ChevronDown, ChevronUp } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Badge } from "../ui/badge"
 import { siteMembersService, type SiteMember } from "@/app/services/site-members-service"
-import { ActionFooter } from "../ui/card-footer"
 import { useTeamMemberValidation } from "@/app/hooks/useTeamMemberValidation"
 import {
   AlertDialog,
@@ -95,7 +94,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isResending, setIsResending] = useState<string | null>(null) // Track which member is being resent
-  const [expandedMembers, setExpandedMembers] = useState<Set<number>>(new Set()) // Track which members are expanded
+  const [isSavingMember, setIsSavingMember] = useState<string | null>(null) // Track which member is being saved
+  const [originalMembers, setOriginalMembers] = useState<Map<string, FormTeamMember>>(new Map()) // Track original values
   const debouncedUpdateRef = useRef<any>(null)
   
   // Use our validation hook
@@ -118,6 +118,40 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     }, 300);
   }, [updateFormValues]);
   
+  // Emit team members update event whenever teamList changes
+  useEffect(() => {
+    if (active && teamList.length > 0) {
+      const teamMembersData = teamList.map((member, index) => ({
+        id: `team-member-${index}`,
+        title: member.name || member.email || `Member ${index + 1}`,
+      }));
+      
+      window.dispatchEvent(new CustomEvent('teamMembersUpdated', { 
+        detail: teamMembersData 
+      }));
+    }
+  }, [active, teamList]);
+
+  // Sync originalMembers with teamList when members with IDs are present
+  useEffect(() => {
+    if (teamList.length > 0) {
+      setOriginalMembers(prev => {
+        const newOriginalMap = new Map(prev)
+        let hasUpdates = false
+        
+        teamList.forEach(member => {
+          if (member.id && !newOriginalMap.has(member.id)) {
+            // Add member to original map if it has an ID and isn't already tracked
+            newOriginalMap.set(member.id, { ...member })
+            hasUpdates = true
+          }
+        })
+        
+        return hasUpdates ? newOriginalMap : prev
+      })
+    }
+  }, [teamList])
+
   // Fetch site members from the site_members table when the component becomes active
   useEffect(() => {
     // Only fetch when team tab becomes active and we have a siteId
@@ -148,6 +182,14 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           // Use members from site_members table if available
           setTeamList(formattedMembers)
           updateFormValues(formattedMembers)
+          // Store original values for change detection
+          const originalMap = new Map<string, FormTeamMember>()
+          formattedMembers.forEach(member => {
+            if (member.id) {
+              originalMap.set(member.id, { ...member })
+            }
+          })
+          setOriginalMembers(originalMap)
         } else {
           // If no members in site_members table, use settings.team_members as fallback
           const currentTeamMembers = form.getValues("team_members") || [];
@@ -182,22 +224,19 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
   }, [active, siteId, hasUnsavedChanges]) // Removed updateFormValues and form from dependencies
 
   // Add team member
-  const addTeamMember = () => {
+  const addTeamMember = useCallback(() => {
     if (isLoading) return
-    const newIndex = teamList.length
-    const newTeamList = [...teamList, { 
+    const newTeamList = [{ 
       email: "", 
       role: "view" as TeamRole, 
       name: "", 
       position: "",
       // New members don't have originalRole since they're not in DB yet
-    }]
+    }, ...teamList]
     setTeamList(newTeamList)
     setHasUnsavedChanges(true)
-    // Automatically expand the new member
-    setExpandedMembers(prev => new Set([...Array.from(prev), newIndex]))
     debouncedUpdateRef.current(newTeamList)
-  }
+  }, [isLoading, teamList])
 
   // Remove team member
   const removeTeamMember = async (index: number) => {
@@ -217,6 +256,14 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         setTeamList(formattedMembers)
         updateFormValues(formattedMembers)
         setHasUnsavedChanges(false)
+        // Update original members map
+        const updatedOriginalMap = new Map<string, FormTeamMember>()
+        formattedMembers.forEach(m => {
+          if (m.id) {
+            updatedOriginalMap.set(m.id, { ...m })
+          }
+        })
+        setOriginalMembers(updatedOriginalMap)
         return
       } catch (error) {
         console.error("Error removing team member:", error)
@@ -252,6 +299,105 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     setHasUnsavedChanges(true)
     debouncedUpdateRef.current(newTeamList)
   }
+
+  // Check if a member has unsaved changes
+  const hasMemberChanges = (member: FormTeamMember): boolean => {
+    if (!member.id) return false // New members don't have original values
+    
+    const original = originalMembers.get(member.id)
+    if (!original) {
+      // If original not found, check if member exists in teamList with same ID
+      // This handles the case where originalMembers hasn't been initialized yet
+      return false
+    }
+    
+    // Compare current values with original values
+    const nameChanged = (member.name || '') !== (original.name || '')
+    const positionChanged = (member.position || '') !== (original.position || '')
+    const roleChanged = member.role !== original.role
+    
+    return nameChanged || positionChanged || roleChanged
+  }
+
+  // Check if a member has valid changes that can be saved
+  const canSaveMember = (member: FormTeamMember): boolean => {
+    if (!member.id || !hasMemberChanges(member)) return false
+    
+    const original = originalMembers.get(member.id)
+    if (!original) return false
+    
+    // If role changed, check if role change is allowed
+    if (member.role !== original.role) {
+      return validation.canChangeRole(member)
+    }
+    
+    // Name or position changes are always allowed (if member exists)
+    return true
+  }
+
+  // Save individual member updates
+  const handleSaveMember = async (member: FormTeamMember, index: number) => {
+    if (!siteId || !member.id) {
+      toast.error("Cannot save: member ID is required");
+      return;
+    }
+
+    if (!hasMemberChanges(member)) {
+      toast.info("No changes to save");
+      return;
+    }
+
+    try {
+      setIsSavingMember(member.id);
+      
+      // Map form role to site member role
+      const siteMemberRole = member.role === 'admin' ? 'admin' : 
+                            member.role === 'create' || member.role === 'delete' ? 'collaborator' : 
+                            'marketing';
+      
+      // Update the member in the database
+      await siteMembersService.updateMember(member.id, {
+        role: siteMemberRole,
+        name: member.name,
+        position: member.position
+      });
+
+      toast.success(`${member.name || member.email} updated successfully`);
+      
+      // Update original values to reflect saved state
+      const newOriginalMap = new Map(originalMembers)
+      newOriginalMap.set(member.id, { ...member })
+      setOriginalMembers(newOriginalMap)
+      
+      // Reload the team list to ensure consistency
+      const members = await siteMembersService.getMembers(siteId);
+      const formattedMembers = members.map(siteMemberToFormMember);
+      setTeamList(formattedMembers);
+      updateFormValues(formattedMembers);
+      
+      // Update original values map
+      const updatedOriginalMap = new Map<string, FormTeamMember>()
+      formattedMembers.forEach(m => {
+        if (m.id) {
+          updatedOriginalMap.set(m.id, { ...m })
+        }
+      })
+      setOriginalMembers(updatedOriginalMap)
+      
+    } catch (error) {
+      console.error("Error saving team member:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Handle specific error cases
+      if (errorMessage.includes('Cannot change role of the last admin')) {
+        toast.error("Cannot change role of the last admin or owner. At least one admin must remain.");
+      } else {
+        toast.error(`Failed to save changes: ${errorMessage}`);
+      }
+    } finally {
+      setIsSavingMember(null);
+    }
+  };
 
   // Save team members function - direct Supabase operations
   const handleSaveTeamMembers = async () => {
@@ -308,6 +454,14 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         setTeamList(formattedMembers);
         updateFormValues(formattedMembers);
         setHasUnsavedChanges(false);
+        // Update original members map
+        const updatedOriginalMap = new Map<string, FormTeamMember>()
+        formattedMembers.forEach(m => {
+          if (m.id) {
+            updatedOriginalMap.set(m.id, { ...m })
+          }
+        })
+        setOriginalMembers(updatedOriginalMap)
       }
       
     } catch (error) {
@@ -390,100 +544,67 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     return shouldShow;
   });
 
-  // Toggle member expansion
-  const toggleMemberExpansion = (index: number) => {
-    const newExpanded = new Set(expandedMembers)
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index)
-    } else {
-      newExpanded.add(index)
-    }
-    setExpandedMembers(newExpanded)
-  }
-
-  // Helper function to expand all members
-  const expandAllMembers = () => {
-    setExpandedMembers(new Set(teamList.map((_, index) => index)))
-  }
-
-  // Helper function to collapse all members
-  const collapseAllMembers = () => {
-    setExpandedMembers(new Set())
-  }
-
   if (!active) return null
 
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl font-semibold">Team Members</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Invite team members to collaborate on your site
-            </p>
-          </div>
-          {teamList.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={expandAllMembers}
-                className="text-xs"
-              >
-                Expand All
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={collapseAllMembers}
-                className="text-xs"
-              >
-                Collapse All
-              </Button>
-            </div>
-          )}
+    <div id="team-members" className="space-y-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Team Members</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Invite team members to collaborate on your site
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6 px-8 pb-8">
-        {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2].map(i => (
-              <div key={i} className="h-32 bg-muted/40 animate-pulse rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          teamList.map((member, index) => {
-            const isExpanded = expandedMembers.has(index)
-            return (
-              <div key={index} className="border border-border rounded-lg overflow-hidden">
-                {/* Compact Header Row */}
-                <div 
-                  className="flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/30 cursor-pointer transition-colors"
-                  onClick={() => toggleMemberExpansion(index)}
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="flex items-center gap-2">
-                      <User className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium">
-                        {member.name || member.email || "New Member"}
-                      </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addTeamMember}
+          disabled={isLoading}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Invite New Member to Team
+        </Button>
+      </div>
+
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2].map(i => (
+            <div key={i} className="h-48 bg-muted/40 animate-pulse rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Team Member Cards */}
+          {teamList.map((member, index) => (
+            <Card 
+              key={index} 
+              id={`team-member-${index}`}
+              className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200"
+            >
+              <CardHeader className="px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-6 w-6 text-primary" />
                     </div>
-                    {member.email && member.email !== member.name && (
-                      <span className="text-sm text-muted-foreground">
-                        {member.email}
-                      </span>
-                    )}
-                    {member.position && (
-                      <span className="text-sm text-muted-foreground">
-                        • {member.position}
-                      </span>
-                    )}
+                    <div>
+                      <CardTitle className="text-xl font-semibold">
+                        {member.name || member.email || "New Member"}
+                      </CardTitle>
+                      {member.position && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {member.position}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex items-center gap-2">
                     {/* Role Badge */}
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary">
                       {TEAM_ROLES.find(role => role.value === member.role)?.label.split(' ')[0] || member.role}
                     </Badge>
                     
@@ -491,257 +612,261 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                     {member.status && (
                       <>
                         {member.status === 'active' ? (
-                          <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200 text-xs">
+                          <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
                             <CheckCircle2 className="h-3 w-3 mr-1" /> Active
                           </Badge>
                         ) : member.status === 'pending' ? (
                           <>
-                            {/* Email confirmation status for pending users */}
                             {member.emailConfirmed ? (
-                              <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 text-xs">
+                              <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
                                 <CheckCircle2 className="h-3 w-3 mr-1" /> Email Confirmed
                               </Badge>
                             ) : (
-                              <Badge className="bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200 text-xs">
+                              <Badge className="bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200">
                                 <Mail className="h-3 w-3 mr-1" /> Awaiting Email Click
                               </Badge>
                             )}
-                            <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200 text-xs">
+                            <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200">
                               <Clock className="h-3 w-3 mr-1" /> Pending
                             </Badge>
                           </>
                         ) : null}
                       </>
                     )}
-                    
-                    {/* Expand/Collapse Icon */}
-                    {isExpanded ? (
-                      <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="px-8 pb-8">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`team_members.${index}.name`}
+                      defaultValue={member.name || ""}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Name</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                className="pl-12 h-12 text-base"
+                                placeholder="Full name"
+                                {...field}
+                                value={teamList[index].name || ""}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  updateLocalTeamMember(index, 'name', e.target.value);
+                                }}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`team_members.${index}.email`}
+                      defaultValue={member.email}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Email</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                className="pl-12 h-12 text-base"
+                                placeholder="Email address"
+                                type="email"
+                                {...field}
+                                disabled={!!member.id}
+                                value={teamList[index].email}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  updateLocalTeamMember(index, 'email', e.target.value);
+                                }}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`team_members.${index}.position`}
+                      defaultValue={member.position || ""}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Position</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                className="pl-12 h-12 text-base"
+                                placeholder="Job title"
+                                {...field}
+                                value={teamList[index].position || ""}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  updateLocalTeamMember(index, 'position', e.target.value);
+                                }}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`team_members.${index}.role`}
+                      defaultValue={member.role}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Role</FormLabel>
+                          <Select
+                            value={teamList[index].role}
+                            onValueChange={(value) => {
+                              if (validation.canChangeRole(member)) {
+                                field.onChange(value);
+                                updateLocalTeamMember(index, 'role', value as TeamRole);
+                              } else {
+                                toast.error(validation.getRoleChangeMessage(member));
+                              }
+                            }}
+                            disabled={!validation.canChangeRole(member)}
+                          >
+                            <FormControl>
+                              <SelectTrigger className={`h-11 ${!validation.canChangeRole(member) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {TEAM_ROLES.map((role) => (
+                                <SelectItem key={role.value} value={role.value}>
+                                  {role.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {!validation.canChangeRole(member) && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              ⚠️ {validation.getRoleChangeMessage(member)}
+                            </p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  {/* Resend Invitation Button (if pending) */}
+                  {member.status === 'pending' && member.id && (!member.emailConfirmed || !member.lastSignIn) && (
+                    <div className="pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleResendInvitation(member, index)}
+                        disabled={isLoading || isResending === member.id}
+                        className="w-full"
+                      >
+                        {isResending === member.id ? (
+                          <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Mail className="w-4 h-4 mr-2" />
+                        )}
+                        Resend Magic Link Invitation
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              
+              <CardFooter className="px-8 py-6 bg-muted/30 border-t">
+                <div className="flex items-center justify-between w-full">
+                  <div className="text-sm text-muted-foreground">
+                    {member.id ? (
+                      <p>Member is {member.status === 'active' ? 'active' : 'pending invitation'}.</p>
                     ) : (
-                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p>Save to send invitation email to this member.</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          type="button"
+                          disabled={isLoading || !validation.canDelete(member)}
+                          title={validation.getDeleteTooltip(member)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove Member
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {validation.getDeleteMessage(member)}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          {validation.canDelete(member) && (
+                            <AlertDialogAction
+                              onClick={() => removeTeamMember(index)}
+                              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
+                            >
+                              Remove Member
+                            </AlertDialogAction>
+                          )}
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    {member.id && (
+                      <Button
+                        type="button"
+                        onClick={() => handleSaveMember(member, index)}
+                        disabled={isLoading || isSavingMember === member.id || !hasMemberChanges(member) || !canSaveMember(member)}
+                        variant="outline"
+                      >
+                        {isSavingMember === member.id ? (
+                          <>
+                            <Loader className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    {!member.id && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleSaveTeamMembers}
+                        disabled={isSaving || isLoading || !member.email}
+                      >
+                        {isSaving ? "Saving..." : "Save & Invite"}
+                      </Button>
                     )}
                   </div>
                 </div>
-
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <div className="p-4 space-y-4 border-t border-border">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`team_members.${index}.name`}
-                        defaultValue={member.name || ""}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium">Name</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                                <Input
-                                  className="pl-12 h-12 text-base"
-                                  placeholder="Full name"
-                                  {...field}
-                                  value={teamList[index].name || ""}
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    updateLocalTeamMember(index, 'name', e.target.value);
-                                  }}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`team_members.${index}.email`}
-                        defaultValue={member.email}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium">Email</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                                <Input
-                                  className="pl-12 h-12 text-base"
-                                  placeholder="Email address"
-                                  type="email"
-                                  {...field}
-                                  disabled={!!member.id}
-                                  value={teamList[index].email}
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    updateLocalTeamMember(index, 'email', e.target.value);
-                                  }}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`team_members.${index}.position`}
-                        defaultValue={member.position || ""}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium">Position</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                  className="pl-12 h-12 text-base"
-                                  placeholder="Job title"
-                                  {...field}
-                                  value={teamList[index].position || ""}
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    updateLocalTeamMember(index, 'position', e.target.value);
-                                  }}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex items-end space-x-4">
-                        <FormField
-                          control={form.control}
-                          name={`team_members.${index}.role`}
-                          defaultValue={member.role}
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormLabel className="text-sm font-medium">Role</FormLabel>
-                              <Select
-                                value={teamList[index].role}
-                                onValueChange={(value) => {
-                                  if (validation.canChangeRole(member)) {
-                                    field.onChange(value);
-                                    updateLocalTeamMember(index, 'role', value as TeamRole);
-                                  } else {
-                                    toast.error(validation.getRoleChangeMessage(member));
-                                  }
-                                }}
-                                disabled={!validation.canChangeRole(member)}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className={`h-11 ${!validation.canChangeRole(member) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                    <SelectValue placeholder="Select role" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {TEAM_ROLES.map((role) => (
-                                    <SelectItem key={role.value} value={role.value}>
-                                      {role.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {!validation.canChangeRole(member) && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  ⚠️ {validation.getRoleChangeMessage(member)}
-                                </p>
-                              )}
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              type="button"
-                              className="h-12 w-12 mt-2"
-                              disabled={isLoading || !validation.canDelete(member)}
-                              title={validation.getDeleteTooltip(member)}
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {validation.getDeleteMessage(member)}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              {validation.canDelete(member) && (
-                                <AlertDialogAction
-                                  onClick={() => removeTeamMember(index)}
-                                  className="bg-red-500 hover:bg-red-600 text-white"
-                                >
-                                  Remove Member
-                                </AlertDialogAction>
-                              )}
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })
-        )}
-        <Button
-          variant="outline"
-          className="mt-2 w-full h-12"
-          type="button"
-          onClick={addTeamMember}
-          disabled={isLoading}
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Team Member
-        </Button>
-      </CardContent>
-      
-      <ActionFooter>
-        <div className="flex items-center justify-between w-full gap-4 flex-wrap">
-          <div className="text-sm text-muted-foreground">
-            <p>Team members will receive an email invitation to join your site.</p>
-            <p className="mt-1">Site owners and admins can manage access and permissions.</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              type="button"
-              onClick={handleSaveTeamMembers}
-              disabled={isSaving || isLoading || !hasUnsavedChanges || !teamList.some(member => !member.id)}
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-            {pendingMembers.map((member, originalIndex) => {
-              const memberIndex = teamList.findIndex(m => m.id === member.id);
-              return (
-                <Button
-                  key={member.id}
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleResendInvitation(member, memberIndex)}
-                  disabled={isLoading || isResending === member.id}
-                  className="text-sm"
-                >
-                  {isResending === member.id ? (
-                    <Loader className="w-4 h-4 mr-2" />
-                  ) : (
-                    <Mail className="w-4 h-4 mr-2" />
-                  )}
-                  Resend Magic Link to {member.name || member.email}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      </ActionFooter>
-    </Card>
+              </CardFooter>
+            </Card>
+          ))}
+        </>
+      )}
+    </div>
   )
 } 

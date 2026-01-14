@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from "@/app/components/ui/form"
 import { Input } from "@/app/components/ui/input"
-import { Globe } from "@/app/components/ui/icons"
+import { Globe, PlusCircle } from "@/app/components/ui/icons"
 
 const formSchema = z.object({
   domain: z
@@ -121,11 +121,12 @@ export function AddDomainDialog({ onAddDomain }: AddDomainDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
-          className="w-full" 
+          type="button"
           variant="outline"
+          size="sm"
         >
-          <Globe className="mr-2 h-4 w-4" />
-          Add New Domain
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Domain
         </Button>
       </DialogTrigger>
       <DialogContent>

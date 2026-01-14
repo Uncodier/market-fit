@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { agents } from "@/app/data/mock-agents"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
+import { markUINavigation } from "@/app/hooks/use-navigation-history"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
 import { cn } from "@/lib/utils"
@@ -22,6 +23,7 @@ import { Agent } from "@/app/types/agents"
 import { ChatHeader } from "@/app/components/chat/ChatHeader"
 import { ChatMessages } from "@/app/components/chat/ChatMessages"
 import { ChatInput } from "@/app/components/chat/ChatInput"
+import { InvalidatedLeadModal } from "@/app/components/chat/InvalidatedLeadModal"
 import { useLeadData } from "@/app/hooks/useLeadData"
 import { useChatMessages } from "@/app/hooks/useChatMessages"
 import { useChatOperations } from "@/app/hooks/useChatOperations"
@@ -65,7 +67,7 @@ function ChatPageContent() {
   // Initialize the useCommandK hook
   useCommandK()
   
-  // Track API requests to /agents/chat/message
+  // Track API requests to /agents/chat/message (per conversationId)
   const { hasActiveChatRequest } = useApiRequestTracker()
   
   // Use our new hooks for better organization
@@ -74,8 +76,13 @@ function ChatPageContent() {
     isLoadingLead,
     isAgentOnlyConversation,
     setIsAgentOnlyConversation,
-    isLead
+    isLead,
+    isLeadInvalidated
   } = useLeadData(conversationId, currentSite?.id)
+  
+  // State for invalidated lead modal
+  const [showInvalidatedModal, setShowInvalidatedModal] = useState(false)
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false)
   
   const {
     chatMessages,
@@ -269,17 +276,20 @@ function ChatPageContent() {
   }, [isChatListCollapsed])
 
   // Function to select a conversation - memoized for performance
-  const handleSelectConversation = useCallback((selectedConversationId: string, selectedAgentName: string, selectedAgentId: string) => {
+  const handleSelectConversation = useCallback((selectedConversationId: string, selectedAgentName: string, selectedAgentId: string, conversationTitle?: string) => {
     // First clear messages and set transition state to show skeleton
     if (conversationId !== selectedConversationId) {
       clearMessagesForTransition();
     }
     
     // Use the native history API to update the URL without triggering a hard reload
-    const newUrl = `/chat?conversationId=${selectedConversationId}&agentId=${selectedAgentId}&agentName=${encodeURIComponent(selectedAgentName)}`
+    // Include conversation title if available
+    const titleParam = conversationTitle ? `&title=${encodeURIComponent(conversationTitle)}` : ''
+    const newUrl = `/chat?conversationId=${selectedConversationId}&agentId=${selectedAgentId}&agentName=${encodeURIComponent(selectedAgentName)}${titleParam}`
     window.history.pushState(null, '', newUrl)
     
     // We need to replace the window.location.search to ensure the component picks up the new parameters
+    markUINavigation();
     router.replace(newUrl);
   }, [conversationId, clearMessagesForTransition, router])
 
@@ -310,6 +320,7 @@ function ChatPageContent() {
           const agent: Agent | null = await getAgentForConversation(conversationAgentId)
           if (agent) {
             // Update the URL with the agent details
+            markUINavigation();
             router.replace(`/chat?conversationId=${conversationId}&agentId=${agent.id}&agentName=${encodeURIComponent(agent.name)}`)
           }
         }
@@ -421,16 +432,109 @@ function ChatPageContent() {
 
   // Sobrescribe el estado de isAgentResponding desde el tracker de API
   useEffect(() => {
-    // Sincronizar estado de animación de carga según peticiones activas
-    setIsAgentResponding(hasActiveChatRequest)
+    // Sincronizar estado de animación de carga según peticiones activas para esta conversación específica
+    const hasActiveRequest = hasActiveChatRequest(conversationId)
+    setIsAgentResponding(hasActiveRequest)
     
-    if (hasActiveChatRequest) {
-      console.log("[ChatPage] Animación activada por petición activa a /agents/chat/message")
+    if (hasActiveRequest) {
+      console.log(`[ChatPage] Animación activada por petición activa a /agents/chat/message para conversationId: ${conversationId}`)
     }
-  }, [hasActiveChatRequest, setIsAgentResponding])
+  }, [hasActiveChatRequest, conversationId, setIsAgentResponding])
+
+  // Show modal when lead is invalidated (only for valid conversations)
+  useEffect(() => {
+    const hasValidConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-")
+    
+    if (isLeadInvalidated && hasValidConversation && !showInvalidatedModal) {
+      setShowInvalidatedModal(true)
+    }
+    
+    // Reset modal state when conversation changes
+    if (!hasValidConversation && showInvalidatedModal) {
+      setShowInvalidatedModal(false)
+    }
+  }, [isLeadInvalidated, showInvalidatedModal, conversationId])
+
+  // Function to delete conversation and messages
+  const handleDeleteConversation = useCallback(async () => {
+    if (!conversationId || conversationId.startsWith("new-")) {
+      console.warn("Invalid conversation ID, skipping deletion")
+      return
+    }
+    
+    console.log("Starting deletion of conversation:", conversationId)
+    setIsDeletingConversation(true)
+    
+    try {
+      const supabase = createClient()
+      
+      // Delete messages first (due to foreign key constraints)
+      console.log("Deleting messages for conversation:", conversationId)
+      const { data: deletedMessages, error: messagesError } = await supabase
+        .from("messages")
+        .delete()
+        .eq("conversation_id", conversationId)
+        .select()
+      
+      if (messagesError) {
+        console.error("Error deleting messages:", messagesError)
+        throw messagesError
+      }
+      
+      console.log("Messages deleted:", deletedMessages?.length || 0)
+      
+      // Delete the conversation
+      console.log("Deleting conversation:", conversationId)
+      const { data: deletedConversation, error: conversationError } = await supabase
+        .from("conversations")
+        .delete()
+        .eq("id", conversationId)
+        .select()
+      
+      if (conversationError) {
+        console.error("Error deleting conversation:", conversationError)
+        throw conversationError
+      }
+      
+      console.log("Conversation deleted successfully:", deletedConversation)
+      
+      // Emit event to reload conversations list
+      window.dispatchEvent(new CustomEvent('conversation:deleted', { 
+        detail: { conversationId } 
+      }))
+      
+      // Close modal first
+      setShowInvalidatedModal(false)
+      setIsDeletingConversation(false)
+      
+      // Redirect to chat page (without conversation ID)
+      markUINavigation();
+      router.push("/chat")
+    } catch (error) {
+      console.error("Error deleting conversation:", error)
+      alert("Failed to delete conversation. Please try again.")
+      setIsDeletingConversation(false)
+    }
+  }, [conversationId, router])
+
+  const handleCancelDelete = useCallback(() => {
+    setShowInvalidatedModal(false)
+    // Redirect to chat list
+    markUINavigation();
+    router.push("/chat")
+  }, [router])
 
   return (
-    <div className="flex h-full relative overflow-visible">
+    <>
+      {/* Invalidated Lead Modal */}
+      <InvalidatedLeadModal
+        isOpen={showInvalidatedModal}
+        onConfirm={handleDeleteConversation}
+        onCancel={handleCancelDelete}
+        isDeleting={isDeletingConversation}
+      />
+      
+      <div className="flex h-full relative overflow-visible">
       {/* Chat list */}
       <div className={cn(
         "h-full transition-all duration-300 ease-in-out",
@@ -504,6 +608,7 @@ function ChatPageContent() {
         )}
       </div>
     </div>
+    </>
   )
 }
 

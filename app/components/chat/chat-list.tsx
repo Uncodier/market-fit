@@ -36,7 +36,7 @@ function ConversationSkeleton() {
 interface ChatListProps {
   siteId: string
   selectedConversationId?: string
-  onSelectConversation: (conversationId: string, agentName: string, agentId: string) => void
+  onSelectConversation: (conversationId: string, agentName: string, agentId: string, conversationTitle?: string) => void
   className?: string
   onLoadConversations?: (loadFunction: () => Promise<void>) => void
   onDeleteConversation?: (conversationId: string) => Promise<void>
@@ -210,7 +210,12 @@ export function ChatList({
       
       if (result.length > 0) {
         if (append) {
-          setConversations(prev => [...prev, ...result])
+          setConversations(prev => {
+            // Filter out any conversations that already exist to avoid duplicates
+            const existingIds = new Set(prev.map(conv => conv.id));
+            const newConversations = result.filter(conv => !existingIds.has(conv.id));
+            return [...prev, ...newConversations];
+          })
         } else {
           setConversations(result)
         }
@@ -475,8 +480,16 @@ export function ChatList({
                 status: payload.new.status || 'active'
               };
               
-              // Añadir la nueva conversación al principio de la lista
-              setConversations(prev => [newConversation, ...prev]);
+              // Añadir la nueva conversación al principio de la lista, evitando duplicados
+              setConversations(prev => {
+                // Check if conversation already exists
+                const exists = prev.some(conv => conv.id === newConversation.id);
+                if (exists) {
+                  console.log(`🔍 Conversation ${newConversation.id} already exists, skipping duplicate`);
+                  return prev;
+                }
+                return [newConversation, ...prev];
+              });
               console.log(`🔍 New conversation ${newConversation.id} added with agent: ${details.agentName}, channel: ${details.channel}`);
               console.log(`🔍 DEBUG: Full conversation object:`, newConversation);
 
@@ -675,6 +688,24 @@ export function ChatList({
     }
   }, [debouncedSearchQuery, siteId, loadConversations])
 
+  // Listen for conversation deletion event
+  useEffect(() => {
+    const handleConversationDeleted = (event: CustomEvent) => {
+      console.log('🗑️ Conversation deleted, reloading list:', event.detail?.conversationId)
+      
+      // Reload conversations list
+      if (siteId) {
+        loadConversations(1, false, debouncedSearchQuery)
+      }
+    }
+    
+    window.addEventListener('conversation:deleted' as any, handleConversationDeleted)
+    
+    return () => {
+      window.removeEventListener('conversation:deleted' as any, handleConversationDeleted)
+    }
+  }, [siteId, loadConversations, debouncedSearchQuery])
+
   // No need for client-side filtering since search is done at database level
   const filteredConversations = conversations
 
@@ -695,7 +726,7 @@ export function ChatList({
     }
     
     // Solo notificar al componente padre, sin recargar la lista
-    onSelectConversation(conversation.id, conversation.agentName, conversation.agentId);
+    onSelectConversation(conversation.id, conversation.agentName, conversation.agentId, conversation.title);
   }
   
   const deleteConversation = async (conversationId: string) => {

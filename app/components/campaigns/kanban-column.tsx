@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from "@/app/components/ui/icons"
 import "./kanban.css"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import { navigateToCampaign } from "@/app/hooks/use-navigation-history"
 
 interface KanbanColumnProps {
   title: string
@@ -73,8 +74,12 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
     total + (task.requirements?.length || 0), 0
   )
 
-  const handleCardClick = (id: string) => {
-    router.push(`/campaigns/${id}`)
+  const handleCardClick = (id: string, title: string) => {
+    navigateToCampaign({
+      campaignId: id,
+      campaignName: title,
+      router
+    })
   }
 
   return (

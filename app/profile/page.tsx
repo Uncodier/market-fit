@@ -7,6 +7,7 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { ActionFooter } from "@/app/components/ui/card-footer"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { useDropzone } from "react-dropzone"
@@ -184,34 +185,57 @@ export default function ProfilePage() {
     multiple: false
   })
 
-  const handleSave = async () => {
+  const handleSavePersonalInfo = async () => {
     try {
       const profileData = {
         name: formData.name,
         bio: formData.bio,
         role: formData.role,
-        language: formData.language,
-        timezone: formData.timezone,
         avatar_url: imageUrl || undefined
       }
       
-      // Usar versiones silenciosas para evitar múltiples toasts
-      const profileSuccess = await updateProfile(profileData, true)
-      
-      if (profileSuccess) {
-        const notificationSuccess = await updateNotifications(notificationSettings, true)
-        
-        if (notificationSuccess) {
-          toast.success("Profile updated successfully")
-        } else {
-          toast.error("Profile updated but failed to update notifications")
-        }
+      const success = await updateProfile(profileData, true)
+      if (success) {
+        toast.success("Personal information updated successfully")
       } else {
-        toast.error("Failed to update profile")
+        toast.error("Failed to update personal information")
       }
     } catch (error) {
       console.error(error)
-      toast.error("Error updating profile")
+      toast.error("Error updating personal information")
+    }
+  }
+
+  const handleSavePreferences = async () => {
+    try {
+      const profileData = {
+        language: formData.language,
+        timezone: formData.timezone
+      }
+      
+      const success = await updateProfile(profileData, true)
+      if (success) {
+        toast.success("Preferences updated successfully")
+      } else {
+        toast.error("Failed to update preferences")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Error updating preferences")
+    }
+  }
+
+  const handleSaveNotifications = async () => {
+    try {
+      const success = await updateNotifications(notificationSettings, true)
+      if (success) {
+        toast.success("Notification settings updated successfully")
+      } else {
+        toast.error("Failed to update notification settings")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Error updating notification settings")
     }
   }
 
@@ -229,15 +253,6 @@ export default function ProfilePage() {
     <div className="flex-1">
       <StickyHeader>
         <div className="flex items-center justify-between px-16 w-full">
-          <div className="flex-1" />
-          <div className="flex items-center gap-2">
-            <Button 
-              disabled={isUpdating}
-              onClick={handleSave}
-            >
-              {isUpdating ? "Saving..." : "Save changes"}
-            </Button>
-          </div>
         </div>
       </StickyHeader>
       
@@ -343,6 +358,16 @@ export default function ProfilePage() {
                 </div>
               </div>
             </CardContent>
+            <ActionFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSavePersonalInfo}
+                disabled={isUpdating}
+              >
+                {isUpdating ? "Saving..." : "Save Personal Information"}
+              </Button>
+            </ActionFooter>
           </Card>
 
           <EmailSecurityCard
@@ -401,6 +426,16 @@ export default function ProfilePage() {
                 </div>
               </div>
             </CardContent>
+            <ActionFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSavePreferences}
+                disabled={isUpdating}
+              >
+                {isUpdating ? "Saving..." : "Save Preferences"}
+              </Button>
+            </ActionFooter>
           </Card>
 
           <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -438,6 +473,16 @@ export default function ProfilePage() {
                 />
               </div>
             </CardContent>
+            <ActionFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSaveNotifications}
+                disabled={isUpdating}
+              >
+                {isUpdating ? "Saving..." : "Save Notifications"}
+              </Button>
+            </ActionFooter>
           </Card>
         </div>
       </div>

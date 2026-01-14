@@ -511,6 +511,7 @@ export function SocialSection({ active, onSave }: SocialSectionProps) {
       </CardContent>
       <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
         <Button 
+          variant="outline"
           onClick={handleSave}
           disabled={isSaving}
         >

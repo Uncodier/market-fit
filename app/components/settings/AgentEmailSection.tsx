@@ -512,7 +512,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
   if (!active) return null
 
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card id="agent-email-channel" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <Mail className="h-5 w-5" />
@@ -677,6 +677,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               Configure your agent email address above
             </div>
             <Button
+              variant="outline"
               onClick={handleRequestAgentEmail}
               disabled={isRequesting || !canRequest()}
             >
@@ -763,7 +764,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
             <AlertDialogAction
               onClick={handleDeleteInbox}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="!bg-destructive !text-destructive-foreground hover:!bg-destructive/90"
             >
               {isDeleting ? (
                 <>

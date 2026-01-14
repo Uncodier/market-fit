@@ -53,6 +53,7 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
 import { useRouter } from "next/navigation"
+import { navigateToContent } from "@/app/hooks/use-navigation-history"
 import { CreateContentDialog } from "./components"
 import { getContentTypeName, getSegmentName, getContentTypeIconClass, getCampaignName } from "./utils"
 import { StarRating } from "@/app/components/ui/rating"
@@ -1795,7 +1796,11 @@ export default function ContentPage() {
   }
 
   const handleContentClick = (content: ContentItem) => {
-    router.push(`/content/${content.id}`)
+    navigateToContent({
+      contentId: content.id,
+      contentTitle: content.title,
+      router
+    })
   }
 
   const handlePageChange = (page: number) => {
@@ -1847,34 +1852,34 @@ export default function ContentPage() {
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
-                <TabsList>
-                  <TabsTrigger value="all">
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                  <TabsTrigger value="all" className="text-xs rounded-full">
                     All Content
-                    <Badge variant="secondary" className="ml-2 bg-muted">
+                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="blog_post">
+                  <TabsTrigger value="blog_post" className="text-xs rounded-full">
                     Blog Posts
-                    <Badge variant="secondary" className="ml-2 bg-muted">
+                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'blog_post').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="video">
+                  <TabsTrigger value="video" className="text-xs rounded-full">
                     Videos
-                    <Badge variant="secondary" className="ml-2 bg-muted">
+                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'video').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="social_post">
+                  <TabsTrigger value="social_post" className="text-xs rounded-full">
                     Social Media
-                    <Badge variant="secondary" className="ml-2 bg-muted">
+                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'social_post').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="ad">
+                  <TabsTrigger value="ad" className="text-xs rounded-full">
                     Ads
-                    <Badge variant="secondary" className="ml-2 bg-muted">
+                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'ad').length}
                     </Badge>
                   </TabsTrigger>
@@ -1883,12 +1888,12 @@ export default function ContentPage() {
                   <Input 
                     data-command-k-input
                     placeholder="Search content..." 
-                    className="w-full" 
+                    className="w-full pr-16" 
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     value={searchTerm}
                     onChange={handleSearchChange}
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>
@@ -1915,7 +1920,7 @@ export default function ContentPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-6">
+        <div className="p-8 space-y-6 bg-muted/30">
           {/* Trends Section - Only for Table View */}
           {viewType === 'table' && (
             <div className="px-8">

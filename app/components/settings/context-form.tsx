@@ -15,7 +15,6 @@ import { CopywritingSection } from "./CopywritingSection"
 import { CustomerJourneySection } from "./CustomerJourneySection"
 import { SocialSection } from "./SocialSection"
 import { BillingSection } from "./BillingSection"
-import { RotateCcw } from "../ui/icons"
 import { useDropzone } from "react-dropzone"
 import { cn } from "../../lib/utils"
 import {
@@ -66,7 +65,6 @@ interface ContextFormProps {
   onSaveSocial?: (data: SiteFormValues) => void
   onSaveCopywriting?: (data: SiteFormValues) => void
   onDeleteSite?: () => void
-  onCacheAndRebuild?: () => void
   isSaving?: boolean
   activeSegment: string
   siteId?: string
@@ -82,8 +80,7 @@ export function ContextForm({
   onSaveCustomerJourney,
   onSaveSocial,
   onSaveCopywriting,
-  onDeleteSite, 
-  onCacheAndRebuild, 
+  onDeleteSite,
   isSaving, 
   activeSegment,
   siteId 
@@ -284,31 +281,6 @@ export function ContextForm({
 
           {renderCard("social",
             <SocialSection active={true} onSave={onSaveSocial} />
-          )}
-
-          {renderCard("general",
-            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Cache Management</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Clear the cache and rebuild all experiments. This will take a few minutes.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-12"
-                    onClick={onCacheAndRebuild}
-                    disabled={isSaving}
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Clear Cache and Rebuild
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           )}
 
           {renderCard("general",

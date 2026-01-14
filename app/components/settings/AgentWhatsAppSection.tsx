@@ -468,7 +468,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
   if (!active) return null
 
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card id="agent-whatsapp-channel" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
@@ -570,6 +570,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
               Configure your agent WhatsApp number above
             </div>
             <Button
+              variant="outline"
               onClick={handleRequestAgentWhatsApp}
               disabled={isRequesting || !canRequest()}
             >

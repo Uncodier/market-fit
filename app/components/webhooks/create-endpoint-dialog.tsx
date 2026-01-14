@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
-import { Plus } from "@/app/components/ui/icons"
+import { PlusCircle } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Card, CardContent } from "@/app/components/ui/card"
@@ -82,7 +82,7 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" size="sm">
-          <Plus className="h-4 w-4 mr-2" /> {triggerLabel}
+          <PlusCircle className="h-4 w-4 mr-2" /> {triggerLabel}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">

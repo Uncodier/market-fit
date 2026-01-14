@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/app/components/ui/form"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/app/components/ui/card"
+import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 import { cn } from "@/lib/utils"
 import { 
   Shield, 
@@ -29,7 +30,8 @@ import {
   Key,
   Globe,
   Trash2,
-  Bot
+  Bot,
+  PlusCircle
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { useAuth } from "@/app/hooks/use-auth"
@@ -43,6 +45,17 @@ import { useSite } from "@/app/context/SiteContext"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { ApiKeysList } from "@/app/components/api-keys/api-keys-list"
 import { RobotSessionsList } from "@/app/components/security/robot-sessions-list"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/app/components/ui/alert-dialog"
 
 // Define MFA factor interface
 interface MfaFactor {
@@ -93,6 +106,32 @@ const defaultMfaValues: MfaFormValues = {
   enabled: false
 };
 
+// Section configurations for quick navigation
+const authenticationSections: QuickNavSection[] = [
+  { id: "change-password", title: "Change Password" },
+  { id: "two-factor-authentication", title: "Two-Factor Authentication" },
+]
+
+const getInitialApiKeysSections = (): QuickNavSection[] => [
+  { 
+    id: "api-keys", 
+    title: "API Keys",
+    children: []
+  },
+]
+
+const robotSessionsSections: QuickNavSection[] = [
+  { id: "robot-sessions", title: "Robot Sessions" },
+]
+
+const getInitialAllowedDomainsSections = (): QuickNavSection[] => [
+  { 
+    id: "allowed-domains", 
+    title: "Allowed Domains",
+    children: []
+  },
+]
+
 export default function SecurityPage() {
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
@@ -108,6 +147,62 @@ export default function SecurityPage() {
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [activeTab, setActiveTab] = useState("authentication");
   const [hasPasswordChanges, setHasPasswordChanges] = useState(false);
+  const [apiKeysSections, setApiKeysSections] = useState<QuickNavSection[]>(getInitialApiKeysSections())
+  const [allowedDomainsSections, setAllowedDomainsSections] = useState<QuickNavSection[]>(getInitialAllowedDomainsSections())
+
+  // Listen for API keys updates
+  useEffect(() => {
+    const handleApiKeysUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setApiKeysSections([
+        {
+          id: "api-keys",
+          title: "API Keys",
+          children: items
+        }
+      ]);
+    };
+
+    window.addEventListener('apiKeysUpdated', handleApiKeysUpdate as EventListener);
+    return () => {
+      window.removeEventListener('apiKeysUpdated', handleApiKeysUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for allowed domains updates
+  useEffect(() => {
+    const handleAllowedDomainsUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setAllowedDomainsSections([
+        {
+          id: "allowed-domains",
+          title: "Allowed Domains",
+          children: items
+        }
+      ]);
+    };
+
+    window.addEventListener('allowedDomainsUpdated', handleAllowedDomainsUpdate as EventListener);
+    return () => {
+      window.removeEventListener('allowedDomainsUpdated', handleAllowedDomainsUpdate as EventListener);
+    };
+  }, []);
+
+  // Get current sections based on active tab
+  const getCurrentSections = (): QuickNavSection[] => {
+    switch (activeTab) {
+      case "authentication":
+        return authenticationSections
+      case "api_keys":
+        return apiKeysSections
+      case "robot_sessions":
+        return robotSessionsSections
+      case "allowed_domains":
+        return allowedDomainsSections
+      default:
+        return []
+    }
+  }
   
   // Password form
   const passwordForm = useForm<PasswordFormValues>({
@@ -409,7 +504,9 @@ export default function SecurityPage() {
           </div>
         </StickyHeader>
         
-        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
+        <div className="py-8 pb-16">
+          <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+            <div className="flex-1 max-w-[880px] px-16">
           <TabsContent value="authentication">
             <Form {...passwordForm}>
               <form
@@ -418,7 +515,7 @@ export default function SecurityPage() {
                 className="space-y-12"
               >
                 <div className="space-y-12">
-                  <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <Card id="change-password" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
                     <CardHeader className="px-8 py-6">
                       <CardTitle className="text-xl font-semibold">Change Password</CardTitle>
                     </CardHeader>
@@ -563,6 +660,7 @@ export default function SecurityPage() {
                     <ActionFooter>
                       <Button
                         type="submit"
+                        variant="outline"
                         disabled={!hasPasswordChanges || isSaving}
                       >
                         {isSaving ? "Saving..." : "Save Password"}
@@ -570,7 +668,7 @@ export default function SecurityPage() {
                     </ActionFooter>
                   </Card>
 
-                  <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <Card id="two-factor-authentication" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
                     <CardHeader className="px-8 py-6">
                       <CardTitle className="text-xl font-semibold">Two-Factor Authentication</CardTitle>
                     </CardHeader>
@@ -634,6 +732,7 @@ export default function SecurityPage() {
                         </Button>
                         <Button
                           type="button"
+                          variant="outline"
                           onClick={handleVerifyMfa}
                           disabled={isLoading || verificationCode.length !== 6}
                         >
@@ -648,21 +747,11 @@ export default function SecurityPage() {
           </TabsContent>
 
           <TabsContent value="api_keys">
-            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">API Keys</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8 w-full">
-                <div className="text-sm text-muted-foreground">
-                  Manage your API keys to interact with our services programmatically. API keys are used to authenticate requests to the API.
-                </div>
-                <ApiKeysList />
-              </CardContent>
-            </Card>
+            <ApiKeysList />
           </TabsContent>
 
           <TabsContent value="robot_sessions">
-            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card id="robot-sessions" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="px-8 py-6">
                 <CardTitle className="text-xl font-semibold">Robot Sessions</CardTitle>
               </CardHeader>
@@ -676,19 +765,11 @@ export default function SecurityPage() {
           </TabsContent>
 
           <TabsContent value="allowed_domains">
-            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Allowed Domains</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8 w-full">
-                <div className="text-sm text-muted-foreground">
-                  Configure which domains are allowed to make requests to your API. This helps secure your application by preventing unauthorized access.
-                </div>
-                
-                <AllowedDomainsList />
-              </CardContent>
-            </Card>
+            <AllowedDomainsList />
           </TabsContent>
+            </div>
+            <QuickNav sections={getCurrentSections()} />
+          </div>
         </div>
       </Tabs>
     </div>
@@ -698,6 +779,20 @@ export default function SecurityPage() {
 function AllowedDomainsList() {
   const { domains, isLoading, isSubmitting, addDomain, deleteDomain } = useAllowedDomains()
   const { currentSite } = useSite()
+
+  // Emit domains update event whenever list changes
+  useEffect(() => {
+    if (domains.length > 0) {
+      const domainsData = domains.map((domain, index) => ({
+        id: `allowed-domain-${index}`,
+        title: domain.domain || `Domain ${index + 1}`,
+      }));
+      
+      window.dispatchEvent(new CustomEvent('allowedDomainsUpdated', { 
+        detail: domainsData 
+      }));
+    }
+  }, [domains]);
 
   if (!currentSite) {
     return (
@@ -711,60 +806,77 @@ function AllowedDomainsList() {
     )
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-4">
-      {domains.length > 0 ? (
+    <div id="allowed-domains" className="space-y-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Allowed Domains</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Configure which domains are allowed to make requests to your API
+          </p>
+        </div>
+        <AddDomainDialog onAddDomain={addDomain} />
+      </div>
+
+      {/* Loading State */}
+      {isLoading ? (
         <div className="space-y-4">
-          <div className="rounded-md border">
-            {domains.map((domain, index) => (
-              <div
-                key={domain.id}
-                className={cn(
-                  "flex items-center justify-between p-4",
-                  index !== domains.length - 1 && "border-b"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{domain.domain}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteDomain(domain.id)}
-                  disabled={isSubmitting || domain.domain === 'localhost'}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="sr-only">Delete domain</span>
-                </Button>
-              </div>
-            ))}
-          </div>
-          <div className="w-full">
-            <AddDomainDialog onAddDomain={addDomain} />
-          </div>
+          {[1, 2].map(i => (
+            <div key={i} className="h-48 bg-muted/40 animate-pulse rounded-lg" />
+          ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center min-h-[400px] w-full">
-          <EmptyCard
-            icon={<Globe className="h-10 w-10 text-muted-foreground" />}
-            title="No domains added"
-            description="Add domains that are allowed to make requests to your API"
-          />
-          <div className="mt-6 w-full">
-            <AddDomainDialog onAddDomain={addDomain} />
-          </div>
+        <div className="space-y-6">
+          {/* Domain Cards */}
+          {domains.map((domain, index) => (
+            <Card key={domain.id} id={`allowed-domain-${index}`} className="border border-border">
+              <CardHeader className="px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle className="text-lg font-semibold">{domain.domain}</CardTitle>
+                  </div>
+                </div>
+              </CardHeader>
+
+              {/* Card Footer with individual buttons */}
+              <ActionFooter>
+                <div className="flex items-center gap-2">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSubmitting || domain.domain === 'localhost'}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove Domain
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Domain</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to remove the domain "{domain.domain}"? This action cannot be undone and API requests from this domain will no longer be allowed.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteDomain(domain.id)}
+                          className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
+                        >
+                          Remove Domain
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </ActionFooter>
+            </Card>
+          ))}
         </div>
       )}
     </div>

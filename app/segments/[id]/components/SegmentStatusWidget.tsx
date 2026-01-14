@@ -9,7 +9,6 @@ interface SegmentStatusWidgetProps {
 export function SegmentStatusWidget({ isActive, onStatusChange }: SegmentStatusWidgetProps) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
       <div className="flex space-x-2">
         <Badge 
           className={`cursor-pointer transition-colors duration-200 ${

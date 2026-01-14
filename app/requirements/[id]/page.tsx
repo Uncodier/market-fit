@@ -1578,15 +1578,19 @@ function RequirementDetailContent() {
       {/* Right Panel */}
       <div className="w-80 border-l bg-muted/30 flex flex-col h-full">
         {editForm.budget && editForm.budget > 0 ? (
-          <Tabs defaultValue="outsource" className="flex flex-col h-full">
+          <Tabs defaultValue="info" className="flex flex-col h-full">
             <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
               <TabsList className="grid grid-cols-2 w-full">
-                <TabsTrigger value="outsource">Outsource</TabsTrigger>
                 <TabsTrigger value="info">Details</TabsTrigger>
+                <TabsTrigger value="outsource">Outsource</TabsTrigger>
               </TabsList>
             </div>
             
             <div className="flex-1 flex flex-col overflow-hidden">
+              <TabsContent value="info" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
+                {renderDetailsContent()}
+              </TabsContent>
+              
               <TabsContent value="outsource" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
                 <div className="flex-1 overflow-hidden">
                   <ScrollArea className="h-full">
@@ -1731,10 +1735,6 @@ function RequirementDetailContent() {
                     </Button>
                   </div>
                 )}
-              </TabsContent>
-              
-              <TabsContent value="info" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
-                {renderDetailsContent()}
               </TabsContent>
             </div>
           </Tabs>
@@ -1986,7 +1986,7 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete, hasUnsavedChanges }: {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={onDelete}>
+              <AlertDialogAction className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground" onClick={onDelete}>
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>

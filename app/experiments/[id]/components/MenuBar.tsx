@@ -350,7 +350,7 @@ export function MenuBar({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={onDelete}>
+                <AlertDialogAction className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground" onClick={onDelete}>
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

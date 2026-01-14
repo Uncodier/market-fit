@@ -488,7 +488,7 @@ function ControlCenterSkeleton() {
     <div className="flex-1 p-0">
       <div className="px-8 pb-8">
         <div className="w-full overflow-x-auto overflow-y-visible">
-          <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
+          <div className="flex gap-6 p-6 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
             {/* Kanban columns - create columns to represent different campaign types */}
             {[1, 2, 3, 4, 5].map((columnIndex) => (
               <div key={columnIndex} className="flex flex-col h-full w-[280px]">
@@ -572,6 +572,21 @@ export default function CampaignsPage() {
     campaign_requirements?: Array<{campaign_id: string}>;
   }>>([]);
   const { currentSite } = useSite();
+  
+  // Get the current filter label
+  const getFilterLabel = () => {
+    if (selectedPriorities.length === 3) {
+      return "All Priorities";
+    }
+    if (selectedPriorities.length === 0) {
+      return "No Filters";
+    }
+    if (selectedPriorities.length === 1) {
+      const priority = selectedPriorities[0];
+      return `${priority.charAt(0).toUpperCase() + priority.slice(1)} Priority`;
+    }
+    return `${selectedPriorities.length} Priorities`;
+  };
   
   // Initialize command+k hook
   useCommandK()
@@ -672,18 +687,18 @@ export default function CampaignsPage() {
   }, [currentSite]);
 
   return (
-    <div className="flex-1 p-0 h-auto overflow-visible">
+    <div className="flex-1 p-0 h-auto overflow-visible bg-muted/30 min-h-[calc(100vh-64px)]">
       <StickyHeader>
-        <div className="flex items-center justify-between px-16 w-full">
-          <div className="flex items-center gap-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="active">Active</TabsTrigger>
-                <TabsTrigger value="pending">Pending</TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="flex items-center justify-between px-16 w-full">
+            <div className="flex items-center gap-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                  <TabsTrigger value="all" className="text-xs rounded-full">All</TabsTrigger>
+                  <TabsTrigger value="active" className="text-xs rounded-full">Active</TabsTrigger>
+                  <TabsTrigger value="pending" className="text-xs rounded-full">Pending</TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs rounded-full">Completed</TabsTrigger>
+                </TabsList>
+              </Tabs>
             <SearchInput
               data-command-k-input
               placeholder="Search campaigns..."
@@ -695,10 +710,23 @@ export default function CampaignsPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" className="h-9 gap-2">
                   <Filter className="h-4 w-4" />
-                  Filters
+                  {getFilterLabel()}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-[200px]">
+                <DropdownMenuCheckboxItem
+                  checked={selectedPriorities.length === 3}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedPriorities(["high", "medium", "low"]);
+                    } else {
+                      setSelectedPriorities([]);
+                    }
+                  }}
+                  className={selectedPriorities.length === 3 ? "bg-primary/10 font-medium" : ""}
+                >
+                  All Priorities
+                </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={selectedPriorities.includes("high")}
                   onCheckedChange={(checked) => {
@@ -708,6 +736,7 @@ export default function CampaignsPage() {
                       setSelectedPriorities(selectedPriorities.filter(p => p !== "high"));
                     }
                   }}
+                  className={selectedPriorities.includes("high") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
                 >
                   High Priority
                 </DropdownMenuCheckboxItem>
@@ -720,6 +749,7 @@ export default function CampaignsPage() {
                       setSelectedPriorities(selectedPriorities.filter(p => p !== "medium"));
                     }
                   }}
+                  className={selectedPriorities.includes("medium") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
                 >
                   Medium Priority
                 </DropdownMenuCheckboxItem>
@@ -732,13 +762,12 @@ export default function CampaignsPage() {
                       setSelectedPriorities(selectedPriorities.filter(p => p !== "low"));
                     }
                   }}
+                  className={selectedPriorities.includes("low") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
                 >
                   Low Priority
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-          <div className="flex items-center gap-4">
             <CalendarDateRangePicker />
           </div>
         </div>
@@ -752,7 +781,7 @@ export default function CampaignsPage() {
             <TabsContent value="all" className="w-full h-auto overflow-visible">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
-                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 p-6 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -837,7 +866,7 @@ export default function CampaignsPage() {
             <TabsContent value="active" className="w-full h-auto overflow-visible">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
-                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 p-6 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -922,7 +951,7 @@ export default function CampaignsPage() {
             <TabsContent value="pending">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
-                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 p-6 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -994,7 +1023,7 @@ export default function CampaignsPage() {
             <TabsContent value="completed">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible">
-                  <div className="flex gap-6 p-6 pb-8 bg-muted/5 dark:bg-transparent rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 p-6 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}

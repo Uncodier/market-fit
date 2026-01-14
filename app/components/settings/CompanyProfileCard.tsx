@@ -57,7 +57,7 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
   }
 
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card id="company-profile" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold">Company Profile</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
@@ -147,6 +147,7 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
       </CardContent>
       <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
         <Button 
+          variant="outline"
           onClick={handleSave}
           disabled={isSaving}
         >

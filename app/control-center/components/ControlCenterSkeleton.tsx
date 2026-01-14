@@ -51,7 +51,7 @@ export function ControlCenterSkeleton({
                   <div className="flex items-center justify-center w-full gap-3">
                     {/* Tabs skeleton - matches actual TabsList structure */}
                     <div className="flex items-center justify-center">
-                      <div className="flex h-8 p-0.5 bg-muted/30 rounded-md">
+                      <div className="flex h-8 p-0.5 bg-muted/30 rounded-full">
                         <Skeleton className="h-7 w-8 rounded-sm" />
                         <Skeleton className="h-7 w-10 rounded-sm" />
                         <Skeleton className="h-7 w-14 rounded-sm" />

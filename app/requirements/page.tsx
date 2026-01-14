@@ -17,6 +17,7 @@ import { CreateRequirementDialog } from "@/app/components/create-requirement-dia
 import { createRequirement, updateRequirementStatus, updateCompletionStatus, updateRequirementPriority } from "./actions"
 import { createClient } from "@/lib/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
+import { navigateToRequirement } from "@/app/hooks/use-navigation-history"
 import { type Segment } from "./types"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { FilterModal, type RequirementFilters } from "@/app/components/ui/filter-modal"
@@ -214,7 +215,11 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
   // Function to navigate to requirement details
   const router = useRouter()
   const navigateToDetails = () => {
-    router.push(`/requirements/${requirement.id}`);
+    navigateToRequirement({
+      requirementId: requirement.id,
+      requirementTitle: requirement.title,
+      router
+    })
   }
 
   return (
@@ -1094,11 +1099,11 @@ export default function RequirementsPage() {
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
-                <TabsList>
-                  <TabsTrigger value="all">All Requirements</TabsTrigger>
-                  <TabsTrigger value="pending">Pending</TabsTrigger>
-                  <TabsTrigger value="completed">Completed</TabsTrigger>
-                  <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                  <TabsTrigger value="all" className="text-xs rounded-full">All Requirements</TabsTrigger>
+                  <TabsTrigger value="pending" className="text-xs rounded-full">Pending</TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs rounded-full">Completed</TabsTrigger>
+                  <TabsTrigger value="rejected" className="text-xs rounded-full">Rejected</TabsTrigger>
                 </TabsList>
                 <SearchInput
                   placeholder="Search requirements..."

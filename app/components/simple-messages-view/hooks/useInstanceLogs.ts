@@ -6,6 +6,7 @@ interface UseInstanceLogsProps {
   activeRobotInstance?: any
   waitingForMessageId?: string | null
   onScrollToBottom?: () => void
+  onScrollToBottomImmediate?: () => void
   onResponseReceived?: () => void
   currentSiteId?: string | null
 }
@@ -14,6 +15,7 @@ export const useInstanceLogs = ({
   activeRobotInstance,
   waitingForMessageId,
   onScrollToBottom,
+  onScrollToBottomImmediate,
   onResponseReceived,
   currentSiteId
 }: UseInstanceLogsProps) => {
@@ -63,11 +65,13 @@ export const useInstanceLogs = ({
       
       console.log('🔍 Building Supabase query for instance_logs with instanceId:', instanceId)
       
+      // Load latest messages first (descending order) and limit to 100 for performance
       const { data, error, count } = await supabase
         .from('instance_logs')
         .select('*', { count: 'exact' })
         .eq('instance_id', instanceId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(100)
 
       if (error) {
         console.error('Error loading instance logs:', error)
@@ -75,7 +79,9 @@ export const useInstanceLogs = ({
       } else {
         console.log(`Loaded ${data?.length || 0} logs for instance ${activeRobotInstance.id}. Total count: ${count}`)
         console.log('🔍 Raw logs data:', data)
-        const logs = data || []
+        // Reverse the array to maintain chronological order (oldest first, newest last)
+        // since we loaded them in descending order (newest first)
+        const logs = (data || []).reverse()
         setLogs(logs)
         
         // Special debug for uninstantiated instances
@@ -86,18 +92,23 @@ export const useInstanceLogs = ({
             logs: logs.map((log: any) => ({ id: log.id, log_type: log.log_type, message: log.message?.substring(0, 50) + '...' }))
           })
         }
-        // Scroll to bottom after logs are loaded and DOM is rendered
-        // Wait for images and async content to load
-        setTimeout(() => {
+        // Scroll to bottom immediately without animation since latest messages are already loaded
+        // Use requestAnimationFrame to ensure DOM is ready, then set scroll position directly
+        requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              // Additional delay for images to fully render
+            // Use immediate scroll callback if available, otherwise fall back to animated scroll
+            if (onScrollToBottomImmediate) {
+              onScrollToBottomImmediate()
+              // Also try after a small delay to account for any layout shifts
               setTimeout(() => {
-                onScrollToBottom?.()
-              }, 150)
-            })
+                onScrollToBottomImmediate()
+              }, 50)
+            } else {
+              // Fallback to animated scroll if immediate scroll not available
+              onScrollToBottom?.()
+            }
           })
-        }, 100)
+        })
         
         // Auto-collapse long system messages (>200 characters)
         const longSystemMessages = logs

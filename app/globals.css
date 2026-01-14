@@ -1174,3 +1174,12 @@ html.safari .chat-input-container[style*="fixed"] {
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
 }
+
+/* Sidebar background color for light mode */
+.sidebar-light-bg {
+  background-color: rgb(241 245 249 / 80%) !important;
+}
+
+.dark .sidebar-light-bg {
+  background-color: hsl(var(--background) / 80%) !important;
+}

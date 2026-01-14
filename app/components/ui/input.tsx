@@ -10,11 +10,17 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, icon, iconPosition = "left", ...props }, ref) => {
     if (icon) {
+      const iconElement = React.isValidElement(icon)
+        ? React.cloneElement(icon as React.ReactElement, {
+            className: cn("h-4 w-4 text-muted-foreground", (icon as React.ReactElement).props?.className)
+          })
+        : icon
+
       return (
         <div className="relative w-full">
           {iconPosition === "left" && (
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              {icon}
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none z-10">
+              {iconElement}
             </div>
           )}
           <input
@@ -27,8 +33,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {iconPosition === "right" && (
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-              {icon}
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none z-10">
+              {iconElement}
             </div>
           )}
         </div>

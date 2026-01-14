@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { toast } from "sonner"
-import { Card, CardContent } from "@/app/components/ui/card"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -432,233 +431,231 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
       <div className="grid grid-cols-1 md:grid-cols-10 gap-6">
         {/* Left side: Cost Breakdown - 60% */}
         <div className="md:col-span-6 order-2 md:order-1 space-y-6">
-          <Card>
-            <CardContent className="p-4 md:p-6">
-              <div className="flex items-center justify-between mb-4 md:mb-6">
-                <h3 className="text-lg font-medium">Campaign Costs</h3>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Transaction
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="sm:max-w-[425px]">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Add New Transaction</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Add a new transaction to the campaign cost breakdown.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="transaction-category">Category</Label>
-                        <Select 
-                          defaultValue={newTransaction.category}
-                          onValueChange={(value) => handleTransactionChange('category', value)}
-                        >
-                          <SelectTrigger id="transaction-category" className="h-12">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {/* Marketing expenses */}
-                            <SelectItem value="advertising">Advertising</SelectItem>
-                            <SelectItem value="content">Content Creation</SelectItem>
-                            <SelectItem value="adspend">Ad Spend</SelectItem>
-                            <SelectItem value="seo">SEO Services</SelectItem>
-                            <SelectItem value="social">Social Media Marketing</SelectItem>
-                            <SelectItem value="email">Email Marketing</SelectItem>
-                            <SelectItem value="events">Events and Conferences</SelectItem>
-                            <SelectItem value="print">Print Materials</SelectItem>
-                            <SelectItem value="sponsorship">Sponsorships</SelectItem>
-                            
-                            {/* Sales expenses */}
-                            <SelectItem value="sales_commission">Sales Commissions</SelectItem>
-                            <SelectItem value="sales_travel">Sales Travel</SelectItem>
-                            <SelectItem value="crm">CRM and Sales Tools</SelectItem>
-                            
-                            {/* Technology expenses */}
-                            <SelectItem value="software">Software Subscriptions</SelectItem>
-                            <SelectItem value="hosting">Hosting and Infrastructure</SelectItem>
-                            <SelectItem value="tools">Marketing Tools</SelectItem>
-                            
-                            {/* Operational expenses */}
-                            <SelectItem value="freelance">Freelancer Support</SelectItem>
-                            <SelectItem value="agency">Agency Fees</SelectItem>
-                            <SelectItem value="consulting">Consulting Services</SelectItem>
-                            <SelectItem value="research">Market Research</SelectItem>
-                            <SelectItem value="utilities">Utilities</SelectItem>
-                            <SelectItem value="rent">Office Rent</SelectItem>
-                            
-                            {/* Administrative expenses */}
-                            <SelectItem value="salaries">Salaries and Benefits</SelectItem>
-                            <SelectItem value="insurance">Insurance</SelectItem>
-                            <SelectItem value="legal">Legal and Professional</SelectItem>
-                            <SelectItem value="travel">Travel and Entertainment</SelectItem>
-                            <SelectItem value="training">Training and Development</SelectItem>
-                            
-                            {/* Other expenses */}
-                            <SelectItem value="other">Other Expenses</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="transaction-amount">Amount</Label>
-                        <div className="flex items-center h-12 border rounded-md border-input px-3 bg-background">
-                          <span className="text-sm text-muted-foreground mr-2">$</span>
-                          <Input 
-                            id="transaction-amount" 
-                            type="number" 
-                            placeholder="0"
-                            value={newTransaction.amount}
-                            onChange={(e) => handleTransactionChange('amount', e.target.value)}
-                            className="border-0 h-full p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="transaction-type">Type</Label>
-                        <Select 
-                          defaultValue={newTransaction.type}
-                          onValueChange={(value) => handleTransactionChange('type', value)}
-                        >
-                          <SelectTrigger id="transaction-type" className="h-12">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="fixed">Fixed</SelectItem>
-                            <SelectItem value="variable">Variable</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="transaction-date">Date</Label>
+          <div>
+            <div className="flex items-center justify-between mb-4 md:mb-6">
+              <h3 className="text-lg font-medium">Campaign Costs</h3>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Transaction
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="sm:max-w-[425px]">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Add New Transaction</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Add a new transaction to the campaign cost breakdown.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="transaction-category">Category</Label>
+                      <Select 
+                        defaultValue={newTransaction.category}
+                        onValueChange={(value) => handleTransactionChange('category', value)}
+                      >
+                        <SelectTrigger id="transaction-category" className="h-12">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* Marketing expenses */}
+                          <SelectItem value="advertising">Advertising</SelectItem>
+                          <SelectItem value="content">Content Creation</SelectItem>
+                          <SelectItem value="adspend">Ad Spend</SelectItem>
+                          <SelectItem value="seo">SEO Services</SelectItem>
+                          <SelectItem value="social">Social Media Marketing</SelectItem>
+                          <SelectItem value="email">Email Marketing</SelectItem>
+                          <SelectItem value="events">Events and Conferences</SelectItem>
+                          <SelectItem value="print">Print Materials</SelectItem>
+                          <SelectItem value="sponsorship">Sponsorships</SelectItem>
+                          
+                          {/* Sales expenses */}
+                          <SelectItem value="sales_commission">Sales Commissions</SelectItem>
+                          <SelectItem value="sales_travel">Sales Travel</SelectItem>
+                          <SelectItem value="crm">CRM and Sales Tools</SelectItem>
+                          
+                          {/* Technology expenses */}
+                          <SelectItem value="software">Software Subscriptions</SelectItem>
+                          <SelectItem value="hosting">Hosting and Infrastructure</SelectItem>
+                          <SelectItem value="tools">Marketing Tools</SelectItem>
+                          
+                          {/* Operational expenses */}
+                          <SelectItem value="freelance">Freelancer Support</SelectItem>
+                          <SelectItem value="agency">Agency Fees</SelectItem>
+                          <SelectItem value="consulting">Consulting Services</SelectItem>
+                          <SelectItem value="research">Market Research</SelectItem>
+                          <SelectItem value="utilities">Utilities</SelectItem>
+                          <SelectItem value="rent">Office Rent</SelectItem>
+                          
+                          {/* Administrative expenses */}
+                          <SelectItem value="salaries">Salaries and Benefits</SelectItem>
+                          <SelectItem value="insurance">Insurance</SelectItem>
+                          <SelectItem value="legal">Legal and Professional</SelectItem>
+                          <SelectItem value="travel">Travel and Entertainment</SelectItem>
+                          <SelectItem value="training">Training and Development</SelectItem>
+                          
+                          {/* Other expenses */}
+                          <SelectItem value="other">Other Expenses</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="transaction-amount">Amount</Label>
+                      <div className="flex items-center h-12 border rounded-md border-input px-3 bg-background">
+                        <span className="text-sm text-muted-foreground mr-2">$</span>
                         <Input 
-                          id="transaction-date" 
-                          type="date" 
-                          value={newTransaction.date}
-                          onChange={(e) => handleTransactionChange('date', e.target.value)}
-                          max={new Date().toISOString().split('T')[0]}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="transaction-notes">Notes (Optional)</Label>
-                        <Input 
-                          id="transaction-notes" 
-                          type="text" 
-                          placeholder="Enter any additional details"
-                          value={newTransaction.notes}
-                          onChange={(e) => handleTransactionChange('notes', e.target.value)}
+                          id="transaction-amount" 
+                          type="number" 
+                          placeholder="0"
+                          value={newTransaction.amount}
+                          onChange={(e) => handleTransactionChange('amount', e.target.value)}
+                          className="border-0 h-full p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                         />
                       </div>
                     </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleAddTransaction}>Add Transaction</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-              
-              <div className="rounded-md border overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-muted/30">
+                    <div className="space-y-2">
+                      <Label htmlFor="transaction-type">Type</Label>
+                      <Select 
+                        defaultValue={newTransaction.type}
+                        onValueChange={(value) => handleTransactionChange('type', value)}
+                      >
+                        <SelectTrigger id="transaction-type" className="h-12">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fixed">Fixed</SelectItem>
+                          <SelectItem value="variable">Variable</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="transaction-date">Date</Label>
+                      <Input 
+                        id="transaction-date" 
+                        type="date" 
+                        value={newTransaction.date}
+                        onChange={(e) => handleTransactionChange('date', e.target.value)}
+                        max={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="transaction-notes">Notes (Optional)</Label>
+                      <Input 
+                        id="transaction-notes" 
+                        type="text" 
+                        placeholder="Enter any additional details"
+                        value={newTransaction.notes}
+                        onChange={(e) => handleTransactionChange('notes', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleAddTransaction}>Add Transaction</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+            
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/30">
+                  <tr>
+                    <th className="text-left p-3 font-medium text-sm">Category</th>
+                    <th className="text-left p-3 font-medium text-sm">Amount</th>
+                    <th className="text-left p-3 font-medium text-sm">Type</th>
+                    <th className="text-left p-3 font-medium text-sm">Date</th>
+                    <th className="text-left p-3 font-medium text-sm w-10"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {loadingTransactions ? (
                     <tr>
-                      <th className="text-left p-3 font-medium text-sm">Category</th>
-                      <th className="text-left p-3 font-medium text-sm">Amount</th>
-                      <th className="text-left p-3 font-medium text-sm">Type</th>
-                      <th className="text-left p-3 font-medium text-sm">Date</th>
-                      <th className="text-left p-3 font-medium text-sm w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {loadingTransactions ? (
-                      <tr>
-                        <td colSpan={5} className="p-4">
-                          {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex items-center py-3 border-b last:border-0">
-                              <div className="flex-1">
-                                <Skeleton className="h-4 w-32" />
-                              </div>
-                              <div className="flex-1">
-                                <Skeleton className="h-4 w-16" />
-                              </div>
-                              <div className="flex-1">
-                                <Skeleton className="h-6 w-16 rounded-full" />
-                              </div>
-                              <div className="flex-1">
-                                <Skeleton className="h-4 w-24" />
-                              </div>
-                              <div className="w-10">
-                                <Skeleton className="h-4 w-6" />
-                              </div>
+                      <td colSpan={5} className="p-4">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex items-center py-3 border-b last:border-0">
+                            <div className="flex-1">
+                              <Skeleton className="h-4 w-32" />
                             </div>
-                          ))}
-                        </td>
-                      </tr>
-                    ) : transactions.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="p-4 text-center">
-                          <EmptyCard
-                            icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
-                            title="No transactions"
-                            description="No transactions recorded yet"
-                            className="border-none shadow-none"
-                            contentClassName="py-4"
-                          />
-                        </td>
-                      </tr>
-                    ) : (
-                      <>
-                        {transactions.map((cost, index) => (
-                          <tr key={cost.id || index} className="hover:bg-muted/10 transition-colors">
-                            <td className="p-3">{cost.category}</td>
-                            <td className="p-3">{formatCurrency(cost.amount)}</td>
-                            <td className="p-3">
-                              <Badge variant={cost.type === "fixed" ? "outline" : "secondary"} className="text-xs">
-                                {cost.type === "fixed" ? "Fixed" : "Variable"}
-                              </Badge>
-                            </td>
-                            <td className="p-3">{cost.date || "N/A"}</td>
-                            <td className="p-3 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <span className="text-base leading-none">⋮</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditTransaction(cost)}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleOpenDeleteDialog(cost.id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                          </tr>
+                            <div className="flex-1">
+                              <Skeleton className="h-4 w-16" />
+                            </div>
+                            <div className="flex-1">
+                              <Skeleton className="h-6 w-16 rounded-full" />
+                            </div>
+                            <div className="flex-1">
+                              <Skeleton className="h-4 w-24" />
+                            </div>
+                            <div className="w-10">
+                              <Skeleton className="h-4 w-6" />
+                            </div>
+                          </div>
                         ))}
-                        <tr className="bg-muted/20 font-medium">
-                          <td className="p-3">Total</td>
-                          <td className="p-3">{formatCurrency(transactionsTotal)}</td>
-                          <td className="p-3"></td>
-                          <td className="p-3"></td>
-                          <td className="p-3"></td>
+                      </td>
+                    </tr>
+                  ) : transactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center">
+                        <EmptyCard
+                          icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
+                          title="No transactions"
+                          description="No transactions recorded yet"
+                          className="border-none shadow-none"
+                          contentClassName="py-4"
+                        />
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {transactions.map((cost, index) => (
+                        <tr key={cost.id || index} className="hover:bg-muted/10 transition-colors">
+                          <td className="p-3">{cost.category}</td>
+                          <td className="p-3">{formatCurrency(cost.amount)}</td>
+                          <td className="p-3">
+                            <Badge variant={cost.type === "fixed" ? "outline" : "secondary"} className="text-xs">
+                              {cost.type === "fixed" ? "Fixed" : "Variable"}
+                            </Badge>
+                          </td>
+                          <td className="p-3">{cost.date || "N/A"}</td>
+                          <td className="p-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <span className="text-base leading-none">⋮</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditTransaction(cost)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleOpenDeleteDialog(cost.id)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
                         </tr>
-                      </>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                      ))}
+                      <tr className="bg-muted/20 font-medium">
+                        <td className="p-3">Total</td>
+                        <td className="p-3">{formatCurrency(transactionsTotal)}</td>
+                        <td className="p-3"></td>
+                        <td className="p-3"></td>
+                        <td className="p-3"></td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
           
           {/* Sales component added below costs in the left column */}
           <CampaignSales campaign={campaign} />
@@ -666,20 +663,18 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         
         {/* Right side: Financial Widgets - 40% */}
         <div className="md:col-span-4 order-1 md:order-2 space-y-6">
-          {/* Financial Overview Card */}
-          <Card>
-            <CardContent className="p-4 md:p-6">
-              <div className="flex items-center justify-between mb-4 md:mb-6">
-                <h3 className="text-lg font-medium">Financial Overview</h3>
-              </div>
+          {/* Financial Overview */}
+          <div>
+            <div className="flex items-center justify-between mb-4 md:mb-6">
+              <h3 className="text-lg font-medium">Financial Overview</h3>
+            </div>
 
-              <FinancialStats 
-                revenue={campaign.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" }}
-                budget={campaign.budget || { allocated: 0, remaining: 0, currency: "USD" }}
-                costs={calculatedCosts}
-              />
-            </CardContent>
-          </Card>
+            <FinancialStats 
+              revenue={campaign.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" }}
+              budget={campaign.budget || { allocated: 0, remaining: 0, currency: "USD" }}
+              costs={calculatedCosts}
+            />
+          </div>
         </div>
       </div>
 
@@ -804,7 +799,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
             <AlertDialogCancel onClick={() => setTransactionToDelete(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteTransaction}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
             >
               Delete
             </AlertDialogAction>

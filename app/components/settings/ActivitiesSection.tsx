@@ -7,8 +7,8 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { type SiteFormValues } from "./form-schema"
 import { cn } from "../../lib/utils"
-import Link from "next/link"
 import { useState } from "react"
+import { NavigationLink } from "../navigation/NavigationLink"
 
 interface ActivitiesSectionProps {
   active: boolean
@@ -85,105 +85,135 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
   if (!active) return null
 
   return (
-    <Card className="border border-border shadow-sm">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold">Activities</CardTitle>
+    <div id="activities" className="space-y-6">
+      {/* Header Section */}
+      <div>
+        <h2 className="text-2xl font-semibold">Activities</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Activity schedules and days adapt to your company working days and industry best practices. Configure company business hours in 
           {" "}
-          <Link href="/context" className="text-primary underline underline-offset-4">Context</Link>
+          <NavigationLink href="/context" className="text-primary underline underline-offset-4">Context</NavigationLink>
           {" "}
           to fine-tune when activities run.
         </p>
-      </CardHeader>
-      <CardContent className="px-8 pb-8">
-        <div className="space-y-4">
-          {ACTIVITIES.map(({ key, title, description }) => {
-            const status = form.watch(`activities.${key}.status` as const) as 'default' | 'inactive' | 'active' | undefined
-            const isInactive = status === 'inactive'
-            
-            // Check dependency for assign_leads_to_team
-            const isAssignLeads = key === 'assign_leads_to_team'
-            const isSuperviseConversations = key === 'supervise_conversations'
-            const coldOutreachStatus = form.watch('activities.leads_initial_cold_outreach.status')
-            const isDependencyInactive = isAssignLeads && coldOutreachStatus === 'inactive'
-            
-            return (
-            <Card key={key} className={cn(
+      </div>
+
+      {/* Activity Cards */}
+      {ACTIVITIES.map(({ key, title, description }) => {
+        const status = form.watch(`activities.${key}.status` as const) as 'default' | 'inactive' | 'active' | undefined
+        const isInactive = status === 'inactive'
+        
+        // Check dependency for assign_leads_to_team
+        const isAssignLeads = key === 'assign_leads_to_team'
+        const isSuperviseConversations = key === 'supervise_conversations'
+        const coldOutreachStatus = form.watch('activities.leads_initial_cold_outreach.status')
+        const isDependencyInactive = isAssignLeads && coldOutreachStatus === 'inactive'
+        
+        return (
+          <Card 
+            key={key} 
+            id={`activity-${key}`}
+            className={cn(
               "border shadow-sm hover:shadow-md transition-shadow duration-200",
               isInactive 
                 ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-600" 
                 : "border-border"
-            )}>
-              <CardHeader className="px-6 py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-base font-semibold">{title}</CardTitle>
-                    <div className="text-sm text-muted-foreground mt-1">{description}</div>
-                    {isDependencyInactive && (
-                      <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                        Requires "Leads Initial Cold Outreach" to be active
-                      </div>
-                    )}
-                  </div>
-                  <div className="w-40">
-                    <FormField
-                      control={form.control}
-                      name={`activities.${key}.status` as const}
-                      render={({ field }) => {
-                        // Auto-set to inactive if dependency is inactive
-                        if (isDependencyInactive && field.value !== 'inactive') {
-                          field.onChange('inactive')
-                        }
-                        
-                        return (
-                          <FormItem>
-                            <FormLabel className="text-xs text-muted-foreground">Status</FormLabel>
-                            <FormControl>
-                              <Select 
-                                value={field.value} 
-                                onValueChange={field.onChange}
-                                disabled={isDependencyInactive}
-                              >
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {(isAssignLeads || isSuperviseConversations) ? (
-                                    <>
-                                      <SelectItem value="inactive">Inactive</SelectItem>
-                                      <SelectItem value="active">Active</SelectItem>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <SelectItem value="default">Default</SelectItem>
-                                      <SelectItem value="inactive">Inactive</SelectItem>
-                                    </>
-                                  )}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )
-                      }}
-                    />
-                  </div>
+            )}
+          >
+            <CardHeader className="px-8 py-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="text-xl font-semibold">{title}</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">{description}</p>
+                  {isDependencyInactive && (
+                    <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
+                      ⚠️ Requires "Leads Initial Cold Outreach" to be active
+                    </p>
+                  )}
                 </div>
-              </CardHeader>
-            </Card>
-            )})}
-        </div>
-      </CardContent>
-      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-        <Button 
-          onClick={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? "Saving..." : "Save"}
-        </Button>
-      </CardFooter>
-    </Card>
+              </div>
+            </CardHeader>
+            <CardContent className="px-8 pb-8">
+              <FormField
+                control={form.control}
+                name={`activities.${key}.status` as const}
+                render={({ field }) => {
+                  // Auto-set to inactive if dependency is inactive
+                  if (isDependencyInactive && field.value !== 'inactive') {
+                    field.onChange('inactive')
+                  }
+                  
+                  const options = (isAssignLeads || isSuperviseConversations) ? [
+                    {
+                      value: "inactive",
+                      title: "Inactive",
+                      description: "This activity will not run automatically"
+                    },
+                    {
+                      value: "active",
+                      title: "Active",
+                      description: "This activity will run according to its schedule"
+                    }
+                  ] : [
+                    {
+                      value: "default",
+                      title: "Default",
+                      description: "Use the default schedule and settings for this activity"
+                    },
+                    {
+                      value: "inactive",
+                      title: "Inactive",
+                      description: "This activity will not run automatically"
+                    }
+                  ]
+                  
+                  const selectedOption = options.find(opt => opt.value === field.value) || options[0]
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel className="mb-3">Status</FormLabel>
+                      <FormControl>
+                        <Select 
+                          value={field.value || options[0].value} 
+                          onValueChange={field.onChange}
+                          disabled={isDependencyInactive}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder={selectedOption.title}>
+                              {selectedOption.title}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="min-w-[300px]">
+                            {options.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="py-3">
+                                <div className="flex flex-col items-start gap-1 w-full">
+                                  <span className="font-medium text-sm">{option.title}</span>
+                                  <span className="text-xs text-muted-foreground leading-relaxed">{option.description}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+            </CardContent>
+            <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+              <Button 
+                variant="outline"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </CardFooter>
+          </Card>
+        )
+      })}
+    </div>
   )
 }
 

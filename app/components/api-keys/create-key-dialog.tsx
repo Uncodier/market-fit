@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Key, Copy, CheckCircle2, AlertCircle } from "@/app/components/ui/icons"
+import { Key, Copy, CheckCircle2, AlertCircle, PlusCircle } from "@/app/components/ui/icons"
 import { createApiKey, CreateApiKeyParams } from "@/lib/api-keys"
 import { useSite } from "@/app/context/SiteContext"
 import { Switch } from "@/app/components/ui/switch"
@@ -146,9 +146,9 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
-          <Key className="mr-2 h-4 w-4" />
-          Generate New API Key
+        <Button type="button" variant="outline" size="sm">
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add API Key
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">

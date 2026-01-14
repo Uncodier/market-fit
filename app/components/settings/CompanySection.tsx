@@ -19,10 +19,10 @@ export function CompanySection({ active, onSave }: CompanySectionProps) {
   return (
     <div className="space-y-6">
       <CompanyProfileCard onSave={onSave} />
-      <BusinessHoursCard onSave={onSave} />
       <GoalsSection active={true} onSave={onSave} />
       <SWOTSection active={true} onSave={onSave} />
       <LocationsCard onSave={onSave} />
+      <BusinessHoursCard onSave={onSave} />
     </div>
   )
 } 

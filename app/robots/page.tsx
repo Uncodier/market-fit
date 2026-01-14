@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, Suspense, useCallback, useRef } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Settings, Globe, Target, Pause, Play, Trash2, Plus, MoreHorizontal } from "@/app/components/ui/icons"
@@ -47,6 +47,7 @@ function RobotsPageContent() {
   const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount, setAutoRefreshEnabled } = useRobots()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const pathname = usePathname()
   
   // No campaigns view here
 
@@ -816,7 +817,8 @@ function RobotsPageContent() {
     const horizontalMargins = 128 // 64px * 2
     const gapBetweenElements = 16 // gap-4 = 16px
     const plusButtonWidth = 40 // Approximate width of Plus button (h-9 with padding)
-    const deleteButtonWidth = activeRobotInstance ? 40 : 0 // Delete button if visible
+    // Check if delete button is visible (when there's an active robot instance)
+    const deleteButtonWidth = selectedInstanceId !== 'new' && activeRobotInstance ? 40 : 0
     const moreButtonWidth = 60 // Approximate width of "..." button
     
     // Try to measure actual tab widths if tabsListRef is available
@@ -844,40 +846,108 @@ function RobotsPageContent() {
     // Always show at least 1 tab if there are instances
     setMaxVisibleTabs(Math.max(1, maxTabs))
     setContainerWidth(containerWidth)
-  }, [activeRobotInstance])
+  }, [selectedInstanceId, activeRobotInstance])
 
   // Use ResizeObserver to track container width changes
   useEffect(() => {
-    if (!tabsContainerRef.current) return
+    // Retry mechanism to wait for ref to be ready (important for SPA navigation)
+    let retryCount = 0
+    const maxRetries = 10
+    let retryTimer: NodeJS.Timeout
+    let resizeObserver: ResizeObserver | null = null
+    let rafId: number
+    let handleResize: (() => void) | null = null
+    
+    const setupObserver = () => {
+      if (!tabsContainerRef.current) {
+        if (retryCount < maxRetries) {
+          retryCount++
+          retryTimer = setTimeout(setupObserver, 50)
+        }
+        return
+      }
 
-    const resizeObserver = new ResizeObserver(() => {
-      calculateMaxVisibleTabs()
-    })
+      resizeObserver = new ResizeObserver(() => {
+        calculateMaxVisibleTabs()
+      })
 
-    resizeObserver.observe(tabsContainerRef.current)
+      resizeObserver.observe(tabsContainerRef.current)
 
-    // Also recalculate on window resize
-    const handleResize = () => {
-      calculateMaxVisibleTabs()
+      // Also recalculate on window resize
+      handleResize = () => {
+        calculateMaxVisibleTabs()
+      }
+      window.addEventListener('resize', handleResize)
+
+      // Initial calculation immediately using requestAnimationFrame
+      rafId = requestAnimationFrame(() => {
+        calculateMaxVisibleTabs()
+      })
     }
-    window.addEventListener('resize', handleResize)
-
-    // Initial calculation
-    calculateMaxVisibleTabs()
+    
+    setupObserver()
 
     return () => {
-      resizeObserver.disconnect()
-      window.removeEventListener('resize', handleResize)
+      if (retryTimer) clearTimeout(retryTimer)
+      if (rafId) cancelAnimationFrame(rafId)
+      if (resizeObserver) resizeObserver.disconnect()
+      if (handleResize) window.removeEventListener('resize', handleResize)
     }
-  }, [calculateMaxVisibleTabs, allInstances.length, isLayoutCollapsed, activeRobotInstance])
+  }, [calculateMaxVisibleTabs, allInstances.length, isLayoutCollapsed, selectedInstanceId])
 
-  // Recalculate when instances change (with a small delay to allow DOM to update)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      calculateMaxVisibleTabs()
-    }, 100)
-    return () => clearTimeout(timer)
-  }, [allInstances.length, calculateMaxVisibleTabs, selectedInstanceId])
+  // Recalculate when instances change or selectedInstanceId changes
+  // Use useLayoutEffect for immediate calculation after DOM update
+  useLayoutEffect(() => {
+    // Skip if still loading
+    if (isLoadingRobots || forceLoading) return
+    
+    // Use requestAnimationFrame for immediate calculation after layout
+    const rafId = requestAnimationFrame(() => {
+      if (tabsContainerRef.current && tabsListRef.current) {
+        calculateMaxVisibleTabs()
+      }
+    })
+    return () => cancelAnimationFrame(rafId)
+  }, [allInstances.length, calculateMaxVisibleTabs, selectedInstanceId, isLoadingRobots, forceLoading])
+
+  // Get instance param from URL for dependency tracking
+  const instanceParam = searchParams.get('instance')
+  
+  // Recalculate when navigating to the page (without refresh) or when searchParams change
+  // This ensures tabs are recalculated when navigating from another page in SPA mode
+  // Uses useLayoutEffect for immediate calculation after DOM update
+  useLayoutEffect(() => {
+    if (pathname !== '/robots') return
+    
+    // Wait for instances to be loaded and searchParams to be ready
+    if (isLoadingRobots || forceLoading) return
+    
+    // Retry mechanism to wait for ref to be ready (faster retries)
+    let rafId: number
+    let timer: NodeJS.Timeout
+    let retryCount = 0
+    const maxRetries = 10
+    
+    const attemptCalculation = () => {
+      if (tabsContainerRef.current && tabsListRef.current) {
+        // Use requestAnimationFrame for immediate calculation
+        rafId = requestAnimationFrame(() => {
+          calculateMaxVisibleTabs()
+        })
+      } else if (retryCount < maxRetries) {
+        // Retry faster if ref is not ready
+        retryCount++
+        timer = setTimeout(attemptCalculation, 50)
+      }
+    }
+    
+    attemptCalculation()
+    
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      if (timer) clearTimeout(timer)
+    }
+  }, [pathname, calculateMaxVisibleTabs, isLoadingRobots, forceLoading, instanceParam, allInstances.length, selectedInstanceId])
 
   
 
@@ -948,7 +1018,7 @@ function RobotsPageContent() {
                                 ) : (
                                   <Pause className="h-3 w-3 text-muted-foreground" />
                                 ))}
-                                {`${inst.name || 'mk'}-${inst.id.slice(-4)}`}
+                                {inst.name || `mk-${inst.id.slice(-4)}`}
                               </span>
                             </TabsTrigger>
                           ))}
@@ -983,7 +1053,7 @@ function RobotsPageContent() {
                                       ) : (
                                         <Pause className="h-3 w-3 text-muted-foreground" />
                                       ))}
-                                      {`${inst.name || 'mk'}-${inst.id.slice(-4)}`}
+                                      {inst.name || `mk-${inst.id.slice(-4)}`}
                                     </span>
                                   </DropdownMenuItem>
                                 ))}

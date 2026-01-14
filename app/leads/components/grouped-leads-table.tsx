@@ -1135,7 +1135,7 @@ export function GroupedLeadsTable({
             <AlertDialogAction
               onClick={confirmDeleteLead}
               disabled={isDeletingLead}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
             >
               {isDeletingLead ? (
                 <>

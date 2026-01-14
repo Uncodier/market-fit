@@ -1,7 +1,6 @@
 import React, { useState, useEffect, createContext } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Card, CardContent } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { Label } from "@/app/components/ui/label"
@@ -12,7 +11,6 @@ import { BarChart, Loader, MoreHorizontal, User, Users, ExternalLink, PlusCircle
 import { getCampaignById } from "@/app/campaigns/actions/campaigns/read"
 import { createSubtask } from "@/app/campaigns/actions/subtasks/create"
 import { Revenue, Budget, Campaign } from "@/app/types"
-import { AddSubtaskDialog, SubtaskFormValues } from "@/app/components/add-subtask-dialog"
 import { CampaignRequirementFormValues } from "@/app/components/create-requirement-dialog-for-campaign"
 import { createRequirement } from "@/app/requirements/actions"
 import { getLeadsByCampaignId } from "@/app/leads/actions"
@@ -118,7 +116,6 @@ export interface CampaignSummaryProps {
   loadingLeads: boolean;
   campaignLeads: Lead[];
   onCreateRequirement: (values: CampaignRequirementFormValues) => Promise<{ data?: any; error?: string }>;
-  onAddSubtask?: (values: SubtaskFormValues) => Promise<{ data?: any; error?: string }>;
   taskDetailContext: TaskDetailContextType;
   segments: any[];
   longDescription: string;
@@ -144,7 +141,6 @@ export function CampaignSummary({
   loadingLeads, 
   campaignLeads, 
   onCreateRequirement,
-  onAddSubtask,
   taskDetailContext,
   segments,
   longDescription,
@@ -203,181 +199,177 @@ export function CampaignSummary({
           )}
         />
         
-        {/* Generated Leads Card */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Generated Leads</h3>
-              <AddCampaignLeadDialog
-                campaignId={campaign.id}
-                segments={segments}
-                onLeadCreated={onReloadLeads}
-                trigger={
-                  <Button variant="outline" size="sm">
-                    <User className="mr-2 h-4 w-4" />
-                    Add Lead
-                  </Button>
-                }
-              />
-            </div>
-            <div className="border rounded-md overflow-hidden">
-              <table className="w-full">
-                <colgroup>
-                  <col className="w-[25%]" />
-                  <col className="w-[16.6%]" />
-                  <col className="w-[16.6%]" />
-                  <col className="w-[16.6%]" />
-                  <col className="w-[16.6%]" />
-                  <col className="w-[8.3%]" />
-                </colgroup>
-                <thead>
-                  <tr className="bg-muted/30">
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Name</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Email</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Phone</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Status</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Date Added</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-right"></th>
+        {/* Generated Leads */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Generated Leads</h3>
+            <AddCampaignLeadDialog
+              campaignId={campaign.id}
+              segments={segments}
+              onLeadCreated={onReloadLeads}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <User className="mr-2 h-4 w-4" />
+                  Add Lead
+                </Button>
+              }
+            />
+          </div>
+          <div className="border rounded-md overflow-hidden">
+            <table className="w-full">
+              <colgroup>
+                <col className="w-[25%]" />
+                <col className="w-[16.6%]" />
+                <col className="w-[16.6%]" />
+                <col className="w-[16.6%]" />
+                <col className="w-[16.6%]" />
+                <col className="w-[8.3%]" />
+              </colgroup>
+              <thead>
+                <tr className="bg-muted/30">
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Name</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Email</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Phone</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Status</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Date Added</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-right"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingLeads ? (
+                  <tr>
+                    <td colSpan={6} className="p-4 text-center">
+                      <div className="h-5 w-5 mx-auto animate-pulse bg-muted rounded" />
+                      <div className="mt-2 text-sm text-muted-foreground">Loading leads...</div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loadingLeads ? (
-                    <tr>
-                      <td colSpan={6} className="p-4 text-center">
-                        <div className="h-5 w-5 mx-auto animate-pulse bg-muted rounded" />
-                        <div className="mt-2 text-sm text-muted-foreground">Loading leads...</div>
+                ) : campaignLeads && campaignLeads.length > 0 ? (
+                  campaignLeads.map((lead, index) => (
+                    <tr key={lead.id || index} className={index % 2 === 0 ? "bg-background" : "bg-muted/10"}>
+                      <td className="p-3 text-sm">
+                        <div className="font-medium">{lead.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {typeof lead.company === 'object' && lead.company?.name 
+                            ? lead.company.name 
+                            : (typeof lead.company === 'string' ? lead.company : "")}
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm">{lead.email || "—"}</td>
+                      <td className="p-3 text-sm">{lead.phone || "—"}</td>
+                      <td className="p-3 text-sm">
+                        <Badge className={getLeadStatusStyles(lead.status)}>
+                          {getLeadStatusLabel(lead.status)}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-sm">
+                        {lead.created_at 
+                          ? new Date(lead.created_at).toLocaleDateString() 
+                          : "—"}
+                      </td>
+                      <td className="p-3 text-sm text-right">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditLead(lead)}>
+                          <span className="sr-only">Edit</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
-                  ) : campaignLeads && campaignLeads.length > 0 ? (
-                    campaignLeads.map((lead, index) => (
-                      <tr key={lead.id || index} className={index % 2 === 0 ? "bg-background" : "bg-muted/10"}>
-                        <td className="p-3 text-sm">
-                          <div className="font-medium">{lead.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {typeof lead.company === 'object' && lead.company?.name 
-                              ? lead.company.name 
-                              : (typeof lead.company === 'string' ? lead.company : "")}
-                          </div>
-                        </td>
-                        <td className="p-3 text-sm">{lead.email || "—"}</td>
-                        <td className="p-3 text-sm">{lead.phone || "—"}</td>
-                        <td className="p-3 text-sm">
-                          <Badge className={getLeadStatusStyles(lead.status)}>
-                            {getLeadStatusLabel(lead.status)}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-sm">
-                          {lead.created_at 
-                            ? new Date(lead.created_at).toLocaleDateString() 
-                            : "—"}
-                        </td>
-                        <td className="p-3 text-sm text-right">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditLead(lead)}>
-                            <span className="sr-only">Edit</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="p-0">
-                        <EmptyCard
-                          icon={<User className="h-8 w-8 text-muted-foreground" />}
-                          title="No leads yet"
-                          description="Add your first lead to start tracking potential customers for this campaign."
-                          className="border-none shadow-none py-10"
-                          contentClassName="flex flex-col items-center justify-center"
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="p-0">
+                      <EmptyCard
+                        icon={<User className="h-8 w-8 text-muted-foreground" />}
+                        title="No leads yet"
+                        description="Add your first lead to start tracking potential customers for this campaign."
+                        className="border-none shadow-none py-10"
+                        contentClassName="flex flex-col items-center justify-center"
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
         
-        {/* Converted Clients Card */}
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="text-lg font-medium mb-4">Converted Clients</h3>
-            <div className="border rounded-md overflow-hidden">
-              <table className="w-full">
-                <colgroup>
-                  <col className="w-[25%]" />
-                  <col className="w-[16.6%]" />
-                  <col className="w-[16.6%]" />
-                  <col className="w-[16.6%]" />
-                  <col className="w-[16.6%]" />
-                  <col className="w-[8.3%]" />
-                </colgroup>
-                <thead>
-                  <tr className="bg-muted/30">
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Name</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Email</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Phone</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Value</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-left">Date Converted</th>
-                    <th className="p-3 text-sm font-medium text-muted-foreground text-right"></th>
+        {/* Converted Clients */}
+        <div>
+          <h3 className="text-lg font-medium mb-4">Converted Clients</h3>
+          <div className="border rounded-md overflow-hidden">
+            <table className="w-full">
+              <colgroup>
+                <col className="w-[25%]" />
+                <col className="w-[16.6%]" />
+                <col className="w-[16.6%]" />
+                <col className="w-[16.6%]" />
+                <col className="w-[16.6%]" />
+                <col className="w-[8.3%]" />
+              </colgroup>
+              <thead>
+                <tr className="bg-muted/30">
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Name</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Email</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Phone</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Value</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-left">Date Converted</th>
+                  <th className="p-3 text-sm font-medium text-muted-foreground text-right"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Display converted leads (status === "converted") */}
+                {loadingLeads ? (
+                  <tr>
+                    <td colSpan={6} className="p-4 text-center">
+                      <div className="h-5 w-5 mx-auto animate-pulse bg-muted rounded" />
+                      <div className="mt-2 text-sm text-muted-foreground">Loading converted clients...</div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {/* Display converted leads (status === "converted") */}
-                  {loadingLeads ? (
-                    <tr>
-                      <td colSpan={6} className="p-4 text-center">
-                        <div className="h-5 w-5 mx-auto animate-pulse bg-muted rounded" />
-                        <div className="mt-2 text-sm text-muted-foreground">Loading converted clients...</div>
+                ) : convertedLeads && convertedLeads.length > 0 ? (
+                  convertedLeads.map((lead, index) => (
+                    <tr key={lead.id || index} className={index % 2 === 0 ? "bg-background" : "bg-muted/10"}>
+                      <td className="p-3 text-sm">
+                        <div className="font-medium">{lead.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {typeof lead.company === 'object' && lead.company?.name 
+                            ? lead.company.name 
+                            : (typeof lead.company === 'string' ? lead.company : "")}
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm">{lead.email || "—"}</td>
+                      <td className="p-3 text-sm">{lead.phone || "—"}</td>
+                      <td className="p-3 text-sm font-medium text-success">
+                        {formatCurrency((lead as any).value || 0, "USD")}
+                      </td>
+                      <td className="p-3 text-sm">
+                        {lead.created_at 
+                          ? new Date(lead.created_at).toLocaleDateString() 
+                          : "—"}
+                      </td>
+                      <td className="p-3 text-sm text-right">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditLead(lead)}>
+                          <span className="sr-only">Edit</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
-                  ) : convertedLeads && convertedLeads.length > 0 ? (
-                    convertedLeads.map((lead, index) => (
-                      <tr key={lead.id || index} className={index % 2 === 0 ? "bg-background" : "bg-muted/10"}>
-                        <td className="p-3 text-sm">
-                          <div className="font-medium">{lead.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {typeof lead.company === 'object' && lead.company?.name 
-                              ? lead.company.name 
-                              : (typeof lead.company === 'string' ? lead.company : "")}
-                          </div>
-                        </td>
-                        <td className="p-3 text-sm">{lead.email || "—"}</td>
-                        <td className="p-3 text-sm">{lead.phone || "—"}</td>
-                        <td className="p-3 text-sm font-medium text-success">
-                          {formatCurrency((lead as any).value || 0, "USD")}
-                        </td>
-                        <td className="p-3 text-sm">
-                          {lead.created_at 
-                            ? new Date(lead.created_at).toLocaleDateString() 
-                            : "—"}
-                        </td>
-                        <td className="p-3 text-sm text-right">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditLead(lead)}>
-                            <span className="sr-only">Edit</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="p-0">
-                        <EmptyCard
-                          icon={<Users className="h-8 w-8 text-muted-foreground" />}
-                          title="No clients yet"
-                          description="Update leads to 'Converted' status when they become clients."
-                          className="border-none shadow-none py-10"
-                          contentClassName="flex flex-col items-center justify-center"
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="p-0">
+                      <EmptyCard
+                        icon={<Users className="h-8 w-8 text-muted-foreground" />}
+                        title="No clients yet"
+                        description="Update leads to 'Converted' status when they become clients."
+                        className="border-none shadow-none py-10"
+                        contentClassName="flex flex-col items-center justify-center"
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
       
       {/* Card with Tabs - 40% */}
@@ -387,25 +379,14 @@ export function CampaignSummary({
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">Overview</div>
-              {onAddSubtask && (
-                <AddSubtaskDialog 
-                  campaignId={campaign.id}
-                  onAddSubtask={onAddSubtask}
-                  trigger={
-                    <Button size="sm">
-                      + Add Task
-                    </Button>
-                  }
-                />
-              )}
+              <Badge className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${priorityColor[campaign.priority]}`}>
+                <span className="mr-1">•</span> {priorityLabels[campaign.priority] || "Unknown Relevance"}
+              </Badge>
             </div>
-            {/* Campaign Title and Priority */}
+            {/* Campaign Title */}
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-medium">{campaign.title}</h3>
-                <Badge className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${priorityColor[campaign.priority]}`}>
-                  <span className="mr-1">•</span> {priorityLabels[campaign.priority] || "Unknown Relevance"}
-                </Badge>
               </div>
               <div className="text-sm text-muted-foreground flex items-center gap-1">
                 {campaignTypeLabels[campaign.type || "inbound"]?.icon || ""}{" "}

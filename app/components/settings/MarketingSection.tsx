@@ -42,9 +42,6 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
   const [servicesList, setServicesList] = useState<any[]>(
     form.getValues("services") ?? []
   )
-  const [resourceList, setResourceList] = useState<{key: string, url: string}[]>(
-    form.getValues("resource_urls") || []
-  )
   const [competitorList, setCompetitorList] = useState<{name?: string, url: string}[]>(
     form.getValues("competitors") || []
   )
@@ -61,9 +58,6 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
       if (name === 'services' && value.services && Array.isArray(value.services)) {
         setServicesList(value.services);
       }
-      if (name === 'resource_urls' && value.resource_urls && Array.isArray(value.resource_urls)) {
-        setResourceList(value.resource_urls);
-      }
       if (name === 'competitors' && value.competitors && Array.isArray(value.competitors)) {
         setCompetitorList(value.competitors);
       }
@@ -74,7 +68,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
 
   // Add channel
   const addChannel = () => {
-    const newChannels = [...channelsList, { name: "" }]
+    const newChannels = [{ name: "" }, ...channelsList]
     setChannelsList(newChannels)
     form.setValue("marketing_channels", newChannels)
   }
@@ -95,13 +89,13 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
       lowest_sale_price: 0,
       target_sale_price: 0
     }
-    const newProducts = [...(productsList || []), newProduct]
+    const newProducts = [newProduct, ...(productsList || [])]
     setProductsList(newProducts)
     form.setValue("products", newProducts)
     
-    // Expand the newly added item
+    // Expand the newly added item (now at index 0)
     const newExpanded = new Set(expandedProducts)
-    newExpanded.add(newProducts.length - 1)
+    newExpanded.add(0)
     setExpandedProducts(newExpanded)
   }
 
@@ -130,13 +124,13 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
       lowest_sale_price: 0,
       target_sale_price: 0
     }
-    const newServices = [...(servicesList || []), newService]
+    const newServices = [newService, ...(servicesList || [])]
     setServicesList(newServices)
     form.setValue("services", newServices)
     
-    // Expand the newly added item
+    // Expand the newly added item (now at index 0)
     const newExpanded = new Set(expandedServices)
-    newExpanded.add(newServices.length - 1)
+    newExpanded.add(0)
     setExpandedServices(newExpanded)
   }
 
@@ -178,23 +172,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
     setExpandedServices(newExpanded)
   }
 
-  // Add resource entry
-  const addResource = () => {
-    const newResources = [...resourceList, { key: "", url: "" }]
-    setResourceList(newResources)
-    form.setValue("resource_urls", newResources)
-  }
-
-  // Remove resource entry
-  const removeResource = (index: number) => {
-    const newResources = resourceList.filter((_, i) => i !== index)
-    setResourceList(newResources)
-    form.setValue("resource_urls", newResources)
-  }
 
   // Add competitor entry
   const addCompetitor = () => {
-    const newCompetitors = [...competitorList, { name: "", url: "" }]
+    const newCompetitors = [{ name: "", url: "" }, ...competitorList]
     setCompetitorList(newCompetitors)
     form.setValue("competitors", newCompetitors as any, { shouldDirty: true, shouldValidate: true })
   }
@@ -214,7 +195,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
 
   return (
     <>
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="ai-focus-mode" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">AI Focus Mode</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -282,6 +263,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -290,7 +272,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="business-model" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Business Model</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -365,6 +347,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -373,7 +356,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="marketing-budget" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Marketing Budget (in USD)</CardTitle>
         </CardHeader>
@@ -427,6 +410,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -435,12 +419,25 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="products" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Products</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add your company's products with pricing information
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-semibold">Products</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add your company's products with pricing information
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={addProduct}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Product
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6 px-8 pb-8">
           {productsList && productsList.map((product, index) => {
@@ -593,18 +590,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               </div>
             )
           })}
-          <Button
-            variant="outline"
-            className="mt-2 w-full h-12"
-            type="button"
-            onClick={addProduct}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Product
-          </Button>
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -613,12 +602,25 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="services" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Services</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add your company's services with pricing information
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-semibold">Services</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add your company's services with pricing information
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={addService}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Service
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6 px-8 pb-8">
           {servicesList && servicesList.map((service, index) => {
@@ -771,18 +773,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               </div>
             )
           })}
-          <Button
-            variant="outline"
-            className="mt-2 w-full h-12"
-            type="button"
-            onClick={addService}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Service
-          </Button>
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -791,12 +785,25 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="competitors" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add your main competitors for market analysis
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add your main competitors for market analysis
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={addCompetitor}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Competitor
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6 px-8 pb-8">
           {competitorList.map((competitor, index) => (
@@ -863,18 +870,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               </Button>
             </div>
           ))}
-          <Button
-            variant="outline"
-            className="mt-2 w-full h-12"
-            type="button"
-            onClick={addCompetitor}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Competitor
-          </Button>
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -883,12 +882,25 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="marketing-channels" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Marketing Channels</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add your marketing channels and platforms
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-semibold">Marketing Channels</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add your marketing channels and platforms
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={addChannel}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Channel
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6 px-8 pb-8">
           {channelsList.map((channel, index) => (
@@ -932,18 +944,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               </Button>
             </div>
           ))}
-          <Button
-            variant="outline"
-            className="mt-2 w-full h-12"
-            type="button"
-            onClick={addChannel}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Marketing Channel
-          </Button>
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
+            variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -952,92 +956,6 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Web Resources</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
-          {resourceList.map((resource, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <FormField
-                control={form.control}
-                name={`resource_urls.${index}.key`}
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormControl>
-                      <div className="relative">
-                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          className="pl-12 h-12 text-base"
-                          placeholder="Resource name"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e)
-                            const newResources = [...resourceList]
-                            newResources[index].key = e.target.value
-                            setResourceList(newResources)
-                          }}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={`resource_urls.${index}.url`}
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormControl>
-                      <div className="relative">
-                        <Link className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          className="pl-12 h-12 text-base"
-                          placeholder="https://example.com/resource"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e)
-                            const newResources = [...resourceList]
-                            newResources[index].url = e.target.value
-                            setResourceList(newResources)
-                          }}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                size="icon"
-                variant="ghost"
-                type="button"
-                onClick={() => removeResource(index)}
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
-            </div>
-          ))}
-          <Button
-            variant="outline"
-            className="mt-2 w-full h-12"
-            type="button"
-            onClick={addResource}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Resource
-          </Button>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-        </CardFooter>
-      </Card>
     </>
   )
 } 

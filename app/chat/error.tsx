@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { Button } from '@/app/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/app/components/ui/card'
 import * as Icons from '@/app/components/ui/icons'
-import Link from 'next/link'
+import { NavigationLink } from '@/app/components/navigation/NavigationLink'
 
 export default function ChatError({
   error,
@@ -52,11 +52,11 @@ export default function ChatError({
           </ul>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Link href="/agents">
+          <NavigationLink href="/agents">
             <Button variant="outline">
               Back to Agents
             </Button>
-          </Link>
+          </NavigationLink>
           <Button onClick={reset}>
             Try Again
           </Button>

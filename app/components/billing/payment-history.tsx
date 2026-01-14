@@ -245,7 +245,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
           className="h-[600px]"
         />
       ) : (
-        <Card className="border border-border shadow-sm">
+        <Card id="payment-history" className="border border-border shadow-sm">
           <CardHeader className="px-8 py-6">
             <CardTitle className="text-xl font-semibold">Payment History</CardTitle>
           </CardHeader>

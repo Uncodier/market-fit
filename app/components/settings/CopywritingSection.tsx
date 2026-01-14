@@ -32,6 +32,17 @@ import {
   SelectTrigger,
   SelectValue
 } from "../ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog"
 
 interface CopywritingSectionProps {
   active: boolean
@@ -124,6 +135,20 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
     loadCopywritingData()
   }, [active, hasLoaded, currentSite, form])
 
+  // Emit copywriting items update event whenever list changes
+  useEffect(() => {
+    if (active && copywritingList.length > 0) {
+      const copywritingData = copywritingList.map((item, index) => ({
+        id: `copywriting-item-${index}`,
+        title: item.title || `Copy ${index + 1}`,
+      }));
+      
+      window.dispatchEvent(new CustomEvent('copywritingUpdated', { 
+        detail: copywritingData 
+      }));
+    }
+  }, [active, copywritingList])
+
   // Sync copywriting list when form values change (but only after initial load)
   useEffect(() => {
     if (!hasLoaded) return
@@ -149,14 +174,14 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
       tags: [],
       status: "draft"
     }
-    const newList = [...copywritingList, newItem]
-    const newIndex = newList.length - 1
+    const newList = [newItem, ...copywritingList]
+    const newIndex = 0
     
     setCopywritingList(newList)
     form.setValue("copywriting", newList)
     
     // Expand the new item automatically
-    setExpandedItems(prev => new Set([...prev, newIndex]))
+    setExpandedItems(prev => new Set([0, ...Array.from(prev).map(i => i + 1)]))
   }
 
   // Remove copywriting item
@@ -197,11 +222,11 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
     setExpandedItems(newExpanded)
   }
 
-  // Save copywriting data
-  const handleSaveCopywriting = async () => {
+  // Save individual copywriting item
+  const handleSaveCopywritingItem = async (index: number) => {
     try {
-      // Trigger form validation for copywriting fields
-      const isValid = await form.trigger("copywriting")
+      // Trigger form validation for this specific copywriting field
+      const isValid = await form.trigger(`copywriting.${index}`)
       
       if (!isValid) {
         toast.error("Please fix validation errors before saving")
@@ -210,7 +235,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
 
       // Get the current copywriting data from the form
       const copywritingData = form.getValues("copywriting") || []
-      console.log("COPYWRITING SECTION: Saving copywriting data:", copywritingData)
+      console.log("COPYWRITING SECTION: Saving copywriting item:", copywritingData[index])
 
       // Call the parent save function if provided
       if (onSave) {
@@ -225,7 +250,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
         }
       }
     } catch (error) {
-      toast.error("Error saving copywriting data")
+      toast.error("Error saving copywriting item")
       console.error("Save error:", error)
     }
   }
@@ -240,30 +265,37 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
   }
 
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold">Copywriting Collection</CardTitle>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your marketing copy, scripts, and content templates
-        </p>
-      </CardHeader>
-      <CardContent className="px-8 pb-8">
-        <div className="space-y-6">
-          {/* Empty state */}
-          {copywritingList.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">No copy items yet</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Start building your copywriting collection by adding your first copy item.
-              </p>
-            </div>
-          )}
+    <div id="copywriting-collection" className="space-y-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Copywriting Collection</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your marketing copy, scripts, and content templates
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addCopywritingItem}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Copy Item
+        </Button>
+      </div>
 
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2].map(i => (
+            <div key={i} className="h-48 bg-muted/40 animate-pulse rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
           {/* Copywriting Items */}
-          {copywritingList.length > 0 && (
-            <div className="space-y-6">
-              {copywritingList.map((item, index) => {
+          {copywritingList.map((item, index) => {
                 const copyType = copyTypes.find(type => type.value === item.copy_type)
                 const IconComponent = copyType?.icon || FileText
                 
@@ -291,18 +323,6 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeCopywritingItem(index)
-                            }}
-                            className="h-8 w-8"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                           {isExpanded ? (
                             <ChevronUp className="h-5 w-5 text-muted-foreground" />
                           ) : (
@@ -314,6 +334,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                     
                     {/* Collapsible Content */}
                     {isExpanded && (
+                      <>
                       <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t">
                       {/* Title */}
                       <FormField
@@ -496,57 +517,63 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                         )}
                       />
                       </CardContent>
+                      
+                      {/* Card Footer with individual Save Button */}
+                      <CardFooter className="px-8 py-6 bg-muted/30 border-t">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="text-sm text-muted-foreground">
+                            {item.status && (
+                              <span className="capitalize">Status: {item.status}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Remove Copy
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove Copy</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to remove this copywriting item? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => removeCopywritingItem(index)}
+                                    className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
+                                  >
+                                    Remove Copy
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            <Button 
+                              type="button"
+                              variant="outline"
+                              onClick={() => handleSaveCopywritingItem(index)}
+                              disabled={isSaving}
+                            >
+                              {isSaving ? "Saving..." : "Save Copy"}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardFooter>
+                      </>
                     )}
                   </Card>
                 )
               })}
-            </div>
-          )}
-
-          {/* Add New Button */}
-          <Button
-            variant="outline"
-            className="w-full h-12"
-            type="button"
-            onClick={addCopywritingItem}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Copy Item
-          </Button>
-
-
         </div>
-      </CardContent>
-      
-      {/* Card Footer with Save Button */}
-      <CardFooter className="px-8 py-6 bg-muted/30 border-t">
-        <div className="flex items-center justify-between w-full">
-                        <div className="text-sm text-muted-foreground">
-                {copywritingList.length > 0 && (
-                  <span>
-                    {copywritingList.filter(item => item.status === 'approved').length} of {copywritingList.length} approved copys
-                  </span>
-                )}
-              </div>
-          <Button 
-            onClick={handleSaveCopywriting}
-            disabled={isSaving || copywritingList.length === 0}
-            className="bg-violet-600 hover:bg-violet-700 text-white"
-          >
-            {isSaving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Save Copywriting
-              </>
-            )}
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
+      )}
+    </div>
   )
 }

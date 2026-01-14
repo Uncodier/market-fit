@@ -29,7 +29,6 @@ interface TaskStatusBarProps {
 export function TaskStatusBar({ currentStatus, onStatusChange }: TaskStatusBarProps) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
       <div className="flex space-x-2">
         {TASK_STATUSES.map((status) => (
           <Badge 

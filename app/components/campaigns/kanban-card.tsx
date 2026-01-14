@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { FinancialStats } from "./financial-stats"
 import { useRouter } from "next/navigation"
+import { navigateToRequirement, navigateToCampaign } from "@/app/hooks/use-navigation-history"
 import { Button } from "@/app/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import React from "react"
@@ -69,7 +70,7 @@ interface KanbanCardProps {
       outsource_contact?: string
     }
   }
-  onCardClick?: (id: string) => void
+  onCardClick?: (id: string, title: string) => void
 }
 
 export function KanbanCard({ 
@@ -173,9 +174,13 @@ export function KanbanCard({
   const handleCardClick = (e: React.MouseEvent) => {
     // Use the onCardClick prop if provided, otherwise use router navigation
     if (onCardClick) {
-      onCardClick(id);
+      onCardClick(id, title);
     } else {
-      router.push(`/campaigns/${id}`);
+      navigateToCampaign({
+        campaignId: id,
+        campaignName: title,
+        router
+      })
     }
   };
 
@@ -184,9 +189,13 @@ export function KanbanCard({
     setExpanded(!expanded);
   };
 
-  const handleRequirementClick = (e: React.MouseEvent, requirementId: string) => {
+  const handleRequirementClick = (e: React.MouseEvent, requirementId: string, requirementTitle: string) => {
     e.stopPropagation(); // Prevent card click event from navigating
-    router.push(`/requirements/${requirementId}`);
+    navigateToRequirement({
+      requirementId,
+      requirementTitle,
+      router
+    })
   };
 
   // Calculate derived costs from budget if they're not provided
@@ -345,7 +354,7 @@ export function KanbanCard({
                               "hover:bg-muted/20 cursor-pointer",
                               index > 0 ? "border-t" : ""
                             )}
-                            onClick={(e) => handleRequirementClick(e, req.id)}
+                            onClick={(e) => handleRequirementClick(e, req.id, req.title)}
                           >
                             <td className="py-1.5 px-3 align-middle">
                               <div className="truncate font-medium">{req.title}</div>

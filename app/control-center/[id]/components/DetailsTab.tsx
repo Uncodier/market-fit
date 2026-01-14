@@ -16,6 +16,7 @@ import { createClient } from "@/utils/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { Badge } from "@/app/components/ui/badge"
+import { navigateToControlCenter } from "@/app/hooks/use-navigation-history"
 
 interface DetailsTabProps {
   task: Task
@@ -184,7 +185,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
       if (error) throw error
 
       toast.success("Task deleted successfully")
-      router.push('/control-center')
+      navigateToControlCenter({ router })
     } catch (error) {
       console.error('Error deleting task:', error)
       toast.error("Failed to delete task")

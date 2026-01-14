@@ -25,7 +25,6 @@ interface StatusBarProps {
 export function StatusBar({ currentStatus, onStatusChange }: StatusBarProps) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
       <div className="flex space-x-2">
         {SALE_STATUSES.map((status) => (
           <Badge 

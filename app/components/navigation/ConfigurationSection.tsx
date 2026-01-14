@@ -271,7 +271,7 @@ export function ConfigurationSection({
               title={item.title}
               isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
               isCollapsed={isCollapsed}
-              className={isSettings ? "setting-parent-item" : ""}
+              className="context-parent-item"
               onClick={isSettings ? (e) => handleSettingsNavigation(e, item.href) : undefined}
             >
 

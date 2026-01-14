@@ -38,6 +38,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 import { Segment } from "@/app/types/segments"
 import { useRouter } from "next/navigation"
+import { navigateToSegment } from "@/app/hooks/use-navigation-history"
 
 
 type AdPlatform = "facebook" | "google" | "linkedin" | "twitter"
@@ -89,7 +90,7 @@ function SegmentCard({
   iframeLoading: Record<string, boolean>;
   handleIframeLoad: (id: string) => void;
   handleConfigureUrl: (segmentId: string) => void;
-  navigateToSegmentDetail: (id: string) => void;
+  navigateToSegmentDetail: (id: string, name: string) => void;
 }) {
   return (
     <Collapsible
@@ -102,7 +103,7 @@ function SegmentCard({
         className="cursor-pointer"
         onClick={(e) => {
           e.preventDefault();
-          navigateToSegmentDetail(segment.id);
+          navigateToSegmentDetail(segment.id, segment.name);
         }}
         onDoubleClick={(e) => {
           e.preventDefault();
@@ -565,8 +566,12 @@ export default function SegmentsPage() {
     }))
   }
 
-  const navigateToSegmentDetail = (id: string) => {
-    router.push(`/segments/${id}`)
+  const navigateToSegmentDetail = (id: string, name: string) => {
+    navigateToSegment({
+      segmentId: id,
+      segmentName: name,
+      router
+    })
   }
 
   const handlePlatformChange = (id: string, platform: AdPlatform) => {
@@ -733,16 +738,16 @@ export default function SegmentsPage() {
   if (isLoading) {
     return (
       <div className="flex-1 p-0">
-        <Tabs defaultValue="all">
-          <StickyHeader>
-            <div className="px-16 pt-0">
+      <Tabs defaultValue="all">
+        <StickyHeader>
+          <div className="px-16 pt-0">
+            <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
-                <div className="flex items-center gap-8">
-                  <TabsList>
-                    <TabsTrigger value="all">All Segments</TabsTrigger>
-                    <TabsTrigger value="active">Active</TabsTrigger>
-                    <TabsTrigger value="draft">Draft</TabsTrigger>
-                  </TabsList>
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                  <TabsTrigger value="all" className="text-xs rounded-full">All Segments</TabsTrigger>
+                  <TabsTrigger value="active" className="text-xs rounded-full">Active</TabsTrigger>
+                  <TabsTrigger value="draft" className="text-xs rounded-full">Draft</TabsTrigger>
+                </TabsList>
                   <div className="relative w-64">
                     <Input
                       ref={searchInputRef}
@@ -753,7 +758,7 @@ export default function SegmentsPage() {
                       onChange={handleSearchChange}
                       icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     />
-                    <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                    <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                       <span className="text-xs">⌘</span>K
                     </kbd>
                   </div>
@@ -809,22 +814,22 @@ export default function SegmentsPage() {
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
-                <TabsList>
-                  <TabsTrigger value="all">All Segments</TabsTrigger>
-                  <TabsTrigger value="active">Active</TabsTrigger>
-                  <TabsTrigger value="draft">Draft</TabsTrigger>
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                  <TabsTrigger value="all" className="text-xs rounded-full">All Segments</TabsTrigger>
+                  <TabsTrigger value="active" className="text-xs rounded-full">Active</TabsTrigger>
+                  <TabsTrigger value="draft" className="text-xs rounded-full">Draft</TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input
                     ref={searchInputRef}
                     type="text"
                     placeholder="Search segments..."
-                    className="w-full"
+                    className="w-full pr-16"
                     value={searchTerm}
                     onChange={handleSearchChange}
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>

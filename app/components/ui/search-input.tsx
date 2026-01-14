@@ -68,14 +68,14 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           ref={ref}
           type="text"
           placeholder={placeholder}
-          className={cn("w-full", className)}
+          className={cn("w-full pr-16", className)}
           icon={<Search className="h-4 w-4 text-muted-foreground" />}
           iconPosition="left"
           onChange={handleInputChange}
           {...props}
         />
         {showShortcut && (
-          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
             <span className="text-xs">⌘</span>{shortcut}
           </kbd>
         )}

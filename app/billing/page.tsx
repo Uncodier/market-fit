@@ -3,17 +3,29 @@
 import { useState, useEffect } from "react"
 import { BillingForm } from "../components/billing/billing-form"
 import { PaymentHistory } from "../components/billing/payment-history"
-import { BillingPageSkeleton, BillingInfoSkeleton, PaymentHistorySkeleton } from "../components/billing/billing-skeleton"
+import { BillingPageSkeleton } from "../components/billing/billing-skeleton"
 import { useSite } from "../context/SiteContext"
 import { StickyHeader } from "../components/ui/sticky-header"
-import { Button } from "../components/ui/button"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
+
+// Section configurations for quick navigation
+const billingInfoSections: QuickNavSection[] = [
+  { id: "credits", title: "Credits" },
+  { id: "subscription-plan", title: "Subscription Plan" },
+  { id: "payment-method", title: "Payment Method" },
+  { id: "tax-id", title: "Tax ID" },
+  { id: "billing-address", title: "Billing Address" },
+]
+
+const paymentHistorySections: QuickNavSection[] = [
+  { id: "payment-history", title: "Payment History" },
+]
 
 export default function BillingPage() {
   const { currentSite, isLoading } = useSite()
   const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("billing_info")
   
   // Get active tab from URL if present
@@ -39,6 +51,18 @@ export default function BillingPage() {
       url.searchParams.set('tab', value)
     }
     window.history.pushState({}, '', url.toString())
+  }
+
+  // Get current sections based on active tab
+  const getCurrentSections = (): QuickNavSection[] => {
+    switch (activeTab) {
+      case "billing_info":
+        return billingInfoSections
+      case "payment_history":
+        return paymentHistorySections
+      default:
+        return []
+    }
   }
 
   // Redirect to dashboard if no site is selected
@@ -70,49 +94,39 @@ export default function BillingPage() {
               <TabsTrigger value="payment_history">Payment History</TabsTrigger>
             </TabsList>
           </Tabs>
-          {activeTab === "billing_info" && (
-            <Button 
-              type="submit"
-              form="billing-form"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : "Save Billing Info"}
-            </Button>
-          )}
         </div>
       </StickyHeader>
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsContent value="billing_info" className="mt-0 p-0">
-            <BillingForm 
-              id="billing-form"
-              initialData={{
-                plan: currentSite.billing?.plan || "commission",
-                card_name: currentSite.billing?.card_name,
-                card_expiry: currentSite.billing?.card_expiry,
-                card_address: currentSite.billing?.card_address,
-                card_city: currentSite.billing?.card_city,
-                card_postal_code: currentSite.billing?.card_postal_code,
-                card_country: currentSite.billing?.card_country,
-                tax_id: currentSite.billing?.tax_id,
-                billing_address: currentSite.billing?.billing_address,
-                billing_city: currentSite.billing?.billing_city,
-                billing_postal_code: currentSite.billing?.billing_postal_code,
-                billing_country: currentSite.billing?.billing_country,
-                auto_renew: currentSite.billing?.auto_renew === false ? false : true
-              }}
-              onSuccess={() => {
-                router.push('/dashboard')
-              }}
-              onSubmitStart={() => setIsSubmitting(true)}
-              onSubmitEnd={() => setIsSubmitting(false)}
-            />
-          </TabsContent>
-          
-          <TabsContent value="payment_history" className="mt-0 p-0">
-            <PaymentHistory />
-          </TabsContent>
-        </Tabs>
+      <div className="py-8 pb-16">
+        <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+          <div className="flex-1 max-w-[880px] px-16">
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+              <TabsContent value="billing_info" className="mt-0 p-0">
+                <BillingForm 
+                  initialData={{
+                    plan: currentSite.billing?.plan || "commission",
+                    card_name: currentSite.billing?.card_name,
+                    card_expiry: currentSite.billing?.card_expiry,
+                    card_address: currentSite.billing?.card_address,
+                    card_city: currentSite.billing?.card_city,
+                    card_postal_code: currentSite.billing?.card_postal_code,
+                    card_country: currentSite.billing?.card_country,
+                    tax_id: currentSite.billing?.tax_id,
+                    billing_address: currentSite.billing?.billing_address,
+                    billing_city: currentSite.billing?.billing_city,
+                    billing_postal_code: currentSite.billing?.billing_postal_code,
+                    billing_country: currentSite.billing?.billing_country,
+                    auto_renew: currentSite.billing?.auto_renew === false ? false : true
+                  }}
+                />
+              </TabsContent>
+              
+              <TabsContent value="payment_history" className="mt-0 p-0">
+                <PaymentHistory />
+              </TabsContent>
+            </Tabs>
+          </div>
+          <QuickNav sections={getCurrentSections()} />
+        </div>
       </div>
     </div>
   )

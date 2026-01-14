@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { SkeletonCard } from "@/app/components/ui/skeleton-card"
 import { Input } from "@/app/components/ui/input"
@@ -317,24 +316,23 @@ export function CampaignSales({ campaign }: { campaign: any }) {
   };
 
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium">Sales & Conversions</h3>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Sale
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="sm:max-w-[425px]">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Add New Sale</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Enter the details of the new sale for this campaign.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium">Sales & Conversions</h3>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Sale
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="sm:max-w-[425px]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Add New Sale</AlertDialogTitle>
+              <AlertDialogDescription>
+                Enter the details of the new sale for this campaign.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
               
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -556,7 +554,6 @@ export function CampaignSales({ campaign }: { campaign: any }) {
             </div>
           </>
         )}
-      </CardContent>
       
       {/* Edit Sale Dialog */}
       <AlertDialog open={isEditingSale} onOpenChange={setIsEditingSale}>
@@ -685,13 +682,13 @@ export function CampaignSales({ campaign }: { campaign: any }) {
             <AlertDialogCancel onClick={() => setSaleToDelete(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteSale}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
             >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </div>
   )
 } 

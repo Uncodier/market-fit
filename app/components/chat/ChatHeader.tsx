@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import Link from "next/link"
+import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Badge } from "@/app/components/ui/badge"
 import { Agent } from "@/app/types/agents"
@@ -116,6 +116,11 @@ export function ChatHeader({
             </Avatar>
             <div className="transition-transform duration-300 ease-in-out">
               <div className="flex items-center gap-2">
+                {!hasAssignee && (
+                  <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-primary/10 text-primary border-primary/20">
+                    Agent
+                  </Badge>
+                )}
                 <h2 className="font-medium text-lg">{leftSideDisplayName}</h2>
                 {hasAssignee && (
                   <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-blue-500/10 text-blue-600 border-blue-500/20">
@@ -133,8 +138,8 @@ export function ChatHeader({
             <div className="transition-transform duration-300 ease-in-out text-right">
               <div className="flex items-center gap-2 justify-end">
                 {isLead ? (
-                  <Link 
-                    href={`/leads/${leadData.id}`} 
+                  <NavigationLink 
+                    href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`} 
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     <h2 className="font-medium text-lg">{truncateLeadName(leadData.name)}</h2>
@@ -145,7 +150,7 @@ export function ChatHeader({
                            : leadData.company.name)
                         : leadData.type}
                     </Badge>
-                  </Link>
+                  </NavigationLink>
                 ) : (
                   <div className="flex items-center gap-2">
                     <h2 className="font-medium text-lg">Visitor</h2>
@@ -157,14 +162,17 @@ export function ChatHeader({
               </div>
             </div>
             {isLead ? (
-              <Link href={`/leads/${leadData.id}`} className="hover:opacity-80 transition-opacity">
+              <NavigationLink 
+                href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`} 
+                className="hover:opacity-80 transition-opacity"
+              >
                 <Avatar className="h-12 w-12 border-2 border-amber-500/20 transition-transform duration-300 ease-in-out">
                   <AvatarImage src={leadData.avatarUrl} alt={leadData.name} />
                   <AvatarFallback className="bg-amber-500/10 text-amber-600">
                     {leadData.name.split(' ').map((name: string) => name[0]).join('').substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
-              </Link>
+              </NavigationLink>
             ) : (
               <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out">
                 <AvatarImage src={undefined} alt="Visitor" />
