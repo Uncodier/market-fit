@@ -583,8 +583,8 @@ export function useNavigationHistory() {
    * Navigate to a specific item in history
    */
   const navigateTo = useCallback((item: HistoryItem) => {
-    // Mark as UI navigation
-    sessionStorage.setItem('isUINavigation', 'true')
+    // Mark as UI navigation using the proper function
+    markUINavigation()
     
     // Extract pathname and query from path
     const [path, query] = item.path.split('?')

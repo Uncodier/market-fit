@@ -1027,16 +1027,6 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
                     </div>
                   )}
 
-                  {/* Details Tab Actions */}
-                  {activeTab === "details" && (
-                    <Button 
-                      onClick={() => formRef.current?.requestSubmit()}
-                      className="gap-2"
-                    >
-                      <SaveIcon className="h-4 w-4" />
-                      Save Changes
-                    </Button>
-                  )}
                 </div>
               )}
             </div>

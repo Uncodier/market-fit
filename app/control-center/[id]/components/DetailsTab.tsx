@@ -3,6 +3,7 @@
 import { useState, useEffect, RefObject } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
@@ -47,6 +48,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
   const router = useRouter()
   const { currentSite } = useSite()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [savingSection, setSavingSection] = useState<string | null>(null)
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
   const [formData, setFormData] = useState({
@@ -170,6 +172,66 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
     }
   }
 
+  // Handle save individual section
+  const handleSaveSection = async (section: string) => {
+    if (!currentSite) return
+
+    setSavingSection(section)
+    try {
+      const supabase = createClient()
+      
+      let updateData: any = {}
+      
+      if (section === 'basic') {
+        updateData = {
+          title: formData.title,
+          description: formData.description,
+          type: formData.type || null
+        }
+      } else if (section === 'status') {
+        updateData = {
+          status: formData.status,
+          stage: formData.stage
+        }
+      } else if (section === 'schedule') {
+        updateData = {
+          scheduled_date: formData.scheduled_date.toISOString(),
+          lead_id: formData.lead_id || null,
+          assignee: formData.assignee || null
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', task.id)
+        .eq('site_id', currentSite.id)
+        .select(`
+          *,
+          leads:lead_id (
+            id,
+            name
+          )
+        `)
+        .single()
+
+      if (error) throw error
+
+      onSave(data)
+      const sectionNames: Record<string, string> = {
+        basic: 'Basic Information',
+        status: 'Status & Stage',
+        schedule: 'Schedule & Assignment'
+      }
+      toast.success(`${sectionNames[section]} saved successfully`)
+    } catch (error) {
+      console.error(`Error saving ${section}:`, error)
+      toast.error(`Failed to save ${section}`)
+    } finally {
+      setSavingSection(null)
+    }
+  }
+
   // Handle task deletion
   const handleDelete = async () => {
     if (!currentSite) return
@@ -272,6 +334,16 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
             </Select>
           </div>
         </CardContent>
+        <ActionFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSaveSection('basic')}
+            disabled={savingSection === 'basic'}
+          >
+            {savingSection === 'basic' ? "Saving..." : "Save Basic Information"}
+          </Button>
+        </ActionFooter>
       </Card>
 
       {/* Status and Stage */}
@@ -392,6 +464,16 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
             </Select>
           </div>
         </CardContent>
+        <ActionFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSaveSection('schedule')}
+            disabled={savingSection === 'schedule'}
+          >
+            {savingSection === 'schedule' ? "Saving..." : "Save Schedule & Assignment"}
+          </Button>
+        </ActionFooter>
       </Card>
 
       {/* Danger Zone */}

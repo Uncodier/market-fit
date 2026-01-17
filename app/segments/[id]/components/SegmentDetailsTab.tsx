@@ -3,6 +3,7 @@
 import { useState, RefObject } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
@@ -35,6 +36,7 @@ export default function SegmentDetailsTab({ segment, onSave, formRef }: SegmentD
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [savingSection, setSavingSection] = useState<string | null>(null)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -109,6 +111,31 @@ export default function SegmentDetailsTab({ segment, onSave, formRef }: SegmentD
       toast.error("Failed to update segment")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleSaveSection = async (section: string) => {
+    setSavingSection(section)
+    try {
+      const result = await updateSegment({
+        segmentId: segment.id,
+        data: formData
+      })
+
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+
+      if (result.segment) {
+        toast.success(`${section === 'basic' ? 'Basic Information' : 'Audience Details'} saved successfully`)
+        onSave(result.segment as Segment)
+      }
+    } catch (error) {
+      console.error(`Error saving ${section}:`, error)
+      toast.error(`Failed to save ${section}`)
+    } finally {
+      setSavingSection(null)
     }
   }
 
@@ -220,6 +247,16 @@ export default function SegmentDetailsTab({ segment, onSave, formRef }: SegmentD
               </p>
             </div>
           </CardContent>
+          <ActionFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleSaveSection('basic')}
+              disabled={savingSection === 'basic'}
+            >
+              {savingSection === 'basic' ? "Saving..." : "Save Basic Information"}
+            </Button>
+          </ActionFooter>
         </Card>
 
         <Card>
@@ -291,6 +328,16 @@ export default function SegmentDetailsTab({ segment, onSave, formRef }: SegmentD
               </p>
             </div>
           </CardContent>
+          <ActionFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleSaveSection('audience')}
+              disabled={savingSection === 'audience'}
+            >
+              {savingSection === 'audience' ? "Saving..." : "Save Audience Details"}
+            </Button>
+          </ActionFooter>
         </Card>
 
         <Card className="border-red-100 dark:border-red-900">

@@ -2,6 +2,7 @@
 
 import { useState, RefObject } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Label } from "@/app/components/ui/label"
@@ -42,6 +43,7 @@ interface CampaignDetailsProps {
 export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, formRef, segments }: CampaignDetailsProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSegmentsOpen, setIsSegmentsOpen] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: campaign.title,
     description: campaign.description || "",
@@ -79,6 +81,21 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
     } catch (error) {
       console.error('Error updating campaign:', error)
       // Error toast is handled by onUpdateCampaign
+    }
+  }
+
+  const handleSaveSection = async (section: string) => {
+    setSaving(section)
+    try {
+      const updatedCampaign = {
+        ...campaign,
+        ...formData
+      }
+      await onUpdateCampaign(updatedCampaign)
+    } catch (error) {
+      console.error(`Error saving ${section}:`, error)
+    } finally {
+      setSaving(null)
     }
   }
 
@@ -207,6 +224,16 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
             />
           </div>
         </CardContent>
+        <ActionFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSaveSection('basic')}
+            disabled={saving === 'basic'}
+          >
+            {saving === 'basic' ? "Saving..." : "Save Basic Information"}
+          </Button>
+        </ActionFooter>
       </Card>
 
       {/* Campaign Attribution */}
@@ -318,6 +345,16 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
               </div>
             </CardContent>
           </CollapsibleContent>
+          <ActionFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleSaveSection('segments')}
+              disabled={saving === 'segments'}
+            >
+              {saving === 'segments' ? "Saving..." : "Save Segments"}
+            </Button>
+          </ActionFooter>
         </Card>
       </Collapsible>
 
@@ -363,6 +400,16 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
             </Select>
           </div>
         </CardContent>
+        <ActionFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSaveSection('status')}
+            disabled={saving === 'status'}
+          >
+            {saving === 'status' ? "Saving..." : "Save Status & Priority"}
+          </Button>
+        </ActionFooter>
       </Card>
 
       {/* Revenue */}
@@ -411,6 +458,16 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
             <p className="text-xs text-muted-foreground">Automatically calculated based on campaign performance</p>
           </div>
         </CardContent>
+        <ActionFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSaveSection('revenue')}
+            disabled={saving === 'revenue'}
+          >
+            {saving === 'revenue' ? "Saving..." : "Save Revenue"}
+          </Button>
+        </ActionFooter>
       </Card>
 
       {/* Budget */}
@@ -459,6 +516,16 @@ export function CampaignDetails({ campaign, onUpdateCampaign, onDeleteCampaign, 
             <p className="text-xs text-muted-foreground">Automatically calculated from allocated budget minus total costs</p>
           </div>
         </CardContent>
+        <ActionFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSaveSection('budget')}
+            disabled={saving === 'budget'}
+          >
+            {saving === 'budget' ? "Saving..." : "Save Budget"}
+          </Button>
+        </ActionFooter>
       </Card>
 
       {/* Danger Zone */}

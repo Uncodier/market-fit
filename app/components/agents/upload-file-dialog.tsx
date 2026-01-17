@@ -421,7 +421,7 @@ export function UploadFileDialog({
         {trigger ? (
           trigger
         ) : (
-          <Button size="sm">
+          <Button type="button" variant="outline" size="sm">
             <UploadCloud className="h-4 w-4 mr-2" />
             {buttonLabel}
           </Button>

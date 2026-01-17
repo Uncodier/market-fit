@@ -1279,11 +1279,11 @@ function RequirementDetailContent() {
               </h3>
               
               <div className="space-y-5">
-                <div className="space-y-2.5">
-                  <Label className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    Segments
-                  </Label>
+                  <div className="space-y-2.5">
+                    <Label className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      Segments
+                    </Label>
                   <div className="flex flex-wrap gap-2">
                     {editForm.segmentNames?.length > 0 ? (
                       editForm.segmentNames.map((segment, i) => (

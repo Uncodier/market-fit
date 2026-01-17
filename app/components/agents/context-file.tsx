@@ -2,6 +2,17 @@ import { Button } from "@/app/components/ui/button"
 import { FileText, Trash2, Download, ExternalLink } from "@/app/components/ui/icons"
 import { UploadFileDialog } from "@/app/components/agents/upload-file-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/app/components/ui/alert-dialog"
 
 interface ContextFileProps {
   id: string
@@ -103,26 +114,42 @@ export function ContextFile({ id, name, path, agentId, onRemove, onUpdate }: Con
           </Tooltip>
         </TooltipProvider>
         
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm"
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              aria-label={`Remove ${name}`}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete File
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Context File</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
                 onClick={(e) => {
                   e.stopPropagation();
                   onRemove(id);
                 }}
-                aria-label={`Remove ${name}`}
+                className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
               >
-                <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Delete file</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+                Delete File
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )

@@ -315,9 +315,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           <StickyHeader>
             <div className="px-16 pt-0 w-full">
               <div className="flex items-center justify-between w-full">
-                <TabsList className="rounded-full">
-                  <TabsTrigger value="updates" className="rounded-full">Timeline</TabsTrigger>
-                  <TabsTrigger value="details" className="rounded-full">Details</TabsTrigger>
+                <TabsList>
+                  <TabsTrigger value="updates">Timeline</TabsTrigger>
+                  <TabsTrigger value="details">Details</TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-4">
                   <div className="h-10 w-[200px] bg-muted animate-pulse rounded-md" />
@@ -341,9 +341,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         <StickyHeader>
           <div className="px-16 pt-0 w-full">
             <div className="flex items-center justify-between w-full">
-              <TabsList className="rounded-full">
-                <TabsTrigger value="updates" className="rounded-full">Timeline</TabsTrigger>
-                <TabsTrigger value="details" className="rounded-full">Details</TabsTrigger>
+              <TabsList>
+                <TabsTrigger value="updates">Timeline</TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
               </TabsList>
               <div className="flex items-center gap-8">
                 {task && activeTab === "updates" && (
@@ -351,15 +351,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                     currentStatus={task.status}
                     onStatusChange={handleStatusChange}
                   />
-                )}
-                {task && activeTab === "details" && (
-                  <Button 
-                    onClick={() => formRef.current?.requestSubmit()}
-                    className="gap-2"
-                  >
-                    <SaveIcon className="h-4 w-4" />
-                    Save Changes
-                  </Button>
                 )}
               </div>
             </div>

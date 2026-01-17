@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef } f
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, Trash2, Plus, MoreHorizontal } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -168,6 +168,7 @@ function RobotsPageContent() {
   const activeTabRef = useRef(selectedInstanceId)
   const prevSiteIdRef = useRef<string | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [instanceToDelete, setInstanceToDelete] = useState<{ id: string; name: string } | null>(null)
   
   // Refs and state for responsive tabs
   const tabsContainerRef = useRef<HTMLDivElement>(null)
@@ -584,10 +585,28 @@ function RobotsPageContent() {
   // Poll while instance is starting or resuming until it becomes ready or terminal
   useEffect(() => {
     if (!activeRobotInstance || (!isInstanceStarting && !isResuming)) return
+    const instanceId = (activeRobotInstance as any).id
     let intervalId = setInterval(async () => {
+      // Check if instance still exists before polling
+      const currentInstance = getInstanceById(instanceId)
+      if (!currentInstance) {
+        console.log('🔄 Polling: Instance no longer exists, stopping polling')
+        setIsResuming(false)
+        clearInterval(intervalId)
+        return
+      }
+      
       await refreshRobots(currentSite?.id)
-      const updated = getInstanceById((activeRobotInstance as any).id)
-      if (updated && ['running','active','error','stopped','failed'].includes((updated as any).status)) {
+      const updated = getInstanceById(instanceId)
+      if (!updated) {
+        // Instance was deleted during polling
+        console.log('🔄 Polling: Instance deleted during polling, stopping')
+        setIsResuming(false)
+        clearInterval(intervalId)
+        return
+      }
+      
+      if (['running','active','error','stopped','failed'].includes((updated as any).status)) {
         if (['running','active'].includes((updated as any).status)) {
           try {
             // Only call ensureStreamUrl if we don't already have a stream URL or if status changed
@@ -804,49 +823,82 @@ function RobotsPageContent() {
   }, [setAutoRefreshEnabled, searchParams, router])
 
   // Calculate how many tabs can fit based on available width
+  // Always calculates - no early returns, uses defaults if measurements aren't ready
   const calculateMaxVisibleTabs = useCallback(() => {
-    if (!tabsContainerRef.current) {
+    console.log('🔍 [calculateMaxVisibleTabs] Called')
+    
+    // Use window width instead of container width (container expands with tabs)
+    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 0
+    console.log('📐 [calculateMaxVisibleTabs] Window width:', windowWidth)
+    
+    if (windowWidth === 0) {
+      console.log('⚠️ [calculateMaxVisibleTabs] Window width is 0, setting Infinity')
       setMaxVisibleTabs(Infinity)
       return
     }
-
-    const containerRect = tabsContainerRef.current.getBoundingClientRect()
-    const containerWidth = containerRect.width
     
-    // Calculate available width: container width minus margins (px-16 = 64px each side = 128px total)
-    const horizontalMargins = 128 // 64px * 2
-    const gapBetweenElements = 16 // gap-4 = 16px
-    const plusButtonWidth = 40 // Approximate width of Plus button (h-9 with padding)
-    // Check if delete button is visible (when there's an active robot instance)
-    const deleteButtonWidth = selectedInstanceId !== 'new' && activeRobotInstance ? 40 : 0
-    const moreButtonWidth = 60 // Approximate width of "..." button
+    // Calculate sidebar width based on collapsed state
+    const sidebarWidth = isLayoutCollapsed ? 64 : 256 // w-16 = 64px, w-64 = 256px
+    console.log('📐 [calculateMaxVisibleTabs] Sidebar width:', sidebarWidth, '(collapsed:', isLayoutCollapsed, ')')
+    
+    // Calculate available width: window width minus sidebar, margins (px-16 = 64px each side = 128px total)
+    // Optimized margins to maximize visible tabs
+    const horizontalMargins = 80 // 40px * 2 (optimized from 128)
+    const gapBetweenElements = 8 // gap-2 = 8px (optimized from 16)
+    const plusButtonWidth = 36 // Approximate width of Plus button (h-9 with padding)
+    const moreButtonWidth = 56 // Approximate width of "..." button
+    
+    // Default estimated width increased to account for X button (h-4 w-4 + ml-1.5 ≈ 20px extra)
+    let estimatedTabWidth = 160
     
     // Try to measure actual tab widths if tabsListRef is available
-    let estimatedTabWidth = 140 // Default estimated width
     if (tabsListRef.current) {
       const tabs = tabsListRef.current.querySelectorAll('[role="tab"]')
+      console.log('📊 [calculateMaxVisibleTabs] Found tabs:', tabs.length)
       if (tabs.length > 0) {
-        // Calculate average width of existing tabs
+        // Calculate average width of existing tabs (this will include the X button automatically)
         let totalWidth = 0
-        tabs.forEach((tab) => {
-          totalWidth += (tab as HTMLElement).offsetWidth || 0
+        let validTabCount = 0
+        
+        tabs.forEach((tab, index) => {
+          const tabElement = tab as HTMLElement
+          const tabWidth = tabElement.offsetWidth || 0
+          console.log(`  Tab ${index}: width=${tabWidth}`)
+          // Only count tabs that have been rendered with actual dimensions
+          if (tabWidth > 0) {
+            totalWidth += tabWidth
+            validTabCount++
+          }
         })
-        if (totalWidth > 0) {
-          estimatedTabWidth = totalWidth / tabs.length
+        
+        // Use measured width if we have valid measurements, otherwise use default
+        if (validTabCount > 0 && totalWidth > 0) {
+          estimatedTabWidth = totalWidth / validTabCount
+          console.log('✅ [calculateMaxVisibleTabs] Using measured width:', estimatedTabWidth, 'from', validTabCount, 'tabs')
+        } else {
+          console.log('⚠️ [calculateMaxVisibleTabs] No valid tab measurements, using default:', estimatedTabWidth)
         }
+      } else {
+        console.log('⚠️ [calculateMaxVisibleTabs] No tabs found in DOM')
       }
+    } else {
+      console.log('⚠️ [calculateMaxVisibleTabs] No tabsListRef')
     }
     
-    const availableWidth = containerWidth - horizontalMargins - gapBetweenElements - plusButtonWidth - deleteButtonWidth - gapBetweenElements
+    // Calculate available width: window width minus sidebar, margins, buttons, and gaps
+    const availableWidth = windowWidth - sidebarWidth - horizontalMargins - gapBetweenElements - plusButtonWidth - gapBetweenElements - moreButtonWidth
+    console.log('📏 [calculateMaxVisibleTabs] Available width:', availableWidth, '(windowWidth:', windowWidth, '- sidebarWidth:', sidebarWidth, '- margins:', horizontalMargins, '- buttons:', plusButtonWidth + moreButtonWidth, '- gaps:', gapBetweenElements * 2, ')')
     
-    // Calculate how many tabs can fit (reserving space for "..." button if needed)
-    // We add moreButtonWidth to availableWidth because we want to know how many tabs fit including the "..." button space
-    const maxTabs = Math.floor((availableWidth + moreButtonWidth) / estimatedTabWidth)
+    // Calculate how many tabs can fit (we already subtracted moreButtonWidth above)
+    const maxTabs = Math.floor(availableWidth / estimatedTabWidth)
+    console.log('🎯 [calculateMaxVisibleTabs] Calculated maxTabs:', maxTabs, '(availableWidth:', availableWidth, ') / estimatedTabWidth:', estimatedTabWidth)
     
     // Always show at least 1 tab if there are instances
-    setMaxVisibleTabs(Math.max(1, maxTabs))
-    setContainerWidth(containerWidth)
-  }, [selectedInstanceId, activeRobotInstance])
+    const finalMaxTabs = Math.max(1, maxTabs)
+    console.log('✅ [calculateMaxVisibleTabs] Setting maxVisibleTabs to:', finalMaxTabs)
+    setMaxVisibleTabs(finalMaxTabs)
+    setContainerWidth(windowWidth)
+  }, [selectedInstanceId, isLayoutCollapsed])
 
   // Use ResizeObserver to track container width changes
   useEffect(() => {
@@ -879,9 +931,13 @@ function RobotsPageContent() {
       }
       window.addEventListener('resize', handleResize)
 
-      // Initial calculation immediately using requestAnimationFrame
+      // Initial calculation - always call, no conditions
+      console.log('🎬 [ResizeObserver] Initial calculation setup')
       rafId = requestAnimationFrame(() => {
-        calculateMaxVisibleTabs()
+        requestAnimationFrame(() => {
+          console.log('🎬 [ResizeObserver] Executing calculateMaxVisibleTabs (initial)')
+          calculateMaxVisibleTabs()
+        })
       })
     }
     
@@ -896,58 +952,135 @@ function RobotsPageContent() {
   }, [calculateMaxVisibleTabs, allInstances.length, isLayoutCollapsed, selectedInstanceId])
 
   // Recalculate when instances change or selectedInstanceId changes
-  // Use useLayoutEffect for immediate calculation after DOM update
+  // Always call - no conditions, let the calculation function handle edge cases
   useLayoutEffect(() => {
-    // Skip if still loading
-    if (isLoadingRobots || forceLoading) return
-    
-    // Use requestAnimationFrame for immediate calculation after layout
-    const rafId = requestAnimationFrame(() => {
-      if (tabsContainerRef.current && tabsListRef.current) {
-        calculateMaxVisibleTabs()
-      }
+    console.log('🔄 [useLayoutEffect] Instances/selectedInstanceId changed', {
+      instancesCount: allInstances.length,
+      selectedInstanceId
     })
-    return () => cancelAnimationFrame(rafId)
-  }, [allInstances.length, calculateMaxVisibleTabs, selectedInstanceId, isLoadingRobots, forceLoading])
-
-  // Get instance param from URL for dependency tracking
-  const instanceParam = searchParams.get('instance')
-  
-  // Recalculate when navigating to the page (without refresh) or when searchParams change
-  // This ensures tabs are recalculated when navigating from another page in SPA mode
-  // Uses useLayoutEffect for immediate calculation after DOM update
-  useLayoutEffect(() => {
-    if (pathname !== '/robots') return
+    // Multiple strategies to ensure execution
+    const rafId1 = requestAnimationFrame(() => {
+      console.log('🎬 [useLayoutEffect] Executing calculateMaxVisibleTabs (instances/selectedInstanceId - RAF 1)')
+      calculateMaxVisibleTabs()
+    })
     
-    // Wait for instances to be loaded and searchParams to be ready
-    if (isLoadingRobots || forceLoading) return
+    const rafId2 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        console.log('🎬 [useLayoutEffect] Executing calculateMaxVisibleTabs (instances/selectedInstanceId - double RAF)')
+        calculateMaxVisibleTabs()
+      })
+    })
     
-    // Retry mechanism to wait for ref to be ready (faster retries)
-    let rafId: number
-    let timer: NodeJS.Timeout
-    let retryCount = 0
-    const maxRetries = 10
-    
-    const attemptCalculation = () => {
-      if (tabsContainerRef.current && tabsListRef.current) {
-        // Use requestAnimationFrame for immediate calculation
-        rafId = requestAnimationFrame(() => {
-          calculateMaxVisibleTabs()
-        })
-      } else if (retryCount < maxRetries) {
-        // Retry faster if ref is not ready
-        retryCount++
-        timer = setTimeout(attemptCalculation, 50)
-      }
-    }
-    
-    attemptCalculation()
+    const timeoutId = setTimeout(() => {
+      console.log('🎬 [useLayoutEffect] Executing calculateMaxVisibleTabs (instances/selectedInstanceId - setTimeout fallback)')
+      calculateMaxVisibleTabs()
+    }, 100)
     
     return () => {
-      if (rafId) cancelAnimationFrame(rafId)
-      if (timer) clearTimeout(timer)
+      cancelAnimationFrame(rafId1)
+      cancelAnimationFrame(rafId2)
+      clearTimeout(timeoutId)
     }
-  }, [pathname, calculateMaxVisibleTabs, isLoadingRobots, forceLoading, instanceParam, allInstances.length, selectedInstanceId])
+  }, [allInstances.length, calculateMaxVisibleTabs, selectedInstanceId])
+
+  // Recalculate when component mounts or pathname changes
+  // This ensures it runs on SPA navigation even if pathname doesn't change
+  useEffect(() => {
+    console.log('🔄 [useEffect] Component mounted or pathname changed:', pathname, 'instances:', allInstances.length)
+    if (pathname !== '/robots') {
+      console.log('⏭️ [useEffect] Not on /robots, skipping')
+      return
+    }
+    
+    console.log('🎬 [useEffect] Setting up calculation (pathname)')
+    
+    // Use multiple strategies with delays to ensure DOM is ready
+    const timeout1 = setTimeout(() => {
+      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (timeout 50ms)')
+      calculateMaxVisibleTabs()
+    }, 50)
+    
+    const timeout2 = setTimeout(() => {
+      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (timeout 100ms)')
+      calculateMaxVisibleTabs()
+    }, 100)
+    
+    const timeout3 = setTimeout(() => {
+      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (timeout 200ms)')
+      calculateMaxVisibleTabs()
+    }, 200)
+    
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (double RAF)')
+        calculateMaxVisibleTabs()
+      })
+    })
+    
+    return () => {
+      clearTimeout(timeout1)
+      clearTimeout(timeout2)
+      clearTimeout(timeout3)
+      cancelAnimationFrame(rafId)
+    }
+  }, [pathname, calculateMaxVisibleTabs, allInstances.length])
+  
+  // Also trigger when instances finish loading (for SPA navigation)
+  useEffect(() => {
+    if (pathname !== '/robots') return
+    if (isLoadingRobots || forceLoading) return
+    
+    console.log('🔄 [useEffect] Instances finished loading, triggering calculation', {
+      instancesCount: allInstances.length,
+      isLoadingRobots,
+      forceLoading
+    })
+    
+    const timeout1 = setTimeout(() => {
+      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (after loading - timeout 50ms)')
+      calculateMaxVisibleTabs()
+    }, 50)
+    
+    const timeout2 = setTimeout(() => {
+      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (after loading - timeout 150ms)')
+      calculateMaxVisibleTabs()
+    }, 150)
+    
+    return () => {
+      clearTimeout(timeout1)
+      clearTimeout(timeout2)
+    }
+  }, [isLoadingRobots, forceLoading, allInstances.length, pathname, calculateMaxVisibleTabs])
+  
+  // Force calculation on mount and periodically while on robots page (for SPA navigation)
+  useEffect(() => {
+    if (pathname !== '/robots') return
+    
+    console.log('🔄 [useEffect] Force calculation on mount/periodic check')
+    
+    // Immediate calculation
+    const immediateTimeout = setTimeout(() => {
+      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (immediate - 0ms)')
+      calculateMaxVisibleTabs()
+    }, 0)
+    
+    // Periodic check every 500ms for first 2 seconds (to catch late renders)
+    let checkCount = 0
+    const maxChecks = 4
+    const intervalId = setInterval(() => {
+      checkCount++
+      console.log(`🎬 [useEffect] Periodic check ${checkCount}/${maxChecks} - executing calculateMaxVisibleTabs`)
+      calculateMaxVisibleTabs()
+      if (checkCount >= maxChecks) {
+        clearInterval(intervalId)
+      }
+    }, 500)
+    
+    return () => {
+      clearTimeout(immediateTimeout)
+      clearInterval(intervalId)
+    }
+  }, [pathname, calculateMaxVisibleTabs])
 
   
 
@@ -1015,10 +1148,29 @@ function RobotsPageContent() {
                                   <Play className="h-3 w-3 text-green-600" />
                                 ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
                                   <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                                ) : (
-                                  <Pause className="h-3 w-3 text-muted-foreground" />
-                                ))}
+                                ) : null)}
                                 {inst.name || `mk-${inst.id.slice(-4)}`}
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setInstanceToDelete({ id: inst.id, name: inst.name || `mk-${inst.id.slice(-4)}` })
+                                    setIsDeleteModalOpen(true)
+                                  }}
+                                  className="ml-1.5 flex items-center justify-center h-4 w-4 rounded-full hover:bg-destructive/10 transition-colors cursor-pointer"
+                                  title="Delete conversation"
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      setInstanceToDelete({ id: inst.id, name: inst.name || `mk-${inst.id.slice(-4)}` })
+                                      setIsDeleteModalOpen(true)
+                                    }
+                                  }}
+                                >
+                                  <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                </span>
                               </span>
                             </TabsTrigger>
                           ))}
@@ -1045,15 +1197,36 @@ function RobotsPageContent() {
                                     onClick={() => handleTabChangeFromOverflow(inst.id)}
                                     className="cursor-pointer"
                                   >
-                                    <span className="flex items-center gap-2">
-                                      {['running','active'].includes((inst as any).status) ? (
-                                        <Play className="h-3 w-3 text-green-600" />
-                                      ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
-                                        <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                                      ) : (
-                                        <Pause className="h-3 w-3 text-muted-foreground" />
-                                      ))}
-                                      {inst.name || `mk-${inst.id.slice(-4)}`}
+                                    <span className="flex items-center gap-2 w-full">
+                                      <span className="flex items-center gap-2 flex-1">
+                                        {['running','active'].includes((inst as any).status) ? (
+                                          <Play className="h-3 w-3 text-green-600" />
+                                        ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
+                                          <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                        ) : null)}
+                                        {inst.name || `mk-${inst.id.slice(-4)}`}
+                                      </span>
+                                      <span
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setInstanceToDelete({ id: inst.id, name: inst.name || `mk-${inst.id.slice(-4)}` })
+                                          setIsDeleteModalOpen(true)
+                                        }}
+                                        className="ml-auto flex items-center justify-center h-4 w-4 rounded-full hover:bg-destructive/10 transition-colors cursor-pointer"
+                                        title="Delete conversation"
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            setInstanceToDelete({ id: inst.id, name: inst.name || `mk-${inst.id.slice(-4)}` })
+                                            setIsDeleteModalOpen(true)
+                                          }
+                                        }}
+                                      >
+                                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                      </span>
                                     </span>
                                   </DropdownMenuItem>
                                 ))}
@@ -1076,36 +1249,61 @@ function RobotsPageContent() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              
-              {/* Delete button - solo a la derecha cuando hay instancia activa */}
-              {activeRobotInstance && (
-                <Button
-                  variant="secondary"
-                  className="h-9"
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  title="Delete robot instance"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
             </div>
           </div>
         </div>
       </StickyHeader>
       
       {/* Delete Confirmation Modal */}
-      {activeRobotInstance && (
+      {instanceToDelete && (
         <DeleteRobotModal
           open={isDeleteModalOpen}
-          onOpenChange={setIsDeleteModalOpen}
-          instanceId={activeRobotInstance.id}
-          instanceName={activeRobotInstance.name || 'mk'}
+          onOpenChange={(open) => {
+            setIsDeleteModalOpen(open)
+            if (!open) {
+              setInstanceToDelete(null)
+            }
+          }}
+          instanceId={instanceToDelete.id}
+          instanceName={instanceToDelete.name}
           onDeleteSuccess={async () => {
             console.log('🗑️ [Delete] Starting delete success callback')
             
             // Save the deleted instance ID before clearing state
-            const deletedInstanceId = activeRobotInstance?.id
+            const deletedInstanceId = instanceToDelete?.id
             console.log('🗑️ [Delete] Deleted instance ID:', deletedInstanceId)
+            
+            // Check if the deleted instance was the active one or was starting
+            const wasActiveInstance = activeRobotInstance?.id === deletedInstanceId
+            const wasStarting = wasActiveInstance && (isResuming || isInstanceStarting)
+            
+            console.log('🗑️ [Delete] Instance state check:', {
+              wasActiveInstance,
+              wasStarting,
+              isResuming,
+              isInstanceStarting
+            })
+            
+            // Reset robot starting/resuming state if the deleted instance was starting
+            if (wasStarting || wasActiveInstance) {
+              console.log('🗑️ [Delete] Resetting robot state for deleted instance')
+              setIsResuming(false)
+              setStreamUrl(null)
+              setConnectionStatus('disconnected')
+              prevConnectionStatusRef.current = 'disconnected'
+              setReconnectAttempts(0)
+              setShowConnectedIndicator(false)
+              
+              // Clear any reconnection timeouts
+              if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current)
+                reconnectTimeoutRef.current = null
+                setReconnectTimeoutId(null)
+              }
+            }
+            
+            // Clear instance to delete
+            setInstanceToDelete(null)
             
             // Clear local selection immediately (but don't update URL yet to avoid intermediate state)
             setLocalSelectedInstanceId(null)

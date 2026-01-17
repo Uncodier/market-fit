@@ -141,7 +141,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 }
               }}
               placeholder={placeholder}
-              className="resize-none min-h-[121.5px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
+              className="resize-none min-h-[135px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
               disabled={disabled}
               style={{
                 lineHeight: '1.5',
@@ -150,7 +150,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 paddingBottom: '45px',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                height: '121.5px', // Initial height, will be auto-adjusted
+                height: '135px', // Initial height, will be auto-adjusted
                 width: '100%',
                 minWidth: '100%',
                 maxWidth: '100%',

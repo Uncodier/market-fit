@@ -79,10 +79,10 @@ export function DeleteRobotModal({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            Delete Robot Instance
+            Delete Conversation
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this robot instance? This action cannot be undone.
+            Are you sure you want to delete this conversation? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         
@@ -118,7 +118,7 @@ export function DeleteRobotModal({
                 Deleting...
               </>
             ) : (
-              <>Delete Robot</>
+              <>Delete Conversation</>
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -793,16 +793,6 @@ export default function TaskDetailPage() {
                       onStatusChange={handleStatusChange}
                     />
                   )}
-                  {campaign && activeTab === "details" && (
-                    <Button 
-                      onClick={() => formRef.current?.requestSubmit()}
-                      className="gap-2"
-                      disabled={saving}
-                    >
-                      <SaveIcon className="h-4 w-4" />
-                      {saving ? "Saving..." : "Save Changes"}
-                    </Button>
-                  )}
                 </div>
               </div>
             </div>

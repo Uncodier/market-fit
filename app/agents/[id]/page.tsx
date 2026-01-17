@@ -8,6 +8,7 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Label } from "@/app/components/ui/label"
 import { Badge } from "@/app/components/ui/badge"
@@ -1200,7 +1201,347 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
     };
   }, [isNewAgent, name]);
   
-  // Handle save
+  // Handle save basic information
+  const handleSaveBasicInfo = async () => {
+    if (!currentSite) {
+      console.error("Missing site information")
+      return
+    }
+    
+    setIsSaving(true)
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        console.error("User not authenticated")
+        return
+      }
+      
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
+      const isExistingAgent = isValidUUID && !isNewAgent;
+      
+      let agentRole: string;
+      
+      if (isExistingAgent) {
+        const { data: existingAgentData } = await supabase
+          .from('agents')
+          .select('role')
+          .eq('id', agentId)
+          .single();
+        agentRole = existingAgentData?.role || "";
+      } else {
+        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
+        if (templateMatch) {
+          agentRole = templateMatch.role;
+        } else {
+          const mappedRole = roleKeyMapping[agentId];
+          agentRole = mappedRole || defaultTemplate.role;
+        }
+      }
+      
+      const agentData = {
+        name,
+        description,
+        status,
+        role: agentRole,
+        site_id: currentSite.id,
+        user_id: session.user.id,
+        updated_at: new Date().toISOString()
+      }
+      
+      if (isExistingAgent) {
+        await supabase
+          .from('agents')
+          .update(agentData)
+          .eq('id', agentId)
+      } else {
+        const { data: existingAgent } = await supabase
+          .from('agents')
+          .select('id')
+          .eq('role', agentRole)
+          .eq('user_id', session.user.id)
+          .eq('site_id', currentSite.id)
+          .maybeSingle();
+        
+        if (existingAgent?.id) {
+          await supabase
+            .from('agents')
+            .update(agentData)
+            .eq('id', existingAgent.id)
+        } else {
+          await supabase
+            .from('agents')
+            .insert(agentData)
+        }
+      }
+      
+      toast.success("Basic information saved successfully")
+    } catch (error) {
+      console.error("Error saving basic information:", error);
+      toast.error("Failed to save basic information")
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // Handle save prompt
+  const handleSavePrompt = async () => {
+    if (!currentSite) {
+      console.error("Missing site information")
+      return
+    }
+    
+    setIsSaving(true)
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        console.error("User not authenticated")
+        return
+      }
+      
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
+      const isExistingAgent = isValidUUID && !isNewAgent;
+      
+      let agentRole: string;
+      
+      if (isExistingAgent) {
+        const { data: existingAgentData } = await supabase
+          .from('agents')
+          .select('role')
+          .eq('id', agentId)
+          .single();
+        agentRole = existingAgentData?.role || "";
+      } else {
+        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
+        if (templateMatch) {
+          agentRole = templateMatch.role;
+        } else {
+          const mappedRole = roleKeyMapping[agentId];
+          agentRole = mappedRole || defaultTemplate.role;
+        }
+      }
+      
+      const agentData = {
+        prompt,
+        role: agentRole,
+        site_id: currentSite.id,
+        user_id: session.user.id,
+        updated_at: new Date().toISOString()
+      }
+      
+      if (isExistingAgent) {
+        await supabase
+          .from('agents')
+          .update(agentData)
+          .eq('id', agentId)
+      } else {
+        const { data: existingAgent } = await supabase
+          .from('agents')
+          .select('id')
+          .eq('role', agentRole)
+          .eq('user_id', session.user.id)
+          .eq('site_id', currentSite.id)
+          .maybeSingle();
+        
+        if (existingAgent?.id) {
+          await supabase
+            .from('agents')
+            .update(agentData)
+            .eq('id', existingAgent.id)
+        } else {
+          await supabase
+            .from('agents')
+            .insert(agentData)
+        }
+      }
+      
+      toast.success("Agent prompt saved successfully")
+    } catch (error) {
+      console.error("Error saving prompt:", error);
+      toast.error("Failed to save agent prompt")
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // Handle save backstory
+  const handleSaveBackstory = async () => {
+    if (!currentSite) {
+      console.error("Missing site information")
+      return
+    }
+    
+    setIsSaving(true)
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        console.error("User not authenticated")
+        return
+      }
+      
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
+      const isExistingAgent = isValidUUID && !isNewAgent;
+      
+      let agentRole: string;
+      
+      if (isExistingAgent) {
+        const { data: existingAgentData } = await supabase
+          .from('agents')
+          .select('role')
+          .eq('id', agentId)
+          .single();
+        agentRole = existingAgentData?.role || "";
+      } else {
+        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
+        if (templateMatch) {
+          agentRole = templateMatch.role;
+        } else {
+          const mappedRole = roleKeyMapping[agentId];
+          agentRole = mappedRole || defaultTemplate.role;
+        }
+      }
+      
+      const agentData = {
+        backstory,
+        role: agentRole,
+        site_id: currentSite.id,
+        user_id: session.user.id,
+        updated_at: new Date().toISOString()
+      }
+      
+      if (isExistingAgent) {
+        await supabase
+          .from('agents')
+          .update(agentData)
+          .eq('id', agentId)
+      } else {
+        const { data: existingAgent } = await supabase
+          .from('agents')
+          .select('id')
+          .eq('role', agentRole)
+          .eq('user_id', session.user.id)
+          .eq('site_id', currentSite.id)
+          .maybeSingle();
+        
+        if (existingAgent?.id) {
+          await supabase
+            .from('agents')
+            .update(agentData)
+            .eq('id', existingAgent.id)
+        } else {
+          await supabase
+            .from('agents')
+            .insert(agentData)
+        }
+      }
+      
+      toast.success("Agent backstory saved successfully")
+    } catch (error) {
+      console.error("Error saving backstory:", error);
+      toast.error("Failed to save agent backstory")
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // Handle save activities
+  const handleSaveActivities = async () => {
+    if (!currentSite) {
+      console.error("Missing site information")
+      return
+    }
+    
+    setIsSaving(true)
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        console.error("User not authenticated")
+        return
+      }
+      
+      const activitiesConfig = activities.reduce((config, activity) => {
+        config[activity.id] = { 
+          name: activity.name,
+          description: activity.description,
+          status: activity.status,
+          enabled: activity.status === "available"
+        }
+        return config
+      }, {} as Record<string, any>)
+      
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
+      const isExistingAgent = isValidUUID && !isNewAgent;
+      
+      let agentRole: string;
+      
+      if (isExistingAgent) {
+        const { data: existingAgentData } = await supabase
+          .from('agents')
+          .select('role')
+          .eq('id', agentId)
+          .single();
+        agentRole = existingAgentData?.role || "";
+      } else {
+        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
+        if (templateMatch) {
+          agentRole = templateMatch.role;
+        } else {
+          const mappedRole = roleKeyMapping[agentId];
+          agentRole = mappedRole || defaultTemplate.role;
+        }
+      }
+      
+      const agentData = {
+        activities: activitiesConfig,
+        role: agentRole,
+        site_id: currentSite.id,
+        user_id: session.user.id,
+        updated_at: new Date().toISOString()
+      }
+      
+      if (isExistingAgent) {
+        await supabase
+          .from('agents')
+          .update(agentData)
+          .eq('id', agentId)
+      } else {
+        const { data: existingAgent } = await supabase
+          .from('agents')
+          .select('id')
+          .eq('role', agentRole)
+          .eq('user_id', session.user.id)
+          .eq('site_id', currentSite.id)
+          .maybeSingle();
+        
+        if (existingAgent?.id) {
+          await supabase
+            .from('agents')
+            .update(agentData)
+            .eq('id', existingAgent.id)
+        } else {
+          await supabase
+            .from('agents')
+            .insert(agentData)
+        }
+      }
+      
+      toast.success("Activities saved successfully")
+    } catch (error) {
+      console.error("Error saving activities:", error);
+      toast.error("Failed to save activities")
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // Handle save (full save - kept for backwards compatibility)
   const handleSave = async () => {
     if (!currentSite) {
       console.error("Missing site information")
@@ -1496,18 +1837,6 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                   />
                 )}
               </div>
-              <div className="ml-auto">
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? (
-                    "Saving..."
-                  ) : (
-                    <>
-                      <SaveIcon className="h-4 w-4 mr-2" />
-                      Save changes
-                    </>
-                  )}
-                </Button>
-              </div>
             </div>
           </div>
         </StickyHeader>
@@ -1554,6 +1883,16 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                   />
                 </div>
               </CardContent>
+              <ActionFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveBasicInfo}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Basic Information"}
+                </Button>
+              </ActionFooter>
             </Card>
             
             <Card className="mb-8">
@@ -1572,6 +1911,16 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                   className="font-mono text-sm"
                 />
               </CardContent>
+              <ActionFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSavePrompt}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Prompt"}
+                </Button>
+              </ActionFooter>
             </Card>
             
             <Card className="mb-8">
@@ -1589,6 +1938,16 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                   rows={6}
                 />
               </CardContent>
+              <ActionFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveBackstory}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Backstory"}
+                </Button>
+              </ActionFooter>
             </Card>
           </TabsContent>
 
@@ -1759,17 +2118,11 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
 
           <TabsContent value="context" className="space-y-4">
             <Card className="mb-8">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Context Files</CardTitle>
-                  <CardDescription>
-                    Add files that provide context for your agent
-                  </CardDescription>
-                </div>
-                <UploadFileDialog 
-                  agentId={agentId} 
-                  onFileUploaded={handleFileUploaded}
-                />
+              <CardHeader>
+                <CardTitle>Context Files</CardTitle>
+                <CardDescription>
+                  Add files that provide context for your agent
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {isContextFilesLoading ? (
@@ -1802,6 +2155,13 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                   />
                 )}
               </CardContent>
+              <ActionFooter>
+                <UploadFileDialog 
+                  agentId={agentId} 
+                  onFileUploaded={handleFileUploaded}
+                  buttonLabel="Add File"
+                />
+              </ActionFooter>
             </Card>
             
             {/* Compatible Assets Section */}
@@ -1893,7 +2253,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                             </Badge>
                           )}
                           <Button
-                            variant={asset.isAttachedToAgent ? "outline" : "default"}
+                            variant="outline"
                             size="sm"
                             onClick={() => {
                               if (asset.isAttachedToAgent) {
@@ -1972,6 +2332,16 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                   />
                 )}
               </CardContent>
+              <ActionFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveActivities}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Activities"}
+                </Button>
+              </ActionFooter>
             </Card>
           </TabsContent>
         </div>

@@ -528,17 +528,17 @@ function AssetCard({
               </TooltipProvider>
             </div>
           </div>
-          <div className="absolute top-2 right-2 flex flex-col gap-1">
-            <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize px-1.5 py-0.5`}>
+          <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+            <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize px-1 py-0.5 w-fit`}>
               {getFileTypeCategory(asset.file_type)}
             </Badge>
             {isCompatibleWithAgent && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-medium px-1.5 py-0.5">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-medium px-1 py-0.5 w-fit">
                 Agent Compatible
               </Badge>
             )}
             {asset.isAttachedToAgent && (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] font-medium px-1.5 py-0.5">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] font-medium px-1 py-0.5 w-fit">
                 Attached
               </Badge>
             )}
@@ -705,7 +705,7 @@ function AssetListItem({
                   </p>
                 )}
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                  <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize px-1.5 py-0.5`}>
+                  <Badge variant="secondary" className={`${getTypeColor(asset.file_type)} text-xs font-medium capitalize px-1 py-0.5 w-fit`}>
                     {getFileTypeCategory(asset.file_type)}
                   </Badge>
                   {asset.tags.map((tag) => (
