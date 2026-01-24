@@ -77,7 +77,8 @@ function ChatPageContent() {
     isAgentOnlyConversation,
     setIsAgentOnlyConversation,
     isLead,
-    isLeadInvalidated
+    isLeadInvalidated,
+    refreshLeadData
   } = useLeadData(conversationId, currentSite?.id)
   
   // State for invalidated lead modal
@@ -571,6 +572,7 @@ function ChatPageContent() {
             handleNewAgentConversation={handleNewAgentConversation}
             handlePrivateDiscussion={handlePrivateDiscussion}
             conversationId={conversationId}
+            onLeadStatusUpdate={refreshLeadData}
           />
         </div>
         

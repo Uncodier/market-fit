@@ -161,21 +161,7 @@ export function SiteForm({
       marketing_channels: initialData?.marketing_channels || [],
       social_media: initialData?.social_media?.length 
         ? initialData.social_media 
-        : [
-            { platform: "facebook", url: "", handle: "" },
-            { platform: "twitter", url: "", handle: "" },
-            { platform: "instagram", url: "", handle: "" },
-            { platform: "linkedin", url: "", handle: "" },
-            { platform: "youtube", url: "", handle: "" },
-            { platform: "tiktok", url: "", handle: "" },
-            { platform: "pinterest", url: "", handle: "" },
-            { platform: "github", url: "", handle: "" },
-            { platform: "reddit", url: "", handle: "" },
-            { platform: "medium", url: "", handle: "" },
-            { platform: "whatsapp", url: "", handle: "", phone: "", phoneCode: "" },
-            { platform: "telegram", url: "", handle: "", inviteCode: "", channelId: "" },
-            { platform: "discord", url: "", handle: "", inviteCode: "", channelId: "" }
-          ],
+        : [],
       team_members: initialData?.team_members?.map(member => ({
         ...member, 
         position: member.position || ""
@@ -491,7 +477,7 @@ export function SiteForm({
           )}
 
           {renderCard("social",
-            <SocialSection active={true} onSave={onSaveSocial} />
+            <SocialSection active={true} onSave={onSaveSocial} siteId={siteId} />
           )}
 
           {renderCard("activities",

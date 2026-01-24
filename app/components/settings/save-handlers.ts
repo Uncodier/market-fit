@@ -317,7 +317,11 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       activities: (() => {
         const a = (settingsData.activities || {}) as any;
         const coerce = (v: any) => (v === 'inactive' ? 'inactive' : 'default');
-        const coerceAssign = (v: any) => (v === 'active' ? 'active' : 'inactive');
+        // For special activities, treat "default" as "active" since they only support "active" or "inactive"
+        const coerceAssign = (v: any) => {
+          if (v === 'active' || v === 'default') return 'active';
+          return 'inactive';
+        };
         return {
           daily_resume_and_stand_up: { status: coerce(a?.daily_resume_and_stand_up?.status ?? a?.daily_resume_and_stand_up) },
           local_lead_generation: { status: coerce(a?.local_lead_generation?.status ?? a?.local_lead_generation) },
@@ -1123,46 +1127,18 @@ export const handleSaveSocial = async (data: SiteFormValues, options: SaveOption
   try {
     setIsSaving(true)
 
-    // Filter out social media entries with empty URLs or required fields based on platform
+    // Filter out social media entries without platform or that are not active
+    // Keep entries that are either:
+    // 1. Active (isActive === true or 1)
+    // 2. Have a platform selected (for new entries waiting to be connected)
     const filteredSocialMedia = data.social_media?.filter((sm: any) => {
       if (!sm.platform || sm.platform.trim() === '') {
         return false
       }
-
-      switch (sm.platform) {
-        case 'whatsapp':
-          if (!sm.phone || sm.phone.trim() === '') {
-            return false
-          }
-          return true
-        
-        case 'telegram':
-          if ((!sm.handle || sm.handle.trim() === '') && (!sm.url || sm.url.trim() === '')) {
-            return false
-          }
-          if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
-            return false
-          }
-          return true
-          
-        case 'discord':
-          if ((!sm.inviteCode || sm.inviteCode.trim() === '') && (!sm.url || sm.url.trim() === '')) {
-            return false
-          }
-          if (sm.url && sm.url.trim() !== '' && !sm.url.match(/^https?:\/\/.+/)) {
-            return false
-          }
-          return true
-          
-        default:
-          if (sm.url && sm.url.trim() !== '') {
-            const hasValidUrl = sm.url.match(/^https?:\/\/.+/)
-            if (!hasValidUrl) {
-              return false
-            }
-          }
-          return true
-      }
+      
+      // Keep if active or if platform is selected (waiting for connection)
+      const isActive = sm.isActive === true || sm.isActive === 1
+      return isActive || !!sm.platform
     }) || []
 
     const settingsUpdate: any = {
@@ -1337,7 +1313,11 @@ export const handleSaveActivities = async (data: SiteFormValues, options: SaveOp
     const activities = (data as any).activities
     const a = activities || {}
     const coerce = (v: any) => (v === 'inactive' ? 'inactive' : 'default')
-    const coerceAssign = (v: any) => (v === 'active' ? 'active' : 'inactive')
+    // For special activities, treat "default" as "active" since they only support "active" or "inactive"
+    const coerceAssign = (v: any) => {
+      if (v === 'active' || v === 'default') return 'active';
+      return 'inactive';
+    }
 
     const activitiesData = {
       daily_resume_and_stand_up: { status: coerce(a?.daily_resume_and_stand_up?.status ?? a?.daily_resume_and_stand_up) },

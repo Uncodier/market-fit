@@ -200,10 +200,16 @@ export function useAuth() {
             console.log('[useAuth] SIGNED_IN event detected but ignoring redirect - user is in password reset flow:', currentPath)
           }
         } else if (event === 'SIGNED_OUT') {
-          // Solo redirigir a auth si no estamos ya en páginas de auth o api
-          // Y evitar redirecciones cuando estamos en confirmación
-          if (!currentPath.startsWith('/auth') && !currentPath.startsWith('/api') && currentPath !== '/') {
-            
+          // Don't redirect to /auth when on OAuth callback page: after Facebook/LinkedIn
+          // redirect we can get a spurious SIGNED_OUT before the session is rehydrated,
+          // which would wrongly send the user to /auth and lose their session.
+          const isOAuthCallbackPage = currentPath.startsWith('/settings/social_network')
+          if (
+            !currentPath.startsWith('/auth') &&
+            !currentPath.startsWith('/api') &&
+            currentPath !== '/' &&
+            !isOAuthCallbackPage
+          ) {
             router.push('/auth')
           }
         } else if (event === 'TOKEN_REFRESHED') {

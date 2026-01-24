@@ -1,13 +1,18 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Badge } from "@/app/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/app/components/ui/select"
 import { Agent } from "@/app/types/agents"
 import { cn } from "@/lib/utils"
 import { ChatToggle } from "@/app/components/chat/chat-toggle"
 import { truncateAgentName, truncateLeadName } from "@/app/utils/name-utils"
+import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
+import { updateLead } from "@/app/leads/actions"
+import { toast } from "sonner"
+import { useSite } from "@/app/context/SiteContext"
 
 interface ChatHeaderProps {
   agentId: string
@@ -24,6 +29,7 @@ interface ChatHeaderProps {
   handleNewAgentConversation: () => void
   handlePrivateDiscussion: () => void
   conversationId?: string
+  onLeadStatusUpdate?: () => void
 }
 
 export function ChatHeader({
@@ -40,8 +46,12 @@ export function ChatHeader({
   handleNewLeadConversation,
   handleNewAgentConversation,
   handlePrivateDiscussion,
-  conversationId
+  conversationId,
+  onLeadStatusUpdate
 }: ChatHeaderProps) {
+  const { currentSite } = useSite()
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  
   // Get the agent type with proper capitalization
   const agentType = currentAgent?.type 
     ? currentAgent.type.charAt(0).toUpperCase() + currentAgent.type.slice(1) 
@@ -76,6 +86,59 @@ export function ChatHeader({
   
   // Check if a conversation is selected
   const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
+
+  // Handle status change
+  const handleStatusChange = async (newStatus: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified") => {
+    if (!isLead || !leadData?.id || isUpdatingStatus) return
+    
+    setIsUpdatingStatus(true)
+    try {
+      const result = await updateLead({
+        id: leadData.id,
+        site_id: leadData.site_id || currentSite?.id || "",
+        status: newStatus
+      })
+      
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success("Lead status updated successfully")
+        
+        // Update local leadData immediately for instant UI feedback
+        if (leadData) {
+          leadData.status = newStatus
+        }
+        
+        // Trigger refresh of lead data
+        if (onLeadStatusUpdate) {
+          onLeadStatusUpdate()
+        }
+        
+        // Emit event to update conversation list
+        window.dispatchEvent(new CustomEvent('lead:status-updated', {
+          detail: { 
+            leadId: leadData.id,
+            newStatus,
+            conversationId
+          }
+        }))
+      }
+    } catch (error) {
+      console.error("Error updating lead status:", error)
+      toast.error("Failed to update lead status")
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
+  // Get status display name
+  const getStatusDisplayName = (status: string) => {
+    const statusObj = LEAD_STATUSES.find(s => s.id === status)
+    return statusObj ? statusObj.name : status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+  }
+
+  // Get current lead status
+  const currentStatus = leadData?.status || "new"
 
   return (
     <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80" 
@@ -143,13 +206,32 @@ export function ChatHeader({
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer min-w-0 flex-1 justify-end"
                   >
                     <h2 className="font-medium text-lg truncate">{truncateLeadName(leadData.name)}</h2>
-                    <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-amber-500/10 text-amber-600 border-amber-500/20 flex-shrink-0 truncate max-w-[200px]">
-                      {leadData.company?.name 
-                        ? (leadData.company.name.length > 20 
-                           ? leadData.company.name.substring(0, 20) + "..." 
-                           : leadData.company.name)
-                        : leadData.type}
-                    </Badge>
+                    <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                      <Select
+                        value={currentStatus}
+                        onValueChange={handleStatusChange}
+                        disabled={isUpdatingStatus}
+                      >
+                        <SelectTrigger hideIcon className="h-auto text-xs border-none p-0 shadow-none hover:bg-transparent focus:ring-0 max-w-[200px] flex-shrink-0">
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "text-xs px-2 py-0 h-5 transition-colors duration-300 flex-shrink-0 truncate max-w-[200px] cursor-pointer",
+                              STATUS_STYLES[currentStatus] || "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                            )}
+                          >
+                            {getStatusDisplayName(currentStatus)}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LEAD_STATUSES.map((status) => (
+                            <SelectItem key={status.id} value={status.id}>
+                              {status.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </NavigationLink>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">

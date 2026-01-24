@@ -4,7 +4,8 @@ import { useFormContext } from "react-hook-form"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group"
+import { Badge } from "../ui/badge"
 import { type SiteFormValues } from "./form-schema"
 import { cn } from "../../lib/utils"
 import { useState } from "react"
@@ -21,47 +22,47 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   {
     key: "daily_resume_and_stand_up",
     title: "Daily Resume and Stand Up",
-    description: "Generate a daily summary and stand-up, highlighting progress, blockers and next steps."
+    description: "Generate a daily summary and stand-up, highlighting progress, blockers and next steps. Runs Monday through Friday."
   },
   {
     key: "local_lead_generation",
     title: "Local Lead Generation",
-    description: "Find and compile local prospects that match your service area and offerings."
+    description: "Find and compile local prospects that match your service area and offerings. Runs according to your company's operating hours."
   },
   {
     key: "icp_lead_generation",
     title: "ICP Lead Generation",
-    description: "Discover leads that match your Ideal Customer Profile using defined ICP attributes."
+    description: "Discover leads that match your Ideal Customer Profile using defined ICP attributes. Runs according to your company's operating hours."
   },
   {
     key: "leads_initial_cold_outreach",
     title: "Leads Initial Cold Outreach",
-    description: "Draft and send first-touch cold outreach tailored to the prospect and channel."
+    description: "Draft and send first-touch cold outreach tailored to the prospect and channel. Runs according to your company's operating hours."
   },
   {
     key: "leads_follow_up",
     title: "Leads Follow Up",
-    description: "Automate thoughtful follow-ups to increase reply rates and move deals forward."
+    description: "Automate thoughtful follow-ups to increase reply rates and move deals forward. Runs Tuesday, Wednesday, and Thursday."
   },
   {
     key: "email_sync",
     title: "Email Sync",
-    description: "Keep email conversations synchronized for context-aware automations and tracking."
+    description: "Keep email conversations synchronized for context-aware automations and tracking. Runs according to your company's operating hours."
   },
   {
     key: "assign_leads_to_team",
     title: "Assign Leads to Team",
-    description: "Assign key leads to the most suitable team member based on AI recommendations"
+    description: "Assign key leads to the most suitable team member based on AI recommendations. Runs according to your company's operating hours."
   },
   {
     key: "notify_team_on_inbound_conversations",
     title: "Notify Team on Inbound Conversations",
-    description: "Notify the team when any first comment comes in from a new conversation."
+    description: "Notify the team when any first comment comes in from a new conversation. Runs according to your company's operating hours."
   },
   {
     key: "supervise_conversations",
     title: "Supervise Conversations",
-    description: "Automatic suggestions and improvements to agent answers for better conversation quality."
+    description: "Automatic suggestions and improvements to agent answers for better conversation quality. Runs according to your company's operating hours."
   }
 ]
 
@@ -123,7 +124,14 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
             <CardHeader className="px-8 py-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle className="text-xl font-semibold">{title}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-xl font-semibold">{title}</CardTitle>
+                    {key === "supervise_conversations" && (
+                      <Badge variant="secondary" className="text-xs">
+                        Beta
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground mt-2">{description}</p>
                   {isDependencyInactive && (
                     <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
@@ -157,8 +165,8 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                   ] : [
                     {
                       value: "default",
-                      title: "Default",
-                      description: "Use the default schedule and settings for this activity"
+                      title: "Active",
+                      description: "This activity will run according to its schedule"
                     },
                     {
                       value: "inactive",
@@ -167,33 +175,64 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                     }
                   ]
                   
-                  const selectedOption = options.find(opt => opt.value === field.value) || options[0]
+                  // Normalize "default" to "active" for special activities that don't support "default"
+                  let normalizedValue = field.value
+                  if ((isAssignLeads || isSuperviseConversations) && normalizedValue === "default") {
+                    normalizedValue = "active"
+                    // Update the field value if it was "default"
+                    if (field.value === "default") {
+                      field.onChange("active")
+                    }
+                  }
+                  
+                  const currentValue = normalizedValue || options[0].value
                   
                   return (
                     <FormItem>
-                      <FormLabel className="mb-3">Status</FormLabel>
                       <FormControl>
-                        <Select 
-                          value={field.value || options[0].value} 
+                        <RadioGroup
+                          value={currentValue}
                           onValueChange={field.onChange}
                           disabled={isDependencyInactive}
+                          className="space-y-3"
                         >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder={selectedOption.title}>
-                              {selectedOption.title}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="min-w-[300px]">
-                            {options.map((option) => (
-                              <SelectItem key={option.value} value={option.value} className="py-3">
-                                <div className="flex flex-col items-start gap-1 w-full">
-                                  <span className="font-medium text-sm">{option.title}</span>
-                                  <span className="text-xs text-muted-foreground leading-relaxed">{option.description}</span>
+                          {options.map((option) => {
+                            const isSelected = currentValue === option.value
+                            return (
+                              <label
+                                key={option.value}
+                                className={cn(
+                                  "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
+                                  isSelected
+                                    ? "border-primary bg-primary/5 dark:bg-primary/10"
+                                    : "border-gray-200 dark:border-gray-700 bg-background hover:bg-muted/50"
+                                )}
+                              >
+                                <RadioGroupItem
+                                  value={option.value}
+                                  id={`${key}-${option.value}`}
+                                  className="mt-0.5"
+                                  disabled={isDependencyInactive}
+                                />
+                                <div className="flex-1 space-y-1">
+                                  <div className="flex items-center gap-2 min-h-[20px]">
+                                    <span className="font-semibold text-sm block">{option.title}</span>
+                                    {(option.value === "default" || (option.value === "inactive" && (isAssignLeads || isSuperviseConversations))) ? (
+                                      <Badge variant="secondary" className="text-xs">
+                                        Default
+                                      </Badge>
+                                    ) : (
+                                      <div className="h-5" />
+                                    )}
+                                  </div>
+                                  <span className="text-sm text-muted-foreground leading-relaxed block">
+                                    {option.description}
+                                  </span>
                                 </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                              </label>
+                            )
+                          })}
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

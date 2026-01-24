@@ -127,6 +127,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
         
         const responseStatus = agentEmailData.status || responseData.status || "pending"
         const domainId = agentEmailData.domain_id || responseData.domain_id || (domain === "custom" ? customDomain : domain)
+        const inboxId = agentEmailData.id || responseData.id
         const dnsRecords = agentEmailData.dns_records || responseData.dns_records || []
         const domainStatus = agentEmailData.domain_status || responseData.domain_status
         const errorMessage = agentEmailData.error_message || responseData.error_message
@@ -155,6 +156,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               displayName: responseDisplayName,
               setupRequested: responseStatus === "active" ? false : true,
               status: responseStatus,
+              id: inboxId,
               domain_id: domainId,
               dns_records: Array.isArray(dnsRecords) && dnsRecords.length > 0 ? dnsRecords : undefined,
               domain_status: domainStatus,
@@ -164,6 +166,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                 domain: (domain === "custom" ? customDomain : domain) as "makinari.email" | "custom" | undefined,
                 username: responseUsername,
                 displayName: responseDisplayName,
+                id: inboxId,
                 domain_id: domainId,
                 dns_records: Array.isArray(dnsRecords) && dnsRecords.length > 0 ? dnsRecords : undefined,
                 domain_status: domainStatus,
@@ -267,9 +270,19 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
   const handleDeleteInbox = async () => {
     if (!currentSite || !siteId) return
 
+    // Get inbox id from stored data
+    const inboxId = currentSite?.settings?.channels?.agent_email?.id ||
+                    currentSite?.settings?.channels?.agent_email?.data?.id
+
+    if (!inboxId) {
+      toast.error("Inbox ID not found. Cannot delete inbox.")
+      return
+    }
+
     setIsDeleting(true)
     try {
-      const response = await apiClient.post('/api/integrations/agentmail/inboxes/delete-inbox', {
+      const response = await apiClient.post('/api/integrations/agentmail/inbox/delete', {
+        inbox_id: inboxId,
         siteId: siteId
       })
 

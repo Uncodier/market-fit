@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { Search, MessageSquare } from "@/app/components/ui/icons"
+import { Search, MessageSquare, Check, X } from "@/app/components/ui/icons"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Input } from "@/app/components/ui/input"
 import { useTheme } from "@/app/context/ThemeContext"
@@ -159,6 +160,10 @@ export function ChatList({
   
   // New ref to track initial load state
   const isFirstLoadRef = useRef(true);
+
+  // State for bulk pending actions
+  const [isAcceptingAll, setIsAcceptingAll] = useState(false)
+  const [isRejectingAll, setIsRejectingAll] = useState(false)
 
   // Update the ref when selectedConversationId changes
   useEffect(() => {
@@ -318,11 +323,12 @@ export function ChatList({
           
           // Obtener información del lead si existe lead_id
           let leadName = undefined;
+          let leadStatus = undefined;
           let assigneeName = null;
           if (conversationData.lead_id) {
             const { data: lead, error: leadError } = await supabase
               .from("leads")
-              .select("name, company, assignee_id")
+              .select("name, company, assignee_id, status")
               .eq("id", conversationData.lead_id)
               .single();
             
@@ -332,6 +338,7 @@ export function ChatList({
                 : (typeof lead.company === 'string' ? lead.company : '');
               
               leadName = lead.name + (companyName ? ` (${companyName})` : '');
+              leadStatus = lead.status;
               
               // Si el lead tiene assignee_id, obtener información del assignee
               if (lead.assignee_id) {
@@ -356,7 +363,7 @@ export function ChatList({
           // Use assignee name if available, otherwise use agent name
           const finalAgentName = assigneeName || agentName;
           
-          return { agentName: finalAgentName, leadName, channel };
+          return { agentName: finalAgentName, leadName, leadStatus, channel };
         };
         
         // Un canal por tipo de evento, enfoque más tradicional
@@ -405,6 +412,7 @@ export function ChatList({
                           agentId: payload.new.agent_id || conv.agentId,
                           agentName: details.agentName,
                           leadName: details.leadName,
+                          leadStatus: details.leadStatus,
                           channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web',
                           status: payload.new.status || conv.status || 'active'
                         } 
@@ -472,6 +480,7 @@ export function ChatList({
                 agentId: payload.new.agent_id || "",
                 agentName: details.agentName,
                 leadName: details.leadName,
+                leadStatus: details.leadStatus,
                 lastMessage: payload.new.last_message || "",
                 timestamp: new Date(payload.new.updated_at || payload.new.created_at || new Date()),
                 unreadCount: 0,
@@ -660,6 +669,29 @@ export function ChatList({
     }
   }, [])
 
+  // Listen for lead status update event to refresh conversation list
+  useEffect(() => {
+    const handleLeadStatusUpdate = (event: CustomEvent) => {
+      const { leadId, newStatus, conversationId: updatedConvId } = event.detail
+      console.log('🔍 Custom lead:status-updated event received:', { leadId, newStatus, conversationId: updatedConvId })
+      
+      // Update the conversation's leadStatus in the list
+      setConversations(prevConversations => 
+        prevConversations.map(conv => 
+          conv.id === updatedConvId && conv.leadName
+            ? { ...conv, leadStatus: newStatus }
+            : conv
+        )
+      )
+    }
+
+    window.addEventListener('lead:status-updated', handleLeadStatusUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('lead:status-updated', handleLeadStatusUpdate as EventListener)
+    }
+  }, [])
+
   // Reset conversations and reload when channel filter changes
   useEffect(() => {
     if (siteId) {
@@ -688,23 +720,8 @@ export function ChatList({
     }
   }, [debouncedSearchQuery, siteId, loadConversations])
 
-  // Listen for conversation deletion event
-  useEffect(() => {
-    const handleConversationDeleted = (event: CustomEvent) => {
-      console.log('🗑️ Conversation deleted, reloading list:', event.detail?.conversationId)
-      
-      // Reload conversations list
-      if (siteId) {
-        loadConversations(1, false, debouncedSearchQuery)
-      }
-    }
-    
-    window.addEventListener('conversation:deleted' as any, handleConversationDeleted)
-    
-    return () => {
-      window.removeEventListener('conversation:deleted' as any, handleConversationDeleted)
-    }
-  }, [siteId, loadConversations, debouncedSearchQuery])
+  // Note: conversation:deleted event is already handled above (lines 617-638)
+  // which removes the conversation from state directly without reloading
 
   // No need for client-side filtering since search is done at database level
   const filteredConversations = conversations
@@ -846,6 +863,218 @@ export function ChatList({
     setDeleteModalOpen(true);
   };
 
+  // Function to accept all pending messages (from ALL pending conversations in DB, not just visible)
+  // This only updates message status to "accepted", NOT the conversation status (same as individual accept)
+  const handleAcceptAllPending = async () => {
+    if (!siteId) return
+    
+    setIsAcceptingAll(true)
+    
+    try {
+      const supabase = createClient()
+      
+      // Get ALL pending conversations from DB (not just visible ones)
+      const { data: allPendingConvs, error: convError } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("status", "pending")
+      
+      if (convError) {
+        console.error("Error fetching pending conversations:", convError)
+        toast.error("Failed to fetch pending conversations")
+        return
+      }
+      
+      if (!allPendingConvs || allPendingConvs.length === 0) {
+        toast.info("No pending conversations found")
+        return
+      }
+      
+      const conversationIds = allPendingConvs.map(conv => conv.id)
+      
+      // Get all pending messages for these conversations
+      const { data: pendingMessages, error: fetchError } = await supabase
+        .from("messages")
+        .select("id, custom_data")
+        .in("conversation_id", conversationIds)
+        .filter("custom_data->>status", "eq", "pending")
+      
+      if (fetchError) {
+        console.error("Error fetching pending messages:", fetchError)
+        toast.error("Failed to fetch pending messages")
+        return
+      }
+      
+      if (!pendingMessages || pendingMessages.length === 0) {
+        toast.info("No pending messages found")
+        return
+      }
+      
+      // Update all pending messages to accepted (same as individual accept action)
+      for (const msg of pendingMessages) {
+        const currentCustomData = (msg.custom_data as Record<string, any>) || {}
+        const updatedCustomData = {
+          ...currentCustomData,
+          status: "accepted"
+        }
+        
+        await supabase
+          .from("messages")
+          .update({
+            custom_data: updatedCustomData,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", msg.id)
+      }
+      
+      // NOTE: We do NOT update conversation status here - same behavior as individual accept
+      // The conversation remains in "pending" status until all messages are processed
+      
+      // Update local state - mark conversations as having accepted messages
+      setConversations(prevConversations =>
+        prevConversations.map(conv =>
+          conversationIds.includes(conv.id)
+            ? { ...conv, hasAcceptedMessage: true }
+            : conv
+        )
+      )
+      
+      // Emit event for each conversation to update UI elsewhere
+      conversationIds.forEach(convId => {
+        window.dispatchEvent(new CustomEvent('conversation:message-accepted', {
+          detail: { conversationId: convId }
+        }))
+      })
+      
+      toast.success(`Accepted ${pendingMessages.length} pending messages in ${conversationIds.length} conversations`)
+      
+    } catch (error) {
+      console.error("Error accepting all pending:", error)
+      toast.error("Failed to accept all pending messages")
+    } finally {
+      setIsAcceptingAll(false)
+    }
+  }
+
+  // Function to reject all pending messages (only pending, not accepted ones)
+  // This deletes pending messages and empty conversations, but does NOT change conversation status
+  const handleRejectAllPending = async () => {
+    if (!siteId) return
+    
+    setIsRejectingAll(true)
+    
+    try {
+      const supabase = createClient()
+      
+      // Get ALL pending conversations from DB (not just visible ones)
+      const { data: allPendingConvs, error: convError } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("status", "pending")
+      
+      if (convError) {
+        console.error("Error fetching pending conversations:", convError)
+        toast.error("Failed to fetch pending conversations")
+        return
+      }
+      
+      if (!allPendingConvs || allPendingConvs.length === 0) {
+        toast.info("No pending conversations found")
+        return
+      }
+      
+      const conversationIds = allPendingConvs.map(conv => conv.id)
+      
+      // Get all PENDING messages (only status=pending, not accepted ones)
+      const { data: pendingMessages, error: fetchError } = await supabase
+        .from("messages")
+        .select("id, conversation_id")
+        .in("conversation_id", conversationIds)
+        .filter("custom_data->>status", "eq", "pending")
+      
+      if (fetchError) {
+        console.error("Error fetching pending messages:", fetchError)
+        toast.error("Failed to fetch pending messages")
+        return
+      }
+      
+      const pendingMessageIds = pendingMessages?.map(m => m.id) || []
+      const deletedMessageCount = pendingMessageIds.length
+      
+      if (deletedMessageCount === 0) {
+        toast.info("No pending messages to reject")
+        return
+      }
+      
+      // Delete only pending messages (not accepted ones)
+      const { error: deleteMessagesError } = await supabase
+        .from("messages")
+        .delete()
+        .in("id", pendingMessageIds)
+      
+      if (deleteMessagesError) {
+        console.error("Error deleting pending messages:", deleteMessagesError)
+        toast.error("Failed to delete pending messages")
+        return
+      }
+      
+      // Check which conversations are now empty and should be deleted
+      const conversationsToDelete: string[] = []
+      
+      for (const convId of conversationIds) {
+        const { data: remainingMessages, error: countError } = await supabase
+          .from("messages")
+          .select("id")
+          .eq("conversation_id", convId)
+          .limit(1)
+        
+        if (countError) {
+          console.error("Error checking remaining messages:", countError)
+          continue
+        }
+        
+        if (!remainingMessages || remainingMessages.length === 0) {
+          // Conversation is empty, delete it
+          conversationsToDelete.push(convId)
+        }
+        // NOTE: If conversation has remaining messages (accepted ones), we do NOT change its status
+        // It stays as "pending" - same behavior as individual message rejection
+      }
+      
+      // Delete empty conversations
+      if (conversationsToDelete.length > 0) {
+        const { error: deleteConvsError } = await supabase
+          .from("conversations")
+          .delete()
+          .in("id", conversationsToDelete)
+        
+        if (deleteConvsError) {
+          console.error("Error deleting empty conversations:", deleteConvsError)
+        }
+      }
+      
+      // Update local state - only remove deleted conversations
+      setConversations(prevConversations =>
+        prevConversations.filter(conv => !conversationsToDelete.includes(conv.id))
+      )
+      
+      // If any of the deleted conversations was selected, redirect to chat
+      if (selectedConversationId && conversationsToDelete.includes(selectedConversationId)) {
+        router.push('/chat')
+      }
+      
+      toast.success(`Rejected ${deletedMessageCount} pending messages. Deleted ${conversationsToDelete.length} empty conversations.`)
+      
+    } catch (error) {
+      console.error("Error rejecting all pending:", error)
+      toast.error("Failed to reject all pending messages")
+    } finally {
+      setIsRejectingAll(false)
+    }
+  }
+
   return (
     <div className={cn("flex flex-col h-full fixed", className)} style={{ width: '320px', maxWidth: '320px', overflow: 'hidden' }}>
       {/* Top bar with search input - adaptable to dark mode */}
@@ -913,6 +1142,37 @@ export function ChatList({
                     "bg-background/80 text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80"
                   )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
                     Pending ({pendingConversations.length})
+                  </div>
+                  {/* Bulk Actions Toolbar */}
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-muted/30">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAcceptAllPending}
+                      disabled={isAcceptingAll || isRejectingAll}
+                      className="flex-1 h-8 text-xs gap-1.5"
+                    >
+                      {isAcceptingAll ? (
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                      Accept All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRejectAllPending}
+                      disabled={isAcceptingAll || isRejectingAll}
+                      className="flex-1 h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      {isRejectingAll ? (
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <X className="h-3.5 w-3.5" />
+                      )}
+                      Reject All
+                    </Button>
                   </div>
                   {pendingConversations.map(conversation => (
                     <ConversationItem

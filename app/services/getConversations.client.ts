@@ -22,23 +22,6 @@ export async function getConversations(
     // to compensate for filtering, then paginate in memory
     const needsPostFiltering = initiatedByFilter && initiatedByFilter !== 'all'
     const fetchMultiplier = needsPostFiltering ? 5 : 1 // Fetch 5x more when filtering
-    
-    let from: number
-    let to: number
-    
-    if (needsPostFiltering) {
-      // Fetch enough conversations to cover the requested page after filtering
-      // For page N, we need at least N * pageSize filtered results
-      // So we fetch (N * pageSize * multiplier) conversations
-      const targetFilteredCount = page * pageSize
-      const fetchCount = targetFilteredCount * fetchMultiplier
-      from = 0
-      to = fetchCount - 1
-    } else {
-      // Normal pagination
-      from = (page - 1) * pageSize
-      to = from + pageSize - 1
-    }
 
     // Build base query parts
     const baseSelect = `
@@ -58,14 +41,15 @@ export async function getConversations(
         custom_data
       ),
       leads (
-        assignee_id
+        assignee_id,
+        status
       )
     `
 
     // Query 1: Get pending conversations first
     let pendingQuery = supabase
       .from("conversations")
-      .select(baseSelect)
+      .select(baseSelect, { count: 'exact' })
       .eq("site_id", siteId)
       .eq("is_archived", false)
       .eq("status", "pending")
@@ -97,30 +81,117 @@ export async function getConversations(
       nonPendingQuery = nonPendingQuery.ilike('title', `%${searchTerm}%`)
     }
 
-    // Fetch pending conversations (fetch enough to cover pagination after filtering)
-    // We fetch more pending conversations to ensure we have enough after filtering
-    const pendingFetchCount = needsPostFiltering ? pageSize * fetchMultiplier * 2 : pageSize * 3
-    const { data: pendingConversations, error: pendingError } = await pendingQuery
-      .order("last_message_at", { ascending: false })
-      .limit(pendingFetchCount)
+    // Get the count of pending conversations with the same filters applied
+    // This count query must match the filters applied to pendingQuery for correct pagination
+    let pendingCountQuery = supabase
+      .from("conversations")
+      .select("id", { count: 'exact', head: true })
+      .eq("site_id", siteId)
+      .eq("is_archived", false)
+      .eq("status", "pending")
 
-    // Fetch non-pending conversations (fetch enough to cover pagination)
-    const nonPendingFetchCount = needsPostFiltering ? pageSize * fetchMultiplier : pageSize * 2
-    const { data: nonPendingConversations, error: nonPendingError } = await nonPendingQuery
-      .order("last_message_at", { ascending: false })
-      .limit(nonPendingFetchCount)
+    // Apply the same channel filter to count query
+    if (channelFilter && channelFilter !== 'all') {
+      if (channelFilter === 'web') {
+        const channelFilterStr = `custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
+        pendingCountQuery = pendingCountQuery.or(channelFilterStr)
+      } else {
+        pendingCountQuery = pendingCountQuery.eq(`custom_data->>channel`, channelFilter)
+      }
+    }
 
-    if (pendingError || nonPendingError) {
-      console.error("Error fetching conversations:", pendingError || nonPendingError)
-      return []
+    // Apply the same search filter to count query
+    if (searchQuery && searchQuery.trim()) {
+      const searchTerm = searchQuery.trim().toLowerCase()
+      pendingCountQuery = pendingCountQuery.ilike('title', `%${searchTerm}%`)
+    }
+
+    const { count: pendingCount } = await pendingCountQuery
+
+    const totalPending = pendingCount || 0
+    
+    // Calculate what we need from pending vs non-pending based on page
+    const requestedFrom = (page - 1) * pageSize
+    const requestedTo = requestedFrom + pageSize
+    
+    let pendingConversations: any[] = []
+    let nonPendingConversations: any[] = []
+
+    if (needsPostFiltering) {
+      // When filtering by initiatedBy, we need to fetch more data for in-memory filtering
+      const fetchCount = page * pageSize * fetchMultiplier
+      
+      const { data: pendingData, error: pendingError } = await pendingQuery
+        .order("last_message_at", { ascending: false })
+        .limit(fetchCount)
+      
+      const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
+        .order("last_message_at", { ascending: false })
+        .limit(fetchCount)
+      
+      if (pendingError || nonPendingError) {
+        console.error("Error fetching conversations:", pendingError || nonPendingError)
+        return []
+      }
+      
+      pendingConversations = pendingData || []
+      nonPendingConversations = nonPendingData || []
+    } else {
+      // Use database-level pagination for better performance
+      // We want: pending conversations first (sorted by last_message_at), then non-pending
+      
+      if (requestedFrom < totalPending) {
+        // We need some pending conversations
+        const pendingFrom = requestedFrom
+        const pendingLimit = Math.min(pageSize, totalPending - requestedFrom)
+        
+        const { data: pendingData, error: pendingError } = await pendingQuery
+          .order("last_message_at", { ascending: false })
+          .range(pendingFrom, pendingFrom + pendingLimit - 1)
+        
+        if (pendingError) {
+          console.error("Error fetching pending conversations:", pendingError)
+          return []
+        }
+        
+        pendingConversations = pendingData || []
+        
+        // If we need more to fill the page, get from non-pending
+        const remainingNeeded = pageSize - pendingConversations.length
+        if (remainingNeeded > 0) {
+          const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
+            .order("last_message_at", { ascending: false })
+            .range(0, remainingNeeded - 1)
+          
+          if (nonPendingError) {
+            console.error("Error fetching non-pending conversations:", nonPendingError)
+          } else {
+            nonPendingConversations = nonPendingData || []
+          }
+        }
+      } else {
+        // All pending are before this page, only fetch non-pending
+        const nonPendingFrom = requestedFrom - totalPending
+        
+        const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
+          .order("last_message_at", { ascending: false })
+          .range(nonPendingFrom, nonPendingFrom + pageSize - 1)
+        
+        if (nonPendingError) {
+          console.error("Error fetching non-pending conversations:", nonPendingError)
+          return []
+        }
+        
+        nonPendingConversations = nonPendingData || []
+      }
     }
 
     // Combine: pending conversations first, then non-pending
-    const conversations = [...(pendingConversations || []), ...(nonPendingConversations || [])]
+    const conversations = [...pendingConversations, ...nonPendingConversations]
     
-    console.log(`✅ Pending conversations: ${(pendingConversations || []).length}`)
-    console.log(`✅ Non-pending conversations: ${(nonPendingConversations || []).length}`)
-    console.log(`✅ Total conversations before filtering: ${conversations.length}`)
+    console.log(`✅ Pending conversations: ${pendingConversations.length} (total in DB: ${totalPending})`)
+    console.log(`✅ Non-pending conversations: ${nonPendingConversations.length}`)
+    console.log(`✅ Total conversations for page ${page}: ${conversations.length}`)
 
     if (!conversations || conversations.length === 0) {
       return []
@@ -135,7 +206,10 @@ export async function getConversations(
       const userRoles = ['visitor', 'user']
       const systemRoles = ['agent', 'assistant', 'system', 'team_member']
       
-      filteredConversations = filteredConversations.filter((conv: any) => {
+      // First combine all fetched conversations
+      const allFetched = [...pendingConversations, ...nonPendingConversations]
+      
+      const allFiltered = allFetched.filter((conv: any) => {
         // Get messages for this conversation
         const messages = conv.messages || []
         
@@ -165,13 +239,13 @@ export async function getConversations(
         return false
       })
       
-      const totalFiltered = filteredConversations.length
+      const totalFiltered = allFiltered.length
       console.log(`✅ Filtered to ${totalFiltered} conversations matching ${initiatedByFilter} filter`)
       
       // Apply pagination in memory after filtering
       const paginatedFrom = (page - 1) * pageSize
       const paginatedTo = paginatedFrom + pageSize
-      filteredConversations = filteredConversations.slice(paginatedFrom, paginatedTo)
+      filteredConversations = allFiltered.slice(paginatedFrom, paginatedTo)
       
       // If we have more filtered results than needed for this page, we know there are more
       // The component checks if result.length === pageSize to determine hasMore
@@ -184,11 +258,9 @@ export async function getConversations(
       
       console.log(`📄 Paginated: showing ${filteredConversations.length} conversations (page ${page}, ${pageSize} per page, hasMore: ${hasMoreResults})`)
     } else {
-      // No initiatedBy filter, apply normal pagination in memory
-      const paginatedFrom = (page - 1) * pageSize
-      const paginatedTo = paginatedFrom + pageSize
-      filteredConversations = filteredConversations.slice(paginatedFrom, paginatedTo)
-      console.log(`📄 Paginated: showing ${filteredConversations.length} conversations (page ${page}, ${pageSize} per page)`)
+      // No initiatedBy filter - data is already paginated from DB
+      filteredConversations = conversations
+      console.log(`📄 DB Paginated: showing ${filteredConversations.length} conversations (page ${page}, ${pageSize} per page)`)
     }
 
     // Assignee filter
@@ -224,6 +296,7 @@ export async function getConversations(
 
     let agentsMap: Record<string, string> = {}
     let leadsMap: Record<string, string> = {}
+    let leadStatusMap: Record<string, string> = {}
     let assigneesMap: Record<string, string> = {}
     let leadAssigneeMap: Record<string, string> = {}
 
@@ -241,7 +314,7 @@ export async function getConversations(
     if (leadIds.length > 0) {
       const { data: leads } = await supabase
         .from("leads")
-        .select("id, name, company, assignee_id")
+        .select("id, name, company, assignee_id, status")
         .in("id", leadIds)
 
       if (leads && leads.length > 0) {
@@ -278,6 +351,11 @@ export async function getConversations(
           if (lead.assignee_id) leadAssigneeMap[lead.id] = lead.assignee_id
           return map
         }, {})
+        
+        leadStatusMap = leads.reduce((map: Record<string, string>, lead: any) => {
+          if (lead.status) map[lead.id] = lead.status
+          return map
+        }, {})
       }
     }
 
@@ -305,12 +383,15 @@ export async function getConversations(
         msg.custom_data && msg.custom_data.status === 'accepted'
       )
 
+      const leadStatus = leadId ? leadStatusMap[leadId] : undefined
+
       return {
         id: conv.id || "",
         title,
         agentId,
         agentName,
         leadName: leadName || undefined,
+        leadStatus: leadStatus || undefined,
         lastMessage,
         timestamp: new Date(messageDate),
         messageCount: conv.messages?.length || 0,

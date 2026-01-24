@@ -46,6 +46,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
             assignee_id,
             site_id,
             company_id,
+            status,
             companies (
               id,
               name
@@ -133,7 +134,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
         id: lead.id,
         name: lead.name || "Unknown",
         type: "Lead",
-        status: "Online",
+        status: lead.status || "new",
         avatarUrl: null,
         email: lead.email,
         phone: lead.phone,
@@ -143,7 +144,8 @@ export function useLeadData(conversationId: string, siteId?: string) {
           name: assigneeData.name,
           avatar_url: assigneeData.avatar_url
         } : null,
-        company: companyData
+        company: companyData,
+        site_id: lead.site_id
       })
       
     } catch (error) {
@@ -181,12 +183,20 @@ export function useLeadData(conversationId: string, siteId?: string) {
     }
   }, []) // Only run once on mount
   
+  // Function to manually refresh lead data
+  const refreshLeadData = useCallback(() => {
+    if (conversationId && !conversationId.startsWith("new-") && lastSiteIdRef.current) {
+      loadLeadData()
+    }
+  }, [conversationId, loadLeadData])
+
   return {
     leadData,
     isLoadingLead,
     isAgentOnlyConversation,
     setIsAgentOnlyConversation,
     isLead,
-    isLeadInvalidated
+    isLeadInvalidated,
+    refreshLeadData
   }
 } 

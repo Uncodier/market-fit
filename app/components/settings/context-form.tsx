@@ -280,7 +280,7 @@ export function ContextForm({
           )}
 
           {renderCard("social",
-            <SocialSection active={true} onSave={onSaveSocial} />
+            <SocialSection active={true} onSave={onSaveSocial} siteId={siteId} />
           )}
 
           {renderCard("general",

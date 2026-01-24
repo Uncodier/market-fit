@@ -32,6 +32,20 @@ const API_AUTH_ROUTES = [
   '/api/secure-tokens'
 ]
 
+// /api/social/*: do not run Supabase in the middleware. Running getUser/getSession here
+// can clear the session cookie on failure (refresh, edge). That would log the user out
+// when they: 1) hit auth-url before redirecting to Outstand, 2) hit the callback on return.
+// The routes (auth-url, callback, pending, finalize) do their own auth or redirect; we
+// avoid any cookie write in the middleware for this subtree.
+const API_SOCIAL_SKIP_SUPABASE = ['/api/social']
+
+// /settings/social_network: OAuth return page. We saw the first GET has session, then a
+// second GET (RSC/prefetch/useSearchParams) has no session — something in the first
+// response clears the cookie. createServerClient's getUser/getSession can trigger set/remove.
+// We skip Supabase here entirely: no cookie read/write, no redirect to /auth. The page
+// loads; client-side auth or /settings (on "Back to Settings") will enforce login.
+const PAGE_SOCIAL_NETWORK_SKIP_SUPABASE = '/settings/social_network'
+
 // Define suspicious patterns that should be blocked immediately
 const SUSPICIOUS_PATTERNS = [
   /\.php(\?|$)/i,
@@ -149,8 +163,24 @@ export async function middleware(req: NextRequest) {
       // modifying any cookies or headers to avoid parsing issues
       return NextResponse.next();
     }
+
+    const isApiSocial = API_SOCIAL_SKIP_SUPABASE.some(route => path.startsWith(route))
+    if (isApiSocial) {
+      return NextResponse.next()
+    }
+
+    if (path.startsWith(PAGE_SOCIAL_NETWORK_SKIP_SUPABASE)) {
+      const authNames = req.cookies.getAll().filter((c) => c.name.startsWith("sb-")).map((c) => c.name)
+      // Chunked: sb-*-auth-token.0, .1 — use includes()
+      console.log("[Social /settings/social_network] skip Supabase, hasAuth:", authNames.some((n) => n.includes("-auth-token")), "cookieNames:", authNames.length ? authNames : "none")
+      return NextResponse.next()
+    }
     
-    // Crear el cliente de Supabase con configuración explícita de cookies
+    // Create Supabase client. We NEVER clear the session from the middleware: when
+    // getUser/refresh fails (e.g. right after OAuth return, /api/notifications from
+    // the layout, etc.) Supabase would call set('') or remove() and we'd lose the
+    // user. Only explicit logout (/api/auth/logout, etc.) should clear; those use
+    // their own createClient. So we no-op any write that would clear.
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -160,19 +190,16 @@ export async function middleware(req: NextRequest) {
             return req.cookies.get(name)?.value
           },
           set(name, value, options) {
+            if (value === '' || value == null || (options && (options as { maxAge?: number }).maxAge === 0)) return
             res.cookies.set(name, value, {
               ...options,
               sameSite: 'lax',
               secure: process.env.NODE_ENV === 'production'
             })
           },
-          remove(name, options) {
-            res.cookies.set(name, '', { 
-              ...options, 
-              maxAge: 0,
-              sameSite: 'lax',
-              secure: process.env.NODE_ENV === 'production'
-            })
+          remove(_name: string, _opts?: { path?: string }) {
+            // No-op: never clear session from middleware (fixes loss after OAuth return
+            // when /api/notifications or other layout fetches run Supabase and it fails).
           }
         }
       }

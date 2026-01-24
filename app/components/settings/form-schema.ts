@@ -336,26 +336,25 @@ export const siteFormSchema = z.object({
   // Marketing related fields
   marketing_channels: z.array(marketingChannelSchema).optional().default([]),
   social_media: z.array(z.object({
+    id: z.string().optional(),
+    orgId: z.string().optional(),
+    nickname: z.string().optional(),
     platform: z.string().min(1, "Platform is required"),
+    network: z.string().optional(),
+    username: z.string().optional(),
+    profile_picture_url: z.string().optional(),
+    network_unique_id: z.string().optional(),
+    customer_social_network_id: z.number().optional(),
+    accountType: z.string().optional(),
+    isActive: z.union([z.boolean(), z.number()]).optional().default(false),
+    createdAt: z.string().optional(),
+    // Legacy fields for backward compatibility
     url: z.string().optional().default(""),
     handle: z.string().optional(),
-    // Add fields for WhatsApp
     phone: z.string().optional(),
     phoneCode: z.string().optional(),
-    // Add fields for Discord and Telegram
     inviteCode: z.string().optional(),
     channelId: z.string().optional()
-  }).superRefine((data, ctx) => {
-    // Only validate URL if it's not empty
-    if (data.url && data.url.trim() !== '') {
-      if (!data.url.match(/^https?:\/\/.+/)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Must be a valid URL starting with http:// or https://",
-          path: ["url"]
-        });
-      }
-    }
   })).optional().default([]),
   team_members: z.array(z.object({
     email: z.string().email("Must be a valid email"),
@@ -589,8 +588,20 @@ export type MarketingChannel = {
 }
 
 export interface SocialMedia {
+  id?: string
+  orgId?: string
+  nickname?: string
   platform: string
-  url: string
+  network?: string
+  username?: string
+  profile_picture_url?: string
+  network_unique_id?: string
+  customer_social_network_id?: number
+  accountType?: string
+  isActive?: boolean | number
+  createdAt?: string
+  // Legacy fields for backward compatibility
+  url?: string
   handle?: string
   phone?: string
   phoneCode?: string

@@ -395,7 +395,11 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     activities: (() => {
       const incoming = (site.settings as any)?.activities || {};
       const coerce = (v: any) => (v === "inactive" ? "inactive" : "default");
-      const coerceAssign = (v: any) => (v === "active" ? "active" : "inactive");
+      // For special activities, treat "default" as "active" since they only support "active" or "inactive"
+      const coerceAssign = (v: any) => {
+        if (v === "active" || v === "default") return "active";
+        return "inactive";
+      };
       return {
         daily_resume_and_stand_up: { status: coerce(incoming?.daily_resume_and_stand_up?.status ?? incoming?.daily_resume_and_stand_up) },
         local_lead_generation: { status: coerce(incoming?.local_lead_generation?.status ?? incoming?.local_lead_generation) },

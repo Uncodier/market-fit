@@ -22,6 +22,7 @@ export interface ConversationListItem {
   unreadCount?: number
   messageCount?: number
   leadName?: string
+  leadStatus?: string
   channel?: 'web' | 'email' | 'whatsapp'
   status?: 'pending' | 'active' | 'closed' | 'archived'
   hasAcceptedMessage?: boolean

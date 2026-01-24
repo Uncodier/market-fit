@@ -2,6 +2,7 @@
 
 import React from "react"
 import { Button } from "@/app/components/ui/button"
+import { Badge } from "@/app/components/ui/badge"
 import { Mail } from "@/app/components/ui/icons"
 import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
@@ -17,6 +18,7 @@ import {
 } from "@/app/components/ui/dropdown-menu"
 import { formatDistanceToNow, format } from "date-fns"
 import { truncateConversationNames } from "@/app/utils/name-utils"
+import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
 
 interface ConversationItemProps {
   conversation: ConversationListItem
@@ -132,6 +134,17 @@ export function ConversationItem({
             )}>
               {truncateText(conversation.title || "Untitled Conversation", 35)}
             </span>
+            {conversation.leadStatus === 'qualified' && (
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-[10px] px-1.5 py-0 h-4 flex-shrink-0",
+                  STATUS_STYLES[conversation.leadStatus] || "bg-indigo-500/10 text-indigo-600 border-indigo-500/20"
+                )}
+              >
+                {LEAD_STATUSES.find(s => s.id === conversation.leadStatus)?.name || conversation.leadStatus}
+              </Badge>
+            )}
           </div>
         </div>
         <div className={cn(
