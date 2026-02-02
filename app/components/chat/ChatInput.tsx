@@ -122,7 +122,7 @@ export const ChatInput = memo(function ChatInput({
       style={{ bottom: '20px' }}
     >
       <div>
-        <div className="max-w-[calc(100%-240px)] mx-auto">
+        <div className="max-w-[800px] mx-auto">
           <form onSubmit={handleSubmit} className="relative">
             <div className="relative">
               <OptimizedTextarea

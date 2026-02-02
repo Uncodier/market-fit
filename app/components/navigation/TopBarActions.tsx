@@ -379,48 +379,9 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     // Only show stop/authenticate buttons when robot is running or active
     const isRunning = ['running', 'active'].includes(activeRobotInstance.status)
     
+    // Resume button hidden - removed per user request
     if (!isRunning) {
-      // Show resume button for non-running states (paused, stopped, etc.)
-      const handleResume = async () => {
-        // Immediately show loading in robots page (left explorer)
-        try {
-          console.log('▶️ Resume clicked', { instanceId: activeRobotInstance.id })
-          window.dispatchEvent(new CustomEvent('robot:resume-start', {
-            detail: { instanceId: activeRobotInstance.id }
-          }))
-
-          const { apiClient } = await import('@/app/services/api-client-service')
-          await apiClient.post('/api/workflow/startRobot', {
-            site_id: currentSite.id,
-            user_id: currentSite.user_id,
-            instance_id: activeRobotInstance.id,
-            activity: getActivityName('execute-plan')
-          })
-          
-          toast.success('Resuming robot...')
-          
-          // Real-time subscription will handle the update automatically
-        } catch (e) {
-          // quiet log
-          toast.error('Failed to resume remote instance')
-          try {
-            window.dispatchEvent(new CustomEvent('robot:resume-failed', {
-              detail: { instanceId: activeRobotInstance.id }
-            }))
-          } catch {}
-        }
-      }
-      return (
-        <Button 
-          variant="secondary"
-          size="default"
-          className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
-          onClick={handleResume}
-        >
-          <PlayCircle className="h-4 w-4" />
-          Resume Remote Instance
-        </Button>
-      )
+      return null
     }
     
     const handleSaveAuthSession = async () => {

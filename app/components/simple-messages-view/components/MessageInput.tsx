@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Bot, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File } from "@/app/components/ui/icons"
+import { MessageSquare, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
@@ -124,7 +124,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
     <div className="flex-none transition-all duration-300 ease-in-out w-full" style={{ width: '100%', minWidth: '100%' }}>
       <div className="mx-auto" style={{ 
         width: '100%',
-        maxWidth: '100%'
+        maxWidth: '800px'
       }}>
         <form className="relative w-full" onSubmit={(e) => {
           e.preventDefault()
@@ -181,7 +181,6 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     onClick={handleDropdownToggle}
                     title={
                       selectedActivity === 'ask' ? 'Ask' : 
-                      selectedActivity === 'robot' ? 'Robot' : 
                       selectedActivity === 'generate-image' ? 'Generate Image' :
                       selectedActivity === 'generate-video' ? 'Generate Video' :
                       'Select activity'
@@ -190,14 +189,12 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     <div className="flex items-center w-full">
                       <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
                         {selectedActivity === 'ask' && <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />}
-                        {selectedActivity === 'robot' && <Bot className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />}
                         {selectedActivity === 'generate-image' && <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />}
                         {selectedActivity === 'generate-video' && <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />}
                       </div>
                       <div className="flex flex-col min-w-0 ml-2">
                         <span className="truncate">
                           {selectedActivity === 'ask' ? 'Ask' : 
-                           selectedActivity === 'robot' ? 'Robot' : 
                            selectedActivity === 'generate-image' ? 'Generate Image' :
                            selectedActivity === 'generate-video' ? 'Generate Video' :
                            'Select activity'}
@@ -228,21 +225,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                             <span className="truncate">Ask</span>
                           </div>
                         </div>
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('robot')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Robot"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <Bot className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Robot</span>
-                          </div>
-                        </div>
+                        {/* Robot option hidden - removed per user request */}
                         <div 
                           className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
                           onClick={() => {
