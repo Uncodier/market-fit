@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest, 
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { searchParams } = new URL(request.url);
   const siteId = searchParams.get('siteId');
@@ -13,7 +13,7 @@ export async function GET(
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
 
-  const leadId = params.id;
+  const { id: leadId } = await params;
 
   if (!leadId || !siteId) {
     return NextResponse.json({ 
