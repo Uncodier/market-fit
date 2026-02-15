@@ -46,7 +46,7 @@ export async function getConversations(
       )
     `
 
-    // Query 1: Get pending conversations first
+    // Query 1: Get pending conversations (by status)
     let pendingQuery = supabase
       .from("conversations")
       .select(baseSelect, { count: 'exact' })
@@ -81,8 +81,7 @@ export async function getConversations(
       nonPendingQuery = nonPendingQuery.ilike('title', `%${searchTerm}%`)
     }
 
-    // Get the count of pending conversations with the same filters applied
-    // This count query must match the filters applied to pendingQuery for correct pagination
+    // Get the count of pending conversations
     let pendingCountQuery = supabase
       .from("conversations")
       .select("id", { count: 'exact', head: true })
@@ -378,9 +377,12 @@ export async function getConversations(
       let channel = customData.channel || 'web'
       if (channel === 'website_chat') channel = 'web'
 
-      // Check if any message has accepted status
+      // Check if any message has accepted or pending status
       const hasAcceptedMessage = conv.messages && conv.messages.some((msg: any) => 
         msg.custom_data && msg.custom_data.status === 'accepted'
+      )
+      const hasPendingMessages = conv.messages && conv.messages.some((msg: any) =>
+        msg.custom_data && (msg.custom_data.status === 'pending' || msg.custom_data.status === 'accepted')
       )
 
       const leadStatus = leadId ? leadStatusMap[leadId] : undefined
@@ -396,7 +398,7 @@ export async function getConversations(
         timestamp: new Date(messageDate),
         messageCount: conv.messages?.length || 0,
         channel: (channel as 'web' | 'email' | 'whatsapp') || 'web',
-        status: conv.status || 'active',
+        status: (hasPendingMessages ? 'pending' : conv.status) || 'active',
         hasAcceptedMessage: hasAcceptedMessage || false
       }
     })

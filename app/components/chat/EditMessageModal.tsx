@@ -27,20 +27,22 @@ export function EditMessageModal({ isOpen, onOpenChange, message, onSave }: Edit
     }
   }, [message])
 
-  // Calculate estimated send time
+  // Calculate estimated send time (in user's local timezone)
   const getEstimatedSendTime = () => {
     if (!message?.metadata?.delay_timer) return null
     
     const delayTimer = message.metadata.delay_timer
     const endTime = typeof delayTimer === 'string' ? new Date(delayTimer).getTime() : delayTimer
+    const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
     
-    return new Date(endTime).toLocaleString([], {
+    return new Date(endTime).toLocaleString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
+      timeZone: localTimeZone
     })
   }
 

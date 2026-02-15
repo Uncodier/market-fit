@@ -704,7 +704,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           transform: isEmpty ? 'translateY(50%)' : 'none',
           left: `calc(${isLayoutCollapsed ? '64px' : '256px'} + 120px)`,
           right: '0px',
-          width: `calc(100vw - ${isLayoutCollapsed ? '64px' : '256px'} - 240px)`
+          width: `calc(100vw - ${isLayoutCollapsed ? '64px' : '256px'} - 240px)`,
+          minWidth: 800
         }}
       >
         <MessageInput

@@ -3,7 +3,7 @@
 import { Badge } from "@/app/components/ui/badge"
 import { useState, useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
-import { createClient } from "@/utils/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 
 export function ChatsBadge({ isActive = false }: { isActive?: boolean }) {
   const { currentSite } = useSite()
@@ -19,23 +19,21 @@ export function ChatsBadge({ isActive = false }: { isActive?: boolean }) {
       try {
         const supabase = createClient()
         
-        // Get all conversations with pending status for the current site
-        const { data: conversations, error } = await supabase
+        const { count, error } = await supabase
           .from('conversations')
-          .select('id, status')
+          .select('id', { count: 'exact', head: true })
           .eq('site_id', currentSite.id)
           .eq('status', 'pending')
           .eq('is_archived', false)
         
         if (error) {
           console.error('Error fetching pending conversations:', error)
-          console.error('Error details:', error.message, error.details)
           setPendingConversationsCount(0)
           return
         }
 
-        const count = conversations?.length || 0
-        setPendingConversationsCount(count)
+        const totalCount = count ?? 0
+        setPendingConversationsCount(totalCount)
 
       } catch (error) {
         console.error('Error counting pending conversations:', error)

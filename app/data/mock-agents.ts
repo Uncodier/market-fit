@@ -222,6 +222,15 @@ const salesActivities: AgentActivity[] = [
     status: "available"
   },
   {
+    id: "sl8",
+    name: "Lead Qualification",
+    description: "Qualify leads based on budget, authority, need, and timeline (BANT) criteria",
+    estimatedTime: "15-20 min",
+    successRate: 88,
+    executions: 0,
+    status: "available"
+  },
+  {
     id: "sl2",
     name: "Appointment Generation",
     description: "Create and schedule qualified sales meetings with prospects through effective outreach",

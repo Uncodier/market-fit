@@ -957,8 +957,8 @@ export function ChatList({
     }
   }
 
-  // Function to reject all pending messages (only pending, not accepted ones)
-  // This deletes pending messages and empty conversations, but does NOT change conversation status
+  // Reject all messages with status pending or accepted (not yet sent)
+  // Includes conversations with status != "pending" that have unsent messages
   const handleRejectAllPending = async () => {
     if (!siteId) return
     
@@ -967,52 +967,45 @@ export function ChatList({
     try {
       const supabase = createClient()
       
-      // Get ALL pending conversations from DB (not just visible ones)
-      const { data: allPendingConvs, error: convError } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("site_id", siteId)
-        .eq("status", "pending")
-      
-      if (convError) {
-        console.error("Error fetching pending conversations:", convError)
-        toast.error("Failed to fetch pending conversations")
-        return
-      }
-      
-      if (!allPendingConvs || allPendingConvs.length === 0) {
-        toast.info("No pending conversations found")
-        return
-      }
-      
-      const conversationIds = allPendingConvs.map(conv => conv.id)
-      
-      // Get all PENDING messages (only status=pending, not accepted ones)
-      const { data: pendingMessages, error: fetchError } = await supabase
+      // Get messages with pending/accepted status for this site using inner join
+      // This avoids fetching all conversation IDs which might be too large
+      const { data: pendingData, error: pendingError } = await supabase
         .from("messages")
-        .select("id, conversation_id")
-        .in("conversation_id", conversationIds)
-        .filter("custom_data->>status", "eq", "pending")
+        .select("id, conversation_id, conversations!inner(site_id, is_archived)")
+        .eq("conversations.site_id", siteId)
+        .eq("conversations.is_archived", false)
+        .eq("custom_data->>status", "pending")
+        
+      if (pendingError) console.error('Error fetching pending:', pendingError)
+        
+      const { data: acceptedData, error: acceptedError } = await supabase
+        .from("messages")
+        .select("id, conversation_id, conversations!inner(site_id, is_archived)")
+        .eq("conversations.site_id", siteId)
+        .eq("conversations.is_archived", false)
+        .eq("custom_data->>status", "accepted")
+
+      if (acceptedError) console.error('Error fetching accepted:', acceptedError)
       
-      if (fetchError) {
-        console.error("Error fetching pending messages:", fetchError)
-        toast.error("Failed to fetch pending messages")
-        return
-      }
+      const unsentMessages = [...(pendingData || []), ...(acceptedData || [])]
+      const uniqueUnsent = unsentMessages.filter(
+        (m, i, arr) => arr.findIndex(x => x.id === m.id) === i
+      )
       
-      const pendingMessageIds = pendingMessages?.map(m => m.id) || []
-      const deletedMessageCount = pendingMessageIds.length
+      console.log(`🔍 Found ${uniqueUnsent.length} unsent messages`)
       
-      if (deletedMessageCount === 0) {
+      if (uniqueUnsent.length === 0) {
         toast.info("No pending messages to reject")
         return
       }
       
-      // Delete only pending messages (not accepted ones)
+      const messagesToDelete = uniqueUnsent
+      const messageIdsToDelete = messagesToDelete.map(m => m.id)
+      
       const { error: deleteMessagesError } = await supabase
         .from("messages")
         .delete()
-        .in("id", pendingMessageIds)
+        .in("id", messageIdsToDelete)
       
       if (deleteMessagesError) {
         console.error("Error deleting pending messages:", deleteMessagesError)
@@ -1022,28 +1015,22 @@ export function ChatList({
       
       // Check which conversations are now empty and should be deleted
       const conversationsToDelete: string[] = []
+      const affectedConvIds = [...new Set(messagesToDelete.map(m => m.conversation_id))]
       
-      for (const convId of conversationIds) {
+      for (const convId of affectedConvIds) {
         const { data: remainingMessages, error: countError } = await supabase
           .from("messages")
           .select("id")
           .eq("conversation_id", convId)
           .limit(1)
         
-        if (countError) {
-          console.error("Error checking remaining messages:", countError)
-          continue
-        }
+        if (countError) continue
         
         if (!remainingMessages || remainingMessages.length === 0) {
-          // Conversation is empty, delete it
           conversationsToDelete.push(convId)
         }
-        // NOTE: If conversation has remaining messages (accepted ones), we do NOT change its status
-        // It stays as "pending" - same behavior as individual message rejection
       }
       
-      // Delete empty conversations
       if (conversationsToDelete.length > 0) {
         const { error: deleteConvsError } = await supabase
           .from("conversations")
@@ -1055,17 +1042,20 @@ export function ChatList({
         }
       }
       
-      // Update local state - only remove deleted conversations
       setConversations(prevConversations =>
         prevConversations.filter(conv => !conversationsToDelete.includes(conv.id))
       )
       
-      // If any of the deleted conversations was selected, redirect to chat
       if (selectedConversationId && conversationsToDelete.includes(selectedConversationId)) {
         router.push('/chat')
       }
       
-      toast.success(`Rejected ${deletedMessageCount} pending messages. Deleted ${conversationsToDelete.length} empty conversations.`)
+      // Refresh list to update conversations that had messages removed
+      if (loadConversationsRef.current) {
+        loadConversationsRef.current()
+      }
+      
+      toast.success(`Rejected ${messageIdsToDelete.length} pending messages. Deleted ${conversationsToDelete.length} empty conversations.`)
       
     } catch (error) {
       console.error("Error rejecting all pending:", error)

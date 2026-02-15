@@ -366,6 +366,16 @@
 
 .chat-input-container {
   background-color: var(--background) !important;
+  min-width: 0; /* Allow flex shrink; Safari fix via explicit min-width on children */
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  .chat-input-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
 }
 
 /* Mejora del textarea con estilo más estándar - borde más sutil */
@@ -1168,12 +1178,15 @@ html.safari .select-item .flex.items-center svg {
 .-top-1 { top: -0.75rem; } 
 
 /* Removed fixed positioning and width override for chat input/textarea to rely on sticky container */
-/* Safari fix for chat input container positioning */
+/* Safari fix for chat input container positioning and min-width */
 html.safari .chat-input-container[style*="position: fixed"],
 html.safari .chat-input-container[style*="fixed"] {
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+  min-width: 800px !important; /* Prevent collapse in Safari */
 }
+
+/* Safari min-width enforced in safari-fix.css with full cascade */
 
 /* Sidebar background color for light mode */
 .sidebar-light-bg {

@@ -948,6 +948,55 @@ function AgentsPageContent() {
         setActivityState(activity.id, 'error', errorMessage);
         toast?.error?.(errorMessage);
       }
+    } else if (activity.id === "sl8" && activity.name === "Lead Qualification") {
+      console.log('✅ MATCHED: Lead Qualification activity detected!');
+      try {
+        console.log('Calling leadQualification workflow for Sales/CRM Specialist agent');
+        
+        // Set loading state
+        setActivityState(activity.id, 'loading', 'Qualifying leads based on BANT criteria...');
+        
+        const extendedAgent = agent as ExtendedAgent;
+        const agentId = extendedAgent.dbData?.id || agent.id;
+        
+        if (!currentSite?.id || !user?.id) {
+          setActivityState(activity.id, 'error', 'Missing site or user information');
+          toast?.error?.("Cannot execute activity: Missing site or user information");
+          return;
+        }
+        
+        // Use the same pattern as other workflows - call external API server
+        const { apiClient } = await import('@/app/services/api-client-service');
+        
+        const response = await apiClient.post('/api/workflow/leadQualificationManagement', {
+          site_id: currentSite.id
+        });
+        
+        if (response.success) {
+          setActivityState(activity.id, 'success', 'Lead qualification completed successfully!');
+          toast?.success?.(`Lead qualification completed successfully!`);
+          console.log('LeadQualification workflow completed successfully:', response.data);
+        } else {
+          const errorMessage = typeof response.error === 'string' 
+            ? response.error 
+            : response.error?.message 
+            ? String(response.error.message)
+            : 'Failed to qualify leads';
+          setActivityState(activity.id, 'error', errorMessage);
+          toast?.error?.(errorMessage);
+          console.error('LeadQualification workflow failed:', response.error);
+        }
+        
+      } catch (error) {
+        console.error('Error executing Lead Qualification activity:', error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : typeof error === 'string' 
+          ? error 
+          : 'An error occurred while qualifying leads';
+        setActivityState(activity.id, 'error', errorMessage);
+        toast?.error?.(errorMessage);
+      }
     } else if (activity.id === "sl6" && activity.name === "Generate Key Accounts") {
       console.log('✅ MATCHED: Generate Key Accounts activity detected!');
       try {

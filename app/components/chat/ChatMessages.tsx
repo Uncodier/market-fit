@@ -944,17 +944,21 @@ export function ChatMessages({
     }
   }
 
-  // Function to get estimated send time
+  // Function to get estimated send time (next full hour from current local time)
   const getEstimatedSendTime = (message: ChatMessage) => {
     if (!message.metadata?.delay_timer) return null
     
-    const delayTimer = message.metadata.delay_timer
-    const endTime = typeof delayTimer === 'string' ? new Date(delayTimer).getTime() : delayTimer
+    // Use current local time - round up to next full hour (e.g. 8:41 -> 9:00 PM)
+    const now = new Date()
+    const nextHour = new Date(now)
+    nextHour.setHours(now.getHours() + 1)
+    nextHour.setMinutes(0, 0, 0)
     
-    return new Date(endTime).toLocaleTimeString([], {
+    const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return nextHour.toLocaleTimeString(undefined, {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      timeZone: localTimeZone
     })
   }
 
@@ -1492,8 +1496,74 @@ export function ChatMessages({
                               }
                             </span>
                           </div>
-                          <div className="ml-9">
+                          <div className={`ml-9 transition-all duration-300 ease-in-out ${
+                            (msg.metadata?.status === "pending" || msg.metadata?.status === "accepted") ? "rounded-lg p-4" : ""
+                          } ${
+                            msg.metadata?.status === "pending" ? "opacity-60" : msg.metadata?.status === "accepted" ? "border-2 border-green-500/30 bg-green-50/50 dark:bg-green-900/10" : ""
+                          }`}
+                            style={msg.metadata?.status === "pending" || msg.metadata?.status === "accepted" ? {
+                              backgroundColor: msg.metadata?.status === "pending"
+                                ? (isDarkMode ? '#2a2a3a' : '#f8f8f8')
+                                : (isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)'),
+                              border: msg.metadata?.status === "accepted" ? '2px solid rgba(34, 197, 94, 0.3)' : 'none'
+                            } : undefined}
+                          >
                             {renderMessageContent(msg, markdownComponents)}
+                            
+                            {/* Row: MessageFeedback (center) + Sending at (right) */}
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex-1" />
+                              <div className="flex items-center justify-center flex-1">
+                                {msg.command_id && (
+                                  <MessageFeedback 
+                                    messageId={String(msg.id || index)} 
+                                    commandId={msg.command_id} 
+                                    agentId={agentId} 
+                                  />
+                                )}
+                                {!msg.command_id && (
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <p className="text-xs text-muted-foreground">No command ID available for this message</p>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-end flex-1">
+                                {(msg.metadata?.status === "pending" || msg.metadata?.status === "accepted") && (
+                                  <>
+                                    {msg.metadata?.status === "pending" && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <span className="inline-flex items-center text-xs text-amber-500">
+                                              <Icons.Clock className="h-3 w-3 mr-1" />
+                                              {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Sending..."}
+                                            </span>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Message is being sent</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    {msg.metadata?.status === "accepted" && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <span className="inline-flex items-center text-xs text-green-500">
+                                              <Icons.Check className="h-3 w-3 mr-1" />
+                                              {getEstimatedSendTime(msg) ? `Sending at ${getEstimatedSendTime(msg)}` : "Accepted"}
+                                            </span>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Message accepted and scheduled</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
                             
                             {/* Debug the command_id */}
                             {msg.command_id && (
@@ -1501,22 +1571,18 @@ export function ChatMessages({
                                 Command ID: {msg.command_id}
                               </div>
                             )}
-                            
-                            {/* Message feedback widget */}
-                            {msg.command_id && (
-                              <MessageFeedback 
-                                messageId={String(msg.id || index)} 
-                                commandId={msg.command_id} 
-                                agentId={agentId} 
-                              />
-                            )}
-                            
-                            {/* Show placeholder message feedback widget if no command_id is available */}
-                            {!msg.command_id && (
-                              <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <p className="text-xs text-muted-foreground">No command ID available for this message</p>
-                              </div>
-                            )}
+                          </div>
+                          <div className="flex justify-center w-full">
+                            <MessageActions
+                              message={msg}
+                              onEdit={handleEditMessage}
+                              onDelete={handleDeleteMessage}
+                              onAccept={handleAcceptMessage}
+                              onUndoAccept={handleUndoAcceptMessage}
+                              isDeleting={deletingMessageId === msg.id}
+                              isAccepting={acceptingMessageId === msg.id}
+                              isActionsAccepted={acceptedActionsMessageIds.has(msg.id || "")}
+                            />
                           </div>
                         </div>
                       ) : (msg.role === "team_member" && !hasLead && msg.isCurrentUserMessage) ? (

@@ -52,37 +52,11 @@ export function ChatHeader({
   const { currentSite } = useSite()
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   
-  // Get the agent type with proper capitalization
-  const agentType = currentAgent?.type 
-    ? currentAgent.type.charAt(0).toUpperCase() + currentAgent.type.slice(1) 
-    : "Agent"
-    
-  // Get the agent role with proper formatting (prioritize role over type)
-  const agentRole = currentAgent?.role 
-    ? currentAgent.role
-        .replace(/_/g, ' ')  // Replace underscores with spaces
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ')
-    : agentType
-  
-  // Determine if we should show assignee instead of agent
+  // Determine if we should show assignee instead of agent (used for ChatToggle dropdown)
   const hasAssignee = !!(isLead && leadData?.assignee)
-  
-  // Determine what to display on the left side (agent or assignee)
   const leftSideDisplayName = hasAssignee 
     ? truncateAgentName(leadData.assignee.name)
     : truncateAgentName(currentAgent?.name || agentName || "Agent")
-  
-  const leftSideAvatar = hasAssignee 
-    ? leadData.assignee.avatar_url 
-    : undefined
-  
-  const leftSideAvatarFallback = hasAssignee
-    ? leadData.assignee.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
-    : leftSideDisplayName.length >= 2 
-      ? leftSideDisplayName.substring(0, 2).toUpperCase()
-      : leftSideDisplayName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
   
   // Check if a conversation is selected
   const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
@@ -139,6 +113,11 @@ export function ChatHeader({
 
   // Get current lead status
   const currentStatus = leadData?.status || "new"
+  
+  // Get company name safely
+  const companyName = leadData?.company?.name || leadData?.companies?.name || leadData?.company_data?.name
+  const leadEmail = leadData?.email
+  const leadPhone = leadData?.phone
 
   return (
     <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80" 
@@ -161,78 +140,71 @@ export function ChatHeader({
       />
       
       <div className={cn(
-        "max-w-[calc(100%-240px)] mx-auto w-full flex items-center justify-between transition-all duration-300 ease-in-out gap-4"
+        "max-w-[calc(100%-240px)] mx-auto w-full flex items-center justify-end transition-all duration-300 ease-in-out gap-4"
       )}>
-        {/* Agent/Assignee info - only shown when a conversation is selected */}
-        {hasSelectedConversation && (
-          <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out min-w-0 flex-1">
-            <Avatar className={cn(
-              "h-12 w-12 border-2 transition-transform duration-300 ease-in-out flex-shrink-0",
-              hasAssignee ? "border-blue-500/20" : "border-primary/10"
-            )}>
-              <AvatarImage src={leftSideAvatar} alt={leftSideDisplayName} />
-              <AvatarFallback className={cn(
-                hasAssignee ? "bg-blue-500/10 text-blue-600" : "bg-primary/10"
-              )}>
-                {leftSideAvatarFallback}
-              </AvatarFallback>
-            </Avatar>
-            <div className="transition-transform duration-300 ease-in-out min-w-0 flex-1">
-              <div className="flex items-center gap-2 min-w-0">
-                {!hasAssignee && (
-                  <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-primary/10 text-primary border-primary/20 flex-shrink-0">
-                    Agent
-                  </Badge>
-                )}
-                <h2 className="font-medium text-lg truncate">{leftSideDisplayName}</h2>
-                {hasAssignee && (
-                  <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 bg-blue-500/10 text-blue-600 border-blue-500/20 flex-shrink-0">
-                    Assigned
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        
         {/* Visitor/Lead info - only shown when not loading, not agent-only conversation, and a conversation is selected */}
         {!isLoadingLead && !isAgentOnlyConversation && hasSelectedConversation && (
           <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out min-w-0 flex-1 justify-end">
             <div className="transition-transform duration-300 ease-in-out text-right min-w-0 flex-1">
               <div className="flex items-center gap-2 justify-end min-w-0">
                 {isLead ? (
-                  <NavigationLink 
-                    href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`} 
-                    className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer min-w-0 flex-1 justify-end"
-                  >
-                    <h2 className="font-medium text-lg truncate">{truncateLeadName(leadData.name)}</h2>
-                    <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
-                      <Select
-                        value={currentStatus}
-                        onValueChange={handleStatusChange}
-                        disabled={isUpdatingStatus}
+                  <div className="flex flex-col items-end gap-1 min-w-0 flex-1 justify-end py-1">
+                    <div className="flex items-center gap-2 justify-end w-full">
+                      <NavigationLink 
+                        href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`}
+                        className="hover:opacity-80 transition-opacity cursor-pointer min-w-0"
                       >
-                        <SelectTrigger hideIcon className="h-auto text-xs border-none p-0 shadow-none hover:bg-transparent focus:ring-0 max-w-[200px] flex-shrink-0">
-                          <Badge 
-                            variant="outline" 
-                            className={cn(
-                              "text-xs px-2 py-0 h-5 transition-colors duration-300 flex-shrink-0 truncate max-w-[200px] cursor-pointer",
-                              STATUS_STYLES[currentStatus] || "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                            )}
-                          >
-                            {getStatusDisplayName(currentStatus)}
-                          </Badge>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LEAD_STATUSES.map((status) => (
-                            <SelectItem key={status.id} value={status.id}>
-                              {status.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <h2 className="font-medium text-lg truncate leading-none">{truncateLeadName(leadData.name)}</h2>
+                      </NavigationLink>
+                      <div className="flex-shrink-0">
+                        <Select
+                          value={currentStatus}
+                          onValueChange={handleStatusChange}
+                          disabled={isUpdatingStatus}
+                        >
+                          <SelectTrigger hideIcon className="h-auto text-xs border-none p-0 shadow-none hover:bg-transparent focus:ring-0 max-w-[200px] flex-shrink-0">
+                            <Badge 
+                              variant="outline" 
+                              className={cn(
+                                "text-xs px-2 py-0 h-5 transition-colors duration-300 flex-shrink-0 truncate max-w-[200px] cursor-pointer",
+                                STATUS_STYLES[currentStatus] || "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                              )}
+                            >
+                              {getStatusDisplayName(currentStatus)}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {LEAD_STATUSES.map((status) => (
+                              <SelectItem key={status.id} value={status.id}>
+                                {status.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  </NavigationLink>
+                    
+                    <NavigationLink 
+                      href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`}
+                      className="flex items-center gap-3 text-[10px] text-muted-foreground max-w-full justify-end h-3.5 hover:opacity-80 transition-opacity cursor-pointer"
+                    >
+                      {companyName && (
+                        <div className="flex items-center gap-1 min-w-0 flex-shrink flex-nowrap" title={companyName}>
+                          <span className="truncate max-w-[200px]">{companyName}</span>
+                        </div>
+                      )}
+                      {leadEmail && (
+                        <div className="flex items-center gap-1 min-w-0 flex-shrink flex-nowrap" title={leadEmail}>
+                          <span className="truncate max-w-[250px]">{leadEmail}</span>
+                        </div>
+                      )}
+                      {leadPhone && (
+                        <div className="flex items-center gap-1 min-w-0 flex-shrink-0" title={leadPhone}>
+                          <span className="truncate max-w-[150px]">{leadPhone}</span>
+                        </div>
+                      )}
+                    </NavigationLink>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
                     <h2 className="font-medium text-lg truncate">Visitor</h2>

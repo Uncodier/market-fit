@@ -56,7 +56,8 @@ export function AgentActivityItem({
   const isICPMiningActivity = activity.id === "sl7" && activity.name === "ICP Mining"
   const isWebsiteAnalysisActivity = activity.id === "ux1" && activity.name === "Website Analysis"
   const isLeadFollowUpManagementActivity = activity.id === "sl1" && activity.name === "Lead Follow-up Management"
-  const isClickable = !isDisabled && (isSyncEmailsActivity || isAnalyzeSegmentsActivity || isCreateCampaignActivity || isContentCalendarActivity || isDailyStandUpActivity || isAssignLeadsActivity || isLeadGenerationActivity || isGenerateKeyAccountsActivity || isICPMiningActivity || isWebsiteAnalysisActivity || isLeadFollowUpManagementActivity)
+  const isLeadQualificationActivity = activity.id === "sl8" && activity.name === "Lead Qualification"
+  const isClickable = !isDisabled && (isSyncEmailsActivity || isAnalyzeSegmentsActivity || isCreateCampaignActivity || isContentCalendarActivity || isDailyStandUpActivity || isAssignLeadsActivity || isLeadGenerationActivity || isGenerateKeyAccountsActivity || isICPMiningActivity || isWebsiteAnalysisActivity || isLeadFollowUpManagementActivity || isLeadQualificationActivity)
 
   const getButtonContent = () => {
     if (isExecuting) {
