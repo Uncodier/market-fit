@@ -23,6 +23,7 @@ export const useInstanceLogs = ({
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
   const [collapsedSystemMessages, setCollapsedSystemMessages] = useState<Set<string>>(new Set())
   const [collapsedToolDetails, setCollapsedToolDetails] = useState<Set<string>>(new Set())
+  const [expandedToolGroups, setExpandedToolGroups] = useState<Set<string>>(new Set())
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const currentRobotInstanceIdRef = useRef<string | null>(null)
   const prevSiteIdRef = useRef<string | null>(null)
@@ -34,6 +35,7 @@ export const useInstanceLogs = ({
       setLogs([])
       setCollapsedSystemMessages(new Set())
       setCollapsedToolDetails(new Set())
+      setExpandedToolGroups(new Set())
       setDebugInfo(null)
       prevSiteIdRef.current = currentSiteId
     }
@@ -244,6 +246,19 @@ export const useInstanceLogs = ({
     })
   }
 
+  // Toggle tool group expand/collapse
+  const toggleToolGroup = (groupId: string) => {
+    setExpandedToolGroups(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(groupId)) {
+        newSet.delete(groupId)
+      } else {
+        newSet.add(groupId)
+      }
+      return newSet
+    })
+  }
+
   // Toggle all tool details
   const toggleAllToolDetails = () => {
     const logsWithTools = logs.filter(log => 
@@ -280,6 +295,7 @@ export const useInstanceLogs = ({
         setLogs([])
         setCollapsedSystemMessages(new Set())
         setCollapsedToolDetails(new Set())
+        setExpandedToolGroups(new Set())
       } else {
         console.log('🔄 Same robot instance, ensuring logs are loaded:', newInstanceId)
       }
@@ -416,6 +432,7 @@ export const useInstanceLogs = ({
       setLogs([])
       setCollapsedSystemMessages(new Set())
       setCollapsedToolDetails(new Set())
+      setExpandedToolGroups(new Set())
     }
   }, [activeRobotInstance?.id, waitingForMessageId])
 
@@ -424,12 +441,14 @@ export const useInstanceLogs = ({
     isLoadingLogs,
     collapsedSystemMessages,
     collapsedToolDetails,
+    expandedToolGroups,
     debugInfo,
     loadInstanceLogs,
     addOptimisticUserMessage,
     toggleSystemMessageCollapse,
     toggleAllSystemMessages,
     toggleToolDetails,
+    toggleToolGroup,
     toggleAllToolDetails
   }
 }

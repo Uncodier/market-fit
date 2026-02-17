@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { MessageSquare } from "@/app/components/ui/icons"
 import { DelayTimer } from "./DelayTimer"
@@ -125,7 +126,7 @@ const renderMessageContent = (msg: ChatMessage, markdownComponents: any) => {
     />
   ) : (
     <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-      <ReactMarkdown components={markdownComponents}>{formattedContent}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{formattedContent}</ReactMarkdown>
     </div>
   );
 };
@@ -750,6 +751,16 @@ export function ChatMessages({
 
       // If it's the only message, delete the conversation as well
       if (isOnlyMessage && conversationId && !conversationId.startsWith("new-")) {
+        // Fetch conversation data before deleting (for lead status reset)
+        const { data: convData } = await supabase
+          .from("conversations")
+          .select("lead_id, site_id")
+          .eq("id", conversationId)
+          .single()
+
+        const leadId = convData?.lead_id ?? leadData?.id ?? (leadData as any)?.lead_id
+        const siteId = convData?.site_id
+
         // First delete any remaining messages (should be none, but just in case)
         await supabase
           .from("messages")
@@ -770,6 +781,25 @@ export function ChatMessages({
           window.dispatchEvent(new CustomEvent('conversation:deleted', {
             detail: { conversationId }
           }))
+        }
+
+        // If lead has no other conversations and no tasks, reset status to "new"
+        if (leadId && siteId) {
+          const { count: convCount } = await supabase
+            .from("conversations")
+            .select("id", { count: "exact", head: true })
+            .eq("lead_id", leadId)
+            .eq("site_id", siteId)
+
+          const { count: taskCount } = await supabase
+            .from("tasks")
+            .select("id", { count: "exact", head: true })
+            .eq("lead_id", leadId)
+
+          if ((convCount ?? 0) === 0 && (taskCount ?? 0) === 0) {
+            const { updateLead } = await import("@/app/leads/actions")
+            await updateLead({ id: leadId, site_id: siteId, status: "new" })
+          }
         }
 
         // Redirect to chat list

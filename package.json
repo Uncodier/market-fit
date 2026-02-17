@@ -87,6 +87,7 @@
     "react-smooth": "^4.0.4",
     "read-excel-file": "5.8.8",
     "recharts": "^2.15.1",
+    "remark-gfm": "4.0.1",
     "shadcn-ui": "^0.9.4",
     "sonner": "^2.0.1",
     "stripe": "18.2.1",

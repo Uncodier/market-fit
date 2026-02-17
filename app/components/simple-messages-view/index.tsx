@@ -14,6 +14,7 @@ import { MessagesSkeleton } from "@/app/components/skeletons/messages-skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { User } from "@/app/components/ui/icons"
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { markdownComponents } from './utils/markdownComponents'
 
 // Import types
@@ -32,13 +33,14 @@ import { LoadingIndicator } from './components/LoadingIndicator'
 import { MessageInput } from './components/MessageInput'
 import { MessageItem } from './components/MessageItem'
 import { ToolCallItem } from './components/ToolCallItem'
+import { ToolCallGroupItem } from './components/ToolCallGroupItem'
 import { CompletedPlanCard } from './components/CompletedPlanCard'
 import { StepIndicator } from './components/StepIndicator'
 import { EditStepModal } from './components/EditStepModal'
 import { StepCompletedItem } from './components/StepCompletedItem'
 
 // Import utilities
-import { getActivityName } from './utils'
+import { getActivityName, getToolName, groupTimelineToolCalls } from './utils'
 
 export function SimpleMessagesView({ className = "", activeRobotInstance, isBrowserVisible = false, onMessageSent, onNewInstanceCreated }: SimpleMessagesViewProps) {
   const { isDarkMode } = useTheme()
@@ -331,11 +333,13 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     isLoadingLogs,
     collapsedSystemMessages,
     collapsedToolDetails,
+    expandedToolGroups,
     loadInstanceLogs,
     addOptimisticUserMessage,
     toggleSystemMessageCollapse,
     toggleAllSystemMessages,
     toggleToolDetails,
+    toggleToolGroup,
     toggleAllToolDetails
   } = useInstanceLogs({
     activeRobotInstance,
@@ -491,6 +495,19 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const sortedTimeline = timelineItems.sort((a, b) =>
     new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   )
+
+  const isToolCallLog = (log: any) => {
+    const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
+    const hasToolName = log.tool_name || log.toolName
+    const isStructuredOutput = (log.tool_name || log.toolName)?.toLowerCase() === 'structured_output'
+    return (isToolCall || hasToolName) && !isStructuredOutput
+  }
+
+  const processedTimeline = groupTimelineToolCalls(
+    sortedTimeline,
+    (log: any) => log.tool_name || log.toolName,
+    isToolCallLog
+  )
   
   // Check if instance is running
   const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
@@ -565,7 +582,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                         wordBreak: 'break-word'
                       }}
                     >
-                      <ReactMarkdown components={markdownComponents}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                         {lastUserMessage}
                       </ReactMarkdown>
                     </div>
@@ -584,25 +601,32 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             <>
             {/* Create unified timeline of logs and completed plans */}
             {(() => {
-              if (sortedTimeline.length === 0) {
+              if (processedTimeline.length === 0) {
                 console.log('🔄 [SimpleMessagesView] No timeline items')
                 return null
               }
               
-              console.log('🔄 [SimpleMessagesView] Rendering timeline with', sortedTimeline.length, 'items')
+              console.log('🔄 [SimpleMessagesView] Rendering timeline with', processedTimeline.length, 'items')
 
-              
-              return sortedTimeline.map((item, index) => {
+              return processedTimeline.map((item, index) => {
+                if (item.type === 'tool_group') {
+                  const group = item.data
+                  return (
+                    <ToolCallGroupItem
+                      key={group.groupId}
+                      group={group}
+                      isDarkMode={isDarkMode}
+                      isExpanded={expandedToolGroups.has(group.groupId)}
+                      onToggleExpand={toggleToolGroup}
+                      collapsedToolDetails={collapsedToolDetails}
+                      onToggleToolDetails={toggleToolDetails}
+                      isBrowserVisible={isBrowserVisible}
+                    />
+                  )
+                }
                 if (item.type === 'log') {
                   const log = item.data
-                  // Check if this is a tool call or tool result
-                  const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
-                  const hasToolName = log.tool_name || log.toolName
-                  
-                  // Show structured_output as regular messages instead of tool calls
                   const isStructuredOutput = (log.tool_name || log.toolName)?.toLowerCase() === 'structured_output'
-                  
-                  // Check if this is a step_completed event
                   const isStepCompleted = isStructuredOutput && log.message?.includes('event=step_completed')
                   
                   if (isStepCompleted) {
@@ -613,31 +637,19 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                         isDarkMode={isDarkMode}
                       />
                     )
-                  } else if ((isToolCall || hasToolName) && !isStructuredOutput) {
-                    return (
-                      <ToolCallItem
-                        key={log.id}
-                        log={log}
-                        isDarkMode={isDarkMode}
-                        collapsedToolDetails={collapsedToolDetails}
-                        onToggleToolDetails={toggleToolDetails}
-                        isBrowserVisible={isBrowserVisible}
-                      />
-                    )
-                  } else {
-                    // Show all messages including structured_output
-                    return (
-                      <MessageItem
-                        key={log.id}
-                        log={log}
-                        isDarkMode={isDarkMode}
-                        collapsedSystemMessages={collapsedSystemMessages}
-                        onToggleSystemMessageCollapse={toggleSystemMessageCollapse}
-                        isBrowserVisible={isBrowserVisible}
-                      />
-                    )
                   }
-                } else if (item.type === 'completed_plan') {
+                  return (
+                    <MessageItem
+                      key={log.id}
+                      log={log}
+                      isDarkMode={isDarkMode}
+                      collapsedSystemMessages={collapsedSystemMessages}
+                      onToggleSystemMessageCollapse={toggleSystemMessageCollapse}
+                      isBrowserVisible={isBrowserVisible}
+                    />
+                  )
+                }
+                if (item.type === 'completed_plan') {
                   return (
                     <CompletedPlanCard 
                       key={`plan-${item.data.id}`}

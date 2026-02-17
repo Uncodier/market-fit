@@ -1,4 +1,4 @@
-import { InstanceLog, PlanStep, EventType, StructuredOutputStyle, StructuredOutputStylesLight, ImageParameters, VideoParameters, AudioParameters } from "./types"
+import { InstanceLog, PlanStep, EventType, StructuredOutputStyle, StructuredOutputStylesLight, ImageParameters, VideoParameters, AudioParameters } from './types'
 
 // Helper function to get style per theme
 export const getStructuredStyle = (event: EventType, isDark: boolean): StructuredOutputStyle => {
@@ -157,4 +157,109 @@ export const formatBase64Image = (base64: string): string => {
   }
   // Assume PNG if no format specified
   return `data:image/png;base64,${base64}`
+}
+
+export interface ToolCallGroup {
+  toolName: string
+  logs: InstanceLog[]
+  failCount: number
+  groupId: string
+}
+
+export type TimelineItemType = 'log' | 'completed_plan' | 'tool_group'
+
+export interface ProcessedTimelineItem {
+  type: TimelineItemType
+  timestamp: string
+  data: InstanceLog | any
+}
+
+/**
+ * Groups consecutive tool calls of the same type in the timeline.
+ * Non-tool items and completed_plans pass through unchanged.
+ */
+export const groupTimelineToolCalls = (
+  sortedTimeline: Array<{ type: string; timestamp: string; data: any }>,
+  getToolNameFn: (log: InstanceLog) => string | null,
+  isToolCallFn: (log: InstanceLog) => boolean
+): ProcessedTimelineItem[] => {
+  const result: ProcessedTimelineItem[] = []
+  let i = 0
+
+  while (i < sortedTimeline.length) {
+    const item = sortedTimeline[i]
+
+    if (item.type === 'completed_plan') {
+      result.push({
+        type: 'completed_plan',
+        timestamp: item.timestamp,
+        data: item.data
+      })
+      i++
+      continue
+    }
+
+    if (item.type !== 'log') {
+      i++
+      continue
+    }
+
+    const log = item.data as InstanceLog
+
+    if (!isToolCallFn(log)) {
+      result.push({
+        type: 'log',
+        timestamp: item.timestamp,
+        data: log
+      })
+      i++
+      continue
+    }
+
+    const toolName = getToolNameFn(log) || 'unknown'
+    const logs: InstanceLog[] = [log]
+    let failCount = 0
+    const toolResult = log.tool_result || log.tool_results
+    const hasError = toolResult && (toolResult.error || toolResult.success === false)
+    if (hasError) failCount++
+
+    i++
+    while (i < sortedTimeline.length) {
+      const nextItem = sortedTimeline[i]
+      if (nextItem.type !== 'log') break
+
+      const nextLog = nextItem.data as InstanceLog
+      if (!isToolCallFn(nextLog)) break
+
+      const nextToolName = getToolNameFn(nextLog) || 'unknown'
+      if (nextToolName !== toolName) break
+
+      logs.push(nextLog)
+      const nextResult = nextLog.tool_result || nextLog.tool_results
+      const nextHasError = nextResult && (nextResult.error || nextResult.success === false)
+      if (nextHasError) failCount++
+      i++
+    }
+
+    result.push({
+      type: 'tool_group',
+      timestamp: logs[0]?.created_at || item.timestamp,
+      data: {
+        toolName,
+        logs,
+        failCount,
+        groupId: `group-${logs[0]?.id || `${toolName}-${i}`}`
+      } as ToolCallGroup
+    })
+  }
+
+  return result
+}
+
+/** Converts snake_case tool name to Display Case */
+export const formatToolDisplayName = (name: string): string => {
+  return name
+    .split(/[_-]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
 }

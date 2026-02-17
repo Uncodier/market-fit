@@ -1,17 +1,16 @@
 import React from 'react'
-import { User, ChevronRight, ChevronDown, File, Check } from "@/app/components/ui/icons"
+import { User, File, Check } from "@/app/components/ui/icons"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
 import { useUserProfile } from '../hooks/useUserProfile'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../utils/markdownComponents'
 
 interface MessageItemProps {
   log: InstanceLog
   isDarkMode: boolean
-  collapsedSystemMessages: Set<string>
-  onToggleSystemMessageCollapse: (messageId: string) => void
   isBrowserVisible?: boolean
 }
 
@@ -19,8 +18,6 @@ interface MessageItemProps {
 export const MessageItem: React.FC<MessageItemProps> = ({
   log,
   isDarkMode,
-  collapsedSystemMessages,
-  onToggleSystemMessageCollapse,
   isBrowserVisible = false
 }) => {
   const { userProfile } = useUserProfile(log.user_id || null)
@@ -73,7 +70,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 wordBreak: 'break-word'
               }}
             >
-              <ReactMarkdown components={markdownComponents}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {log.message}
               </ReactMarkdown>
             </div>
@@ -170,41 +167,17 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           </span>
         )}
         
-        {/* Collapse button for system messages */}
-        {log.log_type === 'system' && (
-          <button
-            onClick={() => onToggleSystemMessageCollapse(log.id)}
-            className="ml-auto p-1 hover:bg-muted rounded transition-colors"
-            title={collapsedSystemMessages.has(log.id) ? "Expand message" : "Collapse message"}
-          >
-            {collapsedSystemMessages.has(log.id) ? (
-              <ChevronRight className="h-3 w-3" />
-            ) : (
-              <ChevronDown className="h-3 w-3" />
-            )}
-          </button>
-        )}
       </div>
       
-      {/* Message content - collapsible for system messages */}
-      {!(log.log_type === 'system' && collapsedSystemMessages.has(log.id)) && (
-        <div className="w-full min-w-0 overflow-hidden">
-          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
-            <ReactMarkdown components={markdownComponents}>
-              {log.message}
-            </ReactMarkdown>
-          </div>
+      {/* Message content */}
+      <div className="w-full min-w-0 overflow-hidden">
+        <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {log.message}
+          </ReactMarkdown>
         </div>
-      )}
+      </div>
       
-      {/* Collapsed preview for system messages */}
-      {log.log_type === 'system' && collapsedSystemMessages.has(log.id) && (
-        <div className="w-full min-w-0 overflow-hidden">
-          <div className="text-sm text-muted-foreground italic truncate" style={{ paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
-            {log.message.substring(0, 100)}...
-          </div>
-        </div>
-      )}
     </div>
   )
 }

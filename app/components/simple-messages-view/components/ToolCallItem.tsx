@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Eye, EyeOff, Code, LayoutGrid, Zap, Copy, Check, Download } from "@/app/components/ui/icons"
+import { Eye, EyeOff, Code, LayoutGrid, Zap, Search, Copy, Check, Download } from "@/app/components/ui/icons"
 import { InstanceLog } from '../types'
 import { getToolName, getToolResult, formatBase64Image } from '../utils'
 import { renderObjectWithImages } from '../render-helpers'
@@ -19,14 +19,11 @@ interface ToolCallItemProps {
 
 // Helper function to render tool icon
 const renderToolIcon = (toolName: string) => {
-  switch (toolName.toLowerCase()) {
-    case 'computer':
-      return <Code className="h-3.5 w-3.5" />
-    case 'structured_output':
-      return <LayoutGrid className="h-3.5 w-3.5" />
-    default:
-      return <Zap className="h-3.5 w-3.5" />
-  }
+  const lower = toolName.toLowerCase()
+  if (lower === 'computer') return <Code className="h-3.5 w-3.5" />
+  if (lower === 'structured_output') return <LayoutGrid className="h-3.5 w-3.5" />
+  if (lower.includes('search') || lower === 'websearch') return <Search className="h-3.5 w-3.5" />
+  return <Zap className="h-3.5 w-3.5" />
 }
 
 export const ToolCallItem: React.FC<ToolCallItemProps> = ({
@@ -362,25 +359,13 @@ Details: ${contentToCopy.details}`
                     </div>
                   )}
                   
-                  {/* Error display for failed image generation */}
+                      {/* Error display for failed image generation */}
                   {hasError && !toolResult?.output?.images && (
                     <div>
                       <strong className="text-red-600">Error:</strong>
                       <div className="mt-1 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded p-3 border border-red-200 dark:border-red-800">
                         {errorMessage}
                       </div>
-                      
-                      {/* Technical details (collapsible) */}
-                      {toolResult && (
-                        <details className="text-xs mt-2">
-                          <summary className="cursor-pointer text-muted-foreground/70 hover:text-muted-foreground">
-                            View technical details
-                          </summary>
-                          <div className="mt-2 p-2 bg-muted/30 rounded font-mono text-xs overflow-x-auto">
-                            <pre>{JSON.stringify(toolResult, null, 2)}</pre>
-                          </div>
-                        </details>
-                      )}
                     </div>
                   )}
                 </div>
@@ -449,18 +434,6 @@ Details: ${contentToCopy.details}`
                       <div className="mt-1 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded p-3 border border-red-200 dark:border-red-800">
                         {errorMessage}
                       </div>
-                      
-                      {/* Technical details (collapsible) */}
-                      {toolResult && (
-                        <details className="text-xs mt-2">
-                          <summary className="cursor-pointer text-muted-foreground/70 hover:text-muted-foreground">
-                            View technical details
-                          </summary>
-                          <div className="mt-2 p-2 bg-muted/30 rounded font-mono text-xs overflow-x-auto">
-                            <pre>{JSON.stringify(toolResult, null, 2)}</pre>
-                          </div>
-                        </details>
-                      )}
                     </div>
                   )}
                 </div>
@@ -478,18 +451,6 @@ Details: ${contentToCopy.details}`
                       {errorMessage}
                     </div>
                   </div>
-                  
-                  {/* Technical details (collapsible) */}
-                  {toolResult && (
-                    <details className="text-xs">
-                      <summary className="cursor-pointer text-muted-foreground/70 hover:text-muted-foreground">
-                        View technical details
-                      </summary>
-                      <div className="mt-2 p-2 bg-muted/30 rounded font-mono text-xs overflow-x-auto">
-                        <pre>{JSON.stringify(toolResult, null, 2)}</pre>
-                      </div>
-                    </details>
-                  )}
                 </div>
               </div>
             )}

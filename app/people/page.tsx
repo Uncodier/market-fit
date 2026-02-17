@@ -140,7 +140,7 @@ function CollapsibleField({ title, children, defaultOpen = true, countBadge, onC
     onOpenChange?.(newOpen)
   }
   return (
-    <div className="rounded-lg border border-border/30 bg-muted/40">
+    <div className="rounded-lg border border-border/30 bg-muted/40 transition-colors hover:bg-muted/70 hover:border-border">
       <div
         className="flex items-center justify-between px-4 py-3 cursor-pointer"
         onClick={handleToggle}
