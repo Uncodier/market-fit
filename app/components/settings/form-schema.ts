@@ -347,6 +347,7 @@ export const siteFormSchema = z.object({
     customer_social_network_id: z.number().optional(),
     accountType: z.string().optional(),
     isActive: z.union([z.boolean(), z.number()]).optional().default(false),
+    connectedPages: z.array(z.any()).optional(),
     createdAt: z.string().optional(),
     // Legacy fields for backward compatibility
     url: z.string().optional().default(""),

@@ -44,6 +44,8 @@ export const useMessageSending = ({
   const [hasMessageBeenSent, setHasMessageBeenSent] = useState(false)
   const [waitingForMessageId, setWaitingForMessageId] = useState<string | null>(null)
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Track the active request ID to handle race conditions
+  const activeRequestIdRef = useRef<string | null>(null)
   // Track the instance_id for which we're currently showing loading
   const loadingInstanceIdRef = useRef<string | null>(null)
   const { currentSite } = useSite()
@@ -60,6 +62,9 @@ export const useMessageSending = ({
     
     console.log('🛡️ Clearing thinking state')
     setIsWaitingForResponse(false)
+    // Unlock input when thinking hides, as the user might want to interact even if the API call is still wrapping up
+    setIsSendingMessage(false)
+    activeRequestIdRef.current = null // Clear active request so finally block doesn't interfere
     setWaitingForMessageId(null)
     loadingInstanceIdRef.current = null
     
@@ -89,6 +94,9 @@ export const useMessageSending = ({
     console.log('🛡️ [useMessageSending] Clearing New Makina thinking state')
     console.log('🛡️ [useMessageSending] Current isNewMakinaThinking:', isNewMakinaThinking)
     setIsNewMakinaThinking(false)
+    // Unlock input when thinking hides, as the user might want to interact even if the API call is still wrapping up
+    setIsSendingMessage(false)
+    activeRequestIdRef.current = null
     loadingInstanceIdRef.current = null
     console.log('🛡️ [useMessageSending] New Makina thinking state cleared')
   }
@@ -302,6 +310,10 @@ export const useMessageSending = ({
 
     const messageToSend = currentMessage.trim()
 
+    // Generate request ID to track this specific request
+    const requestId = Date.now().toString()
+    activeRequestIdRef.current = requestId
+
     // Prevent duplicate submissions / set UI states
     setIsSendingMessage(true)
     onClearMessage?.()
@@ -338,8 +350,12 @@ export const useMessageSending = ({
         clearThinkingState()
       }
     } finally {
-      // Always clear sending state
-      setIsSendingMessage(false)
+      // Only clear sending state if this is still the active request
+      // (It might have been cleared by clearThinkingState, or a new request might have started)
+      if (activeRequestIdRef.current === requestId) {
+        setIsSendingMessage(false)
+        activeRequestIdRef.current = null
+      }
     }
   }
 

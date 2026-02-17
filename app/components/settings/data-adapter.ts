@@ -34,16 +34,32 @@ export const formatSocialMedia = (socialMedia: any[]): any[] => {
   if (!socialMedia || !Array.isArray(socialMedia)) return [];
   
   return socialMedia.map(sm => {
+    // Check if isActive is present, otherwise try to infer from connectedPages (e.g. for Facebook)
+    let isActive = sm.isActive;
+    
+    // If isActive is not explicitly set or is false, but we have connectedPages (and it's not empty), consider it active
+    if (!isActive && sm.connectedPages && Array.isArray(sm.connectedPages) && sm.connectedPages.length > 0) {
+      isActive = true;
+    }
+
     // Ensure every social media item has the required fields
     // URL is still marked as required for backward compatibility
     const formattedItem = {
+      ...sm, // Spread all existing properties to preserve data not explicitly handled below
       platform: sm.platform || '',
       url: sm.url || '',
       handle: sm.handle || '',
       phone: sm.phone || '',
       phoneCode: sm.phoneCode || '',
       inviteCode: sm.inviteCode || '',
-      channelId: sm.channelId || ''
+      channelId: sm.channelId || '',
+      // Explicitly set isActive based on our logic
+      isActive: isActive,
+      // Ensure specific fields are preserved if they exist (though spread covers most)
+      username: sm.username,
+      nickname: sm.nickname,
+      profile_picture_url: sm.profile_picture_url,
+      connectedPages: sm.connectedPages
     };
     
     return formattedItem;

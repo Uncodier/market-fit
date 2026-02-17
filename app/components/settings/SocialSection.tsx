@@ -6,9 +6,9 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/
 import { Input } from "../ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
-import { PlusCircle, Trash2 } from "../ui/icons"
+import { PlusCircle, Trash2, Save } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useState, useEffect } from "react"
 import { 
   SocialIcon,
   FacebookIcon,
@@ -136,6 +136,8 @@ const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
   }
 };
 
+const IS_HIDDEN = false;
+
 interface SocialSectionProps {
   active: boolean
   onSave?: (data: SiteFormValues) => void
@@ -146,6 +148,20 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const [isSaving, setIsSaving] = useState(false)
   const socialMedia = form.watch("social_media") || []
+
+  // Emit social networks update event whenever socialMedia changes
+  useEffect(() => {
+    if (active && !IS_HIDDEN) {
+      const socialNetworksData = socialMedia.map((social, index) => ({
+        id: `social-network-${index}`,
+        title: social.platform ? (SOCIAL_PLATFORMS.find(p => p.value === social.platform)?.label || social.platform) : "New Network",
+      }));
+      
+      window.dispatchEvent(new CustomEvent('socialNetworksUpdated', { 
+        detail: socialNetworksData 
+      }));
+    }
+  }, [active, socialMedia]);
 
   const handleSave = async () => {
     if (!onSave) return
@@ -296,170 +312,304 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     }
   }, [])
 
-  if (!active) return null
+  if (!active || IS_HIDDEN) return null
 
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl font-semibold">Social Networks</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Connect your social media profiles to your site
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            type="button"
-            onClick={addSocialMedia}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Social Network
-          </Button>
+    <div id="social-networks-section" className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Social Networks</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Connect your social media profiles to your site
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6 px-8 pb-8">
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          onClick={addSocialMedia}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Social Network
+        </Button>
+      </div>
+
+      <div className="space-y-6">
         {socialMedia.map((social, index) => {
           const isActive = social.isActive === true || social.isActive === 1
           const hasPlatform = !!social.platform
+          const platformLabel = SOCIAL_PLATFORMS.find(p => p.value === social.platform)?.label || social.platform || "New Network";
           
           return (
-            <div key={`social-row-${index}`} className="space-y-4">
-              <div className="grid grid-cols-12 gap-4 items-end w-full">
-                {/* Platform selector - only show when no platform selected (new entry) */}
-                {!hasPlatform && (
-                  <FormField
-                    control={form.control}
-                    name={`social_media.${index}.platform`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-11">
-                        <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                          Platform
-                        </FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="h-12 w-full">
-                              <SelectValue placeholder="Select Platform" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="z-[50]">
-                            {SOCIAL_PLATFORMS.map((platform) => (
-                              <SelectItem key={platform.value} value={platform.value}>
-                                <div className="flex items-center gap-2">
-                                  {getPlatformIcon(platform.value, 16)}
-                                  <span>{platform.label}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {/* Connected account info - show when active */}
-                {isActive && hasPlatform && (
-                  <div className="col-span-11 flex items-center gap-4 w-full">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {social.profile_picture_url && (
-                        <img 
-                          src={social.profile_picture_url} 
-                          alt={social.nickname || social.username || social.handle || social.platform}
-                          className="w-10 h-10 rounded-full flex-shrink-0"
-                        />
-                      )}
-                      {!social.profile_picture_url && (
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                          {getPlatformIcon(social.platform || social.network, 20)}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {social.nickname || `${SOCIAL_PLATFORMS.find(p => p.value === social.platform)?.label || social.platform} Account`}
-                        </p>
-                        {(social.username || social.handle) && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {social.username || social.handle}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Connect/Reconnect Account - show when platform selected but not active */}
-                {hasPlatform && !isActive && (
-                  <div className="col-span-11 flex items-center gap-4 w-full">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                        {getPlatformIcon(social.platform || social.network, 20)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {social.nickname || `${SOCIAL_PLATFORMS.find(p => p.value === social.platform)?.label || social.platform} Account`}
-                        </p>
-                        {(social.username || social.handle) ? (
-                          <>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {social.username || social.handle}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Connection lost - reconnect to continue
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            Start authentication to connect this account
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={() => handleConnectAccount(index)}
-                      className="h-12 whitespace-nowrap flex-shrink-0"
-                    >
-                      {(social.username || social.handle || social.nickname) ? 'Reconnect' : 'Connect Account'}
-                    </Button>
-                  </div>
-                )}
-                    
-                <div className="col-span-1 flex items-end justify-center">
-                  <Button
+            <Card 
+              key={`social-row-${index}`} 
+              id={`social-network-${index}`}
+              className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200"
+            >
+              <CardHeader className="px-8 py-6">
+                 <div className="flex items-center justify-between">
+                   <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                     {getPlatformIcon(social.platform, 20)}
+                     {platformLabel}
+                   </CardTitle>
+                   
+                   <Button
                     size="icon"
                     variant="ghost"
                     type="button"
                     onClick={() => removeSocialMedia(index)}
-                    className="h-12 w-12 flex-shrink-0"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
+                    className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    title="Remove Network"
+                   >
+                     <Trash2 className="h-5 w-5" />
+                   </Button>
+                 </div>
+              </CardHeader>
+              
+              <CardContent className="space-y-6 px-8 pb-8">
+                  {/* Platform selector - only show when no platform selected (new entry) */}
+                  {!hasPlatform && (
+                    <FormField
+                      control={form.control}
+                      name={`social_media.${index}.platform`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Platform</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-12 w-full">
+                                <SelectValue placeholder="Select Platform" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="z-[50]">
+                              {SOCIAL_PLATFORMS.map((platform) => (
+                                <SelectItem key={platform.value} value={platform.value}>
+                                  <div className="flex items-center gap-2">
+                                    {getPlatformIcon(platform.value, 16)}
+                                    <span>{platform.label}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Connected account info - show when active */}
+                  {isActive && hasPlatform && (
+                    <div className="flex items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border border-border">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {social.profile_picture_url && (
+                          <img 
+                            src={social.profile_picture_url} 
+                            alt={social.nickname || social.username || social.handle || social.platform}
+                            className="w-12 h-12 rounded-full flex-shrink-0 border border-border"
+                          />
+                        )}
+                        {!social.profile_picture_url && (
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border border-border">
+                            {getPlatformIcon(social.platform || social.network, 24)}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-medium truncate">
+                            {social.nickname || `${platformLabel} Account`}
+                          </p>
+                          {(social.username || social.handle) && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {social.username || social.handle}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              Connected
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => handleConnectAccount(index)}
+                        className="whitespace-nowrap"
+                      >
+                        Reconnect
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Connect/Reconnect Account - show when platform selected but not active */}
+                  {hasPlatform && !isActive && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0 text-orange-600">
+                          {getPlatformIcon(social.platform || social.network, 20)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate text-orange-800 dark:text-orange-200">
+                            Action Required
+                          </p>
+                          {(social.username || social.handle) ? (
+                            <>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {social.username || social.handle}
+                              </p>
+                              <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+                                Connection lost - reconnect to continue
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              Authenticate to connect this account
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="default"
+                        type="button"
+                        onClick={() => handleConnectAccount(index)}
+                        className="whitespace-nowrap bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        {(social.username || social.handle || social.nickname) ? 'Reconnect' : 'Connect Account'}
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Manual Fields (URL, Handle) - always show if platform selected so user can edit manual info */}
+                  {hasPlatform && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                       {getPlatformFields(social.platform).fields.includes("url") && (
+                         <FormField
+                           control={form.control}
+                           name={`social_media.${index}.url`}
+                           render={({ field }) => (
+                             <FormItem>
+                               <FormLabel>{getPlatformFields(social.platform).labels.url}</FormLabel>
+                               <FormControl>
+                                 <Input placeholder={getPlatformFields(social.platform).placeholders.url} {...field} />
+                               </FormControl>
+                               <FormMessage />
+                             </FormItem>
+                           )}
+                         />
+                       )}
+                       {getPlatformFields(social.platform).fields.includes("handle") && (
+                         <FormField
+                           control={form.control}
+                           name={`social_media.${index}.handle`}
+                           render={({ field }) => (
+                             <FormItem>
+                               <FormLabel>{getPlatformFields(social.platform).labels.handle}</FormLabel>
+                               <FormControl>
+                                 <Input placeholder={getPlatformFields(social.platform).placeholders.handle} {...field} />
+                               </FormControl>
+                               <FormMessage />
+                             </FormItem>
+                           )}
+                         />
+                       )}
+                       {getPlatformFields(social.platform).fields.includes("phone") && (
+                         <FormField
+                           control={form.control}
+                           name={`social_media.${index}.phone`}
+                           render={({ field }) => (
+                             <FormItem>
+                               <FormLabel>{getPlatformFields(social.platform).labels.phone}</FormLabel>
+                               <FormControl>
+                                 <Input placeholder={getPlatformFields(social.platform).placeholders.phone} {...field} />
+                               </FormControl>
+                               <FormMessage />
+                             </FormItem>
+                           )}
+                         />
+                       )}
+                       {getPlatformFields(social.platform).fields.includes("phoneCode") && (
+                         <FormField
+                           control={form.control}
+                           name={`social_media.${index}.phoneCode`}
+                           render={({ field }) => (
+                             <FormItem>
+                               <FormLabel>{getPlatformFields(social.platform).labels.phoneCode}</FormLabel>
+                               <Select onValueChange={field.onChange} value={field.value}>
+                                 <FormControl>
+                                   <SelectTrigger>
+                                     <SelectValue placeholder="Select Country Code" />
+                                   </SelectTrigger>
+                                 </FormControl>
+                                 <SelectContent>
+                                    {COUNTRY_CODES.map((code) => (
+                                      <SelectItem key={code.value} value={code.value}>
+                                        {code.label}
+                                      </SelectItem>
+                                    ))}
+                                 </SelectContent>
+                               </Select>
+                               <FormMessage />
+                             </FormItem>
+                           )}
+                         />
+                       )}
+                       {getPlatformFields(social.platform).fields.includes("inviteCode") && (
+                         <FormField
+                           control={form.control}
+                           name={`social_media.${index}.inviteCode`}
+                           render={({ field }) => (
+                             <FormItem>
+                               <FormLabel>{getPlatformFields(social.platform).labels.inviteCode}</FormLabel>
+                               <FormControl>
+                                 <Input placeholder={getPlatformFields(social.platform).placeholders.inviteCode} {...field} />
+                               </FormControl>
+                               <FormMessage />
+                             </FormItem>
+                           )}
+                         />
+                       )}
+                    </div>
+                  )}
+              </CardContent>
+              <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+                <Button 
+                  variant="outline"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
           )
         })}
         
-        <div className="text-sm text-muted-foreground mt-4">
-          <p>Connect your social media accounts to enhance your site's presence. Different platforms require different information.</p>
-        </div>
-      </CardContent>
-      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-        <Button 
-          variant="outline"
-          onClick={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? "Saving..." : "Save"}
-        </Button>
-      </CardFooter>
-    </Card>
+        {socialMedia.length === 0 && (
+          <div className="text-center py-12 border border-dashed rounded-lg bg-muted/10">
+            <h3 className="text-lg font-medium mb-2">No social networks connected</h3>
+            <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+              Connect your social media accounts to display them on your website and track performance.
+            </p>
+            <Button onClick={addSocialMedia}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Your First Network
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   )
-} 
+}

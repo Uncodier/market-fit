@@ -170,6 +170,14 @@ const channelsSections: QuickNavSection[] = [
   { id: "agent-whatsapp-channel", title: "Agent WhatsApp Channel" },
 ]
 
+const getInitialSocialSections = (): QuickNavSection[] => [
+  { 
+    id: "social-networks-section", 
+    title: "Social Networks",
+    children: []
+  },
+]
+
 const getInitialTeamSections = (): QuickNavSection[] => [
   { 
     id: "team-members", 
@@ -214,6 +222,7 @@ export default function SettingsPage() {
   const [formKey, setFormKey] = useState(0)
   const [teamSections, setTeamSections] = useState<QuickNavSection[]>(getInitialTeamSections())
   const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections())
+  const [socialSections, setSocialSections] = useState<QuickNavSection[]>(getInitialSocialSections())
 
   // Simple refresh prevention specifically for settings page
   useSimpleRefreshPrevention()
@@ -256,10 +265,29 @@ export default function SettingsPage() {
     };
   }, []);
 
+  // Listen for social networks updates
+  useEffect(() => {
+    const handleSocialNetworksUpdate = (event: CustomEvent) => {
+      const networks = event.detail as { id: string; title: string }[];
+      setSocialSections([
+        {
+          id: "social-networks-section",
+          title: "Social Networks",
+          children: networks
+        }
+      ]);
+    };
+
+    window.addEventListener('socialNetworksUpdated', handleSocialNetworksUpdate as EventListener);
+    return () => {
+      window.removeEventListener('socialNetworksUpdated', handleSocialNetworksUpdate as EventListener);
+    };
+  }, []);
+
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "channels", "team", "activities"].includes(tab)) {
+    if (tab && ["general", "channels", "team", "activities", "social"].includes(tab)) {
       setActiveSegment(tab)
     }
   }, [searchParams])
@@ -368,6 +396,8 @@ export default function SettingsPage() {
         return teamSections
       case "activities":
         return activitiesSections
+      case "social":
+        return socialSections
       default:
         return []
     }
@@ -383,6 +413,7 @@ export default function SettingsPage() {
               <TabsList>
                 <TabsTrigger value="general">General Settings</TabsTrigger>
                 <TabsTrigger value="channels">Agent Channels</TabsTrigger>
+                <TabsTrigger value="social">Social Integrations</TabsTrigger>
                 <TabsTrigger value="team">Team</TabsTrigger>
                 <TabsTrigger value="activities">Activities</TabsTrigger>
               </TabsList>
@@ -416,6 +447,7 @@ export default function SettingsPage() {
             <TabsList className="flex">
               <TabsTrigger value="general" className="whitespace-nowrap">General Settings</TabsTrigger>
               <TabsTrigger value="channels" className="whitespace-nowrap">Agent Channels</TabsTrigger>
+              <TabsTrigger value="social" className="whitespace-nowrap">Social Integrations</TabsTrigger>
               <TabsTrigger value="team" className="whitespace-nowrap">Team</TabsTrigger>
               <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
             </TabsList>
