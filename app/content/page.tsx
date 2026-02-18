@@ -38,6 +38,7 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
 import { getContent, createContent, updateContentStatus, updateContent, type ContentItem } from "./actions"
+import { getContentAssetsByContentIds, type ContentAssetWithDetails } from "@/app/assets/actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { toast } from "sonner"
@@ -564,14 +565,28 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
   )
 }
 
-function ContentCard({ content, segments, campaigns, onClick, onRatingChange, isLoadingCampaigns }: { 
+function ContentCard({ content, segments, campaigns, onClick, onRatingChange, isLoadingCampaigns, assets = [] }: { 
   content: ContentItem, 
   segments: Array<{ id: string; name: string }>,
   campaigns: Array<{ id: string; title: string }>,
   onClick: (content: ContentItem) => void,
   onRatingChange?: (contentId: string, rating: number) => void,
-  isLoadingCampaigns?: boolean
+  isLoadingCampaigns?: boolean,
+  assets?: ContentAssetWithDetails[]
 }) {
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  const displayAssets = assets.filter((a) => a.file_type.startsWith("image/"))
+  const mainAsset = displayAssets.find((a) => a.is_primary) || displayAssets[0]
+  const hasCarousel = displayAssets.length > 1
+
+  useEffect(() => {
+    if (!hasCarousel || displayAssets.length === 0) return
+    const t = setInterval(() => {
+      setCarouselIndex((i) => (i + 1) % displayAssets.length)
+    }, 3000)
+    return () => clearInterval(t)
+  }, [hasCarousel, displayAssets.length])
+
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return null
     const segment = segments.find(s => s.id === segmentId)
@@ -622,7 +637,27 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange, is
       className="mb-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px]"
       onClick={() => onClick(content)}
     >
-      <CardContent className="p-3">
+      <CardContent className="p-0">
+        {(mainAsset || (hasCarousel && displayAssets[carouselIndex])) ? (
+          <div className="relative aspect-square w-full overflow-hidden rounded-t-md bg-muted">
+            <img
+              src={(hasCarousel ? displayAssets[carouselIndex] : mainAsset)?.file_path}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+            {hasCarousel && (
+              <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1">
+                {displayAssets.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1 rounded-full w-1 ${i === carouselIndex ? "bg-primary" : "bg-muted-foreground/40"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+        <div className="p-3">
         <div className="flex items-start justify-between">
           <div className="flex gap-3 items-start">
             <div className={`bg-primary/10 rounded-md flex items-center justify-center min-w-[39px] ${getContentTypeIconClass(content.type)}`} style={{ width: '39px', height: '39px' }}>
@@ -685,6 +720,7 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange, is
             </div>
           </div>
         )}
+        </div>
       </CardContent>
     </Card>
   )
@@ -697,7 +733,8 @@ function ContentKanban({
   campaigns,
   onContentClick,
   onRatingChange,
-  isLoadingCampaigns
+  isLoadingCampaigns,
+  assetsByContentId = {}
 }: {
   contentItems: ContentItem[]
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
@@ -706,6 +743,7 @@ function ContentKanban({
   onContentClick: (content: ContentItem) => void
   onRatingChange?: (contentId: string, rating: number) => void
   isLoadingCampaigns?: boolean
+  assetsByContentId?: Record<string, ContentAssetWithDetails[]>
 }) {
   const [items, setItems] = useState<Record<string, ContentItem[]>>({})
 
@@ -854,6 +892,7 @@ function ContentKanban({
                                 onClick={onContentClick}
                                 onRatingChange={handleRatingChange}
                                 isLoadingCampaigns={isLoadingCampaigns}
+                                assets={assetsByContentId[item.id] || []}
                               />
                             </div>
                           )}
@@ -886,7 +925,8 @@ function ContentTable({
   onContentClick,
   segments,
   campaigns,
-  onRatingChange
+  onRatingChange,
+  assetsByContentId = {}
 }: { 
   contentItems: ContentItem[]
   currentPage: number
@@ -898,6 +938,7 @@ function ContentTable({
   segments: Array<{ id: string; name: string }>
   campaigns: Array<{ id: string; title: string }>
   onRatingChange?: (contentId: string, rating: number) => void
+  assetsByContentId?: Record<string, ContentAssetWithDetails[]>
 }) {
   // State for individual pagination per status
   const [statusPages, setStatusPages] = useState<Record<string, number>>(() => {
@@ -1010,34 +1051,48 @@ function ContentTable({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[64px] min-w-[64px] max-w-[64px]">Asset</TableHead>
                     <TableHead className="min-w-[200px]">Title</TableHead>
-                    <TableHead className="w-[100px] min-w-[100px] max-w-[100px]">Type</TableHead>
                     <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
                     <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Campaign</TableHead>
                     <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Performance</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedItems.map((content) => (
+                  {paginatedItems.map((content) => {
+                    const contentAssets = assetsByContentId[content.id] || []
+                    const displayAssets = contentAssets.filter((a) => a.file_type.startsWith("image/"))
+                    const mainAsset = displayAssets.find((a) => a.is_primary) || displayAssets[0]
+                    return (
                     <TableRow 
                       key={content.id}
                       className="group hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => onContentClick(content)}
                     >
+                      <TableCell className="relative w-[64px] min-w-[64px] max-w-[64px] !p-0 align-top">
+                        <div className="absolute inset-0 w-full h-full overflow-hidden bg-muted">
+                          {mainAsset ? (
+                            <img
+                              src={mainAsset.file_path}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 p-1 text-center">
+                              {CONTENT_TYPE_ICONS[content.type]}
+                              <span className="text-[10px] leading-tight text-muted-foreground line-clamp-2">
+                                {getContentTypeName(content.type)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="space-y-0.5">
                           <p className="font-medium text-sm line-clamp-2" title={content.title}>{content.title}</p>
                           {content.description && (
                             <p className="text-xs text-muted-foreground line-clamp-2" title={content.description}>{content.description}</p>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className={`bg-primary/10 rounded-md flex items-center justify-center ${getContentTypeIconClass(content.type)}`} style={{ width: '24px', height: '24px' }}>
-                            {CONTENT_TYPE_ICONS[content.type]}
-                          </div>
-                          <span className="text-sm">{getContentTypeName(content.type)}</span>
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
@@ -1061,7 +1116,7 @@ function ContentTable({
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
               
@@ -1633,6 +1688,7 @@ export default function ContentPage() {
   const [totalContent, setTotalContent] = useState(0)
   const [campaigns, setCampaigns] = useState<Array<{id: string, title: string, description?: string}>>([])
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
+  const [assetsByContentId, setAssetsByContentId] = useState<Record<string, ContentAssetWithDetails[]>>({})
 
   // Initialize command+k hook
   useCommandK()
@@ -1661,7 +1717,9 @@ export default function ContentPage() {
         setContentItems(result.content)
         setTotalContent(result.count)
         setFilteredContent(result.content)
-        
+        const ids = result.content.map((c: ContentItem) => c.id)
+        const { byContentId } = await getContentAssetsByContentIds(ids)
+        setAssetsByContentId(byContentId || {})
         if (searchTerm || filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) {
           updateFilteredContent(searchTerm, filters, result.content)
         }
@@ -1951,6 +2009,7 @@ export default function ContentPage() {
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
+                  assetsByContentId={assetsByContentId}
                 />
               ) : (
                 <ContentTable 
@@ -1964,6 +2023,7 @@ export default function ContentPage() {
                   segments={segments}
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
+                  assetsByContentId={assetsByContentId}
                 />
               )}
             </TabsContent>
@@ -1980,6 +2040,7 @@ export default function ContentPage() {
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
+                  assetsByContentId={assetsByContentId}
                 />
               ) : (
                 <ContentTable 
@@ -1993,6 +2054,7 @@ export default function ContentPage() {
                   segments={segments}
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
+                  assetsByContentId={assetsByContentId}
                 />
               )}
             </TabsContent>
@@ -2009,6 +2071,7 @@ export default function ContentPage() {
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
+                  assetsByContentId={assetsByContentId}
                 />
               ) : (
                 <ContentTable 
@@ -2022,6 +2085,7 @@ export default function ContentPage() {
                   segments={segments}
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
+                  assetsByContentId={assetsByContentId}
                 />
               )}
             </TabsContent>
@@ -2038,6 +2102,7 @@ export default function ContentPage() {
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
+                  assetsByContentId={assetsByContentId}
                 />
               ) : (
                 <ContentTable 
@@ -2051,6 +2116,7 @@ export default function ContentPage() {
                   segments={segments}
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
+                  assetsByContentId={assetsByContentId}
                 />
               )}
             </TabsContent>
@@ -2067,6 +2133,7 @@ export default function ContentPage() {
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
+                  assetsByContentId={assetsByContentId}
                 />
               ) : (
                 <ContentTable 
@@ -2080,6 +2147,7 @@ export default function ContentPage() {
                   segments={segments}
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
+                  assetsByContentId={assetsByContentId}
                 />
               )}
             </TabsContent>

@@ -4,6 +4,14 @@ import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 
+export type ContentAssetRow = {
+  asset_id: string
+  content_id: string
+  position: number
+  is_primary: boolean
+  created_at: string
+}
+
 export type ContentItem = {
   id: string
   title: string
@@ -26,6 +34,18 @@ export type ContentItem = {
   estimated_reading_time: number | null
   seo_score: number | null
   performance_rating: number | null
+  assets?: ContentAsset[]
+}
+
+export type ContentAsset = {
+  id: string
+  name: string
+  description: string | null
+  file_path: string
+  file_type: string
+  file_size: number | null
+  position: number
+  is_primary: boolean
 }
 
 export interface ContentResponse {

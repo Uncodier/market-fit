@@ -25,7 +25,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { useDropzone } from "react-dropzone"
 import { cn } from "@/lib/utils"
 import { useSite } from "@/app/context/SiteContext"
-import { createAsset, uploadAssetFile } from "@/app/assets/actions"
+import { createAsset, uploadAssetFile, attachAssetToContent } from "@/app/assets/actions"
 import { useToast } from "@/app/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 
@@ -39,10 +39,24 @@ interface UploadAssetDialogProps {
     tags: string[]
     site_id: string
   }) => Promise<void>
+  /** When set, after create the asset is linked to this content (and set primary if first). */
+  contentId?: string
+  /** Called after successful upload (and link when contentId is set). */
+  onSuccess?: () => void
+  /** Controlled open state (use with onOpenChange and noTrigger to render trigger elsewhere). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** When true, do not render the default trigger button (use with open/onOpenChange). */
+  noTrigger?: boolean
 }
 
-export function UploadAssetDialog({ onUploadAsset }: UploadAssetDialogProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: controlledOpen, onOpenChange, noTrigger }: UploadAssetDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const applyOpen = useCallback((open: boolean) => {
+    if (onOpenChange) onOpenChange(open)
+    else setInternalOpen(open)
+  }, [onOpenChange])
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [tags, setTags] = useState<string[]>([])
@@ -178,22 +192,34 @@ export function UploadAssetDialog({ onUploadAsset }: UploadAssetDialogProps) {
         throw new Error("No se pudo obtener la URL del archivo subido")
       }
       
-      // Luego creamos el registro en la base de datos
-      await onUploadAsset({ 
+      const payload = {
         name,
         description: description || undefined,
         file_path: path,
-        file_type: getFileType(),
+        file_type: file.type || getFileType(),
         file_size: file.size,
         tags,
         site_id: currentSite.id
-      })
-      
+      }
+
+      if (contentId) {
+        const { asset, error: createError } = await createAsset(payload)
+        if (createError) throw new Error(createError)
+        if (asset) {
+          const { error: linkError } = await attachAssetToContent(contentId, asset.id, { is_primary: true })
+          if (linkError) {
+            setError(linkError)
+            return
+          }
+        }
+      } else {
+        await onUploadAsset(payload)
+      }
+
       // Limpiar el formulario y cerrar el modal
       resetForm()
-      setIsOpen(false)
-
-      // Refrescar la lista de assets
+      applyOpen(false)
+      onSuccess?.()
       router.refresh()
     } catch (err) {
       console.error("Error uploading asset:", err)
@@ -205,15 +231,17 @@ export function UploadAssetDialog({ onUploadAsset }: UploadAssetDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open)
+      applyOpen(open)
       if (!open) resetForm()
     }}>
-      <DialogTrigger asChild>
-        <Button className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-          <UploadCloud className="h-4 w-4" />
-          Upload Asset
-        </Button>
-      </DialogTrigger>
+      {!noTrigger && (
+        <DialogTrigger asChild>
+          <Button className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+            <UploadCloud className="h-4 w-4" />
+            Upload Asset
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>Upload New Asset</DialogTitle>

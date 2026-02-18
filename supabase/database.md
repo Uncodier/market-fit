@@ -359,6 +359,16 @@ CREATE TABLE public.content (
   CONSTRAINT content_command_id_fkey FOREIGN KEY (command_id) REFERENCES public.commands(id),
   CONSTRAINT content_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.sites(id)
 );
+CREATE TABLE public.content_assets (
+  content_id uuid NOT NULL,
+  asset_id uuid NOT NULL,
+  position integer NOT NULL DEFAULT 0,
+  is_primary boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT content_assets_pkey PRIMARY KEY (content_id, asset_id),
+  CONSTRAINT content_assets_content_id_fkey FOREIGN KEY (content_id) REFERENCES public.content(id) ON DELETE CASCADE,
+  CONSTRAINT content_assets_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE
+);
 CREATE TABLE public.conversations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   visitor_id uuid,

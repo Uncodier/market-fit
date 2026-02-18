@@ -100,7 +100,7 @@ const isAssetCompatibleWithAgent = (asset: Asset): boolean => {
 function AssetCardSkeleton() {
   return (
     <Card className="group relative overflow-hidden transition-all duration-300">
-      <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-muted/50 to-muted/70">
+      <div className="aspect-square w-full relative overflow-hidden bg-gradient-to-br from-muted/50 to-muted/70">
         <div className="w-full h-full animate-pulse">
           <Skeleton className="w-full h-full" />
         </div>
@@ -417,7 +417,7 @@ function AssetCard({
   return (
     <>
       <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-muted/40 to-muted/60">
+        <div className="aspect-square w-full relative overflow-hidden bg-gradient-to-br from-muted/40 to-muted/60">
           {shouldShowImage ? (
             <img
               src={asset.file_path}

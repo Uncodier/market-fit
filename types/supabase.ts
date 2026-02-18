@@ -141,6 +141,29 @@ export interface Database {
           created_at?: string
         }
       }
+      content_assets: {
+        Row: {
+          content_id: string
+          asset_id: string
+          position: number
+          is_primary: boolean
+          created_at: string
+        }
+        Insert: {
+          content_id: string
+          asset_id: string
+          position?: number
+          is_primary?: boolean
+          created_at?: string
+        }
+        Update: {
+          content_id?: string
+          asset_id?: string
+          position?: number
+          is_primary?: boolean
+          created_at?: string
+        }
+      }
       assets: {
         Row: {
           id: string

@@ -11,6 +11,9 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
 import { updateContent, updateContentStatus, deleteContent, getContentById } from "../actions"
 import { getContentTypeName, processMarkdownText, markdownToHTML } from "../utils"
+import { ContentAssetsGrid } from "./components/ContentAssetsGrid"
+import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
+import { createAsset } from "@/app/assets/actions"
 
 // Function to convert HTML back to markdown
 const htmlToMarkdown = (html: string): string => {
@@ -187,10 +190,10 @@ const MenuBar = ({
   hasChanges,
   contentType,
   onTeleprompter
-}: { 
-  editor: any, 
+}: {
+  editor: any,
   instructionsEditor: any,
-  onSave: () => void, 
+  onSave: () => void,
   isSaving: boolean,
   onDelete: () => void,
   activeTab: 'copy' | 'instructions',
@@ -199,7 +202,7 @@ const MenuBar = ({
   onTeleprompter?: () => void
 }) => {
   const currentEditor = activeTab === 'copy' ? editor : instructionsEditor
-  
+
   if (!currentEditor) {
     return null
   }
@@ -955,6 +958,8 @@ export default function ContentDetailPage() {
   const [topicsToAvoid, setTopicsToAvoid] = useState('')
   const [campaigns, setCampaigns] = useState<Array<{id: string, title: string, description?: string}>>([])
   const [segments, setSegments] = useState<Array<{id: string, name: string}>>([])
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+  const [assetsRefreshTrigger, setAssetsRefreshTrigger] = useState(0)
 
   // Functions to determine slider labels
   const getToneLabel = (value: number) => {
@@ -1690,6 +1695,19 @@ export default function ContentDetailPage() {
 
   return (
     <div className="flex h-[calc(100vh-64px)]">
+      {content?.id && (
+        <UploadAssetDialog
+          contentId={content.id}
+          onUploadAsset={async (data) => {
+            const r = await createAsset(data)
+            if (r.error) throw new Error(r.error)
+          }}
+          open={uploadDialogOpen}
+          onOpenChange={setUploadDialogOpen}
+          noTrigger
+          onSuccess={() => setAssetsRefreshTrigger((t) => t + 1)}
+        />
+      )}
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none">
@@ -1703,7 +1721,6 @@ export default function ContentDetailPage() {
             hasChanges={hasUnsavedChanges()}
             contentType={content?.type}
             onTeleprompter={() => {
-              // Navigate to teleprompter page
               router.push(`/teleprompter/${content.id}`)
             }}
           />
@@ -1725,11 +1742,20 @@ export default function ContentDetailPage() {
             {/* Editor Content */}
             <div className="flex-1 flex flex-col">
               {activeTab === 'copy' ? (
-                <EditorContent 
-                  editor={editor} 
-                  className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
-                  style={{ minHeight: 'calc(100vh - 280px)' }}
-                />
+                <>
+                  <EditorContent 
+                    editor={editor} 
+                    className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
+                    style={{ minHeight: 'calc(100vh - 280px)' }}
+                  />
+                  {content?.id && (
+                    <ContentAssetsGrid
+                      contentId={content.id}
+                      refreshTrigger={assetsRefreshTrigger}
+                      onOpenUpload={() => setUploadDialogOpen(true)}
+                    />
+                  )}
+                </>
               ) : (
                 <EditorContent 
                   editor={instructionsEditor} 

@@ -287,7 +287,7 @@ export default function SettingsPage() {
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "channels", "team", "activities", "social"].includes(tab)) {
+    if (tab && ["general", "channels", "team", "activities"].includes(tab)) {
       setActiveSegment(tab)
     }
   }, [searchParams])
@@ -396,8 +396,6 @@ export default function SettingsPage() {
         return teamSections
       case "activities":
         return activitiesSections
-      case "social":
-        return socialSections
       default:
         return []
     }
@@ -413,7 +411,6 @@ export default function SettingsPage() {
               <TabsList>
                 <TabsTrigger value="general">General Settings</TabsTrigger>
                 <TabsTrigger value="channels">Agent Channels</TabsTrigger>
-                <TabsTrigger value="social">Social Integrations</TabsTrigger>
                 <TabsTrigger value="team">Team</TabsTrigger>
                 <TabsTrigger value="activities">Activities</TabsTrigger>
               </TabsList>
@@ -447,7 +444,6 @@ export default function SettingsPage() {
             <TabsList className="flex">
               <TabsTrigger value="general" className="whitespace-nowrap">General Settings</TabsTrigger>
               <TabsTrigger value="channels" className="whitespace-nowrap">Agent Channels</TabsTrigger>
-              <TabsTrigger value="social" className="whitespace-nowrap">Social Integrations</TabsTrigger>
               <TabsTrigger value="team" className="whitespace-nowrap">Team</TabsTrigger>
               <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
             </TabsList>

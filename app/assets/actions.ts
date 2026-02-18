@@ -155,6 +155,245 @@ export async function getAgentAssets(agentId: string): Promise<{ assetIds?: stri
   }
 }
 
+// --- Content-Assets (many-to-many) ---
+
+export type ContentAssetWithDetails = {
+  id: string
+  name: string
+  description: string | null
+  file_path: string
+  file_type: string
+  file_size: number | null
+  position: number
+  is_primary: boolean
+  created_at: string
+}
+
+export async function getContentAssets(contentId: string): Promise<{
+  assets?: ContentAssetWithDetails[]
+  error?: string
+}> {
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('content_assets')
+      .select(`
+        position,
+        is_primary,
+        created_at,
+        assets (
+          id,
+          name,
+          description,
+          file_path,
+          file_type,
+          file_size,
+          created_at
+        )
+      `)
+      .eq('content_id', contentId)
+      .order('position', { ascending: true })
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error("Error getting content assets:", error)
+      return { error: "Error getting content assets" }
+    }
+
+    const assets: ContentAssetWithDetails[] = (data || [])
+      .filter((row: { assets: unknown }) => row.assets != null)
+      .map((row: {
+        position: number
+        is_primary: boolean
+        created_at: string
+        assets: {
+          id: string
+          name: string
+          description: string | null
+          file_path: string
+          file_type: string
+          file_size: number | null
+          created_at: string
+        }
+      }) => ({
+        id: row.assets.id,
+        name: row.assets.name,
+        description: row.assets.description,
+        file_path: row.assets.file_path,
+        file_type: row.assets.file_type,
+        file_size: row.assets.file_size,
+        position: row.position,
+        is_primary: row.is_primary,
+        created_at: row.created_at
+      }))
+
+    return { assets }
+  } catch (error) {
+    console.error("Error getting content assets:", error)
+    return { error: "Error getting content assets" }
+  }
+}
+
+/** Fetch assets for multiple content IDs. Returns a map contentId -> assets (ordered; primary first). */
+export async function getContentAssetsByContentIds(contentIds: string[]): Promise<{
+  byContentId?: Record<string, ContentAssetWithDetails[]>
+  error?: string
+}> {
+  if (contentIds.length === 0) return { byContentId: {} }
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('content_assets')
+      .select(`
+        content_id,
+        position,
+        is_primary,
+        created_at,
+        assets (
+          id,
+          name,
+          description,
+          file_path,
+          file_type,
+          file_size,
+          created_at
+        )
+      `)
+      .in('content_id', contentIds)
+      .order('position', { ascending: true })
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error("Error getting content assets bulk:", error)
+      return { error: "Error getting content assets" }
+    }
+
+    const byContentId: Record<string, ContentAssetWithDetails[]> = {}
+    for (const id of contentIds) byContentId[id] = []
+    ;(data || []).forEach((row: {
+      content_id: string
+      position: number
+      is_primary: boolean
+      created_at: string
+      assets: {
+        id: string
+        name: string
+        description: string | null
+        file_path: string
+        file_type: string
+        file_size: number | null
+        created_at: string
+      } | null
+    }) => {
+      if (!row.assets) return
+      const list = byContentId[row.content_id] || []
+      list.push({
+        id: row.assets.id,
+        name: row.assets.name,
+        description: row.assets.description,
+        file_path: row.assets.file_path,
+        file_type: row.assets.file_type,
+        file_size: row.assets.file_size,
+        position: row.position,
+        is_primary: row.is_primary,
+        created_at: row.created_at
+      })
+      byContentId[row.content_id] = list
+    })
+    return { byContentId }
+  } catch (error) {
+    console.error("Error getting content assets bulk:", error)
+    return { error: "Error getting content assets" }
+  }
+}
+
+export async function attachAssetToContent(
+  contentId: string,
+  assetId: string,
+  options?: { is_primary?: boolean; position?: number }
+): Promise<{ error?: string }> {
+  try {
+    const supabase = createClient()
+    const isPrimary = options?.is_primary ?? false
+    const position = options?.position ?? 0
+
+    if (isPrimary) {
+      await supabase
+        .from('content_assets')
+        .update({ is_primary: false })
+        .eq('content_id', contentId)
+    }
+
+    const { error } = await supabase
+      .from('content_assets')
+      .insert({
+        content_id: contentId,
+        asset_id: assetId,
+        position,
+        is_primary: isPrimary
+      })
+
+    if (error) {
+      if (error.code === '23505') return { error: "Asset is already linked to this content" }
+      console.error("Error attaching asset to content:", error)
+      return { error: "Error attaching asset to content" }
+    }
+    return {}
+  } catch (error) {
+    console.error("Error attaching asset to content:", error)
+    return { error: "Error attaching asset to content" }
+  }
+}
+
+export async function detachAssetFromContent(contentId: string, assetId: string): Promise<{ error?: string }> {
+  try {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('content_assets')
+      .delete()
+      .match({ content_id: contentId, asset_id: assetId })
+
+    if (error) {
+      console.error("Error detaching asset from content:", error)
+      return { error: "Error detaching asset from content" }
+    }
+    return {}
+  } catch (error) {
+    console.error("Error detaching asset from content:", error)
+    return { error: "Error detaching asset from content" }
+  }
+}
+
+export async function setContentPrimaryAsset(
+  contentId: string,
+  assetId: string
+): Promise<{ error?: string }> {
+  try {
+    const supabase = createClient()
+    const { error: unsetError } = await supabase
+      .from('content_assets')
+      .update({ is_primary: false })
+      .eq('content_id', contentId)
+    if (unsetError) {
+      console.error("Error unsetting primary:", unsetError)
+      return { error: "Error updating primary asset" }
+    }
+    const { error } = await supabase
+      .from('content_assets')
+      .update({ is_primary: true })
+      .eq('content_id', contentId)
+      .eq('asset_id', assetId)
+    if (error) {
+      console.error("Error setting primary:", error)
+      return { error: "Error setting primary asset" }
+    }
+    return {}
+  } catch (error) {
+    console.error("Error setting primary asset:", error)
+    return { error: "Error setting primary asset" }
+  }
+}
+
 export async function createAsset(data: CreateAssetInput): Promise<{ error?: string, asset?: Asset, debug?: any }> {
   try {
     const supabase = createClient()
