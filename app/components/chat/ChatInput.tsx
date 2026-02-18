@@ -117,9 +117,8 @@ export const ChatInput = memo(function ChatInput({
   return (
     <div 
       className={cn(
-        "sticky bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10 mb-[20px]"
+        "sticky bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10"
       )}
-      style={{ bottom: '20px' }}
     >
       <div>
         <div className="max-w-[800px] mx-auto">
@@ -130,13 +129,13 @@ export const ChatInput = memo(function ChatInput({
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
                 placeholder="Message..."
-                className="resize-none min-h-[121.5px] w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
+                className="resize-none w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out pt-4"
                 disabled={isLoading}
                 style={{
                   lineHeight: '1.5',
                   overflowY: 'hidden',
                   wordWrap: 'break-word',
-                  paddingBottom: '45px',
+                  paddingBottom: '15px',
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
                   height: '121.5px',

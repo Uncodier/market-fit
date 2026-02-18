@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File } from "@/app/components/ui/icons"
+import { MessageSquare, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File, ListTodo } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
@@ -181,6 +181,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     onClick={handleDropdownToggle}
                     title={
                       selectedActivity === 'ask' ? 'Ask' : 
+                      selectedActivity === 'plan' ? 'Plan' :
                       selectedActivity === 'generate-image' ? 'Generate Image' :
                       selectedActivity === 'generate-video' ? 'Generate Video' :
                       'Select activity'
@@ -189,12 +190,14 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     <div className="flex items-center w-full">
                       <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
                         {selectedActivity === 'ask' && <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />}
+                        {selectedActivity === 'plan' && <ListTodo className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />}
                         {selectedActivity === 'generate-image' && <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />}
                         {selectedActivity === 'generate-video' && <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />}
                       </div>
                       <div className="flex flex-col min-w-0 ml-2">
                         <span className="truncate">
                           {selectedActivity === 'ask' ? 'Ask' : 
+                           selectedActivity === 'plan' ? 'Plan' :
                            selectedActivity === 'generate-image' ? 'Generate Image' :
                            selectedActivity === 'generate-video' ? 'Generate Video' :
                            'Select activity'}
@@ -223,6 +226,21 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
                             <span className="truncate">Ask</span>
+                          </div>
+                        </div>
+                        <div 
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
+                          onClick={() => {
+                            onActivityChange('plan')
+                            setIsDropdownOpen(false)
+                          }}
+                          title="Plan"
+                        >
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <ListTodo className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Plan</span>
                           </div>
                         </div>
                         {/* Robot option hidden - removed per user request */}

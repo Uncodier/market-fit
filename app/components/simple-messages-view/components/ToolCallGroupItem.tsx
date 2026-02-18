@@ -37,7 +37,7 @@ export const ToolCallGroupItem: React.FC<ToolCallGroupItemProps> = ({
   const pendingCount = logs.filter(l => l.details?.status === 'pending').length
 
   return (
-    <div className="w-full min-w-0 overflow-hidden">
+    <div className="w-full min-w-0 overflow-hidden max-w-[calc(100%-240px)] mx-auto">
       <div
         className="rounded-lg text-xs cursor-pointer hover:opacity-90 transition-all duration-200 ease-in-out"
         style={{

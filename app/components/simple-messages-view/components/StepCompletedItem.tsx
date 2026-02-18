@@ -31,7 +31,7 @@ export const StepCompletedItem: React.FC<StepCompletedItemProps> = ({
   const { stepNumber, assistantMessage } = parseStructuredOutput(log.message)
 
   return (
-    <div className="w-full min-w-0 overflow-hidden">
+    <div className="w-full min-w-0 overflow-hidden max-w-[calc(100%-240px)] mx-auto">
       <div 
         className="rounded-lg p-4 text-sm"
         style={{ 

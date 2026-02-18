@@ -136,8 +136,6 @@ const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
   }
 };
 
-const IS_HIDDEN = false;
-
 interface SocialSectionProps {
   active: boolean
   onSave?: (data: SiteFormValues) => void
@@ -151,7 +149,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
 
   // Emit social networks update event whenever socialMedia changes
   useEffect(() => {
-    if (active && !IS_HIDDEN) {
+    if (active) {
       const socialNetworksData = socialMedia.map((social, index) => ({
         id: `social-network-${index}`,
         title: social.platform ? (SOCIAL_PLATFORMS.find(p => p.value === social.platform)?.label || social.platform) : "New Network",
@@ -312,7 +310,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     }
   }, [])
 
-  if (!active || IS_HIDDEN) return null
+  if (!active) return null
 
   return (
     <div id="social-networks-section" className="space-y-6">

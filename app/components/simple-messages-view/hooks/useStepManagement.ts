@@ -371,6 +371,82 @@ export const useStepManagement = ({
     toggleStepStatus,
     pausePlan,
     resumePlan,
-    canEditOrDeleteStep
+    canEditOrDeleteStep,
+    addStep
   }
 }
+
+  const addStep = async (planId: string, title: string) => {
+    if (!activeRobotInstance?.id) return
+
+    try {
+      const supabase = createClient()
+      
+      // Get current plan to ensure we have latest steps
+      const { data: plan, error: fetchError } = await supabase
+        .from('instance_plans')
+        .select('steps')
+        .eq('id', planId)
+        .single()
+      
+      if (fetchError || !plan) {
+        console.error('Error fetching plan for add step:', fetchError)
+        toast({
+          title: "Error adding step",
+          description: "Could not fetch plan details",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const currentSteps = Array.isArray(plan.steps) ? plan.steps : []
+      
+      // Create new step
+      // Generate a simple ID if crypto.randomUUID is not available (though it should be in modern browsers)
+      const stepId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      
+      const newStep = {
+        id: stepId,
+        title: title.trim(),
+        description: null, // Default to null
+        status: 'pending',
+        // order is implicit by array position, but we can store it if needed by the backend schema
+        // The previous code in useInstancePlans assigns order based on index
+      }
+      
+      const updatedSteps = [...currentSteps, newStep]
+      
+      console.log('📝 Adding new step to plan:', { planId, stepTitle: title, newStepCount: updatedSteps.length })
+      
+      const { error: updateError } = await supabase
+        .from('instance_plans')
+        .update({
+          steps: updatedSteps,
+          steps_total: updatedSteps.length,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', planId)
+
+      if (updateError) {
+        console.error('Error updating plan with new step:', updateError)
+        toast({
+          title: "Error adding step",
+          description: updateError.message || "Failed to add step",
+          variant: "destructive"
+        })
+      } else {
+        console.log('Step added successfully')
+        toast({
+          title: "Step added",
+          description: "New step added to the plan"
+        })
+      }
+    } catch (error) {
+      console.error('Error adding step:', error)
+      toast({
+        title: "Error adding step",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      })
+    }
+  }

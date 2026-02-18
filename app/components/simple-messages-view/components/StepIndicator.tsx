@@ -43,13 +43,9 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
   if (steps.length === 0 && assets.length === 0) return null
 
   return (
-    <div className="absolute bottom-[175px] md:bottom-[180px] left-0 right-0 z-[5] transition-all duration-500 ease-in-out">
-      <div className={isBrowserVisible ? "max-w-[calc(100%-80px)] mx-auto" : "max-w-[calc(100%-240px)] mx-auto"}>
-        <div className={`rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 ${
-          allCompleted ? 'bg-green-50/95 border-green-200' : 'bg-background/95 border-border'
-        }`} style={{
-          padding: isBrowserVisible ? '0.5rem' : '0.75rem'
-        }}>
+    <div className="w-full mb-4 max-w-[800px] mx-auto">
+      <div className="rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 bg-background/95 border-border">
+        <div style={{padding: '0.75rem'}}>
           {expanded ? (
             <div className="space-y-2">
               {/* Header with close button */}
@@ -111,8 +107,8 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                 </div>
               )}
               
-              {/* Current step header - only show if there are steps */}
-              {steps.length > 0 && (
+              {/* Current step header - only when plan not completed (when completed, show only assets) */}
+              {steps.length > 0 && !allCompleted && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     allCompleted ? 'bg-green-500' :
@@ -170,7 +166,8 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                 </div>
               )}
 
-              {/* All steps list */}
+              {/* All steps list - hide when plan completed (only assets shown) */}
+              {!allCompleted && (
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {steps.map((step, index) => {
                   const canEdit = canEditOrDeleteStep(step)
@@ -225,6 +222,18 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                   )
                 })}
               </div>
+              )}
+            </div>
+          ) : allCompleted && assets.length > 0 ? (
+            /* Collapsed: plan completed – show only assets row */
+            <div 
+              className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 rounded transition-colors"
+              onClick={() => onToggleExpanded()}
+            >
+              <Folder className="h-4 w-4" />
+              <span className="font-medium">Assets ({assets.length})</span>
+              <span className="text-xs">- Click to view uploaded files</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
             </div>
           ) : steps.length > 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

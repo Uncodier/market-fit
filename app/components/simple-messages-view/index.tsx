@@ -415,7 +415,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     toggleStepStatus,
     pausePlan,
     resumePlan,
-    canEditOrDeleteStep
+    canEditOrDeleteStep,
+    addStep
   } = useStepManagement({
     activeRobotInstance,
     steps,
@@ -459,6 +460,34 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     }
   }, [selectedActivity, router])
 
+  // Smart submit handler to intercept messages when a plan is active
+  const handleSmartSubmit = useCallback(async () => {
+    // Check if there is an active plan (in_progress or paused)
+    // We prioritize in_progress, then paused
+    const activePlan = instancePlans.find(p => p.status === 'in_progress') || 
+                      instancePlans.find(p => p.status === 'paused')
+    
+    // Only intercept if there's an active plan AND we are in 'ask' mode (default chat)
+    // If user is in 'robot' mode or other specific modes, let them proceed normally
+    // Also ensure message is not empty
+    if (activePlan && message.trim() && selectedActivity === 'ask') {
+      console.log('🎯 Smart Submit: Adding step to active plan', activePlan.id)
+      
+      // Add the message as a step
+      await addStep(activePlan.id, message)
+      
+      // Clear the message input
+      clearMessage()
+      
+      // Scroll to bottom to show the change
+      scrollToBottom()
+    } else {
+      // Normal behavior
+      console.log('📨 Smart Submit: Sending normal message')
+      handleSendMessage()
+    }
+  }, [instancePlans, message, selectedActivity, addStep, clearMessage, scrollToBottom, handleSendMessage])
+
   // Show loading skeleton when loading logs
   if (isLoadingLogs) {
     return <MessagesSkeleton />
@@ -483,7 +512,14 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     })
   })
   
+  // Track which plans we've already added to avoid duplicates
+  const addedPlanIds = new Set<string>()
+  
+  // 1. Add real historical plans (completed, failed, cancelled)
   completedPlans.forEach(plan => {
+    if (addedPlanIds.has(plan.id)) return
+    addedPlanIds.add(plan.id)
+    
     const timestamp = plan.completed_at || plan.updated_at || plan.created_at
     timelineItems.push({
       type: 'completed_plan',
@@ -491,10 +527,52 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       data: plan
     })
   })
+
+  // 2. Add active plans (pending, in_progress, etc.)
+  // This ensures they show up in the timeline even before they are completed
+  instancePlans.forEach(plan => {
+    if (addedPlanIds.has(plan.id)) return
+    addedPlanIds.add(plan.id)
+    
+    const isAllStepsCompleted = areAllStepsCompleted() && steps.some(s => s.planId === plan.id || !s.planId)
+    
+    // If it's visually completed but still in instancePlans, treat it as completed for the timeline
+    if (isAllStepsCompleted) {
+      // For visually completed, use updated_at or now
+      const timestamp = plan.updated_at || plan.created_at || new Date().toISOString()
+      
+      timelineItems.push({
+        type: 'completed_plan',
+        timestamp: timestamp,
+        data: {
+          ...plan,
+          status: 'completed',
+          steps: steps.filter(s => s.planId === plan.id || !s.planId)
+        }
+      })
+    } else {
+      // Otherwise, show it at its creation time so it appears where it started
+      const timestamp = plan.created_at
+      timelineItems.push({
+        type: 'completed_plan',
+        timestamp: timestamp,
+        data: plan
+      })
+    }
+  })
   
-  const sortedTimeline = timelineItems.sort((a, b) =>
-    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  )
+  const sortedTimeline = timelineItems.sort((a, b) => {
+    const timeA = new Date(a.timestamp).getTime()
+    const timeB = new Date(b.timestamp).getTime()
+    
+    if (timeA === timeB) {
+      // Tie-breaker: logs come before plans at the same timestamp
+      if (a.type === 'log' && b.type === 'completed_plan') return -1
+      if (a.type === 'completed_plan' && b.type === 'log') return 1
+    }
+    
+    return timeA - timeB
+  })
 
   const isToolCallLog = (log: any) => {
     const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
@@ -519,7 +597,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   return (
     <div className={`flex flex-col w-full min-w-0 h-full relative ${className}`}>
       {/* Messages list */}
-      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto overflow-x-hidden py-6 w-full min-w-0 transition-colors duration-300 ease-in-out pt-[91px] pb-44`}>
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden py-6 w-full min-w-0 transition-colors duration-300 ease-in-out pt-[91px] pb-[520px]"
+      >
         <div className={isBrowserVisible ? "max-w-[calc(100%-80px)] mx-auto min-w-0" : "max-w-[calc(100%-240px)] mx-auto min-w-0"}>
         <div className="space-y-6">
         {(() => {
@@ -671,7 +752,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         })()}
         
         {/* Extra padding to avoid floating step indicator overlap */}
-        <div className="pb-48"></div>
+        <div className="pb-2"></div>
         
         {/* Invisible element for auto-scroll */}
         <div ref={messagesEndRef} />
@@ -679,38 +760,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         </div>
       </div>
 
-      {/* Floating Step Indicator - Expandable */}
-      {(() => {
-        const shouldShow = steps.length > 0 || assets.length > 0
-        console.log('StepIndicator should show:', shouldShow, 'steps:', steps.length, 'assets:', assets.length)
-        return shouldShow
-      })() && (
-        <StepIndicator
-          steps={steps}
-          instancePlans={instancePlans}
-          currentStep={getCurrentStep()}
-          allCompleted={areAllStepsCompleted()}
-          expanded={isStepIndicatorExpanded}
-          onToggleExpanded={() => setIsStepIndicatorExpanded(!isStepIndicatorExpanded)}
-          onTogglePause={(planId: string) => {
-            pausePlan(planId)
-          }}
-          onToggleResume={(planId: string) => {
-            resumePlan(planId)
-          }}
-          onEditStep={openEditModal}
-          onDeleteStep={deleteStep}
-          onToggleStepStatus={toggleStepStatus}
-          canEditOrDeleteStep={canEditOrDeleteStep}
-          assets={assets}
-          onDeleteAsset={deleteAsset}
-          isBrowserVisible={isBrowserVisible}
-        />
-      )}
-
       {/* Message input area - fixed positioning like ChatInput */}
       <div 
-        className={`fixed flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10`}
+        className={`fixed flex-col flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10`}
         style={{ 
           bottom: isEmpty ? '50%' : '20px',
           transform: isEmpty ? 'translateY(50%)' : 'none',
@@ -720,6 +772,35 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           minWidth: 800
         }}
       >
+        {/* Floating Step Indicator - Expandable */}
+        {(() => {
+          const isAllCompleted = areAllStepsCompleted()
+          // Show widget when there are assets (always) or when there are steps not yet all completed
+          const shouldShow = assets.length > 0 || (steps.length > 0 && !isAllCompleted)
+          return shouldShow
+        })() && (
+          <StepIndicator
+            steps={steps}
+            instancePlans={instancePlans}
+            currentStep={getCurrentStep()}
+            allCompleted={areAllStepsCompleted()}
+            expanded={isStepIndicatorExpanded}
+            onToggleExpanded={() => setIsStepIndicatorExpanded(!isStepIndicatorExpanded)}
+            onTogglePause={(planId: string) => {
+              pausePlan(planId)
+            }}
+            onToggleResume={(planId: string) => {
+              resumePlan(planId)
+            }}
+            onEditStep={openEditModal}
+            onDeleteStep={deleteStep}
+            onToggleStepStatus={toggleStepStatus}
+            canEditOrDeleteStep={canEditOrDeleteStep}
+            assets={assets}
+            onDeleteAsset={deleteAsset}
+            isBrowserVisible={isBrowserVisible}
+          />
+        )}
         <MessageInput
           message={message}
           selectedActivity={selectedActivity}
@@ -728,7 +809,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           handleMessageChange={handleMessageChange}
           onActivityChange={setSelectedActivity}
           onContextChange={setSelectedContext}
-          onSubmit={handleSendMessage}
+          onSubmit={handleSmartSubmit}
           disabled={isSendingMessage || isStartingRobot}
           placeholder={activeRobotInstance ? (isSendingMessage ? "Sending message..." : "Ask anything...") : (isStartingRobot ? "Starting robot..." : "Ask anything...")}
           textareaRef={textareaRef}

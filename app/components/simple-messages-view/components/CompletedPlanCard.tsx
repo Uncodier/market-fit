@@ -12,6 +12,8 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
   const isCompleted = plan.status === 'completed'
   const isFailed = plan.status === 'failed'
   const isCancelled = plan.status === 'cancelled'
+  const isPending = plan.status === 'pending'
+  const isInProgress = plan.status === 'in_progress'
   
   const baseClasses = isCompleted
     ? {
@@ -51,6 +53,25 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
           : 'text-red-600',
         label: 'Plan Failed',
       }
+    : (isPending || isInProgress)
+    ? {
+        container: isDarkMode 
+          ? 'bg-blue-900/20 border-blue-700/30' 
+          : 'bg-blue-50/50 border-blue-200/50',
+        labelWrap: isDarkMode 
+          ? 'text-blue-400 bg-blue-800/30' 
+          : 'text-blue-600 bg-blue-100',
+        title: isDarkMode 
+          ? 'text-blue-300' 
+          : 'text-blue-800',
+        text: isDarkMode 
+          ? 'text-blue-400' 
+          : 'text-blue-700',
+        meta: isDarkMode 
+          ? 'text-blue-500' 
+          : 'text-blue-600',
+        label: plan.plan_type === 'objective' ? 'New Objective' : 'Plan Started',
+      }
     : {
         container: isDarkMode 
           ? 'bg-amber-900/20 border-amber-700/30' 
@@ -71,7 +92,7 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
       }
 
   return (
-    <div className="space-y-4 w-full min-w-0 overflow-hidden">
+    <div className="space-y-4 w-full min-w-0 overflow-hidden max-w-[calc(100%-240px)] mx-auto">
       <div className={`${baseClasses.container} border rounded-lg p-4`}>
         <div className="mb-3">
           <span className={`text-xs px-2 py-1 rounded ${baseClasses.labelWrap}`}>
