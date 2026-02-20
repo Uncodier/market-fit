@@ -1353,7 +1353,12 @@ html.safari [data-hide-in-safari] {
     }
     .chat-input-container > div,
     .chat-input-container form,
-    .chat-input-container [class*="max-w"] {
+    .chat-input-container [class*="max-w"],
+    .chat-input-container .step-indicator-root {
+      min-width: 760px !important;
+      -webkit-min-width: 760px !important;
+    }
+    .chat-input-container .step-indicator-root .mx-auto {
       min-width: 760px !important;
       -webkit-min-width: 760px !important;
     }
@@ -1371,7 +1376,13 @@ html.safari .chat-input-container {
 
 html.safari .chat-input-container > div,
 html.safari .chat-input-container form,
-html.safari .chat-input-container [class*="max-w"] {
+html.safari .chat-input-container [class*="max-w"],
+html.safari .chat-input-container .step-indicator-root {
+  min-width: 760px !important;
+  -webkit-min-width: 760px !important;
+}
+
+html.safari .chat-input-container .step-indicator-root .mx-auto {
   min-width: 760px !important;
   -webkit-min-width: 760px !important;
 }
@@ -1386,3 +1397,5 @@ html.safari .chat-input-container[class*="fixed"] {
   min-width: 800px !important;
   -webkit-min-width: 800px !important;
 }
+
+/* Plan / StepIndicator: same min-width cascade as chat input (800 → 760) */

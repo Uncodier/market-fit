@@ -43,8 +43,12 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
   if (steps.length === 0 && assets.length === 0) return null
 
   return (
-    <div className="w-full mb-4 max-w-[800px] mx-auto">
-      <div className="rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 bg-background/95 border-border">
+    <div
+      className="step-indicator-root flex-none w-full mb-4 shrink-0"
+      style={{ width: '100%', minWidth: '100%' }}
+    >
+      <div className="mx-auto" style={{ width: '100%', maxWidth: '800px' }}>
+        <div className="rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 bg-background/95 border-border">
         <div style={{padding: '0.75rem'}}>
           {expanded ? (
             <div className="space-y-2">
@@ -319,6 +323,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               )}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

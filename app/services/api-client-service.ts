@@ -38,8 +38,15 @@ const getFullApiUrl = (baseUrl: string) => {
   if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
     return baseUrl;
   }
-  
-  return `http://${baseUrl}`;
+
+  // Default to https for non-local environments to avoid mixed-content errors in production.
+  const lower = baseUrl.toLowerCase();
+  const isLocal =
+    lower.startsWith('localhost') ||
+    lower.startsWith('127.0.0.1') ||
+    lower.startsWith('0.0.0.0');
+
+  return `${isLocal ? 'http' : 'https'}://${baseUrl}`;
 };
 
 // Full URL with protocol
@@ -82,6 +89,19 @@ export class ApiClientService {
 
   getApiUrl(): string {
     return this.apiServerUrl;
+  }
+
+  private buildUrl(endpoint: string): string {
+    // Allow absolute URLs.
+    if (endpoint && isValidUrl(endpoint)) return endpoint;
+
+    // If an API server URL is configured, send all requests (including /api/*) to it.
+    if (this.apiServerUrl && this.apiServerUrl.trim() !== '') {
+      return `${this.apiServerUrl}${endpoint}`;
+    }
+
+    // No external API: use endpoint as-is (relative URL, same-origin Next.js routes).
+    return endpoint;
   }
 
   private async getAuthToken(): Promise<string | null> {
@@ -182,21 +202,7 @@ export class ApiClientService {
   }
 
   async get<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
-    if (!this.apiServerUrl || this.apiServerUrl.trim() === '') {
-      console.error('API server URL is not configured. Please set NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL environment variable.');
-      return {
-        success: false,
-        error: { 
-          message: 'API server URL is not configured. Please check your environment variables.',
-          details: {
-            missingVar: 'NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL',
-            currentValue: this.apiServerUrl || 'undefined'
-          }
-        }
-      };
-    }
-
-    const url = `${this.apiServerUrl}${endpoint}`;
+    const url = this.buildUrl(endpoint);
     
     // Silence GET request log
 
@@ -234,21 +240,7 @@ export class ApiClientService {
   }
 
   async post<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
-    if (!this.apiServerUrl || this.apiServerUrl.trim() === '') {
-      console.error('API server URL is not configured. Please set NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL environment variable.');
-      return {
-        success: false,
-        error: { 
-          message: 'API server URL is not configured. Please check your environment variables.',
-          details: {
-            missingVar: 'NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL',
-            currentValue: this.apiServerUrl || 'undefined'
-          }
-        }
-      };
-    }
-
-    const url = `${this.apiServerUrl}${endpoint}`;
+    const url = this.buildUrl(endpoint);
     
     // Silence POST request logs
 
@@ -310,21 +302,7 @@ export class ApiClientService {
   }
 
   async put<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
-    if (!this.apiServerUrl || this.apiServerUrl.trim() === '') {
-      console.error('API server URL is not configured. Please set NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL environment variable.');
-      return {
-        success: false,
-        error: { 
-          message: 'API server URL is not configured. Please check your environment variables.',
-          details: {
-            missingVar: 'NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL',
-            currentValue: this.apiServerUrl || 'undefined'
-          }
-        }
-      };
-    }
-
-    const url = `${this.apiServerUrl}${endpoint}`;
+    const url = this.buildUrl(endpoint);
     
     // Silence PUT request logs
 
@@ -364,21 +342,7 @@ export class ApiClientService {
   }
 
   async delete<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
-    if (!this.apiServerUrl || this.apiServerUrl.trim() === '') {
-      console.error('API server URL is not configured. Please set NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL environment variable.');
-      return {
-        success: false,
-        error: { 
-          message: 'API server URL is not configured. Please check your environment variables.',
-          details: {
-            missingVar: 'NEXT_PUBLIC_API_SERVER_URL or API_SERVER_URL',
-            currentValue: this.apiServerUrl || 'undefined'
-          }
-        }
-      };
-    }
-
-    const url = `${this.apiServerUrl}${endpoint}`;
+    const url = this.buildUrl(endpoint);
     
     // Silence DELETE request logs
 

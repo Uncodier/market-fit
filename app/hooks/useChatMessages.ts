@@ -19,6 +19,8 @@ export function useChatMessages(
   const [isTransitioningConversation, setIsTransitioningConversation] = useState(false)
   const { hasActiveChatRequest } = useApiRequestTracker()
   const messageSubscriptionRef = useRef<any>(null)
+  const messageSubscriptionStatusRef = useRef<string>('INIT')
+  const isResubscribingRef = useRef(false)
   const lastConversationIdRef = useRef<string>('')
   
   // Efecto para controlar la animación de carga basado en peticiones API activas para esta conversación específica
@@ -32,14 +34,24 @@ export function useChatMessages(
     setIsTransitioningConversation(true)
     setChatMessages([])
   }, [])
+
+  const teardownRealtimeSubscription = useCallback(() => {
+    if (messageSubscriptionRef.current) {
+      try {
+        messageSubscriptionRef.current.unsubscribe()
+      } catch (e) {
+        console.warn('[useChatMessages] Failed to unsubscribe from realtime channel:', e)
+      } finally {
+        messageSubscriptionRef.current = null
+        messageSubscriptionStatusRef.current = 'CLOSED'
+      }
+    }
+  }, [])
   
   // Optimized message loader
   const loadMessages = useCallback(async () => {
     // Clean up any previous subscription
-    if (messageSubscriptionRef.current) {
-      messageSubscriptionRef.current.unsubscribe()
-      messageSubscriptionRef.current = null
-    }
+    teardownRealtimeSubscription()
   
     if (!conversationId) {
       setIsTransitioningConversation(false)
@@ -84,7 +96,9 @@ export function useChatMessages(
               const updatedMessages = await getConversationMessages(conversationId)
               setChatMessages(updatedMessages)
             })
-            .subscribe()
+            .subscribe((status: string) => {
+              messageSubscriptionStatusRef.current = status
+            })
         }
       }
     } catch (error) {
@@ -104,7 +118,32 @@ export function useChatMessages(
     } finally {
       setIsLoadingMessages(false)
     }
-  }, [conversationId])
+  }, [conversationId, teardownRealtimeSubscription])
+
+  const ensureRealtimeSubscriptionHealthy = useCallback(async () => {
+    if (!conversationId || conversationId.startsWith("new-")) return
+
+    const status = messageSubscriptionStatusRef.current
+    const hasChannel = Boolean(messageSubscriptionRef.current)
+
+    // Only resubscribe on known bad states or missing channel.
+    const shouldResubscribe =
+      !hasChannel ||
+      status === 'CHANNEL_ERROR' ||
+      status === 'TIMED_OUT' ||
+      status === 'CLOSED'
+
+    if (!shouldResubscribe) return
+    if (isResubscribingRef.current) return
+
+    isResubscribingRef.current = true
+    try {
+      teardownRealtimeSubscription()
+      await loadMessages()
+    } finally {
+      isResubscribingRef.current = false
+    }
+  }, [conversationId, loadMessages, teardownRealtimeSubscription])
   
   // Load messages when the conversation changes - optimized to prevent unnecessary reloads
   useEffect(() => {
@@ -116,12 +155,33 @@ export function useChatMessages(
     
     // Clean up subscription when the component unmounts
     return () => {
-      if (messageSubscriptionRef.current) {
-        messageSubscriptionRef.current.unsubscribe()
-        messageSubscriptionRef.current = null
+      teardownRealtimeSubscription()
+    }
+  }, [conversationId, loadMessages, teardownRealtimeSubscription])
+
+  // Subscription health check: when user re-enters the tab/window, renew realtime channel if needed.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        ensureRealtimeSubscriptionHealthy()
       }
     }
-  }, [conversationId, loadMessages])
+    const handleFocus = () => ensureRealtimeSubscriptionHealthy()
+    const handleOnline = () => ensureRealtimeSubscriptionHealthy()
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('online', handleOnline)
+
+    // Also run once on mount.
+    ensureRealtimeSubscriptionHealthy()
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [ensureRealtimeSubscriptionHealthy])
   
   return {
     chatMessages,

@@ -92,7 +92,7 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
       }
 
   return (
-    <div className="space-y-4 w-full min-w-0 overflow-hidden max-w-[calc(100%-240px)] mx-auto">
+    <div className="space-y-4 w-full min-w-[280px] overflow-hidden max-w-[calc(100%-240px)] mx-auto">
       <div className={`${baseClasses.container} border rounded-lg p-4`}>
         <div className="mb-3">
           <span className={`text-xs px-2 py-1 rounded ${baseClasses.labelWrap}`}>

@@ -977,13 +977,13 @@ export function ChatMessages({
   // Function to get estimated send time (next full hour from current local time)
   const getEstimatedSendTime = (message: ChatMessage) => {
     if (!message.metadata?.delay_timer) return null
-    
+
     // Use current local time - round up to next full hour (e.g. 8:41 -> 9:00 PM)
     const now = new Date()
     const nextHour = new Date(now)
     nextHour.setHours(now.getHours() + 1)
     nextHour.setMinutes(0, 0, 0)
-    
+
     const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
     return nextHour.toLocaleTimeString(undefined, {
       hour: '2-digit',
@@ -991,6 +991,29 @@ export function ChatMessages({
       timeZone: localTimeZone
     })
   }
+
+  const isDelivered = (message: ChatMessage) =>
+    message.metadata?.status === "delivered" || message.metadata?.status === "sent"
+
+  const renderMessageTime = (msg: ChatMessage, className = "text-xs opacity-70") => (
+    <p className={`${className} inline-flex items-center gap-1`}>
+      {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      {isDelivered(msg) && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-green-500" aria-label="Delivered">
+                <Icons.Check className="h-3 w-3" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Delivered</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </p>
+  )
 
   // Check if a conversation is selected
   const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
@@ -1223,9 +1246,7 @@ export function ChatMessages({
                                   </>
                                 )}
                               </div>
-                              <p className="text-xs opacity-70">
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </p>
+                              {renderMessageTime(msg)}
                             </div>
                           </div>
                           </div>
@@ -1343,9 +1364,7 @@ export function ChatMessages({
                                   </>
                                 )}
                               </div>
-                              <p className="text-xs opacity-70 text-right">
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </p>
+                              {renderMessageTime(msg, "text-xs opacity-70 text-right")}
                             </div>
                             </div>
                           </div>
@@ -1469,9 +1488,7 @@ export function ChatMessages({
                                   </>
                                 )}
                               </div>
-                              <p className="text-xs opacity-70">
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </p>
+                              {renderMessageTime(msg)}
                             </div>
                           </div>
                           </div>
@@ -1710,9 +1727,7 @@ export function ChatMessages({
                                   </>
                                 )}
                               </div>
-                              <p className="text-xs opacity-70 text-right">
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </p>
+                              {renderMessageTime(msg, "text-xs opacity-70 text-right")}
                             </div>
                           </div>
                           </div>
@@ -1824,9 +1839,7 @@ export function ChatMessages({
                                   </>
                                 )}
                               </div>
-                              <p className="text-xs opacity-70 text-right">
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </p>
+                              {renderMessageTime(msg, "text-xs opacity-70 text-right")}
                             </div>
                           </div>
                           </div>
@@ -1942,9 +1955,7 @@ export function ChatMessages({
                             </div>
                             
                             <div className="flex items-center justify-end flex-1">
-                              <p className="text-xs opacity-70">
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </p>
+                              {renderMessageTime(msg)}
                             </div>
                           </div>
                           </div>

@@ -34,6 +34,7 @@ interface RobotsContextValue {
   getInstanceById: (id: string) => Robot | null;
   refreshRobots: (siteId?: string) => Promise<void>;
   setAutoRefreshEnabled: (enabled: boolean) => void;
+  ensureRealtimeHealthy: () => void;
 }
 
 const RobotsContext = createContext<RobotsContextValue | undefined>(undefined)
@@ -62,6 +63,9 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
   const [refreshCount, setRefreshCount] = useState(0)
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true)
+  const robotsSubscriptionRef = useRef<any>(null)
+  const robotsSubscriptionStatusRef = useRef<string>('INIT')
+  const isResubscribingRef = useRef(false)
   
   // 🆕 Wait for site context to be fully synchronized (same logic as robots page)
   const [isSiteContextReady, setIsSiteContextReady] = useState(false)
@@ -279,6 +283,85 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     }
   }, [currentSite?.id, isSiteContextReady])
 
+  const teardownRealtimeSubscription = useCallback(() => {
+    if (robotsSubscriptionRef.current) {
+      try {
+        robotsSubscriptionRef.current.unsubscribe()
+      } catch (e) {
+        console.warn('[RobotsContext] Failed to unsubscribe from realtime channel:', e)
+      } finally {
+        robotsSubscriptionRef.current = null
+        robotsSubscriptionStatusRef.current = 'CLOSED'
+      }
+    }
+  }, [])
+
+  const setupRealtimeSubscription = useCallback(() => {
+    if (!currentSite?.id || !isSiteContextReady) return
+
+    const supabase = createClient()
+    teardownRealtimeSubscription()
+
+    const channel = supabase
+      .channel(`robots_context_${currentSite.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'remote_instances',
+          filter: `site_id=eq.${currentSite.id}`
+        },
+        (payload: any) => {
+          if (!autoRefreshEnabled) return
+
+          // Refresh on any instance change (INSERT, UPDATE, DELETE)
+          if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current)
+          }
+
+          // Use different delays based on event type
+          const delay = payload.eventType === 'INSERT' ? 300 : 500
+          refreshTimeoutRef.current = setTimeout(() => {
+            refreshRobots(currentSite?.id)
+          }, delay)
+        }
+      )
+      .subscribe((status: string) => {
+        robotsSubscriptionStatusRef.current = status
+        console.log('🔄 [RobotsContext] Subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('🔄 [RobotsContext] Subscription is active and ready to receive events')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('🔄 [RobotsContext] Subscription error - check Supabase configuration')
+        }
+      })
+
+    robotsSubscriptionRef.current = channel
+  }, [autoRefreshEnabled, currentSite?.id, isSiteContextReady, refreshRobots, teardownRealtimeSubscription])
+
+  const ensureRealtimeHealthy = useCallback(() => {
+    if (!currentSite?.id || !isSiteContextReady) return
+
+    const status = robotsSubscriptionStatusRef.current
+    const hasChannel = Boolean(robotsSubscriptionRef.current)
+    const shouldResubscribe =
+      !hasChannel ||
+      status === 'CHANNEL_ERROR' ||
+      status === 'TIMED_OUT' ||
+      status === 'CLOSED'
+
+    if (!shouldResubscribe) return
+    if (isResubscribingRef.current) return
+
+    isResubscribingRef.current = true
+    try {
+      setupRealtimeSubscription()
+    } finally {
+      isResubscribingRef.current = false
+    }
+  }, [currentSite?.id, isSiteContextReady, setupRealtimeSubscription])
+
   // Initial load when site changes - SIMPLIFIED to avoid clearing instances unnecessarily
   useEffect(() => {
     console.log('🔄 [RobotsContext] Site changed for site:', currentSite?.id)
@@ -298,51 +381,15 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   useEffect(() => {
     if (!currentSite?.id || !isSiteContextReady) return
 
-    const supabase = createClient()
-    
-    const robotsSubscription = supabase
-      .channel(`robots_context_${currentSite.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'remote_instances',
-          filter: `site_id=eq.${currentSite.id}`
-        },
-        (payload: any) => {
-          if (!autoRefreshEnabled) {
-            return
-          }
-          
-          // Refresh on any instance change (INSERT, UPDATE, DELETE)
-          if (refreshTimeoutRef.current) {
-            clearTimeout(refreshTimeoutRef.current)
-          }
-          
-          // Use different delays based on event type
-          const delay = payload.eventType === 'INSERT' ? 300 : 500
-          refreshTimeoutRef.current = setTimeout(() => {
-            refreshRobots(currentSite?.id)
-          }, delay)
-        }
-      )
-      .subscribe((status: any) => {
-        console.log('🔄 [RobotsContext] Subscription status:', status)
-        if (status === 'SUBSCRIBED') {
-          console.log('🔄 [RobotsContext] Subscription is active and ready to receive events')
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('🔄 [RobotsContext] Subscription error - check Supabase configuration')
-        }
-      })
+    setupRealtimeSubscription()
 
     return () => {
-      robotsSubscription.unsubscribe()
+      teardownRealtimeSubscription()
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current)
       }
     }
-  }, [currentSite?.id, refreshRobots, autoRefreshEnabled])
+  }, [currentSite?.id, isSiteContextReady, setupRealtimeSubscription, teardownRealtimeSubscription])
 
   // 🆕 Separate useEffect to handle site context synchronization
   useEffect(() => {
@@ -351,6 +398,30 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       // The real-time monitoring will be handled by the previous useEffect
     }
   }, [isSiteContextReady, currentSite?.id])
+
+  // Subscription health check: when user re-enters the tab/window, renew realtime channel if needed.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        ensureRealtimeHealthy()
+      }
+    }
+    const handleFocus = () => ensureRealtimeHealthy()
+    const handleOnline = () => ensureRealtimeHealthy()
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('online', handleOnline)
+
+    // Also run once on mount.
+    ensureRealtimeHealthy()
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [ensureRealtimeHealthy])
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -374,7 +445,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     getAllInstances,
     getInstanceById,
     refreshRobots,
-    setAutoRefreshEnabled
+    setAutoRefreshEnabled,
+    ensureRealtimeHealthy
   }
 
   return (

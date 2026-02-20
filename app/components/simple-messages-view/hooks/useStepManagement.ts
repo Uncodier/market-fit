@@ -357,25 +357,6 @@ export const useStepManagement = ({
     }
   }
 
-  return {
-    isEditModalOpen,
-    editingStep,
-    editTitle,
-    editDescription,
-    setEditTitle,
-    setEditDescription,
-    openEditModal,
-    closeEditModal,
-    saveStep,
-    deleteStep,
-    toggleStepStatus,
-    pausePlan,
-    resumePlan,
-    canEditOrDeleteStep,
-    addStep
-  }
-}
-
   const addStep = async (planId: string, title: string) => {
     if (!activeRobotInstance?.id) return
 
@@ -450,3 +431,22 @@ export const useStepManagement = ({
       })
     }
   }
+
+  return {
+    isEditModalOpen,
+    editingStep,
+    editTitle,
+    editDescription,
+    setEditTitle,
+    setEditDescription,
+    openEditModal,
+    closeEditModal,
+    saveStep,
+    deleteStep,
+    toggleStepStatus,
+    pausePlan,
+    resumePlan,
+    canEditOrDeleteStep,
+    addStep
+  }
+}

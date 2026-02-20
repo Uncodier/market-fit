@@ -17,13 +17,11 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
-import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, MoreVertical, Globe, Check, CheckCircle2, RotateCw, Clock } from "@/app/components/ui/icons"
-import { LinkedInIcon } from "@/app/components/ui/social-icons"
+import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, MoreVertical, Check, CheckCircle2, RotateCw, Clock } from "@/app/components/ui/icons"
 import { Badge } from "@/app/components/ui/badge"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { Switch } from "@/app/components/ui/switch"
-import { Slider } from "@/app/components/ui/slider"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { useSite } from "@/app/context/SiteContext"
@@ -60,7 +58,8 @@ type FinderSimpleEventReason = 'report_released' | 'promoted_on_site'
 interface FinderRequest {
   page?: number
 
-  role_title?: string
+  /** Single string or array of terms for OR semantics. */
+  role_title?: string | string[]
   role_description?: string
   role_is_current?: boolean
   role_position_start_date?: string
@@ -68,8 +67,10 @@ interface FinderRequest {
   role_years_on_position_start?: number
   role_years_on_position_end?: number
 
-  person_name?: string
-  person_headline?: string
+  /** Single string (legacy) or array of terms for OR semantics (e.g. "sergio" OR "juan"). */
+  person_name?: string | string[]
+  /** Single string or array of terms for OR semantics. */
+  person_headline?: string | string[]
   person_description?: string
   person_skills?: number[]
   person_locations?: number[]
@@ -102,8 +103,10 @@ interface FinderRequest {
   funding_event_date_featured_start?: string
   funding_event_date_featured_end?: string
 
-  job_post_title?: string
-  job_post_description?: string
+  /** Single string or array of terms for OR semantics. */
+  job_post_title?: string | string[]
+  /** Single string or array of terms for OR semantics. */
+  job_post_description?: string | string[]
   job_post_is_remote?: boolean | null
   job_post_is_active?: boolean | null
   job_post_date_featured_start?: string
@@ -180,8 +183,27 @@ function CollapsibleField({ title, children, defaultOpen = true, countBadge, onC
   )
 }
 
-function ChipsInput({ values, onChange, placeholder = "Search", onTextChange }: { values: string[]; onChange: (next: string[]) => void; placeholder?: string; onTextChange?: (text: string) => void }) {
-  const [text, setText] = useState("")
+function ChipsInput({
+  values,
+  onChange,
+  placeholder = "Search",
+  onTextChange,
+  inputValue,
+  onInputChange
+}: {
+  values: string[]
+  onChange: (next: string[]) => void
+  placeholder?: string
+  onTextChange?: (text: string) => void
+  /** When provided with onInputChange, the input is controlled (e.g. for clearing from parent). */
+  inputValue?: string
+  onInputChange?: (text: string) => void
+}) {
+  const [internalText, setInternalText] = useState("")
+  const isControlled = inputValue !== undefined && onInputChange !== undefined
+  const text = isControlled ? inputValue : internalText
+  const setText = isControlled ? onInputChange : setInternalText
+
   const add = () => {
     const v = text.trim()
     if (!v) return
@@ -224,7 +246,7 @@ function ChipsInput({ values, onChange, placeholder = "Search", onTextChange }: 
           ))}
         </div>
       )}
-      <p className="text-xs text-muted-foreground">Press "Enter" to add to search.</p>
+      <p className="text-xs text-muted-foreground">Press Enter to add; current text is included in search.</p>
     </div>
   )
 }
@@ -402,9 +424,12 @@ export default function PeopleSearchPage() {
   const [domainRankFrom, setDomainRankFrom] = useState<number | "">("")
   const [domainRankTo, setDomainRankTo] = useState<number | "">("")
   // single-string filters
-  const [personName, setPersonName] = useState<string>("")
-  const [personHeadline, setPersonHeadline] = useState<string>("")
-  const [jobTitle, setJobTitle] = useState<string>("")
+  const [personNameChips, setPersonNameChips] = useState<string[]>([])
+  const [personNameInput, setPersonNameInput] = useState<string>("")
+  const [personHeadlineChips, setPersonHeadlineChips] = useState<string[]>([])
+  const [personHeadlineInput, setPersonHeadlineInput] = useState<string>("")
+  const [jobTitleChips, setJobTitleChips] = useState<string[]>([])
+  const [jobTitleInput, setJobTitleInput] = useState<string>("")
   const [skills, setSkills] = useState<LookupOption[]>([])
   const [companies, setCompanies] = useState<LookupOption[]>([])
   const [keywords, setKeywords] = useState<LookupOption[]>([])
@@ -413,9 +438,14 @@ export default function PeopleSearchPage() {
   const [isCurrentRole, setIsCurrentRole] = useState(true)
   const [roleDateSince, setRoleDateSince] = useState<Date | undefined>(undefined)
   const [roleDateUntil, setRoleDateUntil] = useState<Date | undefined>(undefined)
+  const [roleYearsOnPositionStart, setRoleYearsOnPositionStart] = useState<number | "">("")
+  const [roleYearsOnPositionEnd, setRoleYearsOnPositionEnd] = useState<number | "">("")
+  const [personDescription, setPersonDescription] = useState<string>("")
   // job postings
-  const [jobPostingTitle, setJobPostingTitle] = useState<string>("")
-  const [jobPostingDescription, setJobPostingDescription] = useState("")
+  const [jobPostingTitleChips, setJobPostingTitleChips] = useState<string[]>([])
+  const [jobPostingTitleInput, setJobPostingTitleInput] = useState<string>("")
+  const [jobPostingDescriptionChips, setJobPostingDescriptionChips] = useState<string[]>([])
+  const [jobPostingDescriptionInput, setJobPostingDescriptionInput] = useState<string>("")
   const [jobFeaturedDateFrom, setJobFeaturedDateFrom] = useState<Date | undefined>(undefined)
   const [jobFeaturedDateTo, setJobFeaturedDateTo] = useState<Date | undefined>(undefined)
   const [includeRemote, setIncludeRemote] = useState(false)
@@ -423,7 +453,7 @@ export default function PeopleSearchPage() {
   const [jobLocations, setJobLocations] = useState<LookupOption[]>([])
   const [jobLocationsExclude, setJobLocationsExclude] = useState<LookupOption[]>([])
   // funding
-  const [fundingRange, setFundingRange] = useState<[number, number]>([50000, 50000])
+  const [fundingRange, setFundingRange] = useState<[number, number]>([0, 0])
   const [fundingType, setFundingType] = useState<string>("")
   const [fundingDateRange, setFundingDateRange] = useState<{ start?: Date; end?: Date }>({})
   const [fundingRangeTouched, setFundingRangeTouched] = useState<boolean>(false)
@@ -537,13 +567,34 @@ export default function PeopleSearchPage() {
       // Apply basic fields to UI
       const parseDate = (s?: string) => (s ? new Date(s) : undefined)
       const toLookupFromIds = (arr?: any[]) => (Array.isArray(arr) ? arr.map((id: any) => ({ id: (typeof id === 'string' ? Number(id) : id), text: `ID ${id}` })) : [])
-      setJobTitle(q.role_title || '')
+      if (Array.isArray(q.role_title)) {
+        setJobTitleChips(q.role_title.filter(Boolean))
+        setJobTitleInput('')
+      } else {
+        setJobTitleChips([])
+        setJobTitleInput(q.role_title || '')
+      }
       setQuery(q.role_description || '')
       setIsCurrentRole(Boolean(q.role_is_current))
       setRoleDateSince(parseDate(q.role_position_start_date))
       setRoleDateUntil(parseDate(q.role_position_end_date))
-      setPersonName(q.person_name || '')
-      setPersonHeadline(q.person_headline || '')
+      setRoleYearsOnPositionStart(typeof q.role_years_on_position_start === 'number' ? q.role_years_on_position_start : '')
+      setRoleYearsOnPositionEnd(typeof q.role_years_on_position_end === 'number' ? q.role_years_on_position_end : '')
+      setPersonDescription(q.person_description || '')
+      if (Array.isArray(q.person_name)) {
+        setPersonNameChips(q.person_name.filter(Boolean))
+        setPersonNameInput('')
+      } else {
+        setPersonNameChips([])
+        setPersonNameInput(q.person_name || '')
+      }
+      if (Array.isArray(q.person_headline)) {
+        setPersonHeadlineChips(q.person_headline.filter(Boolean))
+        setPersonHeadlineInput('')
+      } else {
+        setPersonHeadlineChips([])
+        setPersonHeadlineInput(q.person_headline || '')
+      }
       // Clear complex chip-based filters; user can refine as needed
       setSkills([])
       // Person locations from IDs
@@ -567,8 +618,20 @@ export default function PeopleSearchPage() {
       setJobLocationsExclude(toLookupFromIds(q.job_post_locations_exclude))
       setIncludeRemote(Boolean(q.job_post_is_remote))
       setIsJobActive(Boolean(q.job_post_is_active))
-      setJobPostingTitle(q.job_post_title || '')
-      setJobPostingDescription(q.job_post_description || '')
+      if (Array.isArray(q.job_post_title)) {
+        setJobPostingTitleChips(q.job_post_title.filter(Boolean))
+        setJobPostingTitleInput('')
+      } else {
+        setJobPostingTitleChips([])
+        setJobPostingTitleInput(q.job_post_title || '')
+      }
+      if (Array.isArray(q.job_post_description)) {
+        setJobPostingDescriptionChips(q.job_post_description.filter(Boolean))
+        setJobPostingDescriptionInput('')
+      } else {
+        setJobPostingDescriptionChips([])
+        setJobPostingDescriptionInput(q.job_post_description || '')
+      }
       setJobFeaturedDateFrom(parseDate(q.job_post_date_featured_start))
       setJobFeaturedDateTo(parseDate(q.job_post_date_featured_end))
       setFundingDateRange({ start: parseDate(q.funding_event_date_featured_start), end: parseDate(q.funding_event_date_featured_end) })
@@ -576,7 +639,7 @@ export default function PeopleSearchPage() {
         setFundingRange([q.funding_total_start, q.funding_total_end])
         setFundingRangeTouched(true)
       } else {
-        setFundingRange([50000, 50000])
+        setFundingRange([0, 0])
         setFundingRangeTouched(false)
       }
       // Company size (employees)
@@ -591,8 +654,15 @@ export default function PeopleSearchPage() {
       setSimpleEventDateRange({ start: parseDate(q.simple_event_date_featured_start), end: parseDate(q.simple_event_date_featured_end) })
       // Decide which cards to open by default based on loaded query
       const openDefaults = {
-        name: Boolean(q.person_name || q.person_headline || (q.person_linkedin_public_identifiers && q.person_linkedin_public_identifiers.length > 0)),
-        jobTitle: Boolean(q.role_title || q.role_description || q.role_position_start_date || q.role_position_end_date || q.role_is_current),
+        name: Boolean(
+          (Array.isArray(q.person_name) ? q.person_name.length > 0 : q.person_name) ||
+          q.person_headline ||
+          (q.person_linkedin_public_identifiers && q.person_linkedin_public_identifiers.length > 0)
+        ),
+        jobTitle: Boolean(
+          (Array.isArray(q.role_title) ? q.role_title.length > 0 : q.role_title) ||
+          q.role_description || q.role_position_start_date || q.role_position_end_date || q.role_is_current
+        ),
         personIndustry: Boolean((q.person_industries && q.person_industries.length) || (q.person_industries_exclude && q.person_industries_exclude.length)),
         personLocation: Boolean(q.person_locations && q.person_locations.length),
         skills: Boolean(q.person_skills && q.person_skills.length),
@@ -603,7 +673,12 @@ export default function PeopleSearchPage() {
         sizeFounded: Boolean(q.organization_employees_start || q.organization_employees_end || q.organization_revenue_start || q.organization_revenue_end || q.organization_founded_date_start || q.organization_founded_date_end),
         foundedDate: Boolean(q.organization_founded_date_start || q.organization_founded_date_end),
         companyLinkedin: Boolean(q.organization_linkedin_public_identifiers && q.organization_linkedin_public_identifiers.length),
-        jobPostings: Boolean(q.job_post_title || q.job_post_description || q.job_post_is_remote || q.job_post_is_active || q.job_post_date_featured_start || q.job_post_date_featured_end || (q.job_post_locations && q.job_post_locations.length) || (q.job_post_locations_exclude && q.job_post_locations_exclude.length)),
+        jobPostings: Boolean(
+          (Array.isArray(q.job_post_title) ? q.job_post_title.length > 0 : q.job_post_title) ||
+          (Array.isArray(q.job_post_description) ? q.job_post_description.length > 0 : q.job_post_description) ||
+          q.job_post_is_remote || q.job_post_is_active || q.job_post_date_featured_start || q.job_post_date_featured_end ||
+          (q.job_post_locations && q.job_post_locations.length) || (q.job_post_locations_exclude && q.job_post_locations_exclude.length)
+        ),
         funding: Boolean(q.funding_types || typeof q.funding_total_start === 'number' || typeof q.funding_total_end === 'number' || q.funding_event_date_featured_start || q.funding_event_date_featured_end),
         technologies: Boolean(q.organization_web_technologies && q.organization_web_technologies.length),
         signals: Boolean(q.simple_event_source || q.simple_event_reason || q.simple_event_date_featured_start || q.simple_event_date_featured_end),
@@ -612,24 +687,9 @@ export default function PeopleSearchPage() {
       setCollapsibleVersion(v => v + 1)
       setIsIcpModalOpen(false)
       toast.success('Saved list loaded')
-      // Trigger search with the loaded setup (build payload directly from q to avoid async state race)
+      // Trigger search with the full saved query so all API fields are sent (avoid dropping any field)
       setCurrentPage(1)
-      const payloadFromQ: FinderRequest = {
-        page: 0,
-        role_title: q.role_title || undefined,
-        role_description: q.role_description || undefined,
-        role_is_current: q.role_is_current,
-        role_position_start_date: q.role_position_start_date,
-        role_position_end_date: q.role_position_end_date,
-        person_name: q.person_name || undefined,
-        person_headline: q.person_headline || undefined,
-        person_locations: Array.isArray(q.person_locations) ? q.person_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
-        organization_locations: Array.isArray(q.organization_locations) ? q.organization_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
-        organization_employees_start: typeof q.organization_employees_start === 'number' ? q.organization_employees_start : undefined,
-        organization_employees_end: typeof q.organization_employees_end === 'number' ? q.organization_employees_end : undefined,
-        job_post_locations: Array.isArray(q.job_post_locations) ? q.job_post_locations.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
-        job_post_locations_exclude: Array.isArray(q.job_post_locations_exclude) ? q.job_post_locations_exclude.map((v: any) => (typeof v === 'string' ? Number(v) : v)).filter((n: any) => typeof n === 'number' && Number.isFinite(n)) : undefined,
-      }
+      const payloadFromQ: FinderRequest = { ...q, page: 0 }
       await executeSearch(payloadFromQ)
     } catch (e) {
       console.error('[People] Load saved list error:', e)
@@ -800,7 +860,28 @@ export default function PeopleSearchPage() {
   const toYmd = (d?: Date) => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : undefined
 
   // build payload for server (page is 0-based)
-  // Utility function to wrap multi-word inputs in quotes for API compatibility
+  /** All terms (chips + current input) as separate elements for OR semantics on the backend. */
+  const personNameTerms = useMemo(
+    () => Array.from(new Set([...personNameChips, personNameInput.trim()].filter(Boolean))),
+    [personNameChips, personNameInput]
+  )
+  const personHeadlineTerms = useMemo(
+    () => Array.from(new Set([...personHeadlineChips, personHeadlineInput.trim()].filter(Boolean))),
+    [personHeadlineChips, personHeadlineInput]
+  )
+  const jobTitleTerms = useMemo(
+    () => Array.from(new Set([...jobTitleChips, jobTitleInput.trim()].filter(Boolean))),
+    [jobTitleChips, jobTitleInput]
+  )
+  const jobPostingTitleTerms = useMemo(
+    () => Array.from(new Set([...jobPostingTitleChips, jobPostingTitleInput.trim()].filter(Boolean))),
+    [jobPostingTitleChips, jobPostingTitleInput]
+  )
+  const jobPostingDescriptionTerms = useMemo(
+    () => Array.from(new Set([...jobPostingDescriptionChips, jobPostingDescriptionInput.trim()].filter(Boolean))),
+    [jobPostingDescriptionChips, jobPostingDescriptionInput]
+  )
+
   const wrapInQuotesIfNeeded = (value: string | undefined): string | undefined => {
     if (!value || value.trim() === '') return value
     const trimmed = value.trim()
@@ -809,6 +890,11 @@ export default function PeopleSearchPage() {
       return `"${trimmed}"`
     }
     return trimmed
+  }
+  const termsToPayload = (terms: string[]): string | string[] | undefined => {
+    if (terms.length === 0) return undefined
+    if (terms.length === 1) return wrapInQuotesIfNeeded(terms[0]) ?? undefined
+    return terms.map((t) => wrapInQuotesIfNeeded(t) ?? t)
   }
 
   const buildFinderPayload = (pageOneBased: number): FinderRequest => {
@@ -841,14 +927,17 @@ export default function PeopleSearchPage() {
 
     const payload: FinderRequest = {
       page: Math.max(0, pageOneBased - 1),
-      role_title: wrapInQuotesIfNeeded(jobTitle) || undefined,
+      role_title: termsToPayload(jobTitleTerms),
       role_description: wrapInQuotesIfNeeded(query) || undefined,
       role_is_current: isCurrentRole,
       role_position_start_date: roleStart,
       role_position_end_date: roleEnd,
+      role_years_on_position_start: typeof roleYearsOnPositionStart === 'number' ? roleYearsOnPositionStart : undefined,
+      role_years_on_position_end: typeof roleYearsOnPositionEnd === 'number' ? roleYearsOnPositionEnd : undefined,
 
-      person_name: wrapInQuotesIfNeeded(personName) || undefined,
-      person_headline: wrapInQuotesIfNeeded(personHeadline) || undefined,
+      person_name: termsToPayload(personNameTerms),
+      person_headline: termsToPayload(personHeadlineTerms),
+      person_description: wrapInQuotesIfNeeded(personDescription) || undefined,
       person_locations: (() => {
         const ids = locations
           .map(l => (typeof l.id === 'string' ? Number(l.id) : l.id))
@@ -955,13 +1044,19 @@ export default function PeopleSearchPage() {
       simple_event_date_featured_end: toYmd(simpleEventDateRange.end),
 
       funding_types: fundingType ? [fundingType] : undefined,
-      funding_total_start: fundingRangeTouched ? fundingRange?.[0] : undefined,
-      funding_total_end: fundingRangeTouched ? fundingRange?.[1] : undefined,
+      funding_total_start:
+        fundingRangeTouched && fundingRange && (fundingRange[0] !== 0 || fundingRange[1] !== 0)
+          ? Math.min(fundingRange[0], fundingRange[1])
+          : undefined,
+      funding_total_end:
+        fundingRangeTouched && fundingRange && (fundingRange[0] !== 0 || fundingRange[1] !== 0)
+          ? Math.max(fundingRange[0], fundingRange[1])
+          : undefined,
       funding_event_date_featured_start: fundStart,
       funding_event_date_featured_end: fundEnd,
 
-      job_post_title: wrapInQuotesIfNeeded(jobPostingTitle) || undefined,
-      job_post_description: wrapInQuotesIfNeeded(jobPostingDescription) || undefined,
+      job_post_title: termsToPayload(jobPostingTitleTerms),
+      job_post_description: termsToPayload(jobPostingDescriptionTerms),
       job_post_is_remote: includeRemote || undefined,
       job_post_is_active: isJobActive || undefined,
       job_post_date_featured_start: jobStart,
@@ -1041,11 +1136,10 @@ export default function PeopleSearchPage() {
     await executeSearch(payload)
   }
 
-  // Dynamic column widths depending on sidebar state to avoid horizontal scroll
-  // Removed phone and emails columns; redistribute widths across remaining columns
+  // Dynamic column widths (includes all API response fields)
   const tableColumnWidths = isSidebarCollapsed
-    ? { name: 28, role: 14, company: 22, location: 12, start: 10, end: 10, links: 4 }
-    : { name: 26, role: 14, company: 20, location: 16, start: 10, end: 10, links: 4 }
+    ? { name: 10, role: 7, company: 10, location: 5, start: 4, end: 4, headline: 5, roleDesc: 5, current: 2, personDesc: 14, orgDesc: 5, employees: 3, revenue: 3, founded: 3, industry: 6, links: 3 }
+    : { name: 10, role: 7, company: 10, location: 5, start: 4, end: 4, headline: 5, roleDesc: 5, current: 2, personDesc: 14, orgDesc: 5, employees: 3, revenue: 3, founded: 3, industry: 6, links: 3 }
 
   // Calculate dynamic max width for main content based on left nav and filters sidebar
   const leftNavWidth = isLayoutCollapsed ? 64 : 256
@@ -1147,9 +1241,22 @@ export default function PeopleSearchPage() {
       const companyDomain = r?.organization?.domain
       const isCurrent = Boolean(r?.is_current)
       const roleTitle = r?.role_title || r?.role?.title || '—'
+      const roleDescription = r?.role_description ?? r?.role?.description ?? ''
       const key = `${personId || personName}::${companyId || companyName}`
 
       if (!map.has(key)) {
+        const rawHeadline = r?.person?.headline ?? r?.person_headline
+        const personHeadline = typeof rawHeadline === 'string' ? rawHeadline : (Array.isArray(rawHeadline) && rawHeadline.length > 0 ? rawHeadline[0] : '')
+        const personDescription = r?.person?.description ?? r?.person_description ?? ''
+        const orgDescription = r?.organization?.description ?? r?.organization_description ?? ''
+        const orgEmployees = r?.organization?.employee_count ?? r?.organization_employees ?? r?.organization?.employees ?? undefined
+        const orgRevenue = r?.organization?.revenue ?? r?.organization_revenue ?? undefined
+        const orgFoundedDate = r?.organization?.founded_date ?? r?.organization_founded_date ?? ''
+        const orgIndustries = (() => {
+          const ind = r?.organization?.industries ?? r?.organization_industries
+          if (!ind || !Array.isArray(ind)) return ''
+          return ind.map((i: any) => (typeof i === 'string' ? i : i?.name ?? i?.id ?? '')).filter(Boolean).join(', ')
+        })()
         map.set(key, {
           key,
           personId,
@@ -1163,11 +1270,18 @@ export default function PeopleSearchPage() {
           companyLinkedIn,
           companyWebsite,
           companyDomain,
-          roles: [] as Array<{ id: string; title: string; start?: string; end?: string; isCurrent?: boolean }>
+          personHeadline: typeof personHeadline === 'string' ? personHeadline : '',
+          personDescription: typeof personDescription === 'string' ? personDescription : '',
+          organizationDescription: typeof orgDescription === 'string' ? orgDescription : '',
+          organizationEmployees: typeof orgEmployees === 'number' ? orgEmployees : undefined,
+          organizationRevenue: typeof orgRevenue === 'number' ? orgRevenue : undefined,
+          organizationFoundedDate: typeof orgFoundedDate === 'string' ? orgFoundedDate : '',
+          organizationIndustries: typeof orgIndustries === 'string' ? orgIndustries : '',
+          roles: [] as Array<{ id: string; title: string; start?: string; end?: string; isCurrent?: boolean; description?: string }>
         })
       }
       const group = map.get(key)!
-      group.roles.push({ id: String(r?.id ?? `${personId}-${companyId}-${group.roles.length}`), title: roleTitle, start, end, isCurrent })
+      group.roles.push({ id: String(r?.id ?? `${personId}-${companyId}-${group.roles.length}`), title: roleTitle, start, end, isCurrent, description: roleDescription })
     }
 
     // Choose primary role (prefer current, else latest start)
@@ -1618,15 +1732,27 @@ export default function PeopleSearchPage() {
             <div className="space-y-3">
               <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>👤 Person Criteria</h3>
               <div className="space-y-3">
-                <CollapsibleField title="Name" defaultOpen={sectionOpenDefaults.name} onClear={() => { setPersonName(""); setPersonHeadline(""); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText("") }}>
+                <CollapsibleField title="Name" defaultOpen={sectionOpenDefaults.name} onClear={() => { setPersonNameChips([]); setPersonNameInput(""); setPersonHeadlineChips([]); setPersonHeadlineInput(""); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText("") }}>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">Use “quotation marks" for exact matches.</p>
-                      <Input className="h-10" placeholder="Search" value={personName} onChange={(e)=> setPersonName(e.target.value)} />
+                      <p className="text-xs text-muted-foreground">Use “quotation marks" for exact matches. Press Enter to add as chip.</p>
+                      <ChipsInput
+                        values={personNameChips}
+                        onChange={setPersonNameChips}
+                        placeholder="Search"
+                        inputValue={personNameInput}
+                        onInputChange={setPersonNameInput}
+                      />
                     </div>
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground">Headline</p>
-                      <Input className="h-10" placeholder="Search" value={personHeadline} onChange={(e)=> setPersonHeadline(e.target.value)} />
+                      <ChipsInput
+                        values={personHeadlineChips}
+                        onChange={setPersonHeadlineChips}
+                        placeholder="Search"
+                        inputValue={personHeadlineInput}
+                        onInputChange={setPersonHeadlineInput}
+                      />
                     </div>
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground">LinkedIn Identifiers</p>
@@ -1639,9 +1765,15 @@ export default function PeopleSearchPage() {
                     </div>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Job Title" defaultOpen={sectionOpenDefaults.jobTitle} onClear={() => { setJobTitle(""); setQuery(""); setIsCurrentRole(true); setRoleDateSince(undefined); setRoleDateUntil(undefined) }}>
-                  <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches</p>
-                  <Input className="h-10" placeholder="Search" value={jobTitle} onChange={(e)=> setJobTitle(e.target.value)} />
+                <CollapsibleField title="Job Title" defaultOpen={sectionOpenDefaults.jobTitle} onClear={() => { setJobTitleChips([]); setJobTitleInput(""); setQuery(""); setIsCurrentRole(true); setRoleDateSince(undefined); setRoleDateUntil(undefined) }}>
+                  <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches. Press Enter to add as chip.</p>
+                  <ChipsInput
+                    values={jobTitleChips}
+                    onChange={setJobTitleChips}
+                    placeholder="Search"
+                    inputValue={jobTitleInput}
+                    onInputChange={setJobTitleInput}
+                  />
                   {/* Job description (boolean search) */}
                   <div className="mt-4 flex flex-col items-start space-y-2">
                     <p className="text-xs text-muted-foreground mb-1">Description</p>
@@ -2048,12 +2180,24 @@ export default function PeopleSearchPage() {
                   <div className="space-y-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Title</p>
-                      <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches</p>
-                      <Input className="h-10" placeholder="Search" value={jobPostingTitle} onChange={(e)=> setJobPostingTitle(e.target.value)} />
+                      <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches. Press Enter to add as chip.</p>
+                      <ChipsInput
+                        values={jobPostingTitleChips}
+                        onChange={setJobPostingTitleChips}
+                        placeholder="Search"
+                        inputValue={jobPostingTitleInput}
+                        onInputChange={setJobPostingTitleInput}
+                      />
                     </div>
                     <div className="flex flex-col items-start space-y-2">
                       <p className="text-xs text-muted-foreground mb-1">Description</p>
-                      <Input placeholder="Description" className="h-10" value={jobPostingDescription} onChange={(e)=> setJobPostingDescription(e.target.value)} />
+                      <ChipsInput
+                        values={jobPostingDescriptionChips}
+                        onChange={setJobPostingDescriptionChips}
+                        placeholder="Description"
+                        inputValue={jobPostingDescriptionInput}
+                        onInputChange={setJobPostingDescriptionInput}
+                      />
                     </div>
                     <div className="space-y-3">
                       <div>
@@ -2142,13 +2286,13 @@ export default function PeopleSearchPage() {
                   defaultOpen={sectionOpenDefaults.funding}
                   countBadge={
                     (fundingDateRange.start || fundingDateRange.end ? 1 : 0) +
-                    (fundingRangeTouched ? 1 : 0) +
+                    (fundingRangeTouched && (fundingRange[0] !== 0 || fundingRange[1] !== 0) ? 1 : 0) +
                     (fundingType ? 1 : 0)
                   }
                   onClear={() => {
                     setFundingDateRange({})
                     setFundingType("")
-                    setFundingRange([50000, 50000])
+                    setFundingRange([0, 0])
                     setFundingRangeTouched(false)
                   }}
                 >
@@ -2178,80 +2322,66 @@ export default function PeopleSearchPage() {
                       />
                     </div>
                     <div>
-                      {(() => {
-                        // Logarithmic scale conversion functions
-                        // Range: 50,000 to 100,000,000 (50K to 100M)
-                        const MIN_FUNDING = 50000
-                        const MAX_FUNDING = 100000000
-                        const SLIDER_MAX = 100
-                        
-                        // Convert real value to slider position (0-100)
-                        const realToSlider = (value: number): number => {
-                          if (value <= MIN_FUNDING) return 0
-                          if (value >= MAX_FUNDING) return SLIDER_MAX
-                          const logMin = Math.log10(MIN_FUNDING)
-                          const logMax = Math.log10(MAX_FUNDING)
-                          const logValue = Math.log10(value)
-                          return ((logValue - logMin) / (logMax - logMin)) * SLIDER_MAX
-                        }
-                        
-                        // Convert slider position (0-100) to real value
-                        const sliderToReal = (sliderValue: number): number => {
-                          if (sliderValue <= 0) return MIN_FUNDING
-                          if (sliderValue >= SLIDER_MAX) return MAX_FUNDING
-                          const logMin = Math.log10(MIN_FUNDING)
-                          const logMax = Math.log10(MAX_FUNDING)
-                          const logValue = logMin + (sliderValue / SLIDER_MAX) * (logMax - logMin)
-                          return Math.round(Math.pow(10, logValue))
-                        }
-                        
-                        // Current slider positions
-                        const sliderValues: [number, number] = [
-                          realToSlider(fundingRange[0]),
-                          realToSlider(fundingRange[1])
-                        ]
-                        
-                        return (
-                          <>
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm text-muted-foreground font-medium">Funding Amount</p>
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm">{fundingRange[0].toLocaleString()} - {fundingRange[1].toLocaleString()}</p>
-                                {fundingRangeTouched && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setFundingRange([50000, 50000])
-                                      setFundingRangeTouched(false)
-                                    }}
-                                    className="text-muted-foreground hover:text-foreground transition-colors"
-                                    aria-label="Clear funding amount"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="pt-2">
-                              <Slider 
-                                value={sliderValues}
-                                onValueChange={(v: number[]) => { 
-                                  const realValues: [number, number] = [
-                                    sliderToReal(v[0]),
-                                    sliderToReal(v[1])
-                                  ]
-                                  setFundingRange(realValues)
-                                  setFundingRangeTouched(true) 
-                                }}
-                                min={0}
-                                max={SLIDER_MAX}
-                                step={0.5}
-                                className="style-slider-thumb"
-                              />
-                            </div>
-                          </>
-                        )
-                      })()}
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-xs text-muted-foreground">Funding Amount (USD)</p>
+                        {(fundingRange[0] !== 0 || fundingRange[1] !== 0) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFundingRange([0, 0])
+                              setFundingRangeTouched(false)
+                            }}
+                            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Clear funding amount"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-12 items-end gap-2">
+                        <div className="col-span-5">
+                          <p className="text-xs text-muted-foreground mb-1">From</p>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={100000000}
+                            step={1000}
+                            value={fundingRange[0]}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              const num = v === "" ? 0 : Math.min(100000000, Math.max(0, Number(v)))
+                              setFundingRange((prev) => [Math.min(num, prev[1]), prev[1]])
+                              setFundingRangeTouched(true)
+                            }}
+                            className="h-10"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="col-span-2 flex items-center justify-center pb-2">-</div>
+                        <div className="col-span-5">
+                          <p className="text-xs text-muted-foreground mb-1">To</p>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={100000000}
+                            step={1000}
+                            value={fundingRange[1]}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              const num = v === "" ? 0 : Math.min(100000000, Math.max(0, Number(v)))
+                              setFundingRange((prev) => {
+                                const to = Math.max(num, prev[0])
+                                return [prev[0], to]
+                              })
+                              setFundingRangeTouched(true)
+                            }}
+                            className="h-10"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -2376,7 +2506,7 @@ export default function PeopleSearchPage() {
               <Button 
                 variant="outline" 
                 className="w-1/2 h-10"
-                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setPersonHeadline(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRangeTouched(false); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText(""); setOrgDomains([]); setOrgDomainsInputText(""); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgLinkedinIdsInputText(""); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRoleDateSince(undefined); setRoleDateUntil(undefined); }}
+                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setPersonHeadline(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRange([0, 0]); setFundingRangeTouched(false); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText(""); setOrgDomains([]); setOrgDomainsInputText(""); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgLinkedinIdsInputText(""); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRoleDateSince(undefined); setRoleDateUntil(undefined); }}
               >
                 Clear
               </Button>
@@ -2473,25 +2603,35 @@ export default function PeopleSearchPage() {
                     </>
                   ) : (
                     <>
-                <Table className="w-full table-fixed">
+                <div className="overflow-x-auto">
+                <Table className="w-full min-w-[2600px]" style={{ tableLayout: 'fixed' }}>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[56px]"> </TableHead>
-                      <TableHead style={{ width: `${tableColumnWidths.name}%` }}>Person Name</TableHead>
-                      <TableHead style={{ width: `${tableColumnWidths.role}%` }}>Role Title</TableHead>
-                      <TableHead style={{ width: `${tableColumnWidths.company}%` }}>Company</TableHead>
-                      <TableHead style={{ width: `${tableColumnWidths.location}%` }}>Person Location</TableHead>
-                      <TableHead className="whitespace-nowrap" style={{ width: `${tableColumnWidths.start}%` }}>Start Date</TableHead>
-                      <TableHead className="whitespace-nowrap" style={{ width: `${tableColumnWidths.end}%` }}>End Date</TableHead>
-                      <TableHead className="w-[56px] text-right" style={{ width: `${tableColumnWidths.links}%` }}>
-                        <span className="sr-only">Links</span>
-                      </TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 56, minWidth: 56 }}> </TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 140, minWidth: 140 }}>Person Name</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 150, minWidth: 150 }}>Role Title</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 140, minWidth: 140 }}>Company</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 120, minWidth: 120 }}>Person Location</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 100, minWidth: 100 }}>Start Date</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 100, minWidth: 100 }}>End Date</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 160, minWidth: 160 }}>Headline</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 200, minWidth: 200 }}>Role Description</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 80, minWidth: 80 }}>Current</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 320, minWidth: 320 }}>Person Description</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 200, minWidth: 200 }}>Org Description</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 90, minWidth: 90 }}>Employees</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 90, minWidth: 90 }}>Revenue</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 100, minWidth: 100 }}>Founded</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 130, minWidth: 130 }}>Industry</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 240, minWidth: 240 }}>Person LinkedIn</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 240, minWidth: 240 }}>Company LinkedIn</TableHead>
+                      <TableHead className="whitespace-nowrap" style={{ width: 240, minWidth: 240 }}>Company Website</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                           {error && (
                             <TableRow>
-                              <TableCell colSpan={6}>
+                              <TableCell colSpan={19}>
                                 <div className="py-8 text-center text-sm text-destructive">{error}</div>
                               </TableCell>
                             </TableRow>
@@ -2586,56 +2726,53 @@ export default function PeopleSearchPage() {
                                   </TableCell>
                                   <TableCell className="font-medium whitespace-nowrap">{primary.start ?? "N/A"}</TableCell>
                                   <TableCell className="font-medium whitespace-nowrap">{primary.end ?? (primary.start ? "Present" : "N/A")}</TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex justify-end" onClick={(e)=> e.stopPropagation()}>
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                          >
-                                            <span className="sr-only">Open links</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem asChild disabled={!group.personLinkedIn}>
-                                            <a
-                                              href={group.personLinkedIn || '#'}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="flex items-center gap-2"
-                                            >
-                                              <LinkedInIcon size={16} />
-                                              <span>Person LinkedIn</span>
-                                            </a>
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem asChild disabled={!group.companyLinkedIn}>
-                                            <a
-                                              href={group.companyLinkedIn || '#'}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="flex items-center gap-2"
-                                            >
-                                              <LinkedInIcon size={16} />
-                                              <span>Company LinkedIn</span>
-                                            </a>
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem asChild disabled={!(group.companyWebsite || group.companyDomain)}>
-                                            <a
-                                              href={(group.companyWebsite || (group.companyDomain ? `https://${group.companyDomain}` : '#'))}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="flex items-center gap-2"
-                                            >
-                                              <Globe className="h-4 w-4" />
-                                              <span>Company Website</span>
-                                            </a>
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </div>
+                                  <TableCell className="font-medium min-w-0">
+                                    <div className="line-clamp-2 min-w-0" title={group.personHeadline}>{group.personHeadline || "—"}</div>
+                                  </TableCell>
+                                  <TableCell className="font-medium min-w-0">
+                                    <div className="line-clamp-2 min-w-0" title={primary.description}>{primary.description || "—"}</div>
+                                  </TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">
+                                    {primary.isCurrent ? <Badge variant="secondary" className="text-xs">Current</Badge> : "—"}
+                                  </TableCell>
+                                  <TableCell className="font-medium min-w-0">
+                                    <div className="line-clamp-3 min-w-0" title={group.personDescription}>{group.personDescription || "—"}</div>
+                                  </TableCell>
+                                  <TableCell className="font-medium min-w-0">
+                                    <div className="line-clamp-2 min-w-0" title={group.organizationDescription}>{group.organizationDescription || "—"}</div>
+                                  </TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{group.organizationEmployees != null ? group.organizationEmployees.toLocaleString() : "—"}</TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{group.organizationRevenue != null ? `$${group.organizationRevenue >= 1e6 ? `${(group.organizationRevenue / 1e6).toFixed(1)}M` : group.organizationRevenue >= 1e3 ? `${(group.organizationRevenue / 1e3).toFixed(1)}K` : group.organizationRevenue}` : "—"}</TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{group.organizationFoundedDate || "—"}</TableCell>
+                                  <TableCell className="font-medium min-w-0">
+                                    <div className="line-clamp-2 min-w-0" title={group.organizationIndustries}>{group.organizationIndustries || "—"}</div>
+                                  </TableCell>
+                                  <TableCell className="font-medium min-w-0 max-w-[240px]" onClick={(e) => e.stopPropagation()}>
+                                    {group.personLinkedIn ? (
+                                      <a href={group.personLinkedIn} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline text-sm break-all" title={group.personLinkedIn}>
+                                        {group.personLinkedIn}
+                                      </a>
+                                    ) : "—"}
+                                  </TableCell>
+                                  <TableCell className="font-medium min-w-0 max-w-[240px]" onClick={(e) => e.stopPropagation()}>
+                                    {group.companyLinkedIn ? (
+                                      <a href={group.companyLinkedIn} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline text-sm break-all" title={group.companyLinkedIn}>
+                                        {group.companyLinkedIn}
+                                      </a>
+                                    ) : "—"}
+                                  </TableCell>
+                                  <TableCell className="font-medium min-w-0 max-w-[240px]" onClick={(e) => e.stopPropagation()}>
+                                    {(group.companyWebsite || group.companyDomain) ? (
+                                      <a
+                                        href={group.companyWebsite || (group.companyDomain ? `https://${group.companyDomain}` : "#")}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block text-primary hover:underline text-sm break-all"
+                                        title={group.companyWebsite || (group.companyDomain ? `https://${group.companyDomain}` : "")}
+                                      >
+                                        {group.companyWebsite || (group.companyDomain ? `https://${group.companyDomain}` : "")}
+                                      </a>
+                                    ) : "—"}
                                   </TableCell>
                                 </TableRow>
 
@@ -2663,7 +2800,30 @@ export default function PeopleSearchPage() {
                                     </TableCell>
                                     <TableCell className="font-medium whitespace-nowrap">{role.start ?? "N/A"}</TableCell>
                                     <TableCell className="font-medium whitespace-nowrap">{role.end ?? (role.start ? "Present" : "N/A")}</TableCell>
-                                    <TableCell></TableCell>
+                                    <TableCell className="font-medium min-w-0">
+                                      <div className="line-clamp-2 min-w-0" title={group.personHeadline}>{group.personHeadline || "—"}</div>
+                                    </TableCell>
+                                    <TableCell className="font-medium min-w-0">
+                                      <div className="line-clamp-2 min-w-0" title={role.description}>{role.description || "—"}</div>
+                                    </TableCell>
+                                    <TableCell className="font-medium whitespace-nowrap">
+                                      {role.isCurrent ? <Badge variant="secondary" className="text-xs">Current</Badge> : "—"}
+                                    </TableCell>
+                                    <TableCell className="font-medium min-w-0">
+                                      <div className="line-clamp-3 min-w-0" title={group.personDescription}>{group.personDescription || "—"}</div>
+                                    </TableCell>
+                                    <TableCell className="font-medium min-w-0">
+                                      <div className="line-clamp-2 min-w-0" title={group.organizationDescription}>{group.organizationDescription || "—"}</div>
+                                    </TableCell>
+                                    <TableCell className="font-medium whitespace-nowrap">{group.organizationEmployees != null ? group.organizationEmployees.toLocaleString() : "—"}</TableCell>
+                                    <TableCell className="font-medium whitespace-nowrap">{group.organizationRevenue != null ? `$${group.organizationRevenue >= 1e6 ? `${(group.organizationRevenue / 1e6).toFixed(1)}M` : group.organizationRevenue >= 1e3 ? `${(group.organizationRevenue / 1e3).toFixed(1)}K` : group.organizationRevenue}` : "—"}</TableCell>
+                                    <TableCell className="font-medium whitespace-nowrap">{group.organizationFoundedDate || "—"}</TableCell>
+                                    <TableCell className="font-medium min-w-0">
+                                      <div className="line-clamp-2 min-w-0" title={group.organizationIndustries}>{group.organizationIndustries || "—"}</div>
+                                    </TableCell>
+                                    <TableCell />
+                                    <TableCell />
+                                    <TableCell />
                                   </TableRow>
                                 ))}
                               </Fragment>
@@ -2671,6 +2831,7 @@ export default function PeopleSearchPage() {
                           })}
                   </TableBody>
                 </Table>
+                </div>
 
                 <div className="flex items-center justify-between px-6 py-4 border-t">
                   <div className="flex items-center gap-4">
