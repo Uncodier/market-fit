@@ -120,7 +120,7 @@ export function ChatHeader({
   const leadPhone = leadData?.phone
 
   return (
-    <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80" 
+    <div className="border-b flex-none min-h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2" 
       style={{ backdropFilter: 'blur(10px)' }}>
       {/* ChatToggle positioned absolutely */}
       <ChatToggle 
@@ -154,7 +154,7 @@ export function ChatHeader({
                         href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`}
                         className="hover:opacity-80 transition-opacity cursor-pointer min-w-0"
                       >
-                        <h2 className="font-medium text-lg truncate leading-none">{truncateLeadName(leadData.name)}</h2>
+                        <h2 className="font-medium text-lg truncate leading-tight">{truncateLeadName(leadData.name)}</h2>
                       </NavigationLink>
                       <div className="flex-shrink-0">
                         <Select
@@ -186,7 +186,7 @@ export function ChatHeader({
                     
                     <NavigationLink 
                       href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`}
-                      className="flex items-center gap-3 text-[10px] text-muted-foreground max-w-full justify-end h-3.5 hover:opacity-80 transition-opacity cursor-pointer"
+                      className="flex items-center gap-3 text-[10px] text-muted-foreground max-w-full justify-end min-h-[1.25rem] hover:opacity-80 transition-opacity cursor-pointer"
                     >
                       {companyName && (
                         <div className="flex items-center gap-1 min-w-0 flex-shrink flex-nowrap" title={companyName}>
@@ -207,7 +207,7 @@ export function ChatHeader({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
-                    <h2 className="font-medium text-lg truncate">Visitor</h2>
+                    <h2 className="font-medium text-lg truncate leading-tight">Visitor</h2>
                     <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 flex-shrink-0">
                       Visitor
                     </Badge>

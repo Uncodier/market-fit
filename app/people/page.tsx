@@ -24,6 +24,7 @@ import { DatePicker } from "@/app/components/ui/date-picker"
 import { Switch } from "@/app/components/ui/switch"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
 import { createClient } from "@/lib/supabase/client"
@@ -411,6 +412,7 @@ export default function PeopleSearchPage() {
   const { currentSite } = useSite()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [sidebarLeft, setSidebarLeft] = useState("256px")
+  const [peopleTab, setPeopleTab] = useState<"search" | "saved">("search")
 
   // filters
   const [query, setQuery] = useState("")
@@ -536,6 +538,8 @@ export default function PeopleSearchPage() {
     technologies: false,
     signals: false,
   })
+  // Persist collapsed/expanded state for Saved lists tab so it survives tab switches
+  const [savedSectionOpenDefaults, setSavedSectionOpenDefaults] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     setSidebarLeft(isLayoutCollapsed ? "64px" : "256px")
@@ -1550,10 +1554,20 @@ export default function PeopleSearchPage() {
       "fixed transition-all duration-200 ease-in-out z-10",
       isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
     )} style={{ left: sidebarLeft, top: "64px", height: "calc(100vh - 64px)" }}>
-      <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r relative">
+      <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r relative flex flex-col">
+        {/* Tab selector - min height matches main toolbar (71px) */}
+        <div className="flex-shrink-0 min-h-[71px] flex items-center p-3 border-b border-border/50">
+          <Tabs value={peopleTab} onValueChange={(v) => setPeopleTab(v as "search" | "saved")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-9">
+              <TabsTrigger value="search" className="text-xs">Search people</TabsTrigger>
+              <TabsTrigger value="saved" className="text-xs">Saved lists</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
         {/* Content */}
-          <div className="h-full overflow-hidden">
-          <div className="h-full overflow-auto p-4 space-y-4 pb-[110px]">
+        <div className="h-full overflow-hidden flex flex-col min-h-0">
+          <div className={cn("h-full overflow-auto p-4 space-y-4 flex-1", peopleTab === "search" ? "pb-[110px]" : "pb-4")}>
+            {peopleTab === "saved" && (
             <div className="space-y-3">
               <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>📋 Saved Lists</h3>
               {(() => {
@@ -1716,7 +1730,8 @@ export default function PeopleSearchPage() {
                         <CollapsibleField 
                           key={status}
                           title={statusLabels[status]}
-                          defaultOpen={false}
+                          defaultOpen={savedSectionOpenDefaults[status] ?? true}
+                          onOpenChange={(open) => setSavedSectionOpenDefaults((prev) => ({ ...prev, [status]: open }))}
                           countBadge={icps.length}
                         >
                           <div className="space-y-1.5">
@@ -1729,6 +1744,9 @@ export default function PeopleSearchPage() {
                 )
               })()}
             </div>
+            )}
+            {peopleTab === "search" && (
+            <>
             <div className="space-y-3">
               <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>👤 Person Criteria</h3>
               <div className="space-y-3">
@@ -2492,9 +2510,12 @@ export default function PeopleSearchPage() {
                 </CollapsibleField>
               </div>
             </div>
+            </>
+            )}
             {/* bottom action bar handles actions */}
           </div>
-          {/* Bottom action bar - always visible within sidebar */}
+          {/* Bottom action bar - only in Search people tab */}
+          {peopleTab === "search" && (
           <div 
             className={cn(
               "absolute bottom-0 left-0 w-full border-t bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 h-[87px]",
@@ -2516,6 +2537,7 @@ export default function PeopleSearchPage() {
               </Button>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>
@@ -2550,10 +2572,10 @@ export default function PeopleSearchPage() {
                   disabled={selectedPersonIds.length === 0 || isEnriching}
                   onClick={() => setIsConfirmModalOpen(true)}
                 >
-                  {isEnriching ? 'Enriching...' : `Add and Enrich${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
+                  {isEnriching ? 'Saving...' : `Save to lists, enrich and prospect${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
                 </Button>
                 <Button variant="secondary" className="h-9" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
-                  {`Add ${(totalResults || 0).toLocaleString()} results to leads`}
+                  {`Add ${(totalResults || 0).toLocaleString()} selected leads for prospection`}
                 </Button>
               </div>
             </div>
@@ -2833,6 +2855,7 @@ export default function PeopleSearchPage() {
                 </Table>
                 </div>
 
+                {peopleTab === "search" && (
                 <div className="flex items-center justify-between px-6 py-4 border-t">
                   <div className="flex items-center gap-4">
                     <p className="text-sm text-muted-foreground">
@@ -2882,6 +2905,7 @@ export default function PeopleSearchPage() {
                           </div>
                         </div>
                 </div>
+                )}
                     </>
                   )}
               </div>
@@ -3066,9 +3090,9 @@ export default function PeopleSearchPage() {
       <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Add and Enrich Selected People</DialogTitle>
+            <DialogTitle>Save to lists, enrich and prospect selected people</DialogTitle>
             <DialogDescription>
-              Are you sure you want to add and enrich {selectedPersonIds.length} {selectedPersonIds.length === 1 ? 'person' : 'people'}? This will call the enrich API for each selected person.
+              Are you sure you want to save to lists, enrich and prospect {selectedPersonIds.length} {selectedPersonIds.length === 1 ? 'person' : 'people'}? This will call the enrich API for each selected person.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -3076,7 +3100,7 @@ export default function PeopleSearchPage() {
               Cancel
             </Button>
             <Button onClick={handleEnrich} disabled={isEnriching}>
-              {isEnriching ? 'Enriching...' : 'Add and Enrich'}
+              {isEnriching ? 'Saving...' : 'Save to lists, enrich and prospect'}
             </Button>
           </DialogFooter>
         </DialogContent>
