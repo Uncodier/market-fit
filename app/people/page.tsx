@@ -17,7 +17,8 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
-import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, MoreVertical, Check, CheckCircle2, RotateCw, Clock } from "@/app/components/ui/icons"
+import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, MoreVertical, Check, CheckCircle2, RotateCw, Clock, ClipboardList } from "@/app/components/ui/icons"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Badge } from "@/app/components/ui/badge"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { DatePicker } from "@/app/components/ui/date-picker"
@@ -1566,10 +1567,10 @@ export default function PeopleSearchPage() {
         </div>
         {/* Content */}
         <div className="h-full overflow-hidden flex flex-col min-h-0">
-          <div className={cn("h-full overflow-auto p-4 space-y-4 flex-1", peopleTab === "search" ? "pb-[110px]" : "pb-4")}>
+          <div className={cn("h-full overflow-auto p-4 flex-1", peopleTab === "saved" ? "flex flex-col pb-4" : "space-y-4 pb-[110px]")}>
             {peopleTab === "saved" && (
-            <div className="space-y-3">
-              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>📋 Saved Lists</h3>
+            <div className={cn("flex flex-col min-h-0", availableIcps.length === 0 && !icpListLoading ? "flex-1" : "space-y-3")}>
+              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex-shrink-0" style={{ fontSize: '10.8px' }}>📋 Saved Lists</h3>
               {(() => {
                 if (icpListLoading) {
                   return (
@@ -1594,8 +1595,15 @@ export default function PeopleSearchPage() {
 
                 if (availableIcps.length === 0) {
                   return (
-                    <div className="text-center py-8">
-                      <p className="text-sm text-muted-foreground">No saved lists found</p>
+                    <div className="flex flex-1 min-h-0 items-center justify-center w-full">
+                      <EmptyCard
+                        variant="fancy"
+                        showShadow={false}
+                        className="max-w-sm border-0 shadow-none bg-transparent"
+                        icon={<ClipboardList className="h-6 w-6" />}
+                        title="No saved lists yet"
+                        description="Save search results to lists from the Search people tab to see them here."
+                      />
                     </div>
                   )
                 }
