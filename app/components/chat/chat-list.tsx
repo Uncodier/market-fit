@@ -1069,7 +1069,7 @@ export function ChatList({
     <div className={cn("flex flex-col h-full fixed", className)} style={{ width: '320px', maxWidth: '320px', overflow: 'hidden' }}>
       {/* Top bar with search input - adaptable to dark mode */}
       <div className={cn(
-        "flex items-center justify-center h-[71px] border-b transition-colors duration-300 flex-shrink-0",
+        "flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] border-b transition-colors duration-300 flex-shrink-0 overflow-hidden",
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         "fixed w-[319px] z-[999]"
       )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
@@ -1134,7 +1134,7 @@ export function ChatList({
                     Pending ({pendingConversations.length})
                   </div>
                   {/* Bulk Actions Toolbar */}
-                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-muted/30">
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-muted/30 h-12 max-h-12 min-h-12 flex-shrink-0 overflow-hidden">
                     <Button
                       variant="outline"
                       size="sm"

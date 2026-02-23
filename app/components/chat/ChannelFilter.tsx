@@ -75,7 +75,7 @@ export const ChannelFilter = memo(function ChannelFilter({
   return (
     <div 
       className={cn(
-    "px-4 py-3 border-b border-border/30 flex justify-center",
+    "px-4 py-3 border-b border-border/30 flex justify-center flex-shrink-0 h-[56px] max-h-[56px] min-h-[56px] overflow-hidden",
     "sticky top-0 z-[20]",
     "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         className
@@ -85,9 +85,9 @@ export const ChannelFilter = memo(function ChannelFilter({
       <Tabs 
         value={selectedFilter} 
         onValueChange={(value) => onFilterChange(value as FilterType)}
-        className="w-auto"
+        className="w-auto flex items-center"
       >
-        <TabsList className="h-8 p-0.5 bg-muted/30 grid-cols-9 rounded-full">
+        <TabsList className="h-8 max-h-8 min-h-[32px] p-0.5 bg-muted/30 grid-cols-9 rounded-full flex-shrink-0">
           {(Object.keys(filterConfig) as FilterType[]).map((filter) => {
             const config = filterConfig[filter]
             const IconComponent = config.icon

@@ -120,7 +120,7 @@ export function ChatHeader({
   const leadPhone = leadData?.phone
 
   return (
-    <div className="border-b flex-none min-h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2" 
+    <div className="border-b flex-none h-[71px] max-h-[71px] min-h-[71px] flex items-center overflow-hidden fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2" 
       style={{ backdropFilter: 'blur(10px)' }}>
       {/* ChatToggle positioned absolutely */}
       <ChatToggle 

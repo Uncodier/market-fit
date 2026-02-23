@@ -183,6 +183,29 @@ html.safari svg {
   display: block !important;
 }
 
+/* Chat toolbars: prevent height growth in Safari (fixes UI misalignment) */
+html.safari .border-b.flex-none.fixed.z-\[999\],
+html.safari .border-b.flex-none.h-\[71px\],
+html.safari .flex.items-center.justify-center.h-\[71px\].border-b.fixed,
+html.safari .absolute.top-0.z-\[1000\].flex.items-center.h-\[71px\] {
+  height: 71px !important;
+  max-height: 71px !important;
+  min-height: 71px !important;
+  overflow: hidden !important;
+}
+@media not all and (min-resolution: .001dpcm) {
+  @supports (-webkit-appearance: none) {
+    .border-b.flex-none.fixed.z-\[999\],
+    .flex.items-center.justify-center.h-\[71px\].border-b.fixed.w-\[319px\],
+    .absolute.top-0.z-\[1000\].flex.items-center.h-\[71px\] {
+      height: 71px !important;
+      max-height: 71px !important;
+      min-height: 71px !important;
+      overflow: hidden !important;
+    }
+  }
+}
+
 /* Corrección para todos los iconos SVG en Safari */
 html.safari button svg,
 html.safari a svg,

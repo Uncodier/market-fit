@@ -108,7 +108,7 @@ export function ChatToggle({
 
   return (
     <div className={cn(
-      "absolute top-0 z-[1000] flex items-center gap-2 h-[71px] px-4 transition-all duration-300 ease-in-out",
+      "absolute top-0 z-[1000] flex items-center gap-2 h-[71px] max-h-[71px] min-h-[71px] px-4 transition-all duration-300 ease-in-out overflow-hidden",
       isCollapsed ? "left-0" : "left-0",
       className
     )}>
