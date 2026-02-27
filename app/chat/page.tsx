@@ -44,6 +44,10 @@ function ChatPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const isNearBottomRef = useRef(true)
+  const userJustSentRef = useRef(false)
+  const prevConversationIdRef = useRef<string>("")
+  const prevAgentRespondingRef = useRef(false)
   const agentId = searchParams.get("agentId") || ""
   const agentName = searchParams.get("agentName") || "Agent"
   const conversationId = searchParams.get("conversationId") || ""
@@ -113,15 +117,53 @@ function ChatPageContent() {
     leadData
   })
 
-  // Scroll to bottom when new messages are added or when loading state changes
+  // Scroll to the ref's actual Y position in the document — no calculations, just read where it is
+  const scrollToBottom = useCallback((instant = false) => {
+    const el = messagesEndRef.current
+    if (!el) return
+
+    const rect = el.getBoundingClientRect()
+    const top = rect.top + window.scrollY
+    window.scrollTo({
+      top,
+      behavior: instant ? "auto" : "smooth",
+    })
+    isNearBottomRef.current = true
+  }, [])
+
+  // Track scroll position to know if user is near the bottom
   useEffect(() => {
-    if (messagesEndRef.current) {
-      // Add a small delay to allow the fade-in animation to start before scrolling
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-      }, 50)
+    const handleScroll = () => {
+      const distanceFromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+      isNearBottomRef.current = distanceFromBottom < 150
     }
-  }, [chatMessages, isAgentResponding])
+
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    handleScroll()
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // Scroll to bottom: instant when switching conversations, smart when messages update
+  useEffect(() => {
+    const conversationChanged = prevConversationIdRef.current !== conversationId
+    prevConversationIdRef.current = conversationId
+
+    // Only react to isAgentResponding when it turns ON (false → true), not on every change
+    const agentJustStarted = isAgentResponding && !prevAgentRespondingRef.current
+    prevAgentRespondingRef.current = isAgentResponding
+
+    if (conversationChanged) {
+      scrollToBottom(true)
+      return
+    }
+
+    // For new messages or agent starting to respond: only scroll if near bottom or user just sent
+    const shouldScroll = isNearBottomRef.current || userJustSentRef.current || agentJustStarted
+    if (shouldScroll) {
+      userJustSentRef.current = false
+      scrollToBottom()
+    }
+  }, [chatMessages, isAgentResponding, conversationId, scrollToBottom])
 
   // Uncontrolled message submission using ref
   const handleSendMessageSubmit = useCallback(async (e: React.FormEvent) => {
@@ -129,13 +171,9 @@ function ChatPageContent() {
     const currentMessage = messageRef.current.trim()
     
     if (currentMessage) {
+      userJustSentRef.current = true
       await handleSendMessage(currentMessage)
       clearMessage()
-      
-      // Scroll to bottom after sending message
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-      }, 150)
     }
   }, [handleSendMessage, clearMessage, messageRef])
 
