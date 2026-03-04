@@ -158,7 +158,7 @@ export function AuthenticateSessionsModal({
               {sessions.map((session) => (
                 <Card
                   key={session.id}
-                  className="border border-border hover:border-foreground/20 transition-colors cursor-pointer"
+                  className="border dark:border-white/5 border-black/5 hover:border-foreground/20 transition-colors cursor-pointer"
                   onClick={() => handleAuthenticate(session.id)}
                 >
                   <CardContent className="p-4">

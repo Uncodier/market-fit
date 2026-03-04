@@ -269,7 +269,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Copywriting Collection</h2>
+          <h2 className="text-2xl font-semibold">Copy Sequences</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Manage your marketing copy, scripts, and content templates
           </p>
@@ -302,7 +302,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                 const isExpanded = expandedItems.has(index)
                 
                 return (
-                  <Card key={index} className="border border-border">
+                  <Card key={index} className="border dark:border-white/5 border-black/5">
                     {/* Collapsible Header */}
                     <CardHeader 
                       className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"

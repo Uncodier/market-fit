@@ -43,11 +43,29 @@ export default function RobotsPage() {
 // Main content component
 function RobotsPageContent() {
   const { isLayoutCollapsed } = useLayout()
-  const { currentSite } = useSite()
+  const { currentSite, refreshSites } = useSite()
   const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount, setAutoRefreshEnabled } = useRobots()
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  
+  // Verify subscription on re-entry
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Refresh site data to check subscription status
+        refreshSites()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleVisibilityChange)
+    }
+  }, [refreshSites])
   
   // No campaigns view here
 
@@ -69,7 +87,6 @@ function RobotsPageContent() {
   useEffect(() => {
     const siteId = currentSite?.id
     if (siteId && siteId !== prevSiteIdRef.current) {
-      console.log('🔄 [Robots] Site changed, resetting state for site:', siteId)
       
       // Only reset when site actually changes
       setLocalSelectedInstanceId(null)
@@ -93,7 +110,6 @@ function RobotsPageContent() {
     if (siteId) {
       // Add a small delay to ensure site context is fully synchronized
       const syncTimer = setTimeout(() => {
-        console.log('🔄 [Robots] Site context synchronized for site:', siteId)
         setIsSiteContextReady(true)
       }, 100) // 100ms delay to ensure synchronization
       
@@ -106,7 +122,6 @@ function RobotsPageContent() {
   // Simplified initial loading - clear forceLoading after robots are loaded
   useEffect(() => {
     if (!isLoadingRobots && forceLoading) {
-      console.log('🔄 [Robots] Robots loaded, clearing force loading')
       setForceLoading(false)
     }
   }, [isLoadingRobots, forceLoading])
@@ -114,15 +129,6 @@ function RobotsPageContent() {
   // Instance selection via URL param
   const selectedInstanceParam = searchParams.get('instance')
   const allInstances = getAllInstances()
-  
-  // 🆕 Debug logging for instances
-  console.log('🔍 [Robots] Current instances:', {
-    siteId: currentSite?.id,
-    instancesCount: allInstances.length,
-    instances: allInstances.map(i => ({ id: i.id, name: i.name, site_id: i.site_id })),
-    isLoadingRobots,
-    refreshCount
-  })
   
   // Use local state if available, otherwise fall back to URL param, then default to "new" or first instance
   // Validate that the selected instance actually exists to avoid using deleted instances
@@ -192,7 +198,6 @@ function RobotsPageContent() {
 
   // Function to ensure we have a stream URL for the robot instance
   const ensureStreamUrl = async (instance: any) => {
-    console.log('🔍 ensureStreamUrl called with status:', prevConnectionStatusRef.current)
     try {
       // Construct the stream URL using provider_instance_id
       if (instance.provider_instance_id) {
@@ -202,10 +207,8 @@ function RobotsPageContent() {
         
         // Only show indicator if status actually changed from non-connected to connected
         if (prevConnectionStatusRef.current !== 'connected') {
-          console.log('✅ Showing connected indicator - status changed from', prevConnectionStatusRef.current, 'to connected')
           setShowConnectedIndicator(true)
         } else {
-          console.log('⏭️ Skipping indicator - already connected')
         }
         prevConnectionStatusRef.current = 'connected'
         
@@ -227,10 +230,8 @@ function RobotsPageContent() {
         
         // Only show indicator if status actually changed from non-connected to connected
         if (prevConnectionStatusRef.current !== 'connected') {
-          console.log('✅ Showing connected indicator (fallback) - status changed from', prevConnectionStatusRef.current, 'to connected')
           setShowConnectedIndicator(true)
         } else {
-          console.log('⏭️ Skipping indicator (fallback) - already connected')
         }
         prevConnectionStatusRef.current = 'connected'
       } else {
@@ -261,7 +262,6 @@ function RobotsPageContent() {
       return
     }
 
-    console.log(`Attempting reconnection ${reconnectAttempts + 1}/${maxReconnectAttempts}`)
     setConnectionStatus('reconnecting')
     prevConnectionStatusRef.current = 'reconnecting'
     setReconnectAttempts(prev => prev + 1)
@@ -275,7 +275,6 @@ function RobotsPageContent() {
       
       // Schedule next reconnection attempt
       const delay = calculateBackoffDelay(reconnectAttempts)
-      console.log(`Scheduling next reconnection in ${delay}ms`)
       
       const timeoutId = setTimeout(attemptReconnection, delay)
       reconnectTimeoutRef.current = timeoutId
@@ -285,7 +284,6 @@ function RobotsPageContent() {
 
   // Handle connection loss detection
   const handleConnectionLoss = useCallback(() => {
-    console.log('Connection lost detected')
     setConnectionStatus('disconnected')
     prevConnectionStatusRef.current = 'disconnected'
     setStreamUrl(null)
@@ -300,7 +298,6 @@ function RobotsPageContent() {
     // Start reconnection attempts
     if (activeRobotInstance && reconnectAttempts < maxReconnectAttempts) {
       const delay = calculateBackoffDelay(reconnectAttempts)
-      console.log(`Starting reconnection in ${delay}ms`)
       
       const timeoutId = setTimeout(attemptReconnection, delay)
       reconnectTimeoutRef.current = timeoutId
@@ -310,7 +307,6 @@ function RobotsPageContent() {
 
   // Manual reconnection function
   const manualReconnect = useCallback(() => {
-    console.log('Manual reconnection triggered')
     
     // Clear any existing reconnect timeout
     if (reconnectTimeoutRef.current) {
@@ -379,11 +375,6 @@ function RobotsPageContent() {
   useEffect(() => {
     const newSiteId = currentSite?.id || null
     if (newSiteId && newSiteId !== prevSiteIdRef.current) {
-      console.log('🔄 [Robots] Site changed, resetting connection state:', { 
-        from: prevSiteIdRef.current, 
-        to: newSiteId 
-      })
-      console.log('🔄 [Robots] Full currentSite object during site change:', currentSite)
       
       // Reset connection state only
       setReconnectAttempts(0)
@@ -429,7 +420,6 @@ function RobotsPageContent() {
   useEffect(() => {
     // 🆕 Only proceed if site context is ready
     if (!isSiteContextReady) {
-      console.log('🔄 [Robots] Waiting for site context before auto-creating instance...')
       return
     }
     
@@ -459,17 +449,14 @@ function RobotsPageContent() {
         isNotReconnecting &&
         timeSinceLastAttempt > debounceDelay) {
       
-      console.log('🔄 State shows no instances, verifying in database...')
       
       // CRITICAL: Double-check database before auto-creating
       checkInstancesExistInDB(currentSite.id).then((instancesExist) => {
         if (instancesExist) {
-          console.log('✅ Instances exist in DB, skipping auto-create (false positive avoided)')
           setIsAutoCreatingInstance(false)
           return
         }
         
-        console.log('🔄 Confirmed: No instances in DB, proceeding with auto-create')
         
         // Set flag to prevent multiple creations and record attempt timestamp
         setIsAutoCreatingInstance(true)
@@ -478,7 +465,6 @@ function RobotsPageContent() {
         // Create a new instance automatically
         createPlaceholderInstance().then((newInstance) => {
           if (newInstance) {
-            console.log('✅ Auto-created instance:', newInstance.id)
             // Refresh robots to get the new instance
             refreshRobots(currentSite?.id).then(() => {
               // Select the new instance
@@ -518,7 +504,6 @@ function RobotsPageContent() {
       const instanceExists = allInstances.some(inst => inst.id === pendingInstanceId)
       
       if (instanceExists) {
-        console.log('🔄 Pending instance now available, converting tab:', pendingInstanceId)
         
         // Transform the "new" tab into the new instance tab
         setLocalSelectedInstanceId(pendingInstanceId)
@@ -572,7 +557,6 @@ function RobotsPageContent() {
 
   // Ensure stream URL only when instance is running/active
   useEffect(() => {
-    console.log('🔍 useEffect triggered - activeRobotInstance:', !!activeRobotInstance, 'isInstanceRunning:', isInstanceRunning)
     if (activeRobotInstance && isInstanceRunning) {
       ensureStreamUrl(activeRobotInstance)
     } else {
@@ -590,7 +574,6 @@ function RobotsPageContent() {
       // Check if instance still exists before polling
       const currentInstance = getInstanceById(instanceId)
       if (!currentInstance) {
-        console.log('🔄 Polling: Instance no longer exists, stopping polling')
         setIsResuming(false)
         clearInterval(intervalId)
         return
@@ -600,7 +583,6 @@ function RobotsPageContent() {
       const updated = getInstanceById(instanceId)
       if (!updated) {
         // Instance was deleted during polling
-        console.log('🔄 Polling: Instance deleted during polling, stopping')
         setIsResuming(false)
         clearInterval(intervalId)
         return
@@ -611,10 +593,8 @@ function RobotsPageContent() {
           try {
             // Only call ensureStreamUrl if we don't already have a stream URL or if status changed
             if (!streamUrl || prevConnectionStatusRef.current !== 'connected') {
-              console.log('🔄 Polling: calling ensureStreamUrl')
               await ensureStreamUrl(updated)
             } else {
-              console.log('⏭️ Polling: skipping ensureStreamUrl - already connected')
             }
           } catch (e) {
             console.error('Error ensuring stream after polling:', e)
@@ -639,7 +619,6 @@ function RobotsPageContent() {
       return null
     }
     
-    console.log('🔄 Creating placeholder instance for site:', currentSite.id)
     
     try {
       const supabase = createClient()
@@ -679,7 +658,6 @@ function RobotsPageContent() {
         return null
       }
       
-      console.log('✅ Created placeholder instance:', data.id)
       return data
     } catch (error) {
       console.error('❌ Exception creating placeholder instance:', error)
@@ -699,7 +677,6 @@ function RobotsPageContent() {
       const currentParams = new URLSearchParams(searchParams.toString())
       currentParams.set('instance', newInstance.id)
       router.replace(`/robots?${currentParams.toString()}`)
-      console.log('🔄 New instance created and selected:', newInstance.id)
     }
   }
 
@@ -808,7 +785,6 @@ function RobotsPageContent() {
 
   // Function to enable auto-conversion when a new instance is created
   const handleNewInstanceCreated = useCallback((instanceId: string) => {
-    console.log('🔄 New instance created, setting pending conversion:', instanceId)
     // Immediately update local state and URL to reflect the new instance
     setLocalSelectedInstanceId(instanceId)
     // Update URL to reflect the new instance selection
@@ -825,79 +801,45 @@ function RobotsPageContent() {
   // Calculate how many tabs can fit based on available width
   // Always calculates - no early returns, uses defaults if measurements aren't ready
   const calculateMaxVisibleTabs = useCallback(() => {
-    console.log('🔍 [calculateMaxVisibleTabs] Called')
-    
     // Use window width instead of container width (container expands with tabs)
     const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 0
-    console.log('📐 [calculateMaxVisibleTabs] Window width:', windowWidth)
     
     if (windowWidth === 0) {
-      console.log('⚠️ [calculateMaxVisibleTabs] Window width is 0, setting Infinity')
       setMaxVisibleTabs(Infinity)
       return
     }
     
     // Calculate sidebar width based on collapsed state
     const sidebarWidth = isLayoutCollapsed ? 64 : 256 // w-16 = 64px, w-64 = 256px
-    console.log('📐 [calculateMaxVisibleTabs] Sidebar width:', sidebarWidth, '(collapsed:', isLayoutCollapsed, ')')
     
-    // Calculate available width: window width minus sidebar, margins (px-16 = 64px each side = 128px total)
-    // Optimized margins to maximize visible tabs
-    const horizontalMargins = 80 // 40px * 2 (optimized from 128)
-    const gapBetweenElements = 8 // gap-2 = 8px (optimized from 16)
+    // Calculate available width: window width minus sidebar, margins (px-4 = 16px, px-8 = 32px)
+    // Mobile: px-4 (16px * 2 = 32px)
+    // Desktop: px-16 (64px * 2 = 128px) -> now px-8 (32px * 2 = 64px)
+    const horizontalMargins = windowWidth >= 1024 ? 64 : 32
+    
+    const gapBetweenElements = 8 // gap-2 = 8px
     const plusButtonWidth = 36 // Approximate width of Plus button (h-9 with padding)
     const moreButtonWidth = 56 // Approximate width of "..." button
     
-    // Default estimated width increased to account for X button (h-4 w-4 + ml-1.5 ≈ 20px extra)
-    let estimatedTabWidth = 160
-    
-    // Try to measure actual tab widths if tabsListRef is available
-    if (tabsListRef.current) {
-      const tabs = tabsListRef.current.querySelectorAll('[role="tab"]')
-      console.log('📊 [calculateMaxVisibleTabs] Found tabs:', tabs.length)
-      if (tabs.length > 0) {
-        // Calculate average width of existing tabs (this will include the X button automatically)
-        let totalWidth = 0
-        let validTabCount = 0
-        
-        tabs.forEach((tab, index) => {
-          const tabElement = tab as HTMLElement
-          const tabWidth = tabElement.offsetWidth || 0
-          console.log(`  Tab ${index}: width=${tabWidth}`)
-          // Only count tabs that have been rendered with actual dimensions
-          if (tabWidth > 0) {
-            totalWidth += tabWidth
-            validTabCount++
-          }
-        })
-        
-        // Use measured width if we have valid measurements, otherwise use default
-        if (validTabCount > 0 && totalWidth > 0) {
-          estimatedTabWidth = totalWidth / validTabCount
-          console.log('✅ [calculateMaxVisibleTabs] Using measured width:', estimatedTabWidth, 'from', validTabCount, 'tabs')
-        } else {
-          console.log('⚠️ [calculateMaxVisibleTabs] No valid tab measurements, using default:', estimatedTabWidth)
-        }
-      } else {
-        console.log('⚠️ [calculateMaxVisibleTabs] No tabs found in DOM')
-      }
-    } else {
-      console.log('⚠️ [calculateMaxVisibleTabs] No tabsListRef')
-    }
+    // Fixed estimated width to prevent oscillation loops during resize
+    // We use a conservative average width for robot tabs
+    const estimatedTabWidth = 120
     
     // Calculate available width: window width minus sidebar, margins, buttons, and gaps
     const availableWidth = windowWidth - sidebarWidth - horizontalMargins - gapBetweenElements - plusButtonWidth - gapBetweenElements - moreButtonWidth
-    console.log('📏 [calculateMaxVisibleTabs] Available width:', availableWidth, '(windowWidth:', windowWidth, '- sidebarWidth:', sidebarWidth, '- margins:', horizontalMargins, '- buttons:', plusButtonWidth + moreButtonWidth, '- gaps:', gapBetweenElements * 2, ')')
     
     // Calculate how many tabs can fit (we already subtracted moreButtonWidth above)
-    const maxTabs = Math.floor(availableWidth / estimatedTabWidth)
-    console.log('🎯 [calculateMaxVisibleTabs] Calculated maxTabs:', maxTabs, '(availableWidth:', availableWidth, ') / estimatedTabWidth:', estimatedTabWidth)
+    // We force at least 1 tab to be visible.
+    const calculatedTabs = Math.floor(availableWidth / estimatedTabWidth)
+    // Reduce max tabs by 1 to make sure we always have enough space and don't overflow
+    const maxTabs = calculatedTabs > 0 ? calculatedTabs : 1
     
     // Always show at least 1 tab if there are instances
-    const finalMaxTabs = Math.max(1, maxTabs)
-    console.log('✅ [calculateMaxVisibleTabs] Setting maxVisibleTabs to:', finalMaxTabs)
-    setMaxVisibleTabs(finalMaxTabs)
-    setContainerWidth(windowWidth)
+    const finalMaxTabs = maxTabs
+    
+    // Only update if value changed to prevent render loops
+    setMaxVisibleTabs(prev => prev !== finalMaxTabs ? finalMaxTabs : prev)
+    setContainerWidth(prev => prev !== windowWidth ? windowWidth : prev)
   }, [selectedInstanceId, isLayoutCollapsed])
 
   // Use ResizeObserver to track container width changes
@@ -932,10 +874,8 @@ function RobotsPageContent() {
       window.addEventListener('resize', handleResize)
 
       // Initial calculation - always call, no conditions
-      console.log('🎬 [ResizeObserver] Initial calculation setup')
       rafId = requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          console.log('🎬 [ResizeObserver] Executing calculateMaxVisibleTabs (initial)')
           calculateMaxVisibleTabs()
         })
       })
@@ -954,25 +894,18 @@ function RobotsPageContent() {
   // Recalculate when instances change or selectedInstanceId changes
   // Always call - no conditions, let the calculation function handle edge cases
   useLayoutEffect(() => {
-    console.log('🔄 [useLayoutEffect] Instances/selectedInstanceId changed', {
-      instancesCount: allInstances.length,
-      selectedInstanceId
-    })
     // Multiple strategies to ensure execution
     const rafId1 = requestAnimationFrame(() => {
-      console.log('🎬 [useLayoutEffect] Executing calculateMaxVisibleTabs (instances/selectedInstanceId - RAF 1)')
       calculateMaxVisibleTabs()
     })
     
     const rafId2 = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        console.log('🎬 [useLayoutEffect] Executing calculateMaxVisibleTabs (instances/selectedInstanceId - double RAF)')
         calculateMaxVisibleTabs()
       })
     })
     
     const timeoutId = setTimeout(() => {
-      console.log('🎬 [useLayoutEffect] Executing calculateMaxVisibleTabs (instances/selectedInstanceId - setTimeout fallback)')
       calculateMaxVisibleTabs()
     }, 100)
     
@@ -986,33 +919,25 @@ function RobotsPageContent() {
   // Recalculate when component mounts or pathname changes
   // This ensures it runs on SPA navigation even if pathname doesn't change
   useEffect(() => {
-    console.log('🔄 [useEffect] Component mounted or pathname changed:', pathname, 'instances:', allInstances.length)
     if (pathname !== '/robots') {
-      console.log('⏭️ [useEffect] Not on /robots, skipping')
       return
     }
     
-    console.log('🎬 [useEffect] Setting up calculation (pathname)')
-    
     // Use multiple strategies with delays to ensure DOM is ready
     const timeout1 = setTimeout(() => {
-      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (timeout 50ms)')
       calculateMaxVisibleTabs()
     }, 50)
     
     const timeout2 = setTimeout(() => {
-      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (timeout 100ms)')
       calculateMaxVisibleTabs()
     }, 100)
     
     const timeout3 = setTimeout(() => {
-      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (timeout 200ms)')
       calculateMaxVisibleTabs()
     }, 200)
     
     const rafId = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (double RAF)')
         calculateMaxVisibleTabs()
       })
     })
@@ -1030,19 +955,11 @@ function RobotsPageContent() {
     if (pathname !== '/robots') return
     if (isLoadingRobots || forceLoading) return
     
-    console.log('🔄 [useEffect] Instances finished loading, triggering calculation', {
-      instancesCount: allInstances.length,
-      isLoadingRobots,
-      forceLoading
-    })
-    
     const timeout1 = setTimeout(() => {
-      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (after loading - timeout 50ms)')
       calculateMaxVisibleTabs()
     }, 50)
     
     const timeout2 = setTimeout(() => {
-      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (after loading - timeout 150ms)')
       calculateMaxVisibleTabs()
     }, 150)
     
@@ -1056,11 +973,8 @@ function RobotsPageContent() {
   useEffect(() => {
     if (pathname !== '/robots') return
     
-    console.log('🔄 [useEffect] Force calculation on mount/periodic check')
-    
     // Immediate calculation
     const immediateTimeout = setTimeout(() => {
-      console.log('🎬 [useEffect] Executing calculateMaxVisibleTabs (immediate - 0ms)')
       calculateMaxVisibleTabs()
     }, 0)
     
@@ -1069,7 +983,6 @@ function RobotsPageContent() {
     const maxChecks = 4
     const intervalId = setInterval(() => {
       checkCount++
-      console.log(`🎬 [useEffect] Periodic check ${checkCount}/${maxChecks} - executing calculateMaxVisibleTabs`)
       calculateMaxVisibleTabs()
       if (checkCount >= maxChecks) {
         clearInterval(intervalId)
@@ -1085,34 +998,26 @@ function RobotsPageContent() {
   
 
   return (
-    <div className="flex-1 p-0">
-      <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`}>
-        <div className="px-16 pt-0">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center w-full" ref={tabsContainerRef}>
-              <div className="flex items-center gap-2 flex-1">
-                <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange}>
-                  <TabsList ref={tabsListRef}>
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`} className="flex-none transition-all duration-300">
+        <div className="pt-0 w-full overflow-hidden">
+          <div className="flex items-center gap-4 w-full">
+            <div className="flex items-center w-full min-w-0" ref={tabsContainerRef}>
+              <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+                <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange} className="w-full">
+                  <TabsList ref={tabsListRef} className="flex-nowrap justify-start w-full overflow-hidden">
                     {/* Show New Makina tab if no instances or while loading */}
                     {(allInstances.length === 0 || isLoadingRobots || forceLoading) && (
                       <TabsTrigger value="new">
-                        <span className="flex items-center gap-2">
-                          <Plus className="h-3 w-3 text-muted-foreground" />
-                          New Makina
+                        <span className="flex items-center gap-2 whitespace-nowrap truncate max-w-[120px]">
+                          <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">New Makina</span>
                         </span>
                       </TabsTrigger>
                     )}
                     
                     {/* Show instances with responsive overflow */}
                     {(() => {
-                      console.log('🔍 [Robots] Rendering tabs for instances:', {
-                        siteId: currentSite?.id,
-                        siteChangeKey,
-                        forceLoading,
-                        instances: allInstances.map(i => ({ id: i.id, name: i.name, site_id: i.site_id })),
-                        maxVisibleTabs
-                      })
-                      
                       // Sort instances by updated_at descending (most recently updated first)
                       const sortedInstances = [...allInstances].sort((a, b) => {
                         const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
@@ -1143,13 +1048,13 @@ function RobotsPageContent() {
                         <>
                           {visibleInstances.map((inst) => (
                             <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id}>
-                              <span className="flex items-center gap-2">
+                              <span className="flex items-center gap-2 max-w-[120px]">
                                 {['running','active'].includes((inst as any).status) ? (
-                                  <Play className="h-3 w-3 text-green-600" />
+                                  <Play className="h-3 w-3 text-green-600 flex-shrink-0" />
                                 ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
-                                  <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                  <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse flex-shrink-0" />
                                 ) : null)}
-                                {inst.name || `mk-${inst.id.slice(-4)}`}
+                                <span className="truncate">{inst.name || `mk-${inst.id.slice(-4)}`}</span>
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -1253,7 +1158,7 @@ function RobotsPageContent() {
           </div>
         </div>
       </StickyHeader>
-      
+
       {/* Delete Confirmation Modal */}
       {instanceToDelete && (
         <DeleteRobotModal
@@ -1267,26 +1172,17 @@ function RobotsPageContent() {
           instanceId={instanceToDelete.id}
           instanceName={instanceToDelete.name}
           onDeleteSuccess={async () => {
-            console.log('🗑️ [Delete] Starting delete success callback')
             
             // Save the deleted instance ID before clearing state
             const deletedInstanceId = instanceToDelete?.id
-            console.log('🗑️ [Delete] Deleted instance ID:', deletedInstanceId)
             
             // Check if the deleted instance was the active one or was starting
             const wasActiveInstance = activeRobotInstance?.id === deletedInstanceId
             const wasStarting = wasActiveInstance && (isResuming || isInstanceStarting)
             
-            console.log('🗑️ [Delete] Instance state check:', {
-              wasActiveInstance,
-              wasStarting,
-              isResuming,
-              isInstanceStarting
-            })
             
             // Reset robot starting/resuming state if the deleted instance was starting
             if (wasStarting || wasActiveInstance) {
-              console.log('🗑️ [Delete] Resetting robot state for deleted instance')
               setIsResuming(false)
               setStreamUrl(null)
               setConnectionStatus('disconnected')
@@ -1310,9 +1206,7 @@ function RobotsPageContent() {
             
             try {
               // First refresh robots to get updated instance list (without the deleted one)
-              console.log('🗑️ [Delete] Refreshing robots after delete...')
               await refreshRobots(currentSite?.id)
-              console.log('🗑️ [Delete] Robots refreshed successfully')
               
               // Wait for state to be fully updated - use a retry mechanism
               let currentInstances = getAllInstances()
@@ -1329,7 +1223,6 @@ function RobotsPageContent() {
                 
                 // Only proceed if deleted instance is confirmed removed OR we have instances
                 if (!deletedStillExists) {
-                  console.log('🗑️ [Delete] Deleted instance confirmed removed after', retries, 'retries')
                   break
                 }
                 retries++
@@ -1340,13 +1233,6 @@ function RobotsPageContent() {
                 console.warn('🗑️ [Delete] WARNING: Deleted instance still in list after retries, filtering it out')
                 currentInstances = currentInstances.filter(inst => inst.id !== deletedInstanceId)
               }
-              
-              console.log('🗑️ [Delete] Current instances after refresh:', {
-                count: currentInstances.length,
-                instances: currentInstances.map(i => ({ id: i.id, name: i.name })),
-                deletedInstanceId,
-                retries
-              })
               
               // Find the best instance to navigate to - select the first VISIBLE one
               let targetInstanceId = 'new'
@@ -1360,13 +1246,6 @@ function RobotsPageContent() {
                   return bTime - aTime
                 })
                 
-                console.log('🗑️ [Delete] Sorted instances by updated_at:', sortedInstances.map(i => ({ 
-                  id: i.id, 
-                  name: i.name, 
-                  updated_at: (i as any).updated_at,
-                  created_at: (i as any).created_at 
-                })))
-                
                 // Calculate which instances are visible (same logic as in tab rendering)
                 const showNewMakinaTab = currentInstances.length === 0 || isLoadingRobots || forceLoading
                 const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
@@ -1377,36 +1256,22 @@ function RobotsPageContent() {
                 // Get visible instances (first N that fit in visible tabs)
                 const visibleInstances = sortedInstances.slice(0, visibleTabsCount)
                 
-                console.log('🗑️ [Delete] Visibility calculation:', {
-                  totalTabs,
-                  maxVisibleTabs,
-                  effectiveMaxTabs,
-                  needsOverflow,
-                  visibleTabsCount,
-                  visibleInstances: visibleInstances.map(i => ({ id: i.id, name: i.name })),
-                  hiddenCount: sortedInstances.length - visibleTabsCount
-                })
-                
                 // Select the first VISIBLE instance (not just first in sorted list)
                 if (visibleInstances.length > 0) {
                   targetInstanceId = visibleInstances[0]?.id || 'new'
-                  console.log('🗑️ [Delete] Selecting first VISIBLE instance:', targetInstanceId)
                 } else {
                   // Fallback: if no visible instances (shouldn't happen), select first in list
                   targetInstanceId = sortedInstances[0]?.id || 'new'
-                  console.log('🗑️ [Delete] No visible instances, selecting first in sorted list:', targetInstanceId)
                 }
                 
                 // Set local selection and update URL atomically to avoid intermediate state
                 setLocalSelectedInstanceId(targetInstanceId)
                 
                 // Navigate to the selected instance (update URL directly, skipping intermediate state)
-                console.log('🗑️ [Delete] Navigating to first visible instance:', targetInstanceId)
                 const newParams = new URLSearchParams(searchParams.toString())
                 newParams.set('instance', targetInstanceId)
                 router.replace(`/robots?${newParams.toString()}`, { scroll: false })
               } else {
-                console.log('🗑️ [Delete] No instances available, going to new')
                 // Prevent auto-create from triggering immediately after delete
                 // Update lastAutoCreationAttempt to prevent auto-create for a short period
                 setLastAutoCreationAttempt(Date.now())
@@ -1442,12 +1307,12 @@ function RobotsPageContent() {
         />
       )}
       
-      <div className="flex flex-col h-full">
-        {/* Content area - flex-1 with overflow-auto for natural scroll */}
-        <div className="flex-1 overflow-visible bg-muted/30 transition-colors duration-300 ease-in-out">
-          <div className="flex h-full">
+      <div className="flex-1 flex flex-col min-h-0 pt-[71px]">
+        {/* Content area - pt compensates for fixed StickyHeader */}
+        <div className="flex-1 flex flex-col min-h-0 bg-muted/30 transition-colors duration-300 ease-in-out">
+          <div className="flex flex-col lg:flex-row flex-1 min-h-0">
             {((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId && (
-              <div className="w-2/3 border-r border-border iframe-container flex flex-col sticky top-[71px] h-[calc(100vh-136px)]" style={{ position: 'sticky' }}>
+              <div className="w-full lg:w-2/3 border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col lg:sticky lg:top-[71px] h-[40vh] lg:h-[calc(100dvh-136px)] shrink-0" style={{ position: 'sticky' }}>
                 <div className="flex flex-col m-0 bg-card h-full">
                   <div className="flex flex-col p-0 relative h-full">
                     {isResuming || isInstanceStarting ? (
@@ -1541,10 +1406,8 @@ function RobotsPageContent() {
                                   
                                   // Only show indicator if status actually changed from non-connected to connected
                                   if (prevConnectionStatusRef.current !== 'connected') {
-                                    console.log('✅ Showing connected indicator (iframe) - status changed from', prevConnectionStatusRef.current, 'to connected')
                                     setShowConnectedIndicator(true)
                                   } else {
-                                    console.log('⏭️ Skipping indicator (iframe) - already connected')
                                   }
                                   prevConnectionStatusRef.current = 'connected'
                                   
@@ -1566,8 +1429,8 @@ function RobotsPageContent() {
             )}
 
             {/* Messages View - Chat/Instance Logs */}
-            <div className={`${((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId ? 'w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col overflow-auto`}>
-              <div className="flex flex-col m-0 bg-card min-w-0">
+            <div className={`${((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0`}>
+              <div className="flex flex-col m-0 bg-card min-w-0 flex-1 min-h-0">
                 <SimpleMessagesView 
                   key={`${currentSite?.id}-${siteChangeKey}`}
                   className="" 

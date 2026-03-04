@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 
 export async function POST(request: Request) {
   try {
-    const { mode, referralCode, returnTo = '/dashboard' } = await request.json()
+    const { mode, referralCode, returnTo = '/robots' } = await request.json()
     
     // Store auth mode in cookies for callback validation
     const response = NextResponse.json({ success: true })

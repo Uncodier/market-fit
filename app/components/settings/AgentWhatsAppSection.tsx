@@ -468,7 +468,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
   if (!active) return null
 
   return (
-    <Card id="agent-whatsapp-channel" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card id="agent-whatsapp-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />

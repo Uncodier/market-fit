@@ -213,7 +213,7 @@ export function KanbanCard({
   };
 
   return (
-    <Card className="shadow-sm cursor-pointer transition-all hover:shadow-md hover:translate-y-[-2px] h-auto flex flex-col mb-1"
+    <Card className="shadow-sm cursor-pointer transition-shadow duration-200 hover:shadow-md h-auto flex flex-col mb-1"
       onClick={handleCardClick}
     >
       <CardHeader className="p-5 pb-2">

@@ -1,9 +1,11 @@
 "use client"
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { cn } from "@/lib/utils"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from '@/app/context/SiteContext'
 import { useLayout } from '@/app/context/LayoutContext'
+import { useIsMobile } from '@/app/hooks/use-mobile-view'
 import { useToast } from '@/app/components/ui/use-toast'
 import { useSearchParams, useRouter } from "next/navigation"
 import { useRobots } from '@/app/context/RobotsContext'
@@ -30,6 +32,7 @@ import { useInstanceAssets } from './hooks/useInstanceAssets'
 
 // Import components
 import { LoadingIndicator } from './components/LoadingIndicator'
+import { EmptyStateOrbs } from './components/EmptyStateOrbs'
 import { MessageInput } from './components/MessageInput'
 import { MessageItem } from './components/MessageItem'
 import { ToolCallItem } from './components/ToolCallItem'
@@ -38,6 +41,7 @@ import { CompletedPlanCard } from './components/CompletedPlanCard'
 import { StepIndicator } from './components/StepIndicator'
 import { EditStepModal } from './components/EditStepModal'
 import { StepCompletedItem } from './components/StepCompletedItem'
+import { EmptyStatePrompts } from './components/EmptyStatePrompts'
 
 // Import utilities
 import { getActivityName, getToolName, groupTimelineToolCalls } from './utils'
@@ -46,6 +50,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
+  const isMobile = useIsMobile()
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -54,22 +59,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const { user } = useAuthContext()
   const { userProfile } = useUserProfile(user?.id)
   
-  // Log activeRobotInstance changes (loading state clearing is handled by useMessageSending hook)
-  useEffect(() => {
-    console.log('🔄 [SimpleMessagesView] activeRobotInstance changed:', {
-      activeRobotInstance: activeRobotInstance ? { 
-        id: activeRobotInstance.id, 
-        name: activeRobotInstance.name, 
-        status: activeRobotInstance.status 
-      } : null,
-      hasActiveRobotInstance: !!activeRobotInstance,
-      hasActiveRobotInstanceId: !!(activeRobotInstance?.id)
-    })
-  }, [activeRobotInstance])
 
   // Reset state when site changes
   useEffect(() => {
-    console.log('🔄 [SimpleMessagesView] Site changed, resetting state for site:', currentSite?.id)
     
     // Reset selected context when site changes
     setSelectedContext({
@@ -156,73 +148,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const scrollToBottomImmediate = useCallback(() => {
     const container = messagesContainerRef.current
     if (container) {
-      // Set scroll position to bottom immediately without animation
       container.scrollTop = container.scrollHeight
     }
   }, [])
 
   // Auto scroll to bottom when new logs arrive
   const scrollToBottom = useCallback(() => {
-    // Try multiple methods to ensure scroll works correctly
     const container = messagesContainerRef.current
-    const endElement = messagesEndRef.current
-    
-    if (container && endElement) {
-      // Use scrollIntoView with smooth behavior for animation
-      // block: 'end' ensures we scroll to the absolute bottom
-      const scrollToEnd = () => {
-        if (container && endElement) {
-          // First, ensure we're at the bottom position
-          endElement.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' })
-          
-          // Double-check with direct scrollTop assignment after a short delay
-          // This ensures we reach the absolute bottom even if scrollIntoView doesn't account for padding
-          setTimeout(() => {
-            if (container) {
-              const maxScroll = container.scrollHeight - container.clientHeight
-              // Only adjust if we're significantly off (more than 20px)
-              if (Math.abs(container.scrollTop - maxScroll) > 20) {
-                // Use smooth scroll by animating to the target
-                const targetScroll = maxScroll
-                const startScroll = container.scrollTop
-                const distance = targetScroll - startScroll
-                const duration = 300 // ms
-                let startTime: number | null = null
-                
-                const animateScroll = (currentTime: number) => {
-                  if (!startTime) startTime = currentTime
-                  const elapsed = currentTime - startTime
-                  const progress = Math.min(elapsed / duration, 1)
-                  
-                  // Ease-out function for smooth animation
-                  const easeOut = 1 - Math.pow(1 - progress, 3)
-                  container.scrollTop = startScroll + (distance * easeOut)
-                  
-                  if (progress < 1) {
-                    requestAnimationFrame(animateScroll)
-                  } else {
-                    // Final precise position
-                    container.scrollTop = targetScroll
-                  }
-                }
-                
-                requestAnimationFrame(animateScroll)
-              }
-            }
-          }, 100)
-        }
-      }
-      
-      // Try immediately
-      scrollToEnd()
-      
-      // Try again after delays to account for layout shifts and image loading
-      setTimeout(scrollToEnd, 100)
-      setTimeout(scrollToEnd, 300)
-      setTimeout(scrollToEnd, 600)
-    } else if (endElement) {
-      // Fallback to scrollIntoView if container ref is not available
-      endElement.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
     }
   }, [])
 
@@ -231,10 +165,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const handleMessageSent = useCallback((sent: boolean) => {
     if (sent && message) {
       setLastUserMessage(message)
-      // Scroll to bottom with animation when message is sent
-      setTimeout(() => {
-        scrollToBottom()
-      }, 100)
+      // Small delay to let the optimistic message render before scrolling
+      const t = setTimeout(() => scrollToBottom(), 80)
+      return () => clearTimeout(t)
     }
     onMessageSent?.(sent)
   }, [message, onMessageSent, scrollToBottom])
@@ -244,7 +177,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
 
   // Handle new instance creation - defined before hook initialization
   const handleNewInstanceCreated = useCallback(async (instanceId: string, shouldNavigate: boolean = true) => {
-    console.log('🔄 New instance created, refreshing robots:', instanceId, 'shouldNavigate:', shouldNavigate)
     
     // Clear the temporary user message since we now have a real instance
     setLastUserMessage('')
@@ -267,7 +199,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       }, 100)
     } else {
       // New behavior: just refresh robots, let parent component handle tab conversion
-      console.log('🔄 No navigation requested, parent will handle tab conversion')
       
       // Notify parent component to convert the tab immediately
       onNewInstanceCreated?.(instanceId)
@@ -367,23 +298,19 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   }, [resetMessageSentState])
 
   // Scroll to bottom when logs change or activeRobotInstance changes
-  // Scroll when there are conversations/logs OR when instance is running
   useEffect(() => {
     const hasConversations = logs.length > 0
     const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
-    
+
     if (hasConversations || isInstanceRunning) {
-      // Use multiple timeouts to ensure scroll happens after content is rendered
-      const timeout1 = setTimeout(() => scrollToBottom(), 50)
-      const timeout2 = setTimeout(() => scrollToBottom(), 200)
-      const timeout3 = setTimeout(() => scrollToBottom(), 500)
-      const timeout4 = setTimeout(() => scrollToBottom(), 1000)
-      
+      // Double rAF: first frame commits the DOM, second frame has correct layout dimensions
+      let id1: number
+      const id0 = requestAnimationFrame(() => {
+        id1 = requestAnimationFrame(() => scrollToBottom())
+      })
       return () => {
-        clearTimeout(timeout1)
-        clearTimeout(timeout2)
-        clearTimeout(timeout3)
-        clearTimeout(timeout4)
+        cancelAnimationFrame(id0)
+        cancelAnimationFrame(id1)
       }
     }
   }, [logs.length, activeRobotInstance?.id, activeRobotInstance?.status, scrollToBottom])
@@ -435,13 +362,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
 
   // Auto-expand step indicator when assets are uploaded for the first time
   useEffect(() => {
-    console.log('🔄 Auto-expand effect triggered:', {
-      assetsLength: assets.length,
-      isStepIndicatorExpanded,
-      shouldExpand: assets.length > 0 && !isStepIndicatorExpanded
-    })
     if (assets.length > 0 && !isStepIndicatorExpanded) {
-      console.log('🔄 Auto-expanding StepIndicator')
       setIsStepIndicatorExpanded(true)
     }
   }, [assets.length]) // Removed isStepIndicatorExpanded from dependencies to allow manual collapse
@@ -471,7 +392,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     // If user is in 'robot' mode or other specific modes, let them proceed normally
     // Also ensure message is not empty
     if (activePlan && message.trim() && selectedActivity === 'ask') {
-      console.log('🎯 Smart Submit: Adding step to active plan', activePlan.id)
       
       // Add the message as a step
       await addStep(activePlan.id, message)
@@ -483,7 +403,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       scrollToBottom()
     } else {
       // Normal behavior
-      console.log('📨 Smart Submit: Sending normal message')
       handleSendMessage()
     }
   }, [instancePlans, message, selectedActivity, addStep, clearMessage, scrollToBottom, handleSendMessage])
@@ -595,28 +514,32 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const isEmpty = isEmptyNewMakina || isEmptyExplorer
 
   return (
-    <div className={`flex flex-col w-full min-w-0 h-full relative ${className}`}>
+    <div className={`flex flex-col w-full min-w-0 h-full min-h-0 relative ${className}`}>
+      {/* Floating background orbs - shown when chat is empty */}
+      {isEmpty && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-500/8 rounded-full blur-2xl animate-float-slow"></div>
+          <div className="absolute top-1/3 left-1/3 w-56 h-56 bg-indigo-500/10 rounded-full blur-2xl animate-float-medium" style={{ animationDelay: '7s' }}></div>
+          <div className="absolute bottom-1/3 right-1/3 w-60 h-60 bg-purple-500/9 rounded-full blur-2xl animate-float-reverse" style={{ animationDelay: '9s' }}></div>
+          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 w-48 h-48 bg-violet-500/15 rounded-full blur-xl animate-float-slow"></div>
+          <div className="absolute bottom-1/3 right-1/2 transform translate-x-1/2 w-44 h-44 bg-indigo-500/12 rounded-full blur-xl animate-float-medium" style={{ animationDelay: '3s' }}></div>
+          <div className="absolute top-24 left-32 w-36 h-36 bg-pink-500/15 rounded-full blur-xl animate-float-fast" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-24 right-40 w-32 h-32 bg-emerald-500/12 rounded-full blur-xl animate-float-reverse" style={{ animationDelay: '4s' }}></div>
+          <div className="absolute top-1/2 left-24 w-28 h-28 bg-cyan-500/10 rounded-full blur-xl animate-float-slow" style={{ animationDelay: '6s' }}></div>
+          <div className="absolute bottom-1/4 right-28 w-30 h-30 bg-purple-500/15 rounded-full blur-xl animate-float-medium" style={{ animationDelay: '8s' }}></div>
+          <div className="absolute top-1/4 right-1/3 w-40 h-40 bg-rose-500/10 rounded-full blur-xl animate-float-fast" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute bottom-1/2 left-1/4 w-38 h-38 bg-teal-500/12 rounded-full blur-xl animate-float-reverse" style={{ animationDelay: '5s' }}></div>
+        </div>
+      )}
       {/* Messages list */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden py-6 w-full min-w-0 transition-colors duration-300 ease-in-out pt-[91px] pb-[520px]"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-6 w-full min-w-0 transition-colors duration-300 ease-in-out pb-[220px]"
       >
-        <div className={isBrowserVisible ? "max-w-[calc(100%-80px)] mx-auto min-w-0" : "max-w-[calc(100%-240px)] mx-auto min-w-0"}>
+        <div className="w-full max-w-4xl mx-auto px-4 min-w-0">
         <div className="space-y-6">
         {(() => {
-          console.log('🔄 [SimpleMessagesView] Render decision:', {
-            shouldShowNewMakina,
-            activeRobotInstance: activeRobotInstance ? { id: activeRobotInstance.id, name: activeRobotInstance.name, status: activeRobotInstance.status } : null,
-            hasActiveRobotInstance: !!activeRobotInstance,
-            hasActiveRobotInstanceId: !!(activeRobotInstance?.id),
-            logsLength: logs.length,
-            isLoadingLogs,
-            isWaitingForResponse,
-            isNewMakinaThinking
-          })
-          
           if (shouldShowNewMakina) {
-            console.log('🔄 [SimpleMessagesView] Rendering New Makina view')
             return (
           // New Makina context - show user messages and thinking state
           <>
@@ -677,17 +600,14 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           </>
             )
           } else {
-            console.log('🔄 [SimpleMessagesView] Rendering Explorer view')
             return (
             <>
             {/* Create unified timeline of logs and completed plans */}
             {(() => {
               if (processedTimeline.length === 0) {
-                console.log('🔄 [SimpleMessagesView] No timeline items')
                 return null
               }
               
-              console.log('🔄 [SimpleMessagesView] Rendering timeline with', processedTimeline.length, 'items')
 
               return processedTimeline.map((item, index) => {
                 if (item.type === 'tool_group') {
@@ -760,18 +680,26 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         </div>
       </div>
 
-      {/* Message input area - fixed positioning like ChatInput */}
+      {/* Message input - centered when empty, fixed at bottom when has content - animates between states */}
       <div 
-        className={`fixed flex-col flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10`}
+        className={cn(
+          "fixed right-0 bottom-0 z-20 pointer-events-none flex flex-col items-center transition-all duration-500 ease-in-out chat-input-container !bg-transparent",
+          isEmpty ? "top-[135px] justify-center" : "justify-end pb-[15px]"
+        )}
         style={{ 
-          bottom: isEmpty ? '50%' : '20px',
-          transform: isEmpty ? 'translateY(50%)' : 'none',
-          left: `calc(${isLayoutCollapsed ? '64px' : '256px'} + 120px)`,
-          right: '0px',
-          width: `calc(100vw - ${isLayoutCollapsed ? '64px' : '256px'} - 240px)`,
-          minWidth: 800
+          left: isMobile ? 0 : isLayoutCollapsed ? 64 : 256,
         }}
       >
+        {/* Background that only appears when not empty, at the bottom */}
+        <div 
+          className={cn(
+            "absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background via-background/90 to-transparent transition-opacity duration-500 pointer-events-none",
+            isEmpty ? "opacity-0" : "opacity-100"
+          )}
+        />
+        <div 
+          className="w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0"
+        >
         {/* Floating Step Indicator - Expandable */}
         {(() => {
           const isAllCompleted = areAllStepsCompleted()
@@ -801,6 +729,17 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             isBrowserVisible={isBrowserVisible}
           />
         )}
+        {/* Prompt suggestion carousel - shown only when chat is empty, fades out when content appears */}
+        {isEmpty && (
+          <div className="mb-2 mx-auto w-full animate-in fade-in duration-300" style={{ maxWidth: '800px' }}>
+            <EmptyStatePrompts
+              onSelectPrompt={(prompt) => {
+                setMessage(prompt)
+                setTimeout(() => textareaRef.current?.focus(), 0)
+              }}
+            />
+          </div>
+        )}
         <MessageInput
           message={message}
           selectedActivity={selectedActivity}
@@ -822,6 +761,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           activeRobotInstance={activeRobotInstance}
           isBrowserVisible={isBrowserVisible}
         />
+        </div>
       </div>
 
       {/* Edit Step Modal */}

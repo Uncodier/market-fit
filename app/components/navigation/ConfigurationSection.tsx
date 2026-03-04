@@ -86,7 +86,7 @@ const configItems: ConfigItem[] = [
     isSettingsChild: true,
   },
   {
-    title: "Security",
+    title: "Security & API",
     href: "/security",
     icon: Shield,
     emoji: "🔒",
@@ -223,17 +223,6 @@ export function ConfigurationSection({
     }
   }, []);
   
-  // Remove debug logs in production
-  if (process.env.NODE_ENV !== 'production') {
-    useEffect(() => {
-      console.log("Current path:", pathname);
-      console.log("isSettingsActive:", isSettingsActive);
-      console.log("isSecurityActive:", isSecurityActive);
-      console.log("isBillingActive:", isBillingActive);
-      console.log("shouldShowSettingsChildren:", shouldShowSettingsChildren);
-    }, [pathname, isSettingsActive, isSecurityActive, isBillingActive, shouldShowSettingsChildren]);
-  }
-  
   const removeFocus = () => {
     // First try the dummy element
     if (dummyFocusRef.current) {
@@ -281,7 +270,7 @@ export function ConfigurationSection({
             {isSettings && !isCollapsed && (
               <div 
                 className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix",
+                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-[color,transform] duration-300 cursor-pointer rounded-full safari-icon-fix",
                   isSettingsActive
                     ? "transform rotate-90 text-white" // White when active
                     : settingsActive || forceShowChildren
@@ -296,7 +285,7 @@ export function ConfigurationSection({
                   viewBox="0 0 6 10" 
                   fill="none" 
                   xmlns="http://www.w3.org/2000/svg"
-                  className="transition-all duration-300"
+                  className="transition-transform duration-300"
                 >
                   <path 
                     d="M1 1L5 5L1 9" 
@@ -329,6 +318,8 @@ export function ConfigurationSection({
         {configItems.slice(1).map((item, index) => {
           const isActive = pathname.startsWith(item.href);
           const isTheme = item.href === "#theme";
+          
+          const isBilling = item.title === "Billing";
           
           // Para elementos especiales que no navegarán realmente
           if (isTheme) {

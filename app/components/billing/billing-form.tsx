@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Globe, PlusCircle, RotateCcw, Tag, User } from "../ui/icons"
+import { Globe, PlusCircle, RotateCcw, Tag, User, Info } from "../ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { useState } from "react"
 import { BillingData, billingService } from "@/app/services/billing-service"
@@ -76,12 +76,16 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
 
   // Get contextual button text based on current and selected plan
   const getPlanButtonText = () => {
-    if (isSavingPlan) return "Saving..."
+    if (isSavingPlan) return "Processing..."
     
     const currentPlan = currentSite?.billing?.plan || "commission"
-    const selectedPlan = form.watch("plan")
     
-    if (currentPlan === selectedPlan) return "Save"
+    const selectedPlan = form.watch("plan")
+
+    // If user is on a paid plan AND selected plan is same, they should manage subscription
+    if (currentPlan !== "commission" && currentPlan === selectedPlan) return "Manage Subscription"
+    
+    if (currentPlan === selectedPlan) return "Current Plan"
     
     const planOrder = { commission: 0, startup: 1, enterprise: 2 }
     
@@ -94,9 +98,40 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     return "Switch Plan"
   }
 
+  const handleManageSubscription = async () => {
+    if (!currentSite) return
+    
+    try {
+      setIsSavingPlan(true)
+      const result = await billingService.createPortalSession(
+        currentSite.id,
+        window.location.href
+      )
+      
+      if (result.success && result.url) {
+        window.location.href = result.url
+      } else {
+        toast.error(result.error || "Failed to create portal session")
+        setIsSavingPlan(false)
+      }
+    } catch (error) {
+      toast.error("An error occurred")
+      setIsSavingPlan(false)
+    }
+  }
+
   const handleSavePlan = async () => {
     if (!currentSite || !user) {
       toast.error("No site selected or user not authenticated")
+      return
+    }
+
+    const currentPlan = currentSite.billing?.plan || "commission"
+    const selectedPlan = form.getValues().plan
+    
+    // If user is already on a paid plan AND hasn't changed selection, redirect to portal
+    if (currentPlan !== "commission" && currentPlan === selectedPlan) {
+      await handleManageSubscription()
       return
     }
 
@@ -118,6 +153,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
           return
         } else {
           toast.error(result.error || "Failed to create checkout session")
+          setIsSavingPlan(false)
           return
         }
       }
@@ -207,16 +243,22 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     }
   }
 
-  const handleSaveCredits = async () => {
-    // Credits section doesn't have editable fields, but we keep the save button for consistency
-    // The actual purchase happens through the Purchase button
-    toast.info("No changes to save in credits section")
+  const handlePlanClick = (plan: "commission" | "startup" | "enterprise") => {
+    const currentPlan = currentSite?.billing?.plan || "commission"
+    
+    // If clicking on current plan and it's a paid plan, manage subscription
+    if (plan === currentPlan && plan !== "commission") {
+      handleManageSubscription()
+      return
+    }
+    
+    form.setValue("plan", plan)
   }
 
   return (
     <Form {...form}>
       <div className="space-y-8">
-        <Card id="credits" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <Card id="credits" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
             <CardTitle className="text-xl font-semibold">Credits</CardTitle>
           </CardHeader>
@@ -275,29 +317,24 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   <div className="text-sm text-muted-foreground">$0.97 per credit</div>
                 </div>
               </div>
-              
-              {creditsToBuy && (
-                <Button 
-                  type="button"
-                  className="mt-4 w-full"
-                  onClick={() => window.location.href = `/checkout?credits=${creditsToBuy}`}
-                >
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Purchase
-                </Button>
-              )}
             </CardContent>
           <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
             <Button 
-              variant="outline"
-              onClick={handleSaveCredits}
+              type="button"
+              disabled={!creditsToBuy}
+              onClick={() => {
+                if (creditsToBuy) {
+                  window.location.href = `/checkout?credits=${creditsToBuy}`
+                }
+              }}
             >
-              Save
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Purchase
             </Button>
           </CardFooter>
         </Card>
         
-        <Card id="subscription-plan" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <Card id="subscription-plan" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
             <CardTitle className="text-xl font-semibold">Subscription Plan</CardTitle>
           </CardHeader>
@@ -315,13 +352,14 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                             "border rounded-lg p-4 cursor-pointer transition-all",
                             field.value === "commission" 
                               ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                              : "border-border hover:border-blue-300"
+                              : "dark:border-white/5 border-black/5 hover:border-blue-300"
                           )}
-                          onClick={() => field.onChange("commission")}
+                          onClick={() => handlePlanClick("commission")}
                         >
                           <div className="font-medium mb-2">Commission</div>
                           <div className="text-2xl font-bold mb-2">$0</div>
                           <div className="text-sm text-muted-foreground">Basic features</div>
+                          <div className="text-sm text-muted-foreground mt-1">30 credits/month</div>
                         </div>
                         
                         <div 
@@ -329,13 +367,14 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                             "border rounded-lg p-4 cursor-pointer transition-all",
                             field.value === "startup" 
                               ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                              : "border-border hover:border-blue-300"
+                              : "dark:border-white/5 border-black/5 hover:border-blue-300"
                           )}
-                          onClick={() => field.onChange("startup")}
+                          onClick={() => handlePlanClick("startup")}
                         >
                           <div className="font-medium mb-2">Startup</div>
                           <div className="text-2xl font-bold mb-2">$99</div>
                           <div className="text-sm text-muted-foreground">Startup features</div>
+                          <div className="text-sm text-muted-foreground mt-1">100 credits/month</div>
                         </div>
                         
                         <div 
@@ -343,13 +382,14 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                             "border rounded-lg p-4 cursor-pointer transition-all",
                             field.value === "enterprise" 
                               ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                              : "border-border hover:border-blue-300"
+                              : "dark:border-white/5 border-black/5 hover:border-blue-300"
                           )}
-                          onClick={() => field.onChange("enterprise")}
+                          onClick={() => handlePlanClick("enterprise")}
                         >
                           <div className="font-medium mb-2">Enterprise</div>
                           <div className="text-2xl font-bold mb-2">$500</div>
                           <div className="text-sm text-muted-foreground">Enterprise features</div>
+                          <div className="text-sm text-muted-foreground mt-1">1000 credits/month</div>
                         </div>
                       </div>
                     </FormControl>
@@ -357,12 +397,12 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="auto_renew"
                 render={({ field }) => (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mt-6 p-4 border rounded-lg">
                     <div className="space-y-0.5">
                       <div className="font-medium flex items-center">
                         <RotateCcw className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -381,6 +421,15 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   </div>
                 )}
               />
+              
+              {currentSite?.billing?.plan !== "commission" && (
+                <div className="flex items-center gap-3 text-sm text-muted-foreground bg-muted/50 p-4 rounded-md border dark:border-white/5 border-black/5/50 mt-6">
+                  <Info className="h-5 w-5 flex-shrink-0 text-blue-500" />
+                  <p>
+                    You will be redirected to our secure Stripe portal to manage your subscription, including upgrades, downgrades to the free plan, or cancellations.
+                  </p>
+                </div>
+              )}
             </CardContent>
           <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
             <Button 
@@ -395,7 +444,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
           
         {/* Payment Method Info Card - Only for paid plans */}
         {form.watch("plan") !== "commission" && (
-        <Card id="payment-method" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <Card id="payment-method" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
             <CardTitle className="text-xl font-semibold">Payment Method</CardTitle>
           </CardHeader>
@@ -414,7 +463,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                         </div>
                 
                 {currentSite?.billing?.masked_card_number && (
-                  <div className="bg-muted/30 rounded-lg p-4 border border-border/30">
+                  <div className="bg-muted/30 rounded-lg p-4 border dark:border-white/5 border-black/5/30">
                     <h4 className="font-medium mb-2">Current Payment Method</h4>
                     <p className="text-sm text-muted-foreground">
                       Card ending in {currentSite.billing.masked_card_number.slice(-4)}
@@ -425,7 +474,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
         </Card>
         )}
 
-        <Card id="tax-id" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <Card id="tax-id" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
             <CardTitle className="text-xl font-semibold">Tax ID</CardTitle>
           </CardHeader>
@@ -462,7 +511,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
           </CardFooter>
         </Card>
         
-        <Card id="billing-address" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <Card id="billing-address" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
             <CardTitle className="text-xl font-semibold">Billing Address</CardTitle>
           </CardHeader>

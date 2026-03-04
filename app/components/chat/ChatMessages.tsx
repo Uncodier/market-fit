@@ -137,6 +137,7 @@ interface ChatMessagesProps {
   isAgentResponding: boolean
   isTransitioningConversation?: boolean
   messagesEndRef: RefObject<HTMLDivElement | null>
+  containerRef?: RefObject<HTMLDivElement | null>
   agentId: string
   agentName: string
   isAgentOnlyConversation: boolean
@@ -460,6 +461,7 @@ export function ChatMessages({
   isAgentResponding,
   isTransitioningConversation = false,
   messagesEndRef,
+  containerRef,
   agentId,
   agentName,
   isAgentOnlyConversation,
@@ -1057,7 +1059,7 @@ export function ChatMessages({
 
   if (!hasSelectedConversation) {
     return (
-      <div className="flex-1 overflow-visible py-6 transition-colors duration-300 ease-in-out pt-[91px] pb-44">
+      <div className="flex-1 overflow-y-auto py-6 transition-colors duration-300 ease-in-out pb-6">
         <EmptyState
           icon={<MessageSquare className="h-12 w-12" />}
           title="No conversation selected"
@@ -1069,14 +1071,14 @@ export function ChatMessages({
   }
 
   return (
-    <div className="flex-1 overflow-visible py-6 transition-colors duration-300 ease-in-out pt-[91px] pb-44 min-w-0">
-      <div className="max-w-[calc(100%-240px)] mx-auto min-w-0">
+    <div ref={containerRef} className="flex-1 overflow-y-auto py-6 transition-colors duration-300 ease-in-out pb-6 min-w-0">
+      <div className="max-w-[95%] md:max-w-[calc(100%-240px)] mx-auto min-w-0">
         {(isLoadingMessages || isTransitioningConversation) ? (
           <div className="space-y-6 w-full">
             {[1, 2, 3].map((i) => (
               <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"} animate-pulse`}>
                 {i % 2 === 0 ? (
-                  <div className="flex items-start gap-3 max-w-[calc(100%-240px)] min-w-0">
+                  <div className="flex items-start gap-3 max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
                     <div className="flex-shrink-0 mt-1">
                       <div className="w-8 h-8 rounded-full bg-primary/20"></div>
                     </div>
@@ -1097,7 +1099,7 @@ export function ChatMessages({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start justify-end gap-3 max-w-[calc(100%-240px)] min-w-0">
+                  <div className="flex items-start justify-end gap-3 max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
                     <div className="space-y-2 w-[350px]">
                       <div className="rounded-lg p-4 bg-background" style={{ 
                         boxShadow: 'var(--shadow-sm)',
@@ -1148,20 +1150,20 @@ export function ChatMessages({
                     >
                       {/* Team Member Messages - Left aligned when there is a lead */}
                       {msg.role === "team_member" && hasLead ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0">
+                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
                           <div className="flex flex-col min-w-0 group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : currentUserAvatar) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={msg.sender_avatar || (msg.sender_id && userDataCache[msg.sender_id]?.avatar_url) || undefined} alt={msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name) || "Team Member"} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
-                                backgroundColor: (hasAssignee ? leadData.assignee.id : (msg.sender_id || currentUserId))
-                                  ? `hsl(${parseInt((hasAssignee ? leadData.assignee.id : (msg.sender_id || currentUserId)).replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                backgroundColor: msg.sender_id
+                                  ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {(hasAssignee ? leadData.assignee.name : (msg.sender_name || currentUserName)) ? (hasAssignee ? leadData.assignee.name : (msg.sender_name || currentUserName)).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {(msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name)) ? (msg.sender_name || userDataCache[msg.sender_id!]?.name)!.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 min-w-0 overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
@@ -1264,20 +1266,20 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : msg.role === "team_member" && !hasLead && !msg.isCurrentUserMessage ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end">
+                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 items-end">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || (hasAssignee ? leadData.assignee.avatar_url : currentUserAvatar) || undefined} alt={msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={msg.sender_avatar || (msg.sender_id && userDataCache[msg.sender_id]?.avatar_url) || undefined} alt={msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name) || "Team Member"} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
-                                backgroundColor: (hasAssignee ? leadData.assignee.id : (msg.sender_id || currentUserId))
-                                  ? `hsl(${parseInt((hasAssignee ? leadData.assignee.id : (msg.sender_id || currentUserId)).replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
+                                backgroundColor: msg.sender_id
+                                  ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {(hasAssignee ? leadData.assignee.name : (msg.sender_name || currentUserName)) ? (hasAssignee ? leadData.assignee.name : (msg.sender_name || currentUserName)).split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {(msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name)) ? (msg.sender_name || userDataCache[msg.sender_id!]?.name)!.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (hasAssignee ? leadData.assignee.name : currentUserName) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 min-w-0 overflow-hidden ${
                               msg.metadata?.status === "pending" ? "opacity-60" : msg.metadata?.status === "accepted" ? "border-2 border-green-500/30 bg-green-50/50 dark:bg-green-900/10" : ""
@@ -1382,7 +1384,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : /* Lead/Visitor Messages - Amber avatar, right aligned */ msg.role === "user" ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end">
+                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 items-end">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
@@ -1506,7 +1508,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "agent" || msg.role === "assistant") ? (
-                        <div className="max-w-[calc(100%-240px)] min-w-0 group">
+                        <div className="max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 group">
                           <div className="flex items-center mb-1 gap-2">
                             <div className="relative">
                               <Avatar className={`h-7 w-7 border ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'border-blue-500/20' : 'border-primary/10'}`}>
@@ -1633,7 +1635,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "team_member" && !hasLead && msg.isCurrentUserMessage) ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end">
+                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 items-end">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/20">
@@ -1745,7 +1747,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : /* Visitor Messages - Amber avatar, right aligned */ (msg.role === "visitor") ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end">
+                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 items-end">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
@@ -1857,7 +1859,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0">
+                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
                         <div 
                             className={`rounded-lg px-4 pt-4 pb-2 transition-all duration-300 ease-in-out text-foreground group overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""

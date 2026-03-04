@@ -58,6 +58,7 @@ export interface Site {
     billing_country?: string
     auto_renew: boolean
     credits_available?: number
+    credits_used?: number
   }
   // New settings data
   settings?: SiteSettings
@@ -369,7 +370,6 @@ function getLocalStorage(key: string, defaultValue: any = null) {
     if (key.toLowerCase().includes('id')) {
       // Para IDs, devolver directamente el valor sin parsear
       if (key === 'currentSiteId') {
-        console.log(`Acceso directo a ${key}:`, rawValue)
         
         // Si es un UUID, intentar limpiarlo
         const cleanedValue = cleanUUID(rawValue)
@@ -378,7 +378,6 @@ function getLocalStorage(key: string, defaultValue: any = null) {
           // Si el valor limpio es diferente, actualizar localStorage
           try {
             localStorage.setItem(key, cleanedValue)
-            console.log(`UUID corregido en localStorage: ${key} = ${cleanedValue}`)
           } catch (e) {
             console.error(`Error al corregir UUID en localStorage:`, e)
           }
@@ -419,7 +418,6 @@ function setLocalStorage(key: string, value: any) {
         }
       }
       
-      console.log(`Guardando ${key} directamente:`, valueToStore)
       localStorage.setItem(key, valueToStore)
       return
     }
@@ -428,7 +426,6 @@ function setLocalStorage(key: string, value: any) {
     if (key.toLowerCase().includes('id') && typeof value === 'string') {
       const cleanedValue = cleanUUID(value)
       if (cleanedValue) {
-        console.log(`Guardando ID limpio en ${key}:`, cleanedValue)
         localStorage.setItem(key, cleanedValue)
         return
       }
@@ -512,21 +509,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
     // Diagnóstico: imprimir el contenido actual de localStorage para debuggear
     if (typeof window !== 'undefined') {
       try {
-        console.log("==== Diagnóstico de localStorage ====")
         const currentSiteId = localStorage.getItem('currentSiteId')
-        console.log(`currentSiteId (raw): "${currentSiteId}"`)
         
         if (currentSiteId) {
           const cleanedId = cleanUUID(currentSiteId)
-          console.log(`currentSiteId (limpio): "${cleanedId}"`)
           
           // Corregir si es necesario
           if (cleanedId && cleanedId !== currentSiteId) {
             localStorage.setItem('currentSiteId', cleanedId)
-            console.log("ID corregido automáticamente en localStorage")
           }
         }
-        console.log("===================================")
       } catch (e) {
         console.error("Error en diagnóstico de localStorage:", e)
       }
@@ -549,7 +541,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Cargar sitios desde Supabase
   const loadSites = async () => {
     if (!isMounted || !supabaseRef.current) {
-      console.log("Cannot load sites:", { isMounted, hasSupabaseClient: !!supabaseRef.current })
       return
     }
 
@@ -564,7 +555,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setHasValidSession(!!session)
       
       if (!session) {
-        console.log("No session found, skipping sites load")
         setSites([])
         setIsLoading(false)
         if (!isInitialized) {
@@ -573,7 +563,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         return
       }
       
-      console.log("✅ Valid session found, proceeding with sites load")
     } catch (sessionError) {
       console.error("Error checking session:", sessionError)
       setHasValidSession(false)
@@ -590,11 +579,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setIsLoading(true)
       setError(null)
       
-      console.log("Getting user session...")
       const { data: { session } } = await supabaseRef.current.auth.getSession()
       
       if (!session) {
-        console.log("No active session found")
         setSites([])
         setCurrentSite(null)
         setIsLoading(false)
@@ -605,7 +592,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         return
       }
       
-      console.log("Fetching sites for user:", session.user.id)
       
       // Fetch user's own sites
       const { data: ownedSitesData, error: ownedSitesError } = await supabaseRef.current
@@ -671,10 +657,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         }
       }
       
-      console.log("Sites fetched successfully:", allSitesData.length, "sites found")
-      console.log("- Owned sites:", ownedSitesData?.length || 0)
-      console.log("- Shared sites:", sharedSitesData.length)
-      console.log("- Billing data fetched for:", billingData.length, "sites")
       
       // Cargar focusMode desde localStorage y agregar datos de billing
       const sitesWithData = allSitesData.map((site: Tables<'sites'>) => {
@@ -704,12 +686,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
             billing_postal_code: siteBilling.billing_postal_code,
             billing_country: siteBilling.billing_country,
             auto_renew: siteBilling.auto_renew ?? true,
-            credits_available: siteBilling.credits_available || 0
+            credits_available: siteBilling.credits_available || 0,
+            credits_used: siteBilling.credits_used || 0
           } : undefined
         }
       })
       
-      console.log("Sites prepared:", sitesWithData)
       setSites(sitesWithData as Site[])
       setSitesLoaded(true)
       
@@ -767,12 +749,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
     const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
       (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED', session: any) => {
         if (event === 'SIGNED_IN') {
-          console.log('User signed in, loading sites...')
           setHasValidSession(true)
           setSitesLoadAttempted(false) // ✅ Reset for new load
           loadSitesWithPrevention()
         } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out, clearing sites...')
           setSites([])
           setCurrentSite(null)
           setHasValidSession(false)
@@ -813,16 +793,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
           schema: 'public', 
           table: 'sites' 
         }, (payload: { eventType: string; new: any; old: any }) => {
-          console.log('Sites subscription triggered:', payload.eventType);
           
           // Be more conservative about when to reload
           if (payload.eventType === 'INSERT') {
             // Only reload if this is a new site for current user
-            console.log('New site created, reloading sites list');
             loadSitesWithPrevention();
           } else if (payload.eventType === 'DELETE') {
             // Only reload if the deleted site affects current user
-            console.log('Site deleted, reloading sites list');
             loadSitesWithPrevention();
           } else if (payload.eventType === 'UPDATE') {
             // For updates, be very selective - only reload if it's the current site AND it's a significant change
@@ -835,7 +812,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
                                        newRecord.description !== oldRecord.description;
               
               if (significantChanges) {
-                console.log('Significant site update detected, reloading');
                 loadSitesWithPrevention();
               }
             }
@@ -885,7 +861,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         !pathname.startsWith('/auth/') &&
         supabaseRef.current
       ) {
-        console.log("✅ Confirmed: User has valid session but no sites, redirecting to create-site")
         router.push('/create-site')
       }
       // Case B: There are sites but no selection -> go to projects
@@ -902,7 +877,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         !pathname.startsWith('/create-site') &&
         supabaseRef.current
       ) {
-        console.log("✅ Sites available but no current site selected, redirecting to /projects")
         router.push('/projects')
       } else if (
         // 🚫 NEVER redirect away from create-site if user is there intentionally
@@ -913,19 +887,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
           sessionStorage.getItem('intentional_create_site_access') === 'true'
         
         if (isIntentionalAccess || sites.length > 0) {
-          console.log("🚫 User is on create-site page intentionally - allowing access")
           // Do nothing - let them stay on create-site
         }
       } else {
-        console.log("❌ Redirect conditions not met:", {
-          isMounted,
-          isInitialized,
-          isLoading: !isLoading,
-          sitesLoadAttempted,
-          hasValidSession,
-          sitesCount: sites.length,
-          pathname
-        })
       }
     }, 1000) // ✅ Increased delay from 100ms to 1000ms
 
@@ -937,7 +901,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
     
     // Skip if we're setting the same site (avoid unnecessary reloads on focus changes)
     if (currentSite && site && currentSite.id === site.id) {
-      console.log("SiteContext: Same site being set, skipping reload:", site.id);
       return;
     }
     
@@ -1083,9 +1046,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   referral: { metrics: [], actions: [], tactics: [] }
                 }),
                 business_model: (() => {
-                  console.log("SITE CONTEXT: Raw settingsData.business_model from DB:", settingsData.business_model);
                   const parsed = parseJsonField(settingsData.business_model, { b2b: false, b2c: false, b2b2c: false });
-                  console.log("SITE CONTEXT: Parsed business_model:", parsed);
                   return parsed;
                 })()
                 // allowed_domains is handled in a separate table, not in settings
@@ -1093,10 +1054,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
             };
           }
         } else {
-          console.log("Skipping settings load because:", {
-            hasSettings: !!site.settings,
-            hasSupabase: !!supabaseRef.current
-          });
         }
       } catch (err) {
         console.error(`Error handling settings for site ${site.id}:`, err);
@@ -1157,11 +1114,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       // Update local state without full reload when preventing refresh
       if (shouldPreventRefresh() || isOnSettingsPage()) {
-        console.log("UPDATE SITE: Updating local state without full reload");
         
         // Update the current site if it's the same site being updated
         if (currentSite && currentSite.id === site.id) {
-          console.log("UPDATE SITE: Updating current site in local state");
           setCurrentSite(site);
         }
         
@@ -1171,7 +1126,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         );
       } else {
         // Only reload sites if not preventing refresh
-        console.log("UPDATE SITE: Full reload of sites");
         await loadSites();
       }
       
@@ -1187,16 +1141,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Crear un nuevo sitio
   const handleCreateSite = async (newSite: Omit<Site, 'id' | 'created_at' | 'updated_at'>): Promise<Site> => {
     try {
-      console.log("CREATE SITE: Starting site creation process")
       setIsLoading(true);
       
       // Ensure user is authenticated
-      console.log("CREATE SITE: Checking authentication")
       const { data: { session } } = await supabaseRef.current.auth.getSession();
       if (!session) throw new Error("User not authenticated");
       
       // Crear el nuevo sitio en la base de datos
-      console.log("CREATE SITE: Creating site in database")
       const now = new Date().toISOString();
       const { data: createdSiteData, error: createError } = await supabaseRef.current
         .from('sites')
@@ -1214,12 +1165,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
         .select()
       
       if (createError) {
-        console.log("CREATE SITE: Database error during site creation:", createError)
         throw createError;
       }
       if (!createdSiteData || createdSiteData.length === 0) throw new Error("Could not create site");
       
-      console.log("CREATE SITE: Site created successfully in database")
       
       // Iniciar con un sitio vacío
       const createdSite = {
@@ -1229,7 +1178,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       // Crear configuración inicial si el sitio se creó correctamente
       if (createdSite && createdSite.id) {
-        console.log("CREATE SITE: Creating initial settings")
         // Usar los settings que se pasaron en newSite, o valores por defecto
         const settingsToSave: Partial<SiteSettings> = {
           site_id: createdSite.id,
@@ -1245,23 +1193,19 @@ export function SiteProvider({ children }: SiteProviderProps) {
           
           // Actualizar el objeto createdSite con los settings guardados
           createdSite.settings = settingsToSave as SiteSettings;
-          console.log("CREATE SITE: Initial settings created successfully")
         } catch (settingsError) {
           console.error("CREATE SITE: Error creating initial settings:", settingsError);
           // Continue even if settings fail - the site was created successfully
         }
       }
       
-      console.log("CREATE SITE: Reloading sites list")
       await loadSitesWithPrevention() // Recargar los sitios
       
       // Si es el primer sitio, lo establecemos como actual
       if (sites.length === 0) {
-        console.log("CREATE SITE: Setting as current site (first site)")
         await handleSetCurrentSite(createdSite);
       }
       
-      console.log("CREATE SITE: Site creation process completed successfully")
       return createdSite
     } catch (err) {
       // Improved error logging to handle Supabase errors properly
@@ -1323,12 +1267,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       if (error && error.code !== 'PGRST116') throw error // PGRST116 means no rows returned
       
-      console.log("GET SETTINGS: Loaded settings data:", {
-        siteId,
-        hasCustomerJourney: !!data?.customer_journey,
-        customerJourneyKeys: data?.customer_journey ? Object.keys(data.customer_journey) : []
-      });
-      
       return data || null
     } catch (err) {
       console.error("Error getting settings:", err)
@@ -1340,17 +1278,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Function to update settings
   const handleUpdateSettings = async (siteId: string, settings: Partial<SiteSettings>) => {
     try {
-      console.log("UPDATE SETTINGS 1: Inicio del proceso");
-      console.log("UPDATE SETTINGS 2: Data recibida:", {
-        siteId, 
-        goals: settings.goals
-      });
-      
       // Don't set isLoading to avoid UI interruptions during save
       // setIsLoading(true);
       const now = new Date().toISOString();
       
-      console.log("UPDATE SETTINGS 3: Preparando datos formateados");
       
       // Ensure we have valid settings data
       const formattedSettings: Partial<SiteSettings> = {
@@ -1415,10 +1346,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       // Handle channels field
       if (settings.channels !== undefined) {
-        console.log("UPDATE SETTINGS: Processing channels field:", settings.channels);
         if (typeof settings.channels === 'object' && settings.channels !== null) {
-          // Preserve existing channels and merge with new ones
+          // Preserve existing channels and merge with new ones (spread first so agent_email etc. are kept)
           formattedSettings.channels = {
+            ...settings.channels,
             email: settings.channels.email || {
               enabled: false,
               email: "",
@@ -1498,12 +1429,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
             }
           };
         }
-        console.log("UPDATE SETTINGS: Processed channels field:", formattedSettings.channels);
       }
       
       // Handle goals field
       if (settings.goals !== undefined) {
-        console.log("UPDATE SETTINGS 4: Procesando campo goals:", settings.goals);
         const goalsObj = settings.goals || {};
         
         // Esto puede necesitar convertirse a un formato específico para PostgreSQL (JSON)
@@ -1526,8 +1455,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         try {
           // Guardar como string JSON explícitamente (solo para propósitos de debugging)
           // formattedSettings.goals_json_string = JSON.stringify(goalsForDB);
-          console.log("UPDATE SETTINGS 5: Campo goals procesado para DB:", formattedSettings.goals);
-          console.log("UPDATE SETTINGS 5: JSON.stringify result:", JSON.stringify(formattedSettings.goals));
         } catch (goalsSerializeError) {
           console.error("Error al serializar goals:", goalsSerializeError);
         }
@@ -1535,7 +1462,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       // Handle customer_journey field
       if (settings.customer_journey !== undefined) {
-        console.log("UPDATE SETTINGS: Processing customer_journey field:", settings.customer_journey);
         formattedSettings.customer_journey = typeof settings.customer_journey === 'object' ? settings.customer_journey : {
           awareness: { metrics: [], actions: [], tactics: [] },
           consideration: { metrics: [], actions: [], tactics: [] },
@@ -1548,7 +1474,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
 
       // Handle branding field
       if (settings.branding !== undefined) {
-        console.log("UPDATE SETTINGS: Procesando campo branding:", settings.branding);
         formattedSettings.branding = typeof settings.branding === 'object' ? settings.branding : {
           brand_essence: "",
           brand_personality: "",
@@ -1579,12 +1504,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
         };
       }
       
-      console.log("UPDATE SETTINGS 6: Enviando datos a Supabase");
-      console.log("UPDATE SETTINGS 7: Datos a guardar:", {
-        site_id: formattedSettings.site_id,
-        goals: formattedSettings.goals
-      });
-      
       // Remove allowed_domains from settings as it belongs to a separate table
       // Since allowed_domains is no longer part of SiteSettings interface, we just use formattedSettings directly
       const settingsForDB = formattedSettings;
@@ -1592,7 +1511,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Use upsert operation with site_id as the conflict resolution field
       // First get existing settings to preserve other fields
       try {
-        console.log("UPDATE SETTINGS: Getting existing settings to preserve data...");
         const { data: existingSettings, error: fetchError } = await supabaseRef.current
           .from('settings')
           .select('*')
@@ -1638,10 +1556,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
           mergedSettings = settingsForDB;
         }
         
-        console.log("UPDATE SETTINGS: Merged channels:", JSON.stringify(mergedSettings.channels, null, 2));
         
-        console.log("UPDATE SETTINGS: Raw upsert data:", JSON.stringify(mergedSettings));
-        console.log("UPDATE SETTINGS: Goals before upsert:", mergedSettings.goals);
         
         const { error } = await supabaseRef.current
           .from('settings')
@@ -1656,10 +1571,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
           throw error;
         }
         
-        console.log("UPDATE SETTINGS 8: Datos guardados correctamente en Supabase");
         
         // Verificar que se guardaron correctamente los datos
-        console.log("UPDATE SETTINGS: Verificando el guardado...");
         const { data: verifyData, error: verifyError } = await supabaseRef.current
           .from('settings')
           .select('goals')
@@ -1669,23 +1582,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
         if (verifyError) {
           console.error("UPDATE SETTINGS: Error al verificar guardado:", verifyError);
         } else {
-          console.log("UPDATE SETTINGS: Datos verificados de la base:", verifyData);
-          console.log("UPDATE SETTINGS: Goals guardados:", verifyData.goals);
         }
       } catch (upsertError) {
         console.error("UPDATE SETTINGS ERROR excepción en upsert:", upsertError);
         throw upsertError;
       }
       
-      console.log("UPDATE SETTINGS 9: Actualizando estado local");
       
       // Update local state without full reload when preventing refresh
       if (shouldPreventRefresh() || isOnSettingsPage()) {
-        console.log("UPDATE SETTINGS: Updating local state without full reload");
         
         // Update the current site if it matches the siteId being updated
         if (currentSite && currentSite.id === siteId) {
-          console.log("UPDATE SETTINGS: Updating current site settings in local state");
           const updatedSite = {
             ...currentSite,
             settings: {
@@ -1712,11 +1620,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
         );
       } else {
         // Only reload sites if not preventing refresh
-        console.log("UPDATE SETTINGS: Full reload of sites");
         await loadSites();
       }
       
-      console.log("UPDATE SETTINGS 10: Proceso completado con éxito");
       
     } catch (err) {
       console.error("UPDATE SETTINGS ERROR GENERAL:", err);
@@ -1810,7 +1716,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Wrapper para loadSites que respeta la prevención de refresh
   const loadSitesWithPrevention = async () => {
     if (shouldPreventRefresh() || isOnProtectedPage()) {
-      console.log('🚫 SiteContext: loadSites prevented - user is on protected page or refresh prevention is active')
       return
     }
     return loadSites()
@@ -1819,7 +1724,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Wrapper para refreshSites que respeta la prevención de refresh
   const refreshSitesWithPrevention = async () => {
     if (shouldPreventRefresh() || isOnProtectedPage()) {
-      console.log('🚫 SiteContext: refreshSites prevented - user is on protected page or refresh prevention is active')
       return
     }
     return loadSites()

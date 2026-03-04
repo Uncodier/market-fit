@@ -927,7 +927,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
   const dbMessagingServiceSid = ((currentSite?.settings?.channels?.whatsapp as any)?.messaging_service_sid || "") as string
 
   return (
-    <Card id="whatsapp-channel" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card id="whatsapp-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
@@ -968,7 +968,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                     localState.setupType === "new_number"
                       ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
+                      : "dark:border-white/5 border-black/5 hover:border-primary/50"
                   }`}
                   onClick={() => handleSetupTypeChange("new_number")}
                 >
@@ -982,7 +982,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                     localState.setupType === "use_own_account"
                       ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
+                      : "dark:border-white/5 border-black/5 hover:border-primary/50"
                   }`}
                   onClick={() => handleSetupTypeChange("use_own_account")}
                 >

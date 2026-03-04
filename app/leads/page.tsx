@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Star, TrendingDown, Ban, TrendingUp, XCircle } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Separator } from "@/app/components/ui/separator"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView, LeadFilters } from "@/app/components/kanban-view"
 import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
 import { useRouter } from "next/navigation"
@@ -311,7 +312,7 @@ export default function LeadsPage() {
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [searchQuery, setSearchQuery] = useState("")
-  const [viewType, setViewType] = useState<ViewType>("table")
+  const [viewType, setViewType] = useMobileView("table")
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [filters, setFilters] = useState<LeadFilters>({
     status: [],
@@ -1303,14 +1304,38 @@ export default function LeadsPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full">All Companies</TabsTrigger>
-                  <TabsTrigger value="new" className="text-xs rounded-full">New</TabsTrigger>
-                  <TabsTrigger value="contacted" className="text-xs rounded-full">Contacted</TabsTrigger>
-                  <TabsTrigger value="qualified" className="text-xs rounded-full">Qualified</TabsTrigger>
-                  <TabsTrigger value="cold" className="text-xs rounded-full">Cold</TabsTrigger>
-                  <TabsTrigger value="converted" className="text-xs rounded-full">Converted</TabsTrigger>
-                  <TabsTrigger value="lost" className="text-xs rounded-full">Lost</TabsTrigger>
-                  <TabsTrigger value="not_qualified" className="text-xs rounded-full">Not Qualified</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Companies">
+                    <LayoutGrid size={13} />
+                    <span className="tab-label">All Companies</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="new" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="New">
+                    <PlusCircle size={13} />
+                    <span className="tab-label">New</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="contacted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Contacted">
+                    <MessageSquare size={13} />
+                    <span className="tab-label">Contacted</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Qualified">
+                    <Star size={13} />
+                    <span className="tab-label">Qualified</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="cold" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Cold">
+                    <TrendingDown size={13} />
+                    <span className="tab-label">Cold</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="converted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Converted">
+                    <TrendingUp size={13} />
+                    <span className="tab-label">Converted</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Lost">
+                    <XCircle size={13} />
+                    <span className="tab-label">Lost</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="not_qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Not Qualified">
+                    <Ban size={13} />
+                    <span className="tab-label">Not Qualified</span>
+                  </TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input 

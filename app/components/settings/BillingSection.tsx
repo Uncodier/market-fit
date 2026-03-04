@@ -16,7 +16,7 @@ export function BillingSection() {
 
   return (
     <div className="space-y-8">
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Credits</CardTitle>
         </CardHeader>
@@ -65,7 +65,7 @@ export function BillingSection() {
         </CardContent>
       </Card>
       
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Subscription Plan</CardTitle>
         </CardHeader>
@@ -83,13 +83,14 @@ export function BillingSection() {
                         "border rounded-lg p-4 cursor-pointer transition-all",
                         field.value === "commission" 
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                          : "border-border hover:border-blue-300"
+                          : "dark:border-white/5 border-black/5 hover:border-blue-300"
                       )}
                       onClick={() => field.onChange("commission")}
                     >
                       <div className="font-medium mb-2">Commission</div>
                       <div className="text-2xl font-bold mb-2">$0</div>
                       <div className="text-sm text-muted-foreground">Basic features</div>
+                      <div className="text-sm text-muted-foreground mt-1">30 credits/month</div>
                     </div>
                     
                     <div 
@@ -97,13 +98,14 @@ export function BillingSection() {
                         "border rounded-lg p-4 cursor-pointer transition-all",
                         field.value === "startup" 
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                          : "border-border hover:border-blue-300"
+                          : "dark:border-white/5 border-black/5 hover:border-blue-300"
                       )}
                       onClick={() => field.onChange("startup")}
                     >
                       <div className="font-medium mb-2">Startup</div>
                       <div className="text-2xl font-bold mb-2">$99</div>
                       <div className="text-sm text-muted-foreground">Startup features</div>
+                      <div className="text-sm text-muted-foreground mt-1">100 credits/month</div>
                     </div>
                     
                     <div 
@@ -111,13 +113,14 @@ export function BillingSection() {
                         "border rounded-lg p-4 cursor-pointer transition-all",
                         field.value === "enterprise" 
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                          : "border-border hover:border-blue-300"
+                          : "dark:border-white/5 border-black/5 hover:border-blue-300"
                       )}
                       onClick={() => field.onChange("enterprise")}
                     >
                       <div className="font-medium mb-2">Enterprise</div>
                       <div className="text-2xl font-bold mb-2">$500</div>
                       <div className="text-sm text-muted-foreground">Enterprise features</div>
+                      <div className="text-sm text-muted-foreground mt-1">1000 credits/month</div>
                     </div>
                   </div>
                 </FormControl>
@@ -125,34 +128,10 @@ export function BillingSection() {
               </FormItem>
             )}
           />
-          
-          <FormField
-            control={form.control}
-            name="billing.auto_renew"
-            render={({ field }) => (
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="font-medium flex items-center">
-                    <RotateCcw className="mr-2 h-4 w-4 text-muted-foreground" />
-                    Auto-renew subscription
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Automatically renew your subscription when it expires
-                  </div>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </div>
-            )}
-          />
         </CardContent>
       </Card>
       
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Payment Method</CardTitle>
         </CardHeader>
@@ -245,7 +224,7 @@ export function BillingSection() {
         </CardContent>
       </Card>
       
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Billing Address</CardTitle>
         </CardHeader>

@@ -87,7 +87,7 @@ export function StripeDebugger() {
   }
 
   return (
-    <Card className="border border-border shadow-sm">
+    <Card className="border dark:border-white/5 border-black/5 shadow-sm">
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Info className="h-5 w-5" />

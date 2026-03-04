@@ -45,7 +45,7 @@ export function ProductsServicesStep({
             const isExpanded = expandedProducts.has(index)
             
             return (
-              <div key={index} className="border border-border rounded-lg overflow-hidden">
+              <div key={index} className="border dark:border-white/5 border-black/5 rounded-lg overflow-hidden">
                 <div className="p-4 bg-muted/5 flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1">
                     <button
@@ -190,7 +190,7 @@ export function ProductsServicesStep({
             const isExpanded = expandedServices.has(index)
             
             return (
-              <div key={index} className="border border-border rounded-lg overflow-hidden">
+              <div key={index} className="border dark:border-white/5 border-black/5 rounded-lg overflow-hidden">
                 <div className="p-4 bg-muted/5 flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1">
                     <button

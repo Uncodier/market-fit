@@ -53,7 +53,6 @@ export function WidgetProvider({ children }: WidgetProviderProps) {
       const isDashboardRoute = pathname?.includes('/dashboard') || pathname === '/'
       setShouldExecuteWidgets(isDashboardRoute)
       
-      console.log(`[WidgetContext] Route: ${pathname}, Widgets enabled: ${isDashboardRoute}`)
     }
   }, [pathname, isClient])
 

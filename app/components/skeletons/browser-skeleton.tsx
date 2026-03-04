@@ -4,7 +4,7 @@ export function BrowserSkeleton() {
   return (
     <div className="w-full h-full bg-card relative overflow-hidden">
       {/* Browser-like header */}
-      <div className="border-b border-border p-3 bg-muted/50">
+      <div className="border-b dark:border-white/5 border-black/5 p-3 bg-muted/50">
         <div className="flex items-center gap-2">
           {/* Browser controls */}
           <div className="flex gap-2">

@@ -4,6 +4,7 @@ import * as Icons from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
 type Channel = 'web' | 'email' | 'whatsapp'
 
@@ -56,30 +57,37 @@ export const ChannelSelector = memo(function ChannelSelector({
           "h-8 p-0.5 bg-secondary/50 rounded-full transition-opacity duration-200",
           isUpdating && "opacity-70"
         )}>
-          {availableChannels.map((channel) => {
-            const config = channelConfig[channel]
-            const IconComponent = config.icon
+          <TooltipProvider delayDuration={300}>
+            {availableChannels.map((channel) => {
+              const config = channelConfig[channel]
+              const IconComponent = config.icon
 
-            return (
-              <TabsTrigger
-                key={channel}
-                value={channel}
-                disabled={isUpdating}
-                className={cn(
-                  "h-7 w-7 px-0 flex items-center justify-center rounded-full transition-all duration-200",
-                  "[&>*]:flex [&>*]:items-center [&>*]:justify-center",
-                  isUpdating && "cursor-not-allowed"
-                )}
-                title={isUpdating ? "Updating channel..." : config.description}
-              >
-                {isUpdating && channel === selectedChannel ? (
-                  <LoadingSkeleton size="sm" />
-                ) : (
-                  <IconComponent className="h-4 w-4" />
-                )}
-              </TabsTrigger>
-            )
-          })}
+              return (
+                <Tooltip key={channel}>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger
+                      value={channel}
+                      disabled={isUpdating}
+                      className={cn(
+                        "h-7 w-7 px-0 flex items-center justify-center rounded-full transition-all duration-200",
+                        "[&>*]:flex [&>*]:items-center [&>*]:justify-center",
+                        isUpdating && "cursor-not-allowed"
+                      )}
+                    >
+                      {isUpdating && channel === selectedChannel ? (
+                        <LoadingSkeleton size="sm" />
+                      ) : (
+                        <IconComponent className="h-4 w-4" />
+                      )}
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={6}>
+                    {isUpdating ? "Updating channel..." : config.description}
+                  </TooltipContent>
+                </Tooltip>
+              )
+            })}
+          </TooltipProvider>
         </TabsList>
       </Tabs>
       

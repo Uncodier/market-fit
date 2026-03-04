@@ -789,7 +789,7 @@ export function DatePicker({
                 </div>
 
                 {/* Current time display */}
-                <div className="pt-3 border-t border-border">
+                <div className="pt-3 border-t dark:border-white/5 border-black/5">
                   <div className="text-xs text-muted-foreground mb-2">Selected Time</div>
                   <div className="text-center px-3 py-2 bg-muted/30 rounded-md">
                     <div className="text-sm font-medium">

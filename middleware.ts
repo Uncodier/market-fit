@@ -21,7 +21,8 @@ const PROTECTED_ROUTES = [
   '/checkout',
   '/requirements',
   '/notifications',
-  '/costs'
+  '/costs',
+  '/robots'
 ]
 
 // Define las rutas de autenticación
@@ -250,12 +251,23 @@ export async function middleware(req: NextRequest) {
       
       // Si el usuario está autenticado y no está en una página de flujo de auth, redirigir al dashboard o returnTo
       if (effectiveUser) {
-        const returnTo = req.nextUrl.searchParams.get('returnTo') || '/dashboard'
+        const returnTo = req.nextUrl.searchParams.get('returnTo') || '/robots'
         console.log('Middleware: Authenticated user on auth page, redirecting to:', returnTo)
         const redirectUrl = new URL(returnTo, req.url)
         return NextResponse.redirect(redirectUrl)
       }
       // Si no está autenticado, permitir acceso a la página de auth principal
+      return res
+    }
+
+    // Root path handling
+    if (path === '/') {
+      if (effectiveUser) {
+        // If authenticated, redirect to /robots
+        console.log('Middleware: Root path with session, redirecting to /robots')
+        return NextResponse.redirect(new URL('/robots', req.url))
+      }
+      // If not authenticated, allow access to / (Landing page)
       return res
     }
 

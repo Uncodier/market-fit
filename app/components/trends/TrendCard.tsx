@@ -127,7 +127,7 @@ export function TrendCard({ trend, onClick }: TrendCardProps) {
 
   return (
     <Card 
-      className="cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] group"
+      className="cursor-pointer transition-shadow duration-200 hover:shadow-md group"
       onClick={() => onClick(trend)}
     >
       <CardContent className="p-4">
@@ -181,13 +181,13 @@ export function TrendCard({ trend, onClick }: TrendCardProps) {
         </div>
         
         {trend.description && (
-          <div className="mt-3 p-3 bg-muted/20 rounded-md border border-border/20">
+          <div className="mt-3 p-3 bg-muted/20 rounded-md border dark:border-white/5 border-black/5/20">
             <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">{cleanHtmlContent(trend.description)}</p>
           </div>
         )}
         
         {/* Commercial Intelligence Indicators */}
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
+        <div className="flex items-center justify-between mt-3 pt-2 border-t dark:border-white/5 border-black/5/30">
           <div className="flex items-center gap-2">
             {/* Business Impact */}
             {trend.businessImpact && trend.businessImpact !== 'low' && (

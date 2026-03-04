@@ -128,7 +128,7 @@ export function SafariSettingsLink({
       className={cn(
         "safari-settings-link",
         isCollapsed ? "collapsed" : "",
-        "flex items-center text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
+        "flex items-center text-sm transition-colors duration-200 relative group",
         isCollapsed 
           ? isActive 
             ? "rounded-full justify-center h-[32px] w-[32px]" 

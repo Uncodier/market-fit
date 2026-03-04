@@ -221,7 +221,7 @@ export function QuickNav({ sections, className }: QuickNavProps) {
         )}
       </button>
       {section.children && (
-        <div className="space-y-0.5 mt-1 ml-3 border-l border-border/40 pl-0.5">
+        <div className="space-y-0.5 mt-1 ml-3 border-l dark:border-white/5 border-black/5/40 pl-0.5">
           {section.children.map((child) => renderSection(child, true))}
         </div>
       )}

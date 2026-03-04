@@ -35,7 +35,7 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
   return (
     <div className="space-y-8">
       {/* Strengths */}
-      <Card id="swot-strengths" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="swot-strengths" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Strengths</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -69,7 +69,7 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
       </Card>
 
       {/* Weaknesses */}
-      <Card id="swot-weaknesses" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="swot-weaknesses" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Weaknesses</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -103,7 +103,7 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
       </Card>
 
       {/* Opportunities */}
-      <Card id="swot-opportunities" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="swot-opportunities" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Opportunities</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -137,7 +137,7 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
       </Card>
 
       {/* Threats */}
-      <Card id="swot-threats" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="swot-threats" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Threats</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">

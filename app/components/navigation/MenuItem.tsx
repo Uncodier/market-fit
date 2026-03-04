@@ -165,7 +165,7 @@ export function MenuItem({
       href={href}
       className={cn(
         className,
-        "flex items-center text-sm transition-all duration-200 relative group hover:scale-105 active:scale-95",
+        "flex items-center text-sm transition-colors duration-200 relative group",
         isCollapsed 
           ? isActive 
             ? "rounded-full justify-center h-[32px] w-[32px]" 
@@ -173,7 +173,7 @@ export function MenuItem({
           : "rounded-md justify-start h-[32px]",
         isActive
           ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       )}
       style={{ 
         paddingLeft: isCollapsed ? '0px' : '9.7px', 
@@ -195,7 +195,7 @@ export function MenuItem({
               <TooltipContent 
                 side="right" 
                 align="start" 
-                className="flex flex-col gap-1 bg-popover text-popover-foreground border-border shadow-lg z-[9999]"
+                className="flex flex-col gap-1 bg-popover text-popover-foreground dark:border-white/5 border-black/5 shadow-lg z-[9999]"
                 sideOffset={5}
               >
                 <p className="font-medium">{title}</p>

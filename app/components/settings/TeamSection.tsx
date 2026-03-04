@@ -582,7 +582,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
             <Card 
               key={index} 
               id={`team-member-${index}`}
-              className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200"
+              className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200"
             >
               <CardHeader className="px-8 py-6">
                 <div className="flex items-center justify-between">

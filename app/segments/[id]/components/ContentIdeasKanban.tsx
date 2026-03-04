@@ -310,7 +310,7 @@ export function ContentIdeasKanban({ segment }: ContentIdeasKanbanProps) {
     const typeIcon = CONTENT_TYPE_ICONS[content.type] || CONTENT_TYPE_ICONS.default
     
     return (
-      <Card className="mb-3 transition-all duration-200 hover:shadow-md hover:translate-y-[-2px]">
+      <Card className="mb-3 transition-shadow duration-200 hover:shadow-md">
         <CardContent className="p-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">

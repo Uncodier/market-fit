@@ -79,11 +79,6 @@ export function initLogger(): void {
 
   isInitialized = true;
 
-  // Log initialization only in debug mode
-  if (config.isDebug()) {
-    originalConsoleLog('🔧 Logger initialized - Debug mode enabled');
-    originalConsoleLog('📊 Configuration:', config.getConfig());
-  }
 }
 
 /**

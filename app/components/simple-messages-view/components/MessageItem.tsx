@@ -86,12 +86,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                         <img
                           src={attachment.url}
                           alt={attachment.name || `Attachment ${index + 1}`}
-                          className="w-16 h-16 object-cover rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                          className="w-16 h-16 object-cover rounded-lg border dark:border-white/5 border-black/5 cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => window.open(attachment.url, '_blank')}
                         />
                       ) : (
                         <div 
-                          className="w-16 h-16 bg-muted rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                          className="w-16 h-16 bg-muted rounded-lg border dark:border-white/5 border-black/5 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
                           onClick={() => window.open(attachment.url, '_blank')}
                         >
                           <File className="w-8 h-8 text-muted-foreground" />

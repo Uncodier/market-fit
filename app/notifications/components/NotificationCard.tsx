@@ -157,7 +157,7 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete }: Notif
           <div className="flex items-center gap-3 flex-shrink-0">
             {isConversationNotification && (
               <div 
-                className="flex items-center gap-2 text-xs font-medium bg-muted text-muted-foreground px-3 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm border border-border/50 hover:border-border"
+                className="flex items-center gap-2 text-xs font-medium bg-muted text-muted-foreground px-3 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors duration-200 shadow-sm border border-border/50"
                 onClick={(e) => {
                   e.stopPropagation()
                   handleNavigateToChat()
@@ -171,7 +171,7 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete }: Notif
             
             {isTaskNotification && (
               <div 
-                className="flex items-center gap-2 text-xs font-medium bg-muted text-muted-foreground px-3 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm border border-border/50 hover:border-border"
+                className="flex items-center gap-2 text-xs font-medium bg-muted text-muted-foreground px-3 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors duration-200 shadow-sm border border-border/50"
                 onClick={(e) => {
                   e.stopPropagation()
                   handleNavigateToTask()

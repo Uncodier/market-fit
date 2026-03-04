@@ -23,7 +23,7 @@ import { ChannelFilter } from "./ChannelFilter"
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
   return (
-    <div className="py-3 px-4 border-b border-border/30" style={{ width: '320px', boxSizing: 'border-box' }}>
+    <div className="py-3 px-4 border-b dark:border-white/5 border-black/5 w-full" style={{ boxSizing: 'border-box' }}>
       <div className="flex items-center justify-between mb-1">
         <Skeleton className="h-4 w-[70%]" />
         <Skeleton className="h-3 w-[15%]" />
@@ -863,75 +863,36 @@ export function ChatList({
     setDeleteModalOpen(true);
   };
 
-  // Function to accept all pending messages (from ALL pending conversations in DB, not just visible)
-  // This only updates message status to "accepted", NOT the conversation status (same as individual accept)
+  // Accept all pending messages via a server-side API route.
+  // This avoids building a huge .in(...) URL with hundreds of UUIDs on the client.
   const handleAcceptAllPending = async () => {
     if (!siteId) return
-    
+
     setIsAcceptingAll(true)
-    
+
     try {
-      const supabase = createClient()
-      
-      // Get ALL pending conversations from DB (not just visible ones)
-      const { data: allPendingConvs, error: convError } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("site_id", siteId)
-        .eq("status", "pending")
-      
-      if (convError) {
-        console.error("Error fetching pending conversations:", convError)
-        toast.error("Failed to fetch pending conversations")
+      const response = await fetch("/api/conversations/accept-all-pending", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        console.error("Error accepting all pending:", result.error)
+        toast.error("Failed to accept all pending messages")
         return
       }
-      
-      if (!allPendingConvs || allPendingConvs.length === 0) {
-        toast.info("No pending conversations found")
-        return
-      }
-      
-      const conversationIds = allPendingConvs.map(conv => conv.id)
-      
-      // Get all pending messages for these conversations
-      const { data: pendingMessages, error: fetchError } = await supabase
-        .from("messages")
-        .select("id, custom_data")
-        .in("conversation_id", conversationIds)
-        .filter("custom_data->>status", "eq", "pending")
-      
-      if (fetchError) {
-        console.error("Error fetching pending messages:", fetchError)
-        toast.error("Failed to fetch pending messages")
-        return
-      }
-      
-      if (!pendingMessages || pendingMessages.length === 0) {
+
+      if (result.updatedCount === 0) {
         toast.info("No pending messages found")
         return
       }
-      
-      // Update all pending messages to accepted (same as individual accept action)
-      for (const msg of pendingMessages) {
-        const currentCustomData = (msg.custom_data as Record<string, any>) || {}
-        const updatedCustomData = {
-          ...currentCustomData,
-          status: "accepted"
-        }
-        
-        await supabase
-          .from("messages")
-          .update({
-            custom_data: updatedCustomData,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", msg.id)
-      }
-      
-      // NOTE: We do NOT update conversation status here - same behavior as individual accept
-      // The conversation remains in "pending" status until all messages are processed
-      
-      // Update local state - mark conversations as having accepted messages
+
+      const conversationIds: string[] = result.conversationIds ?? []
+
+      // Update local state — mark affected conversations as having accepted messages
       setConversations(prevConversations =>
         prevConversations.map(conv =>
           conversationIds.includes(conv.id)
@@ -939,16 +900,15 @@ export function ChatList({
             : conv
         )
       )
-      
-      // Emit event for each conversation to update UI elsewhere
+
+      // Notify other parts of the UI
       conversationIds.forEach(convId => {
-        window.dispatchEvent(new CustomEvent('conversation:message-accepted', {
-          detail: { conversationId: convId }
+        window.dispatchEvent(new CustomEvent("conversation:message-accepted", {
+          detail: { conversationId: convId },
         }))
       })
-      
-      toast.success(`Accepted ${pendingMessages.length} pending messages in ${conversationIds.length} conversations`)
-      
+
+      toast.success(`Accepted ${result.updatedCount} pending messages in ${conversationIds.length} conversations`)
     } catch (error) {
       console.error("Error accepting all pending:", error)
       toast.error("Failed to accept all pending messages")
@@ -957,121 +917,68 @@ export function ChatList({
     }
   }
 
-  // Reject all messages with status pending or accepted (not yet sent)
-  // Includes conversations with status != "pending" that have unsent messages
+  // Reject all unsent messages (status pending or accepted) via server-side API route.
+  // Avoids huge .in(...) URLs and N+1 queries for empty-conversation checks.
   const handleRejectAllPending = async () => {
     if (!siteId) return
-    
-    setIsRejectingAll(true)
-    
-    try {
-      const supabase = createClient()
-      
-      // Get messages with pending/accepted status for this site using inner join
-      // This avoids fetching all conversation IDs which might be too large
-      const { data: pendingData, error: pendingError } = await supabase
-        .from("messages")
-        .select("id, conversation_id, conversations!inner(site_id, is_archived)")
-        .eq("conversations.site_id", siteId)
-        .eq("conversations.is_archived", false)
-        .eq("custom_data->>status", "pending")
-        
-      if (pendingError) console.error('Error fetching pending:', pendingError)
-        
-      const { data: acceptedData, error: acceptedError } = await supabase
-        .from("messages")
-        .select("id, conversation_id, conversations!inner(site_id, is_archived)")
-        .eq("conversations.site_id", siteId)
-        .eq("conversations.is_archived", false)
-        .eq("custom_data->>status", "accepted")
 
-      if (acceptedError) console.error('Error fetching accepted:', acceptedError)
-      
-      const unsentMessages = [...(pendingData || []), ...(acceptedData || [])]
-      const uniqueUnsent = unsentMessages.filter(
-        (m, i, arr) => arr.findIndex(x => x.id === m.id) === i
-      )
-      
-      console.log(`🔍 Found ${uniqueUnsent.length} unsent messages`)
-      
-      if (uniqueUnsent.length === 0) {
+    setIsRejectingAll(true)
+
+    try {
+      const response = await fetch("/api/conversations/reject-all-pending", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        console.error("Error rejecting all pending:", result.error)
+        toast.error("Failed to reject pending messages")
+        return
+      }
+
+      if (result.deletedMessages === 0) {
         toast.info("No pending messages to reject")
         return
       }
-      
-      const messagesToDelete = uniqueUnsent
-      const messageIdsToDelete = messagesToDelete.map(m => m.id)
-      
-      const { error: deleteMessagesError } = await supabase
-        .from("messages")
-        .delete()
-        .in("id", messageIdsToDelete)
-      
-      if (deleteMessagesError) {
-        console.error("Error deleting pending messages:", deleteMessagesError)
-        toast.error("Failed to delete pending messages")
-        return
-      }
-      
-      // Check which conversations are now empty and should be deleted
-      const conversationsToDelete: string[] = []
-      const affectedConvIds = [...new Set(messagesToDelete.map(m => m.conversation_id))]
-      
-      for (const convId of affectedConvIds) {
-        const { data: remainingMessages, error: countError } = await supabase
-          .from("messages")
-          .select("id")
-          .eq("conversation_id", convId)
-          .limit(1)
-        
-        if (countError) continue
-        
-        if (!remainingMessages || remainingMessages.length === 0) {
-          conversationsToDelete.push(convId)
-        }
-      }
-      
-      if (conversationsToDelete.length > 0) {
-        const { error: deleteConvsError } = await supabase
-          .from("conversations")
-          .delete()
-          .in("id", conversationsToDelete)
-        
-        if (deleteConvsError) {
-          console.error("Error deleting empty conversations:", deleteConvsError)
-        }
-      }
-      
-      setConversations(prevConversations =>
-        prevConversations.filter(conv => !conversationsToDelete.includes(conv.id))
+
+      const conversationsToDelete: string[] = result.conversationsToDelete ?? []
+
+      // Remove deleted conversations from local state
+      setConversations((prev) =>
+        prev.filter((conv) => !conversationsToDelete.includes(conv.id))
       )
-      
+
+      // If the currently selected conversation was deleted, go back to list
       if (selectedConversationId && conversationsToDelete.includes(selectedConversationId)) {
-        router.push('/chat')
+        router.push("/chat")
       }
-      
-      // Refresh list to update conversations that had messages removed
+
+      // Reload list to reflect conversations that had messages removed but weren't deleted
       if (loadConversationsRef.current) {
         loadConversationsRef.current()
       }
-      
-      toast.success(`Rejected ${messageIdsToDelete.length} pending messages. Deleted ${conversationsToDelete.length} empty conversations.`)
-      
+
+      toast.success(
+        `Rejected ${result.deletedMessages} pending messages. Deleted ${result.deletedConversations} empty conversations.`
+      )
     } catch (error) {
       console.error("Error rejecting all pending:", error)
-      toast.error("Failed to reject all pending messages")
+      toast.error("Failed to reject pending messages")
     } finally {
       setIsRejectingAll(false)
     }
   }
 
   return (
-    <div className={cn("flex flex-col h-full fixed", className)} style={{ width: '320px', maxWidth: '320px', overflow: 'hidden' }}>
+    <div className={cn("flex flex-col h-full fixed w-full md:w-[320px]", className)} style={{ maxWidth: '100%', overflow: 'hidden' }}>
       {/* Top bar with search input - adaptable to dark mode */}
       <div className={cn(
         "flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] border-b transition-colors duration-300 flex-shrink-0 overflow-hidden",
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-        "fixed w-[319px] z-[999]"
+        "fixed w-full md:w-[319px] z-[999]"
       )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
         <div className="relative w-[80%]">
           <Input
@@ -1091,9 +998,9 @@ export function ChatList({
         </div>
       </div>
       
-      <div className="h-[calc(100vh-71px)] overflow-hidden flex-grow">
+      <div className="h-[calc(100dvh-71px)] overflow-hidden flex-grow">
         <div className="h-full overflow-auto pt-[71px]">
-          <div className="w-[320px]">
+          <div className="w-full">
             {/* Combined Filter - always visible */}
             <ChannelFilter
               selectedFilter={combinedFilter}
@@ -1134,7 +1041,7 @@ export function ChatList({
                     Pending ({pendingConversations.length})
                   </div>
                   {/* Bulk Actions Toolbar */}
-                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-muted/30 h-12 max-h-12 min-h-12 flex-shrink-0 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2 border-b dark:border-white/5 border-black/5 bg-muted/30 h-12 max-h-12 min-h-12 flex-shrink-0 overflow-hidden">
                     <Button
                       variant="outline"
                       size="sm"

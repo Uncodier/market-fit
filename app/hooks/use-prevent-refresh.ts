@@ -87,13 +87,11 @@ export function usePageRefreshPrevention() {
       sessionStorage.setItem('preventAutoRefresh', 'true')
       sessionStorage.setItem('preventAutoRefreshReason', isCreateEditRoute ? 'create-edit-page' : 'unknown-route')
       
-      console.log(`🚫 Auto-refresh prevention enabled for: ${pathname}`)
     } else {
       // Remove prevention for read-only pages
       sessionStorage.removeItem('preventAutoRefresh')
       sessionStorage.removeItem('preventAutoRefreshReason')
       
-      console.log(`✅ Auto-refresh allowed for: ${pathname}`)
     }
     
     return () => {
@@ -143,12 +141,10 @@ export function useSimpleRefreshPrevention() {
     sessionStorage.setItem('preventAutoRefresh', 'true')
     sessionStorage.setItem('preventAutoRefreshReason', isCreateEditRoute ? 'create-edit-page' : 'unknown-route')
     
-    console.log(`🚫 Simple refresh prevention enabled for: ${pathname}`)
     
     // Simple approach: just prevent the visibility change actions
     const handleVisibilityChange = (e: Event) => {
       if (document.visibilityState === 'visible') {
-        console.log('🚫 Window became visible - settings form protected')
         // Set a flag to prevent any auto-refresh actions
         sessionStorage.setItem('JUST_BECAME_VISIBLE', 'true')
         
@@ -160,7 +156,6 @@ export function useSimpleRefreshPrevention() {
     }
     
     const handleWindowFocus = (e: Event) => {
-      console.log('🚫 Window focus detected - settings form protected')
       sessionStorage.setItem('JUST_GAINED_FOCUS', 'true')
       
       // Clear the flag after a short delay

@@ -113,7 +113,7 @@ export function EmptyState({
               <div className="mb-10">
                 <div className="flex flex-wrap justify-around gap-6 max-w-2xl mx-auto">
                   {features.map((feature, index) => (
-                    <div key={index} className="bg-muted/30 backdrop-blur-sm rounded-xl p-6 border border-border/50 shadow-sm flex-1 min-w-[280px] max-w-[320px]">
+                    <div key={index} className="bg-muted/30 backdrop-blur-sm rounded-xl p-6 border dark:border-white/5 border-black/5/50 shadow-sm flex-1 min-w-[280px] max-w-[320px]">
                       <h4 className="font-semibold text-foreground mb-3 text-center">{feature.title}</h4>
                       <ul className="space-y-2 text-sm text-muted-foreground text-left">
                         {feature.items.map((item, idx) => (
@@ -144,7 +144,7 @@ export function EmptyState({
             )}
             
             {/* Automatic operation hint */}
-            <div className="mt-12 pt-8 border-t border-border/30">
+            <div className="mt-12 pt-8 border-t dark:border-white/5 border-black/5/30">
               <p className="text-xs text-muted-foreground/60 max-w-lg mx-auto leading-relaxed text-center">
                 💡 <strong>Most operations run automatically.</strong> Your AI agents work in the background without manual direction. Feel free to return later if you prefer not to actively manage them right now.
               </p>

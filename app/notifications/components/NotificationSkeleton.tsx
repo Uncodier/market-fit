@@ -3,7 +3,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 
 export function NotificationSkeleton() {
   return (
-    <Card className="w-full hover:shadow-md transition-all duration-200">
+    <Card className="w-full hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">

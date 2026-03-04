@@ -1,3 +1,4 @@
+import React from "react"
 import { Button } from "@/app/components/ui/button"
 import {
   Dialog,
@@ -51,9 +52,10 @@ interface CreateExperimentDialogProps {
   segments: Segment[]
   campaigns?: Campaign[]
   onCreateExperiment: (values: ExperimentFormValues) => Promise<{ data?: any; error?: string }>
+  trigger?: React.ReactNode
 }
 
-export function CreateExperimentDialog({ segments, campaigns = [], onCreateExperiment }: CreateExperimentDialogProps) {
+export function CreateExperimentDialog({ segments, campaigns = [], onCreateExperiment, trigger }: CreateExperimentDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [dialogState, setDialogState] = useState({
@@ -195,10 +197,12 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
       }}
     >
       <DialogTrigger asChild>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          New Experiment
-        </Button>
+        {trigger || (
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            New Experiment
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent 
         className="sm:max-w-[600px]" 

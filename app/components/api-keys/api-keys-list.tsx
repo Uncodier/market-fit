@@ -49,7 +49,7 @@ function ApiKeyCard({
   isSubmitting: boolean;
 }) {
   return (
-    <Card id={`api-key-${index}`} className="border border-border">
+    <Card id={`api-key-${index}`} className="border dark:border-white/5 border-black/5">
       {/* Collapsible Header */}
       <CardHeader 
         className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"

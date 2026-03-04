@@ -176,7 +176,7 @@ export function CustomerJourneySection({ active, onSave }: CustomerJourneySectio
   return (
     <div className="space-y-8">
       {customerJourneyStages.map((stage) => (
-        <Card key={stage.id} id={`journey-${stage.id}`} className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+        <Card key={stage.id} id={`journey-${stage.id}`} className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-lg border flex items-center justify-center shrink-0 shadow-sm ${stage.color}`}>

@@ -15,30 +15,21 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
 
   // Load instance plans with proper status management
   const loadInstancePlans = useCallback(async () => {
-    console.log('🔍 loadInstancePlans called with activeRobotInstance:', activeRobotInstance)
     
     // First, let's test if the table exists regardless of activeRobotInstance
     try {
       const supabase = createClient()
-      console.log('🔧 Testing if instance_plans table exists...')
       
       const { data: tableTest, error: tableError, count: totalCount } = await supabase
         .from('instance_plans')
         .select('id', { count: 'exact' })
         .limit(1)
       
-      console.log('🔧 Table test result:', { 
-        tableExists: !tableError, 
-        error: tableError?.message || 'none',
-        totalCount: totalCount || 0,
-        data: tableTest 
-      })
     } catch (testError) {
       console.error('🔧 Table test failed:', testError)
     }
     
     if (!activeRobotInstance?.id) {
-      console.log('❌ No active robot instance ID, clearing plans')
       setInstancePlans([])
       setSteps([])
       return
@@ -46,17 +37,11 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
 
     const instanceId = activeRobotInstance.id
     
-    console.log('🚀 Loading plans for instance:', {
-      instanceId: instanceId,
-      instanceName: activeRobotInstance.name,
-      instanceStatus: activeRobotInstance.status
-    })
 
     setIsLoadingPlans(true)
     try {
       const supabase = createClient()
       
-      console.log('🔍 Building Supabase query for instance_plans with instanceId:', instanceId)
       
       // Query instance plans using the remote_instances.id
       const { data, error, count } = await supabase
@@ -66,12 +51,6 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         .order('priority', { ascending: true })
         .order('created_at', { ascending: true })
 
-      console.log('📊 Query executed. Results:', { 
-        dataLength: data?.length || 0, 
-        count, 
-        error: error?.message || null,
-        data: data
-      })
 
       if (error) {
         console.error('❌ Error loading instance plans:', error)
@@ -85,14 +64,11 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
             .select('id, instance_id, title, status', { count: 'exact' })
             .limit(5)
           
-          console.log('🔧 Debug - Sample plans in table:', allPlans, 'Error:', debugError, 'Total count:', totalCount)
         } catch (debugErr) {
           console.error('🔧 Debug query failed:', debugErr)
         }
       } else {
-        console.log(`✅ Loaded ${data?.length || 0} plans for instance ${instanceId}`)
         const allPlans = data || []
-        console.log('🔍 RAW PLANS FROM DATABASE:', JSON.stringify(allPlans, null, 2))
         
         // Categorize plans by status for better management
         // Only ONE plan should be in_progress at a time
@@ -105,15 +81,6 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         const completedPlansData = allPlans.filter((plan: InstancePlan) => plan.status === 'completed')
         
         // Log plan status distribution for debugging
-        console.log('📊 Plan Status Distribution:', {
-          in_progress: inProgressPlans.length,
-          paused: pausedPlans.length,
-          pending: pendingPlans.length,
-          failed: failedPlans.length,
-          cancelled: cancelledPlans.length,
-          blocked: blockedPlans.length,
-          completed: completedPlansData.length
-        })
         
         // Warn if multiple plans are in_progress (should only be one)
         if (inProgressPlans.length > 1) {
@@ -128,15 +95,12 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         // Historical plans include: completed, failed, and cancelled
         const historicalPlans = [...completedPlansData, ...failedPlans, ...cancelledPlans]
         
-        console.log('🔍 ACTIVE PLANS:', activePlans.length, '(in_progress:', inProgressPlans.length, ', paused:', pausedPlans.length, ', pending:', pendingPlans.length, ', blocked:', blockedPlans.length, ')')
-        console.log('🔍 HISTORICAL PLANS:', historicalPlans.length, '(completed:', completedPlansData.length, ', failed:', failedPlans.length, ', cancelled:', cancelledPlans.length, ')')
         
         setInstancePlans(activePlans)
         setCompletedPlans(historicalPlans)
         
         // If no active plans found, just continue without creating test data
         if (activePlans.length === 0) {
-          console.log('🔧 No active plans found')
           setSteps([])
           return
         }
@@ -197,7 +161,6 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
           }
         })
         
-        console.log('✅ Setting real plan steps extracted from complex structure:', convertedSteps.length, 'steps')
         
         // Remove any duplicates before setting state
         const uniqueSteps = removeDuplicateSteps(convertedSteps)
@@ -214,26 +177,20 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
 
   // Get current step
   const getCurrentStep = useCallback(() => {
-    console.log('🔍 getCurrentStep called with steps:', steps.map(s => ({ id: s.id, title: s.title, order: s.order, status: s.status })))
     
     // Check if all steps are completed
     const allCompleted = steps.length > 0 && steps.every(step => step.status === 'completed')
-    console.log('🔍 All steps completed?', allCompleted)
     
     if (allCompleted) {
       // If all steps are completed, return the first step
-      console.log('🔍 All completed, returning first step:', steps[0])
       return steps[0]
     }
     
     const inProgressStep = steps.find(step => step.status === 'in_progress')
-    console.log('🔍 In progress step found:', inProgressStep)
     if (inProgressStep) return inProgressStep
     
     const firstPendingStep = steps.find(step => step.status === 'pending')
-    console.log('🔍 First pending step found:', firstPendingStep)
     const result = firstPendingStep || steps[0]
-    console.log('🔍 getCurrentStep returning:', result)
     return result
   }, [steps])
 
@@ -275,7 +232,6 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
   useEffect(() => {
     if (!activeRobotInstance?.id) return
 
-    console.log('🔔 Setting up real-time subscription for instance:', activeRobotInstance.id)
     
     const supabase = createClient()
     
@@ -290,7 +246,6 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
           filter: `instance_id=eq.${activeRobotInstance.id}`
         },
         (payload) => {
-          console.log('🔔 Real-time update received:', payload)
           // Reload plans when there are changes
           loadInstancePlans()
         }
@@ -298,7 +253,6 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
       .subscribe()
 
     return () => {
-      console.log('🔔 Cleaning up real-time subscription')
       subscription.unsubscribe()
     }
   }, [activeRobotInstance?.id])

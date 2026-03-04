@@ -742,7 +742,7 @@ export function AIActionModal({
               </div>
               
               {/* Leyenda de resultados movida del footer al cuerpo */}
-              <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/30 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 mt-2 pt-2 border-t dark:border-white/5 border-black/5/30 text-xs text-muted-foreground">
                 <HelpCircle className="h-3 w-3" />
                 <span>Results may vary based on your data</span>
               </div>

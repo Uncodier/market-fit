@@ -75,6 +75,7 @@ export interface BillingData {
   billing_country?: string
   auto_renew?: boolean
   credits_available?: number
+  credits_used?: number
 }
 
 class BillingService {
@@ -315,6 +316,41 @@ class BillingService {
       return { success: true, url }
     } catch (error) {
       console.error('Error creating subscription checkout:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
+    }
+  }
+
+  /**
+   * Create Stripe Customer Portal session
+   */
+  async createPortalSession(
+    siteId: string,
+    returnUrl: string
+  ): Promise<{ success: boolean; url?: string; error?: string }> {
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          siteId,
+          returnUrl,
+        }),
+      })
+
+      const { url, error } = await response.json()
+
+      if (error) {
+        return { success: false, error }
+      }
+
+      return { success: true, url }
+    } catch (error) {
+      console.error('Error creating portal session:', error)
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error occurred'

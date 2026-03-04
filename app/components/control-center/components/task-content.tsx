@@ -19,7 +19,7 @@ export function TaskContent({
 }: TaskContentProps) {
   return (
     <main className={cn(
-      "flex-1 min-h-screen transition-all duration-300 ease-in-out",
+      "flex-1 min-h-[100dvh] transition-[padding,margin] duration-300 ease-in-out",
       isCollapsed ? "pl-0" : "pl-64"
     )}>
       <div className="pt-[71px]">

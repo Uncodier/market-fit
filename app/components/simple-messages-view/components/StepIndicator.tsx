@@ -48,7 +48,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
       style={{ width: '100%', minWidth: '100%' }}
     >
       <div className="mx-auto" style={{ width: '100%', maxWidth: '800px' }}>
-        <div className="rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 bg-background/95 border-border">
+        <div className="rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 bg-background/95 dark:border-white/5 border-black/5">
         <div style={{padding: '0.75rem'}}>
           {expanded ? (
             <div className="space-y-2">
@@ -72,7 +72,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
 
               {/* Assets section */}
               {assets.length > 0 && (
-                <div className="border-b border-border/50 pb-2 mb-2">
+                <div className="border-b dark:border-white/5 border-black/5/50 pb-2 mb-2">
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {assets.map((asset) => {
                       const isImage = asset.file_type.startsWith('image/')
@@ -82,12 +82,12 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                             <img
                               src={asset.file_path}
                               alt={asset.name}
-                              className="w-12 h-12 object-cover rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                              className="w-12 h-12 object-cover rounded-lg border dark:border-white/5 border-black/5 cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => window.open(asset.file_path, '_blank')}
                             />
                           ) : (
                             <div 
-                              className="w-12 h-12 bg-muted rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                              className="w-12 h-12 bg-muted rounded-lg border dark:border-white/5 border-black/5 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
                               onClick={() => window.open(asset.file_path, '_blank')}
                             >
                               <File className="w-6 h-6 text-muted-foreground" />

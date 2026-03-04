@@ -15,10 +15,10 @@ export default function ProjectsPage() {
 
   const hasSites = (sites?.length || 0) > 0
 
-  // If a current site is selected, go to dashboard
+  // If a current site is selected, go to Makinas (robots)
   useEffect(() => {
     if (!isLoading && currentSite?.id) {
-      router.push("/dashboard")
+      router.push("/robots")
     }
   }, [isLoading, currentSite?.id, router])
 
@@ -26,7 +26,7 @@ export default function ProjectsPage() {
     const site = sites.find(s => s.id === siteId)
     if (!site) return
     await setCurrentSite(site)
-    router.push("/dashboard")
+    router.push("/robots")
   }
 
   const Content = useMemo(() => {

@@ -7,6 +7,7 @@ import { FeaturesStages } from "./sections/FeaturesStages";
 import { MockupSlider } from "./sections/MockupSlider";
 import { PricingSection } from "./sections/PricingSection";
 import { SupportCarousel } from "./sections/SupportCarousel";
+import { ContentCarousel } from "./sections/ContentCarousel";
 import { SiteFooter } from "./sections/SiteFooter";
 import { useLocalization } from "../../context/LocalizationContext";
 
@@ -179,6 +180,11 @@ export function LandingSections() {
 
       {/* Feature Stages Table & Individual Sections */}
       <FeaturesStages />
+
+      {/* Full Width: Automatic Content Generation */}
+      <Reveal delay={0} className="w-full">
+        <ContentCarousel showBuilders={false} />
+      </Reveal>
 
       {/* Bento Grid Layout for remaining features */}
       <section className="relative w-full py-24 border-t dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white">
@@ -417,186 +423,8 @@ export function LandingSections() {
         </div>
       </section>
 
-      {/* Full Width: Automatic Content Generation */}
-      <section className="relative w-full py-32 border-t dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white overflow-hidden">
-        {/* Subtle background glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(236,72,153,0.05),transparent_60%)]"></div>
-        
-        {/* Floating particles background */}
-        <div className="absolute inset-0 pointer-events-none">
-          {particles.map((p, i) => (
-            <div key={i} className="absolute w-1 h-1 bg-pink-500 rounded-full animate-float-slow" style={{
-              top: p.top,
-              left: p.left,
-              animationDelay: p.delay,
-              opacity: p.opacity
-            }}></div>
-          ))}
-        </div>
-
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 mb-16 flex flex-col items-center text-center">
-          <Reveal delay={0}>
-            <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-8 transition-transform hover:scale-105 duration-300">
-              <span className="w-2 h-2 rounded-full bg-pink-500 mr-2 animate-pulse shadow-[0_0_8px_rgba(236,72,153,0.8)]"></span>
-              Content AI
-            </div>
-          </Reveal>
-          
-          <Reveal delay={100}>
-            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight drop-shadow-lg">
-              {t('landing.content.title.start') || 'Automatic content'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">{t('landing.content.title.highlight') || 'generation'}</span>
-            </h2>
-          </Reveal>
-          
-          <Reveal delay={200}>
-            <p className="dark:text-white/50 text-slate-500 leading-relaxed text-lg md:text-xl max-w-3xl mx-auto font-light">
-              {t('landing.content.subtitle') || 'Create highly engaging videos, social posts, and personalized emails on autopilot. Consistent, on-brand content for every channel.'}
-            </p>
-          </Reveal>
-        </div>
-
-        {/* Full width Marquee Slider */}
-        <Reveal delay={300} className="relative z-10 w-full overflow-hidden flex items-center py-10 mt-8 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] md:[mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]">
-          
-          <div className="flex w-max animate-scroll-x gap-8 pr-8 hover:[animation-play-state:paused] py-8">
-            {/* Items duplicated for seamless loop */}
-            {[1, 2, 3, 4].map((set) => (
-              <React.Fragment key={set}>
-                {/* Video Card (16:9 like format) */}
-                <TiltCard className="w-[480px] h-[270px] flex-shrink-0 rounded-lg dark:neu-panel neu-panel-light p-2 flex flex-col group/card transition-colors cursor-pointer relative overflow-hidden">
-                  <div className="absolute top-4 left-4 z-20 flex items-center gap-2 dark:neu-pressed neu-pressed-light px-3 py-1.5 rounded-full">
-                    <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></div>
-                    <span className="text-xs font-semibold dark:text-white/90 text-slate-500">AI Video</span>
-                  </div>
-                  
-                  {/* Video Player Mockup */}
-                  <div className="w-full h-full rounded-md dark:neu-pressed neu-pressed-light overflow-hidden relative transition-colors flex flex-col">
-                    <div className="flex-1 relative">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(236,72,153,0.15),transparent_70%)]"></div>
-                      <div className="absolute inset-0 flex items-center justify-center z-10">
-                        <div className="w-16 h-16 rounded-full dark:neu-button neu-button-light flex items-center justify-center group-hover/card:scale-110 transition-transform">
-                          <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[12px] border-l-pink-400 border-b-[8px] border-b-transparent ml-1"></div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Video Controls Bar */}
-                    <div className="h-10 dark:neu-pressed neu-pressed-light px-4 flex items-center gap-3 border-t-0">
-                      <div className="w-3 h-3 dark:text-white/50 text-slate-500">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                      </div>
-                      <div className="flex-1 h-1.5 dark:bg-white/10 bg-black/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-pink-600 to-pink-400 w-1/3 relative">
-                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_10px_rgba(236,72,153,0.8)]"></div>
-                        </div>
-                      </div>
-                      <div className="text-[10px] dark:text-white/50 text-slate-500 font-mono">0:45 / 2:30</div>
-                    </div>
-                  </div>
-                </TiltCard>
-
-                {/* Social Post Card (Square/Vertical like format) */}
-                <TiltCard className="w-[300px] h-[380px] flex-shrink-0 self-center rounded-lg dark:neu-panel neu-panel-light p-5 flex flex-col group/card transition-colors cursor-pointer relative">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 p-[2px]">
-                        <div className="w-full h-full dark:bg-[#121214] bg-white rounded-full border dark:border-white/10 border-black/10"></div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold dark:text-white/90 text-slate-500">Makinari AI</div>
-                        <div className="text-[10px] dark:text-white/40 text-slate-500">Just now • 🌐</div>
-                      </div>
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2 mb-4">
-                    <div className="h-2 w-full dark:neu-skeleton neu-skeleton-light rounded-full"></div>
-                    <div className="h-2 w-[90%] dark:neu-skeleton neu-skeleton-light rounded-full"></div>
-                    <div className="h-2 w-[60%] dark:neu-skeleton neu-skeleton-light opacity-70 rounded-full"></div>
-                  </div>
-
-                  <div className="flex gap-2 mb-4">
-                    <span className="text-blue-400 text-xs">#AI</span>
-                    <span className="text-blue-400 text-xs">#Growth</span>
-                  </div>
-
-                  {/* Post Image Mockup */}
-                  <div className="w-full flex-1 rounded-md dark:neu-pressed neu-pressed-light overflow-hidden relative transition-colors">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.15),transparent_70%)]"></div>
-                    {/* Mock chart/graphic */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-blue-500/20 to-transparent"></div>
-                    <div className="absolute bottom-4 left-4 right-4 h-16 border-b border-l dark:border-white/10 border-black/10">
-                      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <path d="M0,100 L20,80 L40,90 L60,40 L80,50 L100,10" fill="none" stroke="#60a5fa" strokeWidth="3" vectorEffect="non-scaling-stroke"/>
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  {/* Action buttons */}
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t dark:border-white/5 border-black/5 dark:text-white/40 text-slate-500">
-                    <div className="w-4 h-4 rounded-full border dark:border-white/20 border-black/20"></div>
-                    <div className="w-4 h-4 rounded-full border dark:border-white/20 border-black/20"></div>
-                    <div className="w-4 h-4 rounded-full border dark:border-white/20 border-black/20"></div>
-                    <div className="w-4 h-4 rounded-full border dark:border-white/20 border-black/20"></div>
-                  </div>
-                </TiltCard>
-
-                {/* Email Card (Document/Letter like format) */}
-                <TiltCard className="w-[400px] h-[300px] flex-shrink-0 self-center rounded-lg dark:neu-panel neu-panel-light flex flex-col group/card transition-colors cursor-pointer overflow-hidden relative">
-                  {/* Email Header */}
-                  <div className="dark:neu-pressed neu-pressed-light p-4 border-b dark:border-white/5 border-black/5 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-md bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                        </div>
-                        <div>
-                          <div className="text-xs dark:text-white/50 text-slate-500">New Message</div>
-                          <div className="text-sm font-semibold dark:text-white/90 text-slate-500">Cold Email</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex gap-2 border-b dark:border-white/5 border-black/5 pb-2">
-                        <span className="dark:text-white/40 text-slate-500 w-8">To:</span>
-                        <span className="dark:text-white/80 text-slate-500 dark:bg-white/5 bg-black/5 px-2 rounded">sarah@company.com</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="dark:text-white/40 text-slate-500 w-8">Subj:</span>
-                        <span className="dark:text-white/90 text-slate-500 font-medium">Quick question about your CRM...</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Email Body */}
-                  <div className="flex-1 p-5 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_60%)]"></div>
-                    <div className="relative z-10 space-y-4">
-                      <div className="h-2 w-1/4 dark:neu-skeleton neu-skeleton-light rounded-full"></div>
-                      <div className="space-y-2">
-                        <div className="h-2 w-full dark:neu-skeleton neu-skeleton-light opacity-70 rounded-full"></div>
-                        <div className="h-2 w-[95%] dark:neu-skeleton neu-skeleton-light opacity-70 rounded-full"></div>
-                        <div className="h-2 w-[85%] dark:neu-skeleton neu-skeleton-light opacity-70 rounded-full"></div>
-                      </div>
-                      <div className="space-y-2 pt-2">
-                        <div className="h-2 w-full dark:neu-skeleton neu-skeleton-light opacity-70 rounded-full"></div>
-                        <div className="h-2 w-[90%] dark:neu-skeleton neu-skeleton-light opacity-70 rounded-full"></div>
-                      </div>
-                      {/* Call to action button mockup */}
-                      <div className="mt-4 w-32 h-8 rounded-md dark:neu-button neu-button-light"></div>
-                    </div>
-                  </div>
-                </TiltCard>
-              </React.Fragment>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
       {/* Pricing - Bottom */}
-      <PricingSection />
+      <PricingSection showFullPricingButton={true} />
 
       {/* Support Carousel */}
       <SupportCarousel />

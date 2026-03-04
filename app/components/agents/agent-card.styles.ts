@@ -18,7 +18,7 @@ export const agentStatusVariants = cva(
 )
 
 export const agentCardVariants = cva(
-  "group transition-all duration-200 ease-in-out bg-card border-border",
+  "group transition-all duration-200 ease-in-out bg-card dark:border-white/5 border-black/5",
   {
     variants: {
       hover: {

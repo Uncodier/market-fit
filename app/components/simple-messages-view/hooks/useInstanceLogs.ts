@@ -31,7 +31,6 @@ export const useInstanceLogs = ({
   // Clear logs when site changes
   useEffect(() => {
     if (currentSiteId && currentSiteId !== prevSiteIdRef.current) {
-      console.log('🔄 [useInstanceLogs] Site changed, clearing logs for new site:', currentSiteId)
       setLogs([])
       setCollapsedSystemMessages(new Set())
       setCollapsedToolDetails(new Set())
@@ -44,28 +43,20 @@ export const useInstanceLogs = ({
   // Load instance logs
   const loadInstanceLogs = async () => {
     if (!activeRobotInstance?.id) {
-      console.log('❌ No active robot instance ID, clearing logs')
       setLogs([])
       return
     }
 
     const instanceId = activeRobotInstance.id
-    console.log('🚀 Loading logs for instance:', {
-      instanceId: instanceId,
-      instanceName: activeRobotInstance.name,
-      instanceStatus: activeRobotInstance.status
-    })
 
     // For uninstantiated instances, still try to load logs to see if they have any
     if (activeRobotInstance.status === 'uninstantiated') {
-      console.log('⚠️ Instance is uninstantiated, but checking for existing logs')
     }
 
     setIsLoadingLogs(true)
     try {
       const supabase = createClient()
       
-      console.log('🔍 Building Supabase query for instance_logs with instanceId:', instanceId)
       
       // Load latest messages first (descending order) and limit to 100 for performance
       const { data, error, count } = await supabase
@@ -79,38 +70,20 @@ export const useInstanceLogs = ({
         console.error('Error loading instance logs:', error)
         setLogs([])
       } else {
-        console.log(`Loaded ${data?.length || 0} logs for instance ${activeRobotInstance.id}. Total count: ${count}`)
-        console.log('🔍 Raw logs data:', data)
         // Reverse the array to maintain chronological order (oldest first, newest last)
         // since we loaded them in descending order (newest first)
         const logs = (data || []).reverse()
         setLogs(logs)
         
-        // Special debug for uninstantiated instances
-        if (activeRobotInstance.status === 'uninstantiated') {
-          console.log('🔍 Uninstantiated instance logs debug:', {
-            instanceId: activeRobotInstance.id,
-            logsCount: logs.length,
-            logs: logs.map((log: any) => ({ id: log.id, log_type: log.log_type, message: log.message?.substring(0, 50) + '...' }))
-          })
-        }
-        // Scroll to bottom immediately without animation since latest messages are already loaded
-        // Use requestAnimationFrame to ensure DOM is ready, then set scroll position directly
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            // Use immediate scroll callback if available, otherwise fall back to animated scroll
-            if (onScrollToBottomImmediate) {
-              onScrollToBottomImmediate()
-              // Also try after a small delay to account for any layout shifts
-              setTimeout(() => {
-                onScrollToBottomImmediate()
-              }, 50)
-            } else {
-              // Fallback to animated scroll if immediate scroll not available
-              onScrollToBottom?.()
-            }
-          })
-        })
+        // Scroll to bottom after React renders the new logs
+        // setTimeout gives React time to commit the state update and the browser to lay out
+        setTimeout(() => {
+          if (onScrollToBottomImmediate) {
+            onScrollToBottomImmediate()
+          } else {
+            onScrollToBottom?.()
+          }
+        }, 100)
         
         // Auto-collapse long system messages (>200 characters)
         const longSystemMessages = logs
@@ -134,15 +107,6 @@ export const useInstanceLogs = ({
           })
           .map((log: InstanceLog) => log.id)
         
-        console.log('🔧 Auto-collapsing tool details for logs:', logsWithToolDetails)
-        console.log('🔧 Logs with tool details:', logs.filter((log: any) => {
-          const hasToolResult = log.tool_result && Object.keys(log.tool_result).length > 0
-          const hasDetails = log.details && Object.keys(log.details).length > 0
-          const hasScreenshot = log.screenshot_base64
-          const hasToolName = log.tool_name || log.toolName
-          return hasToolResult || hasDetails || hasScreenshot || hasToolName
-        }))
-        
         if (logsWithToolDetails.length > 0) {
           setCollapsedToolDetails(new Set(logsWithToolDetails))
         }
@@ -155,7 +119,6 @@ export const useInstanceLogs = ({
               .select('instance_id, log_type, level, created_at', { count: 'exact' })
               .limit(5)
             
-            console.log('Debug - Sample logs in table:', allLogs, 'Error:', allLogsError, 'Total count:', totalCount)
             
             setDebugInfo({
               instanceId: activeRobotInstance.id,
@@ -201,7 +164,6 @@ export const useInstanceLogs = ({
       details: { temp_message: true }
     }
     
-    console.log('📝 Adding optimistic user message:', tempLog.id)
     setLogs(prevLogs => [...prevLogs, tempLog])
   }, [activeRobotInstance?.id])
 
@@ -285,10 +247,6 @@ export const useInstanceLogs = ({
       // Always load logs when there's an active instance, even if it's the same instance
       // This ensures logs are loaded when switching back from New Makina
       if (currentRobotInstanceIdRef.current !== newInstanceId) {
-        console.log('🔄 Robot instance changed, reloading data:', { 
-          from: currentRobotInstanceIdRef.current, 
-          to: newInstanceId 
-        })
         currentRobotInstanceIdRef.current = newInstanceId
         
         // Clear existing state when switching to a new robot instance
@@ -297,7 +255,6 @@ export const useInstanceLogs = ({
         setCollapsedToolDetails(new Set())
         setExpandedToolGroups(new Set())
       } else {
-        console.log('🔄 Same robot instance, ensuring logs are loaded:', newInstanceId)
       }
       
       // Always load logs when there's an active instance
@@ -317,7 +274,6 @@ export const useInstanceLogs = ({
             filter: `instance_id=eq.${activeRobotInstance.id}`
           },
           (payload: any) => {
-            console.log('Real-time log update:', payload)
             if (payload.eventType === 'INSERT') {
               const newLog = payload.new as InstanceLog
               
@@ -331,7 +287,6 @@ export const useInstanceLogs = ({
                   )
                   
                   if (tempMessageIndex !== -1) {
-                    console.log('🔄 Replacing temporary user message with real one')
                     // Remove the temp message ID from tracking
                     const tempId = prevLogs[tempMessageIndex].id
                     // Note: Recent user message IDs tracking removed to avoid circular dependencies
@@ -346,7 +301,6 @@ export const useInstanceLogs = ({
                 // Double-check for duplicates by ID
                 const isDuplicate = prevLogs.some(log => log.id === newLog.id)
                 if (isDuplicate) {
-                  console.log('🚫 Preventing duplicate log entry:', newLog.id)
                   return prevLogs
                 }
                 
@@ -379,7 +333,6 @@ export const useInstanceLogs = ({
                   // Additional check: make sure this log is recent (within 1 minute of sending)
                   const timeDiff = new Date(newLog.created_at).getTime() - new Date().getTime()
                   if (Math.abs(timeDiff) < 60000) { // Within 1 minute
-                    console.log('🔄 Received response to our message, clearing thinking state')
                     // Clear thinking state by calling the callback
                     onResponseReceived?.()
                   }
@@ -388,7 +341,6 @@ export const useInstanceLogs = ({
                 // If we're not waiting for a specific message but we're in thinking state,
                 // clear it when we get any new log that's not a user action
                 if (newLog.log_type !== 'user_action' && newLog.message.length > 5) {
-                  console.log('🔄 Received new log, clearing thinking state')
                   onResponseReceived?.()
                 }
               }
@@ -406,7 +358,6 @@ export const useInstanceLogs = ({
               const hasScreenshot = newLog.screenshot_base64
               
               if ((hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)) {
-                console.log('🔧 Auto-collapsing new tool log:', newLog.id, { hasToolName, isToolCall, hasToolResult, hasDetails, hasScreenshot, logType: newLog.log_type })
                 setCollapsedToolDetails(prev => new Set(prev).add(newLog.id))
               }
             } else if (payload.eventType === 'UPDATE') {

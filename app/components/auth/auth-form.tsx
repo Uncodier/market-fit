@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/app/context/ThemeContext'
+import { useLocalization } from '@/app/context/LocalizationContext'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/app/components/ui/form"
 import { Input } from "@/app/components/ui/input"
 import { InputWithIcon } from "@/app/components/ui/input-with-icon"
@@ -10,7 +11,7 @@ import { Button } from "@/app/components/ui/button"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google, Shield } from "@/app/components/ui/icons"
+import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google, Shield, WhatsApp } from "@/app/components/ui/icons"
 import { Separator } from "@/app/components/ui/separator"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
@@ -47,6 +48,7 @@ type ResetPasswordValues = z.infer<typeof resetPasswordSchema>
 export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData, onAuthTypeChange, initialError }: AuthFormProps) {
   const supabase = createClient()
   const { theme } = useTheme()
+  const { t } = useLocalization()
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -552,12 +554,12 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-foreground">Email address</FormLabel>
+                  <FormLabel className="text-sm font-medium text-foreground">{t('auth.email') || 'Email address'}</FormLabel>
                   <FormControl>
                     <InputWithIcon
                       leftIcon={<Mail className="h-4 w-4 text-muted-foreground" />}
-                      className="h-12 text-sm bg-background border-input" 
-                      placeholder="Enter your email address"
+                      className="h-12 text-sm neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0" 
+                      placeholder={t('auth.emailPlaceholder') || 'name@example.com'}
                       type="email"
                       {...field} 
                     />
@@ -570,10 +572,10 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             {/* Submit button for reset password */}
             <Button 
               type="submit" 
-              className="w-full mt-6 font-medium" 
+              className="w-full mt-6 font-medium neu-auth-btn font-inter" 
               disabled={loading || resetPasswordSuccess}
             >
-              {loading ? "Sending..." : "Send Reset Link"}
+              {loading ? (t('auth.sending') || "Sending...") : (t('auth.sendResetLink') || "Send Reset Link")}
             </Button>
           </form>
         </Form>
@@ -587,12 +589,12 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Name</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">{t('auth.name') || 'Name'}</FormLabel>
                     <FormControl>
                       <InputWithIcon
                         leftIcon={<User className="h-4 w-4 text-muted-foreground" />}
-                        className="h-12 text-sm bg-background border-input" 
-                        placeholder="Your name"
+                        className="h-12 text-sm neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0" 
+                        placeholder={t('auth.namePlaceholder') || 'Your name'}
                         type="text"
                         name={field.name}
                         value={field.value}
@@ -631,7 +633,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                               <LoadingSkeleton size="sm" />
                             ) : null
                           }
-                          className="h-12 text-sm bg-background border-input"
+                          className="h-12 text-sm neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0"
                           placeholder="Enter code"
                           type="text"
                           name={field.name}
@@ -659,12 +661,12 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-foreground">Email address</FormLabel>
+                  <FormLabel className="text-sm font-medium text-foreground">{t('auth.email') || 'Email address'}</FormLabel>
                   <FormControl>
                     <InputWithIcon
                       leftIcon={<Mail className="h-4 w-4 text-muted-foreground" />}
-                      className="h-12 text-sm bg-background border-input" 
-                      placeholder="name@example.com"
+                      className="h-12 text-sm neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0" 
+                      placeholder={t('auth.emailPlaceholder') || 'name@example.com'}
                       type="email"
                       {...field} 
                     />
@@ -680,7 +682,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-foreground">Password</FormLabel>
+                  <FormLabel className="text-sm font-medium text-foreground">{t('auth.password') || 'Password'}</FormLabel>
                   <FormControl>
                     <InputWithIcon
                       leftIcon={<Lock className="h-4 w-4 text-muted-foreground" />}
@@ -694,9 +696,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                         </button>
                       }
                       onRightIconClick={togglePasswordVisibility}
-                      className="h-12 text-sm bg-background border-input" 
+                      className="h-12 text-sm neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0" 
                       type={showPassword ? "text" : "password"}
-                      placeholder={authMode === 'sign_up' ? "Create a password" : "Enter your password"}
+                      placeholder={authMode === 'sign_up' ? (t('auth.createPassword') || "Create a password") : (t('auth.passwordPlaceholder') || "Enter your password")}
                       {...field} 
                     />
                   </FormControl>
@@ -707,7 +709,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             
             {/* MFA Verification UI */}
             {mfaRequired && authMode === 'sign_in' && (
-              <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/30">
+              <div className="space-y-4 p-4 border dark:border-white/5 border-black/5 rounded-lg bg-muted/30">
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Shield className="h-4 w-4" />
@@ -721,7 +723,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                   <div className="relative">
                     <InputWithIcon
                       leftIcon={<Shield className="h-4 w-4 text-muted-foreground" />}
-                      className="h-12 text-base bg-background border-input" 
+                      className="h-12 text-base neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0" 
                       placeholder="000000"
                       type="text"
                       inputMode="numeric"
@@ -739,7 +741,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                       type="button"
                       onClick={handleMfaVerify}
                       disabled={mfaVerifying || mfaCode.length !== 6}
-                      className="flex-1 font-medium"
+                      className="flex-1 font-medium neu-auth-btn font-inter"
                     >
                       {mfaVerifying ? "Verifying..." : "Verify"}
                     </Button>
@@ -763,9 +765,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 <button 
                   type="button"
                   onClick={() => handleAuthModeChange('reset_password')}
-                  className="text-sm text-primary hover:underline"
+                  className="text-sm text-primary hover:underline font-inter"
                 >
-                  Forgot password?
+                  {t('auth.forgotPassword') || 'Forgot password?'}
                 </button>
               </div>
             )}
@@ -774,18 +776,18 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             {!mfaRequired && (
               <Button 
                 type="submit" 
-                className="w-full mt-6 font-medium" 
+                className="w-full mt-6 font-medium neu-auth-btn font-inter" 
                 disabled={loading}
               >
                 {loading 
-                  ? "Please wait..." 
+                  ? (t('auth.pleaseWait') || "Please wait...") 
                   : authMode === 'sign_in' 
-                    ? "Sign In" 
+                    ? (t('auth.signInBtn') || "Sign In") 
                     : referralCodeStatus === 'valid'
-                      ? "Create Account"
+                      ? (t('auth.signUpBtn') || "Create Account")
                       : referralCodeStatus === 'unchecked'
-                        ? "Get Started"
-                        : "Create Account"
+                        ? (t('auth.getStarted') || "Get Started")
+                        : (t('auth.signUpBtn') || "Create Account")
                 }
               </Button>
             )}
@@ -793,16 +795,28 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         </Form>
       )}
       
-      {/* Divider - TEMPORARILY HIDDEN */}
-      {false && !waitlistSuccess && authMode !== 'reset_password' && (
+      {/* Divider */}
+      {!waitlistSuccess && authMode !== 'reset_password' && (
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <Separator className="w-full" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground font-medium">Or continue with</span>
+            <span className="bg-background px-2 text-muted-foreground font-medium">{t('auth.orContinue') || 'Or continue with'}</span>
           </div>
         </div>
+      )}
+
+      {/* WhatsApp CTA */}
+      {!waitlistSuccess && authMode !== 'reset_password' && (
+          <Button 
+            type="button" 
+            className="whatsapp-btn neu-auth-whatsapp-btn w-full font-medium hover:opacity-90 transition-opacity font-inter"
+            onClick={() => window.open('https://wa.me/34600000000', '_blank')}
+          >
+          <WhatsApp className="w-4 h-4 mr-2 text-white" />
+          {t('auth.whatsappBtn') || 'Use Makinari on WhatsApp'}
+        </Button>
       )}
       
       {/* Google sign in button - TEMPORARILY HIDDEN */}
@@ -810,7 +824,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         <Button 
           type="button" 
           variant="outline" 
-          className={`w-full font-medium ${!isGoogleButtonEnabled() ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`w-full font-medium ${!isGoogleButtonEnabled() ? 'opacity-50 cursor-not-allowed' : ''} font-inter`}
           onClick={handleGoogleSignIn}
           disabled={loading || !isGoogleButtonEnabled()}
         >
@@ -829,9 +843,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             <button 
               type="button"
               onClick={() => handleAuthModeChange('sign_in')}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors font-inter"
             >
-              Remember your password? {" "}
+              {t('auth.rememberPassword') || 'Remember your password?'} {" "}
               <span className="text-primary font-medium hover:underline">
                 Sign in
               </span>
@@ -840,15 +854,15 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             <div className="flex flex-col items-center gap-2">
               <span className="text-sm text-muted-foreground">
                 {authMode === 'sign_in' 
-                  ? "Don't have an account?" 
-                  : "Already have an account?"}
+                  ? (t('auth.noAccount') || "Don't have an account?") 
+                  : (t('auth.hasAccount') || "Already have an account?")}
               </span>
               <button 
                 type="button"
                 onClick={toggleAuthMode}
-                className="text-sm text-primary font-medium hover:underline transition-colors"
+                className="text-sm text-primary font-medium hover:underline transition-colors font-inter"
               >
-                {authMode === 'sign_in' ? "Sign up" : "Sign in"}
+                {authMode === 'sign_in' ? (t('auth.signUpLink') || "Sign up") : (t('auth.signInLink') || "Sign in")}
               </button>
             </div>
           )}

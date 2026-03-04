@@ -222,7 +222,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
   return (
     <div className={className}>
       {isLoading ? (
-        <Card className="border border-border shadow-sm">
+        <Card className="border dark:border-white/5 border-black/5 shadow-sm">
           <CardHeader className="px-8 py-6">
             <CardTitle className="text-xl font-semibold">Payment History</CardTitle>
           </CardHeader>
@@ -245,7 +245,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
           className="h-[600px]"
         />
       ) : (
-        <Card id="payment-history" className="border border-border shadow-sm">
+        <Card id="payment-history" className="border dark:border-white/5 border-black/5 shadow-sm">
           <CardHeader className="px-8 py-6">
             <CardTitle className="text-xl font-semibold">Payment History</CardTitle>
           </CardHeader>

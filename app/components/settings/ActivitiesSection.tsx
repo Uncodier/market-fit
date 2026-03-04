@@ -118,7 +118,7 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
               "border shadow-sm hover:shadow-md transition-shadow duration-200",
               isInactive 
                 ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-600" 
-                : "border-border"
+                : "dark:border-white/5 border-black/5"
             )}
           >
             <CardHeader className="px-8 py-6">

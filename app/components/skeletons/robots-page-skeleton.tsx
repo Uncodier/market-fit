@@ -5,7 +5,7 @@ export function RobotsPageSkeleton() {
   return (
     <div className="flex-1 p-0">
       {/* Header Skeleton */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b dark:border-white/5 border-black/5">
         <div className="px-16 pt-0">
           <div className="flex items-center gap-4 py-4">
             {/* Tab navigation skeleton */}
@@ -21,11 +21,11 @@ export function RobotsPageSkeleton() {
       {/* Main Content Area */}
       <div className="flex h-[calc(100vh-136px)]">
         {/* Web View - 2/3 of available space */}
-        <div className="w-2/3 h-full border-r border-border">
+        <div className="w-2/3 h-full border-r dark:border-white/5 border-black/5">
           <div className="h-full flex flex-col m-0 bg-card">
             <div className="flex-1 p-0 overflow-hidden relative">
               {/* Browser-like header */}
-              <div className="border-b border-border p-3 bg-muted/50">
+              <div className="border-b dark:border-white/5 border-black/5 p-3 bg-muted/50">
                 <div className="flex items-center gap-2">
                   {/* Browser controls */}
                   <div className="flex gap-2">
@@ -102,7 +102,7 @@ export function RobotsPageSkeleton() {
 
               {/* Loading status overlay */}
               <div className="absolute bottom-4 left-4 right-4">
-                <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3">
+                <div className="bg-background/95 backdrop-blur-sm border dark:border-white/5 border-black/5 rounded-lg shadow-lg p-3">
                   <div className="flex items-center gap-3">
                     <div className="flex gap-1">
                       <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -134,7 +134,7 @@ export function RobotsPageSkeleton() {
         <div className="w-1/3 h-full">
           <div className="h-full flex flex-col m-0 bg-card">
             {/* Chat header */}
-            <div className="border-b border-border p-4 bg-muted/30">
+            <div className="border-b dark:border-white/5 border-black/5 p-4 bg-muted/30">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-8 w-8 rounded-full" />
                 <div className="flex-1">
@@ -190,7 +190,7 @@ export function RobotsPageSkeleton() {
             </div>
 
             {/* Chat input area */}
-            <div className="border-t border-border p-4 bg-muted/20">
+            <div className="border-t dark:border-white/5 border-black/5 p-4 bg-muted/20">
               <div className="relative">
                 <Skeleton className="h-12 w-full rounded-xl" />
                 <Skeleton className="absolute bottom-2 right-2 h-8 w-8 rounded-lg" />

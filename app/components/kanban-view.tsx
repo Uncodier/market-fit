@@ -610,7 +610,7 @@ export function KanbanView({
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   className={cn(
-                                    "w-[320px] transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer",
+                                    "w-[320px] transition-shadow duration-200 hover:shadow-md cursor-pointer",
                                     snapshot.isDragging 
                                       ? 'shadow-lg dark:shadow-black/20 border-primary/20' 
                                       : ''
@@ -635,7 +635,7 @@ export function KanbanView({
                                       )}
                                     </div>
                                   </CardHeader>
-                                  <div className="border-t border-gray-100 dark:border-gray-800 mx-3"></div>
+                                  <div className="border-t dark:border-white/5 border-black/5 mx-3"></div>
                                   <CardContent className="p-3 pt-2 pb-0">
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate" title={lead.email}>
                                       {lead.email}
@@ -658,7 +658,7 @@ export function KanbanView({
                                       )}
                                     </div>
                                     {/* AI Actions Footer */}
-                                    <div className="flex items-center justify-between pt-2 pb-2 border-t border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center justify-between pt-2 pb-2 border-t dark:border-white/5 border-black/5">
                                       <div className="flex items-center gap-2">
                                         <span className="text-xs text-gray-500 font-medium">AI Actions</span>
                                       </div>

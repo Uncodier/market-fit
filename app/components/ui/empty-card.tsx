@@ -16,50 +16,18 @@ interface EmptyCardProps {
   showHint?: boolean;
 }
 
-// Generate random positions for bubbles
+// Use deterministic positions for bubbles to prevent hydration mismatch
 const generateRandomBubbles = () => {
-  const bubbles = [];
   const positions = [
-    { 
-      top: Math.random() * 70 + 5, 
-      left: Math.random() * 70 + 5,
-      size: Math.random() * 16 + 16, // 16-32
-      delay: Math.random() * 3
-    },
-    { 
-      top: Math.random() * 70 + 10, 
-      left: Math.random() * 70 + 10,
-      size: Math.random() * 12 + 20, // 20-32
-      delay: Math.random() * 3
-    },
-    { 
-      top: Math.random() * 70 + 15, 
-      left: Math.random() * 70 + 15,
-      size: Math.random() * 8 + 16, // 16-24
-      delay: Math.random() * 3
-    },
-    { 
-      top: Math.random() * 70 + 8, 
-      left: Math.random() * 70 + 8,
-      size: Math.random() * 10 + 12, // 12-22
-      delay: Math.random() * 3
-    },
-    { 
-      top: Math.random() * 70 + 20, 
-      left: Math.random() * 70 + 20,
-      size: Math.random() * 6 + 10, // 10-16
-      delay: Math.random() * 3
-    },
-    { 
-      top: Math.random() * 70 + 25, 
-      left: Math.random() * 70 + 25,
-      size: Math.random() * 8 + 14, // 14-22
-      delay: Math.random() * 3
-    },
+    { top: 25.4, left: 12.3, size: 28.5, delay: 1.2 },
+    { top: 68.1, left: 45.7, size: 22.1, delay: 0.5 },
+    { top: 15.8, left: 63.2, size: 18.4, delay: 2.1 },
+    { top: 42.6, left: 28.9, size: 16.7, delay: 1.8 },
+    { top: 58.3, left: 74.5, size: 12.3, delay: 0.9 },
+    { top: 31.2, left: 56.4, size: 19.8, delay: 2.5 }
   ];
-  
   return positions;
-};
+}
 
 /**
  * EmptyCard component
@@ -235,7 +203,7 @@ export function EmptyCard({
               
               {/* Optional automatic operation hint */}
               {showHint && (
-                <div className="pt-3 border-t border-border/20 relative z-[2]">
+                <div className="pt-3 border-t dark:border-white/5 border-black/5/20 relative z-[2]">
                   <p className="text-xs text-muted-foreground/50 max-w-sm mx-auto leading-relaxed text-center">
                     💡 <span className="font-medium">Most operations run automatically.</span> Your AI agents work in the background without manual direction. Feel free to return later if you prefer not to actively manage them right now.
                   </p>

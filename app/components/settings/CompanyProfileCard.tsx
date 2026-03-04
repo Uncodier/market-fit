@@ -57,7 +57,7 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
   }
 
   return (
-    <Card id="company-profile" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card id="company-profile" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold">Company Profile</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">

@@ -3,7 +3,7 @@ import { Skeleton } from "../ui/skeleton"
 
 export function CopywritingSkeleton() {
   return (
-    <Card className="border border-border shadow-sm">
+    <Card className="border dark:border-white/5 border-black/5 shadow-sm">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold">
           <Skeleton className="h-7 w-48" />
@@ -39,7 +39,7 @@ export function CopywritingSkeleton() {
 
 export function CopywritingItemsSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <Card className="border border-border shadow-sm">
+    <Card className="border dark:border-white/5 border-black/5 shadow-sm">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold">
           <Skeleton className="h-7 w-48" />

@@ -385,7 +385,7 @@ export function FilterModal({
           </div>
         </div>
         
-        <DialogFooter className="p-6 pt-4 border-t border-border flex justify-between">
+        <DialogFooter className="p-6 pt-4 border-t dark:border-white/5 border-black/5 flex justify-between">
           <Button
             type="button"
             variant="outline"

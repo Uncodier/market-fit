@@ -246,7 +246,7 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
         const isExpanded = expandedAddresses.has(key)
         
         return (
-          <Card key={key} id={`service-exclusion-${index}`} className="border border-border">
+          <Card key={key} id={`service-exclusion-${index}`} className="border dark:border-white/5 border-black/5">
             {/* Collapsible Header */}
             <CardHeader 
               className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"

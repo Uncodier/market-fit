@@ -217,7 +217,7 @@ export function LocationsOnboardingStep({
 
       {/* Regional Restrictions Section */}
       {locations.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-border">
+        <div className="mt-8 pt-6 border-t dark:border-white/5 border-black/5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-muted-foreground" />

@@ -93,7 +93,7 @@ export function TaskDetailSkeleton() {
 
                   {/* Outsource Section */}
                   <div className="mt-8">
-                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                    <div className="bg-muted/40 rounded-lg p-4 border dark:border-white/5 border-black/5/30">
                       <Skeleton className="h-4 w-40 mb-4" />
                       <div className="space-y-4">
                         <div className="bg-primary/10 p-3 rounded-md border border-primary/20">

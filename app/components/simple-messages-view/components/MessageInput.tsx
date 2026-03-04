@@ -121,11 +121,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
     fileInputRef.current?.click()
   }
   return (
-    <div className="flex-none transition-all duration-300 ease-in-out w-full" style={{ width: '100%', minWidth: '100%' }}>
-      <div className="mx-auto" style={{ 
-        width: '100%',
-        maxWidth: '800px'
-      }}>
+    <div className="flex-none transition-all duration-300 ease-in-out w-full" style={{ width: '100%' }}>
+      <div className="mx-auto w-full max-w-[800px]">
         <form className="relative w-full" onSubmit={(e) => {
           e.preventDefault()
           onSubmit()
@@ -147,13 +144,11 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 lineHeight: '1.5',
                 overflowY: 'hidden',
                 wordWrap: 'break-word',
-                paddingBottom: '45px',
+                paddingBottom: '60px',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
                 height: '135px', // Initial height, will be auto-adjusted
                 width: '100%',
-                minWidth: '100%',
-                maxWidth: '100%',
                 opacity: disabled ? 1 : undefined
               }}
             />
@@ -177,7 +172,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="h-8 hover:bg-secondary/80 transition-colors duration-200 px-3 w-40 justify-start"
+                    className="h-8 hover:bg-secondary/80 transition-all duration-200 px-2 md:px-3 w-auto md:w-40 justify-center md:justify-start"
                     onClick={handleDropdownToggle}
                     title={
                       selectedActivity === 'ask' ? 'Ask' : 
@@ -187,14 +182,14 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                       'Select activity'
                     }
                   >
-                    <div className="flex items-center w-full">
+                    <div className="flex items-center w-full justify-center md:justify-start">
                       <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
                         {selectedActivity === 'ask' && <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />}
                         {selectedActivity === 'plan' && <ListTodo className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />}
                         {selectedActivity === 'generate-image' && <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />}
                         {selectedActivity === 'generate-video' && <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />}
                       </div>
-                      <div className="flex flex-col min-w-0 ml-2">
+                      <div className="hidden md:flex flex-col min-w-0 ml-2">
                         <span className="truncate">
                           {selectedActivity === 'ask' ? 'Ask' : 
                            selectedActivity === 'plan' ? 'Plan' :
@@ -207,7 +202,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                   </Button>
                   
                   {isDropdownOpen && (
-                    <div className={`absolute left-0 bg-background border border-border rounded-md shadow-lg z-50 w-40 ${
+                    <div className={`absolute left-0 bg-background border dark:border-white/5 border-black/5 rounded-md shadow-lg z-50 w-40 ${
                       dropdownDirection === 'up' 
                         ? 'bottom-full mb-1' 
                         : 'top-full mt-1'
@@ -311,7 +306,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 onClick={handleAttachmentClick}
                 className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 ${
                   !disabled && !isUploading && activeRobotInstance?.id
-                    ? 'text-muted-foreground hover:text-foreground hover:bg-accent hover:scale-105 active:scale-95'
+                    ? 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     : 'text-muted-foreground opacity-50 hover:bg-transparent'
                 }`}
                 title={!activeRobotInstance?.id ? 'Start a conversation first to upload files' : 'Attach file'}
@@ -328,7 +323,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 disabled={disabled || !message.trim()}
                 className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 ${
                   !disabled && message.trim()
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground hover:scale-105 active:scale-95 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100'
                     : 'text-muted-foreground opacity-50 hover:bg-transparent'
                 }`}
               >

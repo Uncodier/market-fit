@@ -688,7 +688,7 @@ export function SiteOnboarding({
 
           {/* Loading indicator */}
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-card border border-border rounded-lg shadow-lg p-6 text-center">
+            <div className="bg-card border dark:border-white/5 border-black/5 rounded-lg shadow-lg p-6 text-center">
               <LoadingSkeleton variant="fullscreen" size="lg" />
               <h3 className="text-lg font-semibold mb-2">Creating Your Project</h3>
               <p className="text-sm text-muted-foreground">
@@ -859,7 +859,7 @@ export function SiteOnboarding({
                             const isExpanded = expandedBusinessHours.has(index)
                             
                             return (
-                              <div key={index} className="border border-border rounded-lg overflow-hidden">
+                              <div key={index} className="border dark:border-white/5 border-black/5 rounded-lg overflow-hidden">
                                 <div className="p-4 bg-muted/30">
                                   <div className="flex items-center gap-4">
                                     <button
@@ -940,7 +940,7 @@ export function SiteOnboarding({
                                 </div>
 
                                 {isExpanded && (
-                                  <div className="p-6 space-y-4 border-t border-border">
+                                  <div className="p-6 space-y-4 border-t dark:border-white/5 border-black/5">
                                     <div className="flex items-center justify-between">
                                       <div className="space-y-1">
                                         <label className="text-sm font-medium">Respect Holidays</label>

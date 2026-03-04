@@ -4,7 +4,7 @@ import { Skeleton } from "../ui/skeleton"
 // Individual Trend Card Skeleton
 export function TrendCardSkeleton() {
   return (
-    <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer">
+    <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex-1 space-y-2">
@@ -62,7 +62,7 @@ export function TrendCardSkeleton() {
 // Cards View Skeleton
 export function TrendsSectionCardsSkeleton({ trendsCount = 12 }: { trendsCount?: number }) {
   return (
-    <Card className="border border-border shadow-sm">
+    <Card className="border dark:border-white/5 border-black/5 shadow-sm">
       <CardHeader className="px-8 py-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
@@ -132,7 +132,7 @@ export function TrendsSectionCardsSkeleton({ trendsCount = 12 }: { trendsCount?:
 // Table View Skeleton
 export function TrendsSectionTableSkeleton({ trendsCount = 10 }: { trendsCount?: number }) {
   return (
-    <Card className="border border-border shadow-sm">
+    <Card className="border dark:border-white/5 border-black/5 shadow-sm">
       <CardHeader className="px-8 py-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
@@ -179,9 +179,9 @@ export function TrendsSectionTableSkeleton({ trendsCount = 10 }: { trendsCount?:
       
       <CardContent className="px-8 py-6">
         {/* Table */}
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="border dark:border-white/5 border-black/5 rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="bg-muted/50 border-b border-border p-4">
+          <div className="bg-muted/50 border-b dark:border-white/5 border-black/5 p-4">
             <div className="grid grid-cols-12 gap-4 items-center">
               <div className="col-span-5">
                 <Skeleton className="h-4 w-20" />
@@ -307,7 +307,7 @@ export function TrendsColumnSkeleton({ trendsCount = 8 }: { trendsCount?: number
       {/* Trends list */}
       <div className="space-y-4">
         {Array.from({ length: trendsCount }).map((_, index) => (
-          <Card key={index} className="border border-border shadow-sm">
+          <Card key={index} className="border dark:border-white/5 border-black/5 shadow-sm">
             <CardContent className="p-4">
               <div className="space-y-3">
                 {/* Header with platform */}
@@ -364,7 +364,7 @@ export function TrendsColumnSkeleton({ trendsCount = 8 }: { trendsCount?: number
 // Empty State Skeleton
 export function TrendsEmptySkeleton() {
   return (
-    <Card className="border border-border shadow-sm">
+    <Card className="border dark:border-white/5 border-black/5 shadow-sm">
       <CardHeader className="px-8 py-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
@@ -407,7 +407,7 @@ export function TrendsEmptySkeleton() {
 export function TrendsLoadingSkeleton() {
   return (
     <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-card border border-border rounded-lg shadow-lg p-6 max-w-sm">
+      <div className="bg-card border dark:border-white/5 border-black/5 rounded-lg shadow-lg p-6 max-w-sm">
         <div className="flex items-center gap-4">
           <div className="flex gap-1">
             <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>

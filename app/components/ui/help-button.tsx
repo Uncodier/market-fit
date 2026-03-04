@@ -70,7 +70,7 @@ export function HelpButton({
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
-            className={cn(sizeClasses[size], "hover:scale-105 transition-all duration-200 active:scale-95", className)}
+            className={cn(sizeClasses[size], "transition-colors duration-200", className)}
             onClick={handleHelpClick}
           >
             <HelpCircle className={iconSizes[size]} />

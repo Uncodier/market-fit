@@ -99,7 +99,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
   return (
     <div className="space-y-8">
       {/* Brand Essence */}
-      <Card id="brand-essence" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="brand-essence" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -143,7 +143,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Brand Personality */}
-      <Card id="brand-personality" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="brand-personality" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -187,7 +187,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Brand Benefits */}
-      <Card id="brand-benefits" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="brand-benefits" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -231,7 +231,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Brand Attributes */}
-      <Card id="brand-attributes" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="brand-attributes" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -275,7 +275,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Brand Values */}
-      <Card id="brand-values" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="brand-values" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -319,7 +319,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Brand Promise & Archetype */}
-      <Card id="brand-promise" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="brand-promise" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -397,7 +397,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Color Palette */}
-      <Card id="color-palette" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="color-palette" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Palette className="h-5 w-5" />
@@ -566,7 +566,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Typography */}
-      <Card id="typography" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="typography" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Type className="h-5 w-5" />
@@ -662,7 +662,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Voice and Tone */}
-      <Card id="voice-tone" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="voice-tone" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -863,7 +863,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
       </Card>
 
       {/* Brand Guidelines */}
-      <Card id="brand-guidelines" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="brand-guidelines" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Lightbulb className="h-5 w-5" />
@@ -1029,7 +1029,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
           </div>
 
           {/* Language Guidelines */}
-          <div className="space-y-6 mt-8 pt-6 border-t border-border">
+          <div className="space-y-6 mt-8 pt-6 border-t dark:border-white/5 border-black/5">
             {/* Preferred Phrases */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">

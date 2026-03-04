@@ -53,9 +53,9 @@ export function SiteFooter() {
               <li><Link href="/product/outbound" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.outbound') || 'Outbound'}</Link></li>
               <li><Link href="/product/inbound" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.inbound') || 'Inbound'}</Link></li>
               <li><Link href="/product/cms" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.cms') || 'Content Engine (CMS)'}</Link></li>
+              <li><Link href="/product/support" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.support') || 'Support & CS'}</Link></li>
               <li><Link href="/product/features" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.features') || 'Features'}</Link></li>
               <li><Link href="/product/agents" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.agents') || 'AI Agents'}</Link></li>
-              <li><Link href="/product/openclaw" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.openclaw') || 'Open Claw'}</Link></li>
               <li><Link href="/product/api" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.api') || 'API & MCP Server'}</Link></li>
               <li><Link href="/product/integrations" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.integrations') || 'Integrations'}</Link></li>
               <li><Link href="/product/pricing" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.pricing') || 'Pricing'}</Link></li>
@@ -88,6 +88,7 @@ export function SiteFooter() {
               <li><Link href="/product/guides" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.guides') || 'Guides'}</Link></li>
               <li><Link href="/resources/gtm-engineering" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.gtmEngineering') || 'GTM Engineering'}</Link></li>
               <li><Link href="/product/changelog" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.changelog') || 'Changelog'}</Link></li>
+              <li><Link href="/product/openclaw" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.openclaw') || 'Open Claw'}</Link></li>
             </ul>
           </div>
 
@@ -97,8 +98,8 @@ export function SiteFooter() {
               <li><Link href="/about" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.about') || 'About Us'}</Link></li>
               <li><a href="https://linkedin.com/in/makinari" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.careers') || 'Careers'}</a></li>
               <li><a href="mailto:contact@makinari.com" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.contact') || 'Contact'}</a></li>
-              <li><Link href="#privacy" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.privacy') || 'Privacy Policy'}</Link></li>
-              <li><Link href="#terms" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.terms') || 'Terms of Service'}</Link></li>
+              <li><Link href="/privacy" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.privacy') || 'Privacy Policy'}</Link></li>
+              <li><Link href="/terms" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.terms') || 'Terms of Service'}</Link></li>
             </ul>
           </div>
         </div>

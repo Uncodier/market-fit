@@ -87,7 +87,7 @@ function ConfirmContent() {
           } else {
             setState('success')
             setMessage('Invitation confirmed successfully!')
-            setRedirectUrl('/dashboard')
+            setRedirectUrl('/robots')
           }
         } else {
           // Handle other confirmation types (signup, recovery, etc.)
@@ -172,15 +172,15 @@ function ConfirmContent() {
               window.location.href = decodedRedirect
             }, 2000)
           } else {
-            // User is confirmed and has password set, redirect automatically to dashboard
-            console.log('✅ Email confirmed, user authenticated, redirecting to dashboard')
+            // User is confirmed and has password set, redirect automatically to Makinas
+            console.log('✅ Email confirmed, user authenticated, redirecting to Makinas')
             setState('redirect')
-            setMessage('Email confirmed successfully! Redirecting to dashboard...')
+            setMessage('Email confirmed successfully! Redirecting...')
             
             // Give the auth state time to update before redirecting
             setTimeout(() => {
-              console.log('🔄 Redirecting to dashboard')
-              window.location.href = '/dashboard'
+              console.log('🔄 Redirecting to Makinas')
+              window.location.href = '/robots'
             }, 2000)
           }
         }
@@ -206,11 +206,11 @@ function ConfirmContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <Card>
+        <Card className="bg-card border-border">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">
+            <CardTitle className="text-2xl font-bold text-foreground">
               Email Confirmation
             </CardTitle>
           </CardHeader>
@@ -218,15 +218,15 @@ function ConfirmContent() {
             <div className="flex flex-col items-center text-center">
               {state === 'loading' && (
                 <>
-                  <div className="h-12 w-12 mb-4 animate-pulse bg-blue-200 rounded-full" />
-                  <p className="text-gray-600">Confirming your email...</p>
+                  <div className="h-12 w-12 mb-4 animate-pulse bg-primary/20 rounded-full" />
+                  <p className="text-muted-foreground">Confirming your email...</p>
                 </>
               )}
 
               {state === 'success' && (
                 <>
                   <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-                  <p className="text-gray-600 mb-4">{message}</p>
+                  <p className="text-muted-foreground mb-4">{message}</p>
                   {redirectUrl && (
                     <Button onClick={handleManualRedirect} className="w-full">
                       Continue to Dashboard
@@ -238,15 +238,15 @@ function ConfirmContent() {
               {state === 'redirect' && (
                 <>
                   <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-                  <p className="text-gray-600 mb-4">{message}</p>
-                  <div className="h-6 w-6 animate-pulse bg-blue-200 rounded" />
+                  <p className="text-muted-foreground mb-4">{message}</p>
+                  <div className="h-6 w-6 animate-pulse bg-primary/20 rounded" />
                 </>
               )}
 
               {state === 'error' && (
                 <>
-                  <XCircle className="h-12 w-12 text-red-500 mb-4" />
-                  <p className="text-red-600 mb-4">{message}</p>
+                  <XCircle className="h-12 w-12 text-destructive mb-4" />
+                  <p className="text-destructive mb-4">{message}</p>
                   <div className="space-y-2 w-full">
                     <Button onClick={handleRetry} variant="outline" className="w-full">
                       Try Again
@@ -264,7 +264,7 @@ function ConfirmContent() {
             </div>
 
             <div className="text-center">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Having trouble? Contact support for assistance.
               </p>
             </div>
@@ -278,12 +278,12 @@ function ConfirmContent() {
 export default function ConfirmPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
-          <Card>
+          <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center text-center py-8">
-              <div className="h-12 w-12 mb-4 animate-pulse bg-blue-200 rounded-full" />
-              <p className="text-gray-600">Loading...</p>
+              <div className="h-12 w-12 mb-4 animate-pulse bg-primary/20 rounded-full" />
+              <p className="text-muted-foreground">Loading...</p>
             </CardContent>
           </Card>
         </div>

@@ -44,6 +44,7 @@ function ChatPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const isNearBottomRef = useRef(true)
   const userJustSentRef = useRef(false)
   const prevConversationIdRef = useRef<string>("")
@@ -117,15 +118,13 @@ function ChatPageContent() {
     leadData
   })
 
-  // Scroll to the ref's actual Y position in the document — no calculations, just read where it is
+  // Scroll to the bottom of the messages container
   const scrollToBottom = useCallback((instant = false) => {
-    const el = messagesEndRef.current
-    if (!el) return
+    const container = messagesContainerRef.current
+    if (!container) return
 
-    const rect = el.getBoundingClientRect()
-    const top = rect.top + window.scrollY
-    window.scrollTo({
-      top,
+    container.scrollTo({
+      top: container.scrollHeight,
       behavior: instant ? "auto" : "smooth",
     })
     isNearBottomRef.current = true
@@ -133,14 +132,17 @@ function ChatPageContent() {
 
   // Track scroll position to know if user is near the bottom
   useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+
     const handleScroll = () => {
-      const distanceFromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
       isNearBottomRef.current = distanceFromBottom < 150
     }
 
-    window.addEventListener("scroll", handleScroll, { passive: true })
+    container.addEventListener("scroll", handleScroll, { passive: true })
     handleScroll()
-    return () => window.removeEventListener("scroll", handleScroll)
+    return () => container.removeEventListener("scroll", handleScroll)
   }, [])
 
   // Scroll to bottom: instant when switching conversations, smart when messages update
@@ -153,14 +155,19 @@ function ChatPageContent() {
     prevAgentRespondingRef.current = isAgentResponding
 
     if (conversationChanged) {
+      userJustSentRef.current = false
       scrollToBottom(true)
       return
     }
 
     // For new messages or agent starting to respond: only scroll if near bottom or user just sent
-    const shouldScroll = isNearBottomRef.current || userJustSentRef.current || agentJustStarted
-    if (shouldScroll) {
+    const userJustSent = userJustSentRef.current
+    if (userJustSent) {
       userJustSentRef.current = false
+    }
+
+    const shouldScroll = isNearBottomRef.current || userJustSent || agentJustStarted
+    if (shouldScroll) {
       scrollToBottom()
     }
   }, [chatMessages, isAgentResponding, conversationId, scrollToBottom])
@@ -313,6 +320,12 @@ function ChatPageContent() {
   const toggleChatList = useCallback(() => {
     setIsChatListCollapsed(!isChatListCollapsed)
   }, [isChatListCollapsed])
+
+  // Handle back to mobile list
+  const handleBackToMobileList = useCallback(() => {
+    markUINavigation();
+    router.push('/chat');
+  }, [router]);
 
   // Function to select a conversation - memoized for performance
   const handleSelectConversation = useCallback((selectedConversationId: string, selectedAgentName: string, selectedAgentId: string, conversationTitle?: string) => {
@@ -573,11 +586,13 @@ function ChatPageContent() {
         isDeleting={isDeletingConversation}
       />
       
-      <div className="flex h-full relative overflow-visible">
+      <div className="flex h-full relative overflow-hidden">
       {/* Chat list */}
       <div className={cn(
-        "h-full transition-all duration-300 ease-in-out",
-        isChatListCollapsed ? "w-0 opacity-0" : "w-[319px]"
+        "h-full transition-[width,opacity] duration-300 ease-in-out",
+        hasSelectedConversation ? "hidden md:block" : "w-full",
+        !hasSelectedConversation && "md:w-[319px]",
+        isChatListCollapsed ? "md:w-0 md:opacity-0" : "md:w-[319px]"
       )} style={{ overflow: 'hidden' }}>
         <ChatList 
           siteId={currentSite?.id || ""}
@@ -589,7 +604,8 @@ function ChatPageContent() {
       
       {/* Main chat content */}
       <div className={cn(
-        "flex flex-col h-full transition-all duration-300 ease-in-out flex-1",
+        "flex flex-col h-full transition-[margin] duration-300 ease-in-out flex-1",
+        !hasSelectedConversation ? "hidden md:flex" : "flex",
         isChatListCollapsed ? "ml-0" : "ml-0"
       )}>
         {/* Chat header with agent and lead info */}
@@ -611,6 +627,7 @@ function ChatPageContent() {
             handlePrivateDiscussion={handlePrivateDiscussion}
             conversationId={conversationId}
             onLeadStatusUpdate={refreshLeadData}
+            onBack={handleBackToMobileList}
           />
         </div>
         
@@ -621,6 +638,7 @@ function ChatPageContent() {
           isAgentResponding={isAgentResponding}
           isTransitioningConversation={isTransitioningConversation}
           messagesEndRef={messagesEndRef}
+          containerRef={messagesContainerRef}
           agentId={agentId}
           agentName={agentName}
           isAgentOnlyConversation={isAgentOnlyConversation}

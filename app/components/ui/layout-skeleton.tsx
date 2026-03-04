@@ -4,7 +4,7 @@ const LayoutSkeleton = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Top Bar Skeleton */}
-      <div className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="h-16 border-b dark:border-white/5 border-black/5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-full items-center px-4">
           <div className="flex items-center gap-4">
             <Skeleton className="h-8 w-8 rounded-md" />
@@ -21,7 +21,7 @@ const LayoutSkeleton = () => {
 
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Sidebar Skeleton */}
-        <div className="w-64 border-r border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="w-64 border-r dark:border-white/5 border-black/5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-full flex-col">
             <div className="p-4">
               <Skeleton className="h-8 w-32" />
@@ -47,7 +47,7 @@ const LayoutSkeleton = () => {
               </div>
               <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="rounded-lg border border-border p-4">
+                  <div key={i} className="rounded-lg border dark:border-white/5 border-black/5 p-4">
                     <Skeleton className="h-4 w-32 mb-2" />
                     <Skeleton className="h-8 w-24" />
                   </div>

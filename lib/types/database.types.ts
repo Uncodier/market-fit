@@ -121,6 +121,80 @@ export interface Database {
           updated_at?: string
         }
       }
+      billing: {
+        Row: {
+          id: string
+          site_id: string
+          plan: 'commission' | 'startup' | 'enterprise'
+          masked_card_number: string | null
+          card_name: string | null
+          card_expiry: string | null
+          stripe_customer_id: string | null
+          stripe_payment_method_id: string | null
+          card_address: string | null
+          card_city: string | null
+          card_postal_code: string | null
+          card_country: string | null
+          tax_id: string | null
+          billing_address: string | null
+          billing_city: string | null
+          billing_postal_code: string | null
+          billing_country: string | null
+          auto_renew: boolean
+          credits_available: number
+          credits_used: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          site_id: string
+          plan?: 'commission' | 'startup' | 'enterprise'
+          masked_card_number?: string | null
+          card_name?: string | null
+          card_expiry?: string | null
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
+          card_address?: string | null
+          card_city?: string | null
+          card_postal_code?: string | null
+          card_country?: string | null
+          tax_id?: string | null
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_postal_code?: string | null
+          billing_country?: string | null
+          auto_renew?: boolean
+          credits_available?: number
+          credits_used?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          site_id?: string
+          plan?: 'commission' | 'startup' | 'enterprise'
+          masked_card_number?: string | null
+          card_name?: string | null
+          card_expiry?: string | null
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
+          card_address?: string | null
+          card_city?: string | null
+          card_postal_code?: string | null
+          card_country?: string | null
+          tax_id?: string | null
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_postal_code?: string | null
+          billing_country?: string | null
+          auto_renew?: boolean
+          credits_available?: number
+          credits_used?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
       users: {
         Row: {
           id: string

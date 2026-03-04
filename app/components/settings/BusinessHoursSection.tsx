@@ -239,7 +239,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
         const isExpanded = expandedItems.has(index)
         
         return (
-          <Card key={index} id={`business-hours-${index}`} className="border border-border">
+          <Card key={index} id={`business-hours-${index}`} className="border dark:border-white/5 border-black/5">
             {/* Collapsible Header */}
             <CardHeader 
               className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"

@@ -473,7 +473,7 @@ const WorldMapComponent: React.FC<WorldMapComponentProps> = ({
             </div>
             
             {selectedCountry && (
-              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="mt-2 pt-2 border-t dark:border-white/5 border-black/5">
                 <div className="font-bold">
                   {data.find(d => d.ISO3 === selectedCountry)?.name || selectedCountry}
                 </div>

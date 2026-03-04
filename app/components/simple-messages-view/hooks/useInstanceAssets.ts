@@ -15,12 +15,10 @@ export const useInstanceAssets = ({ instanceId }: UseInstanceAssetsProps) => {
   // Fetch assets for the instance
   const fetchAssets = async () => {
     if (!instanceId) {
-      console.log('🔄 No instanceId, clearing assets')
       setAssets([])
       return
     }
 
-    console.log('🔄 Fetching assets for instance:', instanceId)
     setIsLoading(true)
     try {
       const supabase = createClient()
@@ -40,7 +38,6 @@ export const useInstanceAssets = ({ instanceId }: UseInstanceAssetsProps) => {
         return
       }
 
-      console.log('🔄 Assets fetched:', data?.length || 0, 'assets')
       setAssets(data || [])
     } catch (error) {
       console.error('Error fetching assets:', error)
@@ -131,13 +128,11 @@ export const useInstanceAssets = ({ instanceId }: UseInstanceAssetsProps) => {
           filter: `instance_id=eq.${instanceId}`
         },
         (payload) => {
-          console.log('Asset change detected:', payload)
           // Refetch assets to ensure consistency
           fetchAssets()
         }
       )
       .subscribe((status) => {
-        console.log('Subscription status:', status)
       })
 
     return () => {

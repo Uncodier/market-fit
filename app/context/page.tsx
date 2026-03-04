@@ -217,7 +217,7 @@ const marketingSections: QuickNavSection[] = [
 const getInitialCopywritingSections = (): QuickNavSection[] => [
   { 
     id: "copywriting-collection", 
-    title: "Copywriting Collection",
+    title: "Copy Sequences",
     children: []
   },
 ]
@@ -259,7 +259,7 @@ export default function ContextPage() {
       setCopywritingSections([
         {
           id: "copywriting-collection",
-          title: "Copywriting Collection",
+          title: "Copy Sequences",
           children: items
         }
       ]);
@@ -469,7 +469,7 @@ export default function ContextPage() {
                 <TabsTrigger value="company">Company</TabsTrigger>
                 <TabsTrigger value="branding">Branding</TabsTrigger>
                 <TabsTrigger value="marketing">Marketing</TabsTrigger>
-                <TabsTrigger value="copywriting">Copywriting</TabsTrigger>
+                <TabsTrigger value="copywriting">Copy Sequences</TabsTrigger>
                 <TabsTrigger value="customer-journey">Customer Journey</TabsTrigger>
                 {/* <TabsTrigger value="social">Social Networks</TabsTrigger> */}
               </TabsList>
@@ -504,7 +504,7 @@ export default function ContextPage() {
               <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
               <TabsTrigger value="branding" className="whitespace-nowrap">Branding</TabsTrigger>
               <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
-              <TabsTrigger value="copywriting" className="whitespace-nowrap">Copywriting</TabsTrigger>
+              <TabsTrigger value="copywriting" className="whitespace-nowrap">Copy Sequences</TabsTrigger>
               <TabsTrigger value="customer-journey" className="whitespace-nowrap">Customer Journey</TabsTrigger>
               {/* <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger> */}
             </TabsList>

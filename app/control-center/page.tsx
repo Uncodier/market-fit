@@ -656,10 +656,10 @@ export default function ControlCenterPage() {
 
   return (
     <div className="flex h-full relative">
-      {/* Sidebar */}
+      {/* Sidebar - hidden on mobile */}
       <div 
         className={cn(
-          "fixed h-screen transition-all duration-200 ease-in-out z-10",
+          "hidden md:block fixed h-screen transition-[width,opacity,left] duration-200 ease-in-out z-10",
           isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
         )}
         style={{ 
@@ -686,10 +686,10 @@ export default function ControlCenterPage() {
 
       {/* Main content */}
       <div 
-        className="flex flex-col h-full w-full transition-all duration-200 ease-in-out"
-        style={{ 
-          marginLeft: isSidebarCollapsed ? '0px' : '319px'
-        }}
+        className={cn(
+          "flex flex-col h-full w-full transition-[padding] duration-200 ease-in-out",
+          !isSidebarCollapsed && "md:ml-[319px]"
+        )}
       >
         {/* Header */}
         <div className="relative">

@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     if (type === 'recovery') {
       console.log('Password recovery OTP verified, redirecting to set-password')
       // Extract returnTo from next parameter if present, or use default
-      const returnTo = next && next !== '/' ? next : '/dashboard'
+      const returnTo = next && next !== '/' ? next : '/robots'
       const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
       return NextResponse.redirect(new URL(setPasswordUrl, request.url))
     }

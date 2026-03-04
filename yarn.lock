@@ -388,6 +388,48 @@
   resolved "https://registry.npmjs.org/@floating-ui/utils/-/utils-0.2.9.tgz"
   integrity sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==
 
+"@formatjs/ecma402-abstract@3.1.1":
+  version "3.1.1"
+  resolved "https://registry.npmjs.org/@formatjs/ecma402-abstract/-/ecma402-abstract-3.1.1.tgz"
+  integrity sha512-jhZbTwda+2tcNrs4kKvxrPLPjx8QsBCLCUgrrJ/S+G9YrGHWLhAyFMMBHJBnBoOwuLHd7L14FgYudviKaxkO2Q==
+  dependencies:
+    "@formatjs/fast-memoize" "3.1.0"
+    "@formatjs/intl-localematcher" "0.8.1"
+    decimal.js "^10.6.0"
+    tslib "^2.8.1"
+
+"@formatjs/fast-memoize@^3.1.0", "@formatjs/fast-memoize@3.1.0":
+  version "3.1.0"
+  resolved "https://registry.npmjs.org/@formatjs/fast-memoize/-/fast-memoize-3.1.0.tgz"
+  integrity sha512-b5mvSWCI+XVKiz5WhnBCY3RJ4ZwfjAidU0yVlKa3d3MSgKmH1hC3tBGEAtYyN5mqL7N0G5x0BOUYyO8CEupWgg==
+  dependencies:
+    tslib "^2.8.1"
+
+"@formatjs/icu-messageformat-parser@^3.4.0", "@formatjs/icu-messageformat-parser@3.5.1":
+  version "3.5.1"
+  resolved "https://registry.npmjs.org/@formatjs/icu-messageformat-parser/-/icu-messageformat-parser-3.5.1.tgz"
+  integrity sha512-sSDmSvmmoVQ92XqWb499KrIhv/vLisJU8ITFrx7T7NZHUmMY7EL9xgRowAosaljhqnj/5iufG24QrdzB6X3ItA==
+  dependencies:
+    "@formatjs/ecma402-abstract" "3.1.1"
+    "@formatjs/icu-skeleton-parser" "2.1.1"
+    tslib "^2.8.1"
+
+"@formatjs/icu-skeleton-parser@2.1.1":
+  version "2.1.1"
+  resolved "https://registry.npmjs.org/@formatjs/icu-skeleton-parser/-/icu-skeleton-parser-2.1.1.tgz"
+  integrity sha512-PSFABlcNefjI6yyk8f7nyX1DC7NHmq6WaCHZLySEXBrXuLOB2f935YsnzuPjlz+ibhb9yWTdPeVX1OVcj24w2Q==
+  dependencies:
+    "@formatjs/ecma402-abstract" "3.1.1"
+    tslib "^2.8.1"
+
+"@formatjs/intl-localematcher@^0.8.1", "@formatjs/intl-localematcher@0.8.1":
+  version "0.8.1"
+  resolved "https://registry.npmjs.org/@formatjs/intl-localematcher/-/intl-localematcher-0.8.1.tgz"
+  integrity sha512-xwEuwQFdtSq1UKtQnyTZWC+eHdv7Uygoa+H2k/9uzBVQjDyp9r20LNDNKedWXll7FssT3GRHvqsdJGYSUWqYFA==
+  dependencies:
+    "@formatjs/fast-memoize" "3.1.0"
+    tslib "^2.8.1"
+
 "@hello-pangea/dnd@^18.0.0":
   version "18.0.1"
   resolved "https://registry.npmjs.org/@hello-pangea/dnd/-/dnd-18.0.1.tgz"
@@ -803,6 +845,35 @@
   resolved "https://registry.npmjs.org/@nolyfill/is-core-module/-/is-core-module-1.0.39.tgz"
   integrity sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==
 
+"@parcel/watcher-darwin-arm64@2.5.6":
+  version "2.5.6"
+  resolved "https://registry.npmjs.org/@parcel/watcher-darwin-arm64/-/watcher-darwin-arm64-2.5.6.tgz"
+  integrity sha512-Z2ZdrnwyXvvvdtRHLmM4knydIdU9adO3D4n/0cVipF3rRiwP+3/sfzpAwA/qKFL6i1ModaabkU7IbpeMBgiVEA==
+
+"@parcel/watcher@^2.4.1":
+  version "2.5.6"
+  resolved "https://registry.npmjs.org/@parcel/watcher/-/watcher-2.5.6.tgz"
+  integrity sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==
+  dependencies:
+    detect-libc "^2.0.3"
+    is-glob "^4.0.3"
+    node-addon-api "^7.0.0"
+    picomatch "^4.0.3"
+  optionalDependencies:
+    "@parcel/watcher-android-arm64" "2.5.6"
+    "@parcel/watcher-darwin-arm64" "2.5.6"
+    "@parcel/watcher-darwin-x64" "2.5.6"
+    "@parcel/watcher-freebsd-x64" "2.5.6"
+    "@parcel/watcher-linux-arm-glibc" "2.5.6"
+    "@parcel/watcher-linux-arm-musl" "2.5.6"
+    "@parcel/watcher-linux-arm64-glibc" "2.5.6"
+    "@parcel/watcher-linux-arm64-musl" "2.5.6"
+    "@parcel/watcher-linux-x64-glibc" "2.5.6"
+    "@parcel/watcher-linux-x64-musl" "2.5.6"
+    "@parcel/watcher-win32-arm64" "2.5.6"
+    "@parcel/watcher-win32-ia32" "2.5.6"
+    "@parcel/watcher-win32-x64" "2.5.6"
+
 "@pkgjs/parseargs@^0.11.0":
   version "0.11.0"
   resolved "https://registry.npmjs.org/@pkgjs/parseargs/-/parseargs-0.11.0.tgz"
@@ -922,6 +993,11 @@
   version "1.1.2"
   resolved "https://registry.npmjs.org/@radix-ui/react-context/-/react-context-1.1.2.tgz"
   integrity sha512-jCi/QKUM2r1Ju5a3J64TH2A5SpKAgh0LpknyqdQ4m6DCV0xJ2HG1xARRwNGPQfi1SLdLWZ1OJz6F4OMBBNiGJA==
+
+"@radix-ui/react-context@1.1.3":
+  version "1.1.3"
+  resolved "https://registry.npmjs.org/@radix-ui/react-context/-/react-context-1.1.3.tgz"
+  integrity sha512-ieIFACdMpYfMEjF0rEf5KLvfVyIkOz6PDGyNnP+u+4xQ6jny3VCgA4OgXOwNx2aUkxn8zx9fiVcM8CfFYv9Lxw==
 
 "@radix-ui/react-dialog@^1.1.11", "@radix-ui/react-dialog@^1.1.6", "@radix-ui/react-dialog@1.1.14":
   version "1.1.14"
@@ -1096,6 +1172,21 @@
   dependencies:
     "@radix-ui/react-slot" "1.2.3"
 
+"@radix-ui/react-primitive@2.1.4":
+  version "2.1.4"
+  resolved "https://registry.npmjs.org/@radix-ui/react-primitive/-/react-primitive-2.1.4.tgz"
+  integrity sha512-9hQc4+GNVtJAIEPEqlYqW5RiYdrr8ea5XQ0ZOnD6fgru+83kqT15mq2OCcbe8KnjRZl5vF3ks69AKz3kh1jrhg==
+  dependencies:
+    "@radix-ui/react-slot" "1.2.4"
+
+"@radix-ui/react-progress@1.1.8":
+  version "1.1.8"
+  resolved "https://registry.npmjs.org/@radix-ui/react-progress/-/react-progress-1.1.8.tgz"
+  integrity sha512-+gISHcSPUJ7ktBy9RnTqbdKW78bcGke3t6taawyZ71pio1JewwGSJizycs7rLhGTvMJYCQB1DBK4KQsxs7U8dA==
+  dependencies:
+    "@radix-ui/react-context" "1.1.3"
+    "@radix-ui/react-primitive" "2.1.4"
+
 "@radix-ui/react-radio-group@1.3.7":
   version "1.3.7"
   resolved "https://registry.npmjs.org/@radix-ui/react-radio-group/-/react-radio-group-1.3.7.tgz"
@@ -1197,6 +1288,13 @@
   version "1.2.3"
   resolved "https://registry.npmjs.org/@radix-ui/react-slot/-/react-slot-1.2.3.tgz"
   integrity sha512-aeNmHnBxbi2St0au6VBVC7JXFlhLlOnvIIlePNniyUNAClzmtAUEY8/pBiK3iHjufOlwA+c20/8jngo7xcrg8A==
+  dependencies:
+    "@radix-ui/react-compose-refs" "1.1.2"
+
+"@radix-ui/react-slot@1.2.4":
+  version "1.2.4"
+  resolved "https://registry.npmjs.org/@radix-ui/react-slot/-/react-slot-1.2.4.tgz"
+  integrity sha512-Jl+bCv8HxKnlTLVrcDE8zTMJ09R9/ukw4qBs/oZClOfoQk/cOTbDn+NceXfV7j09YPVQUryJPHurafcSg6EVKA==
   dependencies:
     "@radix-ui/react-compose-refs" "1.1.2"
 
@@ -1352,6 +1450,11 @@
   resolved "https://registry.npmjs.org/@rtsao/scc/-/scc-1.1.0.tgz"
   integrity sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==
 
+"@schummar/icu-type-parser@1.21.5":
+  version "1.21.5"
+  resolved "https://registry.npmjs.org/@schummar/icu-type-parser/-/icu-type-parser-1.21.5.tgz"
+  integrity sha512-bXHSaW5jRTmke9Vd0h5P7BtWZG9Znqb8gSDxZnxaGSJnGwPLDPfS+3g0BKzeWqzgZPsIVZkM7m2tbo18cm5HBw==
+
 "@sinclair/typebox@^0.27.8":
   version "0.27.8"
   resolved "https://registry.npmjs.org/@sinclair/typebox/-/typebox-0.27.8.tgz"
@@ -1487,12 +1590,48 @@
     "@supabase/realtime-js" "2.11.2"
     "@supabase/storage-js" "2.7.1"
 
+"@swc/core-darwin-arm64@1.15.18":
+  version "1.15.18"
+  resolved "https://registry.npmjs.org/@swc/core-darwin-arm64/-/core-darwin-arm64-1.15.18.tgz"
+  integrity sha512-+mIv7uBuSaywN3C9LNuWaX1jJJ3SKfiJuE6Lr3bd+/1Iv8oMU7oLBjYMluX1UrEPzwN2qCdY6Io0yVicABoCwQ==
+
+"@swc/core@^1.15.2":
+  version "1.15.18"
+  resolved "https://registry.npmjs.org/@swc/core/-/core-1.15.18.tgz"
+  integrity sha512-z87aF9GphWp//fnkRsqvtY+inMVPgYW3zSlXH1kJFvRT5H/wiAn+G32qW5l3oEk63KSF1x3Ov0BfHCObAmT8RA==
+  dependencies:
+    "@swc/counter" "^0.1.3"
+    "@swc/types" "^0.1.25"
+  optionalDependencies:
+    "@swc/core-darwin-arm64" "1.15.18"
+    "@swc/core-darwin-x64" "1.15.18"
+    "@swc/core-linux-arm-gnueabihf" "1.15.18"
+    "@swc/core-linux-arm64-gnu" "1.15.18"
+    "@swc/core-linux-arm64-musl" "1.15.18"
+    "@swc/core-linux-x64-gnu" "1.15.18"
+    "@swc/core-linux-x64-musl" "1.15.18"
+    "@swc/core-win32-arm64-msvc" "1.15.18"
+    "@swc/core-win32-ia32-msvc" "1.15.18"
+    "@swc/core-win32-x64-msvc" "1.15.18"
+
+"@swc/counter@^0.1.3":
+  version "0.1.3"
+  resolved "https://registry.npmjs.org/@swc/counter/-/counter-0.1.3.tgz"
+  integrity sha512-e2BR4lsJkkRlKZ/qCHPw9ZaSxc0MVUd7gtbtaB7aMvHeJVYe8sOB8DBZkP2DtISHGSku9sCK6T6cnY0CtXrOCQ==
+
 "@swc/helpers@0.5.15":
   version "0.5.15"
   resolved "https://registry.npmjs.org/@swc/helpers/-/helpers-0.5.15.tgz"
   integrity sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==
   dependencies:
     tslib "^2.8.0"
+
+"@swc/types@^0.1.25":
+  version "0.1.25"
+  resolved "https://registry.npmjs.org/@swc/types/-/types-0.1.25.tgz"
+  integrity sha512-iAoY/qRhNH8a/hBvm3zKj9qQ4oc2+3w1unPJa2XvTK3XjeLXtzcCingVPw/9e5mn1+0yPqxcBGp9Jf0pkfMb1g==
+  dependencies:
+    "@swc/counter" "^0.1.3"
 
 "@testing-library/dom@^9.0.0":
   version "9.3.4"
@@ -3354,10 +3493,10 @@ decimal.js-light@^2.4.1:
   resolved "https://registry.npmjs.org/decimal.js-light/-/decimal.js-light-2.5.1.tgz"
   integrity sha512-qIMFpTMZmny+MMIitAB6D7iVPEorVw6YQRWkvarTkT4tBeSLLiHzcwj6q0MmYSFCiVpiqPJTJEYIrpcPzVEIvg==
 
-decimal.js@^10.4.2:
-  version "10.5.0"
-  resolved "https://registry.npmjs.org/decimal.js/-/decimal.js-10.5.0.tgz"
-  integrity sha512-8vDa8Qxvr/+d94hSh5P3IJwI5t8/c0KsMp+g8bNw9cY2icONa5aPfvKeieW1WlG0WQYwwhJ7mjui2xtiePQSXw==
+decimal.js@^10.4.2, decimal.js@^10.6.0:
+  version "10.6.0"
+  resolved "https://registry.npmjs.org/decimal.js/-/decimal.js-10.6.0.tgz"
+  integrity sha512-YpgQiITW3JXGntzdUmyUR1V812Hn8T1YVXhCu+wO3OpS4eU9l4YdD3qjyiKdV6mvV29zapkMeD390UVEf2lkUg==
 
 decode-named-character-reference@^1.0.0:
   version "1.1.0"
@@ -3400,6 +3539,11 @@ deep-is@^0.1.3:
   resolved "https://registry.npmjs.org/deep-is/-/deep-is-0.1.4.tgz"
   integrity sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==
 
+deepmerge-ts@^7.1.5:
+  version "7.1.5"
+  resolved "https://registry.npmjs.org/deepmerge-ts/-/deepmerge-ts-7.1.5.tgz"
+  integrity sha512-HOJkrhaYsweh+W+e74Yn7YStZOilkoPb6fycpwNLKzSPtruFs48nYis0zy5yJz1+ktUhHxoRDJ27RQAWLIJVJw==
+
 deepmerge@^4.2.2:
   version "4.3.1"
   resolved "https://registry.npmjs.org/deepmerge/-/deepmerge-4.3.1.tgz"
@@ -3433,7 +3577,7 @@ dequal@^2.0.0:
   resolved "https://registry.npmjs.org/dequal/-/dequal-2.0.3.tgz"
   integrity sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==
 
-detect-libc@^2.1.0:
+detect-libc@^2.0.3, detect-libc@^2.1.0:
   version "2.1.2"
   resolved "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz"
   integrity sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==
@@ -4226,6 +4370,15 @@ fraction.js@^4.3.7:
   resolved "https://registry.npmjs.org/fraction.js/-/fraction.js-4.3.7.tgz"
   integrity sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==
 
+framer-motion@12.34.3:
+  version "12.34.3"
+  resolved "https://registry.npmjs.org/framer-motion/-/framer-motion-12.34.3.tgz"
+  integrity sha512-v81ecyZKYO/DfpTwHivqkxSUBzvceOpoI+wLfgCgoUIKxlFKEXdg0oR9imxwXumT4SFy8vRk9xzJ5l3/Du/55Q==
+  dependencies:
+    motion-dom "^12.34.3"
+    motion-utils "^12.29.2"
+    tslib "^2.4.0"
+
 fs-extra@^11.2.0:
   version "11.3.0"
   resolved "https://registry.npmjs.org/fs-extra/-/fs-extra-11.3.0.tgz"
@@ -4749,6 +4902,13 @@ iconv-lite@0.6, iconv-lite@0.6.3:
   dependencies:
     safer-buffer ">= 2.1.2 < 3.0.0"
 
+icu-minify@^4.8.3:
+  version "4.8.3"
+  resolved "https://registry.npmjs.org/icu-minify/-/icu-minify-4.8.3.tgz"
+  integrity sha512-65Av7FLosNk7bPbmQx5z5XG2Y3T2GFppcjiXh4z1idHeVgQxlDpAmkGoYI0eFzAvrOnjpWTL5FmPDhsdfRMPEA==
+  dependencies:
+    "@formatjs/icu-messageformat-parser" "^3.4.0"
+
 ieee754@^1.1.12:
   version "1.2.1"
   resolved "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz"
@@ -4826,6 +4986,16 @@ internmap@^1.0.0:
   version "2.0.3"
   resolved "https://registry.npmjs.org/internmap/-/internmap-2.0.3.tgz"
   integrity sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg==
+
+intl-messageformat@^11.1.0:
+  version "11.1.2"
+  resolved "https://registry.npmjs.org/intl-messageformat/-/intl-messageformat-11.1.2.tgz"
+  integrity sha512-ucSrQmZGAxfiBHfBRXW/k7UC8MaGFlEj4Ry1tKiDcmgwQm1y3EDl40u+4VNHYomxJQMJi9NEI3riDRlth96jKg==
+  dependencies:
+    "@formatjs/ecma402-abstract" "3.1.1"
+    "@formatjs/fast-memoize" "3.1.0"
+    "@formatjs/icu-messageformat-parser" "3.5.1"
+    tslib "^2.8.1"
 
 is-alphabetical@^2.0.0:
   version "2.0.1"
@@ -6504,6 +6674,18 @@ minimist@^1.2.0, minimist@^1.2.6, minimist@^1.2.8:
   resolved "https://registry.npmjs.org/minipass/-/minipass-7.1.2.tgz"
   integrity sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==
 
+motion-dom@^12.34.3:
+  version "12.34.3"
+  resolved "https://registry.npmjs.org/motion-dom/-/motion-dom-12.34.3.tgz"
+  integrity sha512-sYgFe+pR9aIM7o4fhs2aXtOI+oqlUd33N9Yoxcgo1Fv7M20sRkHtCmzE/VRNIcq7uNJ+qio+Xubt1FXH3pQ+eQ==
+  dependencies:
+    motion-utils "^12.29.2"
+
+motion-utils@^12.29.2:
+  version "12.29.2"
+  resolved "https://registry.npmjs.org/motion-utils/-/motion-utils-12.29.2.tgz"
+  integrity sha512-G3kc34H2cX2gI63RqU+cZq+zWRRPSsNIOjpdl9TN4AQwC4sgwYPl/Q/Obf/d53nOm569T0fYK+tcoSV50BWx8A==
+
 ms@^2.1.1, ms@^2.1.3:
   version "2.1.3"
   resolved "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz"
@@ -6538,10 +6720,36 @@ natural-compare@^1.4.0:
   resolved "https://registry.npmjs.org/natural-compare/-/natural-compare-1.4.0.tgz"
   integrity sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==
 
-next-safe-action@^7.10.4:
-  version "7.10.8"
-  resolved "https://registry.npmjs.org/next-safe-action/-/next-safe-action-7.10.8.tgz"
-  integrity sha512-cTBoPWtvQ0t83N0a5zaveOh9vP2g3//d0hgzPJ4ch1EXCyt9+bavbVNgyOYbzWUwFerppHeFXPYsg7pbRulLQw==
+negotiator@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.npmjs.org/negotiator/-/negotiator-1.0.0.tgz"
+  integrity sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==
+
+next-intl-swc-plugin-extractor@^4.8.3:
+  version "4.8.3"
+  resolved "https://registry.npmjs.org/next-intl-swc-plugin-extractor/-/next-intl-swc-plugin-extractor-4.8.3.tgz"
+  integrity sha512-YcaT+R9z69XkGhpDarVFWUprrCMbxgIQYPUaXoE6LGVnLjGdo8hu3gL6bramDVjNKViYY8a/pXPy7Bna0mXORg==
+
+next-intl@4.8.3:
+  version "4.8.3"
+  resolved "https://registry.npmjs.org/next-intl/-/next-intl-4.8.3.tgz"
+  integrity sha512-PvdBDWg+Leh7BR7GJUQbCDVVaBRn37GwDBWc9sv0rVQOJDQ5JU1rVzx9EEGuOGYo0DHAl70++9LQ7HxTawdL7w==
+  dependencies:
+    "@formatjs/intl-localematcher" "^0.8.1"
+    "@parcel/watcher" "^2.4.1"
+    "@swc/core" "^1.15.2"
+    icu-minify "^4.8.3"
+    negotiator "^1.0.0"
+    next-intl-swc-plugin-extractor "^4.8.3"
+    po-parser "^2.1.1"
+    use-intl "^4.8.3"
+
+next-safe-action@8.1.4:
+  version "8.1.4"
+  resolved "https://registry.npmjs.org/next-safe-action/-/next-safe-action-8.1.4.tgz"
+  integrity sha512-W7mdtRagBassl0rkCkNQ3rpmDXme/QABzcQ7H6tYIEH4WQiUJl6fuRFmNjkNf9OnXCqcL31bMAw2PpDYjJabcA==
+  dependencies:
+    deepmerge-ts "^7.1.5"
 
 next@^16.0.7:
   version "16.1.6"
@@ -6564,6 +6772,11 @@ next@^16.0.7:
     "@next/swc-win32-arm64-msvc" "16.1.6"
     "@next/swc-win32-x64-msvc" "16.1.6"
     sharp "^0.34.4"
+
+node-addon-api@^7.0.0:
+  version "7.1.1"
+  resolved "https://registry.npmjs.org/node-addon-api/-/node-addon-api-7.1.1.tgz"
+  integrity sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==
 
 node-fetch@^2.7.0:
   version "2.7.0"
@@ -6882,6 +7095,11 @@ pkg-dir@^4.2.0:
   integrity sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==
   dependencies:
     find-up "^4.0.0"
+
+po-parser@^2.1.1:
+  version "2.1.1"
+  resolved "https://registry.npmjs.org/po-parser/-/po-parser-2.1.1.tgz"
+  integrity sha512-ECF4zHLbUItpUgE3OTtLKlPjeBN+fKEczj2zYjDfCGOzicNs0GK3Vg2IoAYwx7LH/XYw43fZQP6xnZ4TkNxSLQ==
 
 possible-typed-array-names@^1.0.0:
   version "1.1.0"
@@ -8501,7 +8719,7 @@ tsconfig-paths@^3.15.0:
     minimist "^1.2.6"
     strip-bom "^3.0.0"
 
-tslib@^2.0.0, tslib@^2.1.0, tslib@^2.4.0, tslib@^2.7.0, tslib@^2.8.0:
+tslib@^2.0.0, tslib@^2.1.0, tslib@^2.4.0, tslib@^2.7.0, tslib@^2.8.0, tslib@^2.8.1:
   version "2.8.1"
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz"
   integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
@@ -8591,10 +8809,10 @@ typescript-eslint@^8.46.0:
     "@typescript-eslint/typescript-estree" "8.48.1"
     "@typescript-eslint/utils" "8.48.1"
 
-typescript@4.9.5:
-  version "4.9.5"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-4.9.5.tgz"
-  integrity sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==
+typescript@5.9.3:
+  version "5.9.3"
+  resolved "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz"
+  integrity sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==
 
 typewise-core@^1.2, typewise-core@^1.2.0:
   version "1.2.0"
@@ -8778,6 +8996,16 @@ use-debounce@^10.0.4:
   version "10.0.4"
   resolved "https://registry.npmjs.org/use-debounce/-/use-debounce-10.0.4.tgz"
   integrity sha512-6Cf7Yr7Wk7Kdv77nnJMf6de4HuDE4dTxKij+RqE9rufDsI6zsbjyAxcH5y2ueJCQAnfgKbzXbZHYlkFwmBlWkw==
+
+use-intl@^4.8.3:
+  version "4.8.3"
+  resolved "https://registry.npmjs.org/use-intl/-/use-intl-4.8.3.tgz"
+  integrity sha512-nLxlC/RH+le6g3amA508Itnn/00mE+J22ui21QhOWo5V9hCEC43+WtnRAITbJW0ztVZphev5X9gvOf2/Dk9PLA==
+  dependencies:
+    "@formatjs/fast-memoize" "^3.1.0"
+    "@schummar/icu-type-parser" "1.21.5"
+    icu-minify "^4.8.3"
+    intl-messageformat "^11.1.0"
 
 use-sidecar@^1.1.3:
   version "1.1.3"

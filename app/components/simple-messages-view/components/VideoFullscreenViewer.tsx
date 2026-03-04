@@ -156,7 +156,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
               {selectedVideoIndex > 0 && (
                 <button
                   onClick={handlePrevious}
-                  className="absolute left-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-accent transition-colors"
+                  className="absolute left-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm border dark:border-white/5 border-black/5 hover:bg-accent transition-colors"
                   aria-label="Previous video"
                 >
                   <ChevronLeft className="h-6 w-6" />
@@ -165,7 +165,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
               {selectedVideoIndex < videos.length - 1 && (
                 <button
                   onClick={handleNext}
-                  className="absolute right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-accent transition-colors"
+                  className="absolute right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm border dark:border-white/5 border-black/5 hover:bg-accent transition-colors"
                   aria-label="Next video"
                 >
                   <ChevronRight className="h-6 w-6" />
@@ -176,7 +176,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
 
           {/* Video counter */}
           {videos.length > 1 && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-background/80 backdrop-blur-sm border border-border text-sm">
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-background/80 backdrop-blur-sm border dark:border-white/5 border-black/5 text-sm">
               {selectedVideoIndex + 1} / {videos.length}
             </div>
           )}
@@ -198,7 +198,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
         </div>
 
         {/* Right side: Metadata panel */}
-        <div className="w-[400px] border-l border-border bg-card overflow-y-auto flex flex-col">
+        <div className="w-[400px] border-l dark:border-white/5 border-black/5 bg-card overflow-y-auto flex flex-col">
           <div className="p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">

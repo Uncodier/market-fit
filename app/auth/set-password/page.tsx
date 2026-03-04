@@ -237,7 +237,7 @@ function SetPasswordContent() {
       setApiError(null)
 
       // Redirect to the original destination or dashboard
-      const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/dashboard'
+      const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/robots'
       console.log('🔄 Redirecting to:', targetUrl)
       
       // Mark that we're redirecting - don't clear loading state
@@ -356,12 +356,12 @@ function SetPasswordContent() {
   // Show loading state while checking session
   if (isCheckingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
-          <Card>
+          <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center text-center py-8">
               <LoadingSkeleton variant="fullscreen" size="lg" />
-              <p className="text-gray-600">Verifying your session...</p>
+              <p className="text-muted-foreground mt-4">Verifying your session...</p>
             </CardContent>
           </Card>
         </div>
@@ -372,18 +372,18 @@ function SetPasswordContent() {
   // Show error state if session is invalid
   if (sessionError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
-          <Card>
+          <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center text-center py-8">
-              <div className="bg-red-100 p-3 rounded-full mb-4">
-                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-destructive/10 p-3 rounded-full mb-4">
+                <svg className="h-8 w-8 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.98-.833-2.75 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Session Error</h3>
-              <p className="text-gray-600 mb-4">{sessionError}</p>
-              <p className="text-sm text-gray-500">Redirecting you back to the login page...</p>
+              <h3 className="text-lg font-medium text-foreground mb-2">Session Error</h3>
+              <p className="text-muted-foreground mb-4">{sessionError}</p>
+              <p className="text-sm text-muted-foreground">Redirecting you back to the login page...</p>
             </CardContent>
           </Card>
         </div>
@@ -392,19 +392,19 @@ function SetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <Card>
+        <Card className="bg-card border-border">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Lock className="h-8 w-8 text-blue-600" />
+              <div className="bg-primary/10 p-3 rounded-full">
+                <Lock className="h-8 w-8 text-primary" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold">
+            <CardTitle className="text-2xl font-bold text-foreground">
               Set Your Password
             </CardTitle>
-            <p className="text-gray-600 mt-2">
+            <p className="text-muted-foreground mt-2">
               Complete your account setup by creating a secure password
             </p>
           </CardHeader>
@@ -494,23 +494,23 @@ function SetPasswordContent() {
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Password requirements:</h4>
-                <ul className="text-xs text-gray-600 space-y-1">
+              <div className="bg-muted rounded-lg p-4">
+                <h4 className="text-sm font-medium text-foreground mb-2">Password requirements:</h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
                   <li className="flex items-center">
-                    <CheckCircle2 className={`h-3 w-3 mr-2 ${password.length >= 8 ? 'text-green-500' : 'text-gray-300'}`} />
+                    <CheckCircle2 className={`h-3 w-3 mr-2 ${password.length >= 8 ? 'text-green-500' : 'text-muted-foreground'}`} />
                     At least 8 characters
                   </li>
                   <li className="flex items-center">
-                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*[a-z])/.test(password) ? 'text-green-500' : 'text-gray-300'}`} />
+                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*[a-z])/.test(password) ? 'text-green-500' : 'text-muted-foreground'}`} />
                     One lowercase letter
                   </li>
                   <li className="flex items-center">
-                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*[A-Z])/.test(password) ? 'text-green-500' : 'text-gray-300'}`} />
+                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*[A-Z])/.test(password) ? 'text-green-500' : 'text-muted-foreground'}`} />
                     One uppercase letter
                   </li>
                   <li className="flex items-center">
-                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*\d)/.test(password) ? 'text-green-500' : 'text-gray-300'}`} />
+                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*\d)/.test(password) ? 'text-green-500' : 'text-muted-foreground'}`} />
                     One number
                   </li>
                 </ul>
@@ -547,12 +547,12 @@ function SetPasswordContent() {
 export default function SetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
-          <Card>
+          <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center text-center py-8">
               <LoadingSkeleton variant="fullscreen" size="lg" />
-              <p className="text-gray-600">Loading...</p>
+              <p className="text-muted-foreground mt-4">Loading...</p>
             </CardContent>
           </Card>
         </div>

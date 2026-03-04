@@ -113,7 +113,7 @@ export function TrackingSection({ active, siteName, siteId, codeCopied, copyTrac
 
   return (
     <>
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Tracking Settings</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -184,7 +184,7 @@ export function TrackingSection({ active, siteName, siteId, codeCopied, copyTrac
         </CardContent>
       </Card>
 
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Tracking Code</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">

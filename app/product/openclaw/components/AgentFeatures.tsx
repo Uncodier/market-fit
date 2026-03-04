@@ -2,8 +2,11 @@
 
 import * as React from "react"
 import { Zap, MessageCircle, Sparkles, ShieldCheck } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export function AgentFeatures() {
+  const { t } = useLocalization()
+
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
@@ -17,10 +20,10 @@ export function AgentFeatures() {
           </div>
           
           <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3 relative z-10">
-            Sin configuraciones complejas
+            {t('openclaw.features.f1.title')}
           </h3>
           <p className="dark:text-white/60 text-slate-500 leading-relaxed relative z-10">
-            Olvídate de construir flujos visuales interminables. Solo dale un objetivo a tu agente y él descubrirá los pasos necesarios para ejecutarlo de manera autónoma.
+            {t('openclaw.features.f1.desc')}
           </p>
         </div>
 
@@ -33,10 +36,10 @@ export function AgentFeatures() {
           </div>
           
           <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3 relative z-10">
-            Comunícate desde donde quieras
+            {t('openclaw.features.f2.title')}
           </h3>
           <p className="dark:text-white/60 text-slate-500 leading-relaxed relative z-10">
-            Usa la interfaz que ya conoces. Habla con tus agentes vía WhatsApp, Telegram, Slack o correo electrónico. Revisa su progreso y aprueba acciones directamente desde tu celular.
+            {t('openclaw.features.f2.desc')}
           </p>
         </div>
 
@@ -49,10 +52,10 @@ export function AgentFeatures() {
           </div>
           
           <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3 relative z-10">
-            Tecnología del estado del arte
+            {t('openclaw.features.f3.title')}
           </h3>
           <p className="dark:text-white/60 text-slate-500 leading-relaxed relative z-10">
-            Impulsados por los últimos modelos de razonamiento (LLMs). Tienen acceso completo al sistema: pueden navegar por internet, ejecutar código e interactuar con cualquier API.
+            {t('openclaw.features.f3.desc')}
           </p>
         </div>
 
@@ -65,10 +68,10 @@ export function AgentFeatures() {
           </div>
           
           <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3 relative z-10">
-            Privacidad y seguridad total
+            {t('openclaw.features.f4.title')}
           </h3>
           <p className="dark:text-white/60 text-slate-500 leading-relaxed relative z-10">
-            Tu propiedad intelectual es tuya. Infraestructura diseñada con la seguridad como base, manteniendo memoria persistente de forma privada sin entrenar modelos públicos con tus datos.
+            {t('openclaw.features.f4.desc')}
           </p>
         </div>
 

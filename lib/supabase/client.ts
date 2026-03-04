@@ -94,7 +94,6 @@ export function createClient() {
     isClientCreating = true
     
     // Solo crear un nuevo cliente si no existe o si ha expirado
-    console.log('Creando nuevo cliente Supabase...')
     
     clientCreationTimestamp = Date.now()
     
@@ -163,7 +162,6 @@ export function createClient() {
     clientCreationError = null
     isClientCreating = false
     
-    console.log('Cliente Supabase creado correctamente')
     return supabaseClient
   } catch (error) {
     // Guardar el error para verificaciones futuras
@@ -182,20 +180,17 @@ export function createClient() {
  * Crea un cliente mock para situaciones donde no se puede crear el cliente real
  */
 function createMockClient(reason: string) {
-  console.log(`Usando cliente Supabase MOCK (${reason})`)
   
   return {
     _isMock: true,
     auth: {
       getSession: async () => {
-        console.log('Mock: getSession() llamado')
         return { 
           data: { session: null }, 
           error: { message: `Cliente mock (${reason}): No hay sesión disponible` } 
         }
       },
       onAuthStateChange: () => {
-        console.log('Mock: onAuthStateChange() llamado')
         return { 
           data: { 
             subscription: { 
@@ -205,28 +200,24 @@ function createMockClient(reason: string) {
         }
       },
       signInWithPassword: async () => {
-        console.log('Mock: signInWithPassword() llamado')
         return {
           data: { user: null, session: null },
           error: { message: `Cliente mock (${reason}): No se puede iniciar sesión` }
         }
       },
       signInWithOAuth: async () => {
-        console.log('Mock: signInWithOAuth() llamado')
         return {
           data: { provider: null, url: null },
           error: { message: `Cliente mock (${reason}): No se puede iniciar sesión con OAuth` }
         }
       },
       signUp: async () => {
-        console.log('Mock: signUp() llamado')
         return {
           data: { user: null, session: null },
           error: { message: `Cliente mock (${reason}): No se puede registrar` }
         }
       },
       signOut: async () => {
-        console.log('Mock: signOut() llamado')
         return {
           error: null
         }
@@ -234,7 +225,6 @@ function createMockClient(reason: string) {
     },
     from: (table: string) => ({
       select: (columns?: string) => {
-        console.log(`Mock: select(${columns}) llamado para la tabla ${table}`)
         return { 
           eq: (column: string, value: any) => ({ 
             data: null, 
@@ -251,14 +241,12 @@ function createMockClient(reason: string) {
         }
       },
       insert: (data: any) => {
-        console.log(`Mock: insert() llamado para la tabla ${table}`)
         return { 
           data: null, 
           error: { message: `Cliente mock (${reason}): No se pueden insertar datos` } 
         }
       },
       update: (data: any) => {
-        console.log(`Mock: update() llamado para la tabla ${table}`)
         return { 
           eq: (column: string, value: any) => ({ 
             select: () => ({
@@ -273,7 +261,6 @@ function createMockClient(reason: string) {
         }
       },
       delete: () => {
-        console.log(`Mock: delete() llamado para la tabla ${table}`)
         return { 
           eq: (column: string, value: any) => ({ 
             data: null, 
@@ -284,7 +271,6 @@ function createMockClient(reason: string) {
     }),
     channel: (channel: string) => ({
       on: (event: string, callback: any) => {
-        console.log(`Mock: on(${event}) llamado para el canal ${channel}`)
         return { 
           subscribe: () => ({ 
             unsubscribe: () => console.log('Mock: channel.unsubscribe() llamado') 

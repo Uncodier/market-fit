@@ -189,7 +189,7 @@ const getInitialTeamSections = (): QuickNavSection[] => [
 const getInitialCopywritingSections = (): QuickNavSection[] => [
   { 
     id: "copywriting-collection", 
-    title: "Copywriting Collection",
+    title: "Copy Sequences",
     children: []
   },
 ]
@@ -253,7 +253,7 @@ export default function SettingsPage() {
       setCopywritingSections([
         {
           id: "copywriting-collection",
-          title: "Copywriting Collection",
+          title: "Copy Sequences",
           children: items
         }
       ]);

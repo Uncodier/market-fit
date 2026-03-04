@@ -483,7 +483,7 @@ export function CampaignSummary({
                 {/* Only show outsource instructions and button if not already outsourced */}
                 {!campaign.metadata?.payment_status?.outsourced && (
                   <>
-                    <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                    <div className="bg-muted/40 rounded-lg p-4 border dark:border-white/5 border-black/5/30">
                       <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
                         Outsource Instructions
                       </h3>

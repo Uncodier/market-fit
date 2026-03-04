@@ -347,20 +347,23 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
 
           {/* Esqueleto para las barras */}
           <div className="w-full ml-14 pr-4 h-full flex items-end space-x-1">
-            {Array(12).fill(0).map((_, index) => (
-              <div 
-                key={index}
-                className="flex-1 flex flex-col items-center justify-end h-full relative px-1"
-              >
+            {Array(12).fill(0).map((_, index) => {
+              const heights = [45, 20, 35, 60, 15, 70, 25, 50, 40, 65, 30, 55];
+              return (
                 <div 
-                  className="w-full bg-slate-200 dark:bg-slate-700 rounded-t-sm animate-pulse"
-                  style={{ 
-                    height: `${Math.max(5, Math.random() * 70)}%`,
-                    animationDelay: `${index * 0.05}s`
-                  }}
-                />
-              </div>
-            ))}
+                  key={index}
+                  className="flex-1 flex flex-col items-center justify-end h-full relative px-1"
+                >
+                  <div 
+                    className="w-full bg-slate-200 dark:bg-slate-700 rounded-t-sm animate-pulse"
+                    style={{ 
+                      height: `${heights[index]}%`,
+                      animationDelay: `${index * 0.05}s`
+                    }}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 

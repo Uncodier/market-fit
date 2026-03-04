@@ -90,7 +90,7 @@ export default function DashboardPage() {
   
   // Check onboarding completion from site settings instead of user profile
   const [onboardingCompleted, setOnboardingCompleted] = useState(false)
-  const [activeTab, setActiveTab] = useState("performance")
+  const [activeTab, setActiveTab] = useState("onboarding")
   
   // Check onboarding completion from site settings
   // Always verify against database to ensure accurate state
@@ -219,12 +219,17 @@ export default function DashboardPage() {
       if (urlTab && validTabs.includes(urlTab)) {
         setActiveTab(urlTab)
       } else {
-        // Always default to performance tab
-        setActiveTab("performance")
+        // Default to onboarding if not completed, otherwise performance
+        const defaultTab = !onboardingCompleted ? "onboarding" : "performance"
+        setActiveTab(defaultTab)
         
         // Update URL to match
         const url = new URL(window.location.href)
-        url.searchParams.delete('tab')
+        if (defaultTab === 'performance') {
+          url.searchParams.delete('tab')
+        } else {
+          url.searchParams.set('tab', defaultTab)
+        }
         window.history.replaceState({}, '', url.toString())
       }
     }
@@ -549,7 +554,7 @@ export default function DashboardPage() {
         onValueChange={handleTabChange}
       >
         <StickyHeader>
-          <div className="px-16 pt-0">
+          <div className="px-4 md:px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList>
@@ -614,24 +619,23 @@ export default function DashboardPage() {
           </div>
         </StickyHeader>
 
-        <div className="px-16 pt-3 pb-4">
-          <div className="flex items-center justify-between space-x-4">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
-              <p className="text-muted-foreground">
-                {activeTab === "onboarding" 
-                  ? "Let's get your growth engine set up and ready to capture leads!"
-                  : `Welcome to your control panel - Viewing ${selectedRangeType} data (${format(dateRange.startDate, "MMMM d")} to ${format(dateRange.endDate, "MMMM d")} ${format(dateRange.endDate, "yyyy")})`
-                }
-              </p>
+        {activeTab !== "onboarding" && (
+          <div className="px-4 md:px-16 pt-3 pb-4">
+            <div className="flex items-center justify-between space-x-4">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
+                <p className="text-muted-foreground">
+                  {`Welcome to your control panel - Viewing ${selectedRangeType} data (${format(dateRange.startDate, "MMMM d")} to ${format(dateRange.endDate, "MMMM d")} ${format(dateRange.endDate, "yyyy")})`}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="px-16">
+        <div className="px-4 md:px-16">
           <TabsContent value="onboarding" className="space-y-4">
             {activeTab === "onboarding" && (
-              <OnboardingItinerary />
+              <OnboardingItinerary userName={userName} />
             )}
           </TabsContent>
           <TabsContent value="performance" className="space-y-4">

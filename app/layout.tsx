@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from "next/font/google"
+import { MuseoModerno, Inter } from "next/font/google"
 import "./globals.css"
 import "./safari-fix.css"
 import { Toaster } from "sonner"
@@ -9,7 +9,16 @@ import Providers from "./providers/Providers"
 import { shouldUseLayout } from './config/routes'
 import LoggerInit from './components/LoggerInit'
 
-const inter = Inter({ subsets: ["latin"] })
+const museoModerno = MuseoModerno({ 
+  subsets: ["latin"],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-museo-moderno',
+})
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
   title: 'MAKINARI',
@@ -31,6 +40,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var path = window.location.pathname;
+                  if (path && path.indexOf('/auth') === 0) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.style.background = '#030303';
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
         <link rel="icon" href="/images/logo.png" type="image/png" sizes="32x32" />
         <meta name="application-name" content="MAKINARI" />
         <meta name="apple-mobile-web-app-title" content="MAKINARI" />
@@ -188,10 +212,10 @@ export default function RootLayout({
         )}
 
       </head>
-      <body className={inter.className}>
+      <body className={`${museoModerno.className} ${museoModerno.variable} ${inter.variable} font-sans`}>
         <Providers>
           <LoggerInit />
-          <main className="min-h-screen bg-background overflow-visible">
+          <main className="min-h-[100dvh] bg-background overflow-visible">
             <ClientWrapper>
               {children}
             </ClientWrapper>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { DollarSign, ShoppingCart, Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Printer, CreditCard, Eye } from "@/app/components/ui/icons"
+import { DollarSign, ShoppingCart, Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Printer, CreditCard, Eye, LayoutGrid, Clock, CheckCircle2, Ban, RotateCcw } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -27,6 +27,7 @@ import { Label } from "@/app/components/ui/label"
 import { useRouter } from "next/navigation"
 import { RegisterPaymentDialog } from "./components/RegisterPaymentDialog"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView } from "./components/KanbanView"
 import { CreateSaleDialog } from "./components/CreateSaleDialog"
 import { useCommandK } from "@/app/hooks/use-command-k"
@@ -402,7 +403,7 @@ export default function SalesPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [viewType, setViewType] = useState<ViewType>("table")
+  const [viewType, setViewType] = useMobileView("table")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [dateRange, setDateRange] = useState({
     startDate: subDays(new Date(), 30),
@@ -648,11 +649,26 @@ export default function SalesPage() {
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs font-medium rounded-full">All Sales</TabsTrigger>
-                    <TabsTrigger value="pending" className="text-xs font-medium rounded-full">Pending</TabsTrigger>
-                    <TabsTrigger value="completed" className="text-xs font-medium rounded-full">Completed</TabsTrigger>
-                    <TabsTrigger value="cancelled" className="text-xs font-medium rounded-full">Cancelled</TabsTrigger>
-                    <TabsTrigger value="refunded" className="text-xs font-medium rounded-full">Refunded</TabsTrigger>
+                    <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="All Sales">
+                      <LayoutGrid size={13} />
+                      <span className="tab-label">All Sales</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="Pending">
+                      <Clock size={13} />
+                      <span className="tab-label">Pending</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="Completed">
+                      <CheckCircle2 size={13} />
+                      <span className="tab-label">Completed</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="cancelled" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="Cancelled">
+                      <Ban size={13} />
+                      <span className="tab-label">Cancelled</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="refunded" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="Refunded">
+                      <RotateCcw size={13} />
+                      <span className="tab-label">Refunded</span>
+                    </TabsTrigger>
                   </TabsList>
                   <div className="relative w-64">
                     <Input 

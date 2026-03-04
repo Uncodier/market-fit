@@ -70,12 +70,14 @@ const Cpu = ({ className = "", ...props }: { className?: string, [key: string]: 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
   onCollapse: () => void
+  isMobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 // Main navigation items (always visible at top)
 const mainNavigationItems = [
   {
-    title: "Dashboard",
+    title: "Dashboards",
     href: "/dashboard",
     icon: Home,
     emoji: "🏠",
@@ -97,7 +99,7 @@ const humanInTheLoopItems = [
     emoji: "📄",
   },
   {
-    title: "Requirements",
+    title: "AI Goals",
     href: "/requirements",
     icon: CheckSquare,
     emoji: "✅",
@@ -125,7 +127,7 @@ const humanInTheLoopItems = [
 // Robots category
 const robotsItems = [
   {
-    title: "Makinas",
+    title: "AI Agents",
     href: "/robots",
     icon: Bot,
     emoji: "🤖",
@@ -134,7 +136,7 @@ const robotsItems = [
 
 // Context section - main item
 const contextMainItem = {
-  title: "Context",
+  title: "Project",
   href: "/context",
   icon: LayoutGrid,
   emoji: "🏢",
@@ -198,13 +200,15 @@ const profileChildrenItems = [
   },
 ]
 
+import { CreditsWidget } from "./CreditsWidget"
+
 // Category header component
 const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: boolean }) => {
   const getEmoji = (title: string) => {
     switch (title) {
       case "Human in the Loop":
         return "💪"
-      case "Context":
+      case "Project":
         return "🏢"
       default:
         return ""
@@ -226,13 +230,18 @@ const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: bo
 export function Sidebar({ 
   className, 
   isCollapsed, 
-  onCollapse 
+  onCollapse,
+  isMobileOpen = false,
+  onMobileClose
 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   
+  // Force expanded state when mobile menu is open, so content renders correctly in the drawer
+  const renderCollapsed = isMobileOpen ? false : isCollapsed
+
   // Context section state
   const [forceShowContextChildren, setForceShowContextChildren] = useState(false)
   
@@ -469,36 +478,48 @@ export function Sidebar({
   }
 
   return (
+    <>
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[190] md:hidden backdrop-blur-sm transition-opacity"
+          onClick={onMobileClose}
+        />
+      )}
     <div
       data-collapsed={isCollapsed}
       className={cn(
-        "flex flex-col h-screen",
-        isCollapsed ? "w-16" : "w-64",
-        "bg-background/80 text-foreground transition-all duration-200 border-r border-border z-40 backdrop-blur-[5px]",
+        "flex flex-col h-[100dvh] overflow-hidden",
+        isCollapsed ? "md:w-16" : "md:w-64",
+        "bg-background/80 text-foreground transition-[width,transform] duration-300 ease-in-out border-r dark:border-white/5 border-black/5 z-[200] backdrop-blur-[5px]",
         "sidebar-light-bg",
+        // Mobile styles
+        "fixed left-0 top-0",
+        !isMobileOpen && "-translate-x-full md:translate-x-0",
+        isMobileOpen && "translate-x-0",
         className
       )}
     >
       {/* Logo Section - Fixed */}
       <NavigationLink href="/dashboard" className={cn(
-        "flex items-center h-16 border-b border-border flex-none",
-        isCollapsed ? "justify-center px-3" : "justify-center px-6"
+        "flex items-center h-16 border-b dark:border-white/5 border-black/5 flex-none",
+        renderCollapsed ? "justify-center px-3" : "justify-center px-6"
       )}>
         <img 
-          src={isCollapsed ? "/images/logo.png" : "/images/combination_mark.png"}
+          src={renderCollapsed ? "/images/logo.png" : "/images/combination_mark.png"}
           alt="Market Fit Logo"
           className={cn(
             "transition-all duration-200 object-contain",
-            isCollapsed ? "h-8 w-8" : "h-10 w-auto",
+            renderCollapsed ? "h-6 w-6" : "h-5 w-auto",
             "dark:hidden"
           )}
         />
         <img 
-          src={isCollapsed ? "/images/logo.png" : "/images/combination_mark_white.png"}
+          src={renderCollapsed ? "/images/logo.png" : "/images/combination_mark_white.png"}
           alt="Market Fit Logo"
           className={cn(
             "transition-all duration-200 object-contain",
-            isCollapsed ? "h-8 w-8" : "h-10 w-auto",
+            renderCollapsed ? "h-6 w-6" : "h-5 w-auto",
             "hidden dark:block"
           )}
         />
@@ -506,10 +527,10 @@ export function Sidebar({
 
       {/* Site Selector */}
       <div className={cn(
-        "min-h-[71px] flex items-center border-b border-border",
-        isCollapsed && "px-[0.1875rem]"
+        "min-h-[71px] flex items-center border-b dark:border-white/5 border-black/5",
+        renderCollapsed && "px-[0.1875rem]"
       )}>
-        <SiteSelector isCollapsed={isCollapsed} />
+        <SiteSelector isCollapsed={renderCollapsed} />
       </div>
 
       {/* Navigation Items - Scrollable */}
@@ -518,7 +539,7 @@ export function Sidebar({
           {/* Main Navigation Items */}
           <div className={cn(
             "flex flex-col space-y-1",
-            isCollapsed ? "px-[14px] items-center" : "px-3"
+            renderCollapsed ? "px-[14px] items-center" : "px-3"
           )}>
             {mainNavigationItems.map((item) => (
               <MenuItem
@@ -528,7 +549,7 @@ export function Sidebar({
                 emoji={item.emoji}
                 title={item.title}
                 isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
-                isCollapsed={isCollapsed}
+                isCollapsed={renderCollapsed}
               />
             ))}
           </div>
@@ -537,7 +558,7 @@ export function Sidebar({
           <div style={{ marginTop: '21.6px' }}>
             <div className={cn(
               "flex flex-col space-y-1",
-              isCollapsed ? "px-[14px] items-center" : "px-3"
+              renderCollapsed ? "px-[14px] items-center" : "px-3"
             )}>
             {humanInTheLoopItems.map((item) => (
                 <MenuItem
@@ -547,7 +568,7 @@ export function Sidebar({
                   emoji={item.emoji}
                   title={item.title}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
-                  isCollapsed={isCollapsed}
+                  isCollapsed={renderCollapsed}
                 >
                   {item.title === "Control Center" && (
                     <ControlCenterBadge isActive={pathname.startsWith("/control-center")} />
@@ -555,7 +576,7 @@ export function Sidebar({
                   {item.title === "Content" && (
                     <ContentBadge isActive={pathname.startsWith("/content")} />
                   )}
-                  {item.title === "Requirements" && (
+                  {item.title === "AI Goals" && (
                     <RequirementsBadge isActive={pathname.startsWith("/requirements")} />
                   )}
                   {item.title === "Leads" && (
@@ -573,7 +594,7 @@ export function Sidebar({
           <div style={{ marginTop: '21.6px' }}>
             <div className={cn(
               "flex flex-col space-y-1",
-              isCollapsed ? "px-[14px] items-center" : "px-3"
+              renderCollapsed ? "px-[14px] items-center" : "px-3"
             )}>
               {robotsItems.map((item) => (
                 <MenuItem
@@ -583,9 +604,9 @@ export function Sidebar({
                   emoji={item.emoji}
                   title={item.title}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
-                  isCollapsed={isCollapsed}
+                  isCollapsed={renderCollapsed}
                 >
-                  {item.title === "Makinas" && (
+                  {item.title === "AI Agents" && (
                     <RobotsBadge isActive={pathname.startsWith("/robots")} />
                   )}
                 </MenuItem>
@@ -597,9 +618,14 @@ export function Sidebar({
         </div>
       </div>
 
+      {/* Credits Widget - Above the bottom fixed section */}
+      <div className={cn("flex-none pb-2", renderCollapsed && "flex justify-center")}>
+        <CreditsWidget isCollapsed={renderCollapsed} />
+      </div>
+
       {/* Bottom Section - Fixed */}
-      <div className="flex-none border-t border-border">
-        <div className={cn("flex flex-col space-y-1 py-4", isCollapsed ? "px-[14px] items-center" : "px-3")}>
+      <div className="flex-none border-t dark:border-white/5 border-black/5">
+        <div className={cn("flex flex-col space-y-1 py-4", renderCollapsed ? "px-[14px] items-center" : "px-3")}>
           {/* Context main item */}
           <div 
             className="relative"
@@ -610,16 +636,16 @@ export function Sidebar({
               emoji={contextMainItem.emoji}
               title={contextMainItem.title}
               isActive={pathname.startsWith(contextMainItem.href)}
-              isCollapsed={isCollapsed}
+              isCollapsed={renderCollapsed}
               className="context-parent-item"
               onClick={(e) => handleContextNavigation(e, contextMainItem.href)}
             />
             
             {/* Indicator for Context that it has children */}
-            {!isCollapsed && (
+            {!renderCollapsed && (
               <div 
                 className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix hover:scale-110 hover:bg-accent/50 active:scale-95",
+                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full safari-icon-fix hover:bg-accent/50",
                   pathname.startsWith(contextMainItem.href) 
                     ? "transform rotate-90 text-white" // White when active
                     : shouldShowContextChildren
@@ -634,7 +660,7 @@ export function Sidebar({
                   viewBox="0 0 6 10" 
                   fill="none" 
                   xmlns="http://www.w3.org/2000/svg"
-                  className="transition-all duration-300"
+                  className="transition-colors duration-300"
                 >
                   <path 
                     d="M1 1L5 5L1 9" 
@@ -669,8 +695,8 @@ export function Sidebar({
                   emoji={item.emoji}
                   title={item.title}
                   isActive={pathname.startsWith(item.href)}
-                  isCollapsed={isCollapsed}
-                  className={!isCollapsed ? "ml-3" : ""}
+                  isCollapsed={renderCollapsed}
+                  className={!renderCollapsed ? "ml-3" : ""}
                 >
                   {item.title === "Campaigns" && (
                     <CampaignsBadge isActive={pathname.startsWith("/campaigns")} />
@@ -682,16 +708,16 @@ export function Sidebar({
           
           {/* Settings item - now part of the same list */}
           <ConfigurationSection 
-            className={cn("!p-0", isCollapsed ? "px-[14px]" : "px-3")} 
-            isCollapsed={isCollapsed}
+            className={cn("!p-0", renderCollapsed ? "px-[14px] flex flex-col items-center" : "px-3")} 
+            isCollapsed={renderCollapsed}
             forceShowChildren={forceShowSettingsChildren}
             setForceShowChildren={setForceShowSettingsChildren}
             onSettingsNavigation={handleSettingsNavigation}
           />
         </div>
         {/* Profile Section - Collapsible */}
-        <div className="border-t border-border">
-          <div className={cn("flex flex-col space-y-1 py-4", isCollapsed ? "px-[14px] items-center" : "px-3")}>
+        <div className="border-t dark:border-white/5 border-black/5">
+          <div className={cn("flex flex-col space-y-1 py-4", renderCollapsed ? "px-[14px] items-center" : "px-3")}>
             {/* Profile main item */}
             <div 
               className="relative"
@@ -704,30 +730,30 @@ export function Sidebar({
                 subtitle={user?.email || ''}
                 avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
                 isActive={pathname.startsWith('/notifications')}
-                isCollapsed={isCollapsed}
+                isCollapsed={renderCollapsed}
                 className="profile-parent-item ![padding-top:25.2px] ![padding-bottom:25.2px]"
                 onClick={(e) => handleProfileNavigation(e, profileMainItem.href)}
               />
               
               {/* Notification badge positioned above avatar */}
-              {!isCollapsed && (
+              {!renderCollapsed && (
                 <div className="absolute top-0 left-[1.7rem] z-10">
                   <NotificationBadge isActive={pathname.startsWith("/notifications")} />
                 </div>
               )}
               
               {/* For collapsed mode, position badge over collapsed avatar */}
-              {isCollapsed && (
+              {renderCollapsed && (
                 <div className="absolute -top-2 right-0.5 z-10">
                   <NotificationBadge isActive={pathname.startsWith("/notifications")} />
                 </div>
               )}
               
               {/* Indicator for Profile that it has children */}
-              {!isCollapsed && (
+              {!renderCollapsed && (
                 <div 
                   className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full safari-icon-fix hover:scale-110 hover:bg-accent/50 active:scale-95",
+                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full safari-icon-fix hover:bg-accent/50",
                     pathname.startsWith('/notifications') 
                       ? "transform rotate-90 text-white" // White when active
                       : shouldShowProfileChildren
@@ -742,7 +768,7 @@ export function Sidebar({
                     viewBox="0 0 6 10" 
                     fill="none" 
                     xmlns="http://www.w3.org/2000/svg"
-                    className="transition-all duration-300"
+                    className="transition-colors duration-300"
                   >
                     <path 
                       d="M1 1L5 5L1 9" 
@@ -783,19 +809,14 @@ export function Sidebar({
                         handleLogout();
                       } else if (isHelp) {
                         e.preventDefault();
-                        console.log('Sidebar help button clicked')
                         if (typeof window !== 'undefined') {
-                          console.log('Sidebar Window MarketFit:', (window as any).MarketFit)
                           if ((window as any).MarketFit?.openChatWithTask) {
-                            console.log('Sidebar calling openChatWithTask')
                             ;(window as any).MarketFit.openChatWithTask({
                               welcomeMessage: "Hi! I'm here to help you navigate and use all the features effectively. What would you like to know?",
                               task: "I need help with using the platform",
                               clearExistingMessages: false,
                               newConversation: false
                             });
-                          } else {
-                            console.log('Sidebar MarketFit.openChatWithTask not available')
                           }
                         }
                       }
@@ -807,8 +828,8 @@ export function Sidebar({
                       emoji={item.emoji}
                       title={isLogout ? (isLoggingOut ? "Signing out..." : "Log out") : item.title}
                       isActive={!isLogout && !isHelp && pathname.startsWith(item.href)}
-                      isCollapsed={isCollapsed}
-                      className={!isCollapsed ? "ml-3" : ""}
+                      isCollapsed={renderCollapsed}
+                      className={!renderCollapsed ? "ml-3" : ""}
                     >
                     </MenuItem>
                   </div>
@@ -819,5 +840,6 @@ export function Sidebar({
         </div>
       </div>
     </div>
+    </>
   )
 } 

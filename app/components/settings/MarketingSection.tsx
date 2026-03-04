@@ -195,7 +195,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
 
   return (
     <>
-      <Card id="ai-focus-mode" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="ai-focus-mode" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">AI Focus Mode</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -272,7 +272,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card id="business-model" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="business-model" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Business Model</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -356,7 +356,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card id="marketing-budget" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="marketing-budget" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Marketing Budget (in USD)</CardTitle>
         </CardHeader>
@@ -419,7 +419,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card id="products" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="products" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -444,7 +444,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
             const isExpanded = expandedProducts.has(index)
             
             return (
-              <div key={index} className="border border-border rounded-lg overflow-hidden">
+              <div key={index} className="border dark:border-white/5 border-black/5 rounded-lg overflow-hidden">
                 <div className="p-4 bg-muted/30">
                   <div className="flex items-center gap-4">
                     <button
@@ -495,7 +495,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
                 </div>
 
                 {isExpanded && (
-                  <div className="p-6 space-y-4 border-t border-border">
+                  <div className="p-6 space-y-4 border-t dark:border-white/5 border-black/5">
                     <FormField
                       control={form.control}
                       name={`products.${index}.description`}
@@ -602,7 +602,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card id="services" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="services" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -627,7 +627,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
             const isExpanded = expandedServices.has(index)
             
             return (
-              <div key={index} className="border border-border rounded-lg overflow-hidden">
+              <div key={index} className="border dark:border-white/5 border-black/5 rounded-lg overflow-hidden">
                 <div className="p-4 bg-muted/30">
                   <div className="flex items-center gap-4">
                     <button
@@ -678,7 +678,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
                 </div>
 
                 {isExpanded && (
-                  <div className="p-6 space-y-4 border-t border-border">
+                  <div className="p-6 space-y-4 border-t dark:border-white/5 border-black/5">
                     <FormField
                       control={form.control}
                       name={`services.${index}.description`}
@@ -785,7 +785,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card id="competitors" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="competitors" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -882,7 +882,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         </CardFooter>
       </Card>
 
-      <Card id="marketing-channels" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="marketing-channels" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <div className="flex items-center justify-between">
             <div>

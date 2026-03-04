@@ -98,13 +98,17 @@ export function SessionEventsReferrers({
             
             {/* Table rows skeleton */}
             <div className="space-y-3">
-              {[...Array(8)].map((_, i) => (
+              {[...Array(8)].map((_, i) => {
+                const w1 = [150, 200, 180, 160, 190, 140, 170, 210][i];
+                const w2 = [50, 45, 55, 48, 52, 42, 58, 46][i];
+                const w3 = [30, 28, 32, 26, 35, 25, 38, 29][i];
+                return (
                 <div key={i} className="grid grid-cols-3 gap-4 items-center py-2">
                   <div className="flex items-center space-x-2">
                     <div 
                       className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"
                       style={{ 
-                        width: `${Math.random() * 100 + 120}px`,
+                        width: `${w1}px`,
                         animationDelay: `${i * 0.1}s`
                       }}
                     />
@@ -113,7 +117,7 @@ export function SessionEventsReferrers({
                     <div 
                       className="h-6 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse"
                       style={{ 
-                        width: `${Math.random() * 20 + 40}px`,
+                        width: `${w2}px`,
                         animationDelay: `${i * 0.1 + 0.05}s`
                       }}
                     />
@@ -122,13 +126,13 @@ export function SessionEventsReferrers({
                     <div 
                       className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"
                       style={{ 
-                        width: `${Math.random() * 15 + 25}px`,
+                        width: `${w3}px`,
                         animationDelay: `${i * 0.1 + 0.1}s`
                       }}
                     />
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         </CardContent>

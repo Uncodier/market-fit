@@ -92,7 +92,7 @@ function CompactTrendCard({ trend, onClick }: { trend: TrendItem, onClick: (tren
 
   return (
     <Card 
-      className="mb-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px]"
+      className="mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md"
       onClick={() => onClick(trend)}
     >
       <CardContent className="p-3">

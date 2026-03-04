@@ -36,7 +36,7 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
   return (
     <div className="space-y-8">
       {/* Quarterly Goals */}
-      <Card id="goals-quarterly" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="goals-quarterly" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Quarter Goals</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -70,7 +70,7 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
       </Card>
 
       {/* Yearly Goals */}
-      <Card id="goals-yearly" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="goals-yearly" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Year Goals</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -104,7 +104,7 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
       </Card>
 
       {/* 5 Year Goals */}
-      <Card id="goals-five-year" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="goals-five-year" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">5 Year Goals</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -138,7 +138,7 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
       </Card>
 
       {/* 10 Year Goals */}
-      <Card id="goals-ten-year" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="goals-ten-year" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">10 Year Goals</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">

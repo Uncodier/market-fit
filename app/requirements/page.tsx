@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
 import { Checkbox } from "@/app/components/ui/checkbox"
-import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList, FileText } from "@/app/components/ui/icons"
+import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList, FileText, Clock, LayoutGrid } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
 import React, { useState, useEffect } from "react"
@@ -23,6 +23,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { FilterModal, type RequirementFilters } from "@/app/components/ui/filter-modal"
 import { KanbanView } from './kanban-view'
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { useMobileView } from "@/app/hooks/use-mobile-view"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -524,7 +525,7 @@ export default function RequirementsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   
   // View mode state (list or kanban)
-  const [viewMode, setViewMode] = useState<ViewType>("table")
+  const [viewMode, setViewMode] = useMobileView("table")
   
   // Estado de filtros avanzados
   const [filters, setFilters] = useState<RequirementFilters>({
@@ -1100,10 +1101,22 @@ export default function RequirementsPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full">All Requirements</TabsTrigger>
-                  <TabsTrigger value="pending" className="text-xs rounded-full">Pending</TabsTrigger>
-                  <TabsTrigger value="completed" className="text-xs rounded-full">Completed</TabsTrigger>
-                  <TabsTrigger value="rejected" className="text-xs rounded-full">Rejected</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Requirements">
+                    <LayoutGrid size={13} />
+                    <span className="tab-label">All Requirements</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Pending">
+                    <Clock size={13} />
+                    <span className="tab-label">Pending</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Completed">
+                    <CheckCircle2 size={13} />
+                    <span className="tab-label">Completed</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="rejected" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Rejected">
+                    <Ban size={13} />
+                    <span className="tab-label">Rejected</span>
+                  </TabsTrigger>
                 </TabsList>
                 <SearchInput
                   placeholder="Search requirements..."

@@ -13,6 +13,7 @@ import { ThemeProvider } from "./context/ThemeContext"
 import { LayoutProvider, useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
 import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
+import { useIsMobile } from "./hooks/use-mobile-view"
 
 const navigationTitles: Record<string, { title: string, helpText?: string, helpWelcomeMessage?: string, helpTask?: string }> = {
   "/dashboard": {
@@ -90,7 +91,7 @@ const navigationTitles: Record<string, { title: string, helpText?: string, helpW
     helpText: "Select a project to work with or create a new one"
   },
   "/context": {
-    title: "Context",
+    title: "Project",
     helpText: "Manage and configure your site's context and settings"
   }
 }
@@ -126,11 +127,9 @@ function cleanLocalStorageOnStartup() {
   if (typeof window === 'undefined') return
   
   try {
-    console.log("Verificando integridad de localStorage...")
     
     // Verificar currentSiteId
     const rawSiteId = localStorage.getItem("currentSiteId")
-    console.log("ID del sitio encontrado (raw):", rawSiteId)
     
     if (rawSiteId) {
       // Intentar diferentes métodos de limpieza
@@ -141,26 +140,22 @@ function cleanLocalStorageOnStartup() {
         const parsed = JSON.parse(rawSiteId)
         if (typeof parsed === 'string') {
           cleanedId = parsed.replace(/["']/g, '')
-          console.log("UUID limpiado mediante parsing JSON:", cleanedId)
         }
       } catch {
         // 2. Intentar limpiar directamente
         cleanedId = rawSiteId.replace(/["']/g, '')
-        console.log("UUID limpiado directamente:", cleanedId)
       }
       
       // 3. Verificar formato básico de UUID
       if (cleanedId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanedId)) {
         // Si el valor limpio es diferente del original y es un UUID válido, actualizarlo
         if (cleanedId !== rawSiteId) {
-          console.log("Corrigiendo UUID en localStorage:", cleanedId)
           localStorage.setItem("currentSiteId", cleanedId)
         }
       } 
       // 4. Caso especial para "default"
       else if (cleanedId === "default") {
         if (cleanedId !== rawSiteId) {
-          console.log("Corrigiendo valor 'default' en localStorage")
           localStorage.setItem("currentSiteId", "default")
         }
       }
@@ -171,7 +166,6 @@ function cleanLocalStorageOnStartup() {
       }
     }
     
-    console.log("Verificación de localStorage completada")
   } catch (error) {
     console.error("Error durante la limpieza de localStorage:", error)
   }
@@ -196,27 +190,35 @@ function LayoutClientInner({
   isExperimentDetailPage: boolean
 }) {
   const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
+  const isMobile = useIsMobile()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const handleCollapse = () => {
     setIsLayoutCollapsed(!isLayoutCollapsed)
   }
 
-  // Si la ruta actual comienza con /chat, extraer el breadcrumb de los props de los hijos
+  // Close mobile sidebar when switching to desktop
+  useEffect(() => {
+    if (!isMobile && isMobileSidebarOpen) {
+      setIsMobileSidebarOpen(false)
+    }
+  }, [isMobile])
+
+  // Pages that need full-height layout (no scroll, fixed height container)
+  const isChatPage = pathname && (pathname.startsWith('/chat') || pathname.startsWith('/robots'));
+
   let pageCustomTitle: string | null = null;
   let customHelpText: string | null = null;
   let customBreadcrumb: React.ReactNode = null;
-  const isChatPage = pathname && pathname.startsWith('/chat');
   
-  if (isChatPage) {
+  if (pathname && pathname.startsWith('/chat')) {
     pageCustomTitle = "Chat";
     customHelpText = "Chatting with your agent";
     
-    // Usar el breadcrumb del evento si está disponible
     if (breadcrumbFromEvent) {
       customBreadcrumb = breadcrumbFromEvent;
     } else {
-      // Mantener la lógica anterior como fallback
       const childrenAsAny = children as any;
       if (childrenAsAny && childrenAsAny.type && childrenAsAny.type.breadcrumb) {
         customBreadcrumb = childrenAsAny.type.breadcrumb;
@@ -238,7 +240,7 @@ function LayoutClientInner({
 
   return (
     <div className={cn(
-      "flex min-h-screen w-full bg-background transition-all duration-300",
+      "flex min-h-[100dvh] w-full bg-background",
       isLayoutCollapsed ? "collapsed" : ""
     )}>
         {fetchError && (
@@ -248,22 +250,22 @@ function LayoutClientInner({
         )}
         {isLoginPage ? (
           // Para la página de login, solo mostrar el contenido sin layout
-          <div className="min-h-screen w-full">
+          <div className="min-h-[100dvh] w-full">
             {children}
           </div>
         ) : (
           // Para el resto de páginas, mostrar el layout completo
-          <div className="flex h-fit overflow-visible relative min-h-screen w-full">
+          <div className="flex overflow-visible relative min-h-[100dvh] w-full">
             <Sidebar 
               isCollapsed={isLayoutCollapsed} 
-              onCollapse={handleCollapse} 
+              onCollapse={handleCollapse}
+              isMobileOpen={isMobileSidebarOpen}
+              onMobileClose={() => setIsMobileSidebarOpen(false)}
               className="flex-none fixed left-0 top-0 h-screen z-[200]"
             />
             <div 
-              className={cn(
-                "flex-1 flex flex-col transition-all duration-200",
-                isLayoutCollapsed ? "ml-16" : "ml-64"
-              )}
+              className="flex-1 flex flex-col transition-[margin] duration-300 ease-in-out"
+              style={{ marginLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
             >
               <TopBar 
                 title={currentPage.title || ""}
@@ -272,24 +274,23 @@ function LayoutClientInner({
                 helpTask={currentPage.helpTask || undefined}
                 isCollapsed={isLayoutCollapsed}
                 onCollapse={handleCollapse}
+                onMobileToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
                 segments={segments}
-                className="fixed top-0 right-0"
-                style={{ 
-                  left: isLayoutCollapsed ? '4rem' : '16rem',
-                }}
+                className="fixed top-0 right-0 left-0"
+                style={{ left: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
                 breadcrumb={customBreadcrumb}
                 isExperimentDetailPage={isExperimentDetailPage}
                 onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
               />
-              <div className={!isChatPage && customBreadcrumb ? "h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+              <div className={!isChatPage && customBreadcrumb ? "h-[64px] md:h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
               <main 
                 className={cn(
                   "flex-1",
-                  isChatPage ? "flex flex-col overflow-visible" : "overflow-visible"
+                  isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
                 )} 
                 style={
                   isChatPage ? 
-                  { height: 'calc(100vh - 64px)' } as React.CSSProperties 
+                  { height: 'calc(100dvh - 64px)' } as React.CSSProperties 
                   : {}
                 }
               >

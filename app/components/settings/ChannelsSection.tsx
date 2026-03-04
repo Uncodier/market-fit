@@ -643,7 +643,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
   return (
     <>
       {!excludeWebsite && (
-      <Card id="website-channel" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="website-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Globe className="h-5 w-5" />
@@ -860,7 +860,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
             />
           )}
           
-          <div className="mt-8 pt-6 border-t border-border">
+          <div className="mt-8 pt-6 border-t dark:border-white/5 border-black/5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-medium">Chat and Tracking Code</h3>
               <Button
@@ -978,7 +978,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       ) : (
         <>
           {/* Original email card for integrations */}
-      <Card id="email-channel" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="email-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Mail className="h-5 w-5" />
@@ -1171,7 +1171,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                 </div>
               )}
 
-              <div className="pt-4 border-t border-border">
+              <div className="pt-4 border-t dark:border-white/5 border-black/5">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-base font-medium">Advanced Settings (Optional)</h3>
                   <Button

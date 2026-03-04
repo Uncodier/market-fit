@@ -160,7 +160,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
           <DropdownMenuTrigger asChild>
             <div className={cn(
               "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
-              !isCollapsed && "border border-border hover:border-border/80 hover:bg-accent w-full",
+              !isCollapsed && "border dark:border-white/5 border-black/5 hover:dark:border-white/5 border-black/5/80 hover:bg-accent w-full",
               isCollapsed && "justify-center h-[45px]",
               isLoading && "opacity-50 cursor-wait"
             )}>

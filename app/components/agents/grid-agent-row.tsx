@@ -156,7 +156,7 @@ export function GridAgentRow({
       <div 
         className={cn(
           "flex items-center p-4 bg-background transition-colors cursor-pointer",
-          isExpanded ? "border-b border-border" : "hover:bg-accent/10"
+          isExpanded ? "border-b dark:border-white/5 border-black/5" : "hover:bg-accent/10"
         )}
         onClick={() => {
           onToggleExpand(agent);
@@ -305,7 +305,7 @@ export function GridAgentRow({
       
       {/* Activities Section - Expanded */}
       {isExpanded && agent.activities && agent.activities.length > 0 && (
-        <div className="p-4 bg-background/50 border-t border-border/50">
+        <div className="p-4 bg-background/50 border-t dark:border-white/5 border-black/5/50">
           <div className="rounded-lg border shadow-sm overflow-hidden bg-card">
             <div className="bg-muted/30 px-4 py-2.5 border-b flex items-center justify-between">
               <h3 className="text-sm font-semibold">Agent Activities</h3>

@@ -58,7 +58,7 @@ function RobotSessionRow({
       onOpenChange={() => {}} // Disable automatic toggle
       className="w-full"
     >
-      <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden">
+      <Card className="border dark:border-white/5 border-black/5 hover:border-foreground/20 transition-colors overflow-hidden">
         <div 
           className="flex items-center hover:bg-muted/50 transition-colors w-full cursor-pointer"
           onClick={() => onToggle(session.id)}

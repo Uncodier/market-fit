@@ -16,6 +16,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['var(--font-museo-moderno)', 'sans-serif'],
+        inter: ['var(--font-inter)', 'sans-serif'],
+      },
       fontSize: {
         xs: ['0.675rem', { lineHeight: '0.9rem' }], // 0.75rem * 0.9
         sm: ['0.7875rem', { lineHeight: '1.125rem' }], // 0.875rem * 0.9
@@ -87,6 +91,10 @@ module.exports = {
           from: { opacity: 0, transform: "translateY(10px)" },
           to: { opacity: 1, transform: "translateY(0)" },
         },
+        "fade-in-up": {
+          from: { opacity: 0, transform: "translateY(15px)" },
+          to: { opacity: 1, transform: "translateY(0)" },
+        },
         "ping-slow": {
           "0%": { transform: "scale(1)", opacity: 1 },
           "50%": { transform: "scale(1.1)", opacity: 0.5 },
@@ -97,6 +105,9 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-out forwards",
+        "fade-in-up-1": "fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both",
+        "fade-in-up-2": "fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
+        "fade-in-up-3": "fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both",
         "ping-slow": "ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite",
       },
       transitionDelay: {

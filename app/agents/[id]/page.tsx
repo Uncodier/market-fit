@@ -382,17 +382,17 @@ const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
   }
 };
 
-// Get default integrations for role
-const getDefaultIntegrationsForRole = () => {
-  // All integrations disconnected by default for new agents
-  return [
-    { id: "slack", name: "Slack", description: "Connect to Slack workspace", connected: false },
-    { id: "salesforce", name: "Salesforce", description: "Access Salesforce CRM data", connected: false },
-    { id: "zendesk", name: "Zendesk", description: "Integrate with Zendesk support tickets", connected: false },
-    { id: "hubspot", name: "HubSpot", description: "Connect to HubSpot CRM", connected: false },
-    { id: "google", name: "Google Workspace", description: "Access Google Docs, Sheets, etc.", connected: false },
-  ]
-}
+  // Get default integrations for role
+  const getDefaultIntegrationsForRole = () => {
+    // All integrations disconnected by default for new agents
+    return [
+      { id: "slack", name: "Slack", description: "Connect to Slack workspace", connected: false, isOpenClaw: true },
+      { id: "salesforce", name: "Salesforce", description: "Access Salesforce CRM data", connected: false, isOpenClaw: true },
+      { id: "zendesk", name: "Zendesk", description: "Integrate with Zendesk support tickets", connected: false, isOpenClaw: true },
+      { id: "hubspot", name: "HubSpot", description: "Connect to HubSpot CRM", connected: false, isOpenClaw: true },
+      { id: "google", name: "Google Workspace", description: "Access Google Docs, Sheets, etc.", connected: false, isOpenClaw: true },
+    ]
+  }
 
 // Get default triggers for role
 const getDefaultTriggersForRole = () => {
@@ -474,7 +474,7 @@ function AgentPageSkeleton() {
   return (
     <div className="flex-1 p-0">
       <div className="sticky top-[64px] min-h-[71px] flex items-center p-0 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 z-10">
-        <div className="sticky left-[256px] w-[calc(-256px+100vw)] transition-all duration-200 ease-in-out">
+        <div className="w-full transition-[padding] duration-300 ease-in-out">
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">

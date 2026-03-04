@@ -920,10 +920,22 @@ function AssetsLoadingPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs rounded-full">All Assets</TabsTrigger>
-                    <TabsTrigger value="images" className="text-xs rounded-full">Images</TabsTrigger>
-                    <TabsTrigger value="videos" className="text-xs rounded-full">Videos</TabsTrigger>
-                    <TabsTrigger value="documents" className="text-xs rounded-full">Documents</TabsTrigger>
+                    <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Assets">
+                      <LayoutGrid size={13} />
+                      <span className="tab-label">All Assets</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Images">
+                      <Image size={13} />
+                      <span className="tab-label">Images</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Videos">
+                      <FileVideo size={13} />
+                      <span className="tab-label">Videos</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Documents">
+                      <FileText size={13} />
+                      <span className="tab-label">Documents</span>
+                    </TabsTrigger>
                   </TabsList>
                 <div className="relative w-64">
                   <Input 
@@ -1126,10 +1138,22 @@ function AssetsContent() {
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs rounded-full">All Assets</TabsTrigger>
-                    <TabsTrigger value="images" className="text-xs rounded-full">Images</TabsTrigger>
-                    <TabsTrigger value="videos" className="text-xs rounded-full">Videos</TabsTrigger>
-                    <TabsTrigger value="documents" className="text-xs rounded-full">Documents</TabsTrigger>
+                    <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Assets">
+                      <LayoutGrid size={13} />
+                      <span className="tab-label">All Assets</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Images">
+                      <Image size={13} />
+                      <span className="tab-label">Images</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Videos">
+                      <FileVideo size={13} />
+                      <span className="tab-label">Videos</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Documents">
+                      <FileText size={13} />
+                      <span className="tab-label">Documents</span>
+                    </TabsTrigger>
                   </TabsList>
                   <div className="relative w-64">
                     <Input 
@@ -1222,10 +1246,22 @@ function AssetsContent() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full">{agentId ? 'Compatible Assets' : 'All Assets'}</TabsTrigger>
-                  <TabsTrigger value="images" className="text-xs rounded-full">Images</TabsTrigger>
-                  <TabsTrigger value="videos" className="text-xs rounded-full">Videos</TabsTrigger>
-                  <TabsTrigger value="documents" className="text-xs rounded-full">Documents</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={agentId ? 'Compatible Assets' : 'All Assets'}>
+                    <LayoutGrid size={13} />
+                    <span className="tab-label">{agentId ? 'Compatible Assets' : 'All Assets'}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Images">
+                    <Image size={13} />
+                    <span className="tab-label">Images</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Videos">
+                    <FileVideo size={13} />
+                    <span className="tab-label">Videos</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Documents">
+                    <FileText size={13} />
+                    <span className="tab-label">Documents</span>
+                  </TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input 

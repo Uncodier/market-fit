@@ -47,7 +47,6 @@ export const useStepManagement = ({
 
     // Check if step can be edited
     if (!canEditOrDeleteStep(editingStep)) {
-      console.log('Cannot edit completed step')
       closeEditModal()
       return
     }
@@ -69,7 +68,6 @@ export const useStepManagement = ({
         console.error('Error updating plan:', error)
         // Could show a toast notification here
       } else {
-        console.log('Plan updated successfully')
         // The real-time subscription will handle updating the local state
         closeEditModal()
       }
@@ -117,7 +115,6 @@ export const useStepManagement = ({
             variant: "destructive"
           })
         } else {
-          console.log('Plan deleted successfully')
           toast({
             title: "Step deleted",
             description: "The step has been removed from the plan"
@@ -160,7 +157,6 @@ export const useStepManagement = ({
               variant: "destructive"
             })
           } else {
-            console.log('Plan deleted successfully (no steps remaining)')
             toast({
               title: "Step deleted",
               description: "The step has been removed from the plan"
@@ -185,7 +181,6 @@ export const useStepManagement = ({
               variant: "destructive"
             })
           } else {
-            console.log('Step removed from plan successfully')
             toast({
               title: "Step deleted",
               description: "The step has been removed from the plan"
@@ -235,7 +230,6 @@ export const useStepManagement = ({
           variant: "destructive"
         })
       } else {
-        console.log('Step status updated successfully')
         // Update local state immediately for better UX
         onSetSteps?.(steps.map(step => 
           step.id === stepId 
@@ -254,7 +248,6 @@ export const useStepManagement = ({
   }
 
   const pausePlan = async (planId: string) => {
-    console.log('⏸️ pausePlan called with planId:', planId)
     
     // Validate planId is a string and not an object
     if (!planId || typeof planId !== 'string') {
@@ -268,12 +261,10 @@ export const useStepManagement = ({
     }
     
     if (!activeRobotInstance?.id) {
-      console.log('❌ No active robot instance')
       return
     }
 
     try {
-      console.log('📡 Updating plan status to paused in Supabase...')
       const supabase = createClient()
       
       const { data, error } = await supabase
@@ -290,7 +281,6 @@ export const useStepManagement = ({
         throw new Error(error.message || 'Failed to pause plan')
       }
 
-      console.log('✅ Plan paused successfully in Supabase:', data)
       toast({
         title: "Plan paused",
         description: "The plan has been paused successfully"
@@ -306,7 +296,6 @@ export const useStepManagement = ({
   }
 
   const resumePlan = async (planId: string) => {
-    console.log('▶️ resumePlan called with planId:', planId)
     
     // Validate planId is a string and not an object
     if (!planId || typeof planId !== 'string') {
@@ -320,12 +309,10 @@ export const useStepManagement = ({
     }
     
     if (!activeRobotInstance?.id) {
-      console.log('❌ No active robot instance')
       return
     }
 
     try {
-      console.log('📡 Updating plan status to in_progress in Supabase...')
       const supabase = createClient()
       
       const { data, error } = await supabase
@@ -342,7 +329,6 @@ export const useStepManagement = ({
         throw new Error(error.message || 'Failed to resume plan')
       }
 
-      console.log('✅ Plan resumed successfully in Supabase:', data)
       toast({
         title: "Plan resumed",
         description: "The plan has been resumed successfully"
@@ -397,7 +383,6 @@ export const useStepManagement = ({
       
       const updatedSteps = [...currentSteps, newStep]
       
-      console.log('📝 Adding new step to plan:', { planId, stepTitle: title, newStepCount: updatedSteps.length })
       
       const { error: updateError } = await supabase
         .from('instance_plans')
@@ -416,7 +401,6 @@ export const useStepManagement = ({
           variant: "destructive"
         })
       } else {
-        console.log('Step added successfully')
         toast({
           title: "Step added",
           description: "New step added to the plan"

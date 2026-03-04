@@ -17,7 +17,7 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
-import { Search, ChevronUp, ChevronDown, ChevronRight, X, MoreHorizontal, MoreVertical, Check, CheckCircle2, RotateCw, Clock, ClipboardList } from "@/app/components/ui/icons"
+import { Search, ChevronUp, ChevronDown, ChevronRight, ChevronLeft, X, MoreHorizontal, MoreVertical, Check, CheckCircle2, RotateCw, Clock, ClipboardList } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Badge } from "@/app/components/ui/badge"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
@@ -414,6 +414,8 @@ export default function PeopleSearchPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [sidebarLeft, setSidebarLeft] = useState("256px")
   const [peopleTab, setPeopleTab] = useState<"search" | "saved">("search")
+  // Mobile two-step: step 1 = filters, step 2 = results
+  const [showResultsOnMobile, setShowResultsOnMobile] = useState(false)
 
   // filters
   const [query, setQuery] = useState("")
@@ -1149,7 +1151,7 @@ export default function PeopleSearchPage() {
   // Calculate dynamic max width for main content based on left nav and filters sidebar
   const leftNavWidth = isLayoutCollapsed ? 64 : 256
   const filtersWidth = isSidebarCollapsed ? 0 : 319
-  const contentMaxWidth = `calc(100vw - ${leftNavWidth + filtersWidth}px)`
+  const contentMaxWidth = `calc(100% - ${filtersWidth}px)`
 
   // Open modal and fetch segments
   const handleAddToLeads = async () => {
@@ -1205,6 +1207,7 @@ export default function PeopleSearchPage() {
   const onClickSearch = () => {
     setCurrentPage(1)
     handleSearch(1)
+    setShowResultsOnMobile(true)
   }
 
   const onPageChange = (page: number) => {
@@ -1552,9 +1555,10 @@ export default function PeopleSearchPage() {
 
   const sidebar = (
     <div className={cn(
-      "fixed transition-all duration-200 ease-in-out z-10",
-      isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
-    )} style={{ left: sidebarLeft, top: "64px", height: "calc(100vh - 64px)" }}>
+      "fixed transition-all duration-200 ease-in-out z-10 left-0",
+      isSidebarCollapsed ? "w-0 opacity-0" : "w-full md:w-[319px] opacity-100",
+      !isSidebarCollapsed && (isLayoutCollapsed ? "md:left-16" : "md:left-64")
+    )} style={{ top: "64px", height: "calc(100vh - 64px)" }}>
       <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r relative flex flex-col">
         {/* Tab selector - min height matches main toolbar (71px) */}
         <div className="flex-shrink-0 min-h-[71px] flex items-center p-3 border-b border-border/50">
@@ -2555,35 +2559,51 @@ export default function PeopleSearchPage() {
 
   return (
     <div className="flex h-full relative">
-      {sidebar}
+      {/* Sidebar: full-screen on mobile step 1, normal on desktop */}
+      <div className={cn(
+        showResultsOnMobile ? "hidden md:block" : "block"
+      )}>
+        {sidebar}
+      </div>
+      {/* Main content: hidden on mobile step 1, full-screen on step 2 */}
       <div 
-        className="flex flex-col h-full w-full transition-all duration-200 ease-in-out"
-        style={{ 
-          marginLeft: isSidebarCollapsed ? "0px" : "319px",
-          maxWidth: contentMaxWidth
-        }}
+        className={cn(
+          "flex flex-col h-full w-full transition-[padding] duration-200 ease-in-out",
+          !showResultsOnMobile ? "hidden md:flex" : "flex",
+          // On desktop, offset by filter sidebar width
+          !isSidebarCollapsed ? "md:ml-[319px]" : "md:ml-0"
+        )}
       >
         <StickyHeader className="sticky-left">
           <SidebarToggle
             isCollapsed={isSidebarCollapsed}
             onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="absolute left-0 top-1/2 -translate-y-1/2"
+            className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:flex"
           />
-          <div className="ml-[120px] mr-16 transition-all duration-300 ease-in-out">
+          <div className="ml-4 md:ml-[120px] mr-4 md:mr-16 transition-all duration-300 ease-in-out">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="md:hidden flex items-center gap-1.5 text-sm"
+                  onClick={() => setShowResultsOnMobile(false)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Back
+                </Button>
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="secondary" className="h-9 !hidden md:!flex" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
+                  {addingToLeads ? 'Adding...' : `Add all ${(totalResults || 0).toLocaleString()} to prospection`}
+                </Button>
                 <Button 
                   variant="secondary" 
-                  className="h-9" 
+                  className="h-9 hidden md:flex" 
                   disabled={selectedPersonIds.length === 0 || isEnriching}
                   onClick={() => setIsConfirmModalOpen(true)}
                 >
-                  {isEnriching ? 'Saving...' : `Save to lists, enrich and prospect${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
-                </Button>
-                <Button variant="secondary" className="h-9" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
-                  {`Add ${(totalResults || 0).toLocaleString()} selected leads for prospection`}
+                  {isEnriching ? 'Saving...' : `Enrich & prospect selected${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
                 </Button>
               </div>
             </div>

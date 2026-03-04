@@ -130,7 +130,7 @@ export function KanbanView({
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
                                 className={cn(
-                                  "mb-3 transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer overflow-hidden",
+                                  "mb-3 transition-shadow duration-200 hover:shadow-md cursor-pointer overflow-hidden",
                                   snapshot.isDragging 
                                     ? 'shadow-lg dark:shadow-black/20 border-primary/20' 
                                     : ''

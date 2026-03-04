@@ -227,7 +227,7 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
             <div className="space-y-2">
               <Label>Permissions</Label>
               <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors duration-200">
+                <div className="flex items-center justify-between rounded-lg border dark:border-white/5 border-black/5 p-4 hover:bg-accent/5 transition-colors duration-200">
                   <div className="space-y-0.5">
                     <Label htmlFor="read" className="text-sm font-medium">
                       Read
@@ -244,7 +244,7 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
                     className="safari-switch"
                   />
                 </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors duration-200">
+                <div className="flex items-center justify-between rounded-lg border dark:border-white/5 border-black/5 p-4 hover:bg-accent/5 transition-colors duration-200">
                   <div className="space-y-0.5">
                     <Label htmlFor="write" className="text-sm font-medium">
                       Write
@@ -261,7 +261,7 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
                     className="safari-switch"
                   />
                 </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors duration-200">
+                <div className="flex items-center justify-between rounded-lg border dark:border-white/5 border-black/5 p-4 hover:bg-accent/5 transition-colors duration-200">
                   <div className="space-y-0.5">
                     <Label htmlFor="delete" className="text-sm font-medium">
                       Delete

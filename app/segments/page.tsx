@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Input } from "@/app/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { ChevronDown, ChevronRight, ChevronUp, Copy, Globe, PlusCircle, Search, HelpCircle } from "@/app/components/ui/icons"
+import { ChevronDown, ChevronRight, ChevronUp, Copy, Globe, PlusCircle, Search, HelpCircle, LayoutGrid, CheckCircle2, PenSquare } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
@@ -744,9 +744,18 @@ export default function SegmentsPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full">All Segments</TabsTrigger>
-                  <TabsTrigger value="active" className="text-xs rounded-full">Active</TabsTrigger>
-                  <TabsTrigger value="draft" className="text-xs rounded-full">Draft</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Segments">
+                    <LayoutGrid size={13} />
+                    <span className="tab-label">All Segments</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Active">
+                    <CheckCircle2 size={13} />
+                    <span className="tab-label">Active</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Draft">
+                    <PenSquare size={13} />
+                    <span className="tab-label">Draft</span>
+                  </TabsTrigger>
                 </TabsList>
                   <div className="relative w-64">
                     <Input
@@ -815,9 +824,18 @@ export default function SegmentsPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full">All Segments</TabsTrigger>
-                  <TabsTrigger value="active" className="text-xs rounded-full">Active</TabsTrigger>
-                  <TabsTrigger value="draft" className="text-xs rounded-full">Draft</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Segments">
+                    <LayoutGrid size={13} />
+                    <span className="tab-label">All Segments</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Active">
+                    <CheckCircle2 size={13} />
+                    <span className="tab-label">Active</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Draft">
+                    <PenSquare size={13} />
+                    <span className="tab-label">Draft</span>
+                  </TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input

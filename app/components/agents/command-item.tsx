@@ -110,7 +110,7 @@ export const CommandItem = memo(function CommandItem({ command, onNavigate, agen
   // Guard against null command
   if (!command) {
     return (
-      <div className="border-b border-border/50 px-4 py-3.5">
+      <div className="border-b dark:border-white/5 border-black/5/50 px-4 py-3.5">
         <div className="text-xs text-destructive">Error: Invalid command data</div>
       </div>
     );
@@ -119,7 +119,7 @@ export const CommandItem = memo(function CommandItem({ command, onNavigate, agen
   try {
     return (
       <div 
-        className="border-b border-border/50 transition-colors px-4 py-3.5 hover:bg-muted/30 cursor-pointer"
+        className="border-b dark:border-white/5 border-black/5/50 transition-colors px-4 py-3.5 hover:bg-muted/30 cursor-pointer"
         onClick={handleCommandClick}
       >
         <div className="flex items-start gap-2">
@@ -151,7 +151,7 @@ export const CommandItem = memo(function CommandItem({ command, onNavigate, agen
   } catch (error) {
     console.error("Error rendering command item:", error);
     return (
-      <div className="border-b border-border/50 px-4 py-3.5">
+      <div className="border-b dark:border-white/5 border-black/5/50 px-4 py-3.5">
         <div className="text-xs text-destructive">Error rendering command: {String(error)}</div>
       </div>
     );

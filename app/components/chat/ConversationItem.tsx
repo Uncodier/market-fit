@@ -17,7 +17,6 @@ import {
   DropdownMenuSeparator 
 } from "@/app/components/ui/dropdown-menu"
 import { formatDistanceToNow, format } from "date-fns"
-import { truncateConversationNames } from "@/app/utils/name-utils"
 import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
 
 interface ConversationItemProps {
@@ -27,12 +26,6 @@ interface ConversationItemProps {
   onRename: () => void
   onArchive: () => void
   onDelete: () => void
-}
-
-// Utility functions
-function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return text.substring(0, maxLength) + "..."
 }
 
 function getDefaultMessage(title: string): string {
@@ -95,15 +88,13 @@ export function ConversationItem({
   return (
     <div
       className={cn(
-        "w-full text-left py-3 px-4 rounded-none transition-colors border-b border-border/30",
+        "w-full text-left py-3 px-4 rounded-none transition-colors border-b dark:border-white/5 border-black/5",
         "hover:bg-accent/20 group",
         isSelected && isDarkMode 
           ? "bg-primary/15" 
           : isSelected && "bg-primary/10"
       )}
       style={{ 
-        width: '320px', 
-        maxWidth: '320px', 
         boxSizing: 'border-box',
         position: 'relative',
         cursor: 'pointer'
@@ -120,8 +111,8 @@ export function ConversationItem({
           display: 'block'
         }}
       >
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2 max-w-[90%]">
+        <div className="flex items-center justify-between mb-1 gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {conversation.status === 'pending' && (
               <div className={cn(
                 "flex-shrink-0 w-2 h-2 rounded-full",
@@ -132,7 +123,7 @@ export function ConversationItem({
               "font-medium text-sm truncate",
               isSelected && "text-primary"
             )}>
-              {truncateText(conversation.title || "Untitled Conversation", 35)}
+              {conversation.title || "Untitled Conversation"}
             </span>
             {conversation.leadStatus === 'qualified' && (
               <Badge 
@@ -151,7 +142,7 @@ export function ConversationItem({
           "text-xs truncate",
           isSelected ? "text-muted-foreground" : "text-muted-foreground/80"
         )}>
-          {truncateText(conversation.lastMessage || getDefaultMessage(conversation.title || ""), 50)}
+          {conversation.lastMessage || getDefaultMessage(conversation.title || "")}
         </div>
         <div className="flex justify-between items-center mt-0.5">
           <div className={cn(
@@ -159,10 +150,10 @@ export function ConversationItem({
             isSelected ? "text-primary/70" : "text-muted-foreground/70"
           )}>
             {getChannelIcon(conversation.channel, !conversation.leadName && !!conversation.agentId)}
-            <span className="truncate">{truncateText(conversation.agentName || "No Agent Name", 15)}</span>
+            <span className="truncate">{conversation.agentName || "No Agent Name"}</span>
             {!conversation.agentName && <span className="text-red-500 flex-shrink-0">!</span>}
             {conversation.leadName && <span className="flex-shrink-0"> · </span>}
-            {conversation.leadName && <span className="truncate">{truncateText(conversation.leadName, 15)}</span>}
+            {conversation.leadName && <span className="truncate">{conversation.leadName}</span>}
           </div>
           <span className={cn(
             "text-[11px] whitespace-nowrap flex-shrink-0",

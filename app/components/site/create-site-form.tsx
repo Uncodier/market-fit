@@ -343,7 +343,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
     <Form {...form}>
       <form id="create-site-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-12">
         <div className="space-y-12">
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Focus Mode</CardTitle>
             </CardHeader>
@@ -424,7 +424,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
             </CardContent>
           </Card>
 
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Site Information</CardTitle>
             </CardHeader>
@@ -550,7 +550,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
             </CardContent>
           </Card>
 
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
             </CardHeader>
@@ -614,7 +614,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
             </CardContent>
           </Card>
 
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Resource URLs</CardTitle>
             </CardHeader>
@@ -678,7 +678,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
             </CardContent>
           </Card>
 
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
             <CardHeader className="px-8 py-6">
               <CardTitle className="text-xl font-semibold">Business Locations</CardTitle>
             </CardHeader>
@@ -781,7 +781,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
 
                       {/* Regional Restrictions for this location */}
                       {globalRestrictionsEnabled && (
-                        <div className="border border-border rounded-lg p-4 bg-muted/5 dark:bg-muted/10">
+                        <div className="border dark:border-white/5 border-black/5 rounded-lg p-4 bg-muted/5 dark:bg-muted/10">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                               <Shield className="h-4 w-4 text-muted-foreground" />

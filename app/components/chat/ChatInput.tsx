@@ -117,7 +117,7 @@ export const ChatInput = memo(function ChatInput({
   return (
     <div 
       className={cn(
-        "sticky bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10"
+        "sticky bottom-0 flex-none chat-input-container transition-[padding,margin] duration-300 ease-in-out bg-background/95 z-10 pb-[15px]"
       )}
     >
       <div>
@@ -135,7 +135,7 @@ export const ChatInput = memo(function ChatInput({
                   lineHeight: '1.5',
                   overflowY: 'hidden',
                   wordWrap: 'break-word',
-                  paddingBottom: '15px',
+                  paddingBottom: '50px',
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
                   height: '121.5px',
@@ -151,9 +151,9 @@ export const ChatInput = memo(function ChatInput({
                   variant="ghost"
                   disabled={!canSend}
                   className={cn(
-                    "rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200",
+                    "rounded-[9999px] h-[35.1px] w-[35.1px] transition-[background-color,box-shadow] duration-200",
                     canSend
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100"
                       : "text-muted-foreground opacity-50 hover:bg-transparent"
                   )}
                 >

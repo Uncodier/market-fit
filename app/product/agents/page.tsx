@@ -2,11 +2,11 @@ import { Metadata } from "next"
 import { AgentsClient } from "./AgentsClient"
 
 export const metadata: Metadata = {
-  title: "AI Agents | Your Digital Workforce",
-  description: "Hire AI agents to handle repetitive tasks, generate content, and analyze data 24/7 without needing to scale your headcount.",
+  title: "AI Agents | Capabilities",
+  description: "Explore the capabilities of our AI Agents by use case.",
   openGraph: {
     title: "AI Agents | Makinari",
-    description: "Hire AI agents to handle repetitive tasks 24/7 without scaling headcount.",
+    description: "Explore the capabilities of our AI Agents by use case.",
     type: "website",
   }
 }

@@ -915,7 +915,7 @@ export function ZoomableCanvas({
 
       {/* Zoom control panel with fixed position */}
       <div 
-        className="fixed bottom-8 flex items-center gap-1.5 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg shadow-md border border-border z-50"
+        className="fixed bottom-8 flex items-center gap-1.5 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg shadow-md border dark:border-white/5 border-black/5 z-50"
         style={{ 
           left: `${isLayoutCollapsed ? 92 : 268}px`, 
           transition: 'left 0.2s ease-out' // Smooth transition when position changes
@@ -949,7 +949,7 @@ export function ZoomableCanvas({
           <Maximize className="h-4 w-4" />
         </Button>
         
-        <div className="ml-1 px-2 py-1 bg-accent/70 text-accent-foreground dark:bg-accent/50 text-[10px] rounded-sm font-medium border border-border">
+        <div className="ml-1 px-2 py-1 bg-accent/70 text-accent-foreground dark:bg-accent/50 text-[10px] rounded-sm font-medium border dark:border-white/5 border-black/5">
           Drag to navigate
         </div>
       </div>

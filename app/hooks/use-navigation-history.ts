@@ -55,7 +55,6 @@ function isRootRoute(fullPath: string): boolean {
   // If there are query params, it's NOT a root route
   const hasParams = queryString && queryString.length > 0
   if (hasParams) {
-    console.log('🟢 isRootRoute check:', { fullPath, pathname, hasParams, result: false, reason: 'has query params' })
     return false
   }
   
@@ -65,15 +64,6 @@ function isRootRoute(fullPath: string): boolean {
   // Root route = only one segment (e.g., /content, /chat, /leads)
   // NOT root = multiple segments (e.g., /content/123, /control-center/abc)
   const isRoot = segments.length <= 1
-  
-  console.log('🟢 isRootRoute check:', { 
-    fullPath, 
-    pathname, 
-    segments: segments.length,
-    segmentsList: segments,
-    isRoot,
-    reason: isRoot ? 'single segment, no params' : 'multiple segments'
-  })
   
   return isRoot
 }
@@ -95,13 +85,6 @@ function isDirectNavigation(): boolean {
     
     // Consider it UI navigation if timestamp is recent (< 2000ms to account for Fast Refresh)
     const isUINav = timeDiff < 2000
-    
-    console.log('⏱️ Timestamp check (priority):', {
-      timestamp,
-      timeDiff,
-      isUINav,
-      result: isUINav ? 'UI NAVIGATION ✅' : 'expired timestamp'
-    })
     
     if (isUINav) {
       // DON'T clean up yet - let the navigation handler clean it up
@@ -127,14 +110,6 @@ function isDirectNavigation(): boolean {
       // Check referrer to disambiguate
       const hasSameOriginReferrer = document.referrer && document.referrer.includes(window.location.origin)
       
-      console.log('🔍 Navigation API detection:', {
-        type: navType,
-        referrer: document.referrer,
-        hasSameOriginReferrer,
-        isReload,
-        willTrustReload: isReload && !hasSameOriginReferrer
-      })
-      
       // Only trust reload if there's no same-origin referrer
       // (protects against Next.js Fast Refresh false positives)
       if (isReload && !hasSameOriginReferrer) {
@@ -149,13 +124,6 @@ function isDirectNavigation(): boolean {
   } catch (e) {
     console.warn('Performance API not available:', e)
   }
-  
-  // Method 3: Final fallback - check referrer
-  console.log('📍 Final referrer check:', {
-    referrer: document.referrer,
-    origin: window.location.origin,
-    hasSameOrigin: document.referrer.includes(window.location.origin)
-  })
   
   // If referrer is from same origin, assume UI navigation
   return !document.referrer.includes(window.location.origin)
@@ -284,10 +252,6 @@ export function useNavigationHistory() {
   // Initialize history from localStorage on mount
   useEffect(() => {
     const loadedHistory = loadHistory()
-    console.log('🔄 Initializing navigation history from localStorage:', {
-      loadedItemsCount: loadedHistory.items.length,
-      items: loadedHistory.items.map(i => ({ path: i.path, label: i.label }))
-    })
     setHistory(loadedHistory)
     setIsInitialized(true)
   }, [])
@@ -302,21 +266,11 @@ export function useNavigationHistory() {
     const isDirect = isDirectNavigation()
     const isRoot = isRootRoute(fullPath)
     
-    console.log('🔵 Navigation detected:', {
-      fullPath,
-      pathname,
-      hasQuery: fullPath.includes('?'),
-      isRoot,
-      isDirect,
-      currentHistoryLength: history.items.length
-    })
-    
     // Handle root routes (base routes without IDs like /leads, /content)
     if (isRoot) {
       // If it's UI navigation (coming from another page in the app)
       // Reset breadcrumb and start with this new base route
       if (!isDirect) {
-        console.log('🔵 Root route via UI navigation - Starting fresh breadcrumb')
         const label = generateLabel(pathname, searchParams)
         const newItem: HistoryItem = {
           path: fullPath,
@@ -336,7 +290,6 @@ export function useNavigationHistory() {
       
       // If it's direct navigation, reset only if no history
       if (isDirect && history.items.length === 0) {
-        console.log('🔴 Direct navigation to root with no history - Resetting breadcrumb')
         const newHistory: NavigationHistory = { items: [] }
         setHistory(newHistory)
         saveHistory(newHistory)
@@ -349,7 +302,6 @@ export function useNavigationHistory() {
       }
       
       // If direct navigation WITH history, keep the history (reload case handled above)
-      console.log('💾 Direct navigation to root with existing history - Preserving')
       previousPathRef.current = fullPath
       // Clean up timestamp
       if (typeof window !== 'undefined') {
@@ -362,16 +314,9 @@ export function useNavigationHistory() {
     if (isDirect) {
       const hasExistingHistory = history.items.length > 0
       
-      console.log('🟠 Direct navigation detected:', { 
-        fullPath, 
-        hasExistingHistory,
-        willReset: !hasExistingHistory
-      })
-      
       // If there's NO existing history, this is a fresh direct entry (typed URL or external link)
       // Reset breadcrumb to start fresh
       if (!hasExistingHistory) {
-        console.log('🔴 No existing history - starting fresh')
         const newHistory: NavigationHistory = { items: [] }
         setHistory(newHistory)
         saveHistory(newHistory)
@@ -385,10 +330,6 @@ export function useNavigationHistory() {
       
       // If there IS existing history, this is a reload/refresh
       // Keep the history but update previousPathRef to track current location
-      console.log('💾 Preserving existing history on reload:', {
-        historyLength: history.items.length,
-        items: history.items.map(i => i.label)
-      })
       previousPathRef.current = fullPath
       // Clean up timestamp
       if (typeof window !== 'undefined') {
@@ -400,7 +341,6 @@ export function useNavigationHistory() {
     // If we get here, it's UI navigation - clean up the timestamp
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('uiNavTimestamp')
-      console.log('🧹 Cleaned up UI navigation timestamp')
     }
     
     // FIRST: Check if this route already exists in history (navigation back to previous page)
@@ -408,9 +348,6 @@ export function useNavigationHistory() {
     
     if (existingIndex !== -1) {
       // Navigate back to existing item (remove items after it)
-      console.log('🔵 Existing route found in history at index', existingIndex, '- navigating back')
-      console.log('   Current history:', history.items.map(i => i.label))
-      console.log('   Will keep only:', history.items.slice(0, existingIndex + 1).map(i => i.label))
       
       const newHistory: NavigationHistory = {
         items: history.items.slice(0, existingIndex + 1)
@@ -442,17 +379,11 @@ export function useNavigationHistory() {
       const currentPathInfo = getPathInfo(currentPathname)
       const lastPathInfo = getPathInfo(lastPathname)
       
-      console.log('🔍 Path comparison:', {
-        current: { path: currentPathname, ...currentPathInfo },
-        last: { path: lastPathname, ...lastPathInfo }
-      })
-      
       // If base path is the same, check if we should replace or add
       if (currentPathInfo.basePath === lastPathInfo.basePath) {
         // CASE 1: /leads → /leads/id (list to detail)
         // last has NO ID, current has ID = ADD new item
         if (!lastPathInfo.hasId && currentPathInfo.hasId) {
-          console.log('✅ Navigating from list to detail - ADDING base + detail to breadcrumb')
           
           // First, ensure the base route is in history
           const baseLabel = generateLabel(lastPathname, null)
@@ -460,7 +391,6 @@ export function useNavigationHistory() {
           
           if (!baseExists) {
             // Add the base route first (e.g., "Leads")
-            console.log('📍 Adding base route to breadcrumb:', baseLabel)
             const baseItem: HistoryItem = {
               path: lastPathname,
               label: baseLabel,
@@ -498,7 +428,6 @@ export function useNavigationHistory() {
           
           // If ID changed, replace the last item
           if (queryIdChanged || pathIdChanged) {
-            console.log('🟡 ID changed in same detail view (path segments) - REPLACING last item')
             const label = generateLabel(pathname, searchParams)
             const updatedItem: HistoryItem = {
               path: fullPath,
@@ -534,7 +463,6 @@ export function useNavigationHistory() {
           
           // If query param changed, replace the last item
           if (queryIdChanged) {
-            console.log('🟡 ID changed in same level (query params) - REPLACING last item')
             const label = generateLabel(pathname, searchParams)
             const updatedItem: HistoryItem = {
               path: fullPath,
@@ -555,10 +483,6 @@ export function useNavigationHistory() {
     }
     
     // If we get here, it's a new route - add it to history
-    console.log('🟢 Adding new item to breadcrumb:', { 
-      currentPath: fullPath,
-      currentHistoryLength: history.items.length 
-    })
     const label = generateLabel(pathname, searchParams)
     const newItem: HistoryItem = {
       path: fullPath,
@@ -571,11 +495,6 @@ export function useNavigationHistory() {
     }
     setHistory(newHistory)
     saveHistory(newHistory)
-    console.log('✅ Breadcrumb updated:', { 
-      newHistoryLength: newHistory.items.length,
-      items: newHistory.items.map(i => ({ path: i.path, label: i.label }))
-    })
-    
     previousPathRef.current = fullPath
   }, [pathname, searchParams, fullPath, isInitialized, history])
   
@@ -626,7 +545,6 @@ export function markUINavigation(): void {
   if (typeof window !== 'undefined') {
     const timestamp = Date.now().toString()
     sessionStorage.setItem('uiNavTimestamp', timestamp)
-    console.log('✅ UI Navigation marked with timestamp:', timestamp)
   }
 }
 

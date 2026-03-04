@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 export function BillingInfoSkeleton() {
   return (
     <div className="space-y-8">
-      <Card className="border border-border shadow-sm">
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">
             <Skeleton className="h-6 w-40" />
@@ -30,7 +30,7 @@ export function BillingInfoSkeleton() {
         </CardContent>
       </Card>
       
-      <Card className="border border-border shadow-sm">
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">
             <Skeleton className="h-6 w-40" />
@@ -52,7 +52,7 @@ export function BillingInfoSkeleton() {
 
 export function PaymentHistorySkeleton() {
   return (
-    <Card className="border border-border shadow-sm">
+    <Card className="border dark:border-white/5 border-black/5 shadow-sm">
       <CardHeader className="px-8 py-6">
         <CardTitle className="text-xl font-semibold">
           <Skeleton className="h-6 w-40" />
@@ -90,7 +90,7 @@ export function PaymentHistorySkeleton() {
 export function BillingPageSkeleton() {
   return (
     <div className="flex-1">
-      <div className="border-b border-border backdrop-blur-sm bg-background/60 sticky top-16 z-10">
+      <div className="border-b dark:border-white/5 border-black/5 backdrop-blur-sm bg-background/60 sticky top-16 z-10">
         <div className="flex items-center justify-between px-16 w-full py-4">
           <Tabs value="loading" className="w-auto">
             <TabsList>

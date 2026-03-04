@@ -33,7 +33,7 @@ export function useLayoutDimensions({
       containerStyle: {
         left: `${totalLeftOffset}px`,
         right: '0px',
-        maxWidth: `calc(100vw - ${totalLeftOffset}px)`
+        maxWidth: `calc(100% - ${totalLeftOffset}px)`
       }
     }
   }, [isLayoutCollapsed, isChatListCollapsed])

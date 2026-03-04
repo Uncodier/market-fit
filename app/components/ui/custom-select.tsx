@@ -20,7 +20,7 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(
         )}
         <select
           className={cn(
-            "h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "h-10 w-full rounded-md border dark:border-white/5 border-black/5 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
             icon && "pl-10 pr-8",
             !icon && "pr-8",
             className

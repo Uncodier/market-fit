@@ -275,7 +275,7 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
                             >
                               <Card
                                 className={cn(
-                                  "mb-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] relative",
+                                  "mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md relative",
                                   snapshot.isDragging && "shadow-lg"
                                 )}
                                 onClick={() => onTaskClick(task)}

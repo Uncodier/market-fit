@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/app/components/ui/card"
@@ -13,10 +13,14 @@ import {
 
 export default function OutsourceConfirmationPage() {
   const router = useRouter()
+  const [orderRef, setOrderRef] = useState("ORD-XXXXXX")
+  const [deliveryDate, setDeliveryDate] = useState("Calculating...")
 
-  // Update the page title
+  // Update the page title and generated values
   useEffect(() => {
     document.title = "Order Confirmation | Outsource"
+    setOrderRef(`ORD-${Math.floor(100000 + Math.random() * 900000)}`)
+    setDeliveryDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString())
   }, [])
 
   return (
@@ -107,12 +111,12 @@ export default function OutsourceConfirmationPage() {
             <div className="bg-muted/50 p-4 rounded-lg">
               <div className="flex justify-between mb-2">
                 <span className="text-sm font-medium">Order Reference:</span>
-                <span className="text-sm">ORD-{Math.floor(100000 + Math.random() * 900000)}</span>
+                <span className="text-sm">{orderRef}</span>
               </div>
               <div className="flex justify-between mb-2">
                 <span className="text-sm font-medium">Estimated Delivery:</span>
                 <span className="text-sm">
-                  {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                  {deliveryDate}
                 </span>
               </div>
               <div className="flex justify-between">

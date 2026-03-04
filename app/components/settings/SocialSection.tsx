@@ -342,7 +342,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
             <Card 
               key={`social-row-${index}`} 
               id={`social-network-${index}`}
-              className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200"
+              className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200"
             >
               <CardHeader className="px-8 py-6">
                  <div className="flex items-center justify-between">
@@ -401,17 +401,17 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
 
                   {/* Connected account info - show when active */}
                   {isActive && hasPlatform && (
-                    <div className="flex items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border border-border">
+                    <div className="flex items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         {social.profile_picture_url && (
                           <img 
                             src={social.profile_picture_url} 
                             alt={social.nickname || social.username || social.handle || social.platform}
-                            className="w-12 h-12 rounded-full flex-shrink-0 border border-border"
+                            className="w-12 h-12 rounded-full flex-shrink-0 border dark:border-white/5 border-black/5"
                           />
                         )}
                         {!social.profile_picture_url && (
-                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border border-border">
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5">
                             {getPlatformIcon(social.platform || social.network, 24)}
                           </div>
                         )}

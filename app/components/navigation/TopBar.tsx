@@ -8,6 +8,8 @@ import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { TopBarTitle } from "./TopBarTitle"
 import { TopBarActions } from "./TopBarActions"
+import { Button } from "../ui/button"
+import { Menu } from "@/app/components/ui/icons"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -24,6 +26,7 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   breadcrumb?: React.ReactNode
   isExperimentDetailPage?: boolean
   onCreateSale?: () => void
+  onMobileToggle?: () => void
 }
 
 export function TopBar({ 
@@ -38,6 +41,7 @@ export function TopBar({
   breadcrumb,
   isExperimentDetailPage = false,
   onCreateSale,
+  onMobileToggle,
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
@@ -153,24 +157,30 @@ export function TopBar({
 
   return (
     <div
+      data-toolbar-font
       className={cn(
-        "flex flex-col border-b bg-background/95 backdrop-blur-sm sticky top-0 z-[200]",
-        // Hide breadcrumb in chat pages
-        (breadcrumb && !pathname.startsWith("/chat")) ? "h-[calc(64px+41px)]" : "h-[64px]",
+        "flex flex-col border-b dark:border-white/5 border-black/5 bg-background/95 backdrop-blur-sm sticky top-0 z-[200]",
+        // Hide breadcrumb in chat pages, and only add extra height on desktop
+        (breadcrumb && !pathname.startsWith("/chat")) ? "h-[64px] md:h-[calc(64px+41px)]" : "h-[64px]",
         className
       )}
       {...props}
     >
-      <div className="flex h-[64px] items-center justify-between pr-16">
-        <TopBarTitle 
-          title={title}
-          helpText={helpText}
-          helpWelcomeMessage={helpWelcomeMessage}
-          helpTask={helpTask}
-          isCollapsed={isCollapsed}
-          onCollapse={onCollapse}
-          breadcrumb={breadcrumb}
-        />
+      <div className="flex h-[64px] items-center justify-between pr-4 lg:px-8 w-full max-w-full">
+        <div className="flex items-center min-w-0">
+          <Button variant="ghost" size="icon" className="md:!hidden ml-2 mr-2" onClick={onMobileToggle}>
+            <Menu className="h-5 w-5" />
+          </Button>
+          <TopBarTitle 
+            title={title}
+            helpText={helpText}
+            helpWelcomeMessage={helpWelcomeMessage}
+            helpTask={helpTask}
+            isCollapsed={isCollapsed}
+            onCollapse={onCollapse}
+            breadcrumb={breadcrumb}
+          />
+        </div>
         
         <TopBarActions
           isProcessing={isProcessing}
@@ -187,6 +197,7 @@ export function TopBar({
           isCampaignsPage={pathname === "/campaigns"}
           isSalesPage={pathname === "/sales"}
           isRobotsPage={pathname === "/robots"}
+          isSecurityPage={pathname === "/security"}
           isExperimentDetailPage={isExperimentDetailPage}
           segmentData={segmentData}
           segments={segments}
@@ -199,7 +210,7 @@ export function TopBar({
       
       {/* Breadcrumb section - hidden on chat pages */}
       {breadcrumb && !pathname.startsWith("/chat") && (
-        <div className="pl-16 py-2 border-t border-border/50 bg-white/50">
+        <div className="hidden md:block pl-4 lg:pl-8 py-2 border-t dark:border-white/5 border-black/5 dark:bg-black/50 bg-white/50">
           {breadcrumb}
         </div>
       )}

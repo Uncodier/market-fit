@@ -36,7 +36,8 @@ import {
   PlayCircle,
   StopCircle,
   Search,
-  Shield
+  Shield,
+  BookOpen
 } from "@/app/components/ui/icons"
 
 import { subMonths, format } from "date-fns"
@@ -71,12 +72,10 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     if (selectedInstanceParam) {
       const urlInstance = getInstanceById(selectedInstanceParam)
       if (urlInstance && ['paused', 'uninstantiated'].includes(urlInstance.status)) {
-        console.log('🔍 [RobotStartButton] Using URL instance (paused):', urlInstance.id, urlInstance.status)
         return urlInstance
       }
       // If URL instance exists but is not paused, still return it for stop button
       if (urlInstance) {
-        console.log('🔍 [RobotStartButton] Using URL instance (running):', urlInstance.id, urlInstance.status)
         return urlInstance
       }
     }
@@ -87,17 +86,14 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     )
     
     if (pausedInstance) {
-      console.log('🔍 [RobotStartButton] Found paused instance (no URL param):', pausedInstance.id, pausedInstance.status)
       return pausedInstance
     }
     
     // Fallback: if URL param exists but instance not found, return null
     if (selectedInstanceParam) {
-      console.log('🔍 [RobotStartButton] URL param exists but instance not found:', selectedInstanceParam)
       return null
     }
     
-    console.log('🔍 [RobotStartButton] No paused instances found. Total instances:', allInstances.length)
     return null
   }, [selectedInstanceParam, allInstances, getInstanceById, isLoadingRobots, refreshCount])
   
@@ -162,7 +158,6 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
         
         // Check if robot is already running after the API call
         if (activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)) {
-          console.log('Robot is already running, no need to poll')
           setIsStartingRobot(false)
           return
         }
@@ -176,7 +171,6 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           if (!pollingActive) return
           
           pollAttempts++
-          console.log(`Polling for started robot instance (attempt ${pollAttempts}/${maxPollAttempts})`)
           
           try {
             await refreshRobots()
@@ -199,7 +193,6 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             } else if (currentInstance && currentInstance.length > 0) {
               const instance = currentInstance[0]
               if (['running', 'active'].includes(instance.status)) {
-                console.log('✅ Robot is now running! Stopping polling.')
                 pollingActive = false
                 setIsStartingRobot(false)
                 
@@ -210,7 +203,6 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
                 
                 return
               } else if (['failed', 'error'].includes(instance.status)) {
-                console.log('❌ Robot failed to start. Stopping polling.')
                 pollingActive = false
                 setIsStartingRobot(false)
                 toast.error("Robot failed to start - please try again")
@@ -221,7 +213,6 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             if (pollAttempts < maxPollAttempts && pollingActive) {
               setTimeout(pollForStartedInstance, 2000) // Poll every 2 seconds
             } else if (pollingActive) {
-              console.log('Max polling attempts reached for robot start')
               pollingActive = false
               setIsStartingRobot(false)
               toast.warning("Robot startup is taking longer than expected. Please check the robots page.")
@@ -307,7 +298,6 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       if (response.success) {
         toast.success("Robot stopped successfully")
         
-        console.log('✅ Robot stopped successfully')
         
         // Emit custom event to notify robots page
         window.dispatchEvent(new CustomEvent('robotStopped', { 
@@ -360,18 +350,9 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     }
   }
 
-  // Show loading state if we're checking for robots
+  // Show nothing while loading robots
   if (isLoadingRobots) {
-    return (
-      <Button 
-        size="default"
-        className="flex items-center gap-2 bg-gray-400 transition-all duration-200"
-        disabled={true}
-      >
-        <LoadingSkeleton variant="button" size="sm" className="text-white" />
-        Loading...
-      </Button>
-    )
+    return null
   }
 
   // If there's an active robot instance (from URL param or found paused instance), decide which controls to show
@@ -445,38 +426,41 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       <>
         <div className="flex items-center gap-2">
           <Button 
-            variant="secondary" 
+            variant="outline" 
             size="default"
-            className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+            className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
             onClick={() => setIsAuthenticateModalOpen(true)}
+            title="Authenticate"
           >
-            <Shield className="h-4 w-4" />
-            Authenticate
+            <Shield className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline">Authenticate</span>
           </Button>
           <Button 
-            variant="secondary" 
+            variant="outline" 
             size="default"
-            className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+            className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
             onClick={handleSaveAuthSession}
+            title="Save Auth Session"
           >
-            <Key className="h-4 w-4" />
-            Save Auth Session
+            <Key className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline">Save Auth Session</span>
           </Button>
           <Button 
             size="default"
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-all duration-200"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
             onClick={handleStopRobot}
             disabled={isStoppingRobot}
+            title="Stop Robot"
           >
             {isStoppingRobot ? (
               <>
                 <LoadingSkeleton variant="button" size="sm" className="text-white" />
-                Stopping...
+                <span className="hidden md:inline">Stopping...</span>
               </>
             ) : (
               <>
-                <StopCircle className="mr-2 h-4 w-4" />
-                Stop Robot
+                <StopCircle className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline ml-2">Stop Robot</span>
               </>
             )}
           </Button>
@@ -498,19 +482,20 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   return (
     <Button 
       size="default"
-      className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-all duration-200"
+      className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
       onClick={handleStartRobot}
       disabled={isStartingRobot}
+      title="Start Robot"
     >
       {isStartingRobot ? (
         <>
           <LoadingSkeleton variant="button" size="sm" className="text-white" />
-          Starting Robot...
+          <span className="hidden md:inline">Starting Robot...</span>
         </>
       ) : (
         <>
-          <PlayCircle className="mr-2 h-4 w-4" />
-          Start Robot
+          <PlayCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline ml-2">Start Robot</span>
         </>
       )}
     </Button>
@@ -560,6 +545,7 @@ interface TopBarActionsProps {
   isCampaignsPage: boolean
   isSalesPage: boolean
   isRobotsPage: boolean
+  isSecurityPage: boolean
   isExperimentDetailPage?: boolean
   dashboardActiveTab?: string
   segmentData: {
@@ -591,6 +577,7 @@ export function TopBarActions({
   isCampaignsPage,
   isSalesPage,
   isRobotsPage,
+  isSecurityPage,
   isExperimentDetailPage = false,
   dashboardActiveTab,
   segmentData,
@@ -618,14 +605,12 @@ export function TopBarActions({
       const tab = params.get('tab')
       // If no tab parameter, we need to check if user is in onboarding mode
       const finalTab = tab || 'overview'
-      console.log('TopBarActions: Current dashboard tab:', finalTab, 'from URL:', tab)
       setCurrentDashboardTab(finalTab)
       
       // Listen for popstate events (back/forward navigation)
       const handlePopState = () => {
         const newParams = new URLSearchParams(window.location.search)
         const newTab = newParams.get('tab') || 'overview'
-        console.log('TopBarActions: Tab changed to:', newTab)
         setCurrentDashboardTab(newTab)
       }
       
@@ -633,7 +618,6 @@ export function TopBarActions({
       const handleTabChange = () => {
         const newParams = new URLSearchParams(window.location.search)
         const newTab = newParams.get('tab') || 'overview'
-        console.log('TopBarActions: Custom tab change to:', newTab)
         setCurrentDashboardTab(newTab)
       }
       
@@ -1303,8 +1287,28 @@ The success of this experiment will be measured by:
   return (
     <div className="flex items-center gap-4">
       {isControlCenterPage && currentSite ? (
-        <CreateTaskDialog />
+        <CreateTaskDialog trigger={
+          <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="New Task">
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">New Task</span>
+          </Button>
+        } />
       ) : null}
+      
+      {/* Docs Button */}
+      {isSecurityPage && (
+        <Button 
+          variant="ghost" 
+          size="default"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
+          onClick={() => window.open('https://docs.makinari.com', '_blank')}
+          title="Documentation"
+        >
+          <BookOpen className="h-5 w-5 shrink-0" />
+          <span className="hidden md:inline">Docs</span>
+        </Button>
+      )}
+
       {currentSite ? (
         <>
           {isDashboardPage && (
@@ -1319,6 +1323,7 @@ The success of this experiment will be measured by:
             })()
           ) && (
             <Button 
+              className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
               onClick={async () => {
                 if (!userId) {
                   toast.error('User not authenticated')
@@ -1354,9 +1359,10 @@ The success of this experiment will be measured by:
                   toast.error('Failed to export report')
                 }
               }}
+              title="Export"
             >
-              <Download className="mr-2 h-4 w-4" />
-              Export
+              <Download className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline ml-2">Export</span>
             </Button>
           )}
         </>
@@ -1364,21 +1370,22 @@ The success of this experiment will be measured by:
       {/* Experiment Detail Page AI Button */}
       {isExperimentDetailPage && currentSite && (
         <Button 
-          variant="secondary" 
+          variant="outline" 
           size="default"
-          className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+          className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
           onClick={handleGenerateExperimentWithAI}
           disabled={isGeneratingExperiment}
+          title="Build with AI"
         >
           {isGeneratingExperiment ? (
             <>
               <LoadingSkeleton variant="button" size="sm" />
-              Generating...
+              <span className="hidden md:inline">Generating...</span>
             </>
           ) : (
             <>
-              <Cpu className="h-4 w-4" />
-              Build with AI
+              <Cpu className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline">Build with AI</span>
             </>
           )}
         </Button>
@@ -1388,42 +1395,44 @@ The success of this experiment will be measured by:
         <>
           {(segmentData.activeTab === "analysis" || segmentData.activeTab === "icp") && (
             <Button 
-              variant="secondary" 
+              variant="outline" 
               size="default"
-              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
               onClick={() => segmentData.openAIModal('analysis')}
               disabled={segmentData.isAnalyzing}
+              title="Analyze with AI"
             >
               {segmentData.isAnalyzing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  Analyzing...
+                  <span className="hidden md:inline">Analyzing...</span>
                 </>
               ) : (
                 <>
-                  <BarChart className="h-4 w-4" />
-                  Analyze with AI
+                  <BarChart className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline">Analyze with AI</span>
                 </>
               )}
             </Button>
           )}
           {segmentData.activeTab === "topics" && (
             <Button 
-              variant="secondary" 
+              variant="outline" 
               size="default"
-              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
               onClick={() => segmentData.openAIModal('topics')}
               disabled={segmentData.isGeneratingTopics}
+              title="Get Topics with AI"
             >
               {segmentData.isGeneratingTopics ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  Getting Topics...
+                  <span className="hidden md:inline">Getting Topics...</span>
                 </>
               ) : (
                 <>
-                  <FileText className="h-4 w-4" />
-                  Get Topics with AI
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline">Get Topics with AI</span>
                 </>
               )}
             </Button>
@@ -1434,30 +1443,31 @@ The success of this experiment will be measured by:
         currentSite ? (
           <div className="flex items-center gap-2">
             <Button 
-              variant="secondary" 
+              variant="outline" 
               size="default"
-              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
+              title="Build with AI"
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  Processing...
+                  <span className="hidden md:inline">Processing...</span>
                 </>
               ) : (
                 <>
-                  <FlaskConical className="h-4 w-4" />
-                  Build with AI
+                  <FlaskConical className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline">Build with AI</span>
                 </>
               )}
             </Button>
             <CreateSegmentDialog 
               onCreateSegment={handleCreateSegment}
               trigger={
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  New Segment
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="New Segment">
+                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline ml-2">New Segment</span>
                 </Button>
               }
             />
@@ -1471,6 +1481,12 @@ The success of this experiment will be measured by:
               segments={segments || []}
               campaigns={campaigns}
               onCreateExperiment={handleCreateExperiment}
+              trigger={
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="New Experiment">
+                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline ml-2">New Experiment</span>
+                </Button>
+              }
             />
           </div>
         ) : null
@@ -1483,9 +1499,9 @@ The success of this experiment will be measured by:
               campaigns={campaigns}
               onCreateRequirement={handleCreateRequirement}
               trigger={
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  New Requirement
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="New Requirement">
+                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline ml-2">New Requirement</span>
                 </Button>
               }
             />
@@ -1499,15 +1515,16 @@ The success of this experiment will be measured by:
               segments={segments.length > 0 ? segments : propSegments || []}
               onImportLeads={handleImportLeads}
               trigger={
-                <Button variant="secondary" className="h-9">
-                  <UploadCloud className="mr-2 h-4 w-4" />
-                  Import
+                <Button variant="outline" className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="Import">
+                  <UploadCloud className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline ml-2">Import</span>
                 </Button>
               }
             />
             <Button 
-              variant="secondary"
-              className="h-9"
+              variant="outline"
+              className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
+              title="Export"
               onClick={async () => {
                 try {
                   const response = await fetch(`/api/leads/export?siteId=${currentSite.id}`, {
@@ -1534,17 +1551,17 @@ The success of this experiment will be measured by:
                 }
               }}
             >
-              <Download className="mr-2 h-4 w-4" />
-              Export
+              <Download className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline ml-2">Export</span>
             </Button>
             <CreateLeadDialog 
               segments={segments.length > 0 ? segments : propSegments || []}
               campaigns={campaigns}
               onCreateLead={handleCreateLead}
               trigger={
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Lead
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="Add Lead">
+                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline ml-2">Add Lead</span>
                 </Button>
               }
             />
@@ -1565,21 +1582,22 @@ The success of this experiment will be measured by:
         currentSite ? (
           <div className="flex items-center gap-2">
             <Button 
-              variant="secondary" 
+              variant="outline" 
               size="default"
-              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
+              title="Build with AI"
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  Processing...
+                  <span className="hidden md:inline">Processing...</span>
                 </>
               ) : (
                 <>
-                  <FlaskConical className="h-4 w-4" />
-                  Build with AI
+                  <FlaskConical className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline">Build with AI</span>
                 </>
               )}
             </Button>
@@ -1587,18 +1605,16 @@ The success of this experiment will be measured by:
             <CreateContentDialog 
               segments={segments.length > 0 ? segments : propSegments || []}
               onSuccess={() => {
-                // Use the content list's refresh function instead of reloading the page
                 if (typeof window !== 'undefined' && (window as any).refreshContentList) {
                   (window as any).refreshContentList();
                 } else {
-                  // Fallback to page reload if the function isn't available
                   safeReload(false, 'New content created');
                 }
               }}
               trigger={
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  New Content
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="New Content">
+                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline ml-2">New Content</span>
                 </Button>
               }
             />
@@ -1609,21 +1625,22 @@ The success of this experiment will be measured by:
         currentSite ? (
           <div className="flex items-center gap-2">
             <Button 
-              variant="secondary" 
+              variant="outline" 
               size="default"
-              className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
+              title="Build with AI"
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  Processing...
+                  <span className="hidden md:inline">Processing...</span>
                 </>
               ) : (
                 <>
-                  <FlaskConical className="h-4 w-4" />
-                  Build with AI
+                  <FlaskConical className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline">Build with AI</span>
                 </>
               )}
             </Button>
@@ -1632,9 +1649,9 @@ The success of this experiment will be measured by:
               requirements={requirements}
               onCreateCampaign={handleCreateCampaign}
               trigger={
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  New Campaign
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="New Campaign">
+                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline ml-2">New Campaign</span>
                 </Button>
               }
             />
@@ -1646,6 +1663,8 @@ The success of this experiment will be measured by:
           <>
             <Button 
               variant="outline"
+              className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md"
+              title="Export"
               onClick={async () => {
                 try {
                   const response = await fetch(`/api/sales/export?siteId=${currentSite.id}`, {
@@ -1672,12 +1691,12 @@ The success of this experiment will be measured by:
                 }
               }}
             >
-              <Download className="mr-2 h-4 w-4" />
-              Export
+              <Download className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline ml-2">Export</span>
             </Button>
-            <Button onClick={onCreateSale}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Sale
+            <Button onClick={onCreateSale} className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full md:rounded-md" title="Add Sale">
+              <PlusCircle className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline ml-2">Add Sale</span>
             </Button>
           </>
         ) : null

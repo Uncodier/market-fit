@@ -22,7 +22,7 @@ export function CategoriesSidebar({
   if (isCollapsed) return null
 
   return (
-    <aside className="fixed left-0 top-0 w-64 h-full border-r bg-background">
+    <aside className="fixed left-0 top-0 w-64 h-full border-r dark:border-white/5 border-black/5 bg-background">
       <div className="border-b flex items-center" style={{ height: '64px', paddingLeft: '21.6px', paddingRight: '21.6px' }}>
         <h2 className="font-semibold" style={{ fontSize: '14.58px' }}>Categories</h2>
       </div>

@@ -389,7 +389,7 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
                     
                     {/* Task content - Now clickable and with hover effects */}
                     <div 
-                      className={`bg-muted/40 rounded-lg p-3 border cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] hover:bg-muted/60 ${
+                      className={`bg-muted/40 rounded-lg p-3 border cursor-pointer transition-colors duration-200 hover:shadow-md hover:bg-muted/60 ${
                         task.status === "in_progress" ? "border-blue-200" : "border-border/30"
                       }`}
                       onClick={() => handleTaskClick(task)}

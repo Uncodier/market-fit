@@ -29,7 +29,8 @@ import {
   ChevronUp,
   ChevronDown,
   Target,
-  Microscope
+  Microscope,
+  Megaphone
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { Pagination } from "@/app/components/ui/pagination"
@@ -634,14 +635,14 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange, is
 
   return (
     <Card 
-      className="mb-2 cursor-pointer transition-all duration-200 hover:shadow-md hover:translate-y-[-2px]"
+      className="mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md"
       onClick={() => onClick(content)}
     >
       <CardContent className="p-0">
         {(mainAsset || (hasCarousel && displayAssets[carouselIndex])) ? (
           <div className="relative aspect-square w-full overflow-hidden rounded-t-md bg-muted">
             <img
-              src={(hasCarousel ? displayAssets[carouselIndex] : mainAsset)?.file_path}
+              src={(hasCarousel ? displayAssets[carouselIndex] : mainAsset)?.file_path || undefined}
               alt=""
               className="w-full h-full object-cover"
             />
@@ -1073,7 +1074,7 @@ function ContentTable({
                         <div className="absolute inset-0 w-full h-full overflow-hidden bg-muted">
                           {mainAsset ? (
                             <img
-                              src={mainAsset.file_path}
+                              src={mainAsset.file_path || undefined}
                               alt=""
                               className="w-full h-full object-cover"
                             />
@@ -1911,33 +1912,38 @@ export default function ContentPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full">
-                    All Content
-                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Content">
+                    <LayoutGrid size={13} />
+                    <span className="tab-label">All Content</span>
+                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="blog_post" className="text-xs rounded-full">
-                    Blog Posts
-                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
+                  <TabsTrigger value="blog_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Blog Posts">
+                    <FileText size={13} />
+                    <span className="tab-label">Blog Posts</span>
+                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'blog_post').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="video" className="text-xs rounded-full">
-                    Videos
-                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
+                  <TabsTrigger value="video" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Videos">
+                    <FileVideo size={13} />
+                    <span className="tab-label">Videos</span>
+                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'video').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="social_post" className="text-xs rounded-full">
-                    Social Media
-                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
+                  <TabsTrigger value="social_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Social Media">
+                    <Globe size={13} />
+                    <span className="tab-label">Social Media</span>
+                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'social_post').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="ad" className="text-xs rounded-full">
-                    Ads
-                    <Badge variant="secondary" className="ml-2 bg-muted text-[10px] h-4 px-1.5 rounded-full">
+                  <TabsTrigger value="ad" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Ads">
+                    <Megaphone size={13} />
+                    <span className="tab-label">Ads</span>
+                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'ad').length}
                     </Badge>
                   </TabsTrigger>

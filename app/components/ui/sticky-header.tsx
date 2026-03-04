@@ -5,6 +5,7 @@ import { ReactNode, useRef } from "react"
 import { useLayout } from "@/app/context/LayoutContext"
 import { usePathname } from 'next/navigation'
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { Input } from "./input"
 import { Search } from "./icons"
 
@@ -29,6 +30,7 @@ export function StickyHeader({
 }: StickyHeaderProps) {
   const pathname = usePathname();
   const layoutContext = useLayout();
+  const isMobile = useIsMobile();
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Use the command+k hook
@@ -37,26 +39,28 @@ export function StickyHeader({
   // Siempre usar el contexto si está disponible, de lo contrario usar la prop
   const isCollapsed = layoutContext?.isLayoutCollapsed ?? propIsLayoutCollapsed;
   
-  // Check if we're in the leads detail page
-  const isLeadsDetailPage = pathname?.startsWith('/leads/') && pathname !== '/leads';
-  
-  // Check if we're in the agents page
-  const isAgentsPage = pathname?.startsWith('/agents');
+  // Use fixed positioning on robots/chat - parent has overflow-hidden which breaks sticky
+  const useFixedPosition = pathname?.startsWith('/robots') || pathname?.startsWith('/chat');
+  const sidebarLeft = isMobile ? 0 : (isCollapsed ? 64 : 256);
   
   return (
-    <div className={cn(
-      "sticky flex items-center p-0",
+    <div
+      data-toolbar-font
+      className={cn(
+      "flex items-center p-0",
       "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-      "border-b border-border z-[150]",
-      isAgentsPage ? "top-[64px] min-h-[71px]" : "top-[64px] min-h-[71px]",
+      "border-b dark:border-white/5 border-black/5 z-[150]",
+      useFixedPosition ? "fixed transition-all duration-300 ease-in-out" : "sticky",
+      "top-[64px] min-h-[71px]",
       className
     )}
+    style={useFixedPosition ? { left: sidebarLeft, right: 0 } : undefined}
     >
       <div className={cn(
-        "sticky transition-all duration-200 ease-in-out w-full flex items-center",
-        isCollapsed ? "left-[64px] w-[calc(100vw-64px)]" : "left-[256px] w-[calc(-256px+100vw)]"
+        "transition-[padding] duration-300 ease-in-out w-full flex items-center h-full max-w-full overflow-hidden",
+        "px-4 lg:px-8"
       )}>
-        <div className="flex-1">
+        <div className="flex-1 w-full max-w-full overflow-hidden h-full flex items-center justify-start">
           {showSearch && (
             <div className="relative w-64 mb-4">
               <Input

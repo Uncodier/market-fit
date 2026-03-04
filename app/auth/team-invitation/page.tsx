@@ -87,7 +87,7 @@ function TeamInvitationContent() {
   }
 
   const handleGoToDashboard = () => {
-    router.push('/dashboard')
+    router.push('/robots')
   }
 
   return (
@@ -121,12 +121,12 @@ function TeamInvitationContent() {
             <div className="text-center space-y-4">
               {processingResult.success ? (
                 <>
-                  <div className="mx-auto w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                  <div className="mx-auto w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6 text-green-500" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="font-medium text-green-900">Welcome to the team!</h3>
-                    <p className="text-sm text-green-700">
+                    <h3 className="font-medium text-foreground">Welcome to the team!</h3>
+                    <p className="text-sm text-muted-foreground">
                       You've been successfully added to {siteName}.
                     </p>
                     {processingResult.redirectTo && (
@@ -143,12 +143,12 @@ function TeamInvitationContent() {
                 </>
               ) : (
                 <>
-                  <div className="mx-auto w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-destructive" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="font-medium text-red-900">Invitation Error</h3>
-                    <p className="text-sm text-red-700">
+                    <h3 className="font-medium text-foreground">Invitation Error</h3>
+                    <p className="text-sm text-muted-foreground">
                       {processingResult.error || 'Failed to process your invitation'}
                     </p>
                   </div>

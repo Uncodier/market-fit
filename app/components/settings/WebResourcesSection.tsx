@@ -61,7 +61,7 @@ export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps
   if (!active) return null
 
   return (
-    <Card id="web-resources" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card id="web-resources" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
         <div className="flex items-center justify-between">
           <div>

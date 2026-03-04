@@ -434,6 +434,16 @@ export const FileVideo = ({ className = "", size = 18, ...props }: IconProps) =>
   </IconWrapper>
 )
 
+// Video
+export const Video = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m22 8-6 4 6 4V8Z" />
+      <rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
+    </svg>
+  </IconWrapper>
+)
+
 // FileText
 export const FileText = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
@@ -1315,6 +1325,17 @@ export const Info = ({ className = "", size = 18, ...props }: IconProps) => (
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="16" x2="12" y2="12" />
       <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  </IconWrapper>
+)
+
+// Database
+export const Database = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+      <path d="M3 12A9 3 0 0 0 21 12" />
     </svg>
   </IconWrapper>
 )

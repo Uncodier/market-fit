@@ -13,6 +13,8 @@ import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
 import { updateLead } from "@/app/leads/actions"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
+import { ChevronLeft } from "@/app/components/ui/icons"
+import { Button } from "@/app/components/ui/button"
 
 interface ChatHeaderProps {
   agentId: string
@@ -30,6 +32,7 @@ interface ChatHeaderProps {
   handlePrivateDiscussion: () => void
   conversationId?: string
   onLeadStatusUpdate?: () => void
+  onBack?: () => void
 }
 
 export function ChatHeader({
@@ -47,7 +50,8 @@ export function ChatHeader({
   handleNewAgentConversation,
   handlePrivateDiscussion,
   conversationId,
-  onLeadStatusUpdate
+  onLeadStatusUpdate,
+  onBack
 }: ChatHeaderProps) {
   const { currentSite } = useSite()
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
@@ -120,27 +124,41 @@ export function ChatHeader({
   const leadPhone = leadData?.phone
 
   return (
-    <div className="border-b flex-none h-[71px] max-h-[71px] min-h-[71px] flex items-center overflow-hidden fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2" 
+    <div
+      data-toolbar-font
+      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] max-h-[71px] min-h-[71px] flex items-center overflow-hidden fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2" 
       style={{ backdropFilter: 'blur(10px)' }}>
-      {/* ChatToggle positioned absolutely */}
-      <ChatToggle 
-        isCollapsed={isChatListCollapsed} 
-        onToggle={toggleChatList}
-        onNewConversation={startNewConversation}
-        onNewLeadConversation={handleNewLeadConversation}
-        onNewAgentConversation={handleNewAgentConversation}
-        onPrivateDiscussion={handlePrivateDiscussion}
-        showNewConversationButton={true}
-        isLead={isLead}
-        agentName={leftSideDisplayName}
-        agentId={agentId}
-        leadName={isLead ? truncateLeadName(leadData?.name || "Lead") : "Visitor"}
-        leadId={isLead ? leadData?.id || "" : ""}
-        className="absolute top-0 left-0"
-      />
+      
+      {/* Back Button for Mobile */}
+      {onBack && (
+        <div className="md:hidden absolute left-0 top-0 h-full flex items-center pl-2 z-[1000]">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
+
+      {/* ChatToggle positioned absolutely - hidden on mobile */}
+      <div className="hidden md:block">
+        <ChatToggle 
+          isCollapsed={isChatListCollapsed} 
+          onToggle={toggleChatList}
+          onNewConversation={startNewConversation}
+          onNewLeadConversation={handleNewLeadConversation}
+          onNewAgentConversation={handleNewAgentConversation}
+          onPrivateDiscussion={handlePrivateDiscussion}
+          showNewConversationButton={true}
+          isLead={isLead}
+          agentName={leftSideDisplayName}
+          agentId={agentId}
+          leadName={isLead ? truncateLeadName(leadData?.name || "Lead") : "Visitor"}
+          leadId={isLead ? leadData?.id || "" : ""}
+          className="absolute top-0 left-0"
+        />
+      </div>
       
       <div className={cn(
-        "max-w-[calc(100%-240px)] mx-auto w-full flex items-center justify-end transition-all duration-300 ease-in-out gap-4"
+        "w-full md:max-w-[calc(100%-240px)] md:mx-auto flex items-center justify-end transition-all duration-300 ease-in-out gap-4 pr-4 md:pr-0"
       )}>
         {/* Visitor/Lead info - only shown when not loading, not agent-only conversation, and a conversation is selected */}
         {!isLoadingLead && !isAgentOnlyConversation && hasSelectedConversation && (

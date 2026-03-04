@@ -3,6 +3,22 @@
 @tailwind utilities;
  
 @layer base {
+  html {
+    font-family: var(--font-museo-moderno), sans-serif;
+    scrollbar-gutter: stable;
+  }
+
+  /* Prioritize legibility for body text (p, span) */
+  p, span {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Toolbar: use MuseoModerno for brand consistency with logo */
+  [data-toolbar-font] p,
+  [data-toolbar-font] span {
+    font-family: var(--font-museo-moderno), sans-serif;
+  }
+  
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -202,6 +218,386 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
   }
+
+  .bg-black-paper {
+    background-color: #030303;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 400px 400px;
+  }
+
+  
+  
+  .paper-texture-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.14'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 400px 400px;
+    pointer-events: none;
+  }
+
+  
+  .dark .paper-texture-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
+  }
+
+
+  .neu-base {
+    background: linear-gradient(135deg, #1c1c22 0%, #0d0d12 100%);
+    box-shadow: 
+      15px 15px 35px rgba(0, 0, 0, 0.8), 
+      -8px -8px 25px rgba(255, 255, 255, 0.03), 
+      inset 1px 1px 2px rgba(255, 255, 255, 0.1), 
+      inset -1px -1px 2px rgba(0, 0, 0, 0.5);
+    border: none;
+  }
+
+  .neu-panel {
+    background: linear-gradient(135deg, #16161a 0%, #0a0a0c 100%);
+    box-shadow: 
+      10px 10px 25px rgba(0, 0, 0, 0.7), 
+      -5px -5px 15px rgba(255, 255, 255, 0.03), 
+      inset 1px 1px 1px rgba(255, 255, 255, 0.08), 
+      inset -1px -1px 2px rgba(0, 0, 0, 0.4);
+    border: none;
+  }
+
+  .neu-card {
+    background: linear-gradient(135deg, #1f1f26 0%, #111116 100%);
+    box-shadow: 
+      6px 6px 14px rgba(0, 0, 0, 0.6), 
+      -3px -3px 10px rgba(255, 255, 255, 0.04), 
+      inset 1px 1px 1px rgba(255, 255, 255, 0.08);
+    border: none;
+  }
+
+  .neu-card-hover {
+    transition: all 0.3s ease;
+  }
+  .neu-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      10px 10px 20px rgba(0, 0, 0, 0.7), 
+      -4px -4px 12px rgba(255, 255, 255, 0.05), 
+      inset 1px 1px 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .neu-pressed {
+    background: #0d0d12;
+    box-shadow: 
+      inset 5px 5px 12px rgba(0, 0, 0, 0.8), 
+      inset -2px -2px 8px rgba(255, 255, 255, 0.03);
+    border: none;
+  }
+
+  .neu-skeleton {
+    background: #15151b;
+    box-shadow: 
+      inset 2px 2px 5px rgba(0, 0, 0, 0.6), 
+      inset -1px -1px 2px rgba(255, 255, 255, 0.03);
+    border: none;
+  }
+
+  .neu-recessed {
+    background: #0d0d12;
+    box-shadow: 
+      inset 4px 4px 10px rgba(0, 0, 0, 0.8), 
+      inset -1px -1px 3px rgba(255, 255, 255, 0.03);
+    border: none;
+  }
+
+  /* Outermost graphic container - protruding/raised from background (inverted from recessed) */
+  .neu-mockup-screen {
+    background: linear-gradient(135deg, #1c1c22 0%, #0d0d12 100%);
+    box-shadow: 
+      20px 20px 50px rgba(0, 0, 0, 0.9), 
+      -10px -10px 30px rgba(255, 255, 255, 0.02),
+      inset 1px 1px 2px rgba(255, 255, 255, 0.08),
+      inset -1px -1px 2px rgba(0, 0, 0, 0.4);
+    border: none;
+  }
+
+  .neu-button {
+    background: linear-gradient(135deg, #22222a 0%, #15151b 100%);
+    box-shadow: 
+      4px 4px 10px rgba(0, 0, 0, 0.6), 
+      -2px -2px 8px rgba(255, 255, 255, 0.05), 
+      inset 1px 1px 1px rgba(255, 255, 255, 0.1);
+    border: none;
+    transition: all 0.2s ease;
+  }
+
+  .neu-button:active {
+    background: #111116;
+    box-shadow: 
+      inset 3px 3px 8px rgba(0, 0, 0, 0.7), 
+      inset -1px -1px 6px rgba(255, 255, 255, 0.03);
+  }
+
+  .neu-black-chip {
+    background: linear-gradient(135deg, #18181f 0%, #0d0d12 100%);
+    box-shadow: 
+      8px 8px 16px rgba(0, 0, 0, 0.8), 
+      -4px -4px 12px rgba(255, 255, 255, 0.02), 
+      inset 1px 1px 2px rgba(255, 255, 255, 0.15), 
+      inset -1px -1px 2px rgba(0, 0, 0, 0.5);
+    color: rgba(255, 255, 255, 0.85) !important;
+    border: none;
+  }
+
+  /* Inward/sunken chip style - recessed with brighter inner glow */
+  .neu-black-chip-inward {
+    background: linear-gradient(135deg, #1a1a22 0%, #0f0f14 100%);
+    box-shadow: 
+      inset 4px 4px 10px rgba(0, 0, 0, 0.8),
+      inset -2px -2px 8px rgba(255, 255, 255, 0.08),
+      inset 1px 1px 3px rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9) !important;
+    border: none;
+  }
+
+  /* Auth form skeumorphic inputs - recessed with inner shadow */
+  
+  .neu-base-light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    box-shadow: 
+      15px 15px 35px rgba(0, 0, 0, 0.15), 
+      -8px -8px 25px rgba(255, 255, 255, 1), 
+      inset 1px 1px 2px rgba(255, 255, 255, 0.8), 
+      inset -1px -1px 2px rgba(0, 0, 0, 0.05);
+    border: none;
+  }
+
+  .neu-panel-light {
+    background: linear-gradient(135deg, #ffffff 0%, #f1f3f5 100%);
+    box-shadow: 
+      10px 10px 25px rgba(0, 0, 0, 0.15), 
+      -5px -5px 15px rgba(255, 255, 255, 1), 
+      inset 1px 1px 1px rgba(255, 255, 255, 0.9), 
+      inset -1px -1px 2px rgba(0, 0, 0, 0.05);
+    border: none;
+  }
+
+  .neu-card-light {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    box-shadow: 
+      6px 6px 14px rgba(0, 0, 0, 0.12), 
+      -3px -3px 10px rgba(255, 255, 255, 1), 
+      inset 1px 1px 1px rgba(255, 255, 255, 0.9);
+    border: none;
+  }
+
+  .neu-pressed-light {
+    background: #e9ecef;
+    box-shadow: 
+      inset 5px 5px 12px rgba(0, 0, 0, 0.15), 
+      inset -2px -2px 8px rgba(255, 255, 255, 1);
+    border: none;
+  }
+
+  .neu-skeleton-light {
+    background: #dee2e6;
+    box-shadow: 
+      inset 2px 2px 5px rgba(0, 0, 0, 0.1), 
+      inset -1px -1px 2px rgba(255, 255, 255, 0.8);
+    border: none;
+  }
+
+  .neu-recessed-light {
+    background: #e9ecef;
+    box-shadow: 
+      inset 4px 4px 10px rgba(0, 0, 0, 0.15), 
+      inset -1px -1px 3px rgba(255, 255, 255, 1);
+    border: none;
+  }
+
+  .neu-mockup-screen-light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    box-shadow: 
+      20px 20px 50px rgba(0, 0, 0, 0.2), 
+      -10px -10px 30px rgba(255, 255, 255, 1),
+      inset 1px 1px 2px rgba(255, 255, 255, 0.9),
+      inset -1px -1px 2px rgba(0, 0, 0, 0.05);
+    border: none;
+  }
+
+  .neu-button-light {
+    background: linear-gradient(135deg, #ffffff 0%, #f1f3f5 100%);
+    box-shadow: 
+      4px 4px 10px rgba(0, 0, 0, 0.15), 
+      -2px -2px 8px rgba(255, 255, 255, 1), 
+      inset 1px 1px 1px rgba(255, 255, 255, 0.9);
+    border: none;
+    transition: all 0.2s ease;
+  }
+
+  .neu-button-light:active {
+    background: #e9ecef;
+    box-shadow: 
+      inset 3px 3px 8px rgba(0, 0, 0, 0.18), 
+      inset -1px -1px 6px rgba(255, 255, 255, 1);
+  }
+
+  .neu-white-chip {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    box-shadow: 
+      8px 8px 16px rgba(0, 0, 0, 0.15), 
+      -4px -4px 12px rgba(255, 255, 255, 1), 
+      inset 1px 1px 2px rgba(255, 255, 255, 0.9), 
+      inset -1px -1px 2px rgba(0, 0, 0, 0.04);
+    color: rgba(0, 0, 0, 0.85) !important;
+    border: none;
+  }
+
+  .neu-white-chip-inward {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    box-shadow: 
+      inset 4px 4px 10px rgba(0, 0, 0, 0.15),
+      inset -2px -2px 8px rgba(255, 255, 255, 1),
+      inset 1px 1px 3px rgba(255, 255, 255, 0.9);
+    color: rgba(0, 0, 0, 0.9) !important;
+    border: none;
+  }
+
+  
+  .neu-card-light-hover {
+    transition: all 0.3s ease;
+  }
+  .neu-card-light-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      10px 10px 20px rgba(0, 0, 0, 0.2), 
+      -4px -4px 12px rgba(255, 255, 255, 1), 
+      inset 1px 1px 1px rgba(255, 255, 255, 0.9);
+  }
+
+  .bg-white-paper {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.14'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 400px 400px;
+  }
+
+.neu-auth-input {
+    background: #0d0d12 !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    box-shadow: 
+      inset 4px 4px 10px rgba(0, 0, 0, 0.6),
+      inset -1px -1px 4px rgba(255, 255, 255, 0.02) !important;
+    transition: box-shadow 0.2s ease;
+  }
+  .neu-auth-input:hover {
+    box-shadow: 
+      4px 4px 12px rgba(0, 0, 0, 0.5),
+      -2px -2px 8px rgba(255, 255, 255, 0.03) !important;
+  }
+  .neu-auth-input:focus {
+    box-shadow: 
+      inset 4px 4px 10px rgba(0, 0, 0, 0.6),
+      inset -1px -1px 4px rgba(255, 255, 255, 0.02),
+      0 0 0 2px hsl(var(--primary) / 0.3) !important;
+  }
+
+  /* Auth form skeumorphic primary button */
+  .neu-auth-btn {
+    box-shadow: 
+      inset 3px 3px 8px rgba(0, 0, 0, 0.35),
+      inset -1px -1px 4px rgba(255, 255, 255, 0.1) !important;
+    transition: box-shadow 0.2s ease;
+  }
+  .neu-auth-btn:hover {
+    box-shadow: 
+      4px 4px 14px rgba(0, 0, 0, 0.5),
+      -2px -2px 10px rgba(255, 255, 255, 0.08) !important;
+  }
+  .neu-auth-btn:active {
+    box-shadow: 
+      inset 4px 4px 12px rgba(0, 0, 0, 0.5),
+      inset -2px -2px 6px rgba(255, 255, 255, 0.05) !important;
+  }
+
+  /* Auth form skeumorphic WhatsApp button */
+  .neu-auth-whatsapp-btn {
+    box-shadow: 
+      inset 3px 3px 8px rgba(0, 0, 0, 0.3),
+      inset -1px -1px 4px rgba(255, 255, 255, 0.12) !important;
+    transition: box-shadow 0.2s ease;
+  }
+  .neu-auth-whatsapp-btn:hover {
+    box-shadow: 
+      4px 4px 14px rgba(0, 0, 0, 0.4),
+      -2px -2px 10px rgba(255, 255, 255, 0.1) !important;
+  }
+  .neu-auth-whatsapp-btn:active {
+    box-shadow: 
+      inset 4px 4px 12px rgba(0, 0, 0, 0.45),
+      inset -2px -2px 6px rgba(255, 255, 255, 0.08) !important;
+  }
+}
+
+/* Light mode auth form skeumorphic (subtle inner shadow) */
+.neu-auth-btn-light {
+  box-shadow: 
+    inset 2px 2px 6px rgba(0, 0, 0, 0.15),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.5) !important;
+}
+.neu-auth-btn-light:hover {
+  box-shadow: 
+    4px 4px 14px rgba(0, 0, 0, 0.25),
+    -2px -2px 10px rgba(255, 255, 255, 0.8) !important;
+}
+.neu-auth-btn-light:active {
+  box-shadow: 
+    inset 3px 3px 8px rgba(0, 0, 0, 0.25),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.4) !important;
+}
+.neu-auth-input-light {
+  background: #f5f5f7 !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 
+    inset 2px 2px 6px rgba(0, 0, 0, 0.12),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.8) !important;
+}
+.neu-auth-input-light:hover {
+  box-shadow: 
+    4px 4px 12px rgba(0, 0, 0, 0.2),
+    -2px -2px 8px rgba(255, 255, 255, 0.9) !important;
+}
+.neu-auth-input-light:focus {
+  box-shadow: 
+    inset 2px 2px 6px rgba(0, 0, 0, 0.12),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.8),
+    0 0 0 2px hsl(var(--primary) / 0.3) !important;
+}
+
+/* Light mode auth buttons - subtle skeumorphic inner shadow */
+:root:not(.dark) .neu-auth-btn {
+  box-shadow: 
+    inset 2px 2px 6px rgba(0, 0, 0, 0.15),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.5) !important;
+}
+:root:not(.dark) .neu-auth-btn:hover {
+  box-shadow: 
+    4px 4px 14px rgba(0, 0, 0, 0.25),
+    -2px -2px 10px rgba(255, 255, 255, 0.8) !important;
+}
+:root:not(.dark) .neu-auth-btn:active {
+  box-shadow: 
+    inset 3px 3px 8px rgba(0, 0, 0, 0.25),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.4) !important;
+}
+:root:not(.dark) .neu-auth-whatsapp-btn {
+  box-shadow: 
+    inset 2px 2px 6px rgba(0, 0, 0, 0.2),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.4) !important;
+}
+:root:not(.dark) .neu-auth-whatsapp-btn:hover {
+  box-shadow: 
+    4px 4px 14px rgba(0, 0, 0, 0.3),
+    -2px -2px 10px rgba(255, 255, 255, 0.7) !important;
+}
+:root:not(.dark) .neu-auth-whatsapp-btn:active {
+  box-shadow: 
+    inset 3px 3px 8px rgba(0, 0, 0, 0.35),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.3) !important;
 }
 
 /* Custom scrollbar styles - Hide scrollbars on non-Mac browsers while maintaining Mac-style scrollbars */
@@ -383,7 +779,7 @@
   background-color: rgba(255, 255, 255, 0.75) !important;
   border-color: #e2e8f0 !important;
   border-width: 1px !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
   transition: border-color 0.2s, box-shadow 0.2s !important;
   backdrop-filter: blur(10px) !important;
 }
@@ -406,7 +802,7 @@
 .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-primary {
   background-color: #3e63dd !important;
   color: white !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
   border-radius: 12px 12px 0 12px !important;
   margin-left: auto !important;
   max-width: 85% !important;
@@ -416,7 +812,7 @@
 .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-card {
   background-color: #f2f4f7 !important;
   color: #1a202c !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
   border-radius: 12px 12px 12px 0 !important;
   margin-right: auto !important;
   max-width: 85% !important;
@@ -511,9 +907,9 @@
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
 }
 
-/* Mejoras para los botones */
+/* Mejoras para los botones - avoid transition-all to prevent hover jumps */
 button.rounded-full, button.rounded-xl {
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   box-shadow: none;
   border: none;
 }
@@ -1195,4 +1591,86 @@ html.safari .chat-input-container[style*="fixed"] {
 
 .dark .sidebar-light-bg {
   background-color: hsl(var(--background) / 80%) !important;
+}
+
+/* Floating bubble animations for empty states */
+@keyframes float-slow {
+  0% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(60px, -80px) scale(1.1); }
+  50% { transform: translate(-40px, -120px) scale(0.9); }
+  75% { transform: translate(-80px, -40px) scale(1.05); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes float-medium {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-70px, 100px) scale(1.15); }
+  66% { transform: translate(50px, -60px) scale(0.85); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes float-fast {
+  0% { transform: translate(0, 0) scale(1); }
+  20% { transform: translate(-60px, -50px) scale(1.2); }
+  40% { transform: translate(80px, -100px) scale(0.8); }
+  60% { transform: translate(100px, 30px) scale(1.1); }
+  80% { transform: translate(-20px, -140px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes float-reverse {
+  0% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-90px, 70px) scale(0.85); }
+  50% { transform: translate(60px, 130px) scale(1.2); }
+  75% { transform: translate(120px, 40px) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.animate-float-slow {
+  animation: float-slow 20s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 18s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 16s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 22s ease-in-out infinite;
+}
+
+/* WhatsApp Button Style */
+.whatsapp-btn {
+  background-color: #25D366 !important;
+  color: white !important;
+  border: none !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.whatsapp-btn:hover {
+  background-color: #128C7E !important;
+  color: white !important;
+}
+
+/* Tab label: hidden on mobile, visible on desktop */
+.tab-label {
+  display: none;
+}
+@media (min-width: 768px) {
+  .tab-label {
+    display: inline;
+  }
+}
+
+/* Tab badge: hidden on mobile, visible on desktop */
+.tab-badge {
+  display: none;
+}
+@media (min-width: 768px) {
+  .tab-badge {
+    display: flex;
+  }
 }

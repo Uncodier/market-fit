@@ -33,7 +33,7 @@ export function RegionalRestrictionsSection({
   const form = useFormContext<SiteFormValues>()
 
   return (
-    <div className="border border-border rounded-lg p-4 bg-muted/5 dark:bg-muted/10">
+    <div className="border dark:border-white/5 border-black/5 rounded-lg p-4 bg-muted/5 dark:bg-muted/10">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-muted-foreground" />

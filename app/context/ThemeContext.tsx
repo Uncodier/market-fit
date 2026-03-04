@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 
 export type Theme = "dark" | "light" | "system"
 
@@ -54,6 +55,8 @@ export function ThemeProvider({
   storageKey = "theme",
   ...props
 }: ThemeProviderProps) {
+  const pathname = usePathname()
+  const isAuthRoute = pathname?.startsWith('/auth')
   const [theme, setTheme] = useState<Theme>(defaultTheme)
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false)
 
@@ -65,6 +68,11 @@ export function ThemeProvider({
   }, [storageKey])
 
   useEffect(() => {
+    // if (isAuthRoute) {
+    //   applyTheme("dark", setIsDarkMode)
+    //   return
+    // }
+
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
@@ -75,10 +83,11 @@ export function ThemeProvider({
     }
 
     applyTheme(theme, setIsDarkMode);
-  }, [theme])
+  }, [theme, isAuthRoute])
 
   // Add listener for system theme changes
   useEffect(() => {
+    // if (isAuthRoute) return;
     if (theme !== "system") return;
     
     // This handler will update the theme when system preference changes
@@ -93,7 +102,7 @@ export function ThemeProvider({
     return () => {
       mediaQuery.removeEventListener("change", handleSystemThemeChange);
     };
-  }, [theme]);
+  }, [theme, isAuthRoute]);
 
   // Toggle between dark and light mode
   const toggleTheme = () => {

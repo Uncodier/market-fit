@@ -8,12 +8,6 @@ export function initApp(): void {
   // Initialize logger system
   initLogger();
   
-  // Log app initialization (only in debug mode)
-  if (config.isDebug()) {
-    console.log('🚀 Market Fit App initialized');
-    console.log('🔧 Environment:', config.getConfig().environment);
-    console.log('📝 Debug Mode:', config.isDebug() ? 'ENABLED' : 'DISABLED');
-  }
 }
 
 // Auto-initialize when this module is imported

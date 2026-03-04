@@ -171,7 +171,7 @@ export function SimpleAgentCard({
         
         {/* Activities section inside the card */}
         {showActivities && agent.activities && agent.activities.length > 0 && (
-          <div className="border-t border-border">
+          <div className="border-t dark:border-white/5 border-black/5">
             <AgentActivityList
               agent={agent}
               onExecute={onExecuteActivity || (() => {})}

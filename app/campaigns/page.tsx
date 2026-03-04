@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { Target, Filter } from "@/app/components/ui/icons"
+import { Target, Filter, LayoutGrid, PlayCircle, Clock, CheckCircle2 } from "@/app/components/ui/icons"
 import { KanbanColumn } from "@/app/components/campaigns/kanban-column"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -507,7 +507,7 @@ function ControlCenterSkeleton() {
                   {[1, 2, 3].map((cardIndex) => (
                     <Card 
                       key={cardIndex} 
-                      className="mb-3 transition-all duration-200 hover:shadow-md hover:translate-y-[-2px] cursor-pointer"
+                      className="mb-3 transition-shadow duration-200 hover:shadow-md cursor-pointer"
                     >
                       <div className="p-3 pb-0">
                         <div className="text-sm font-medium flex items-center justify-between">
@@ -693,10 +693,22 @@ export default function CampaignsPage() {
             <div className="flex items-center gap-4">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full">All</TabsTrigger>
-                  <TabsTrigger value="active" className="text-xs rounded-full">Active</TabsTrigger>
-                  <TabsTrigger value="pending" className="text-xs rounded-full">Pending</TabsTrigger>
-                  <TabsTrigger value="completed" className="text-xs rounded-full">Completed</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All">
+                    <LayoutGrid size={13} />
+                    <span className="tab-label">All</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Active">
+                    <PlayCircle size={13} />
+                    <span className="tab-label">Active</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Pending">
+                    <Clock size={13} />
+                    <span className="tab-label">Pending</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Completed">
+                    <CheckCircle2 size={13} />
+                    <span className="tab-label">Completed</span>
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             <SearchInput

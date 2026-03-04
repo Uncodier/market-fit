@@ -14,7 +14,8 @@ import {
   Rocket,
   AppWindow as MonitorSmartphone,
   PenTool,
-  Building as Store
+  Building as   Store,
+  Home
 } from '@/app/components/ui/icons';
 
 export const useCases = [
@@ -84,12 +85,62 @@ export const useCases = [
 
   // Startups
   {
-    id: 'startups',
-    name: 'Startups',
+    id: 'startups-general',
+    name: 'Startups (General)',
     category: 'Startups',
     categories: ['All', 'Startups', 'B2B', 'B2C'],
     description: 'Find Product-Market Fit faster and scale your outbound to raise your next round.',
     icon: <Rocket className="w-8 h-8 text-orange-400" />,
+    color: 'orange',
+    status: 'active'
+  },
+  {
+    id: 'startups-fintech',
+    name: 'Fintechs',
+    category: 'Startups',
+    categories: ['All', 'Startups', 'B2B', 'B2C'],
+    description: 'Scale user acquisition for financial products, automate onboarding, and improve customer support.',
+    icon: <Briefcase className="w-8 h-8 text-orange-400" />,
+    color: 'orange',
+    status: 'active'
+  },
+  {
+    id: 'startups-healthtech',
+    name: 'Healthtechs',
+    category: 'Startups',
+    categories: ['All', 'Startups', 'B2B', 'B2C'],
+    description: 'Connect with healthcare providers and patients securely to drive adoption of digital health solutions.',
+    icon: <Stethoscope className="w-8 h-8 text-orange-400" />,
+    color: 'orange',
+    status: 'active'
+  },
+  {
+    id: 'startups-edtech',
+    name: 'Edtechs',
+    category: 'Startups',
+    categories: ['All', 'Startups', 'B2B', 'B2C'],
+    description: 'Reach educational institutions and students to grow your user base and improve learning outcomes.',
+    icon: <GraduationCap className="w-8 h-8 text-orange-400" />,
+    color: 'orange',
+    status: 'active'
+  },
+  {
+    id: 'startups-legaltech',
+    name: 'Legaltechs',
+    category: 'Startups',
+    categories: ['All', 'Startups', 'B2B'],
+    description: 'Automate outreach to law firms and corporate legal departments to showcase your tech solutions.',
+    icon: <Building className="w-8 h-8 text-orange-400" />,
+    color: 'orange',
+    status: 'active'
+  },
+  {
+    id: 'startups-proptech',
+    name: 'Proptechs',
+    category: 'Startups',
+    categories: ['All', 'Startups', 'B2B', 'B2C'],
+    description: 'Engage real estate agencies, property managers, and buyers to accelerate transactions.',
+    icon: <Home className="w-8 h-8 text-orange-400" />,
     color: 'orange',
     status: 'active'
   },

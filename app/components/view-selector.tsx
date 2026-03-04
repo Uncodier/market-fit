@@ -12,7 +12,12 @@ interface ViewSelectorProps {
 
 export function ViewSelector({ currentView, onViewChange, showCalendar = false }: ViewSelectorProps) {
   return (
-    <ToggleGroup type="single" value={currentView} onValueChange={(value: string) => value && onViewChange(value as ViewType)}>
+    <ToggleGroup
+      type="single"
+      value={currentView}
+      onValueChange={(value: string) => value && onViewChange(value as ViewType)}
+      className="hidden md:flex"
+    >
       <ToggleGroupItem value="table" aria-label="Toggle table view" className="px-2">
         <TableRows className="h-4 w-4" />
       </ToggleGroupItem>

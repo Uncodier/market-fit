@@ -241,7 +241,7 @@ export function CommandsView({ searchQuery = "" }: CommandsViewProps) {
             {loading && isInitialLoad ? (
               <div className="space-y-2" data-testid="loading-skeleton">
                 {Array.from({ length: 5 }).map((_, index) => (
-                  <Card key={index} className="border border-border overflow-hidden">
+                  <Card key={index} className="border dark:border-white/5 border-black/5 overflow-hidden">
                     <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
                       <div className="flex-1 p-4 w-full overflow-x-auto">
                         <div className="flex items-start gap-4 min-w-[1070px]">
@@ -303,7 +303,7 @@ export function CommandsView({ searchQuery = "" }: CommandsViewProps) {
                 {filteredCommands.map((command) => (
                   <Card 
                     key={command.id} 
-                    className="border border-border hover:border-foreground/20 transition-colors overflow-hidden cursor-pointer"
+                    className="border dark:border-white/5 border-black/5 hover:border-foreground/20 transition-colors overflow-hidden cursor-pointer"
                     onClick={() => handleNavigateToCommand(command.agent_id || "", command.id)}
                   >
                     <div className="flex items-center hover:bg-muted/50 transition-colors w-full">

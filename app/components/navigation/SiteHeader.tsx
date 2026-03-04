@@ -169,7 +169,7 @@ export function SiteHeader() {
           
           {/* Mobile Menu Toggle */}
           <button 
-            className="lg:hidden p-2 -mr-2 dark:text-white text-black transition-colors"
+            className="lg:!hidden p-2 -mr-2 dark:text-white text-black transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
@@ -181,80 +181,80 @@ export function SiteHeader() {
       </header>
 
       {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-white/95 dark:bg-[#030303]/95 backdrop-blur-xl z-[60] lg:hidden animate-in fade-in duration-300 ease-out flex flex-col pt-[80px] pb-8 px-6 overflow-y-auto"
-        >
-          <div className="flex flex-col w-full h-full">
-            <div className="flex-1 flex flex-col">
-              {navItems.map((section) => (
-                <div key={section.title} className="border-b dark:border-white/10 border-black/10">
-                  <button 
-                    className="flex items-center justify-between w-full py-5 text-lg font-medium dark:text-white text-black font-inter"
-                    onClick={() => setOpenMobileSection(openMobileSection === section.title ? null : section.title)}
-                  >
-                    {section.title}
-                    <ChevronDown 
-                      size={20} 
-                      className={`transition-transform duration-300 ${openMobileSection === section.title ? 'rotate-180' : ''}`} 
-                    />
-                  </button>
-                  <div 
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      openMobileSection === section.title ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
-                    }`}
-                  >
-                    <div className="flex flex-col gap-1 pt-1 pb-5 pl-4">
-                      {section.items.map((item, idx) => {
-                        if (item.divider) return <div key={`m-div-${idx}`} className="h-px w-full dark:bg-white/10 bg-black/5 my-3" />;
-                        
-                        return item.isExternal ? (
-                          <a 
-                            key={item.label}
-                            href={item.href} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="text-[17px] py-2.5 dark:text-white/70 text-slate-600 font-inter block w-full"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            {item.label}
-                          </a>
-                        ) : (
-                          <Link 
-                            key={item.label}
-                            href={item.href!} 
-                            className="text-[17px] py-2.5 dark:text-white/70 text-slate-600 font-inter block w-full"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            {item.label}
-                          </Link>
-                        )
-                      })}
-                    </div>
+      <div 
+        className={`fixed inset-0 bg-white dark:bg-[#0a0a0a] z-[60] lg:hidden transition-all duration-300 ease-out flex flex-col pt-[80px] pb-8 overflow-y-auto ${
+          mobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+        }`}
+      >
+        <div className="flex flex-col w-full h-full px-6">
+          <div className="flex-1 flex flex-col gap-1">
+            {navItems.map((section) => (
+              <div key={section.title} className="flex flex-col">
+                <button 
+                  className="flex items-center justify-between w-full py-4 text-[19px] font-semibold dark:text-white text-slate-900 font-inter"
+                  onClick={() => setOpenMobileSection(openMobileSection === section.title ? null : section.title)}
+                >
+                  {section.title}
+                  <ChevronDown 
+                    size={20} 
+                    className={`transition-transform duration-300 text-slate-400 ${openMobileSection === section.title ? 'rotate-180' : ''}`} 
+                  />
+                </button>
+                <div 
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    openMobileSection === section.title ? 'max-h-[800px] opacity-100 mb-2' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="flex flex-col gap-1 pt-2 pb-4 px-5 bg-slate-50 dark:bg-white/[0.02] rounded-2xl">
+                    {section.items.map((item, idx) => {
+                      if (item.divider) return <div key={`m-div-${idx}`} className="h-px w-full dark:bg-white/10 bg-black/5 my-2" />;
+                      
+                      return item.isExternal ? (
+                        <a 
+                          key={item.label}
+                          href={item.href} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-inter block w-full transition-colors"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          {item.label}
+                        </a>
+                      ) : (
+                        <Link 
+                          key={item.label}
+                          href={item.href!} 
+                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-inter block w-full transition-colors"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          {item.label}
+                        </Link>
+                      )
+                    })}
                   </div>
                 </div>
-              ))}
-            </div>
-            
-            <div className="flex flex-col gap-3 mt-10 pt-4">
-              <Link 
-                href="/auth" 
-                className="w-full py-4 text-center text-base font-medium dark:bg-white/10 bg-black/5 dark:text-white text-black rounded-xl hover:opacity-80 transition-opacity font-inter"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t('auth.signInLink') || 'Log in'}
-              </Link>
-              <Link 
-                href="/auth?mode=register" 
-                className="w-full py-4 text-center text-base font-medium bg-black dark:bg-white text-white dark:text-black rounded-xl hover:opacity-90 transition-opacity font-inter shadow-sm"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t('pricing.free.cta') || 'Get Started'}
-              </Link>
-            </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex flex-col gap-3 mt-8 pt-6 border-t dark:border-white/10 border-black/10">
+            <Link 
+              href="/auth" 
+              className="w-full py-3.5 text-center text-[16px] font-semibold dark:bg-white/10 bg-slate-100 dark:text-white text-slate-900 rounded-full hover:bg-slate-200 dark:hover:bg-white/20 transition-all font-inter"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {t('auth.signInLink') || 'Log in'}
+            </Link>
+            <Link 
+              href="/auth?mode=register" 
+              className="w-full py-3.5 text-center text-[16px] font-semibold bg-black dark:bg-white text-white dark:text-black rounded-full hover:opacity-90 transition-opacity font-inter shadow-sm"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {t('pricing.free.cta') || 'Get Started'}
+            </Link>
           </div>
         </div>
-      )}
+      </div>
     </>
   )
 }
