@@ -34,6 +34,11 @@ export function IntegrationDetailClient({ integration }: { integration: any }) {
                     Open Claw
                   </span>
                 )}
+                {integration.isCore && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                    Core
+                  </span>
+                )}
                 {integration.status === 'beta' && (
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
                     Beta

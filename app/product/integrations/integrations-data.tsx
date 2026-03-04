@@ -35,7 +35,8 @@ export const integrations = [
     description: 'Automate email outreach, read incoming messages, and draft responses.',
     icon: <SiGmail className="w-8 h-8 text-[#EA4335]" />,
     status: 'active',
-    isOpenClaw: true
+    isOpenClaw: true,
+    isCore: true
   },
   {
     id: 'linkedin',
@@ -53,7 +54,8 @@ export const integrations = [
     description: 'Engage with customers via WhatsApp Business API seamlessly.',
     icon: <SiWhatsapp className="w-8 h-8 text-[#25D366]" />,
     status: 'active',
-    isOpenClaw: true
+    isOpenClaw: true,
+    isCore: true
   },
   {
     id: 'hubspot',
@@ -80,7 +82,8 @@ export const integrations = [
     description: 'Trigger workflows based on new payments, subscriptions, and invoices.',
     icon: <SiStripe className="w-8 h-8 text-[#008CDD]" />,
     status: 'active',
-    isOpenClaw: true
+    isOpenClaw: true,
+    isCore: true
   },
   {
     id: 'notion',
@@ -107,7 +110,8 @@ export const integrations = [
     description: 'Use GPT models for text generation, analysis, and data extraction.',
     icon: <SiOpenai className="w-8 h-8 dark:text-white text-black" />,
     status: 'active',
-    isOpenClaw: true
+    isOpenClaw: true,
+    isCore: true
   },
   {
     id: 'postgres',
@@ -116,7 +120,8 @@ export const integrations = [
     description: 'Connect directly to your Postgres database to read and write records.',
     icon: <SiPostgresql className="w-8 h-8 text-[#4169E1]" />,
     status: 'active',
-    isOpenClaw: true
+    isOpenClaw: true,
+    isCore: true
   },
   {
     id: 'supabase',
@@ -125,7 +130,8 @@ export const integrations = [
     description: 'Integrate with Supabase auth, database, and storage services.',
     icon: <SiSupabase className="w-8 h-8 text-[#3ECF8E]" />,
     status: 'active',
-    isOpenClaw: true
+    isOpenClaw: true,
+    isCore: true
   },
   {
     id: 'sheets',
@@ -183,7 +189,8 @@ export const moreIntegrations = [
     description: 'Publish posts, read comments, and manage your Facebook page.',
     icon: <SiFacebook className="w-8 h-8 text-[#1877F2]" />,
     status: 'active',
-    isOpenClaw: true
+    isOpenClaw: true,
+    isCore: true
   },
   {
     id: 'x-twitter',
