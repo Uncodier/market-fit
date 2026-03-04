@@ -14,7 +14,7 @@ export const markdownComponents = {
   ),
   h2: ({ node, ...props }: any) => (
     <h2 
-      className="text-xl font-bold mt-5 mb-2.5 border-b border-border pb-1" 
+      className="text-xl font-bold mt-5 mb-2.5 border-b dark:border-white/5 border-black/5 pb-1" 
       {...props} 
     />
   ),
@@ -133,7 +133,7 @@ export const markdownComponents = {
   table: ({ node, ...props }: any) => (
     <div className="overflow-x-auto my-2 w-full">
       <table 
-        className="min-w-full border-collapse border border-border" 
+        className="min-w-full border-collapse border dark:border-white/5 border-black/5" 
         {...props} 
       />
     </div>
@@ -151,19 +151,19 @@ export const markdownComponents = {
   ),
   tr: ({ node, ...props }: any) => (
     <tr 
-      className="border-b border-border" 
+      className="border-b dark:border-white/5 border-black/5" 
       {...props} 
     />
   ),
   th: ({ node, ...props }: any) => (
     <th 
-      className="px-4 py-2 text-left font-semibold border border-border" 
+      className="px-4 py-2 text-left font-semibold border dark:border-white/5 border-black/5" 
       {...props} 
     />
   ),
   td: ({ node, ...props }: any) => (
     <td 
-      className="px-4 py-2 border border-border" 
+      className="px-4 py-2 border dark:border-white/5 border-black/5" 
       {...props} 
     />
   ),
@@ -185,7 +185,7 @@ export const markdownComponents = {
   // Horizontal rule
   hr: ({ node, ...props }: any) => (
     <hr 
-      className="my-4 border-t border-border" 
+      className="my-4 border-t dark:border-white/5 border-black/5" 
       {...props} 
     />
   ),
