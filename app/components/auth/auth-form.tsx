@@ -814,7 +814,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           <Button 
             type="button" 
             className="whatsapp-btn neu-auth-whatsapp-btn w-full font-medium hover:opacity-90 transition-opacity font-inter"
-            onClick={() => window.open('https://wa.me/34600000000', '_blank')}
+            onClick={() => window.open('https://wa.me/15512886610', '_blank')}
           >
           <WhatsApp className="w-4 h-4 mr-2 text-white" />
           {t('auth.whatsappBtn') || 'Use Makinari on WhatsApp'}
