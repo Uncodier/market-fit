@@ -48,7 +48,7 @@ export function ContextLeadItem({ lead, checked, onCheckedChange }: ContextLeadI
     >
       <div className="flex items-center justify-center w-5 h-5 mt-0.5">
         {checked && (
-          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+          <div className="w-5 h-5 bg-primary rounded-full font-sans flex items-center justify-center">
             <Check className="h-3 w-3 text-primary-foreground" />
           </div>
         )}
@@ -95,7 +95,7 @@ export function ContextContentItem({ content, checked, onCheckedChange }: Contex
     >
       <div className="flex items-center justify-center w-5 h-5 mt-0.5">
         {checked && (
-          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+          <div className="w-5 h-5 bg-primary rounded-full font-sans flex items-center justify-center">
             <Check className="h-3 w-3 text-primary-foreground" />
           </div>
         )}
@@ -144,7 +144,7 @@ export function ContextRequirementItem({ requirement, checked, onCheckedChange }
     >
       <div className="flex items-center justify-center w-5 h-5 mt-0.5">
         {checked && (
-          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+          <div className="w-5 h-5 bg-primary rounded-full font-sans flex items-center justify-center">
             <Check className="h-3 w-3 text-primary-foreground" />
           </div>
         )}
@@ -181,7 +181,7 @@ export function ContextTaskItem({ task, checked, onCheckedChange }: ContextTaskI
     >
       <div className="flex items-center justify-center w-5 h-5 mt-0.5">
         {checked && (
-          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+          <div className="w-5 h-5 bg-primary rounded-full font-sans flex items-center justify-center">
             <Check className="h-3 w-3 text-primary-foreground" />
           </div>
         )}
@@ -218,7 +218,7 @@ export function ContextCampaignItem({ campaign, checked, onCheckedChange }: Cont
     >
       <div className="flex items-center justify-center w-5 h-5 mt-0.5">
         {checked && (
-          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+          <div className="w-5 h-5 bg-primary rounded-full font-sans flex items-center justify-center">
             <Check className="h-3 w-3 text-primary-foreground" />
           </div>
         )}

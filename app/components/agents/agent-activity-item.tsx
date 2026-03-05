@@ -111,7 +111,7 @@ export function AgentActivityItem({
             onClick={() => isClickable && !isExecuting ? onExecute(activity) : undefined}
             disabled={!isClickable || isExecuting}
             className={cn(
-              "h-7 w-7 items-center justify-center rounded-full shadow-sm transition-all duration-200",
+              "h-7 w-7 items-center justify-center rounded-full font-inter shadow-sm transition-all duration-200",
               (isExecuting || isSuccessful || hasError) ? "flex" : "hidden group-hover:flex",
               getButtonClassName()
             )}

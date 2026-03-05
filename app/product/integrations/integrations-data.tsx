@@ -5,7 +5,8 @@ import {
   SiAirtable, SiOpenai, SiPostgresql, SiSupabase, 
   SiGooglesheets, SiZendesk, SiShopify, SiMailchimp, SiDiscord,
   SiFacebook, SiX, SiInstagram, SiTiktok, SiThreads,
-  SiBluesky, SiYoutube, SiPinterest, SiGoogle
+  SiBluesky, SiYoutube, SiPinterest, SiGoogle,
+  SiTemporal, SiGooglegemini, SiTwilio
 } from 'react-icons/si';
 
 export const categories = [
@@ -114,11 +115,40 @@ export const integrations = [
     isCore: true
   },
   {
+    id: 'gemini',
+    name: 'Gemini',
+    category: 'AI & ML',
+    description: 'Integrate Google Gemini models for advanced reasoning and content generation.',
+    icon: <SiGooglegemini className="w-8 h-8 text-[#8E75B2] dark:text-[#A8C7FA]" />,
+    status: 'active',
+    isOpenClaw: true,
+    isCore: true
+  },
+  {
+    id: 'temporal',
+    name: 'Temporal',
+    category: 'Productivity',
+    description: 'Durable execution for your distributed systems and scalable workflows.',
+    icon: <SiTemporal className="w-8 h-8 dark:text-white text-black" />,
+    status: 'active',
+    isCore: true
+  },
+  {
     id: 'postgres',
     name: 'PostgreSQL',
     category: 'Database',
     description: 'Connect directly to your Postgres database to read and write records.',
     icon: <SiPostgresql className="w-8 h-8 text-[#4169E1]" />,
+    status: 'active',
+    isOpenClaw: true,
+    isCore: true
+  },
+  {
+    id: 'twilio',
+    name: 'Twilio',
+    category: 'Communication',
+    description: 'Automate SMS, voice calls, and messaging workflows at scale.',
+    icon: <SiTwilio className="w-8 h-8 text-[#F22F46]" />,
     status: 'active',
     isOpenClaw: true,
     isCore: true

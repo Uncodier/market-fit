@@ -709,7 +709,7 @@ export function CreateSiteForm({ onSubmit, isSaving }: CreateSiteFormProps) {
               {globalRestrictionsEnabled && (
                 <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="flex items-start gap-2">
-                    <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div className="h-2 w-2 bg-blue-500 rounded-full font-inter mt-2"></div>
                     <div className="space-y-2">
                       <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
                         Regional Restrictions Guidelines

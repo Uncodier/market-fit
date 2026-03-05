@@ -245,7 +245,7 @@ export function TrafficPieChart({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[200px] animate-pulse">
-        <div className="h-32 w-32 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+        <div className="h-32 w-32 rounded-full font-inter bg-gray-200 dark:bg-gray-700"></div>
       </div>
     );
   }
@@ -382,7 +382,7 @@ export function TrafficPieChart({
             onMouseLeave={() => setHoveredIndex(null)}
           >
             <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
+              className="w-2 h-2 rounded-full font-inter flex-shrink-0"
               style={{ backgroundColor: item.color }}
             />
             <div className="flex-1 min-w-0">

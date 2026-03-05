@@ -3,6 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { features } from "../features-data"
 import { ArrowRight } from "@/app/components/ui/icons"
 
@@ -15,6 +16,7 @@ export function FeatureGrid() {
 }
 
 function FeatureGridContent() {
+  const { t } = useLocalization();
   const searchParams = useSearchParams()
   const stageParam = searchParams.get('stage')
   
@@ -47,10 +49,10 @@ function FeatureGridContent() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
         <div>
           <h2 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">
-            Explore All Features
+            {t('features_page.grid.title') || 'Explore All Features'}
           </h2>
           <p className="dark:text-white/50 text-slate-500 text-lg max-w-xl">
-            Browse through our complete toolkit designed to automate your entire revenue operations process.
+            {t('features_page.grid.subtitle') || 'Browse through our complete toolkit designed to automate your entire revenue operations process.'}
           </p>
         </div>
         
@@ -64,7 +66,7 @@ function FeatureGridContent() {
           <input
             type="text"
             className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#0a0a0c] border border-black/10 dark:border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 dark:text-white transition-all shadow-sm"
-            placeholder="Search features..."
+            placeholder={t('features_page.grid.search_placeholder') || "Search features..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -85,7 +87,7 @@ function FeatureGridContent() {
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5"
                 }`}
               >
-                {stage === 'All' ? 'All Features' : stage}
+                {stage === 'All' ? (t('features_page.grid.all_features') || 'All Features') : (t(`features_page.grid.stage_${stage.toLowerCase()}`) || stage)}
               </button>
             ))}
           </div>
@@ -105,17 +107,17 @@ function FeatureGridContent() {
                     className={`group relative p-6 rounded-2xl dark:bg-[#0f0f13] bg-white border dark:border-white/10 border-black/10 transition-all duration-300 flex flex-col h-full cursor-pointer hover:shadow-lg ${colorClass}`}
                   >
                     <div className="flex justify-between items-start mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-black/50 border dark:border-white/5 border-black/5 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+                      <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-slate-50 dark:bg-black/50 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
                         {React.cloneElement(feature.icon as React.ReactElement, { className: `w-6 h-6 ${colorClass.split(' ')[0]}` })}
                       </div>
                       {feature.status === 'beta' && (
                         <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
-                          Beta
+                          {t('features_page.grid.beta') || 'Beta'}
                         </span>
                       )}
                       {feature.status === 'coming_soon' && (
                         <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border border-slate-200 dark:border-white/10">
-                          Soon
+                          {t('features_page.grid.soon') || 'Soon'}
                         </span>
                       )}
                     </div>
@@ -124,7 +126,7 @@ function FeatureGridContent() {
                       {feature.name}
                     </h3>
                     <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-3 flex items-center gap-1.5">
-                      <span className="uppercase tracking-wider">{feature.stage}</span>
+                      <span className="uppercase tracking-wider">{t(`features_page.grid.stage_${feature.stage.toLowerCase()}`) || feature.stage}</span>
                       <span>•</span>
                       <span>{feature.category}</span>
                     </div>
@@ -134,7 +136,7 @@ function FeatureGridContent() {
                     </p>
                     
                     <div className="mt-6 flex items-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 duration-300">
-                      Learn more
+                      {t('features_page.grid.learn_more') || 'Learn more'}
                       <ArrowRight className="w-4 h-4 ml-1" />
                     </div>
                   </Link>
@@ -143,15 +145,15 @@ function FeatureGridContent() {
             </div>
           ) : (
             <div className="w-full py-20 flex flex-col items-center justify-center text-center border border-dashed dark:border-white/10 border-black/10 rounded-2xl">
-              <div className="w-16 h-16 rounded-full dark:bg-white/5 bg-slate-100 flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full font-inter font-bold dark:bg-white/5 bg-slate-100 flex items-center justify-center mb-4">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-slate-400">
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold dark:text-white text-slate-900 mb-2">No features found</h3>
+              <h3 className="text-lg font-bold dark:text-white text-slate-900 mb-2">{t('features_page.grid.no_features') || 'No features found'}</h3>
               <p className="dark:text-slate-400 text-slate-500 max-w-sm">
-                We couldn't find any features matching "{searchQuery}". Try adjusting your filters or search term.
+                {t('features_page.grid.no_features_desc_part1') || "We couldn't find any features matching"} "{searchQuery}". {t('features_page.grid.no_features_desc_part2') || "Try adjusting your filters or search term."}
               </p>
             </div>
           )}

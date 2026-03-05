@@ -212,7 +212,7 @@ export async function middleware(req: NextRequest) {
       error: userError
     } = await supabase.auth.getUser()
 
-    if (userError) {
+    if (userError && userError.message !== 'Auth session missing!') {
       console.error('Middleware auth error:', userError.message)
     }
 
@@ -222,12 +222,13 @@ export async function middleware(req: NextRequest) {
     // Fallback: si getUser falló (edge fetch), usa el usuario de la sesión
     const effectiveUser = user ?? session?.user ?? null
 
-    console.log('Middleware check:', {
-      path,
-      hasSession: !!session,
-      hasUser: !!effectiveUser,
-      userId: effectiveUser?.id?.substring(0, 8) + '...' || 'undefined...'
-    })
+    // Solo loguear en desarrollo y no para la ruta raíz si no hay sesión
+    // console.log('Middleware check:', {
+    //   path,
+    //   hasSession: !!session,
+    //   hasUser: !!effectiveUser,
+    //   userId: effectiveUser?.id?.substring(0, 8) + '...' || 'undefined...'
+    // })
 
     // Obtener la ruta actual
     // Si es una ruta de autenticación

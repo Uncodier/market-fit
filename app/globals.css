@@ -8,8 +8,8 @@
     scrollbar-gutter: stable;
   }
 
-  /* Prioritize legibility for body text (p, span) */
-  p, span {
+  /* Prioritize legibility for body text (p, span, a, button) */
+  p, span, a, button, input, textarea, select, li, label, td, th, [role="button"], [role="link"] {
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
 

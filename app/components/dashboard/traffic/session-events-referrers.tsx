@@ -115,7 +115,7 @@ export function SessionEventsReferrers({
                   </div>
                   <div className="justify-self-end">
                     <div 
-                      className="h-6 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse"
+                      className="h-6 bg-slate-200 dark:bg-slate-700 rounded-full font-inter animate-pulse"
                       style={{ 
                         width: `${w2}px`,
                         animationDelay: `${i * 0.1 + 0.05}s`

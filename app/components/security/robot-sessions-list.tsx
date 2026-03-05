@@ -192,7 +192,7 @@ function RobotSessionRow({
                 </div>
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <div className="w-2 h-2 rounded-full font-sans font-bold bg-green-500"></div>
                     <div className="flex-1 flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Created</span>
                       <span className="text-sm font-medium">{formatDateTime(session.created_at)}</span>
@@ -200,7 +200,7 @@ function RobotSessionRow({
                   </div>
                   {session.last_used_at && (
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <div className="w-2 h-2 rounded-full font-sans font-bold bg-blue-500"></div>
                       <div className="flex-1 flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Last used</span>
                         <span className="text-sm font-medium">{formatDateTime(session.last_used_at)}</span>
@@ -209,7 +209,7 @@ function RobotSessionRow({
                   )}
                   {session.expires_at && (
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                      <div className="w-2 h-2 rounded-full font-sans font-bold bg-orange-500"></div>
                       <div className="flex-1 flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Expires</span>
                         <span className="text-sm font-medium">{formatDateTime(session.expires_at)}</span>

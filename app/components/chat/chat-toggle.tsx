@@ -116,7 +116,7 @@ export function ChatToggle({
         variant="ghost"
         size="icon"
         onClick={handleToggleClick}
-        className="h-8 w-8 rounded-full bg-background transition-all duration-300 ease-in-out hover:bg-muted"
+        className="h-8 w-8 rounded-full font-sans font-bold bg-background transition-all duration-300 ease-in-out hover:bg-muted"
         aria-label={isCollapsed ? "Show conversations" : "Hide conversations"}
       >
         {isCollapsed ? (
@@ -133,7 +133,7 @@ export function ChatToggle({
               variant="ghost"
               size="icon"
               className={cn(
-                "h-8 w-8 rounded-full bg-background transition-all duration-300 ease-in-out",
+                "h-8 w-8 rounded-full font-sans font-bold bg-background transition-all duration-300 ease-in-out",
                 hasAvailableActions ? "hover:bg-muted cursor-pointer" : "opacity-50 cursor-not-allowed"
               )}
               aria-label="New conversation options"

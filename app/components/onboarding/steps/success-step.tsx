@@ -30,7 +30,7 @@ export function SuccessStep({ projectName, onNavigateToSettings, onNavigateToDas
       {/* Success Header */}
       <div className="text-center space-y-4">
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-green-500 rounded-full font-inter flex items-center justify-center">
             <Check className="h-8 w-8 text-white" />
           </div>
         </div>

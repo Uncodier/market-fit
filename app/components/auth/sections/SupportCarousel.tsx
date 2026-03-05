@@ -19,6 +19,16 @@ export function SupportCarousel() {
 
   return (
     <section className="relative w-full py-24 border-t dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-[#ffffff] overflow-hidden">
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes scroll-logos {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(calc(-100% / 4), 0, 0); }
+        }
+        .animate-scroll-logos { 
+          animation: scroll-logos 30s linear infinite; 
+          will-change: transform;
+        }
+      `}} />
       <div className="max-w-7xl mx-auto px-6 lg:px-12 mb-12 flex flex-col items-center text-center">
         <h3 className="text-xl md:text-2xl font-semibold dark:text-white/80 text-slate-700 tracking-tight">
           {t('support.title') || 'Backed by Top Accelerators & Tech Giants'}
@@ -29,8 +39,8 @@ export function SupportCarousel() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
-        <div className="relative w-full overflow-hidden flex items-center py-4 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
-          <div className="flex w-max animate-scroll-logos items-center gap-16 md:gap-24 pr-16 md:pr-24 hover:[animation-play-state:paused]">
+        <div className="relative w-full overflow-hidden flex items-center py-4 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] group">
+          <div className="flex w-max animate-scroll-logos items-center gap-16 md:gap-24 pr-16 md:pr-24 group-hover:[animation-play-state:paused]">
             {duplicatedLogos.map((logo, idx) => (
               <div
                 key={idx}
@@ -48,16 +58,6 @@ export function SupportCarousel() {
           </div>
         </div>
       </div>
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes scroll-logos {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(calc(-100% / 4)); }
-        }
-        .animate-scroll-logos { 
-          animation: scroll-logos 30s linear infinite; 
-        }
-      `}} />
     </section>
   );
 }

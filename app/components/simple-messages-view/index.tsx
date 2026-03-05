@@ -518,17 +518,17 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       {/* Floating background orbs - shown when chat is empty */}
       {isEmpty && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-500/8 rounded-full blur-2xl animate-float-slow"></div>
-          <div className="absolute top-1/3 left-1/3 w-56 h-56 bg-indigo-500/10 rounded-full blur-2xl animate-float-medium" style={{ animationDelay: '7s' }}></div>
-          <div className="absolute bottom-1/3 right-1/3 w-60 h-60 bg-purple-500/9 rounded-full blur-2xl animate-float-reverse" style={{ animationDelay: '9s' }}></div>
-          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 w-48 h-48 bg-violet-500/15 rounded-full blur-xl animate-float-slow"></div>
-          <div className="absolute bottom-1/3 right-1/2 transform translate-x-1/2 w-44 h-44 bg-indigo-500/12 rounded-full blur-xl animate-float-medium" style={{ animationDelay: '3s' }}></div>
-          <div className="absolute top-24 left-32 w-36 h-36 bg-pink-500/15 rounded-full blur-xl animate-float-fast" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute bottom-24 right-40 w-32 h-32 bg-emerald-500/12 rounded-full blur-xl animate-float-reverse" style={{ animationDelay: '4s' }}></div>
-          <div className="absolute top-1/2 left-24 w-28 h-28 bg-cyan-500/10 rounded-full blur-xl animate-float-slow" style={{ animationDelay: '6s' }}></div>
-          <div className="absolute bottom-1/4 right-28 w-30 h-30 bg-purple-500/15 rounded-full blur-xl animate-float-medium" style={{ animationDelay: '8s' }}></div>
-          <div className="absolute top-1/4 right-1/3 w-40 h-40 bg-rose-500/10 rounded-full blur-xl animate-float-fast" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute bottom-1/2 left-1/4 w-38 h-38 bg-teal-500/12 rounded-full blur-xl animate-float-reverse" style={{ animationDelay: '5s' }}></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-500/8 rounded-full font-inter blur-2xl animate-float-slow"></div>
+          <div className="absolute top-1/3 left-1/3 w-56 h-56 bg-indigo-500/10 rounded-full font-inter blur-2xl animate-float-medium" style={{ animationDelay: '7s' }}></div>
+          <div className="absolute bottom-1/3 right-1/3 w-60 h-60 bg-purple-500/9 rounded-full font-inter blur-2xl animate-float-reverse" style={{ animationDelay: '9s' }}></div>
+          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 w-48 h-48 bg-violet-500/15 rounded-full font-inter blur-xl animate-float-slow"></div>
+          <div className="absolute bottom-1/3 right-1/2 transform translate-x-1/2 w-44 h-44 bg-indigo-500/12 rounded-full font-inter blur-xl animate-float-medium" style={{ animationDelay: '3s' }}></div>
+          <div className="absolute top-24 left-32 w-36 h-36 bg-pink-500/15 rounded-full font-inter blur-xl animate-float-fast" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-24 right-40 w-32 h-32 bg-emerald-500/12 rounded-full font-inter blur-xl animate-float-reverse" style={{ animationDelay: '4s' }}></div>
+          <div className="absolute top-1/2 left-24 w-28 h-28 bg-cyan-500/10 rounded-full font-inter blur-xl animate-float-slow" style={{ animationDelay: '6s' }}></div>
+          <div className="absolute bottom-1/4 right-28 w-30 h-30 bg-purple-500/15 rounded-full font-inter blur-xl animate-float-medium" style={{ animationDelay: '8s' }}></div>
+          <div className="absolute top-1/4 right-1/3 w-40 h-40 bg-rose-500/10 rounded-full font-inter blur-xl animate-float-fast" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute bottom-1/2 left-1/4 w-38 h-38 bg-teal-500/12 rounded-full font-inter blur-xl animate-float-reverse" style={{ animationDelay: '5s' }}></div>
         </div>
       )}
       {/* Messages list */}

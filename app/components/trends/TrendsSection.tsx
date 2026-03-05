@@ -543,7 +543,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
           ) : (
             <CardContent className="pt-0">
               <div className="flex flex-col items-center justify-center py-8">
-                <div className="bg-muted/40 rounded-full flex items-center justify-center mb-4" style={{ width: '60px', height: '60px' }}>
+                <div className="bg-muted/40 rounded-full font-inter flex items-center justify-center mb-4" style={{ width: '60px', height: '60px' }}>
                   <TrendingUp className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <h3 className="font-medium mb-2">No trends available</h3>
@@ -576,7 +576,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
               </ScrollArea>
             ) : (
               <div className="flex flex-col items-center justify-center py-8">
-                <div className="bg-muted/40 rounded-full flex items-center justify-center mb-4" style={{ width: '60px', height: '60px' }}>
+                <div className="bg-muted/40 rounded-full font-inter flex items-center justify-center mb-4" style={{ width: '60px', height: '60px' }}>
                   <TrendingUp className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <h3 className="font-medium mb-2">No trends available</h3>

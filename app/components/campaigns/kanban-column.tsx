@@ -96,7 +96,7 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
         {isCollapsed ? (
           <div className="flex flex-col items-center w-full">
             <ChevronRight className="h-4 w-4 text-muted-foreground mb-1.5" />
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full mb-2">
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full font-inter mb-2">
               {filteredTasks.length}
             </span>
             <div className="writing-mode-vertical text-xs text-muted-foreground">
@@ -110,10 +110,10 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
               <span className="font-medium">{title}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
+              <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full font-inter whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
                 {filteredTasks.length} {filteredTasks.length === 1 ? 'camp.' : 'camp.'}
               </div>
-              <div className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
+              <div className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full font-inter whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
                 {requirementsCount} {requirementsCount === 1 ? 'req.' : 'req.'}
               </div>
             </div>

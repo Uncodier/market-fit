@@ -79,7 +79,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   // Skeleton loader para el estado inicial
   const SkeletonContent = () => (
     <div className="flex items-center gap-3">
-      <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full animate-pulse" />
+      <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full font-sans animate-pulse" />
       {!isCollapsed && (
         <div className="flex flex-col min-w-0 flex-1">
           <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
@@ -134,7 +134,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
           )}
           onClick={() => router.push("/create-site")}
         >
-          <div className="h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+          <div className="h-6 w-6 flex items-center justify-center rounded-full font-sans font-bold bg-blue-100 text-blue-600 flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12h14" />
             </svg>

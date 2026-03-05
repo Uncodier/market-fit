@@ -62,17 +62,17 @@ export const ToolCallGroupItem: React.FC<ToolCallGroupItemProps> = ({
           <span className="font-medium text-muted-foreground">
             Tool Call: {displayName}
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-inter text-xs font-medium bg-primary/10 text-primary">
             {totalCount}
           </span>
           {failCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100/90 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-inter text-xs font-medium bg-red-100/90 text-red-700 dark:bg-red-900/30 dark:text-red-400">
               {failCount} failed
             </span>
           )}
           {pendingCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-yellow-100/90 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
-              <div className="w-2 h-2 bg-yellow-600 rounded-full animate-pulse" />
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-inter text-xs font-medium border bg-yellow-100/90 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
+              <div className="w-2 h-2 bg-yellow-600 rounded-full font-inter animate-pulse" />
               {pendingCount} pending
             </span>
           )}

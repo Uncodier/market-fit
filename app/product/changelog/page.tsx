@@ -10,16 +10,16 @@ export default function ChangelogPage() {
   const { t } = useLocalization()
   
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-indigo-500/30 flex flex-col font-sans overflow-hidden min-h-screen">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-indigo-500/30 flex flex-col overflow-hidden min-h-screen">
       
       {/* Main Content */}
       <section className="pt-24 pb-12 max-w-5xl mx-auto px-6 lg:px-12 flex-1 w-full relative z-10">
         <div className="mb-16">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 font-display text-slate-900 dark:text-white">
-            Changelog
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-slate-900 dark:text-white">
+            {t('changelog.title') || 'Changelog'}
           </h1>
           <p className="text-lg dark:text-white/60 text-slate-500 font-medium">
-            New updates and improvements to Makinari.
+            {t('changelog.subtitle') || 'New updates and improvements to Makinari.'}
           </p>
         </div>
         <div className="space-y-16 md:space-y-20 relative">
@@ -29,7 +29,7 @@ export default function ChangelogPage() {
               
               {/* Left Side: Date */}
               <div className="md:w-32 flex-shrink-0 pt-4 flex flex-col items-start md:items-start relative">
-                <span className="text-sm font-bold text-slate-800 dark:text-white font-display mb-1">{release.date}</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-white mb-1">{release.date}</span>
                 <span className="text-xs text-slate-500 dark:text-white/50">{release.date}</span>
               </div>
 
@@ -38,7 +38,7 @@ export default function ChangelogPage() {
                 href={`/product/changelog/${release.id}`}
                 className="flex-1 bg-[#f0f4f8] dark:bg-[#0f0f13] rounded-[2rem] p-8 md:p-10 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-transparent dark:hover:border-white/10"
               >
-                <h2 className="text-2xl md:text-[28px] font-bold dark:text-white text-slate-900 mb-6 font-display tracking-tight leading-tight">
+                <h2 className="text-2xl md:text-[28px] font-bold dark:text-white text-slate-900 mb-6 tracking-tight leading-tight">
                   {release.title}
                 </h2>
                 

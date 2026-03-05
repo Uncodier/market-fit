@@ -307,7 +307,7 @@ export const GeneratedVideoDisplayCollapsed: React.FC<GeneratedVideoDisplayProps
             </video>
             {/* Play overlay button */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors rounded-lg">
-              <div className="w-16 h-16 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
+              <div className="w-16 h-16 rounded-full font-inter bg-background/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
                 <svg className="w-8 h-8 text-foreground ml-1" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z"/>
                 </svg>
@@ -355,7 +355,7 @@ export const GeneratedVideoDisplayCollapsed: React.FC<GeneratedVideoDisplayProps
           </video>
           {/* Play overlay button */}
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors rounded-lg">
-            <div className="w-16 h-16 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 rounded-full font-inter bg-background/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
               <svg className="w-8 h-8 text-foreground ml-1" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
               </svg>

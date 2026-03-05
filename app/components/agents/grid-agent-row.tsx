@@ -196,7 +196,7 @@ export function GridAgentRow({
               <LogIn className="h-3 w-3 text-green-600 dark:text-green-400" />
               <div className="flex gap-1">
                 {enabledChannels.map((channel) => (
-                  <div key={channel} className={`flex items-center justify-center w-5 h-5 rounded-full ${
+                  <div key={channel} className={`flex items-center justify-center w-5 h-5 rounded-full font-inter ${
                     channel === 'whatsapp' 
                       ? 'bg-green-100 dark:bg-green-900/40' 
                       : channel === 'email'
@@ -222,13 +222,13 @@ export function GridAgentRow({
               )}
               <div className="flex gap-1">
                 {/* System Notifications - always shown for agents with custom data and active status */}
-                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40" title="System Notifications">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full font-inter bg-amber-100 dark:bg-amber-900/40" title="System Notifications">
                   <Bell className="h-2 w-2 text-amber-600 dark:text-amber-400" />
                 </div>
                 
                 {/* Communication Channels - only for agents with reach out capability and enabled channels */}
                 {shouldShowExitIcons && enabledChannels.map((channel) => (
-                  <div key={channel} className={`flex items-center justify-center w-5 h-5 rounded-full ${
+                  <div key={channel} className={`flex items-center justify-center w-5 h-5 rounded-full font-inter ${
                     channel === 'whatsapp' 
                       ? 'bg-green-100 dark:bg-green-900/40' 
                       : channel === 'email'

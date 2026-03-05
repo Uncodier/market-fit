@@ -1050,7 +1050,7 @@ export function ChatList({
                       className="flex-1 h-8 text-xs gap-1.5"
                     >
                       {isAcceptingAll ? (
-                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        <div className="h-3 w-3 animate-spin rounded-full font-sans border-2 border-current border-t-transparent" />
                       ) : (
                         <Check className="h-3.5 w-3.5" />
                       )}
@@ -1064,7 +1064,7 @@ export function ChatList({
                       className="flex-1 h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       {isRejectingAll ? (
-                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        <div className="h-3 w-3 animate-spin rounded-full font-sans border-2 border-current border-t-transparent" />
                       ) : (
                         <X className="h-3.5 w-3.5" />
                       )}

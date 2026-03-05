@@ -55,6 +55,16 @@ export const features = [
     color: 'orange',
     status: 'active'
   },
+  {
+    id: 'icp-generation',
+    name: 'ICP Generation',
+    stage: 'Find',
+    category: 'AI',
+    description: 'Automatically generate and refine your Ideal Customer Profiles using AI.',
+    icon: <Users className="w-8 h-8 text-orange-400" />,
+    color: 'orange',
+    status: 'active'
+  },
   
   // Contact Stage
   {
@@ -104,6 +114,16 @@ export const features = [
     category: 'Meetings',
     description: 'Let prospects book time on your calendar directly from your outreach.',
     icon: <Clock className="w-8 h-8 text-blue-400" />,
+    color: 'blue',
+    status: 'active'
+  },
+  {
+    id: 'automatic-follow-up',
+    name: 'Automatic Follow-up',
+    stage: 'Contact',
+    category: 'Automation',
+    description: 'Engage and follow up with your contacts automatically based on triggers.',
+    icon: <TrendingUp className="w-8 h-8 text-blue-400" />,
     color: 'blue',
     status: 'active'
   },
@@ -218,6 +238,16 @@ export const features = [
     category: 'Core',
     description: 'Connect seamlessly with all your favorite tools across your revenue stack.',
     icon: <Zap className="w-8 h-8 text-violet-400" />,
+    color: 'violet',
+    status: 'active'
+  },
+  {
+    id: 'ticket-control',
+    name: 'Ticket Control',
+    stage: 'Manage',
+    category: 'Support',
+    description: 'Efficiently manage and resolve customer inquiries with our integrated ticketing system.',
+    icon: <ShieldCheck className="w-8 h-8 text-violet-400" />,
     color: 'violet',
     status: 'active'
   }

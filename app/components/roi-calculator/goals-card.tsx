@@ -138,7 +138,7 @@ export function GoalsCard({
                 >
                   {isSaving ? (
                     <>
-                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white mr-2"></div>
+                      <div className="animate-spin rounded-full font-inter h-3.5 w-3.5 border-b-2 border-white mr-2"></div>
                       Saving...
                     </>
                   ) : (

@@ -7,12 +7,13 @@ import { VariableCostsSection } from "@/app/components/auth/sections/VariableCos
 import { SiteFooter } from "@/app/components/auth/sections/SiteFooter"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import Link from "next/link"
+import { ArrowRight } from "@/app/components/ui/icons"
 
 export function PricingClient() {
   const { t } = useLocalization()
   
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col font-sans overflow-hidden">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col overflow-hidden">
       
       {/* Hero Section */}
       <section className="relative w-full pt-24 pb-8 border-b dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white">
@@ -23,18 +24,19 @@ export function PricingClient() {
             {t('footer.product.pricing') || 'Pricing'}
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 leading-tight drop-shadow-lg">
-            Simple, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500">Transparent</span> Pricing
+            {t('pricing.page.title.start') || 'Simple, '}<span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500">{t('pricing.page.title.highlight') || 'Transparent'}</span>{t('pricing.page.title.end') || ' Pricing'}
           </h1>
           <p className="text-lg md:text-xl dark:text-white/50 text-slate-500 max-w-2xl font-light leading-relaxed mb-8">
-            Start for free and scale as you grow. No hidden fees. Only pay for the usage you actually consume.
+            {t('pricing.page.subtitle') || 'Start with a 12-month proof of concept. No hidden fees. Only pay for the usage you actually consume.'}
           </p>
           
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <a href="#plans" className="px-6 py-3 rounded-full text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all hover:scale-105 active:scale-95">
-              Ver Presupuestos
-            </a>
-            <Link href="/product/partner-commissions" className="px-6 py-3 rounded-full text-sm font-bold dark:text-white text-slate-900 border dark:border-white/10 border-black/10 hover:bg-slate-100 dark:hover:bg-white/5 transition-all hover:scale-105 active:scale-95">
-              Ver Comisiones de Partners
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+            <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.4)] flex items-center justify-center gap-2 group">
+              Start with Makinari
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link href="/product/partner-commissions" className="w-full sm:w-auto px-8 py-3.5 rounded-full font-inter font-bold dark:bg-white/5 bg-black/5 hover:dark:bg-white/10 hover:bg-black/10 dark:text-white text-slate-900 transition-colors border dark:border-white/10 border-black/10 flex items-center justify-center text-center">
+              View Partner Commissions
             </Link>
           </div>
         </div>

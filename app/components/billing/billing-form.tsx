@@ -356,10 +356,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                           )}
                           onClick={() => handlePlanClick("commission")}
                         >
-                          <div className="font-medium mb-2">Commission</div>
-                          <div className="text-2xl font-bold mb-2">$0</div>
+                          <div className="font-medium mb-2">12-Month POC</div>
+                          <div className="text-2xl font-bold mb-2">$27</div>
                           <div className="text-sm text-muted-foreground">Basic features</div>
-                          <div className="text-sm text-muted-foreground mt-1">30 credits/month</div>
+                          <div className="text-sm text-muted-foreground mt-1">USD/year paid at the end of the year</div>
                         </div>
                         
                         <div 

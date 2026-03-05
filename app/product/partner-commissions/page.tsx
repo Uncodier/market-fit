@@ -3,10 +3,10 @@ import { PartnerCommissionsClient } from "./PartnerCommissionsClient"
 
 export const metadata: Metadata = {
   title: "Partner Commissions | Makinari",
-  description: "Estructura de comisiones variables para partners y distribuidores.",
+  description: "Variable commission structure for partners and distributors.",
   openGraph: {
     title: "Partner Commissions | Makinari",
-    description: "Estructura de comisiones variables para partners y distribuidores.",
+    description: "Variable commission structure for partners and distributors.",
     type: "website",
   }
 }

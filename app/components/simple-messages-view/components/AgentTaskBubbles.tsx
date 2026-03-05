@@ -122,7 +122,7 @@ export function AgentTaskBubbles() {
           style={{ animationDelay: bubble.delay }}
         >
           <div
-            className={`flex items-center justify-center rounded-full border shadow-sm backdrop-blur-sm ${bubble.color} ${sizeClasses[bubble.size]}`}
+            className={`flex items-center justify-center rounded-full font-inter border shadow-sm backdrop-blur-sm ${bubble.color} ${sizeClasses[bubble.size]}`}
           >
             <span className="font-medium">{bubble.text}</span>
           </div>

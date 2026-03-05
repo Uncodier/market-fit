@@ -821,7 +821,8 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                 id,
                 name: data.name || id,
                 description: data.description || "",
-                connected: !!data.connected
+                connected: !!data.connected,
+                isOpenClaw: !!data.isOpenClaw
               }))
               
               if (integrationsArr.length > 0) {

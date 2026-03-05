@@ -3,7 +3,7 @@
 import React, { useRef } from "react"
 import { SiteFooter } from "@/app/components/auth/sections/SiteFooter"
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion"
-import { Users, Bot, PieChart, NetworkTree, Zap, TrendingUp, BarChart, ArrowUpRight, Star, ShieldCheck, MessageSquare, LayoutGrid, Settings, Mail, Phone, Check, Globe } from "@/app/components/ui/icons"
+import { Users, Bot, PieChart, NetworkTree, Zap, TrendingUp, BarChart, ArrowUpRight, Star, ShieldCheck, MessageSquare, LayoutGrid, Settings, Mail, Phone, Check, Globe, ArrowRight } from "@/app/components/ui/icons"
 import Link from "next/link"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { OpenClawCard } from "@/app/components/auth/sections/OpenClawCard"
@@ -146,12 +146,13 @@ function MockupScrollWrapper({
 }
 
 const CrmBentoFeatures = () => {
+  const { t } = useLocalization();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const bentoFeatures = [
     {
-      title: "Task Automation",
-      description: "Automate repetitive tasks like data entry, follow-ups, and email logging so your team can focus on selling.",
+      title: t('crm.bento.taskAutomation.title') || "Task Automation",
+      description: t('crm.bento.taskAutomation.description') || "Automate repetitive tasks like data entry, follow-ups, and email logging so your team can focus on selling.",
       icon: <Zap size={24} className="text-fuchsia-500" />,
       color: "fuchsia",
       mockup: (
@@ -163,15 +164,15 @@ const CrmBentoFeatures = () => {
           </div>
           <div className="p-6 relative z-20 h-full flex flex-col gap-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold dark:text-white/80 text-slate-700">Active Workflows</span>
-              <div className="px-2 py-1 rounded bg-fuchsia-500/10 text-fuchsia-500 text-[10px] font-mono border border-fuchsia-500/20 shadow-[0_0_10px_rgba(217,70,239,0.1)]">3 Running</div>
+              <span className="text-sm font-semibold dark:text-white/80 text-slate-700">{t('crm.bento.taskAutomation.activeWorkflows') || "Active Workflows"}</span>
+              <div className="px-2 py-1 rounded bg-fuchsia-500/10 text-fuchsia-500 text-[10px] font-mono border border-fuchsia-500/20 shadow-[0_0_10px_rgba(217,70,239,0.1)]">{t('crm.bento.taskAutomation.running') || "3 Running"}</div>
             </div>
             
             {/* Workflow Items */}
             {[
-              { name: "Lead Qualification", trigger: "Form Submit", action: "Assign to Rep", status: "Active", delay: "0s" },
-              { name: "Follow-up Sequence", trigger: "No Reply (2d)", action: "Send Email 2", status: "Active", delay: "0.5s" },
-              { name: "Deal Stage Update", trigger: "Meeting Booked", action: "Move to Demo", status: "Active", delay: "1s" }
+              { name: t('crm.bento.taskAutomation.leadQualification') || "Lead Qualification", trigger: t('crm.bento.taskAutomation.formSubmit') || "Form Submit", action: t('crm.bento.taskAutomation.assignToRep') || "Assign to Rep", status: "Active", delay: "0s" },
+              { name: t('crm.bento.taskAutomation.followUpSequence') || "Follow-up Sequence", trigger: t('crm.bento.taskAutomation.noReply') || "No Reply (2d)", action: t('crm.bento.taskAutomation.sendEmail2') || "Send Email 2", status: "Active", delay: "0.5s" },
+              { name: t('crm.bento.taskAutomation.dealStageUpdate') || "Deal Stage Update", trigger: t('crm.bento.taskAutomation.meetingBooked') || "Meeting Booked", action: t('crm.bento.taskAutomation.moveToDemo') || "Move to Demo", status: "Active", delay: "1s" }
             ].map((workflow, idx) => (
               <div key={idx} className="dark:bg-white/5 bg-black/5 border dark:border-white/5 border-black/5 rounded-xl p-4 flex flex-col gap-3 group/workflow hover:border-fuchsia-500/30 transition-colors backdrop-blur-sm" style={{ animationDelay: workflow.delay }}>
                 <div className="flex justify-between items-center">
@@ -195,8 +196,8 @@ const CrmBentoFeatures = () => {
       )
     },
     {
-      title: "Smart Enrichment",
-      description: "New contacts are automatically enriched with social data, company details, and intent signals the moment they enter your CRM.",
+      title: t('crm.bento.smartEnrichment.title') || "Smart Enrichment",
+      description: t('crm.bento.smartEnrichment.description') || "New contacts are automatically enriched with social data, company details, and intent signals the moment they enter your CRM.",
       icon: <Users size={24} className="text-blue-500" />,
       color: "blue",
       mockup: (
@@ -216,17 +217,17 @@ const CrmBentoFeatures = () => {
                    </div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold dark:text-white text-slate-900 flex items-center gap-2">Sarah Jenkins <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 text-[8px] uppercase tracking-wider border border-blue-500/20 font-bold shadow-[0_0_8px_rgba(59,130,246,0.15)]">Enriched</span></div>
-                  <div className="text-xs dark:text-white/50 text-slate-500 font-mono mt-0.5">VP of Engineering @ TechCorp</div>
+                  <div className="text-sm font-semibold dark:text-white text-slate-900 flex items-center gap-2">Sarah Jenkins <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 text-[8px] uppercase tracking-wider border border-blue-500/20 font-bold shadow-[0_0_8px_rgba(59,130,246,0.15)]">{t('crm.bento.smartEnrichment.enriched') || "Enriched"}</span></div>
+                  <div className="text-xs dark:text-white/50 text-slate-500 font-mono mt-0.5">{t('crm.bento.smartEnrichment.vpEngineering') || "VP of Engineering @ TechCorp"}</div>
                 </div>
               </div>
               
               <div className="flex-1 grid grid-cols-2 gap-3">
                  {[
-                   { label: "Location", value: "San Francisco, CA", verified: true },
-                   { label: "LinkedIn", value: "linkedin.com/in/sjenkins", verified: true },
-                   { label: "Company Size", value: "1,000 - 5,000", verified: true },
-                   { label: "Tech Stack", value: "React, Node, AWS", verified: true },
+                   { label: t('crm.bento.smartEnrichment.location') || "Location", value: t('crm.bento.smartEnrichment.locationValue') || "San Francisco, CA", verified: true },
+                   { label: t('crm.bento.smartEnrichment.linkedin') || "LinkedIn", value: "linkedin.com/in/sjenkins", verified: true },
+                   { label: t('crm.bento.smartEnrichment.companySize') || "Company Size", value: "1,000 - 5,000", verified: true },
+                   { label: t('crm.bento.smartEnrichment.techStack') || "Tech Stack", value: "React, Node, AWS", verified: true },
                  ].map((data, idx) => (
                     <div key={idx} className="dark:bg-white/5 bg-black/5 border dark:border-white/5 border-black/5 rounded-lg p-3 flex flex-col gap-1 relative overflow-hidden group/data hover:border-blue-500/30 transition-colors">
                        {/* Scanning overlay on hover */}
@@ -243,8 +244,8 @@ const CrmBentoFeatures = () => {
                     <div className="absolute left-0 top-0 w-1 h-full bg-blue-500 opacity-50 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
                     <Bot size={14} className="text-blue-500 mt-0.5 shrink-0 ml-1" />
                     <div>
-                      <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block mb-1">AI Insight</span>
-                      <p className="text-xs dark:text-white/70 text-slate-600 leading-relaxed">Sarah recently posted about scaling Node.js applications. High probability of interest in our infrastructure solutions.</p>
+                      <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block mb-1">{t('crm.bento.smartEnrichment.aiInsight') || "AI Insight"}</span>
+                      <p className="text-xs dark:text-white/70 text-slate-600 leading-relaxed">{t('crm.bento.smartEnrichment.insightText') || "Sarah recently posted about scaling Node.js applications. High probability of interest in our infrastructure solutions."}</p>
                     </div>
                  </div>
               </div>
@@ -253,8 +254,8 @@ const CrmBentoFeatures = () => {
       )
     },
     {
-      title: "AI Forecasting",
-      description: "Predictive analytics that learn from your historical wins to give you an accurate revenue forecast, completely hands-off.",
+      title: t('crm.bento.aiForecasting.title') || "AI Forecasting",
+      description: t('crm.bento.aiForecasting.description') || "Predictive analytics that learn from your historical wins to give you an accurate revenue forecast, completely hands-off.",
       icon: <PieChart size={24} className="text-emerald-500" />,
       color: "emerald",
       mockup: (
@@ -266,14 +267,14 @@ const CrmBentoFeatures = () => {
            <div className="p-6 relative z-20 h-full flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4 mb-2">
                 <div className="dark:bg-white/5 bg-black/5 border dark:border-white/5 border-black/5 rounded-xl p-3 flex flex-col justify-center backdrop-blur-sm group-hover:border-emerald-500/30 transition-colors">
-                  <span className="text-[10px] dark:text-white/50 text-slate-500 uppercase tracking-wider font-bold mb-1">AI Win Probability</span>
+                  <span className="text-[10px] dark:text-white/50 text-slate-500 uppercase tracking-wider font-bold mb-1">{t('crm.bento.aiForecasting.winProbability') || "AI Win Probability"}</span>
                   <div className="flex items-end gap-2">
                     <span className="text-2xl font-bold dark:text-white text-slate-900 font-mono">68%</span>
                     <span className="text-xs text-emerald-500 mb-1 flex items-center bg-emerald-500/10 px-1 py-0.5 rounded font-bold"><TrendingUp size={10}/> +5%</span>
                   </div>
                 </div>
                 <div className="dark:bg-white/5 bg-black/5 border dark:border-white/5 border-black/5 rounded-xl p-3 flex flex-col justify-center backdrop-blur-sm group-hover:border-emerald-500/30 transition-colors">
-                  <span className="text-[10px] dark:text-white/50 text-slate-500 uppercase tracking-wider font-bold mb-1">Projected Q4</span>
+                  <span className="text-[10px] dark:text-white/50 text-slate-500 uppercase tracking-wider font-bold mb-1">{t('crm.bento.aiForecasting.projectedQ4') || "Projected Q4"}</span>
                   <div className="flex items-end gap-2">
                     <span className="text-2xl font-bold dark:text-white text-slate-900 font-mono">$1.2M</span>
                     <span className="text-xs text-emerald-500 mb-1 flex items-center bg-emerald-500/10 px-1 py-0.5 rounded font-bold"><TrendingUp size={10}/> +$150k</span>
@@ -283,9 +284,9 @@ const CrmBentoFeatures = () => {
               
               <div className="flex-1 dark:bg-white/5 bg-black/5 border dark:border-white/5 border-black/5 rounded-xl p-4 flex flex-col backdrop-blur-sm">
                 <div className="flex justify-between items-center mb-4">
-                   <span className="text-xs font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">Confidence Trend</span>
+                   <span className="text-xs font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">{t('crm.bento.aiForecasting.confidenceTrend') || "Confidence Trend"}</span>
                    <div className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                      <Bot size={10}/> AI Optimized
+                      <Bot size={10}/> {t('crm.bento.aiForecasting.aiOptimized') || "AI Optimized"}
                    </div>
                 </div>
                 <div className="flex-1 flex items-end justify-between gap-2 relative">
@@ -301,7 +302,7 @@ const CrmBentoFeatures = () => {
                       <div className="absolute bottom-0 left-0 w-full bg-emerald-500 rounded-t shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all duration-700 ease-bounce" style={{ height: `${h * 0.7}%`, transitionDelay: `${i * 100}ms` }}></div>
                       {/* Tooltip */}
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#09090b] text-white font-mono text-[10px] px-2 py-1 rounded border border-emerald-500/30 opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none shadow-xl">
-                        {h}% Conf
+                        {h}% {t('crm.bento.aiForecasting.conf') || "Conf"}
                       </div>
                     </div>
                   ))}
@@ -312,8 +313,8 @@ const CrmBentoFeatures = () => {
       )
     },
     {
-      title: "Custom Workflows",
-      description: "Build complex logic visually or let the AI set it up for you. Trigger SLA alerts, automated follow-ups, and territory routing based on any field change.",
+      title: t('crm.bento.customWorkflows.title') || "Custom Workflows",
+      description: t('crm.bento.customWorkflows.description') || "Build complex logic visually or let the AI set it up for you. Trigger SLA alerts, automated follow-ups, and territory routing based on any field change.",
       icon: <NetworkTree size={24} className="text-violet-500" />,
       color: "violet",
       mockup: (
@@ -350,14 +351,14 @@ const CrmBentoFeatures = () => {
                               <div className="w-6 h-6 rounded-md bg-violet-500/20 flex items-center justify-center text-violet-500 border border-violet-500/20">
                                  <Zap size={12} />
                               </div>
-                              <span className="text-[10px] font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">Trigger</span>
+                              <span className="text-[10px] font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">{t('crm.bento.customWorkflows.trigger') || "Trigger"}</span>
                            </div>
                            <div className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[8px] font-bold uppercase border border-emerald-500/20 flex items-center gap-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Active
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> {t('crm.bento.customWorkflows.active') || "Active"}
                            </div>
                         </div>
                         <div className="text-xs font-semibold dark:text-white text-slate-900 border dark:border-white/10 border-black/10 rounded-md px-2 py-1.5 bg-black/5 dark:bg-white/5 font-mono shadow-inner">
-                           Stage = "Closed Won"
+                           {t('crm.bento.customWorkflows.stageClosedWon') || 'Stage = "Closed Won"'}
                         </div>
                      </div>
                   </div>
@@ -371,10 +372,10 @@ const CrmBentoFeatures = () => {
                            <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center text-amber-500 border border-amber-500/20">
                               <NetworkTree size={12} />
                            </div>
-                           <span className="text-[10px] font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">Condition</span>
+                           <span className="text-[10px] font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">{t('crm.bento.customWorkflows.condition') || "Condition"}</span>
                         </div>
                         <div className="text-xs font-semibold dark:text-white text-slate-900 border dark:border-white/10 border-black/10 rounded-md px-2 py-1.5 bg-black/5 dark:bg-white/5 flex items-center justify-between shadow-inner">
-                           <span>Value</span>
+                           <span>{t('crm.bento.customWorkflows.value') || "Value"}</span>
                            <span className="text-violet-500 font-mono font-bold">&gt; $10k</span>
                         </div>
                      </div>
@@ -388,9 +389,9 @@ const CrmBentoFeatures = () => {
                            <div className="w-6 h-6 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
                               <Mail size={12} />
                            </div>
-                           <div className="text-[10px] font-bold dark:text-white/60 text-slate-500 uppercase tracking-wider">Action</div>
+                           <div className="text-[10px] font-bold dark:text-white/60 text-slate-500 uppercase tracking-wider">{t('crm.bento.customWorkflows.action') || "Action"}</div>
                         </div>
-                        <div className="text-xs font-semibold dark:text-white text-slate-900 leading-tight">Send Welcome Email</div>
+                        <div className="text-xs font-semibold dark:text-white text-slate-900 leading-tight">{t('crm.bento.customWorkflows.sendWelcomeEmail') || "Send Welcome Email"}</div>
                      </div>
                   </div>
 
@@ -402,9 +403,9 @@ const CrmBentoFeatures = () => {
                            <div className="w-6 h-6 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
                               <Check size={12} />
                            </div>
-                           <div className="text-[10px] font-bold dark:text-white/60 text-slate-500 uppercase tracking-wider">Action</div>
+                           <div className="text-[10px] font-bold dark:text-white/60 text-slate-500 uppercase tracking-wider">{t('crm.bento.customWorkflows.action') || "Action"}</div>
                         </div>
-                        <div className="text-xs font-semibold dark:text-white text-slate-900 leading-tight">Create Onboarding Task</div>
+                        <div className="text-xs font-semibold dark:text-white text-slate-900 leading-tight">{t('crm.bento.customWorkflows.createOnboardingTask') || "Create Onboarding Task"}</div>
                      </div>
                   </div>
                </div>
@@ -414,7 +415,7 @@ const CrmBentoFeatures = () => {
                <div className="text-violet-500 animate-pulse">
                   <Bot size={14} />
                </div>
-               <span className="text-[10px] font-bold dark:text-white/90 text-slate-800 uppercase tracking-wider">Generate with AI</span>
+               <span className="text-[10px] font-bold dark:text-white/90 text-slate-800 uppercase tracking-wider">{t('crm.bento.customWorkflows.generateWithAI') || "Generate with AI"}</span>
                <div className="flex gap-0.5 ml-1">
                   <div className="w-1 h-1 bg-violet-500 rounded-full animate-bounce"></div>
                   <div className="w-1 h-1 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -438,24 +439,20 @@ const CrmBentoFeatures = () => {
           <Reveal
             delay={0}
             direction="up"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 dark:text-white/70 text-slate-500 text-xs font-bold uppercase tracking-wider mb-6"
-          >
-            Core CRM Capabilities
-          </Reveal>
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-inter font-bold dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 dark:text-white/70 text-slate-500 text-xs font-bold uppercase tracking-wider mb-6"
+          >{t('crm.header.coreCapabilities') || "Core CRM Capabilities"}</Reveal>
           <Reveal
             delay={100}
             direction="up"
             className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight"
           >
-            Everything you need to <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">manage relationships</span>
+            {t('crm.header.everythingYouNeed') || "Everything you need to"} <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">{t('crm.header.manageRelationships') || "manage relationships"}</span>
           </Reveal>
           <Reveal
             delay={200}
             direction="up"
             className="text-lg dark:text-white/50 text-slate-500 max-w-2xl mx-auto font-light leading-relaxed"
-          >
-            A unified view of your entire customer journey, augmented by AI that does the heavy lifting so your team can focus on selling.
-          </Reveal>
+          >{t('crm.header.unifiedView') || "A unified view of your entire customer journey, augmented by AI that does the heavy lifting so your team can focus on selling."}</Reveal>
         </div>
 
         {/* Left/Right Animated Sections */}
@@ -507,7 +504,7 @@ export function CrmClient() {
   const { t } = useLocalization()
   
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col font-sans overflow-hidden min-h-screen">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col overflow-hidden min-h-screen">
       
       {/* Hero Section */}
       <section className="relative w-full pt-32 pb-24 border-b dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white overflow-hidden">
@@ -516,27 +513,26 @@ export function CrmClient() {
           <Reveal delay={0}>
             <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-8 border border-violet-500/30 bg-violet-500/5 text-violet-500">
               <span className="flex h-2 w-2 rounded-full bg-violet-500 mr-2 animate-pulse"></span>
-              Customer Relationship Management
+              {t('crm.hero.chip') || "Customer Relationship Management"}
             </div>
           </Reveal>
           <Reveal delay={100}>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 leading-tight drop-shadow-lg max-w-4xl">
-              Operate from a <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-500">single source of truth</span>
+              {t('crm.hero.operateFrom') || "Operate from a"} <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-500">{t('crm.hero.singleSource') || "single source of truth"}</span>
             </h1>
           </Reveal>
           <Reveal delay={200}>
-            <p className="text-lg md:text-xl dark:text-white/50 text-slate-500 max-w-2xl font-light leading-relaxed mb-10">
-              Your pipeline manages itself with automated activity logging and stage gating. Trust your forecast because it's based on real activity, not manual updates.
-            </p>
+            <p className="text-lg md:text-xl dark:text-white/50 text-slate-500 max-w-2xl font-light leading-relaxed mb-10">{t('crm.hero.description') || "Your pipeline manages itself with automated activity logging and stage gating. Trust your forecast because it's based on real activity, not manual updates."}</p>
           </Reveal>
           <Reveal delay={300}>
-            <div className="flex gap-4">
-              <Link href="/auth" className="px-8 py-3 rounded-full bg-violet-500 hover:bg-violet-600 text-white font-bold transition-colors shadow-[0_0_20px_rgba(139,92,246,0.3)]">
-                Start for free
-              </Link>
-              <Link href="/product/features" className="px-8 py-3 rounded-full dark:bg-white/5 bg-black/5 hover:dark:bg-white/10 hover:bg-black/10 dark:text-white text-slate-900 font-bold transition-colors border dark:border-white/10 border-black/10">
-                Explore all features
-              </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+            <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-violet-500 hover:bg-violet-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 group">
+              {t('crm.hero.startWith') || "Start with Makinari"}
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link href="/product/features" className="w-full sm:w-auto px-8 py-3.5 rounded-full font-inter font-bold dark:bg-white/5 bg-black/5 hover:dark:bg-white/10 hover:bg-black/10 dark:text-white text-slate-900 transition-colors border dark:border-white/10 border-black/10 flex items-center justify-center text-center">
+              {t('crm.hero.exploreFeatures') || "Explore all features"}
+            </Link>
             </div>
           </Reveal>
         </div>
@@ -548,15 +544,15 @@ export function CrmClient() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col font-inter">
-                <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_12px,rgba(139,92,246,0.02)_12px,rgba(139,92,246,0.02)_24px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col font-sans">
+                <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_12px,rgba(139,92,246,0.02)_12px,rgba(139,92,246,0.02)_24px)] opacity-100 pointer-events-none rounded-xl"></div>
                 
                 {/* Mockup UI */}
                 <div className="flex justify-between items-start mb-6 relative z-10">
                   <div className="space-y-2">
                     <div className="text-xs dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider flex items-center gap-2">
-                      <TrendingUp size={12} /> Pipeline Value
+                      <TrendingUp size={12} /> {t('crm.feature1.pipelineValue') || "Pipeline Value"}
                     </div>
                     <div className="text-4xl font-bold dark:text-white text-slate-900 flex items-center gap-3">
                       $2.4M
@@ -570,7 +566,7 @@ export function CrmClient() {
                     <div className="flex items-center justify-between gap-2 mb-3 relative z-10">
                       <div className="flex items-center gap-1.5 text-[10px] font-bold dark:text-white/80 text-slate-500 uppercase tracking-wider min-w-0">
                         <BarChart size={12} className="text-violet-500 shrink-0" /> 
-                        <span className="truncate">Projected Revenue</span>
+                        <span className="truncate">{t('crm.feature1.projectedRevenue') || "Projected Revenue"}</span>
                       </div>
                       <div className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold flex items-center gap-1 shrink-0 whitespace-nowrap">
                         <TrendingUp size={10} /> +14%
@@ -597,18 +593,12 @@ export function CrmClient() {
                     </div>
                     <div>
                       <div className="text-xs text-violet-300 font-bold tracking-wider mb-2 uppercase flex items-center gap-2">
-                        <Star size={12} /> Copilot Insight
+                        <Star size={12} /> {t('crm.feature1.copilotInsight') || "Copilot Insight"}
                       </div>
-                      <div className="dark:text-white/80 text-slate-500 text-sm leading-relaxed">
-                        Acme Corp deal is stalling. Consider sending the ROI calculator to the CFO. I can draft this email for you.
-                      </div>
+                      <div className="dark:text-white/80 text-slate-500 text-sm leading-relaxed">{t('crm.feature1.copilotInsightText') || "Acme Corp deal is stalling. Consider sending the ROI calculator to the CFO. I can draft this email for you."}</div>
                       <div className="mt-3 flex gap-2">
-                        <div className="bg-violet-500 dark:text-white text-slate-900 text-[10px] font-bold px-3 py-1.5 rounded-md cursor-pointer hover:bg-violet-600 transition-colors">
-                          Draft Email
-                        </div>
-                        <div className="dark:bg-white/10 bg-black/10 dark:text-white/70 text-slate-500 text-[10px] font-bold px-3 py-1.5 rounded-md cursor-pointer hover:dark:bg-white/20 bg-black/20 transition-colors">
-                          Dismiss
-                        </div>
+                        <div className="bg-violet-500 dark:text-white text-slate-900 text-[10px] font-bold px-3 py-1.5 rounded-md cursor-pointer hover:bg-violet-600 transition-colors">{t('crm.feature1.draftEmail') || "Draft Email"}</div>
+                        <div className="dark:bg-white/10 bg-black/10 dark:text-white/70 text-slate-500 text-[10px] font-bold px-3 py-1.5 rounded-md cursor-pointer hover:dark:bg-white/20 bg-black/20 transition-colors">{t('crm.feature1.dismiss') || "Dismiss"}</div>
                       </div>
                     </div>
                   </div>
@@ -616,11 +606,11 @@ export function CrmClient() {
                   {/* Pipeline stages */}
                   <div className="w-full flex justify-between mt-6 px-2 relative z-10 gap-2">
                     {[
-                      { name: "Lead", color: "bg-blue-400" },
-                      { name: "Meeting", color: "bg-orange-400" },
-                      { name: "Proposal", color: "bg-violet-400" },
-                      { name: "Negotiation", color: "bg-pink-400" },
-                      { name: "Closed", color: "bg-emerald-400" }
+                      { name: t('crm.feature1.stages.lead') || "Lead", color: "bg-blue-400" },
+                      { name: t('crm.feature1.stages.meeting') || "Meeting", color: "bg-orange-400" },
+                      { name: t('crm.feature1.stages.proposal') || "Proposal", color: "bg-violet-400" },
+                      { name: t('crm.feature1.stages.negotiation') || "Negotiation", color: "bg-pink-400" },
+                      { name: t('crm.feature1.stages.closed') || "Closed", color: "bg-emerald-400" }
                     ].map((stage, i) => (
                       <div key={i} className="flex flex-col items-center gap-2 flex-1">
                         <div className="text-[9px] dark:text-white/50 text-slate-500 uppercase font-semibold tracking-wider">{stage.name}</div>
@@ -635,17 +625,13 @@ export function CrmClient() {
           </div>
           <div className="w-full lg:w-1/2">
             <Reveal delay={0} direction="left">
-              <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">
-                An intelligent CRM that works for you
-              </h2>
-              <p className="text-lg dark:text-white/50 text-slate-500 leading-relaxed mb-8">
-                Stop updating fields manually. Our CRM automatically enriches contacts, logs activities, and prompts you with the next best action to close deals faster.
-              </p>
+              <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">{t('crm.feature1.title') || "An intelligent CRM that works for you"}</h2>
+              <p className="text-lg dark:text-white/50 text-slate-500 leading-relaxed mb-8">{t('crm.feature1.description') || "Stop updating fields manually. Our CRM automatically enriches contacts, logs activities, and prompts you with the next best action to close deals faster."}</p>
               <ul className="space-y-4">
                 {[
-                  { id: 'ai-copilot', name: "Ask AI Copilot", icon: <Bot size={18} className="text-violet-400" />, desc: "Get real-time deal insights and draft communications instantly." },
-                  { id: 'reporting', name: "Reporting & Forecasting", icon: <PieChart size={18} className="text-violet-400" />, desc: "Predict revenue accurately based on actual signals, not guesses." },
-                  { id: 'workflows', name: "Automated Workflows", icon: <NetworkTree size={18} className="text-violet-400" />, desc: "Trigger tasks, emails, and alerts when deal stages change." }
+                  { id: 'ai-copilot', name: t('crm.feature1.askAi.name') || "Ask AI Copilot", icon: <Bot size={18} className="text-violet-400" />, desc: t('crm.feature1.askAi.desc') || "Get real-time deal insights and draft communications instantly." },
+                  { id: 'reporting', name: t('crm.feature1.reporting.name') || "Reporting & Forecasting", icon: <PieChart size={18} className="text-violet-400" />, desc: t('crm.feature1.reporting.desc') || "Predict revenue accurately based on actual signals, not guesses." },
+                  { id: 'workflows', name: t('crm.feature1.workflows.name') || "Automated Workflows", icon: <NetworkTree size={18} className="text-violet-400" />, desc: t('crm.feature1.workflows.desc') || "Trigger tasks, emails, and alerts when deal stages change." }
                 ].map((item, i) => (
                   <li key={i} className="flex items-start dark:text-white/80 text-slate-500 font-medium group">
                     <div className="w-10 h-10 rounded-md dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-violet-500/5 flex items-center justify-center mr-4 flex-shrink-0 group-hover:border-violet-500/30 transition-colors">
@@ -674,15 +660,11 @@ export function CrmClient() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
           <Reveal delay={0}>
             <div className="text-center mb-16">
-              <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-xs font-bold mb-6 border dark:border-white/10 border-black/10 text-slate-500 dark:text-white/70">
-                Enterprise-Grade Architecture
-              </div>
+              <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-xs font-bold mb-6 border dark:border-white/10 border-black/10 text-slate-500 dark:text-white/70">{t('crm.enterprise.chip') || "Enterprise-Grade Architecture"}</div>
               <h2 className="text-4xl md:text-5xl font-bold tracking-tighter dark:text-white text-slate-900 mb-6">
-                A robust foundation for <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-violet-400">complex operations</span>
+                {t('crm.enterprise.title') || "A robust foundation for"} <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-violet-400">{t('crm.enterprise.complexOperations') || "complex operations"}</span>
               </h2>
-              <p className="text-lg dark:text-white/50 text-slate-500 max-w-2xl mx-auto font-light leading-relaxed">
-                Beyond AI, Makinari delivers all the core CRM features that growing enterprise teams demand for their daily operations.
-              </p>
+              <p className="text-lg dark:text-white/50 text-slate-500 max-w-2xl mx-auto font-light leading-relaxed">{t('crm.enterprise.description') || "Beyond AI, Makinari delivers all the core CRM features that growing enterprise teams demand for their daily operations."}</p>
             </div>
           </Reveal>
 
@@ -715,7 +697,7 @@ export function CrmClient() {
                           </div>
                         </div>
                         <div className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Active
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> {t('crm.bento.customWorkflows.active') || "Active"}
                         </div>
                       </div>
                       <div className="flex-[1] flex flex-col gap-6 relative px-2 overflow-hidden">
@@ -725,10 +707,10 @@ export function CrmClient() {
                           <div className="w-4 h-4 rounded-full bg-fuchsia-400 border-[3px] border-[#09090b] shadow-[0_0_10px_rgba(217,70,239,0.5)] mt-1 shrink-0 z-10"></div>
                             <div className="flex-[1] bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-lg p-4 group-hover:bg-fuchsia-500/15 transition-colors shadow-sm relative overflow-hidden">
                               <div className="absolute right-0 top-0 w-16 h-16 bg-fuchsia-500/10 blur-[15px] rounded-full"></div>
-                              <div className="text-[10px] text-fuchsia-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><Globe size={10} /> Just Now</div>
-                              <div className="text-sm font-medium dark:text-white/90 text-slate-800">Viewed Enterprise Pricing Page</div>
+                              <div className="text-[10px] text-fuchsia-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5"><Globe size={10} /> {t('crm.widget1.justNow') || "Just Now"}</div>
+                              <div className="text-sm font-medium dark:text-white/90 text-slate-800">{t('crm.widget1.viewedPricing') || "Viewed Enterprise Pricing Page"}</div>
                               <div className="mt-2 flex gap-2">
-                                <span className="text-[8px] px-2 py-0.5 rounded border border-fuchsia-500/30 text-fuchsia-400 bg-fuchsia-500/10 font-bold uppercase">High Intent</span>
+                                <span className="text-[8px] px-2 py-0.5 rounded border border-fuchsia-500/30 text-fuchsia-400 bg-fuchsia-500/10 font-bold uppercase">{t('crm.widget1.highIntent') || "High Intent"}</span>
                               </div>
                             </div>
                         </div>
@@ -736,8 +718,8 @@ export function CrmClient() {
                         <div className="flex items-start gap-5 relative z-10">
                           <div className="w-4 h-4 rounded-full dark:bg-slate-700 bg-slate-300 border-[3px] border-[#09090b] mt-1 shrink-0 z-10"></div>
                           <div className="flex-[1] dark:bg-white/[0.03] bg-black/5 border dark:border-white/5 border-black/5 rounded-lg p-3 hover:dark:bg-white/5 transition-colors">
-                            <div className="text-[10px] dark:text-white/40 text-slate-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5"><Mail size={10} /> 2 hours ago</div>
-                            <div className="text-xs dark:text-white/70 text-slate-600">Opened Email: &quot;Q3 Strategy Planning&quot;</div>
+                            <div className="text-[10px] dark:text-white/40 text-slate-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5"><Mail size={10} /> {t('crm.widget1.hoursAgo') || "2 hours ago"}</div>
+                            <div className="text-xs dark:text-white/70 text-slate-600">{t('crm.widget1.openedEmail') || 'Opened Email: "Q3 Strategy Planning"'}</div>
                           </div>
                         </div>
 
@@ -753,8 +735,8 @@ export function CrmClient() {
                       {/* Floating Element */}
                       <div className="absolute right-6 top-1/2 -translate-y-1/2 w-48 rounded-md dark:neu-panel neu-panel-light p-3 animate-float-slow transition-transform group-hover:scale-105 z-30 shadow-2xl border border-fuchsia-500/20 bg-white/90 dark:bg-[#09090b]/90 backdrop-blur-xl">
                         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-fuchsia-500/50 to-transparent"></div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-400 mb-2 flex items-center gap-1.5"><Bot size={10}/> AI Insight</div>
-                        <div className="text-xs dark:text-white/80 text-slate-600 leading-relaxed">Decision maker is active. Recommend immediate follow-up.</div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-400 mb-2 flex items-center gap-1.5"><Bot size={10}/>{t('crm.widget1.aiInsight') || "AI Insight"}</div>
+                        <div className="text-xs dark:text-white/80 text-slate-600 leading-relaxed">{t('crm.widget1.insightText') || "Decision maker is active. Recommend immediate follow-up."}</div>
                       </div>
                     </div>
                   </div>
@@ -764,12 +746,10 @@ export function CrmClient() {
                   <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-fuchsia-500/5 flex items-center justify-center text-fuchsia-400 mb-6 shadow-sm group-hover:scale-110 transition-transform">
                     <Users size={24} />
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">360° Customer View</h3>
-                  <p className="text-lg dark:text-white/60 text-slate-600 leading-relaxed">
-                    Get a complete timeline of every interaction, email, meeting, and transaction in one unified profile. Stop digging through different tabs to understand where a deal stands. Everything is chronologically ordered and enriched automatically.
-                  </p>
+                  <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">{t('crm.widget1.title') || "360° Customer View"}</h3>
+                  <p className="text-lg dark:text-white/60 text-slate-600 leading-relaxed">{t('crm.widget1.description') || "Get a complete timeline of every interaction, email, meeting, and transaction in one unified profile. Stop digging through different tabs to understand where a deal stands. Everything is chronologically ordered and enriched automatically."}</p>
                   <ul className="mt-8 space-y-3">
-                    {['Automatic activity capture', 'Unified communication history', 'Cross-object data enrichment', 'Real-time intent signals'].map((feature, idx) => (
+                    {[t('crm.widget1.feature1') || 'Automatic activity capture', t('crm.widget1.feature2') || 'Unified communication history', t('crm.widget1.feature3') || 'Cross-object data enrichment', t('crm.widget1.feature4') || 'Real-time intent signals'].map((feature, idx) => (
                       <li key={idx} className="flex items-center gap-3 text-sm font-medium dark:text-white/70 text-slate-600">
                         <div className="w-5 h-5 rounded-full bg-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center shrink-0">
                           <Check size={12} />
@@ -789,12 +769,10 @@ export function CrmClient() {
                   <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-violet-500/5 flex items-center justify-center text-violet-400 mb-6 shadow-sm group-hover:scale-110 transition-transform">
                     <LayoutGrid size={24} />
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">Visual Pipeline Management</h3>
-                  <p className="text-lg dark:text-white/60 text-slate-600 leading-relaxed">
-                    Drag-and-drop Kanban boards with custom stages, win probabilities, and automated transitions. Manage your sales process exactly how your team works, with complete visibility into every stage.
-                  </p>
+                  <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">{t('crm.widget2.title') || "Visual Pipeline Management"}</h3>
+                  <p className="text-lg dark:text-white/60 text-slate-600 leading-relaxed">{t('crm.widget2.description') || "Drag-and-drop Kanban boards with custom stages, win probabilities, and automated transitions. Manage your sales process exactly how your team works, with complete visibility into every stage."}</p>
                   <ul className="mt-8 space-y-3">
-                    {['Customizable pipeline stages', 'Drag-and-drop deal movement', 'Automated stage transitions', 'Win probability forecasting'].map((feature, idx) => (
+                    {[t('crm.widget2.feature1') || 'Customizable pipeline stages', t('crm.widget2.feature2') || 'Drag-and-drop deal movement', t('crm.widget2.feature3') || 'Automated stage transitions', t('crm.widget2.feature4') || 'Win probability forecasting'].map((feature, idx) => (
                       <li key={idx} className="flex items-center gap-3 text-sm font-medium dark:text-white/70 text-slate-600">
                         <div className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center shrink-0">
                           <Check size={12} />
@@ -818,16 +796,16 @@ export function CrmClient() {
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(139,92,246,0.8)] animate-[scan_3s_ease-in-out_infinite_reverse] pointer-events-none z-20"></div>
                       
                       {[
-                        { name: "Meeting", count: "5", color: "bg-blue-400", val: "$45K" },
-                        { name: "Proposal", count: "2", color: "bg-violet-400", val: "$145K", active: true },
-                        { name: "Closing", count: "1", color: "bg-fuchsia-400", val: "$90K" }
+                        { name: t('crm.feature1.stages.meeting') || "Meeting", count: "5", color: "bg-blue-400", val: "$45K" },
+                        { name: t('crm.feature1.stages.proposal') || "Proposal", count: "2", color: "bg-violet-400", val: "$145K", active: true },
+                        { name: t('crm.widget2.closing') || "Closing", count: "1", color: "bg-fuchsia-400", val: "$90K" }
                       ].map((col, i) => (
                         <div key={i} className={`flex-[1] flex flex-col gap-3 rounded-xl p-3 border relative overflow-hidden transition-colors ${col.active ? 'bg-violet-500/5 border-violet-500/30' : 'bg-white/[0.02] border-white/5'}`}>
                           <div className="flex items-center justify-between px-1 mb-1">
                             <div className="text-[10px] font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">{col.name}</div>
                             <div className="text-[10px] font-mono font-bold dark:text-white/50 text-slate-500 bg-white/5 px-1.5 py-0.5 rounded">{col.count}</div>
                           </div>
-                          <div className="text-[10px] text-slate-500 font-mono px-1">{col.val} Total</div>
+                          <div className="text-[10px] text-slate-500 font-mono px-1">{col.val} {t('crm.widget2.total') || "Total"}</div>
                           <div className="w-full h-1 rounded-full dark:bg-white/10 bg-black/10 mb-2">
                             <div className={`h-full rounded-full ${col.color} shadow-[0_0_8px_${col.color}]`} style={{ width: col.active ? '75%' : (i===0 ? '40%' : '100%') }}></div>
                           </div>
@@ -839,7 +817,7 @@ export function CrmClient() {
                                 <div className="absolute -left-px top-2 bottom-2 w-0.5 bg-violet-500 rounded-full"></div>
                                 <div className="flex justify-between items-start mb-2">
                                   <div className="text-sm font-bold dark:text-white text-slate-900">Acme Corp</div>
-                                  <div className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">75% Win</div>
+                                  <div className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">{t('crm.widget2.winRate') || "75% Win"}</div>
                                 </div>
                                 <div className="text-xs text-violet-300 font-mono font-bold mb-3">$145,000</div>
                                 <div className="flex justify-between items-center mt-auto border-t border-white/5 pt-2">
@@ -848,7 +826,7 @@ export function CrmClient() {
                                     <div className="w-5 h-5 rounded-full bg-blue-400/30 flex items-center justify-center text-[8px] font-bold border border-blue-500/50">AM</div>
                                   </div>
                                   <div className="flex items-center gap-1.5 text-[9px] text-slate-400 uppercase font-bold tracking-wider">
-                                    <Bot size={10} className="text-violet-400" /> Action
+                                    <Bot size={10} className="text-violet-400" /> {t('crm.widget2.action') || "Action"}
                                   </div>
                                 </div>
                               </div>
@@ -895,46 +873,46 @@ export function CrmClient() {
                       <div className="flex border-b dark:border-white/10 border-black/10 bg-black/20">
                         <div className="flex-[1] p-3 border-r dark:border-white/10 border-black/10 bg-blue-500/10 flex items-center justify-center gap-2 border-b-2 border-b-blue-500 relative">
                           <Mail size={14} className="text-blue-400" />
-                          <span className="text-xs font-bold text-blue-400">Email</span>
+                          <span className="text-xs font-bold text-blue-400">{t('crm.widget3.email') || "Email"}</span>
                           <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
                         </div>
                         <div className="flex-[1] p-3 border-r dark:border-white/10 border-black/10 flex items-center justify-center gap-2 opacity-50 hover:opacity-100 hover:bg-white/5 transition-all cursor-pointer">
                           <MessageSquare size={14} className="dark:text-white text-slate-900" />
-                          <span className="text-xs font-bold dark:text-white text-slate-900">WhatsApp</span>
+                          <span className="text-xs font-bold dark:text-white text-slate-900">{t('crm.widget3.whatsapp') || "WhatsApp"}</span>
                         </div>
                         <div className="flex-[1] p-3 flex items-center justify-center gap-2 opacity-50 hover:opacity-100 hover:bg-white/5 transition-all cursor-pointer">
                           <Phone size={14} className="dark:text-white text-slate-900" />
-                          <span className="text-xs font-bold dark:text-white text-slate-900">Calls</span>
+                          <span className="text-xs font-bold dark:text-white text-slate-900">{t('crm.widget3.calls') || "Calls"}</span>
                         </div>
                       </div>
                       
                       <div className="flex-[1] p-6 flex flex-col gap-4 overflow-hidden relative bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPjwvc3ZnPg==')]">
-                        <div className="self-center bg-black/20 dark:bg-white/10 border border-white/5 px-4 py-1 rounded-full text-[10px] font-bold dark:text-white/60 text-slate-500 mb-2 backdrop-blur-md">Today</div>
+                        <div className="self-center bg-black/20 dark:bg-white/10 border border-white/5 px-4 py-1 rounded-full text-[10px] font-bold dark:text-white/60 text-slate-500 mb-2 backdrop-blur-md">{t('crm.widget3.today') || "Today"}</div>
                         
                         <div className="self-start bg-black/10 dark:bg-white/[0.03] border border-white/5 rounded-2xl rounded-tl-sm p-4 max-w-[85%] text-sm dark:text-white/90 text-slate-700 relative shadow-sm">
                           <div className="flex items-center justify-between mb-2">
                             <div className="font-bold text-xs opacity-70">Sarah Jenkins</div>
                             <div className="text-[9px] font-mono opacity-50">10:42 AM</div>
                           </div>
-                          <p className="leading-relaxed text-xs">Thanks for the proposal. We're reviewing it with the board tomorrow. Can we schedule a quick call for Friday?</p>
+                          <p className="leading-relaxed text-xs">{t('crm.widget3.clientMessage') || "Thanks for the proposal. We're reviewing it with the board tomorrow. Can we schedule a quick call for Friday?"}</p>
                         </div>
                         
                         <div className="self-end bg-blue-500/10 border border-blue-500/30 rounded-2xl rounded-tr-sm p-4 max-w-[85%] text-sm text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.15)] group-hover:scale-[1.02] transition-transform origin-bottom-right duration-500 relative overflow-hidden">
                           <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/20 blur-[15px] rounded-full"></div>
                           <div className="flex items-center justify-between mb-2 relative z-10">
-                            <div className="font-bold text-xs text-blue-400">You</div>
+                            <div className="font-bold text-xs text-blue-400">{t('crm.widget3.you') || "You"}</div>
                             <div className="text-[9px] font-mono text-blue-400/60">11:05 AM</div>
                           </div>
-                          <p className="leading-relaxed text-xs relative z-10">Absolutely, Sarah. I'll send over a calendar invite for Friday morning. Let me know if the board needs any additional documentation.</p>
+                          <p className="leading-relaxed text-xs relative z-10">{t('crm.widget3.yourMessage') || "Absolutely, Sarah. I'll send over a calendar invite for Friday morning. Let me know if the board needs any additional documentation."}</p>
                           <div className="flex justify-end items-center gap-1 mt-3 pt-2 border-t border-blue-500/20 relative z-10">
-                            <div className="text-[8px] uppercase tracking-wider font-bold text-blue-400 flex items-center gap-1"><Check size={10} className="text-blue-500" /> Read</div>
+                            <div className="text-[8px] uppercase tracking-wider font-bold text-blue-400 flex items-center gap-1"><Check size={10} className="text-blue-500" /> {t('crm.widget3.read') || "Read"}</div>
                           </div>
                         </div>
                         
                         <div className="absolute bottom-4 left-6 right-6 h-12 rounded-full dark:bg-black/60 bg-white border dark:border-white/10 border-black/10 flex items-center px-4 justify-between shadow-xl backdrop-blur-xl group/input hover:border-blue-500/50 transition-colors">
                           <div className="text-xs font-mono dark:text-white/40 text-slate-400 flex items-center gap-2">
                             <span className="w-1 h-4 bg-blue-500 rounded-full animate-pulse opacity-0 group-hover/input:opacity-100 transition-opacity"></span>
-                            Reply to Sarah...
+                            {t('crm.widget3.replyPlaceholder') || "Reply to Sarah..."}
                           </div>
                           <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-[0_0_15px_rgba(59,130,246,0.4)] cursor-pointer hover:bg-blue-400 transition-colors">
                             <Bot size={14} />
@@ -949,12 +927,10 @@ export function CrmClient() {
                   <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-blue-500/5 flex items-center justify-center text-blue-400 mb-6 shadow-sm group-hover:scale-110 transition-transform">
                     <MessageSquare size={24} />
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">Omnichannel Inbox</h3>
-                  <p className="text-lg dark:text-white/60 text-slate-600 leading-relaxed">
-                    Manage email, WhatsApp, and social channels from a single threaded view attached to the deal record. Never lose context across different communication platforms again.
-                  </p>
+                  <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">{t('crm.widget3.title') || "Omnichannel Inbox"}</h3>
+                  <p className="text-lg dark:text-white/60 text-slate-600 leading-relaxed">{t('crm.widget3.description') || "Manage email, WhatsApp, and social channels from a single threaded view attached to the deal record. Never lose context across different communication platforms again."}</p>
                   <ul className="mt-8 space-y-3">
-                    {['Unified messaging thread per contact', 'Native WhatsApp & Email integration', 'AI-drafted contextual replies', 'Read receipts & engagement tracking'].map((feature, idx) => (
+                    {[t('crm.widget3.feature1') || 'Unified messaging thread per contact', t('crm.widget3.feature2') || 'Native WhatsApp & Email integration', t('crm.widget3.feature3') || 'AI-drafted contextual replies', t('crm.widget3.feature4') || 'Read receipts & engagement tracking'].map((feature, idx) => (
                       <li key={idx} className="flex items-center gap-3 text-sm font-medium dark:text-white/70 text-slate-600">
                         <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
                           <Check size={12} />
@@ -974,12 +950,10 @@ export function CrmClient() {
                   <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-emerald-500/5 flex items-center justify-center text-emerald-400 mb-6 shadow-sm group-hover:scale-110 transition-transform">
                     <BarChart size={24} />
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">Advanced Dashboards</h3>
-                  <p className="text-lg dark:text-white/60 text-slate-600 leading-relaxed">
-                    Customizable reports for sales funnels, team performance, and ROI tracking with real-time data sync. Build unlimited dashboards to track exactly the metrics that matter to your board.
-                  </p>
+                  <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">{t('crm.widget4.title') || "Advanced Dashboards"}</h3>
+                  <p className="text-lg dark:text-white/60 text-slate-600 leading-relaxed">{t('crm.widget4.description') || "Customizable reports for sales funnels, team performance, and ROI tracking with real-time data sync. Build unlimited dashboards to track exactly the metrics that matter to your board."}</p>
                   <ul className="mt-8 space-y-3">
-                    {['Drag-and-drop report builder', 'Real-time revenue forecasting', 'Team performance analytics', 'Exportable board-ready views'].map((feature, idx) => (
+                    {[t('crm.widget4.feature1') || 'Drag-and-drop report builder', t('crm.widget4.feature2') || 'Real-time revenue forecasting', t('crm.widget4.feature3') || 'Team performance analytics', t('crm.widget4.feature4') || 'Exportable board-ready views'].map((feature, idx) => (
                       <li key={idx} className="flex items-center gap-3 text-sm font-medium dark:text-white/70 text-slate-600">
                         <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                           <Check size={12} />
@@ -1004,25 +978,25 @@ export function CrmClient() {
                         <div className="flex-[1] rounded-lg dark:bg-white/[0.03] bg-black/5 border dark:border-white/10 border-black/10 p-4 flex flex-col justify-center relative overflow-hidden group/stat hover:border-emerald-500/30 transition-colors cursor-default">
                           <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-[20px] opacity-0 group-hover/stat:opacity-100 transition-opacity"></div>
                           <div className="text-[10px] font-bold dark:text-white/50 text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
-                            ARR <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.8)]"></div>
+                            {t('crm.widget4.arr') || "ARR"} <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.8)]"></div>
                           </div>
                           <div className="text-3xl font-bold dark:text-white text-slate-900 font-mono tracking-tight">$1.2M</div>
-                          <div className="text-[10px] text-emerald-400 font-bold mt-1.5 flex items-center gap-1 bg-emerald-500/10 w-fit px-2 py-0.5 rounded border border-emerald-500/20"><TrendingUp size={10}/> +18.5% YoY</div>
+                          <div className="text-[10px] text-emerald-400 font-bold mt-1.5 flex items-center gap-1 bg-emerald-500/10 w-fit px-2 py-0.5 rounded border border-emerald-500/20"><TrendingUp size={10}/>{t('crm.widget4.yoy') || "+18.5% YoY"}</div>
                         </div>
                         <div className="flex-[1] rounded-lg dark:bg-white/[0.03] bg-black/5 border dark:border-white/10 border-black/10 p-4 flex flex-col justify-center relative overflow-hidden group/stat hover:border-emerald-500/30 transition-colors cursor-default">
                           <div className="text-[10px] font-bold dark:text-white/50 text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
-                            Win Rate <BarChart size={10} className="dark:text-white/30" />
+                            {t('crm.widget4.winRate') || "Win Rate"} <BarChart size={10} className="dark:text-white/30" />
                           </div>
                           <div className="text-3xl font-bold dark:text-white text-slate-900 font-mono tracking-tight">32.4%</div>
-                          <div className="text-[10px] text-emerald-400 font-bold mt-1.5 flex items-center gap-1 bg-emerald-500/10 w-fit px-2 py-0.5 rounded border border-emerald-500/20"><TrendingUp size={10}/> +4.2% MoM</div>
+                          <div className="text-[10px] text-emerald-400 font-bold mt-1.5 flex items-center gap-1 bg-emerald-500/10 w-fit px-2 py-0.5 rounded border border-emerald-500/20"><TrendingUp size={10}/>{t('crm.widget4.mom') || "+4.2% MoM"}</div>
                         </div>
                       </div>
                       
                       <div className="flex-[1] w-full rounded-lg border dark:border-white/10 border-black/10 dark:bg-white/[0.02] bg-white p-5 flex flex-col justify-between relative overflow-hidden">
                         <div className="absolute left-0 top-0 w-1 h-full bg-emerald-500 opacity-50 shadow-[0_0_15px_rgba(16,185,129,1)]"></div>
                         <div className="flex justify-between items-center mb-4 relative z-10">
-                          <div className="text-sm font-bold dark:text-white text-slate-900 flex items-center gap-2"><PieChart size={14} className="text-emerald-500"/> Revenue Forecast</div>
-                          <div className="text-[10px] uppercase font-bold dark:text-white/60 text-slate-500 px-2 py-1 rounded border dark:border-white/10 border-black/10 bg-black/20">Q3 2026</div>
+                          <div className="text-sm font-bold dark:text-white text-slate-900 flex items-center gap-2"><PieChart size={14} className="text-emerald-500"/> {t('crm.widget4.revenueForecast') || "Revenue Forecast"}</div>
+                          <div className="text-[10px] uppercase font-bold dark:text-white/60 text-slate-500 px-2 py-1 rounded border dark:border-white/10 border-black/10 bg-black/20">{t('crm.widget4.q3') || "Q3 2026"}</div>
                         </div>
                         <div className="w-full flex items-end gap-2 flex-1 pt-4 relative z-10">
                           {/* Grid lines */}
@@ -1045,9 +1019,9 @@ export function CrmClient() {
                           ))}
                         </div>
                         <div className="w-full border-t dark:border-white/10 border-black/10 mt-3 pt-2 flex justify-between text-[9px] dark:text-white/40 text-slate-500 font-bold uppercase font-mono relative z-10">
-                          <span>Jul</span>
-                          <span>Aug</span>
-                          <span>Sep (Proj)</span>
+                          <span>{t('crm.widget4.months.jul') || "Jul"}</span>
+                          <span>{t('crm.widget4.months.aug') || "Aug"}</span>
+                          <span>{t('crm.widget4.months.sep') || "Sep (Proj)"}</span>
                         </div>
                       </div>
                       </div>

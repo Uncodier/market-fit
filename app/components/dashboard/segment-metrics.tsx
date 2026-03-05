@@ -136,7 +136,7 @@ export function SegmentMetrics({ segmentId = "all", startDate: propStartDate, en
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
               </div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full w-full"></div>
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full font-inter w-full"></div>
             </div>
             <div className="ml-2 min-w-16 flex items-center justify-end">
               <div className="h-6 w-14 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
@@ -166,9 +166,9 @@ export function SegmentMetrics({ segmentId = "all", startDate: propStartDate, en
               <p className="text-sm font-medium leading-none">{segment.name}</p>
               <p className="text-sm font-medium">{segment.value}%</p>
             </div>
-            <div className={`h-3 w-full rounded-full ${isDarkMode ? "bg-slate-700/50" : "bg-muted"}`}>
+            <div className={`h-3 w-full rounded-full font-inter ${isDarkMode ? "bg-slate-700/50" : "bg-muted"}`}>
               <div
-                className="h-full rounded-full transition-all duration-300"
+                className="h-full rounded-full font-inter transition-all duration-300"
                 style={{ 
                   width: `${segment.value}%`,
                   backgroundColor: isDarkMode ? lightVariants[index % lightVariants.length] : segment.color

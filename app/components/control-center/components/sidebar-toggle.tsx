@@ -16,7 +16,7 @@ export function SidebarToggle({ isCollapsed, onToggle }: SidebarToggleProps) {
       size="icon"
       onClick={onToggle}
       className={cn(
-        "h-8 w-8 rounded-full fixed top-[21px] z-[1000] transition-all duration-300 ease-in-out hover:bg-muted",
+        "h-8 w-8 rounded-full font-inter fixed top-[21px] z-[1000] transition-all duration-300 ease-in-out hover:bg-muted",
         isCollapsed ? "left-4" : "left-[248px]"
       )}
     >

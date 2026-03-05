@@ -14,8 +14,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   }
   
   return {
-    title: `${useCase.name} Use Case | Makinari`,
-    description: `Learn how ${useCase.name} can transform their revenue operations with Makinari. ${useCase.description}`,
+    title: useCase.seoTitle || `${useCase.name} Use Case | Makinari`,
+    description: useCase.seoDescription || `Learn how ${useCase.name} can transform their revenue operations with Makinari. ${useCase.description}`,
+    openGraph: {
+      title: useCase.seoTitle || `${useCase.name} Use Case | Makinari`,
+      description: useCase.seoDescription || `Learn how ${useCase.name} can transform their revenue operations with Makinari. ${useCase.description}`,
+      type: "article",
+    }
   }
 }
 

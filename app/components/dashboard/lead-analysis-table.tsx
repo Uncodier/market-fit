@@ -129,7 +129,7 @@ export function LeadAnalysisTable() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full font-inter h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         </CardContent>
       </Card>
@@ -275,7 +275,7 @@ export function LeadAnalysisTable() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div className="w-16 bg-gray-200 rounded-full font-inter h-2">
                           <div 
                             className="bg-blue-600 h-2 rounded-full" 
                             style={{ width: `${analysis.completion_percentage}%` }}

@@ -3,11 +3,32 @@
 import React, { useRef } from "react"
 import { SiteFooter } from "@/app/components/auth/sections/SiteFooter"
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion"
-import { Target, TrendingUp, Clock, Zap, PieChart, CheckSquare, ArrowUpRight, Store, Users, RotateCw, BarChart, Globe, NetworkTree } from "@/app/components/ui/icons"
+import { Target, TrendingUp, Clock, Zap, PieChart, CheckSquare, ArrowUpRight, Store, Users, RotateCw, BarChart, Globe, NetworkTree, ArrowRight } from "@/app/components/ui/icons"
 import { SiMeta, SiLinkedin, SiGoogleads, SiTiktok, SiX } from "react-icons/si"
 import Link from "next/link"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { OpenClawCard } from "@/app/components/auth/sections/OpenClawCard"
+
+
+// Hook for scroll animations
+function useIntersectionObserver(options: IntersectionObserverInit = { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }) {
+  const [isIntersecting, setIsIntersecting] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsIntersecting(true);
+        if (ref.current) observer.unobserve(ref.current);
+      }
+    }, options);
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [options]);
+
+  return [ref, isIntersecting] as const;
+}
 
 function Reveal({ 
   children, 
@@ -20,30 +41,29 @@ function Reveal({
   direction?: "up" | "down" | "left" | "right" | "none", 
   className?: string
 }) {
+  const [ref, isVisible] = useIntersectionObserver();
+  
   const getTransform = () => {
-    if (direction === "up") return { y: 60, x: 0 };
-    if (direction === "down") return { y: -60, x: 0 };
-    if (direction === "left") return { x: 60, y: 0 };
-    if (direction === "right") return { x: -60, y: 0 };
-    return { x: 0, y: 0 };
+    if (direction === "up") return "translateY(40px)";
+    if (direction === "down") return "translateY(-40px)";
+    if (direction === "left") return "translateX(40px)";
+    if (direction === "right") return "translateX(-40px)";
+    return "translate(0)";
   };
 
-  const initial = { opacity: 0, filter: "blur(12px)", ...getTransform() };
-
   return (
-    <motion.div
-      initial={initial}
-      whileInView={{ opacity: 1, filter: "blur(0px)", x: 0, y: 0 }}
-      viewport={{ once: true, margin: "0px 0px -50px 0px" }}
-      transition={{ 
-        duration: 1, 
-        delay: delay / 1000, 
-        ease: [0.16, 1, 0.3, 1] 
+    <div
+      ref={ref}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        filter: isVisible ? "blur(0px)" : "blur(12px)",
+        transform: isVisible ? "translate(0)" : getTransform(),
+        transition: `opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, filter 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
       }}
       className={className}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -130,7 +150,7 @@ export function InboundClient() {
   const { t } = useLocalization()
   
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-emerald-500/30 flex flex-col font-sans overflow-hidden min-h-screen">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-emerald-500/30 flex flex-col overflow-hidden min-h-screen">
       
       {/* Hero Section */}
       <section className="relative w-full pt-32 pb-24 border-b dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white overflow-hidden">
@@ -139,26 +159,27 @@ export function InboundClient() {
           <Reveal delay={0}>
             <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-8 border border-emerald-500/30 bg-emerald-500/5 text-emerald-500">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
-              Inbound Generation
+              {t('inbound.hero.badge') || "Inbound Generation"}
             </div>
           </Reveal>
           <Reveal delay={100}>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 leading-tight drop-shadow-lg max-w-4xl">
-              Turn your traffic into <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">qualified pipeline</span>
+              {t('inbound.hero.title1') || "Turn your traffic into "} <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">{t('inbound.hero.title2') || "qualified pipeline"}</span>
             </h1>
           </Reveal>
           <Reveal delay={200}>
             <p className="text-lg md:text-xl dark:text-white/50 text-slate-500 max-w-2xl font-light leading-relaxed mb-10">
-              Capture high-intent leads on autopilot. Use natively built AI tools to optimize ad campaigns, manage budgets, and keep your inbound pipeline consistently full.
+              {t('inbound.hero.description') || "Capture high-intent leads on autopilot. Use natively built AI tools to optimize ad campaigns, manage budgets, and keep your inbound pipeline consistently full."}
             </p>
           </Reveal>
           <Reveal delay={300}>
-            <div className="flex gap-4">
-              <Link href="/auth" className="px-8 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                Start for free
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+              <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 group">
+                {t('inbound.hero.cta.start') || "Start with Makinari"}
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link href="/product/features" className="px-8 py-3 rounded-full dark:bg-white/5 bg-black/5 hover:dark:bg-white/10 hover:bg-black/10 dark:text-white text-slate-900 font-bold transition-colors border dark:border-white/10 border-black/10">
-                Explore all features
+              <Link href="/product/features" className="w-full sm:w-auto px-8 py-3.5 rounded-full font-inter font-bold dark:bg-white/5 bg-black/5 hover:dark:bg-white/10 hover:bg-black/10 dark:text-white text-slate-900 transition-colors border dark:border-white/10 border-black/10 flex items-center justify-center text-center">
+                {t('inbound.hero.cta.explore') || "Explore all features"}
               </Link>
             </div>
           </Reveal>
@@ -171,27 +192,27 @@ export function InboundClient() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col gap-4 font-inter">
-                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top_left,transparent,transparent_8px,rgba(16,185,129,0.02)_8px,rgba(16,185,129,0.02)_16px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col gap-4 font-sans">
+                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top_left,transparent,transparent_8px,rgba(16,185,129,0.02)_8px,rgba(16,185,129,0.02)_16px)] opacity-100 pointer-events-none rounded-xl"></div>
                 
                 {/* Mockup UI */}
                 <div className="flex gap-4 relative z-10">
                   <div className="flex-1 rounded-md bg-black/40 border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light shadow-md">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 blur-[20px] rounded-full"></div>
-                    <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">Ad Spend</div>
+                    <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">{t('inbound.mockup.adSpend') || "Ad Spend"}</div>
                     <div className="text-xl font-bold dark:text-white text-slate-900">$12,450</div>
                     <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1"><TrendingUp size={10} /> +5.2%</div>
                   </div>
                   <div className="flex-1 rounded-md bg-black/40 border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light shadow-md">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 blur-[20px] rounded-full"></div>
-                    <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">ROAS</div>
+                    <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">{t('inbound.mockup.roas') || "ROAS"}</div>
                     <div className="text-xl font-bold dark:text-white text-slate-900">4.2x</div>
                     <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1"><TrendingUp size={10} /> +1.1x</div>
                   </div>
                   <div className="flex-1 rounded-md bg-black/40 border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light shadow-md">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 blur-[20px] rounded-full"></div>
-                    <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">Cost / Lead</div>
+                    <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">{t('inbound.mockup.costPerLead') || "Cost / Lead"}</div>
                     <div className="text-xl font-bold dark:text-white text-slate-900">$42.50</div>
                     <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1"><TrendingUp size={10} /> -12%</div>
                   </div>
@@ -201,19 +222,19 @@ export function InboundClient() {
                 <div className="flex-1 rounded-lg bg-black/40 border dark:border-white/5 border-black/5 p-5 relative overflow-hidden flex flex-col gap-3 z-10 dark:neu-panel neu-panel-light shadow-md">
                   <div className="flex justify-between items-center mb-2">
                     <div className="text-xs dark:text-white/80 text-slate-500 font-bold tracking-wider uppercase flex items-center gap-2">
-                      <Target size={14} className="text-emerald-400" /> Active Campaigns
+                      <Target size={14} className="text-emerald-400" /> {t('inbound.mockup.activeCampaigns') || "Active Campaigns"}
                     </div>
                     <div className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                      AI Optimizing
+                      {t('inbound.mockup.aiOptimizing') || "AI Optimizing"}
                     </div>
                   </div>
 
                   {/* Campaign Items */}
                   {[
-                    { name: "Q4 Retargeting", status: "Active", budget: "$150/d", leads: "142" },
-                    { name: "Lookalike Top Tier", status: "Active", budget: "$200/d", leads: "215" },
-                    { name: "Cold Outbound Search", status: "Learning", budget: "$80/d", leads: "24" }
+                    { name: t('inbound.mockup.campaigns.q4Retargeting') || "Q4 Retargeting", status: t('inbound.mockup.status.active') || "Active", budget: "$150/d", leads: "142" },
+                    { name: t('inbound.mockup.campaigns.lookalikeTopTier') || "Lookalike Top Tier", status: t('inbound.mockup.status.active') || "Active", budget: "$200/d", leads: "215" },
+                    { name: t('inbound.mockup.campaigns.coldOutboundSearch') || "Cold Outbound Search", status: t('inbound.mockup.status.learning') || "Learning", budget: "$80/d", leads: "24" }
                   ].map((camp, i) => (
                     <div key={i} className="flex items-center justify-between p-3 rounded-md border dark:border-white/5 border-black/5 dark:bg-white/[0.02] bg-black/5 hover:dark:bg-white/[0.05] bg-black/10 transition-colors">
                       <div className="flex items-center gap-3">
@@ -231,7 +252,7 @@ export function InboundClient() {
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-bold dark:text-white text-slate-900">{camp.leads}</div>
-                        <div className="text-[10px] dark:text-white/40 text-slate-500">Leads</div>
+                        <div className="text-[10px] dark:text-white/40 text-slate-500">{t('inbound.mockup.leads') || "Leads"}</div>
                       </div>
                     </div>
                   ))}
@@ -245,8 +266,8 @@ export function InboundClient() {
                       <Target size={16} />
                     </div>
                     <div>
-                      <div className="dark:text-white text-slate-900 text-xs font-bold">New Lead</div>
-                      <div className="text-emerald-400 text-[10px]">via Lookalike Tier</div>
+                      <div className="dark:text-white text-slate-900 text-xs font-bold">{t('inbound.mockup.newLead') || "New Lead"}</div>
+                      <div className="text-emerald-400 text-[10px]">{t('inbound.mockup.viaLookalikeTier') || "via Lookalike Tier"}</div>
                     </div>
                   </div>
                 </div>
@@ -257,19 +278,19 @@ export function InboundClient() {
           <div className="w-full lg:w-1/2">
             <Reveal delay={0} direction="left">
               <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">
-                AI managed ad spend
+                {t('inbound.feature1.title') || "AI managed ad spend"}
               </h2>
               <p className="text-lg dark:text-white/50 text-slate-500 leading-relaxed mb-8">
-                Optimize your entire demand generation strategy from one place. Allocate budgets smartly and score incoming leads immediately before they cool off.
+                {t('inbound.feature1.description') || "Optimize your entire demand generation strategy from one place. Allocate budgets smartly and score incoming leads immediately before they cool off."}
               </p>
               <ul className="space-y-4">
                 {[
-                  { id: 'inbound-automation', name: "Inbound Automation", icon: <Zap size={18} className="text-emerald-400" />, desc: "Instantly ingest leads, assign them to reps, and start sequences." },
-                  { id: 'ad-management', name: "Ad Management", icon: <Target size={18} className="text-emerald-400" />, desc: "Connect Meta, LinkedIn, and Google Ads to manage ROI directly." },
-                  { id: 'smart-logging', name: "Lead Scoring", icon: <CheckSquare size={18} className="text-emerald-400" />, desc: "Rank incoming leads by buying intent and route them properly." }
+                  { id: 'inbound-automation', name: t('inbound.feature1.list.automation.title') || "Inbound Automation", icon: <Zap size={18} className="text-emerald-400" />, desc: t('inbound.feature1.list.automation.desc') || "Instantly ingest leads, assign them to reps, and start sequences." },
+                  { id: 'ad-management', name: t('inbound.feature1.list.adManagement.title') || "Ad Management", icon: <Target size={18} className="text-emerald-400" />, desc: t('inbound.feature1.list.adManagement.desc') || "Connect Meta, LinkedIn, and Google Ads to manage ROI directly." },
+                  { id: 'smart-logging', name: t('inbound.feature1.list.leadScoring.title') || "Lead Scoring", icon: <CheckSquare size={18} className="text-emerald-400" />, desc: t('inbound.feature1.list.leadScoring.desc') || "Rank incoming leads by buying intent and route them properly." }
                 ].map((item, i) => (
                   <li key={i} className="flex items-start dark:text-white/80 text-slate-500 font-medium group">
-                    <div className="w-10 h-10 rounded-md dark:neu-pressed neu-pressed-light flex items-center justify-center mr-4 flex-shrink-0 border dark:border-white/5 border-black/5 group-hover:border-emerald-500/30 transition-colors bg-emerald-500/5">
+                    <div className="w-10 h-10 rounded-md dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-emerald-500/5 flex items-center justify-center mr-4 flex-shrink-0 group-hover:border-emerald-500/30 transition-colors">
                       {item.icon}
                     </div>
                     <div>
@@ -296,13 +317,13 @@ export function InboundClient() {
             <Reveal delay={0} direction="right">
               <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-6 border border-emerald-500/30 bg-emerald-500/5 text-emerald-500">
                 <PieChart size={14} className="mr-2" />
-                Budget Optimization
+                {t('inbound.adAllocation.badge') || "Budget Optimization"}
               </div>
               <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">
-                Ad allocation management
+                {t('inbound.adAllocation.title') || "Ad allocation management"}
               </h2>
               <p className="text-lg dark:text-white/50 text-slate-500 leading-relaxed mb-8">
-                Stop wasting money on underperforming channels. Makinari automatically shifts your budget toward the platforms driving the highest quality pipeline, in real-time.
+                {t('inbound.adAllocation.description') || "Stop wasting money on underperforming channels. Makinari automatically shifts your budget toward the platforms driving the highest quality pipeline, in real-time."}
               </p>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -312,7 +333,7 @@ export function InboundClient() {
                   { name: 'LinkedIn Ads', icon: <SiLinkedin size={24} className="text-[#0A66C2]" /> },
                   { name: 'TikTok Ads', icon: <SiTiktok size={24} className="dark:text-white text-black" /> },
                   { name: 'X Ads', icon: <SiX size={24} className="dark:text-white text-black" /> },
-                  { name: 'And more...', icon: <Target size={24} className="text-slate-400" /> }
+                  { name: t('inbound.adAllocation.channels.more') || 'And more...', icon: <Target size={24} className="text-slate-400" /> }
                 ].map((channel, i) => (
                   <div key={i} className="flex flex-col items-center justify-center gap-3 p-4 rounded-xl border dark:border-white/5 border-black/5 dark:bg-[#0a0a0c] bg-slate-50 hover:dark:bg-white/[0.05] hover:bg-black/5 transition-all group">
                     <div className="w-12 h-12 rounded-lg bg-white dark:bg-[#1a1a1a] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
@@ -329,6 +350,7 @@ export function InboundClient() {
             <Reveal delay={200} direction="left">
               <div className="relative w-full aspect-square max-h-[500px] rounded-2xl dark:neu-panel neu-panel-light p-8 flex flex-col items-center justify-center overflow-hidden border dark:border-white/10 border-black/5 shadow-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08),transparent_70%)]"></div>
+                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.1)_8px,rgba(16,185,129,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.05)_8px,rgba(16,185,129,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
                 
                 {/* Visualization of budget moving */}
                 <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -366,9 +388,9 @@ export function InboundClient() {
                   {/* Center node */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center z-20 shadow-[0_0_30px_rgba(16,185,129,0.2)] backdrop-blur-md">
                     <div className="text-center">
-                      <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">Total Budget</div>
+                      <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">{t('inbound.adAllocation.chart.totalBudget') || "Total Budget"}</div>
                       <div className="text-2xl font-bold dark:text-white text-slate-900">$50k</div>
-                      <div className="text-[10px] dark:text-white/50 text-slate-500 mt-1">AI Allocated</div>
+                      <div className="text-[10px] dark:text-white/50 text-slate-500 mt-1">{t('inbound.adAllocation.chart.aiAllocated') || "AI Allocated"}</div>
                     </div>
                   </div>
 
@@ -386,23 +408,23 @@ export function InboundClient() {
             <Reveal delay={0} direction="right">
               <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-6 border border-emerald-500/30 bg-emerald-500/5 text-emerald-500">
                 <Users size={14} className="mr-2" />
-                Audience & Retargeting
+                {t('inbound.retargeting.badge') || "Audience & Retargeting"}
               </div>
               <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">
-                Never lose a high-intent visitor
+                {t('inbound.retargeting.title') || "Never lose a high-intent visitor"}
               </h2>
               <p className="text-lg dark:text-white/50 text-slate-500 leading-relaxed mb-8">
-                Build hyper-targeted audiences based on website behavior, CRM data, and firmographics. Launch cross-channel retargeting campaigns that follow your best prospects across the web, social media, and their inbox.
+                {t('inbound.retargeting.description') || "Build hyper-targeted audiences based on website behavior, CRM data, and firmographics. Launch cross-channel retargeting campaigns that follow your best prospects across the web, social media, and their inbox."}
               </p>
               
               <ul className="space-y-4">
                 {[
-                  { name: "Dynamic Retargeting", icon: <RotateCw size={18} className="text-emerald-400" />, desc: "Show personalized ads based on the exact pages or products a prospect viewed." },
-                  { name: "Lookalike Audiences", icon: <Users size={18} className="text-emerald-400" />, desc: "Automatically find new prospects that match your best closed-won customers." },
-                  { name: "Multi-touch Attribution", icon: <BarChart size={18} className="text-emerald-400" />, desc: "Track the entire customer journey and see exactly which channels drive revenue." }
+                  { name: t('inbound.retargeting.list.dynamic.title') || "Dynamic Retargeting", icon: <RotateCw size={18} className="text-emerald-400" />, desc: t('inbound.retargeting.list.dynamic.desc') || "Show personalized ads based on the exact pages or products a prospect viewed." },
+                  { name: t('inbound.retargeting.list.lookalike.title') || "Lookalike Audiences", icon: <Users size={18} className="text-emerald-400" />, desc: t('inbound.retargeting.list.lookalike.desc') || "Automatically find new prospects that match your best closed-won customers." },
+                  { name: t('inbound.retargeting.list.attribution.title') || "Multi-touch Attribution", icon: <BarChart size={18} className="text-emerald-400" />, desc: t('inbound.retargeting.list.attribution.desc') || "Track the entire customer journey and see exactly which channels drive revenue." }
                 ].map((item, i) => (
                   <li key={i} className="flex items-start dark:text-white/80 text-slate-500 font-medium group">
-                    <div className="w-10 h-10 rounded-md dark:neu-pressed neu-pressed-light flex items-center justify-center mr-4 flex-shrink-0 border dark:border-white/5 border-black/5 group-hover:border-emerald-500/30 transition-colors bg-emerald-500/5">
+                    <div className="w-10 h-10 rounded-md dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-emerald-500/5 flex items-center justify-center mr-4 flex-shrink-0 group-hover:border-emerald-500/30 transition-colors">
                       {item.icon}
                     </div>
                     <div>
@@ -423,7 +445,7 @@ export function InboundClient() {
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
                 <div className="relative w-full aspect-[4/3] rounded-2xl dark:neu-mockup-screen neu-mockup-screen-light p-6 flex flex-col overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-2xl"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-100 pointer-events-none rounded-2xl"></div>
                   
                   <div className="flex justify-between items-center mb-6 pb-4 border-b dark:border-white/10 border-black/10 relative z-10">
                     <div className="flex items-center gap-3">
@@ -431,16 +453,16 @@ export function InboundClient() {
                         <Users size={18} />
                       </div>
                       <div>
-                        <div className="text-sm font-bold dark:text-white text-slate-900 tracking-tight">High Intent Audience</div>
+                        <div className="text-sm font-bold dark:text-white text-slate-900 tracking-tight">{t('inbound.retargeting.mockup.title') || "High Intent Audience"}</div>
                         <div className="text-[10px] font-medium dark:text-emerald-400/80 text-emerald-600 flex items-center gap-1">
                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                          Syncing to 4 platforms
+                          {t('inbound.retargeting.mockup.syncing') || "Syncing to 4 platforms"}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-xl font-bold dark:text-white text-slate-900">12,450</div>
-                      <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase tracking-wider font-bold">Matched Users</div>
+                      <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase tracking-wider font-bold">{t('inbound.retargeting.mockup.matchedUsers') || "Matched Users"}</div>
                     </div>
                   </div>
                   
@@ -448,33 +470,33 @@ export function InboundClient() {
                     <div className="p-4 rounded-xl border dark:border-white/10 border-black/10 dark:bg-[#121212] bg-white shadow-sm hover:-translate-y-1 transition-transform cursor-pointer">
                       <div className="text-sm font-semibold dark:text-white/90 text-slate-700 mb-1.5 flex items-center gap-2">
                         <span className="w-6 h-6 rounded-md flex items-center justify-center bg-blue-500/10 text-blue-500 border border-blue-500/20"><Globe size={14}/></span>
-                        Visited High-Value Pages
+                        {t('inbound.retargeting.mockup.filters.visited.title') || "Visited High-Value Pages"}
                       </div>
-                      <div className="pl-8 text-xs dark:text-white/50 text-slate-500">Pricing or Checkout in the last 7 days</div>
+                      <div className="pl-8 text-xs dark:text-white/50 text-slate-500">{t('inbound.retargeting.mockup.filters.visited.desc') || "Pricing or Checkout in the last 7 days"}</div>
                     </div>
 
                     <div className="flex items-center justify-center -my-3 relative z-20">
-                      <div className="px-3 py-1 rounded-full text-[10px] font-bold dark:bg-[#1a1a1a] bg-slate-100 border dark:border-white/10 border-black/10 text-emerald-500 shadow-sm">AND</div>
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold dark:bg-[#1a1a1a] bg-slate-100 border dark:border-white/10 border-black/10 text-emerald-500 shadow-sm">{t('inbound.retargeting.mockup.filters.and') || "AND"}</div>
                     </div>
 
                     <div className="p-4 rounded-xl border dark:border-white/10 border-black/10 dark:bg-[#121212] bg-white shadow-sm hover:-translate-y-1 transition-transform cursor-pointer">
                       <div className="text-sm font-semibold dark:text-white/90 text-slate-700 mb-1.5 flex items-center gap-2">
                         <span className="w-6 h-6 rounded-md flex items-center justify-center bg-purple-500/10 text-purple-500 border border-purple-500/20"><NetworkTree size={14}/></span>
-                        Ideal Customer Profile
+                        {t('inbound.retargeting.mockup.filters.icp.title') || "Ideal Customer Profile"}
                       </div>
-                      <div className="pl-8 text-xs dark:text-white/50 text-slate-500">Company Size: 50-500 • Industry: SaaS</div>
+                      <div className="pl-8 text-xs dark:text-white/50 text-slate-500">{t('inbound.retargeting.mockup.filters.icp.desc') || "Company Size: 50-500 • Industry: SaaS"}</div>
                     </div>
 
                     <div className="flex items-center justify-center -my-3 relative z-20">
-                      <div className="px-3 py-1 rounded-full text-[10px] font-bold dark:bg-[#1a1a1a] bg-slate-100 border dark:border-white/10 border-black/10 text-rose-500 shadow-sm">EXCLUDE</div>
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold dark:bg-[#1a1a1a] bg-slate-100 border dark:border-white/10 border-black/10 text-rose-500 shadow-sm">{t('inbound.retargeting.mockup.filters.exclude') || "EXCLUDE"}</div>
                     </div>
 
                     <div className="p-4 rounded-xl border dark:border-rose-500/20 border-rose-500/20 dark:bg-rose-500/5 bg-rose-50 shadow-sm hover:-translate-y-1 transition-transform cursor-pointer">
                       <div className="text-sm font-semibold dark:text-rose-500 text-rose-600 mb-1.5 flex items-center gap-2">
                         <span className="w-6 h-6 rounded-md flex items-center justify-center bg-rose-500/10 text-rose-600 border border-rose-500/20"><Store size={14}/></span>
-                        Existing Customers
+                        {t('inbound.retargeting.mockup.filters.existing.title') || "Existing Customers"}
                       </div>
-                      <div className="pl-8 text-xs dark:text-rose-400/70 text-rose-500/70">Exclude active CRM accounts & subscriptions</div>
+                      <div className="pl-8 text-xs dark:text-rose-400/70 text-rose-500/70">{t('inbound.retargeting.mockup.filters.existing.desc') || "Exclude active CRM accounts & subscriptions"}</div>
                     </div>
                   </div>
                 </div>
@@ -490,10 +512,10 @@ export function InboundClient() {
           <Reveal delay={0}>
             <div className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold tracking-tighter dark:text-white text-slate-900 mb-6">
-                Predictable <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">Demand Generation</span>
+                {t('inbound.bento.title1') || "Predictable "} <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">{t('inbound.bento.title2') || "Demand Generation"}</span>
               </h2>
               <p className="text-lg dark:text-white/50 text-slate-500 max-w-2xl mx-auto font-light">
-                Align your marketing spend with actual closed-won revenue, not just vanity metrics.
+                {t('inbound.bento.description') || "Align your marketing spend with actual closed-won revenue, not just vanity metrics."}
               </p>
             </div>
           </Reveal>
@@ -504,13 +526,14 @@ export function InboundClient() {
             <Reveal delay={100} className="md:col-span-2 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_50%)]"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(16,185,129,0.1)_10px,rgba(16,185,129,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
                 <div className="relative z-10 max-w-md">
-                  <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-6">
+                  <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-emerald-500 mb-6 bg-emerald-500/5">
                     <Zap size={24} />
                   </div>
-                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">Speed to Lead Automation</h3>
+                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">{t('inbound.bento.speedToLead.title') || "Speed to Lead Automation"}</h3>
                   <p className="dark:text-white/60 text-slate-600 leading-relaxed">
-                    When a high-intent lead fills a form, Makinari instantly enriches the data, scores it, routes it to the right rep, and can even trigger an immediate AI phone call or SMS.
+                    {t('inbound.bento.speedToLead.desc') || "When a high-intent lead fills a form, Makinari instantly enriches the data, scores it, routes it to the right rep, and can even trigger an immediate AI phone call or SMS."}
                   </p>
                 </div>
                 <div className="absolute right-0 bottom-0 w-1/2 h-full opacity-30 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiMxMGI5ODEiIGZpbGwtb3BhY2l0eT0iMC40Ii8+PC9zdmc+')] [mask-image:linear-gradient(to_left,black,transparent)]"></div>
@@ -521,13 +544,14 @@ export function InboundClient() {
             <Reveal delay={200} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.1),transparent_50%)]"></div>
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(20,184,166,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(20,184,166,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-[0.03] [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
                 <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-500 mb-6">
+                  <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-teal-500 mb-6 bg-teal-500/5">
                     <Target size={24} />
                   </div>
-                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">Paid Ads Management</h3>
+                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">{t('inbound.bento.paidAds.title') || "Paid Ads Management"}</h3>
                   <p className="dark:text-white/60 text-slate-600 leading-relaxed">
-                    Connect Google Ads, Meta, and LinkedIn Ads. Optimize campaigns dynamically based on which keywords and audiences actually convert into pipeline.
+                    {t('inbound.bento.paidAds.desc') || "Connect Google Ads, Meta, and LinkedIn Ads. Optimize campaigns dynamically based on which keywords and audiences actually convert into pipeline."}
                   </p>
                 </div>
               </div>
@@ -537,13 +561,14 @@ export function InboundClient() {
             <Reveal delay={300} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.1),transparent_50%)]"></div>
+                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(59,130,246,0.1)_8px,rgba(59,130,246,0.1)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
                 <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 mb-6">
+                  <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-blue-500 mb-6 bg-blue-500/5">
                     <CheckSquare size={24} />
                   </div>
-                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">Intent Scoring</h3>
+                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">{t('inbound.bento.intentScoring.title') || "Intent Scoring"}</h3>
                   <p className="dark:text-white/60 text-slate-600 leading-relaxed">
-                    AI analyzes website visits, email opens, and product usage to bubble up the accounts most likely to buy right now.
+                    {t('inbound.bento.intentScoring.desc') || "AI analyzes website visits, email opens, and product usage to bubble up the accounts most likely to buy right now."}
                   </p>
                 </div>
               </div>
@@ -553,13 +578,14 @@ export function InboundClient() {
             <Reveal delay={400} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.1),transparent_50%)]"></div>
+                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.1)_8px,rgba(16,185,129,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.05)_8px,rgba(16,185,129,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
                 <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-6">
+                  <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-emerald-500 mb-6 bg-emerald-500/5">
                     <PieChart size={24} />
                   </div>
-                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">High-Converting Forms</h3>
+                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">{t('inbound.bento.forms.title') || "High-Converting Forms"}</h3>
                   <p className="dark:text-white/60 text-slate-600 leading-relaxed">
-                    Drop our smart forms onto any site. They dynamically shorten for known visitors and use clearbit/zoominfo data to keep fields to a minimum, boosting conversion rates.
+                    {t('inbound.bento.forms.desc') || "Drop our smart forms onto any site. They dynamically shorten for known visitors and use clearbit/zoominfo data to keep fields to a minimum, boosting conversion rates."}
                   </p>
                 </div>
                 <div className="absolute right-0 bottom-0 w-full h-full opacity-10 pointer-events-none bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#10b981_10px,#10b981_20px)] [mask-image:radial-gradient(circle_at_bottom_right,black,transparent_70%)]"></div>
@@ -570,14 +596,15 @@ export function InboundClient() {
             <Reveal delay={500} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(249,115,22,0.1),transparent_50%)]"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(249,115,22,0.1)_10px,rgba(249,115,22,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(249,115,22,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(249,115,22,0.05)_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,black_70%,transparent_100%)] opacity-20 pointer-events-none"></div>
                 <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500 mb-6">
+                  <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-orange-500 mb-6 bg-orange-500/5">
                     <Store size={24} />
                   </div>
-                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">Physical Ad Management</h3>
+                  <h3 className="text-2xl font-bold dark:text-white text-slate-900 mb-3">{t('inbound.bento.physicalAds.title') || "Physical Ad Management"}</h3>
                   <p className="dark:text-white/60 text-slate-600 leading-relaxed">
-                    Bridge the gap between offline ads and digital revenue. Track billboards, mailers, and events with unique identifiers to measure true offline ROI.
+                    {t('inbound.bento.physicalAds.desc') || "Bridge the gap between offline ads and digital revenue. Track billboards, mailers, and events with unique identifiers to measure true offline ROI."}
                   </p>
                 </div>
               </div>

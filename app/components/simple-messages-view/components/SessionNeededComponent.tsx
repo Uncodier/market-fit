@@ -102,7 +102,7 @@ export const SessionNeededComponent: React.FC<SessionNeededComponentProps> = ({
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
         <div className="flex-shrink-0">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+          <div className="w-8 h-8 rounded-full font-inter flex items-center justify-center text-lg"
                style={{ backgroundColor: platformInfo.color + '20' }}>
             {platformInfo.icon}
           </div>
@@ -114,7 +114,7 @@ export const SessionNeededComponent: React.FC<SessionNeededComponentProps> = ({
               Authentication Required
             </span>
             {structuredData.step && (
-              <span className="text-xs px-2 py-1 rounded-full border font-medium"
+              <span className="text-xs px-2 py-1 rounded-full font-inter border font-medium"
                     style={{ 
                       backgroundColor: (isDarkMode ? '#fbbf24' : '#f57c00') + '20',
                       color: isDarkMode ? '#fbbf24' : '#f57c00',

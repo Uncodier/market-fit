@@ -6,7 +6,7 @@
     "dev": "next dev -p 3000 -H 0.0.0.0",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint . --ext ts,tsx",
+    "lint": "eslint .",
     "lint:fix": "npm run lint -- --fix",
     "test": "jest",
     "test:watch": "jest --watch",

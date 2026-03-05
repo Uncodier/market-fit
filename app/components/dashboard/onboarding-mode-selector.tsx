@@ -106,7 +106,7 @@ export function OnboardingModeSelector({
             >
               {/* Active indicator */}
               {isActive && (
-                <span className={`absolute top-3 right-3 h-2 w-2 rounded-full ${mode.activeBg}`} />
+                <span className={`absolute top-3 right-3 h-2 w-2 rounded-full font-inter ${mode.activeBg}`} />
               )}
 
               {/* Icon */}
@@ -138,7 +138,7 @@ export function OnboardingModeSelector({
 
               {/* Progress pill */}
               {total > 0 && (
-                <div className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${allDone ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" : isActive ? `${mode.bg} ${mode.color}` : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}>
+                <div className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-inter ${allDone ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" : isActive ? `${mode.bg} ${mode.color}` : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}>
                   {allDone ? (
                     <>
                       <CheckCircle2 size={10} />

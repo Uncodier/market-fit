@@ -410,9 +410,9 @@ export function TrendsLoadingSkeleton() {
       <div className="bg-card border dark:border-white/5 border-black/5 rounded-lg shadow-lg p-6 max-w-sm">
         <div className="flex items-center gap-4">
           <div className="flex gap-1">
-            <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <div className="w-2 h-2 rounded-full font-inter bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 rounded-full font-inter bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 rounded-full font-inter bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
           
           <div className="space-y-2">
@@ -422,7 +422,7 @@ export function TrendsLoadingSkeleton() {
         </div>
         
         <div className="mt-4">
-          <div className="w-full bg-muted rounded-full h-2">
+          <div className="w-full bg-muted rounded-full font-inter h-2">
             <Skeleton className="h-2 w-2/3 rounded-full" />
           </div>
         </div>

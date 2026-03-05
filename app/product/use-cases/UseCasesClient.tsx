@@ -3,10 +3,13 @@
 import React from "react"
 import { SiteFooter } from "@/app/components/auth/sections/SiteFooter"
 import { UseCaseGrid } from "./components/UseCaseGrid"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export function UseCasesClient() {
+  const { t } = useLocalization()
+
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col font-sans overflow-hidden">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col overflow-hidden">
       
       {/* Hero Section */}
       <section className="relative w-full pt-24 pb-16 border-b dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white">
@@ -14,13 +17,13 @@ export function UseCasesClient() {
         <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 flex flex-col items-center text-center">
           <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-8">
             <span className="flex h-2 w-2 rounded-full bg-violet-500 mr-2 animate-pulse"></span>
-            Use Cases
+            {t('useCases.hero.badge') || 'Use Cases'}
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 leading-tight drop-shadow-lg">
-            Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-fuchsia-500">Every Model</span>
+            {t('useCases.hero.title1') || 'Built for'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-fuchsia-500">{t('useCases.hero.title2') || 'Every Model'}</span>
           </h1>
           <p className="text-lg md:text-xl dark:text-white/50 text-slate-500 max-w-2xl font-light leading-relaxed mb-8">
-            See how Makinari empowers growth and scale for B2B, B2C, B2B2B, and B2B2C companies across various industries.
+            {t('useCases.hero.description') || 'See how Makinari empowers growth and scale for B2B, B2C, B2B2B, and B2B2C companies across various industries.'}
           </p>
         </div>
       </section>

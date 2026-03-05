@@ -4,9 +4,12 @@ import React from "react"
 import { SiteFooter } from "@/app/components/auth/sections/SiteFooter"
 import { ChevronLeft, CheckCircle2, ArrowRight } from "@/app/components/ui/icons"
 import Link from "next/link"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export function GuideDetailClient({ guide }: { guide: any }) {
-  // Configuración de colores basada en el color de la feature
+  const { t } = useLocalization()
+  
+  // Color configuration based on feature color
   const colorConfig = {
     orange: {
       bgBlur: "bg-orange-500/10 dark:bg-orange-500/5",
@@ -45,7 +48,7 @@ export function GuideDetailClient({ guide }: { guide: any }) {
   const theme = colorConfig[guide.color as keyof typeof colorConfig] || colorConfig.emerald;
   
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col font-sans overflow-hidden min-h-screen">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col overflow-hidden min-h-screen">
       
       {/* Hero Section */}
       <section className="relative w-full pt-24 pb-16 border-b dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white">
@@ -53,7 +56,7 @@ export function GuideDetailClient({ guide }: { guide: any }) {
         <div className="relative z-10 w-full max-w-5xl mx-auto px-6 lg:px-12">
           <Link href="/product/guides" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white mb-8 transition-colors">
             <ChevronLeft size={16} className="mr-1" />
-            Back to Guides
+            {t('guides.detail.back') || 'Back to Guides'}
           </Link>
           
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
@@ -68,12 +71,12 @@ export function GuideDetailClient({ guide }: { guide: any }) {
                 </h1>
                 {guide.status === 'beta' && (
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${theme.bgAccent}`}>
-                    Beta
+                    {t('common.beta') || 'Beta'}
                   </span>
                 )}
                 {guide.status === 'coming_soon' && (
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border border-slate-200 dark:border-white/10">
-                    Soon
+                    {t('common.soon') || 'Soon'}
                   </span>
                 )}
               </div>
@@ -88,19 +91,20 @@ export function GuideDetailClient({ guide }: { guide: any }) {
             <div className="w-full md:w-auto mt-4 md:mt-0 flex flex-col sm:flex-row md:flex-col gap-3">
               {guide.status === 'coming_soon' ? (
                 <button 
-                  className="px-8 py-3.5 rounded-xl font-bold transition-all shadow-sm flex items-center justify-center bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                  className="px-8 py-3.5 rounded-full font-inter font-bold transition-all shadow-sm flex items-center justify-center bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                   disabled
                 >
-                  Join Waitlist
+                  {t('guides.detail.waitlist') || 'Join Waitlist'}
                 </button>
               ) : (
                 <Link 
                   href="https://docs.makinari.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`px-8 py-3.5 rounded-xl font-bold transition-all shadow-sm flex items-center justify-center ${theme.btnPrimary}`}
+                  className={`px-8 py-3.5 rounded-full font-inter font-bold transition-all shadow-sm flex items-center justify-center gap-2 group ${theme.btnPrimary}`}
                 >
-                  Read Guide
+                  {t('guides.detail.readGuide') || 'Read Guide'}
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               )}
             </div>
@@ -112,57 +116,53 @@ export function GuideDetailClient({ guide }: { guide: any }) {
       <section className="py-20 max-w-5xl mx-auto px-6 lg:px-12 w-full flex-1 flex flex-col md:flex-row gap-12">
         <div className="flex-1">
           <div className="prose prose-slate dark:prose-invert max-w-none text-slate-600 dark:text-slate-300">
-            <h2 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Introduction</h2>
+            <h2 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">{t('guides.detail.intro') || 'Introduction'}</h2>
             <p>
-              In this playbook, we'll dive deep into {guide.name.toLowerCase()} strategies that you can implement 
-              to accelerate your Go-To-Market and drive meaningful revenue. Our focus is on actionable steps, 
-              scalable processes, and leveraging automation safely.
+              {t('guides.detail.introDesc1') || "In this playbook, we'll dive deep into "}{guide.name.toLowerCase()}{t('guides.detail.introDesc2') || " strategies that you can implement to accelerate your Go-To-Market and drive meaningful revenue. Our focus is on actionable steps, scalable processes, and leveraging automation safely."}
             </p>
             
-            <h3 className="text-xl font-bold mt-8 mb-4 text-slate-900 dark:text-white">Core Concepts</h3>
+            <h3 className="text-xl font-bold mt-8 mb-4 text-slate-900 dark:text-white">{t('guides.detail.coreConcepts') || 'Core Concepts'}</h3>
             <ul className="space-y-3 mb-8">
               {[1, 2, 3].map((item) => (
                 <li key={item} className="flex items-start">
                   <CheckCircle2 size={20} className={`${theme.checkColor} mr-3 mt-0.5 flex-shrink-0`} />
                   <span className="text-slate-600 dark:text-slate-300">
-                    Understand the fundamental principles of setting up an effective strategy for {guide.name.toLowerCase()}.
+                    {t('guides.detail.coreDesc1') || "Understand the fundamental principles of setting up an effective strategy for "}{guide.name.toLowerCase()}{t('guides.detail.coreDesc2') || "."}
                   </span>
                 </li>
               ))}
             </ul>
             
-            <h3 className="text-xl font-bold mt-8 mb-4 text-slate-900 dark:text-white">Implementation Steps</h3>
+            <h3 className="text-xl font-bold mt-8 mb-4 text-slate-900 dark:text-white">{t('guides.detail.implementation') || 'Implementation Steps'}</h3>
             <p className="text-slate-600 dark:text-slate-300">
-              A robust approach involves preparing your assets, defining your targeting clearly, and then executing 
-              with consistency. Makinari can help you automate large parts of this process, enabling your team 
-              to focus on high-value interactions.
+              {t('guides.detail.implementationDesc') || "A robust approach involves preparing your assets, defining your targeting clearly, and then executing with consistency. Makinari can help you automate large parts of this process, enabling your team to focus on high-value interactions."}
             </p>
           </div>
         </div>
         
         <div className="w-full md:w-80 flex-shrink-0">
           <div className="p-6 rounded-2xl dark:bg-[#0f0f13] bg-slate-50 border dark:border-white/5 border-black/5">
-            <h3 className="font-bold text-lg mb-4 text-slate-900 dark:text-white">Guide Details</h3>
+            <h3 className="font-bold text-lg mb-4 text-slate-900 dark:text-white">{t('guides.detail.details') || 'Guide Details'}</h3>
             
             <div className="space-y-4 text-sm">
               <div className="flex justify-between items-center py-2 border-b dark:border-white/5 border-black/5">
-                <span className="text-slate-500">Category</span>
+                <span className="text-slate-500">{t('guides.detail.category') || 'Category'}</span>
                 <span className="font-medium text-slate-900 dark:text-white">{guide.category}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b dark:border-white/5 border-black/5">
-                <span className="text-slate-500">Read Time</span>
-                <span className="font-medium text-slate-900 dark:text-white">10-15 mins</span>
+                <span className="text-slate-500">{t('guides.detail.readTime') || 'Read Time'}</span>
+                <span className="font-medium text-slate-900 dark:text-white">{t('guides.detail.timeValue') || '10-15 mins'}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b dark:border-white/5 border-black/5">
-                <span className="text-slate-500">Difficulty</span>
-                <span className="font-medium text-slate-900 dark:text-white">Intermediate</span>
+                <span className="text-slate-500">{t('guides.detail.difficulty') || 'Difficulty'}</span>
+                <span className="font-medium text-slate-900 dark:text-white">{t('guides.detail.intermediate') || 'Intermediate'}</span>
               </div>
             </div>
             
             <div className="mt-8 pt-6 border-t dark:border-white/5 border-black/5">
-              <h4 className="font-bold text-slate-900 dark:text-white mb-3">Want more help?</h4>
+              <h4 className="font-bold text-slate-900 dark:text-white mb-3">{t('guides.detail.moreHelp') || 'Want more help?'}</h4>
               <Link href="#" className={`flex items-center text-sm font-medium transition-colors ${theme.textAccent} ${theme.hoverText}`}>
-                Talk to a GTM expert
+                {t('guides.detail.talkToExpert') || 'Talk to a GTM expert'}
                 <ArrowRight size={14} className="ml-1" />
               </Link>
             </div>

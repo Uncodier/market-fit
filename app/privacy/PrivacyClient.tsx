@@ -9,7 +9,7 @@ export function PrivacyClient() {
   const { t } = useLocalization()
   
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-cyan-500/30 flex flex-col font-sans overflow-hidden min-h-screen">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-cyan-500/30 flex flex-col  overflow-hidden min-h-screen">
       <SiteHeader />
       
       {/* Content Section */}

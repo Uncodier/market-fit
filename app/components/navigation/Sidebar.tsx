@@ -645,7 +645,7 @@ export function Sidebar({
             {!renderCollapsed && (
               <div 
                 className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full safari-icon-fix hover:bg-accent/50",
+                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full font-sans safari-icon-fix hover:bg-accent/50",
                   pathname.startsWith(contextMainItem.href) 
                     ? "transform rotate-90 text-white" // White when active
                     : shouldShowContextChildren
@@ -753,7 +753,7 @@ export function Sidebar({
               {!renderCollapsed && (
                 <div 
                   className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full safari-icon-fix hover:bg-accent/50",
+                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full font-sans safari-icon-fix hover:bg-accent/50",
                     pathname.startsWith('/notifications') 
                       ? "transform rotate-90 text-white" // White when active
                       : shouldShowProfileChildren

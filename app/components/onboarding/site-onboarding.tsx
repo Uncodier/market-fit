@@ -773,7 +773,7 @@ export function SiteOnboarding({
                   >
                   <div
                     className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
+                      "w-8 h-8 rounded-full font-inter flex items-center justify-center text-sm font-medium transition-colors",
                       hasValidated && stepErrors.has(step.id)
                         ? "bg-red-600 text-white"
                         : step.id < currentStep

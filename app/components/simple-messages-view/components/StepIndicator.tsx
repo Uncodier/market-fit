@@ -99,7 +99,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                                 e.stopPropagation()
                                 onDeleteAsset(asset.id)
                               }}
-                              className="absolute top-0.5 right-0.5 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                              className="absolute top-0.5 right-0.5 w-4 h-4 bg-destructive text-destructive-foreground rounded-full font-inter flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             >
                               <X className="w-2 h-2" />
                             </button>
@@ -114,7 +114,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               {/* Current step header - only when plan not completed (when completed, show only assets) */}
               {steps.length > 0 && !allCompleted && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  <div className={`w-2 h-2 rounded-full font-inter flex-shrink-0 ${
                     allCompleted ? 'bg-green-500' :
                     currentStep?.status === 'in_progress' ? 'bg-primary animate-pulse' : 
                     currentStep?.status === 'completed' ? 'bg-green-500' : 'bg-muted-foreground/60'
@@ -189,7 +189,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                       title={canEdit ? "Click to edit step" : "Step completed"}
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        <div className={`w-2 h-2 rounded-full font-inter flex-shrink-0 ${
                           isCompleted ? 'bg-green-500' :
                           isInProgress ? 'bg-primary animate-pulse' : 
                           'bg-muted-foreground/60'
@@ -241,7 +241,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
             </div>
           ) : steps.length > 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              <div className={`w-2 h-2 rounded-full font-inter flex-shrink-0 ${
                 allCompleted ? 'bg-green-500' :
                 currentStep?.status === 'in_progress' ? 'bg-primary animate-pulse' : 
                 currentStep?.status === 'completed' ? 'bg-green-500' : 'bg-muted-foreground/60'
@@ -308,7 +308,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 rounded transition-colors"
               onClick={() => onToggleExpanded()}
             >
-              <div className="w-2 h-2 rounded-full flex-shrink-0 bg-muted-foreground/60"></div>
+              <div className="w-2 h-2 rounded-full font-inter flex-shrink-0 bg-muted-foreground/60"></div>
               {assets.length > 0 ? (
                 <>
                   <span className="font-medium">Assets ({assets.length})</span>

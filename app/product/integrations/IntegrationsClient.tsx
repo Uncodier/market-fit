@@ -4,12 +4,14 @@ import React from "react"
 import { SiteFooter } from "@/app/components/auth/sections/SiteFooter"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { IntegrationGrid } from "./components/IntegrationGrid"
+import Link from "next/link"
+import { ArrowRight } from "@/app/components/ui/icons"
 
 export function IntegrationsClient() {
   const { t } = useLocalization()
   
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col font-sans overflow-hidden">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col overflow-hidden">
       
       {/* Hero Section */}
       <section className="relative w-full pt-24 pb-16 border-b dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white">
@@ -20,11 +22,20 @@ export function IntegrationsClient() {
             {t('footer.product.integrations') || 'Integrations'}
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 leading-tight drop-shadow-lg">
-            Connect Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">Entire Stack</span>
+            {t('integrations.hero.title1') || 'Connect Your '} <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">{t('integrations.hero.title2') || 'Entire Stack'}</span>
           </h1>
           <p className="text-lg md:text-xl dark:text-white/50 text-slate-500 max-w-2xl font-light leading-relaxed mb-8">
-            Sync data across your favorite tools. From CRMs to communication channels, we integrate with everything you need.
+            {t('integrations.hero.description') || 'Sync data across your favorite tools. From CRMs to communication channels, we integrate with everything you need.'}
           </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 group">
+              {t('integrations.hero.cta.start') || 'Start with Makinari'}
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link href="/product/features" className="w-full sm:w-auto px-8 py-3.5 rounded-full font-inter font-bold dark:bg-white/5 bg-black/5 hover:dark:bg-white/10 hover:bg-black/10 dark:text-white text-slate-900 transition-colors border dark:border-white/10 border-black/10 flex items-center justify-center text-center">
+              {t('integrations.hero.cta.features') || 'Explore all features'}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -35,14 +46,15 @@ export function IntegrationsClient() {
           {/* OmniChannel Bento from Landing */}
           <div className="w-full h-[450px] rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col items-center text-center justify-between transition-all duration-500">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.1),transparent_50%)]"></div>
+            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(59,130,246,0.1)_8px,rgba(59,130,246,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(59,130,246,0.05)_8px,rgba(59,130,246,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
             
             <div className="relative z-10">
               <div className="inline-flex items-center rounded-full dark:neu-black-chip-inward neu-white-chip-inward px-3 py-1 text-xs font-bold mb-6">
-                Omnichannel
+                {t('integrations.omni.badge') || 'Omnichannel'}
               </div>
-              <h3 className="text-2xl md:text-3xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">Channel automation</h3>
+              <h3 className="text-2xl md:text-3xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">{t('integrations.omni.title') || 'Channel automation'}</h3>
               <p className="dark:text-white/50 text-slate-500 text-sm">
-                Connect Email, WhatsApp, LinkedIn, and more. Orchestrate all communications in one place.
+                {t('integrations.omni.description') || 'Connect Email, WhatsApp, LinkedIn, and more. Orchestrate all communications in one place.'}
               </p>
             </div>
 
@@ -74,11 +86,11 @@ export function IntegrationsClient() {
             
             <div className="relative z-10 max-w-lg">
               <div className="inline-flex items-center rounded-full dark:neu-black-chip-inward neu-white-chip-inward px-3 py-1 text-xs font-mono font-bold mb-6">
-                ~/developer-first
+                {t('integrations.mcp.badge') || '~/developer-first'}
               </div>
-              <h3 className="text-2xl md:text-3xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">Open source MCP & APIs</h3>
+              <h3 className="text-2xl md:text-3xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">{t('integrations.mcp.title') || 'Open source MCP & APIs'}</h3>
               <p className="dark:text-white/50 text-slate-500 text-sm leading-relaxed">
-                Connect your custom backend infrastructure directly with Makinari's AI engine using the Model Context Protocol. Easily expose local DBs and APIs.
+                {t('integrations.mcp.description') || "Connect your custom backend infrastructure directly with Makinari's AI engine using the Model Context Protocol. Easily expose local DBs and APIs."}
               </p>
             </div>
 

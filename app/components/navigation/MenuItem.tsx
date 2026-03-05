@@ -168,7 +168,7 @@ export function MenuItem({
         "flex items-center text-sm transition-colors duration-200 relative group",
         isCollapsed 
           ? isActive 
-            ? "rounded-full justify-center h-[32px] w-[32px]" 
+            ? "rounded-full font-sans justify-center h-[32px] w-[32px]" 
             : "rounded-md justify-center h-[32px] w-[32px]"
           : "rounded-md justify-start h-[32px]",
         isActive

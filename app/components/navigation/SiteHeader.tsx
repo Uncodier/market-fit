@@ -56,10 +56,10 @@ export function SiteHeader() {
         { label: t('footer.product.inbound') || 'Inbound', href: '/product/inbound' },
         { label: t('footer.product.cms') || 'Content Engine', href: '/product/cms' },
         { label: t('footer.product.support') || 'Support & CS', href: '/product/support' },
+        { label: t('footer.product.reporting') || 'Reporting & Analytics', href: '/product/reporting' },
         { label: t('footer.product.features') || 'Features', href: '/product/features' },
         { label: t('footer.product.agents') || 'AI Agents', href: '/product/agents' },
         { label: t('footer.product.api') || 'API & MCP Server', href: '/product/api' },
-        { label: t('footer.product.integrations') || 'Integrations', href: '/product/integrations' },
         { label: t('footer.product.pricing') || 'Pricing', href: '/product/pricing' },
       ]
     },
@@ -89,15 +89,17 @@ export function SiteHeader() {
         { label: t('footer.resources.blog') || 'Blog', href: '#blog' },
         { label: t('footer.resources.guides') || 'Guides', href: '/product/guides' },
         { label: t('footer.resources.gtmEngineering') || 'GTM Engineering', href: '/resources/gtm-engineering' },
+        { label: t('footer.resources.agents') || 'Resources for Agents', href: '/resources/agents' },
         { label: t('footer.resources.changelog') || 'Changelog', href: '/product/changelog' },
         { label: t('footer.product.openclaw') || 'Open Claw', href: '/product/openclaw' },
+        { label: t('footer.product.integrations') || 'Integrations', href: '/product/integrations' },
       ]
     }
   ]
   
   return (
     <>
-      <header className="w-full py-4 px-6 lg:px-12 border-b dark:border-white/5 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md sticky top-0 z-[70]">
+      <header className="w-full self-start py-4 px-6 lg:px-12 border-b dark:border-white/5 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 sticky top-0 z-[70] transform-gpu" style={{ WebkitTransform: 'translate3d(0,0,0)', willChange: 'transform' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link href="/" className="inline-flex items-center gap-2 z-50">
           <Image 
@@ -120,7 +122,7 @@ export function SiteHeader() {
         <div className="hidden lg:flex items-center gap-1 h-full flex-1 justify-center">
           {navItems.map((section) => (
             <div key={section.title} className="group h-full flex items-center relative">
-              <button className="px-4 py-2 rounded-full text-sm font-medium dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-all flex items-center gap-1.5 font-inter">
+              <button className="px-4 py-2 rounded-full font-sans text-sm font-medium dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-all flex items-center gap-1.5 font-sans">
                 {section.title}
                 <ChevronDown size={14} className="opacity-50 group-hover:rotate-180 transition-transform duration-300" />
               </button>
@@ -136,9 +138,9 @@ export function SiteHeader() {
                       
                       const LinkWrapper = ({ children }: { children: React.ReactNode }) => {
                         if (item.isExternal) {
-                          return <a href={item.href} target="_blank" rel="noreferrer" className="block text-sm dark:text-white/70 text-slate-600 hover:text-black dark:hover:text-white transition-colors py-2 font-inter">{children}</a>
+                          return <a href={item.href} target="_blank" rel="noreferrer" className="block text-sm dark:text-white/70 text-slate-600 hover:text-black dark:hover:text-white transition-colors py-2 font-sans">{children}</a>
                         }
-                        return <Link href={item.href!} className="block text-sm dark:text-white/70 text-slate-600 hover:text-black dark:hover:text-white transition-colors py-2 font-inter">{children}</Link>
+                        return <Link href={item.href!} className="block text-sm dark:text-white/70 text-slate-600 hover:text-black dark:hover:text-white transition-colors py-2 font-sans">{children}</Link>
                       }
 
                       return (
@@ -159,11 +161,11 @@ export function SiteHeader() {
         {/* Action Buttons */}
         <div className="flex items-center gap-3 relative z-50">
           <div className="hidden lg:flex items-center gap-3">
-            <Link href="/auth" className="text-sm font-medium px-4 py-2 rounded-full dark:text-white/80 text-slate-700 hover:text-black dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-all font-inter">
+            <Link href="/auth" className="text-sm font-medium px-4 py-2 rounded-full font-sans dark:text-white/80 text-slate-700 hover:text-black dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-all font-sans">
               {t('auth.signInLink') || 'Log in'}
             </Link>
-            <Link href="/auth?mode=register" className="text-sm font-medium bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full hover:opacity-90 transition-opacity font-inter shadow-sm">
-              {t('pricing.free.cta') || 'Get Started'}
+            <Link href="/auth?mode=register" className="text-sm font-medium bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full font-inter font-bold hover:opacity-90 transition-opacity shadow-sm">
+              {t('pricing.free.cta') || 'Start with Makinari'}
             </Link>
           </div>
           
@@ -191,7 +193,7 @@ export function SiteHeader() {
             {navItems.map((section) => (
               <div key={section.title} className="flex flex-col">
                 <button 
-                  className="flex items-center justify-between w-full py-4 text-[19px] font-semibold dark:text-white text-slate-900 font-inter"
+                  className="flex items-center justify-between w-full py-4 text-[19px] font-semibold dark:text-white text-slate-900 font-sans"
                   onClick={() => setOpenMobileSection(openMobileSection === section.title ? null : section.title)}
                 >
                   {section.title}
@@ -215,7 +217,7 @@ export function SiteHeader() {
                           href={item.href} 
                           target="_blank" 
                           rel="noreferrer" 
-                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-inter block w-full transition-colors"
+                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-sans block w-full transition-colors"
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           {item.label}
@@ -224,7 +226,7 @@ export function SiteHeader() {
                         <Link 
                           key={item.label}
                           href={item.href!} 
-                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-inter block w-full transition-colors"
+                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-sans block w-full transition-colors"
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           {item.label}
@@ -240,17 +242,17 @@ export function SiteHeader() {
           <div className="flex flex-col gap-3 mt-8 pt-6 border-t dark:border-white/10 border-black/10">
             <Link 
               href="/auth" 
-              className="w-full py-3.5 text-center text-[16px] font-semibold dark:bg-white/10 bg-slate-100 dark:text-white text-slate-900 rounded-full hover:bg-slate-200 dark:hover:bg-white/20 transition-all font-inter"
+              className="w-full py-3.5 text-center text-[16px] font-semibold dark:bg-white/10 bg-slate-100 dark:text-white text-slate-900 rounded-full font-sans hover:bg-slate-200 dark:hover:bg-white/20 transition-all font-sans"
               onClick={() => setMobileMenuOpen(false)}
             >
               {t('auth.signInLink') || 'Log in'}
             </Link>
             <Link 
               href="/auth?mode=register" 
-              className="w-full py-3.5 text-center text-[16px] font-semibold bg-black dark:bg-white text-white dark:text-black rounded-full hover:opacity-90 transition-opacity font-inter shadow-sm"
+              className="w-full py-3.5 text-center text-[16px] font-semibold bg-black dark:bg-white text-white dark:text-black rounded-full font-inter font-bold hover:opacity-90 transition-opacity shadow-sm"
               onClick={() => setMobileMenuOpen(false)}
             >
-              {t('pricing.free.cta') || 'Get Started'}
+              {t('pricing.free.cta') || 'Start with Makinari'}
             </Link>
           </div>
         </div>

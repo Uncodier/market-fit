@@ -407,11 +407,11 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                           <img 
                             src={social.profile_picture_url} 
                             alt={social.nickname || social.username || social.handle || social.platform}
-                            className="w-12 h-12 rounded-full flex-shrink-0 border dark:border-white/5 border-black/5"
+                            className="w-12 h-12 rounded-full font-sans flex-shrink-0 border dark:border-white/5 border-black/5"
                           />
                         )}
                         {!social.profile_picture_url && (
-                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5">
+                          <div className="w-12 h-12 rounded-full font-sans font-bold bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5">
                             {getPlatformIcon(social.platform || social.network, 24)}
                           </div>
                         )}
@@ -446,7 +446,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                   {hasPlatform && !isActive && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0 text-orange-600">
+                        <div className="w-10 h-10 rounded-full font-sans font-bold bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0 text-orange-600">
                           {getPlatformIcon(social.platform || social.network, 20)}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -580,7 +580,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                 >
                   {isSaving ? (
                     <>
-                      <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      <div className="h-4 w-4 mr-2 animate-spin rounded-full font-sans border-2 border-current border-t-transparent" />
                       Saving...
                     </>
                   ) : (

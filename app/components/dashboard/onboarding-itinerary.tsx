@@ -378,7 +378,7 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
 
       {/* Hero card — contains mode selector + KPIs + CTA */}
       <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/50 dark:via-indigo-950/50 dark:to-purple-950/50">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full font-inter blur-3xl pointer-events-none" />
         <CardContent className="relative p-6 space-y-6">
 
           {/* Header — greeting */}

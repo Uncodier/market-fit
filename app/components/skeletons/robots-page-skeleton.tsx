@@ -105,9 +105,9 @@ export function RobotsPageSkeleton() {
                 <div className="bg-background/95 backdrop-blur-sm border dark:border-white/5 border-black/5 rounded-lg shadow-lg p-3">
                   <div className="flex items-center gap-3">
                     <div className="flex gap-1">
-                      <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      <div className="w-2 h-2 rounded-full font-inter bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-2 h-2 rounded-full font-inter bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-2 h-2 rounded-full font-inter bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
                     </div>
                     
                     <div className="flex-1">
@@ -116,7 +116,7 @@ export function RobotsPageSkeleton() {
                     </div>
                     
                     <div className="w-32">
-                      <div className="w-full bg-muted rounded-full h-1.5">
+                      <div className="w-full bg-muted rounded-full font-inter h-1.5">
                         <Skeleton className="h-1.5 w-2/3 rounded-full" />
                       </div>
                     </div>
@@ -150,7 +150,7 @@ export function RobotsPageSkeleton() {
               {/* Robot messages */}
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex gap-3">
-                  <Skeleton className="h-6 w-6 rounded-full flex-shrink-0 mt-1" />
+                  <Skeleton className="h-6 w-6 rounded-full font-inter flex-shrink-0 mt-1" />
                   <div className="flex-1 space-y-2">
                     <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                       <Skeleton className="h-3 w-full rounded" />
@@ -171,13 +171,13 @@ export function RobotsPageSkeleton() {
                   </div>
                   <Skeleton className="h-3 w-16 rounded ml-auto" />
                 </div>
-                <Skeleton className="h-6 w-6 rounded-full flex-shrink-0 mt-1" />
+                <Skeleton className="h-6 w-6 rounded-full font-inter flex-shrink-0 mt-1" />
               </div>
 
               {/* More robot messages */}
               {Array.from({ length: 2 }).map((_, i) => (
                 <div key={`robot-${i}`} className="flex gap-3">
-                  <Skeleton className="h-6 w-6 rounded-full flex-shrink-0 mt-1" />
+                  <Skeleton className="h-6 w-6 rounded-full font-inter flex-shrink-0 mt-1" />
                   <div className="flex-1 space-y-2">
                     <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                       <Skeleton className="h-3 w-full rounded" />

@@ -41,7 +41,7 @@ export function MessageActions({
   if (isAccepted) {
     return (
       <div 
-        className="rounded-full px-2 py-1.5 mt-2 inline-flex items-center gap-1.5"
+        className="rounded-full font-sans px-2 py-1.5 mt-2 inline-flex items-center gap-1.5"
         style={{ 
           backgroundColor: isDarkMode ? 'rgba(156, 163, 175, 0.15)' : 'rgba(156, 163, 175, 0.1)',
         }}
@@ -51,7 +51,7 @@ export function MessageActions({
             <TooltipTrigger asChild>
               <button
                 onClick={() => onEdit(message)}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors hover:bg-white dark:hover:bg-white/10"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-sans transition-colors hover:bg-white dark:hover:bg-white/10"
                 type="button"
                 style={{
                   color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
@@ -72,7 +72,7 @@ export function MessageActions({
             <TooltipTrigger asChild>
               <button
                 onClick={() => onUndoAccept && onUndoAccept(message)}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors hover:bg-white dark:hover:bg-white/10"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-sans transition-colors hover:bg-white dark:hover:bg-white/10"
                 type="button"
                 style={{
                   color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
@@ -94,7 +94,7 @@ export function MessageActions({
               <button
                 onClick={() => onDelete(message)}
                 disabled={isDeleting}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-sans transition-colors hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
                 style={{
                   color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
@@ -115,7 +115,7 @@ export function MessageActions({
 
   return (
     <div 
-      className="rounded-full px-2 py-1.5 mt-2 inline-flex items-center gap-1.5"
+      className="rounded-full font-sans px-2 py-1.5 mt-2 inline-flex items-center gap-1.5"
       style={{ 
         backgroundColor: isDarkMode ? 'rgba(156, 163, 175, 0.15)' : 'rgba(156, 163, 175, 0.1)',
       }}
@@ -125,7 +125,7 @@ export function MessageActions({
           <TooltipTrigger asChild>
             <button
               onClick={() => onEdit(message)}
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors hover:bg-white dark:hover:bg-white/10"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-sans transition-colors hover:bg-white dark:hover:bg-white/10"
               type="button"
               style={{
                 color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
@@ -147,7 +147,7 @@ export function MessageActions({
             <button
               onClick={() => onAccept(message)}
               disabled={isAccepting}
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-sans transition-colors hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
               style={{
                 color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'
@@ -169,7 +169,7 @@ export function MessageActions({
             <button
               onClick={() => onDelete(message)}
               disabled={isDeleting}
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-sans transition-colors hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
               style={{
                 color: isDarkMode ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)'

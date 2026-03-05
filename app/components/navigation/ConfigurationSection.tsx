@@ -270,7 +270,7 @@ export function ConfigurationSection({
             {isSettings && !isCollapsed && (
               <div 
                 className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-[color,transform] duration-300 cursor-pointer rounded-full safari-icon-fix",
+                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-[color,transform] duration-300 cursor-pointer rounded-full font-sans safari-icon-fix",
                   isSettingsActive
                     ? "transform rotate-90 text-white" // White when active
                     : settingsActive || forceShowChildren

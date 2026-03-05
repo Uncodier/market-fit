@@ -353,7 +353,7 @@ export function CommandsView({ searchQuery = "" }: CommandsViewProps) {
                           {/* Status */}
                           <div className="w-[120px] min-w-[120px] flex-shrink-0 text-center">
                             <div className="text-xs text-muted-foreground mb-1">Status</div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            <span className={`px-2 py-1 rounded-full font-inter text-xs font-medium ${
                               command.status === 'completed' ? "bg-green-100 text-green-800" :
                               command.status === 'running' ? "bg-blue-100 text-blue-800" :
                               command.status === 'pending' ? "bg-yellow-100 text-yellow-800" :

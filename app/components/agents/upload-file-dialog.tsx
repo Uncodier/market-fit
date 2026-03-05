@@ -473,7 +473,7 @@ export function UploadFileDialog({
                       setFile(null)
                       setFilePreview(null)
                     }}
-                    className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white hover:bg-red-600"
+                    className="absolute -top-2 -right-2 p-1 rounded-full font-inter bg-red-500 text-white hover:bg-red-600"
                   >
                     <X className="h-4 w-4" />
                   </button>

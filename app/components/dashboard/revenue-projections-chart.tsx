@@ -238,14 +238,14 @@ export function RevenueProjectionsChart({
             </div>
             <div className="flex items-center gap-2">
               <div 
-                className="w-3 h-3 rounded-full opacity-60" 
+                className="w-3 h-3 rounded-full font-inter opacity-60" 
                 style={{ backgroundColor: colors.optimistic }}
               />
               <span className="text-xs text-muted-foreground">Optimistic</span>
             </div>
             <div className="flex items-center gap-2">
               <div 
-                className="w-3 h-3 rounded-full opacity-60" 
+                className="w-3 h-3 rounded-full font-inter opacity-60" 
                 style={{ backgroundColor: colors.conservative }}
               />
               <span className="text-xs text-muted-foreground">Conservative</span>

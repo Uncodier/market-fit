@@ -246,7 +246,7 @@ export function SimpleAgentCard({
           <LogIn className="h-4 w-4 text-green-600 dark:text-green-400" />
           <div className="flex flex-col items-center gap-2">
             {enabledChannels.map((channel) => (
-              <div key={channel} className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors cursor-pointer shadow-sm ${
+              <div key={channel} className={`flex items-center justify-center w-8 h-8 rounded-full font-inter transition-colors cursor-pointer shadow-sm ${
                 channel === 'whatsapp' 
                   ? 'bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60' 
                   : channel === 'email'
@@ -270,13 +270,13 @@ export function SimpleAgentCard({
           )}
           <div className="flex flex-col items-center gap-2">
             {/* System Notifications - always shown for agents with custom data and active status */}
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition-colors cursor-pointer shadow-sm" title="System Notifications">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full font-inter bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition-colors cursor-pointer shadow-sm" title="System Notifications">
               <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             </div>
             
             {/* Communication Channels - only for agents with reach out capability and enabled channels */}
             {shouldShowExitIcons && enabledChannels.map((channel) => (
-              <div key={channel} className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors cursor-pointer shadow-sm ${
+              <div key={channel} className={`flex items-center justify-center w-8 h-8 rounded-full font-inter transition-colors cursor-pointer shadow-sm ${
                 channel === 'whatsapp' 
                   ? 'bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60' 
                   : channel === 'email'

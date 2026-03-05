@@ -527,7 +527,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <AlertDescription className="m-0">
-              Invalid referral code. You can still create your account without it.
+              {t('auth.invalidReferralCode') || 'Invalid referral code. You can still create your account without it.'}
             </AlertDescription>
           </div>
         </Alert>
@@ -538,7 +538,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           <div className="flex items-center gap-2">
             <Check className="h-4 w-4 flex-shrink-0 text-green-600" />
             <AlertDescription className="m-0 text-green-800 dark:text-green-200">
-              Valid referral code! You can now create your account.
+              {t('auth.validReferralCode') || 'Valid referral code! You can now create your account.'}
             </AlertDescription>
           </div>
         </Alert>
@@ -572,7 +572,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             {/* Submit button for reset password */}
             <Button 
               type="submit" 
-              className="w-full mt-6 font-medium neu-auth-btn font-inter" 
+              className="w-full mt-6 font-medium neu-auth-btn font-sans" 
               disabled={loading || resetPasswordSuccess}
             >
               {loading ? (t('auth.sending') || "Sending...") : (t('auth.sendResetLink') || "Send Reset Link")}
@@ -618,9 +618,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium text-foreground">
-                        Referral Code
+                        {t('auth.referralCode') || 'Referral Code'}
                         <span className="text-xs text-muted-foreground ml-1">
-                          (optional)
+                          {t('auth.optional') || '(optional)'}
                         </span>
                       </FormLabel>
                       <FormControl>
@@ -634,7 +634,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                             ) : null
                           }
                           className="h-12 text-sm neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0"
-                          placeholder="Enter code"
+                          placeholder={t('auth.enterCode') || "Enter code"}
                           type="text"
                           name={field.name}
                           value={field.value}
@@ -649,7 +649,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 />
                 {referralCodeStatus === 'unchecked' && (
                   <p className="text-xs text-muted-foreground">
-                    💡 Have a referral code? Enter it above for instant access.
+                    {t('auth.haveReferralCode') || '💡 Have a referral code? Enter it above for instant access.'}
                   </p>
                 )}
               </>
@@ -741,7 +741,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                       type="button"
                       onClick={handleMfaVerify}
                       disabled={mfaVerifying || mfaCode.length !== 6}
-                      className="flex-1 font-medium neu-auth-btn font-inter"
+                      className="flex-1 font-medium neu-auth-btn font-sans"
                     >
                       {mfaVerifying ? "Verifying..." : "Verify"}
                     </Button>
@@ -765,7 +765,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 <button 
                   type="button"
                   onClick={() => handleAuthModeChange('reset_password')}
-                  className="text-sm text-primary hover:underline font-inter"
+                  className="text-sm text-primary hover:underline font-sans"
                 >
                   {t('auth.forgotPassword') || 'Forgot password?'}
                 </button>
@@ -776,7 +776,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             {!mfaRequired && (
               <Button 
                 type="submit" 
-                className="w-full mt-6 font-medium neu-auth-btn font-inter" 
+                className="w-full mt-6 font-medium neu-auth-btn font-sans" 
                 disabled={loading}
               >
                 {loading 
@@ -811,7 +811,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       {!waitlistSuccess && authMode !== 'reset_password' && (
           <Button 
             type="button" 
-            className="whatsapp-btn neu-auth-whatsapp-btn w-full font-medium hover:opacity-90 transition-opacity font-inter"
+            className="whatsapp-btn neu-auth-whatsapp-btn w-full font-medium hover:opacity-90 transition-opacity font-sans"
             onClick={() => window.open('https://wa.me/34600000000', '_blank')}
           >
           <WhatsApp className="w-4 h-4 mr-2 text-white" />
@@ -824,7 +824,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         <Button 
           type="button" 
           variant="outline" 
-          className={`w-full font-medium ${!isGoogleButtonEnabled() ? 'opacity-50 cursor-not-allowed' : ''} font-inter`}
+          className={`w-full font-medium ${!isGoogleButtonEnabled() ? 'opacity-50 cursor-not-allowed' : ''} font-sans`}
           onClick={handleGoogleSignIn}
           disabled={loading || !isGoogleButtonEnabled()}
         >
@@ -843,7 +843,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             <button 
               type="button"
               onClick={() => handleAuthModeChange('sign_in')}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors font-inter"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors font-sans"
             >
               {t('auth.rememberPassword') || 'Remember your password?'} {" "}
               <span className="text-primary font-medium hover:underline">
@@ -860,7 +860,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               <button 
                 type="button"
                 onClick={toggleAuthMode}
-                className="text-sm text-primary font-medium hover:underline transition-colors font-inter"
+                className="text-sm text-primary font-medium hover:underline transition-colors font-sans"
               >
                 {authMode === 'sign_in' ? (t('auth.signUpLink') || "Sign up") : (t('auth.signInLink') || "Sign in")}
               </button>

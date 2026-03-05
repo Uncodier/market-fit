@@ -11,6 +11,18 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 export function AgentDetailClient({ agent }: { agent: Agent }) {
   const { t } = useLocalization()
   
+  const getTranslatedType = (type: string) => {
+    const key = `agents.type.${type}`;
+    const translated = t(key);
+    return translated === key ? type : translated;
+  };
+
+  const getTranslatedStatus = (status: string) => {
+    const key = `agents.status.${status}`;
+    const translated = t(key);
+    return translated === key ? status.replace('_', ' ') : translated;
+  };
+  
   // Reuse the color mapping logic from AgentsClient
   const getIconColor = (categoryId: string) => {
     switch (categoryId) {
@@ -66,7 +78,7 @@ export function AgentDetailClient({ agent }: { agent: Agent }) {
   const IconComponent = Icons[agent.icon as keyof typeof Icons] || Icons.Zap;
   
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col font-sans overflow-hidden min-h-screen">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col overflow-hidden min-h-screen">
       
       {/* Hero Section */}
       <section className="relative w-full pt-24 pb-16 border-b dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white">
@@ -74,7 +86,7 @@ export function AgentDetailClient({ agent }: { agent: Agent }) {
         <div className="relative z-10 w-full max-w-5xl mx-auto px-6 lg:px-12">
           <Link href="/product/agents" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white mb-8 transition-colors">
             <ChevronLeft size={16} className="mr-1" />
-            {t('common.backTo') || 'Back to '} Agents
+            {t('common.backTo') || 'Back to '} {t('common.agents') || 'Agents'}
           </Link>
           
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
@@ -92,7 +104,7 @@ export function AgentDetailClient({ agent }: { agent: Agent }) {
                 </span>
               </div>
               <div className={`font-medium mb-4 flex items-center gap-2 ${theme.textAccent}`}>
-                <span className="font-semibold uppercase tracking-wider text-xs px-2 py-0.5 rounded border border-current">{agent.type}</span>
+                <span className="font-semibold uppercase tracking-wider text-xs px-2 py-0.5 rounded border border-current">{getTranslatedType(agent.type)}</span>
               </div>
               <p className="text-lg md:text-xl dark:text-white/60 text-slate-500 max-w-2xl font-light leading-relaxed">
                 {agent.description}
@@ -101,18 +113,19 @@ export function AgentDetailClient({ agent }: { agent: Agent }) {
             
             <div className="w-full md:w-auto mt-4 md:mt-0 flex flex-col sm:flex-row md:flex-col gap-3">
               <Link 
-                href="/auth"
-                className={`px-8 py-3.5 rounded-xl font-bold transition-all shadow-sm flex items-center justify-center ${theme.btnPrimary}`}
+                href="/auth?mode=register"
+                className={`px-8 py-3.5 rounded-full font-inter font-bold transition-all shadow-sm flex items-center justify-center gap-2 group ${theme.btnPrimary}`}
               >
-                {t('common.getStarted') || 'Get Started'}
+                {t('common.getStarted') || 'Start with Makinari'}
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <a 
                 href="https://docs.makinari.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-8 py-3.5 rounded-xl font-bold bg-white dark:bg-[#0f0f13] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
+                className="px-8 py-3.5 rounded-full font-inter font-bold dark:bg-white/5 bg-black/5 hover:dark:bg-white/10 hover:bg-black/10 dark:text-white text-slate-900 transition-colors border dark:border-white/10 border-black/10 flex items-center justify-center text-center"
               >
-                {t('common.viewDocumentation') || 'View Documentation'}
+                {t('common.viewDocumentation') || 'Read Docs'}
               </a>
             </div>
           </div>
@@ -125,9 +138,9 @@ export function AgentDetailClient({ agent }: { agent: Agent }) {
           <h2 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">{t('agents.detail.about') || 'About this Agent'}</h2>
           <div className="prose prose-slate dark:prose-invert max-w-none text-slate-600 dark:text-slate-300">
             <p>
-              The {agent.name} agent specializes in {agent.type} tasks. 
-              Designed to help revenue teams work more efficiently, this agent integrates seamlessly 
-              with the rest of the Makinari workforce to create a unified workflow from end to end.
+              {(t('agents.detail.description.template') || 'The {name} agent specializes in {type} tasks. Designed to help revenue teams work more efficiently, this agent integrates seamlessly with the rest of the Makinari workforce to create a unified workflow from end to end.')
+                .replace('{name}', agent.name)
+                .replace('{type}', getTranslatedType(agent.type).toLowerCase())}
             </p>
             
             <h3 className="text-xl font-bold mt-8 mb-4 text-slate-900 dark:text-white">{t('agents.detail.capabilities') || 'Key Capabilities'}</h3>
@@ -146,14 +159,13 @@ export function AgentDetailClient({ agent }: { agent: Agent }) {
                 ))}
               </ul>
             ) : (
-              <p className="text-slate-500 italic">No specific activities listed.</p>
+              <p className="text-slate-500 italic">{t('agents.detail.noActivities') || 'No specific activities listed.'}</p>
             )}
             
             <h3 className="text-xl font-bold mt-8 mb-4 text-slate-900 dark:text-white">{t('agents.detail.whyMatters') || 'Why it matters'}</h3>
             <p className="text-slate-600 dark:text-slate-300">
-              When using the {agent.name} agent, teams typically see a significant reduction in manual work 
-              and a corresponding increase in output. By keeping this functionality natively within 
-              Makinari, you eliminate the need for third-party point solutions and complicated API integrations.
+              {(t('agents.detail.whyMatters.template') || 'When using the {name} agent, teams typically see a significant reduction in manual work and a corresponding increase in output. By keeping this functionality natively within Makinari, you eliminate the need for third-party point solutions and complicated API integrations.')
+                .replace('{name}', agent.name)}
             </p>
           </div>
         </div>
@@ -164,27 +176,27 @@ export function AgentDetailClient({ agent }: { agent: Agent }) {
             
             <div className="space-y-4 text-sm">
               <div className="flex justify-between items-center py-2 border-b dark:border-white/5 border-black/5">
-                <span className="text-slate-500">Category</span>
-                <span className="font-medium capitalize text-slate-900 dark:text-white">{agent.type}</span>
+                <span className="text-slate-500">{t('agents.detail.category') || 'Category'}</span>
+                <span className="font-medium capitalize text-slate-900 dark:text-white">{getTranslatedType(agent.type)}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b dark:border-white/5 border-black/5">
-                <span className="text-slate-500">Success Rate</span>
+                <span className="text-slate-500">{t('agents.detail.successRate') || 'Success Rate'}</span>
                 <span className="font-medium text-slate-900 dark:text-white">{agent.successRate}%</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b dark:border-white/5 border-black/5">
-                <span className="text-slate-500">Conversations</span>
+                <span className="text-slate-500">{t('agents.detail.conversations') || 'Conversations'}</span>
                 <span className="font-medium text-slate-900 dark:text-white">{(agent.conversations || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center py-2">
-                <span className="text-slate-500">Status</span>
-                <span className="font-medium capitalize text-slate-900 dark:text-white">{agent.status.replace('_', ' ')}</span>
+                <span className="text-slate-500">{t('agents.detail.status') || 'Status'}</span>
+                <span className="font-medium capitalize text-slate-900 dark:text-white">{getTranslatedStatus(agent.status)}</span>
               </div>
             </div>
             
             <div className="mt-8 pt-6 border-t dark:border-white/5 border-black/5">
-              <h4 className="font-bold text-slate-900 dark:text-white mb-3">Learn More</h4>
+              <h4 className="font-bold text-slate-900 dark:text-white mb-3">{t('agents.detail.learnMore') || 'Learn More'}</h4>
               <Link href="/product/openclaw" className={`flex items-center text-sm font-medium transition-colors ${theme.textAccent} ${theme.hoverText}`}>
-                About OpenClaw Architecture
+                {t('agents.detail.aboutArchitecture') || 'About OpenClaw Architecture'}
                 <ArrowRight size={14} className="ml-1" />
               </Link>
             </div>

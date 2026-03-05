@@ -74,7 +74,7 @@ export function AgentsClient() {
   };
 
   return (
-    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col font-sans overflow-hidden min-h-screen">
+    <div className="relative w-full dark:bg-[#030303] bg-white dark:text-white text-slate-900 selection:bg-violet-500/30 flex flex-col overflow-hidden min-h-screen">
       
       {/* Hero Section */}
       <section className="relative w-full pt-24 pb-16 border-b dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white">
@@ -90,6 +90,16 @@ export function AgentsClient() {
           <p className="text-lg md:text-xl dark:text-white/50 text-slate-500 max-w-2xl font-light leading-relaxed mb-8">
             {t('agents.hero.subtitle') || 'Discover how our specialized AI agents can automate and streamline your operations across every stage of your revenue cycle.'}
           </p>
+          
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
+            <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-blue-500 hover:bg-blue-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2 group">
+              {t('common.getStarted') || 'Start with Makinari'}
+              <Icons.ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link href="/product/openclaw" className="w-full sm:w-auto px-8 py-3.5 rounded-full font-inter font-bold dark:bg-white/5 bg-black/5 hover:dark:bg-white/10 hover:bg-black/10 dark:text-white text-slate-900 transition-colors border dark:border-white/10 border-black/10 flex items-center justify-center text-center">
+              {t('agents.hero.exploreOpenClaw') || 'Explore OpenClaw'}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -167,7 +177,7 @@ export function AgentsClient() {
                   key={activity.id} 
                   className="group rounded-2xl dark:bg-[#0f0f13] bg-white border dark:border-white/10 border-black/10 p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 cursor-pointer flex flex-col h-full"
                 >
-                        <div className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-[14px] ${colorClasses}`}>
+                        <div className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-[14px] dark:neu-pressed neu-pressed-light ${colorClasses}`}>
                           <IconComponent className="h-5 w-5" />
                         </div>
                         
@@ -186,7 +196,7 @@ export function AgentsClient() {
                   </p>
                   
                   <div className="mt-auto flex items-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 duration-300">
-                    <span className={getIconColor(activity.categoryId).split(' ')[0]}>View agent details</span>
+                    <span className={getIconColor(activity.categoryId).split(' ')[0]}>{t('agents.grid.viewDetails') || 'View agent details'}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 ml-1 ${getIconColor(activity.categoryId).split(' ')[0]}`}>
                       <line x1="5" y1="12" x2="19" y2="12" />
                       <polyline points="12 5 19 12 12 19" />
@@ -198,7 +208,7 @@ export function AgentsClient() {
                 </div>
               ) : (
                 <div className="w-full py-20 flex flex-col items-center justify-center text-center border border-dashed dark:border-white/10 border-black/10 rounded-2xl">
-                  <div className="w-16 h-16 rounded-full dark:bg-white/5 bg-slate-100 flex items-center justify-center mb-4">
+                  <div className="w-16 h-16 rounded-full font-inter font-bold dark:bg-white/5 bg-slate-100 flex items-center justify-center mb-4">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-slate-400">
                       <circle cx="11" cy="11" r="8" />
                       <line x1="21" y1="21" x2="16.65" y2="16.65" />

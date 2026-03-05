@@ -229,9 +229,9 @@ export function CampaignRevenueDonut({
       <div className="w-full flex flex-col justify-center items-center h-[320px]">
         <div className="relative w-40 h-40 mb-8">
           {/* Círculo de fondo */}
-          <div className="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-700"></div>
+          <div className="absolute inset-0 rounded-full font-inter border-4 border-gray-200 dark:border-gray-700"></div>
           {/* Círculo interior */}
-          <div className="absolute inset-8 rounded-full bg-background dark:bg-background"></div>
+          <div className="absolute inset-8 rounded-full font-inter bg-background dark:bg-background"></div>
         </div>
         
         {/* Etiquetas de leyenda */}
