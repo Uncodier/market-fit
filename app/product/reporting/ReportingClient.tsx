@@ -279,22 +279,18 @@ export function ReportingClient() {
                         </div>
                         
                         {/* SVG Line Chart Representation */}
-                        <div className="absolute inset-0 z-10 overflow-hidden rounded-b-lg">
-                          <svg 
-                            viewBox="0 0 1000 300" 
-                            preserveAspectRatio="none" 
-                            style={{ display: 'block', width: '100%', height: '100%' }}
-                          >
+                        <div className="absolute inset-0 z-10">
+                          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                             <defs>
-                              <linearGradient id="gradient1_cms" x1="0" y1="0" x2="0" y2="1">
+                              <linearGradient id="gradient1" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="rgba(99, 102, 241, 0.4)" />
                                 <stop offset="100%" stopColor="rgba(99, 102, 241, 0)" />
                               </linearGradient>
                             </defs>
-                            <path d="M0,240 L100,225 L200,255 L300,180 L400,210 L500,120 L600,150 L700,90 L800,135 L900,60 L1000,75" fill="none" stroke="rgba(99, 102, 241, 1)" strokeWidth="6" vectorEffect="non-scaling-stroke" />
-                            <path d="M0,240 L100,225 L200,255 L300,180 L400,210 L500,120 L600,150 L700,90 L800,135 L900,60 L1000,75 L1000,300 L0,300 Z" fill="url(#gradient1_cms)" />
+                            <path d="M0,80 L10,75 L20,85 L30,60 L40,70 L50,40 L60,50 L70,30 L80,45 L90,20 L100,25" fill="none" stroke="rgba(99, 102, 241, 1)" strokeWidth="2" />
+                            <path d="M0,80 L10,75 L20,85 L30,60 L40,70 L50,40 L60,50 L70,30 L80,45 L90,20 L100,25 L100,100 L0,100 Z" fill="url(#gradient1)" />
                             
-                            <path d="M0,270 L100,255 L200,285 L300,240 L400,255 L500,210 L600,225 L700,165 L800,195 L900,135 L1000,150" fill="none" stroke="rgba(34, 211, 238, 1)" strokeWidth="6" strokeDasharray="12 12" vectorEffect="non-scaling-stroke" />
+                            <path d="M0,90 L10,85 L20,95 L30,80 L40,85 L50,70 L60,75 L70,55 L80,65 L90,45 L100,50" fill="none" stroke="rgba(34, 211, 238, 1)" strokeWidth="2" strokeDasharray="4 4" />
                           </svg>
                         </div>
                         

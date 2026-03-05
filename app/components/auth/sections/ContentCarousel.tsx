@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRef } from "react";
 import { useLocalization } from "@/app/context/LocalizationContext";
+import Link from "next/link";
 
 function TiltCard({ children, className = "" }: { children: React.ReactNode, className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -44,7 +45,7 @@ function TiltCard({ children, className = "" }: { children: React.ReactNode, cla
   );
 }
 
-export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolean } = {}) {
+export function ContentCarousel({ showBuilders = true, showLearnMore = true }: { showBuilders?: boolean, showLearnMore?: boolean } = {}) {
   const { t } = useLocalization();
   
   return (
@@ -53,8 +54,8 @@ export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolea
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(236,72,153,0.05),transparent_60%)]"></div>
       
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 mb-12 flex flex-col items-center text-center">
-        <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-8 transition-transform hover:scale-105 duration-300">
-          <span className="w-2 h-2 rounded-full bg-pink-500 mr-2 animate-pulse shadow-[0_0_8px_rgba(236,72,153,0.8)]"></span>
+        <div className="inline-flex items-center rounded-full font-sans dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-8 transition-transform hover:scale-105 duration-300">
+          <span className="w-2 h-2 rounded-full font-sans font-bold bg-pink-500 mr-2 animate-pulse shadow-[0_0_8px_rgba(236,72,153,0.8)]"></span>
           Content AI
         </div>
         
@@ -62,9 +63,21 @@ export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolea
           {t('landing.content.title.start') || 'Automatic content'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">{t('landing.content.title.highlight') || 'generation'}</span>
         </h2>
         
-        <p className="dark:text-white/50 text-slate-500 leading-relaxed text-lg max-w-3xl mx-auto font-light mb-4">
+        <p className="dark:text-white/50 text-slate-500 leading-relaxed text-lg max-w-3xl mx-auto font-light mb-8">
           {t('landing.content.subtitle') || 'Create highly engaging videos, social posts, and personalized emails on autopilot. Consistent, on-brand content for every channel.'}
         </p>
+
+        {showLearnMore && (
+        <Link
+          href="/product/cms"
+          className="inline-flex items-center gap-2 rounded-full font-sans dark:neu-button neu-button-light px-6 py-3 font-semibold text-sm transition-all hover:scale-105 active:scale-95 mb-8"
+        >
+          {t('landing.content.learnMore') || 'Learn more'}
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </Link>
+        )}
         
         {showBuilders && (
         <div className="flex flex-col items-center mt-12 p-8 rounded-2xl dark:bg-white/[0.02] bg-black/5 border dark:border-white/5 border-black/5 w-full max-w-4xl relative z-10">
@@ -100,14 +113,24 @@ export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolea
         )}
       </div>
       
-      <div className="relative z-10 w-full overflow-hidden flex items-center py-4 mt-8 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] md:[mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]">
-        <div className="flex w-max animate-scroll-x gap-8 pr-8 hover:[animation-play-state:paused] py-8">
+      <div className="relative z-10 w-full overflow-hidden flex items-center py-4 mt-8 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] md:[mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)] group">
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes scroll-x {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(calc(-100% / 4), 0, 0); }
+          }
+          .animate-scroll-x { 
+            animation: scroll-x 40s linear infinite; 
+            will-change: transform;
+          }
+        `}} />
+        <div className="flex w-max animate-scroll-x gap-8 pr-8 group-hover:[animation-play-state:paused] py-8">
         {[1, 2, 3, 4].map((set) => (
           <React.Fragment key={set}>
             {/* Video Card */}
             <TiltCard className="w-[480px] h-[270px] flex-shrink-0 rounded-lg dark:neu-panel neu-panel-light p-2 flex flex-col group/card transition-colors cursor-pointer relative overflow-hidden">
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2 dark:neu-pressed neu-pressed-light px-3 py-1.5 rounded-full">
-                <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></div>
+                <div className="w-2 h-2 rounded-full font-sans font-bold bg-pink-500 animate-pulse"></div>
                 <span className="text-xs font-semibold dark:text-white/90 text-slate-500">AI Video</span>
               </div>
               
@@ -115,7 +138,7 @@ export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolea
                 <div className="flex-1 relative">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(236,72,153,0.15),transparent_70%)]"></div>
                   <div className="absolute inset-0 flex items-center justify-center z-10">
-                    <div className="w-16 h-16 rounded-full dark:neu-button neu-button-light flex items-center justify-center group-hover/card:scale-110 transition-transform">
+                    <div className="w-16 h-16 rounded-full font-sans dark:neu-button neu-button-light flex items-center justify-center group-hover/card:scale-110 transition-transform">
                       <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[12px] border-l-pink-400 border-b-[8px] border-b-transparent ml-1"></div>
                     </div>
                   </div>
@@ -124,9 +147,9 @@ export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolea
                   <div className="w-3 h-3 dark:text-white/50 text-slate-500">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   </div>
-                  <div className="flex-1 h-1.5 dark:bg-white/10 bg-black/10 rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 dark:bg-white/10 bg-black/10 rounded-full font-sans overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-pink-600 to-pink-400 w-1/3 relative">
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_10px_rgba(236,72,153,0.8)]"></div>
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full font-sans shadow-[0_0_10px_rgba(236,72,153,0.8)]"></div>
                     </div>
                   </div>
                   <div className="text-[10px] dark:text-white/50 text-slate-500 font-mono">0:45 / 2:30</div>
@@ -138,15 +161,15 @@ export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolea
             <TiltCard className="w-[300px] h-[380px] flex-shrink-0 self-center rounded-lg dark:neu-panel neu-panel-light p-5 flex flex-col group/card transition-colors cursor-pointer relative">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 p-[2px]">
-                    <div className="w-full h-full dark:bg-[#121214] bg-white rounded-full border dark:border-white/10 border-black/10"></div>
+                  <div className="w-10 h-10 rounded-full font-sans font-bold bg-gradient-to-tr from-blue-600 to-purple-600 p-[2px]">
+                    <div className="w-full h-full dark:bg-[#121214] bg-white rounded-full font-sans border dark:border-white/10 border-black/10"></div>
                   </div>
                   <div>
                     <div className="text-sm font-semibold dark:text-white/90 text-slate-500">Makinari AI</div>
                     <div className="text-[10px] dark:text-white/40 text-slate-500">Just now • 🌐</div>
                   </div>
                 </div>
-                <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+                <div className="w-6 h-6 rounded-full font-sans font-bold bg-blue-500/10 flex items-center justify-center text-blue-400">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
                 </div>
               </div>
@@ -166,17 +189,17 @@ export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolea
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.15),transparent_70%)]"></div>
                 <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-blue-500/20 to-transparent"></div>
                 <div className="absolute bottom-4 left-4 right-4 h-16 border-b border-l dark:border-white/10 border-black/10">
-                  <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M0,100 L20,80 L40,90 L60,40 L80,50 L100,10" fill="none" stroke="#60a5fa" strokeWidth="3" vectorEffect="non-scaling-stroke"/>
+                  <svg width="100%" height="100%" className="absolute inset-0 w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path d="M0,100 L20,80 L40,90 L60,40 L80,50 L100,10" fill="none" stroke="#60a5fa" strokeWidth="2" />
                   </svg>
                 </div>
               </div>
               
               <div className="flex justify-between items-center mt-4 pt-4 border-t dark:border-white/5 border-black/5 dark:text-white/40 text-slate-500">
-                <div className="w-4 h-4 rounded-full border dark:border-white/20 border-black/20"></div>
-                <div className="w-4 h-4 rounded-full border dark:border-white/20 border-black/20"></div>
-                <div className="w-4 h-4 rounded-full border dark:border-white/20 border-black/20"></div>
-                <div className="w-4 h-4 rounded-full border dark:border-white/20 border-black/20"></div>
+                <div className="w-4 h-4 rounded-full font-sans border dark:border-white/20 border-black/20"></div>
+                <div className="w-4 h-4 rounded-full font-sans border dark:border-white/20 border-black/20"></div>
+                <div className="w-4 h-4 rounded-full font-sans border dark:border-white/20 border-black/20"></div>
+                <div className="w-4 h-4 rounded-full font-sans border dark:border-white/20 border-black/20"></div>
               </div>
             </TiltCard>
 
@@ -227,13 +250,6 @@ export function ContentCarousel({ showBuilders = true }: { showBuilders?: boolea
         ))}
       </div>
       </div>
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes scroll-x {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(calc(-100% / 4)); }
-        }
-        .animate-scroll-x { animation: scroll-x 40s linear infinite; }
-      `}} />
     </div>
   );
 }
